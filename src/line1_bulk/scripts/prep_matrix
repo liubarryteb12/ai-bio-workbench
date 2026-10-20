@@ -1,0 +1,451 @@
+#!/usr/bin/env bash
+# prep_matrix：line1_bulk 首步骤。两条预处理路径共用一套产物契约。
+#
+# 模式由输入文件名特征决定（引擎只传 --input 路径，不传数据类型，故认名字比认参数稳）：
+#
+#   A. microarray 基因芯片：GEO series matrix + GPL 注释
+#      1) 解析 series matrix 数据表（探针 x 样本）与样本元数据（title / tissue 分组）；
+#      2) 用 GPL 注释把探针 ID 换成 gene symbol（多基因探针取第一个 symbol，
+#         同基因多探针取均值；log2 值域上取均值不扭曲）；
+#      3) 报告里与 grouping.txt 交叉核对（用户分组表与 GEO 元数据必须一致）。
+#
+#   B. counts_rnaseq Bulk RNA-seq：counts 矩阵（基因 x 样本）+ grouping.txt
+#      1) counts 没有可用的 GEO 分组元数据（列名只有 GSM 编号），故 grouping 必填，
+#         分组标签与样本名都由 grouping.txt 决定；
+#      2) 只把列名形如 GSM+数字的列当样本，其余非首列算注释列（report 里列出，不参与计算）；
+#      3) 原始 counts -> CPM -> log2(CPM+1)，与芯片路径同在 log2 量纲，
+#         下游 deg_limma / wgcna 无需分支；全零基因丢弃（不可比，且 log 后是常数）；
+#      4) 基因键为 symbol 就直接用；若以 Ensembl ID 为键，需同时给 GPL 注释做 ID->symbol 映射。
+#
+# 两条路径产出完全相同的三件产物到工作目录（<line>/processed/）：
+#   expr_genes.tsv（首列 gene，其余列样本名）、group_map.tsv（sample/group）、prep_report.txt
+#
+# 自校验内建：值域、NA、分组均衡、产物非空、grouping 核对，任一不过非零退出，
+# 让台账记 failed，不产出看似成功的半成品。
+set -euo pipefail
+
+seed="${BIOANALYS_SEED:-UNSET}"
+if [ "$seed" = "UNSET" ]; then
+  echo "BIOANALYS_SEED 未注入（引擎契约：seed 必须注入）" >&2
+  exit 3
+fi
+
+# 输入按文件名特征分流。两条规矩：
+#   1. 只匹配 basename，不匹配整条绝对路径。目录名会一起参与 glob，一旦项目目录
+#      里出现 "count" 字样，该目录下所有文件都会被 counts 模式认走（夹具目录叫
+#      prep_counts_test 时实测过：GPL 注释被当成 counts 矩阵解析）。
+#   2. 匹配顺序=特异度从高到低。grouping / GPL / series_matrix 都是固定文件名形态，
+#      先判定；*[Cc]ount* 最宽松，放最后兜底，防止形如 counts_grouping.txt 被 counts 抢走。
+declare -a INPUTS=()
+input_count=0
+output_count=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --input) INPUTS+=("$2"); input_count=$((input_count + 1)); shift 2 ;;
+    --output) output_count=$((output_count + 1)); shift 2 ;;
+    --seed) shift 2 ;;
+    *) echo "未知参数: $1" >&2; exit 2 ;;
+  esac
+done
+
+sm_file=""
+gpl_file=""
+grouping_file=""
+counts_file=""
+for path in "${INPUTS[@]:-}"; do
+  [ -n "$path" ] || continue
+  input_name=$(basename "$path")
+  case "$input_name" in
+    *grouping*) grouping_file="$path" ;;
+    *GPL*) gpl_file="$path" ;;
+    *series_matrix*.txt.gz) sm_file="$path" ;;
+    *[Cc]ount*) counts_file="$path" ;;
+    *) echo "无法识别的输入文件: $input_name（需要 series_matrix / counts 矩阵 / GPL / grouping）" >&2; exit 2 ;;
+  esac
+done
+
+prep_mode="microarray"
+if [ -n "$counts_file" ] && [ -n "$sm_file" ]; then
+  echo "输入同时给了 series_matrix 与 counts 矩阵，预处理路径无法判定: $sm_file / $counts_file" >&2
+  exit 2
+fi
+if [ -n "$counts_file" ]; then
+  prep_mode="counts_rnaseq"
+  # counts 矩阵的列名只有 GSM 编号，没有 tissue 之类的分组元数据，分组只能来自 grouping.txt
+  if [ -z "$grouping_file" ]; then
+    echo "counts 模式必须提供 grouping 文件（counts 列名只有样本编号，分组无法自行派生）" >&2
+    exit 2
+  fi
+  for required in "$counts_file" "$grouping_file"; do
+    if [ ! -f "$required" ]; then
+      echo "输入文件不存在: $required" >&2
+      exit 2
+    fi
+  done
+else
+  if [ -z "$sm_file" ] || [ -z "$gpl_file" ]; then
+    echo "缺少必需输入：series_matrix 与 GPL 注释都必须提供（当前 sm='$sm_file' gpl='$gpl_file'）" >&2
+    exit 2
+  fi
+  for required in "$sm_file" "$gpl_file"; do
+    if [ ! -f "$required" ]; then
+      echo "输入文件不存在: $required" >&2
+      exit 2
+    fi
+  done
+  if [ -n "$grouping_file" ] && [ ! -f "$grouping_file" ]; then
+    echo "grouping 文件不存在: $grouping_file" >&2
+    exit 2
+  fi
+fi
+
+echo "step_executed=prep_matrix"
+echo "prep_mode=${prep_mode}"
+echo "bioanalys_seed=${seed}"
+echo "input_series_matrix=${sm_file}"
+echo "input_counts=${counts_file}"
+echo "input_gpl=${gpl_file}"
+echo "input_grouping=${grouping_file:-（未提供，跳过核对）}"
+
+SM_FILE="$sm_file" GPL_FILE="$gpl_file" COUNT_FILE="$counts_file" GROUPING_FILE="$grouping_file" \
+PREP_MODE="$prep_mode" BIOANALYS_SEED="$seed" \
+Rscript --vanilla - <<'RSCRIPT'
+suppressPackageStartupMessages(library(data.table))
+
+sm_file      <- Sys.getenv("SM_FILE")
+gpl_file     <- Sys.getenv("GPL_FILE")
+count_file   <- Sys.getenv("COUNT_FILE")
+grouping_file <- Sys.getenv("GROUPING_FILE")
+prep_mode    <- Sys.getenv("PREP_MODE")
+seed         <- Sys.getenv("BIOANALYS_SEED")
+
+fail <- function(message) {
+  cat(sprintf("prep_matrix 自校验失败: %s\n", message), file = stderr())
+  quit(status = 1)
+}
+
+# --- 0. grouping.txt 解析（两模式共用） ---
+# 真实结构（cat -A 实测）：tab 分隔，但第一列是 "分组名 长标签"
+# （如 "皮损组 LS"，空格拼接），第二列是短标签（L），后面依次是 样本数 / GSM列表 / 样本标签。
+# 表头只写了 5 个名字，与数据行对不齐，所以 GSM 列按 "以 GSM+数字开头" 特征匹配找，
+# 组标签从第一列取最后一个空格词，都不按下标猜。
+# warn=FALSE：grouping.txt 末尾无换行，warning 会混进 stderr 干扰排查
+read_grouping_map <- function(path) {
+  grouping_lines <- readLines(path, encoding = "UTF-8", warn = FALSE)
+  grouping_map <- list()
+  for (grouping_line in grouping_lines) {
+    # 只收数据行：GSM 后必须跟数字。表头写的是 "GSM 编号"（GSM 后是空格），
+    # 宽松匹配会把表头当数据行收进来，再被严格匹配打失败。
+    if (!grepl("GSM[0-9]", grouping_line)) next
+    fields <- strsplit(grouping_line, "\t")[[1]]
+    if (length(fields) < 3) fail(sprintf("grouping 行列数不足: %s", grouping_line))
+    gsm_field_index <- grep("^GSM[0-9]", fields)
+    if (length(gsm_field_index) == 0) fail(sprintf("grouping 行里找不到 GSM 列表: %s", grouping_line))
+    # 数据行第一列是 "分组名 长标签"（如 "皮损组 LS"，两者用空格拼在同一个 tab 字段里），
+    # 第二列反而是短标签（L/NL）。组标签取第一个 tab 字段的最后一个空格词。
+    grouping_tag <- sub("^.*\\s+", "", trimws(fields[1]))
+    if (!grepl("^[A-Za-z0-9_-]+$", grouping_tag)) {
+      fail(sprintf("grouping 组标签解析异常: %s（来自 %s）", grouping_tag, grouping_line))
+    }
+    grouping_map[[grouping_tag]] <- trimws(strsplit(fields[gsm_field_index[1]], ",", fixed = TRUE)[[1]])
+  }
+  if (length(grouping_map) == 0) fail("grouping 文件里没解析出任何 GSM 记录")
+  grouping_map
+}
+
+grouping_map <- if (nzchar(grouping_file)) read_grouping_map(grouping_file) else NULL
+
+if (identical(prep_mode, "counts_rnaseq")) {
+  # ============================ B. Bulk RNA-seq counts 路径 ============================
+  # --- B1. counts 矩阵：首列基因 ID，样本列认 GSM 编号，其余列当注释列 ---
+  counts_table <- fread(count_file, nThread = 1)
+  if (ncol(counts_table) < 2) {
+    fail(sprintf("counts 矩阵至少要有 1 列基因 ID + 1 列样本，实际 %d 列（分隔符没认对？）", ncol(counts_table)))
+  }
+  if (grepl("^GSM[0-9]", names(counts_table)[1])) {
+    fail(sprintf("counts 矩阵首列是样本编号（%s）而不是基因 ID，无法定位基因键", names(counts_table)[1]))
+  }
+  gene_ids <- trimws(as.character(counts_table[[1]]))
+  if (any(!nzchar(gene_ids))) fail("counts 矩阵存在空基因 ID 行")
+  sample_names <- names(counts_table)[grepl("^GSM[0-9]", names(counts_table))]
+  annotation_cols <- setdiff(names(counts_table)[-1], sample_names)
+  if (length(sample_names) == 0) {
+    fail(sprintf("counts 矩阵里没有形如 GSM+数字的样本列，实际列名: %s（grouping.txt 是 GSM 键，列名必须对得上）",
+                 paste(names(counts_table)[-1], collapse = ",")))
+  }
+  # with = FALSE 而非 ..前缀：.. 语法依赖 data.table >= 1.14.2，with = FALSE 全版本可用
+  counts_mat <- as.matrix(counts_table[, sample_names, with = FALSE])
+  # --- B2. counts 形态自校验（形态不对就别往下算，CPM 用在归一化矩阵上会算错） ---
+  if (!is.numeric(counts_mat)) fail("counts 矩阵含非数值单元格")
+  if (any(is.na(counts_mat))) fail("counts 矩阵含 NA")
+  if (any(counts_mat < 0)) fail("counts 矩阵含负值（counts 不可能为负）")
+  counts_fractional <- sum(counts_mat != round(counts_mat))
+  if (counts_fractional > 0) {
+    # RSEM 期望计数等带小数是常见形态，四舍五入到整数后按 counts 处理，但必须留痕
+    counts_mat <- round(counts_mat)
+  }
+  if (max(counts_mat) < 50) {
+    fail(sprintf("counts 矩阵最大单元格仅 %.2f，看起来不是原始 counts（可能是已归一化的 TPM/FPKM 矩阵）",
+                 max(counts_mat)))
+  }
+  libsize <- colSums(counts_mat)
+  if (any(libsize <= 0)) {
+    fail(sprintf("有样本文库大小为 0: %s", paste(sample_names[libsize <= 0], collapse = ",")))
+  }
+  # --- B3. CPM + log2(CPM+1)，与芯片路径同在 log2 量纲，下游无需分支 ---
+  expr_mat <- log2(t(t(counts_mat) / libsize) * 1e6 + 1)
+  rownames(expr_mat) <- gene_ids
+  # 全零基因：log 后是常数，跨样本不可比，直接丢并留痕
+  all_zero <- rowSums(counts_mat) == 0
+  genes_allzero_dropped <- sum(all_zero)
+  expr_mat <- expr_mat[!all_zero, , drop = FALSE]
+  gene_ids <- gene_ids[!all_zero]
+  if (nrow(expr_mat) == 0) fail("丢弃全零基因后 counts 矩阵为空")
+
+  # --- B4. 基因键：symbol 直接用；Ensembl ID 需 GPL 映射（原来在芯片路径上的映射器） ---
+  extract_symbol <- function(assignment) {
+    if (is.na(assignment) || assignment == "" || assignment == "---") return(NA_character_)
+    entries <- strsplit(assignment, " /// ", fixed = TRUE)[[1]]
+    segments <- strsplit(entries[1], " // ", fixed = TRUE)[[1]]
+    if (length(segments) >= 2) segments[2] else NA_character_
+    }
+  ensembl_frac <- mean(grepl("^ENSG[0-9]+", gene_ids))
+  gene_key <- gene_ids
+  id_map_note <- "gene_key=列首基因 ID 原样（非 Ensembl 形态，按 symbol 用）"
+  if (ensembl_frac >= 0.5) {
+    if (!nzchar(gpl_file)) {
+      fail(sprintf("counts 以 Ensembl ID 为键（%.0f%% 行匹配 ^ENSG），需同时提供 GPL 注释做 ID->symbol 映射；或改用 symbol 为键的 counts 表",
+                   100 * ensembl_frac))
+    }
+    gpl_table <- fread(gpl_file, sep = "\t", select = c("ID", "gene_assignment"), nThread = 1)
+    if (!all(c("ID", "gene_assignment") %in% names(gpl_table))) {
+      fail(sprintf("GPL 缺少 ID/gene_assignment 列，实际列: %s", paste(names(gpl_table), collapse = ",")))
+    }
+    gpl_table[, ensembl := sub("\\.[0-9]+$", "", trimws(ID))]
+    gpl_table[, gene := vapply(gene_assignment, extract_symbol, character(1), USE.NAMES = FALSE)]
+    gpl_table <- gpl_table[!is.na(gene) & nzchar(gene)]
+    # 同 Ensembl ID 多行同一个 symbol，去重后再 join，避免 join 出重复行
+    gpl_table <- unique(gpl_table[, .(ensembl, gene)], by = "ensembl")
+    keyed <- data.table(ensembl = sub("\\.[0-9]+$", "", gene_ids), row = seq_along(gene_ids))
+    keyed <- merge(keyed, gpl_table, by = "ensembl", all.x = TRUE, sort = FALSE)
+    keyed <- keyed[order(row)]
+    unmapped <- sum(is.na(keyed$gene))
+    if (unmapped > 0) fail(sprintf("%d / %d 个 Ensembl ID 在 GPL 里没有 symbol 注释", unmapped, nrow(keyed)))
+    gene_key <- keyed$gene
+    id_map_note <- sprintf("gene_key=Ensembl -> symbol（GPL %s 映射，%d 个 ID 全部命中）",
+                           basename(gpl_file), nrow(keyed))
+  }
+
+  # --- B5. 同 gene 多行取均值（与芯片路径同口径，log2 量纲上取均值不扭曲） ---
+  gene_dt <- as.data.table(expr_mat)
+  gene_dt[, gene := gene_key]
+  numeric_cols <- sample_names
+  gene_expr <- gene_dt[, lapply(.SD, mean), by = gene, .SDcols = numeric_cols]
+  gene_count <- nrow(gene_expr)
+  rows_per_gene <- gene_dt[, .N, by = gene]$N
+  gene_expr <- gene_expr[order(gene)]
+
+  # --- B6. 分组：全部来自 grouping.txt，且必须与 counts 的样本列完全一致 ---
+  grouping_gsms <- unlist(grouping_map, use.names = FALSE)
+  if (!setequal(grouping_gsms, sample_names)) {
+    fail(sprintf("grouping 的 GSM 集合与 counts 样本列不一致: grouping=%d 个, counts=%d 个（缺失: %s）",
+                 length(grouping_gsms), length(sample_names),
+                 paste(setdiff(sample_names, grouping_gsms), collapse = ",")))
+  }
+  group_values <- vapply(sample_names, function(gsm) {
+    for (tag in names(grouping_map)) if (gsm %in% grouping_map[[tag]]) return(tag)
+    NA_character_
+  }, character(1), USE.NAMES = FALSE)
+  if (any(is.na(group_values))) fail("有 counts 样本列在 grouping 里找不到分组")
+  grouping_check <- sprintf("一致（%d 组 %d 样本）", length(grouping_map), length(grouping_gsms))
+
+  input_report <- c(
+    sprintf("counts=%s", count_file),
+    sprintf("gpl=%s", if (nzchar(gpl_file)) gpl_file else "（未提供）"),
+    sprintf("prep_mode=%s", prep_mode),
+    sprintf("grouping_file=%s", grouping_file),
+    sprintf("grouping_check=%s", grouping_check)
+  )
+  counts_report <- c(
+    sprintf("counts_rows=%d", nrow(counts_table)),
+    sprintf("counts_annotation_cols=%s", if (length(annotation_cols) > 0) paste(annotation_cols, collapse = ",") else "无"),
+    sprintf("counts_ensembl_fraction=%.1f%%", 100 * ensembl_frac),
+    sprintf("counts_ids=%d", length(gene_ids)),
+    sprintf("counts_fractional_rounded=%d", counts_fractional),
+    sprintf("counts_genes_allzero_dropped=%d", genes_allzero_dropped),
+    sprintf("rows_per_gene_multi=%d", sum(rows_per_gene > 1)),
+    id_map_note
+  )
+  # %.0f 而非 %d：colSums 返回 double，%d 遇到非整型 double 会报 invalid format
+  dist_line <- sprintf("libsize_range=%.0f - %.0f", min(libsize), max(libsize))
+} else {
+  # ============================ A. microarray 基因芯片路径 ============================
+  # --- 1. series matrix：头部元数据 + 数据表 ---
+  sm_lines <- readLines(gzfile(sm_file), warn = FALSE)
+  table_begin <- grep("^!series_matrix_table_begin$", sm_lines)
+  table_end <- grep("^!series_matrix_table_end$", sm_lines)
+  if (length(table_begin) != 1 || length(table_end) != 1) {
+    fail("series matrix 数据表标记不唯一，无法解析")
+  }
+  col_names <- strsplit(gsub('"', "", sm_lines[table_begin + 1]), "\t")[[1]]
+  if (col_names[1] != "ID_REF") {
+    fail(sprintf("数据表首列不是 ID_REF: %s", col_names[1]))
+  }
+  table_body <- sm_lines[(table_begin + 2):(table_end - 1)]
+  expr <- fread(text = paste(c(paste(col_names, collapse = "\t"), table_body), collapse = "\n"),
+                sep = "\t")
+  gsm_cols <- setdiff(col_names, "ID_REF")
+
+  # 样本标题与 tissue 特征（分组派生自此，不依赖外部文件）
+  title_values <- strsplit(gsub('"', "", sm_lines[grep("^!Sample_title", sm_lines)]), "\t")[[1]][-1]
+  char_values <- strsplit(gsub('"', "", sm_lines[grep("^!Sample_characteristics_ch1", sm_lines)]), "\t")[[1]][-1]
+  if (length(title_values) != length(gsm_cols) || length(char_values) != length(gsm_cols)) {
+    fail("样本元数据行与数据表列数不一致")
+  }
+
+  # tissue: lesion -> LS；tissue: perilesional skin -> NLS。其它形态不猜，直接失败
+  group_values <- vapply(char_values, function(text_value) {
+    tissue <- sub("^tissue:\\s*", "", text_value)
+    if (identical(tolower(tissue), "lesion")) return("LS")
+    if (identical(tolower(tissue), "perilesional skin")) return("NLS")
+    NA_character_
+  }, character(1), USE.NAMES = FALSE)
+  if (any(is.na(group_values))) {
+    fail(sprintf("无法从 tissue 特征派生分组: %s",
+                 paste(unique(char_values[is.na(group_values)]), collapse = " | ")))
+  }
+
+  # --- 2. GPL 注释：探针 -> gene symbol ---
+  gpl_table <- fread(gpl_file, sep = "\t", select = c("ID", "gene_assignment"), nThread = 1)
+  if (!all(c("ID", "gene_assignment") %in% names(gpl_table))) {
+    fail(sprintf("GPL 缺少 ID/gene_assignment 列，实际列: %s", paste(names(gpl_table), collapse = ",")))
+  }
+
+  # gene_assignment 形如 "GB // SYMBOL // desc // ... /// GB2 // SYMBOL2 // ..."，
+  # 多基因探针取第一个条目的 symbol；--- 表示无注释
+  extract_symbol <- function(assignment) {
+    if (is.na(assignment) || assignment == "" || assignment == "---") return(NA_character_)
+    entries <- strsplit(assignment, " /// ", fixed = TRUE)[[1]]
+    segments <- strsplit(entries[1], " // ", fixed = TRUE)[[1]]
+    if (length(segments) >= 2) segments[2] else NA_character_
+  }
+  count_gene_entries <- function(assignment) {
+    if (is.na(assignment) || assignment == "" || assignment == "---") return(0L)
+    length(strsplit(assignment, " /// ", fixed = TRUE)[[1]])
+  }
+  gpl_table[, gene := vapply(gene_assignment, extract_symbol, character(1), USE.NAMES = FALSE)]
+  gpl_table[, gene_entries := vapply(gene_assignment, count_gene_entries, integer(1), USE.NAMES = FALSE)]
+
+  # --- 3. 合并 + 同基因多探针取均值 ---
+  merged <- merge(as.data.table(expr), gpl_table[, .(ID_REF = ID, gene)], by = "ID_REF")
+  probes_used <- nrow(merged)
+  merged <- merged[!is.na(gene)]
+  probes_annotated <- nrow(merged)
+  numeric_cols <- gsm_cols
+  gene_expr <- merged[, lapply(.SD, mean), by = gene, .SDcols = numeric_cols]
+  probes_per_gene <- merged[, .N, by = gene]$N
+  gene_count <- nrow(gene_expr)
+
+  # --- 4. grouping.txt 交叉核对（用户分组表与 GEO 元数据必须一致） ---
+  grouping_check <- "未提供 grouping 文件，跳过核对"
+  if (!is.null(grouping_map)) {
+    grouping_gsms <- unlist(grouping_map, use.names = FALSE)
+    if (!setequal(grouping_gsms, gsm_cols)) {
+      fail(sprintf("grouping 的 GSM 集合与 series matrix 不一致: grouping=%d 个, matrix=%d 个",
+                   length(grouping_gsms), length(gsm_cols)))
+    }
+    mismatch <- c()
+    for (grouping_tag in names(grouping_map)) {
+      for (gsm in grouping_map[[grouping_tag]]) {
+        sample_index <- match(gsm, gsm_cols)
+        if (!is.na(sample_index) && group_values[sample_index] != grouping_tag) {
+          mismatch <- c(mismatch, sprintf("%s: GEO=%s vs grouping=%s", gsm, group_values[sample_index], grouping_tag))
+        }
+      }
+    }
+    if (length(mismatch) > 0) {
+      fail(sprintf("grouping 与 GEO 元数据分组冲突: %s", paste(mismatch, collapse = "; ")))
+    }
+    grouping_check <- sprintf("一致（%d 组 %d 样本）", length(grouping_map), length(grouping_gsms))
+  }
+
+  # 报告字段刻意与原单模式版本逐字一致（不加 prep_mode 行）：A 侧既有产物是下游输入，
+  # 报告字节漂移会让"这次改动没动到 A"这个结论失去可比性。
+  input_report <- c(
+    sprintf("series_matrix=%s", sm_file),
+    sprintf("gpl=%s", gpl_file),
+    sprintf("grouping_file=%s", if (nzchar(grouping_file)) grouping_file else "（未提供）"),
+    sprintf("grouping_check=%s", grouping_check)
+  )
+  counts_report <- c(
+    sprintf("probes_in_matrix=%d", nrow(expr)),
+    sprintf("probes_in_gpl=%d", nrow(gpl_table)),
+    sprintf("probes_matched=%d", probes_used),
+    sprintf("probes_annotated=%d (%.1f%%)", probes_annotated, 100 * probes_annotated / nrow(expr)),
+    sprintf("probes_multi_gene=%d", sum(gpl_table$gene_entries > 1))
+  )
+  probe_count_distribution <- table(probes_per_gene)
+  dist_line <- sprintf("probes_per_gene_dist=%s",
+                       paste(sprintf("%d探针:%d基因", as.integer(names(probe_count_distribution)),
+                                     as.integer(probe_count_distribution)), collapse = " "))
+}
+
+# ============================ 共用尾：自校验 + 落盘 + 报告 ============================
+# --- 5. 自校验：不产出看似成功的半成品 ---
+if (gene_count == 0 || length(numeric_cols) == 0) fail("表达矩阵为空")
+if (any(is.na(gene_expr[, .SD, .SDcols = numeric_cols]))) fail("表达矩阵含 NA（注释或合并环节出错）")
+value_range <- range(unlist(gene_expr[, .SD, .SDcols = numeric_cols]))
+if (value_range[1] < 0 || value_range[2] > 20) {
+  fail(sprintf("表达值域 %s 超出 log2 合理范围 [0,20]，数据形态可能不是 log2", paste(value_range, collapse = " - ")))
+}
+group_table <- table(group_values)
+if (any(group_table < 2)) fail(sprintf("有分组样本数不足 2: %s", paste(names(group_table), collapse = "/")))
+
+# --- 6. 产物落盘（工作目录即 <line>/processed/） ---
+# counts 路径的样本名就是 counts 列名（GSM），芯片路径沿用 GEO 标题；
+# 两条路径都必须让 expr 列名与 group_map$sample 完全一致，下游 join 才不用分支。
+sample_labels <- if (identical(prep_mode, "counts_rnaseq")) sample_names else title_values
+setnames(gene_expr, c("gene", sample_labels))
+fwrite(gene_expr, "expr_genes.tsv", sep = "\t")
+fwrite(data.table(sample = sample_labels, group = group_values), "group_map.tsv", sep = "\t")
+
+report_lines <- c(
+  sprintf("step=prep_matrix"),
+  sprintf("seed=%s", seed),
+  input_report,
+  counts_report,
+  sprintf("genes=%d", gene_count),
+  sprintf("samples=%d", length(numeric_cols)),
+  dist_line,
+  sprintf("value_range=%.2f - %.2f", value_range[1], value_range[2]),
+  sprintf("groups=%s", paste(sprintf("%s:%d", names(group_table), as.integer(group_table)), collapse = " "))
+)
+writeLines(report_lines, "prep_report.txt")
+
+# 产物必须在位且非空，否则视为失败（下游拿不到文件比报错更糟）
+for (artifact in c("expr_genes.tsv", "group_map.tsv", "prep_report.txt")) {
+  if (!file.exists(artifact) || file.info(artifact)$size == 0) {
+    fail(sprintf("产物缺失或为空: %s", artifact))
+  }
+}
+
+if (identical(prep_mode, "counts_rnaseq")) {
+  cat("prep_mode=", prep_mode, "\n", sep = "")
+  cat("counts_rows=", nrow(counts_table), "\n", sep = "")
+  cat("genes=", gene_count, "\n", sep = "")
+  cat("samples=", length(numeric_cols), "\n", sep = "")
+  cat("value_range=", sprintf("%.2f-%.2f", value_range[1], value_range[2]), "\n", sep = "")
+  cat("groups=", paste(sprintf("%s:%d", names(group_table), as.integer(group_table)), collapse = " "), "\n", sep = "")
+  cat("grouping_check=", grouping_check, "\n", sep = "")
+} else {
+  cat("probes_in_matrix=", nrow(expr), "\n", sep = "")
+  cat("probes_annotated=", probes_annotated, "\n", sep = "")
+  cat("genes=", gene_count, "\n", sep = "")
+  cat("samples=", length(numeric_cols), "\n", sep = "")
+  cat("value_range=", sprintf("%.2f-%.2f", value_range[1], value_range[2]), "\n", sep = "")
+  cat("groups=", paste(sprintf("%s:%d", names(group_table), as.integer(group_table)), collapse = " "), "\n", sep = "")
+  cat("grouping_check=", grouping_check, "\n", sep = "")
+}
+RSCRIPT
+
+echo "prep_matrix done（${prep_mode}）: expr_genes.tsv / group_map.tsv / prep_report.txt 已写入 $(pwd)"

@@ -1,0 +1,17 @@
+{
+  "task_id": "uuid-bad-1",
+  "line_id": "line3_spatial",
+  "step_name": "deconvolution",
+  "status": "completed",
+  "environment": {
+    "language": "R",
+    "version": "4.3.3",
+    "random_seed": 1
+  },
+  "io_files": {
+    "input": ["/data/data/com.termux/files/home/bio_data_logs_test/line2_scrna/results/markers.tsv"],
+    "output": ["/data/data/com.termux/files/home/bio_data_logs_test/line3_spatial/results/x.csv"]
+  },
+  "checkpoint_status": "passed",
+  "error_log": null
+}

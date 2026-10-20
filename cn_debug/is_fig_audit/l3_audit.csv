@@ -1,0 +1,4 @@
+figure,verdict,violations
+l3_mouse_01_region_score_boxplot.png,PASS,
+l3_mouse_02_regions_umap.png,PASS,
+l3_mouse_03_target_genes_heatmap.png,PASS,

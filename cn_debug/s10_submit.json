@@ -1,0 +1,39 @@
+{
+  "lineId": "line2_scrna",
+  "projectId": "default",
+  "step": "scrna_figures",
+  "inputs": [
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/processed/scrna_deg.h5ad"
+  ],
+  "outputs": [
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_01_umap_celltype.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_02_umap_diagnosis.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_03_umap_donor.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_04_umap_leiden.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_05_composition_stack.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_06_composition_box_Langerhans_cell.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_06_composition_box_NK_ILC.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_06_composition_box_T_cell.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_06_composition_box_activated_keratinocyte.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_06_composition_box_basal_keratinocyte.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_06_composition_box_channel_keratinocyte.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_06_composition_box_macrophage_mDC.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_06_composition_box_melanocyte.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_06_composition_box_mitotic.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_06_composition_box_pDC.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_06_composition_box_progenitor_keratinocyte.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_06_composition_box_suprabasal_keratinocyte.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_06_composition_box_unknown.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_07_marker_top5.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_08_deg_volcano_basal_keratinocyte.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_08_deg_volcano_channel_keratinocyte.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_08_deg_volcano_melanocyte.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_08_deg_volcano_mitotic.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_08_deg_volcano_progenitor_keratinocyte.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_08_deg_volcano_suprabasal_keratinocyte.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_08_deg_volcano_unknown.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_09_deg_sig_bar.png",
+    "/mnt/ssd/bio_data/projects/default/line2_scrna/figures/l2_10_pca_diagnosis.png"
+  ],
+  "seed": 20261013
+}

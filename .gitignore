@@ -1,0 +1,58 @@
+# ===== 虚拟环境与缓存 =====
+.venv/
+__pycache__/
+*.pyc
+
+# ===== 第三方参考库（独立 git 仓库，非本项目代码）=====
+_reference/
+
+# ===== 大型二进制与数据资产（外部已有备份，git 只管文本）=====
+可参考代码库/
+*.zip
+*.tar
+*.tar.gz
+*.gz
+*.xlsx
+*.pdf
+*.png
+*.jpg
+*.h5ad
+*.rds
+
+# ===== 运行时产物 =====
+inbox/
+runs/
+agent_bio_stack/index/
+agent_bio_stack/n8n/.runtime/
+uploads/
+
+# ===== 大型数据资产（本地/远端已有副本，git 只管文本与规格）=====
+outputs/
+projects/
+project_data/
+reference/
+cache/
+.claude/
+test_use_data/
+
+# ===== 生信大文件格式（按扩展名兜底，防漏网）=====
+*.feather
+*.tbl
+*.loom
+*.h5
+*.rdata
+*.mtx
+*.tar.gz
+
+# ===== Node 与构建产物 =====
+node_modules/
+BioanalysDesktop/dist/
+
+# ===== 临时与调试残留 =====
+*.log
+*.tmp
+.Temp/
+
+# ===== 系统文件 =====
+Thumbs.db
+Desktop.ini

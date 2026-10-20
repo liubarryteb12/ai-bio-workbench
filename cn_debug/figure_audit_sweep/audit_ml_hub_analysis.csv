@@ -1,0 +1,11 @@
+figure,verdict,violations
+l1_16_lasso_path.png,PASS,
+l1_17_lasso_cv.png,PASS,
+l1_18_rfe_curve.png,PASS,
+l1_19_univariate.png,PASS,
+l1_20_hub_overlap.png,PASS,
+l1_21_importance.png,PASS,
+l1_22_shap.png,PASS,
+l1_26_shap_waterfall.png,PASS,
+l1_23_cluster_heatmap.png,PASS,
+l1_24_corr_network.png,PASS,

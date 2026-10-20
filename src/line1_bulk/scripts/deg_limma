@@ -1,0 +1,187 @@
+#!/usr/bin/env bash
+# deg_limma：line1_bulk 步骤 7 的差异分析部分（limma，LS vs NLS 两组比较）。
+# WGCNA 部分不在本脚本（样本量不足时 WGCNA 不可靠，见 line1 README 状态）。
+#
+# 做法：design ~0+group，对照按字典序后者减前者（如 NLS-LS，log2FC 正 = 后者高），
+# lmFit -> contrasts.fit -> eBayes(trend=TRUE)（log2 芯片数据适用 trend）。
+# 显著标准固定：|log2FC| > 1 且 adj.P.Val < 0.05（标准阈值，不随结果调整，防 p-hacking）。
+#
+# 注意：两组比较在该数据集上完全可能 0 显著基因（小样本 + 效应弱时 BH 校正后无基因通过）。
+# 这是真实分析结果：脚本照常出全量统计表与报告，0 显著也 exit 0，但报告里写明
+# 最小 adj.P.Val 与建议动作，不伪造显著、不静默。
+#
+# 产物（写入工作目录 <line>/processed/）：deg_all.tsv / deg_sig.tsv / deg_report.txt；
+# 图件写入 <line>/figures/l1_03_volcano_limma.png（PNG 300dpi，figure_spec v2.2）。
+set -euo pipefail
+
+seed="${BIOANALYS_SEED:-UNSET}"
+if [ "$seed" = "UNSET" ]; then
+  echo "BIOANALYS_SEED 未注入（引擎契约：seed 必须注入）" >&2
+  exit 3
+fi
+
+declare -a INPUTS=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --input) INPUTS+=("$2"); shift 2 ;;
+    --output) shift 2 ;;
+    --seed) shift 2 ;;
+    *) echo "未知参数: $1" >&2; exit 2 ;;
+  esac
+done
+
+# 输入按文件名特征分流。模式必须前后都带 *：拿到的是绝对路径，前缀匹配永远不中（坑 #99）。
+expr_file=""
+group_file=""
+for path in "${INPUTS[@]:-}"; do
+  [ -n "$path" ] || continue
+  case "$path" in
+    *expr_genes*.tsv) expr_file="$path" ;;
+    *group_map*.tsv) group_file="$path" ;;
+    *) echo "无法识别的输入文件: $path（需要 expr_genes/group_map）" >&2; exit 2 ;;
+  esac
+done
+
+if [ -z "$expr_file" ] || [ -z "$group_file" ]; then
+  echo "缺少必需输入：expr_genes 与 group_map 都必须提供（当前 expr='$expr_file' group='$group_file'）" >&2
+  exit 2
+fi
+for required in "$expr_file" "$group_file"; do
+  if [ ! -f "$required" ]; then
+    echo "输入文件不存在: $required" >&2
+    exit 2
+  fi
+done
+
+echo "step_executed=deg_limma"
+echo "bioanalys_seed=${seed}"
+echo "input_expr=${expr_file}"
+echo "input_group_map=${group_file}"
+
+EXPR_FILE="$expr_file" GROUP_FILE="$group_file" BIOANALYS_SEED="$seed" \
+Rscript --vanilla - <<'RSCRIPT'
+suppressPackageStartupMessages({library(data.table); library(limma); library(ggplot2)})
+
+expr_file  <- Sys.getenv("EXPR_FILE")
+group_file <- Sys.getenv("GROUP_FILE")
+seed       <- Sys.getenv("BIOANALYS_SEED")
+
+fail <- function(message) {
+  cat(sprintf("deg_limma 自校验失败: %s\n", message), file = stderr())
+  quit(status = 1)
+}
+
+expr <- fread(expr_file)
+group_map <- fread(group_file)
+if (names(expr)[1] != "gene") fail("expr 首列不是 gene")
+samples <- setdiff(names(expr), "gene")
+if (!setequal(samples, group_map$sample)) fail("样本集合与 group_map 不一致")
+mat <- as.matrix(expr[, .SD, .SDcols = samples])
+rownames(mat) <- expr$gene
+if (any(is.na(mat))) fail("表达矩阵含 NA")
+groups <- factor(setNames(group_map$group, group_map$sample)[samples])
+if (length(levels(groups)) != 2) fail("deg_limma 只支持两组比较")
+if (min(table(groups)) < 2) fail("有分组样本数不足 2")
+
+set.seed(as.integer(seed))
+design <- model.matrix(~ 0 + groups)
+colnames(design) <- levels(groups)
+fit <- lmFit(mat, design)
+# 对照：字典序在后的组减在前者（levels 按字母序），方向写进报告，不靠猜
+contrast_text <- sprintf("%s-%s", levels(groups)[2], levels(groups)[1])
+fit2 <- contrasts.fit(fit, makeContrasts(contrasts = contrast_text, levels = design))
+fit2 <- eBayes(fit2, trend = TRUE)
+deg <- topTable(fit2, number = Inf, sort.by = "P")
+
+deg_table <- data.table(
+  gene = rownames(deg),
+  log2FC = round(deg$logFC, 4),
+  AveExpr = round(deg$AveExpr, 4),
+  t = round(deg$t, 4),
+  P_Value = signif(deg$P.Value, 4),
+  adj_P_Val = signif(deg$adj.P.Val, 4)
+)
+if (any(is.na(deg_table$log2FC)) || any(is.na(deg_table$adj_P_Val))) fail("统计结果含 NA")
+
+# 阈值固定，不随结果调整
+logfc_cut <- 1
+padj_cut <- 0.05
+deg_table[, is_sig := abs(log2FC) > logfc_cut & adj_P_Val < padj_cut]
+sig_table <- deg_table[is_sig == TRUE][order(adj_P_Val)]
+fwrite(deg_table[, !"is_sig"], "deg_all.tsv", sep = "\t")
+# 0 显著时也要落带表头的空表：下游拿不到文件比空表更难排查
+fwrite(sig_table[, !"is_sig"], "deg_sig.tsv", sep = "\t")
+
+p <- ggplot(deg_table, aes(x = log2FC, y = -log10(P_Value))) +
+  geom_point(aes(color = is_sig), alpha = 0.6, size = 1.2) +
+  scale_color_manual(
+    values = c("TRUE" = "#EE0000", "FALSE" = "grey60"),
+    labels = c("TRUE" = sprintf("significant (n=%d)", nrow(sig_table)),
+               "FALSE" = sprintf("not significant (n=%d)", nrow(deg_table) - nrow(sig_table))),
+    name = NULL) +
+  geom_vline(xintercept = c(-logfc_cut, logfc_cut), linetype = "dashed") +
+  geom_hline(yintercept = -log10(padj_cut), linetype = "dashed") +
+  # 阈值线必须在图内标注（figure_spec §三之三）：p 阈值贴左侧轴框内缘，
+  # log2FC 竖直标注置轴框顶部，避免被点云遮挡。
+  annotate("text",
+           x = min(deg_table$log2FC, na.rm = TRUE) + 0.02 * diff(range(deg_table$log2FC, na.rm = TRUE)),
+           y = -log10(padj_cut) + 0.04 * max(-log10(deg_table$P_Value), na.rm = TRUE),
+           label = sprintf("adj p=%g", padj_cut),
+           hjust = 0, vjust = 0, size = 2.8) +
+  annotate("text", x = logfc_cut, y = max(-log10(deg_table$P_Value), na.rm = TRUE),
+           label = sprintf("log2FC=%g", logfc_cut),
+           angle = 90, hjust = 1, vjust = 1, size = 2.8) +
+  labs(caption = paste(
+    "line1: limma DEG volcano (step deg_limma)",
+    sprintf("threshold |log2FC|>%g & adj.P<%g", logfc_cut, padj_cut),
+    sprintf("%d genes tested, %d significant", nrow(deg_table), nrow(sig_table)),
+    sep = "\n")) +
+  theme_classic(base_size = 12) +
+  theme(plot.caption.position = "plot",
+        plot.caption = element_text(hjust = 0, size = 8))
+# 出图规范 v2.2：PNG 300dpi 落 <line>/figures/
+dir.create("../figures", showWarnings = FALSE, recursive = TRUE)
+deg_png <- "../figures/l1_03_volcano_limma.png"
+ggsave(deg_png, p, width = 6, height = 5, dpi = 300)
+
+top_by_p <- head(deg_table[order(adj_P_Val)], 10)
+report_lines <- c(
+  sprintf("step=deg_limma"),
+  sprintf("seed=%s", seed),
+  sprintf("expr=%s", expr_file),
+  sprintf("group_map=%s", group_file),
+  sprintf("contrast=%s", contrast_text),
+  sprintf("method=limma lmFit + eBayes(trend=TRUE)"),
+  sprintf("thresholds=|log2FC|>%g & adj.P.Val<%g", logfc_cut, padj_cut),
+  sprintf("genes_tested=%d", nrow(deg_table)),
+  sprintf("sig_genes=%d (up=%d down=%d)", nrow(sig_table),
+          sum(sig_table$log2FC > 0), sum(sig_table$log2FC < 0)),
+  sprintf("min_adj_P_Val=%.4g", min(deg_table$adj_P_Val)),
+  sprintf("max_abs_log2FC=%.2f", max(abs(deg_table$log2FC))),
+  sprintf("figure=%s (300dpi PNG)", deg_png),
+  sprintf("top10_by_p=%s", paste(sprintf("%s(%.2g)", top_by_p$gene, top_by_p$adj_P_Val), collapse = " "))
+)
+if (nrow(sig_table) == 0) {
+  # 0 显著是真实结果，报告必须写清证据与建议，不静默不伪造
+  report_lines <- c(report_lines,
+    "note=无基因通过显著阈值。证据：最小 adj.P.Val 见上行；该对比为小样本两组比较，",
+    "note=BH 校正后无基因通过属真实结果。建议：增加独立队列样本量，或在新数据上",
+    "note=复跑本步骤（阈值不随结果调整）。")
+}
+writeLines(report_lines, "deg_report.txt")
+for (artifact in c("deg_all.tsv", "deg_sig.tsv", "deg_report.txt", deg_png)) {
+  if (!file.exists(artifact) || file.info(artifact)$size == 0) {
+    fail(sprintf("产物缺失或为空: %s", artifact))
+  }
+}
+
+cat("contrast=", contrast_text, "\n", sep = "")
+cat("genes_tested=", nrow(deg_table), "\n", sep = "")
+cat("sig_genes=", nrow(sig_table), " (up=", sum(sig_table$log2FC > 0), " down=", sum(sig_table$log2FC < 0), ")\n", sep = "")
+cat("min_adj_P_Val=", sprintf("%.4g", min(deg_table$adj_P_Val)), "\n", sep = "")
+if (nrow(sig_table) == 0) {
+  cat("NOTE=无基因通过 |log2FC|>1 & adj.P<0.05，报告已写明证据与建议（见 deg_report.txt）\n")
+}
+RSCRIPT
+
+echo "deg_limma done: deg_all.tsv / deg_sig.tsv / deg_report.txt 已写入 $(pwd)；图件 ../figures/l1_03_volcano_limma.png"

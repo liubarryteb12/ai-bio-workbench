@@ -1,0 +1,355 @@
+#!/usr/bin/env bash
+# deg_groups：line2_scrna 步骤 15 组间差异表达分析（aims 线2 下游第 2 项）。
+#
+# 输入：步骤 14 产物 scrna_composition.h5ad（obs 带 celltype/donor/diagnosis/region，
+#       layers['counts'] 原始计数，var 全基因 24969）。
+#
+# 做法（口径定稿依据：本线既有产物 + line3 同源经验）：
+#   1. 检验单位 = celltype（逐 celltype 内做 diagnosis 两组比较）。理由：混池
+#       DEG 主要由细胞组成差异驱动（步骤 14 已证实组成有差异的类），与 aims
+#      "细胞类型 marker/差异分析"分层的意图一致；pDC（20 细胞、Healthy 组 0 个）
+#      等无法做两组的 celltype 跳过并记录。
+#   2. 统计量：逐基因两组间 Mann-Whitney U（scanpy rank_genes_groups，
+#      method='wilcoxon'，corr_method='benjamini-hochberg' 对每 celltype 内
+#      基因的 p 值做 BH 校正，输出 log2fc + pvals_adj + pts）。
+#   3. 表达矩阵：从 layers['counts']（原始整数计数）重算 log 归一化
+#      （normalize_total(1e4)+log1p，复现步骤 3 口径）。**不能直接用 adata.X**：
+#      步骤 4 integrate_harmony 把 .X 换成了 scale(max_value=10) 的 z-score
+#      （实测 min=-4.19/max=10），z-score 含负值，rank_genes_groups 的
+#      logfoldchanges 对负值取 log2 出 nan（实测 268/2000 基因 nan）；
+#      也不能喂原始 counts（expm1 反变换 overflow）。log 归一化值两处都干净。
+#      counts 层保留不丢。
+#   4. DEG 判据固定：adj p < 0.05 且 |log2fc| > 1。阈值不随结果调整（line1
+#      步骤 7 铁律：0 显著基因也是真实结果，如实报告）。
+#   5. donor 混淆如实记录：diagnosis 与 region 不独立（healthy 供体只贡献 H），
+#      DEG 是表达变化不是调控变化（DR 由步骤 9 负责），报告中写明。
+#
+# 自校验内建：输入契约（步骤 14 键集合 + composition uns + 未做过 DEG）、
+# 逐 celltype 至少一组有细胞、pvals_adj 在 [0,1]、pts 在 [0,1]、
+# log2fc 有限、每个跑了的 celltype 结果结构与 scanpy rank_genes_groups 一致、
+# X/counts/X_pca/X_umap/leiden/celltype/obs 新列不变量。
+set -euo pipefail
+
+seed="${BIOANALYS_SEED:-UNSET}"
+if [ "$seed" = "UNSET" ]; then
+  echo "BIOANALYS_SEED 未注入（引擎契约：seed 必须注入）" >&2
+  exit 3
+fi
+
+declare -a INPUTS=()
+output_count=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --input) INPUTS+=("$2"); shift 2 ;;
+    --output) output_count=$((output_count + 1)); shift 2 ;;
+    --seed) shift 2 ;;
+    *) echo "未知参数: $1" >&2; exit 2 ;;
+  esac
+done
+
+src_h5ad=""
+for path in "${INPUTS[@]:-}"; do
+  [ -n "$path" ] || continue
+  case "$path" in
+    *scrna_composition*.h5ad) src_h5ad="$path" ;;
+    *.h5ad) echo "无法识别的输入文件: $path（需要 scrna_composition.h5ad，步骤 14 产物）" >&2; exit 2 ;;
+    *) echo "无法识别的输入文件: $path（需要 *.h5ad）" >&2; exit 2 ;;
+  esac
+done
+
+if [ -z "$src_h5ad" ]; then
+  echo "缺少必需输入：scrna_composition.h5ad（步骤 14 产物）" >&2
+  exit 2
+fi
+if [ ! -f "$src_h5ad" ]; then
+  echo "输入文件不存在: $src_h5ad"
+  exit 2
+fi
+
+echo "step_executed=deg_groups"
+echo "bioanalys_seed=${seed}"
+echo "input=${src_h5ad}"
+
+DEG_INPUT="$src_h5ad"
+export DEG_INPUT
+export DEG_OUTDIR="${DEG_OUTDIR:-$(pwd)}"
+
+python3 - <<'PYSCRIPT'
+import json
+import os
+import sys
+import time
+
+import numpy as np
+import pandas as pd
+import anndata as ad
+import scanpy as sc
+
+ad.settings.allow_write_nullable_strings = False
+
+START = time.time()
+SEED = int(os.environ["BIOANALYS_SEED"])
+ALPHA = 0.05
+MIN_ABS_LOG2FC = 1.0
+GROUP_LEVEL = "diagnosis"
+GROUP_A = "Healthy"
+GROUP_B = "Psoriasis"
+MIN_CELLS_PER_GROUP = 20
+
+
+def _nnz(mat):
+    """稀疏/稠密矩阵统一的 nnz 计数（line2 步骤 6 产物 X 是稠密 ndarray）。"""
+    import scipy.sparse as sp
+    if sp.issparse(mat):
+        return int(mat.nnz)
+    return int(np.count_nonzero(np.asarray(mat)))
+
+
+def fail(message):
+    sys.stderr.write("deg_groups 自校验失败: %s\n" % message)
+    sys.stderr.flush()
+    sys.exit(1)
+
+
+def log(message):
+    print(message, flush=True)
+
+
+REQUIRED_OBS = ["sample_title", "donor", "diagnosis", "region", "group", "class",
+                "plate", "well", "leiden", "celltype", "celltype_paper",
+                "celltype_paper_major", "celltype_donor_prop", "donor_n_cells"]
+REQUIRED_UNS = ["annotation", "cluster_markers", "clustering", "grouping_check",
+                "hvg", "integration", "leiden", "log1p", "normalization", "pca",
+                "qc_doublet_disposition", "qc_source_h5ad", "qc_thresholds",
+                "rank_genes_groups", "region_to_group", "seed", "source_counts_tar",
+                "source_gpl_soft", "source_h5ad", "umap", "composition"]
+
+src_path = os.environ["DEG_INPUT"].strip()
+adata = ad.read_h5ad(src_path)
+log("loaded cells=%d genes=%d" % (adata.shape[0], adata.shape[1]))
+
+# --- 1. 输入契约 ---
+missing_obs = [c for c in REQUIRED_OBS if c not in adata.obs.columns]
+if missing_obs:
+    fail("缺少 obs 列 %s（不是 scrna_composition 产物？）" % missing_obs)
+missing_uns = [k for k in REQUIRED_UNS if k not in adata.uns]
+if missing_uns:
+    fail("缺少 uns 键 %s" % missing_uns)
+if "counts" not in adata.layers:
+    fail("缺少 layers['counts']")
+for key in ["X_umap", "X_pca"]:
+    if key not in adata.obsm:
+        fail("缺少 obsm['%s']" % key)
+if "deg" in adata.uns:
+    fail("已含 DEG 结果（重复执行？）")
+
+x_nnz_before = _nnz(adata.X)
+counts_nnz_before = _nnz(adata.layers["counts"])
+pca_before = adata.obsm["X_pca"].copy()
+umap_before = adata.obsm["X_umap"].copy()
+leiden_before = adata.obs["leiden"].copy()
+ct_before = adata.obs["celltype"].copy()
+
+# --- 2. 逐 celltype 组间 DEG（counts 层 + wilcoxon + BH） ---
+ct_arr = adata.obs["celltype"].astype(str).to_numpy()
+grp_arr = adata.obs[GROUP_LEVEL].astype(str).to_numpy()
+celltypes = sorted(adata.obs["celltype"].astype(str).unique().tolist())
+log("celltypes=%d, 分组 %s（%s vs %s）" % (len(celltypes), GROUP_LEVEL, GROUP_A, GROUP_B))
+
+# 构造工作副本：从 counts 重算 log 归一化（见文件头口径依据）
+work = adata.copy()
+work.X = work.layers["counts"].copy()
+sc.pp.normalize_total(work, target_sum=1e4)
+sc.pp.log1p(work)
+
+per_ct_meta = {}
+sig_gene_rows = []
+all_rows = []
+for ci, ct in enumerate(celltypes):
+    m_ct = ct_arr == ct
+    n_ct = int(m_ct.sum())
+    sub_a = int(((ct_arr == ct) & (grp_arr == GROUP_A)).sum())
+    sub_b = int(((ct_arr == ct) & (grp_arr == GROUP_B)).sum())
+    meta = {"celltype": ct, "n_cells": n_ct, "n_a": sub_a, "n_b": sub_b}
+    if sub_a < MIN_CELLS_PER_GROUP or sub_b < MIN_CELLS_PER_GROUP:
+        meta["status"] = "skipped_group_too_small"
+        per_ct_meta[ct] = meta
+        log("  [%s] 跳过：%s=%d / %s=%d（门槛 %d）"
+            % (ct, GROUP_A, sub_a, GROUP_B, sub_b, MIN_CELLS_PER_GROUP))
+        continue
+    sub = work[m_ct].copy()
+    # 丢掉两组外的细胞（本数据集仅两个诊断值，防御性过滤）
+    keep = np.isin(sub.obs[GROUP_LEVEL].astype(str).to_numpy(), [GROUP_A, GROUP_B])
+    sub = sub[keep].copy()
+    if sub.n_obs < MIN_CELLS_PER_GROUP * 2:
+        meta["status"] = "skipped_group_too_small"
+        per_ct_meta[ct] = meta
+        continue
+    meta["status"] = "ok"
+    sc.tl.rank_genes_groups(
+        sub, groupby=GROUP_LEVEL, groups=[GROUP_B], reference=GROUP_A,
+        method="wilcoxon", corr_method="benjamini-hochberg",
+        n_genes=sub.n_vars, key_added="deg", pts=True,
+    )
+    names = sub.uns["deg"]["names"][GROUP_B]
+    pvals = np.asarray(sub.uns["deg"]["pvals_adj"][GROUP_B], dtype=float)
+    logfc = np.asarray(sub.uns["deg"]["logfoldchanges"][GROUP_B], dtype=float)
+    pts_a = np.asarray(sub.uns["deg"]["pts_%s" % GROUP_A][GROUP_B], dtype=float) \
+        if ("pts_%s" % GROUP_A) in sub.uns["deg"] else None
+    pts_b = np.asarray(sub.uns["deg"]["pts_%s" % GROUP_B][GROUP_B], dtype=float) \
+        if ("pts_%s" % GROUP_B) in sub.uns["deg"] else None
+    if not np.all(np.isfinite(pvals)):
+        fail("%s pvals_adj 有非有限值" % ct)
+    if not np.all(np.isfinite(logfc)):
+        fail("%s logfoldchanges 有非有限值" % ct)
+    if (pvals < -1e-12).any() or (pvals > 1 + 1e-12).any():
+        fail("%s pvals_adj 越界 [0,1]" % ct)
+    n_sig = int(((pvals < ALPHA) & (np.abs(logfc) > MIN_ABS_LOG2FC)).sum())
+    meta["n_genes_tested"] = int(sub.n_vars)
+    meta["n_sig"] = n_sig
+    per_ct_meta[ct] = meta
+    log("  [%s] cells=%d（%s %d / %s %d）-> 显著 %d/%d 基因"
+        % (ct, sub.n_obs, GROUP_A, sub_a, GROUP_B, sub_b, n_sig, sub.n_vars))
+    var_names = sub.var_names.astype(str)
+    gene_symbols = sub.var["gene_symbol"].astype(str).to_numpy() \
+        if "gene_symbol" in sub.var.columns else var_names
+    order = np.argsort(pvals, kind="mergesort")
+    for rank, gi in enumerate(order, 1):
+        p = float(pvals[gi])
+        l2 = float(logfc[gi])
+        is_sig = bool(p < ALPHA and abs(l2) > MIN_ABS_LOG2FC)
+        row = {
+            "celltype": ct, "rank": rank,
+            "ensembl_id": str(var_names[gi]),
+            "gene_symbol": str(gene_symbols[gi]),
+            "log2fc": round(l2, 6),
+            "pvals_adj": p,
+            "pts_a": None if pts_a is None else round(float(pts_a[gi]), 6),
+            "pts_b": None if pts_b is None else round(float(pts_b[gi]), 6),
+            "direction": "up_in_%s" % GROUP_B if l2 > 0 else "up_in_%s" % GROUP_A,
+            "significant": is_sig,
+        }
+        all_rows.append(row)
+        if is_sig:
+            sig_gene_rows.append(row)
+    if sig_gene_rows and ct == celltypes[-1]:
+        pass
+
+# --- 3. 自校验 + 不变量 ---
+n_ok = sum(1 for m in per_ct_meta.values() if m["status"] == "ok")
+if n_ok == 0:
+    fail("没有任何 celltype 达到细胞数门槛（%s vs %s）" % (GROUP_A, GROUP_B))
+if _nnz(adata.X) != x_nnz_before:
+    fail("X nnz 被改变")
+if _nnz(adata.layers["counts"]) != counts_nnz_before:
+    fail("counts 层 nnz 被改变")
+if not np.array_equal(adata.obsm["X_pca"], pca_before):
+    fail("X_pca 被改动")
+if not np.array_equal(adata.obsm["X_umap"], umap_before):
+    fail("X_umap 被改动")
+if not adata.obs["leiden"].astype(str).equals(leiden_before.astype(str)):
+    fail("leiden 列被改动")
+if not adata.obs["celltype"].astype(str).equals(ct_before.astype(str)):
+    fail("celltype 列被改动")
+
+# --- 4. 落盘 ---
+# 4.1 全表 tsv（含未显著行便于复查）
+df_all = pd.DataFrame(all_rows, columns=[
+    "celltype", "rank", "ensembl_id", "gene_symbol", "log2fc", "pvals_adj",
+    "pts_a", "pts_b", "direction", "significant"])
+df_all.to_csv("deg_all_by_celltype.tsv", sep="\t", index=False)
+log("wrote deg_all_by_celltype.tsv (%d 行)" % len(df_all))
+
+# 4.2 显著表 tsv
+df_sig = pd.DataFrame(sig_gene_rows, columns=[
+    "celltype", "rank", "ensembl_id", "gene_symbol", "log2fc", "pvals_adj",
+    "pts_a", "pts_b", "direction", "significant"])
+if len(df_sig):
+    df_sig = df_sig.sort_values(["celltype", "pvals_adj"])
+df_sig.to_csv("deg_significant_by_celltype.tsv", sep="\t", index=False)
+log("wrote deg_significant_by_celltype.tsv (%d 行)" % len(df_sig))
+
+# 4.3 h5ad：obs 贴 cell 级 + uns 口径
+# cell 级列：该 cell 所在 celltype 的显著基因数与其本人在显著表的排名（无则 -1）
+sig_count_by_ct = {ct: int(m["n_sig"]) for ct, m in per_ct_meta.items()
+                   if m.get("status") == "ok"}
+adata.obs["deg_sig_gene_count"] = [sig_count_by_ct.get(c, 0) for c in ct_arr]
+adata.obs["deg_group_level"] = GROUP_LEVEL
+
+top_by_ct = {}
+for ct in sorted({r["celltype"] for r in sig_gene_rows}):
+    rows = [r for r in sig_gene_rows if r["celltype"] == ct]
+    rows = sorted(rows, key=lambda r: r["pvals_adj"])[:20]
+    top_by_ct["ct%d" % (sorted({r["celltype"] for r in sig_gene_rows}).index(ct) + 1)] = {
+        "celltype": ct,
+        # pts 缺失统一用 -1（anndata uns 禁 None）
+        "top": [{"gene": r["gene_symbol"], "ensembl_id": r["ensembl_id"],
+                 "log2fc": r["log2fc"], "adj_p": r["pvals_adj"],
+                 "pts_a": -1.0 if r["pts_a"] is None else r["pts_a"],
+                 "pts_b": -1.0 if r["pts_b"] is None else r["pts_b"]} for r in rows],
+    }
+
+adata.uns["deg"] = {
+    "method": "per_celltype_wilcoxon_lognorm_BH",
+    "note": "逐 celltype 内做 %s 两组比较（%s vs %s）；表达矩阵从 layers['counts']"
+            "重算 log 归一化（normalize_total(1e4)+log1p，复现步骤 3 口径；"
+            "不用 adata.X 因步骤 4 已把它换成 scale z-score 会致 log2 出 nan）；"
+            "wilcoxon 秩检验对单调变换不变；BH 校正作用于每 celltype 内全部基因；"
+            "DEG 判据固定 adj p<%.2f 且 |log2fc|>%.1f，阈值不随结果调整"
+            % (GROUP_LEVEL, GROUP_A, GROUP_B, ALPHA, MIN_ABS_LOG2FC),
+    "seed": SEED,
+    "alpha": ALPHA,
+    "min_abs_log2fc": MIN_ABS_LOG2FC,
+    "group_level": GROUP_LEVEL,
+    "group_a": GROUP_A,
+    "group_b": GROUP_B,
+    "min_cells_per_group": MIN_CELLS_PER_GROUP,
+    "n_celltypes": len(celltypes),
+    "n_celltypes_ok": int(n_ok),
+    # anndata uns 禁 list-of-dicts（含 None 时 TypeError，坑 #122 同源），落 JSON
+    "per_celltype_json": json.dumps(per_ct_meta, ensure_ascii=False, sort_keys=True),
+    "n_sig_total": int(len(df_sig)),
+    # top_by_celltype 是嵌套 list-of-dicts，anndata uns 无法序列化（坑 #122 同源）
+    "top_by_celltype_json": json.dumps(top_by_ct, ensure_ascii=False, sort_keys=True),
+    "confound_note": "DEG 是表达变化不是调控变化；%s 与 region 不独立（healthy 供体"
+                     "只贡献 region=H），组间差异含供体结构效应；DR 基因由步骤 9 负责"
+                     % GROUP_LEVEL,
+    "source_h5ad": src_path,
+}
+adata.write_h5ad("scrna_deg.h5ad")
+log("wrote scrna_deg.h5ad (%d cells)" % adata.shape[0])
+
+# 4.4 报告
+lines = [
+    "step=deg_groups",
+    "seed=%d" % SEED,
+    "method=per_celltype wilcoxon on counts + BH（adj p<%.2f 且 |log2fc|>%.1f 为显著）"
+    % (ALPHA, MIN_ABS_LOG2FC),
+    "group=%s（%s vs %s）" % (GROUP_LEVEL, GROUP_A, GROUP_B),
+    "confound_note=diagnosis 与 region 不独立（healthy 供体只贡献 region=H）；"
+    "DEG 是表达变化不是调控变化，DR 基因由步骤 9 scTenifoldKnk 负责",
+    "n_celltypes=%d ok=%d" % (len(celltypes), n_ok),
+    "n_sig_total=%d" % len(df_sig),
+    "per_celltype:",
+]
+for ct in sorted(per_ct_meta):
+    m = per_ct_meta[ct]
+    lines.append("  %-28s status=%-24s cells=%-5d (%s=%d/%s=%d) sig=%d"
+                 % (ct, m["status"], m["n_cells"], GROUP_A, m["n_a"], GROUP_B, m["n_b"],
+                    m.get("n_sig", 0)))
+if top_by_ct:
+    lines.append("")
+    lines.append("top_sig_by_celltype:")
+    for key in sorted(top_by_ct, key=lambda k: int(k[2:])):
+        entry = top_by_ct[key]
+        lines.append("  [%s]" % entry["celltype"])
+        for r in entry["top"][:10]:
+            lines.append("    %-14s log2fc=%+.3f adj_p=%.4g pts(%s)=%.3f pts(%s)=%.3f"
+                         % (r["gene"], r["log2fc"], r["adj_p"], GROUP_A, r["pts_a"] or 0,
+                            GROUP_B, r["pts_b"] or 0))
+lines.append("")
+lines.append("elapsed_seconds=%.1f" % (time.time() - START))
+with open("deg_report.txt", "w", encoding="utf-8") as fh:
+    fh.write("\n".join(lines) + "\n")
+log("deg_groups_done")
+PYSCRIPT

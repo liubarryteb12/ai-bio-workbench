@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# 环境自检步骤：验证任务引擎三件事，step 能被执行（PATH 注入生效）、
+# --input/--output 参数收到、BIOANALYS_SEED 环境变量注入。
+# 输出全部走 stdout，供 SSE 日志流直接展示；任何一样不对就非零退出，让台账记失败。
+set -euo pipefail
+
+seed="${BIOANALYS_SEED:-UNSET}"
+input_count=0
+output_count=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --input) input_count=$((input_count + 1)); shift 2 ;;
+    --output) output_count=$((output_count + 1)); shift 2 ;;
+    --seed) shift 2 ;;
+    *) echo "未知参数: $1" >&2; exit 2 ;;
+  esac
+done
+
+echo "step_executed=$(basename "$0")"
+echo "cwd=$(pwd)"
+echo "bioanalys_seed=${seed}"
+echo "input_args=${input_count}"
+echo "output_args=${output_count}"
+echo "R=$(Rscript --version 2>&1 | head -1)"
+echo "python=$(python3 --version 2>&1)"
+
+# 环境清单：工作目录是 projects/<项目>/<线>/processed/，而 manifest 全局一份在
+# envs/<line>/（不随项目复制），故用数据面根拼绝对路径，不再用 ../envs 相对引用。
+# 台账 environment 记的就是这份声明，服务器副本缺失或与本地不一致都必须暴露。
+manifest_path="${BIOANALYS_ENVS_DIR:-/mnt/ssd/bio_data/envs/line1_bulk}/manifest.txt"
+if [ ! -f "$manifest_path" ]; then
+  echo "manifest 缺失: $manifest_path（跑 ops/06_deploy_scripts.ps1 同步）" >&2
+  exit 4
+fi
+while IFS='=' read -r manifest_key manifest_value; do
+  case "$manifest_key" in
+    language|version|env_name|container_image) echo "manifest_${manifest_key}=${manifest_value}" ;;
+  esac
+done < <(grep -v '^\s*#' "$manifest_path" | grep -v '^\s*$')
+
+# seed 必须注入：步骤脚本的随机性全靠它，没注入说明引擎契约坏了
+if [ "$seed" = "UNSET" ]; then
+  echo "BIOANALYS_SEED 未注入" >&2
+  exit 3
+fi

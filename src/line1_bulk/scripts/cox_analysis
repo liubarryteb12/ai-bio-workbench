@@ -1,0 +1,233 @@
+#!/usr/bin/env bash
+# cox_analysis：line1_bulk 生存分析（单因素/多因素 Cox + LASSO-Cox + 森林图）
+# aims 线1 步骤 5 附加项（v2.3 方案"单因素/多因素 Cox 回归，如果后续要做生存分析"）
+#
+# 自动检测生存终点：
+#   有生存数据（futime + fustat 列）→ 跑完整 Cox 链
+#   无生存数据 → 如实跳过，产出占位报告说明原因
+#
+# 输入（cwd 下）：
+#   expr_genes.tsv + group_map.tsv + key_genes.tsv（步骤 9 hub 池）
+#   可选 survival_meta.tsv（含 sample/futime/fustat 列，用户提供）
+#   或 group_map.tsv 自带 futime/fustat 列
+# 输出（cwd 下）：
+#   cox_univariate.tsv / cox_multivariate.tsv / cox_forest.pdf / cox_report.txt
+#   ../figures/l1_27_cox_forest.png（有生存数据时）
+#
+# 口径：docs/figure_spec.md（Agg/150dpi/英文标签；图注置坐标轴框外）。
+set -euo pipefail
+
+seed="${BIOANALYS_SEED:-UNSET}"
+if [ "$seed" = "UNSET" ]; then
+  echo "BIOANALYS_SEED 未注入（引擎契约：seed 必须注入）" >&2
+  exit 3
+fi
+
+declare -a INPUTS=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --input) INPUTS+=("$2"); shift 2 ;;
+    --output) shift 2 ;;
+    --seed) shift 2 ;;
+    *) echo "未知参数: $1" >&2; exit 2 ;;
+  esac
+done
+
+echo "step_executed=cox_analysis"
+echo "bioanalys_seed=${seed}"
+
+EXPR_FILE="${EXPR_FILE:-expr_genes.tsv}"
+GROUP_FILE="${GROUP_FILE:-group_map.tsv}"
+KEY_FILE="${KEY_FILE:-key_genes.tsv}"
+SURV_FILE="${SURV_FILE:-survival_meta.tsv}"
+
+BIOANALYS_SEED="$seed" EXPR_FILE="$EXPR_FILE" GROUP_FILE="$GROUP_FILE" \
+KEY_FILE="$KEY_FILE" SURV_FILE="$SURV_FILE" \
+Rscript - <<'RSCRIPT'
+suppressMessages({
+  library(survival)
+  library(glmnet)
+})
+set.seed(as.integer(Sys.getenv("BIOANALYS_SEED")))
+options(bitmapType = "cairo", stringsAsFactors = FALSE)
+
+fail <- function(msg) { cat("cox_analysis 自校验失败:", msg, "\n", file = stderr()); quit(status = 1) }
+say <- function(...) cat(..., "\n")
+
+expr_file <- Sys.getenv("EXPR_FILE")
+group_file <- Sys.getenv("GROUP_FILE")
+key_file <- Sys.getenv("KEY_FILE")
+surv_file <- Sys.getenv("SURV_FILE")
+
+for (f in c(expr_file, group_file)) {
+  if (!file.exists(f)) fail(paste("缺少输入", f))
+}
+
+expr <- read.delim(expr_file, check.names = FALSE, row.names = 1)
+gm <- read.delim(group_file, check.names = FALSE)
+
+# 尝试加载生存数据：优先 survival_meta.tsv，其次 group_map.tsv 自带列
+surv <- NULL
+if (file.exists(surv_file)) {
+  surv <- read.delim(surv_file, check.names = FALSE)
+  say("found survival_meta.tsv:", nrow(surv), "rows")
+} else {
+  # 检查 group_map 是否自带 futime/fustat
+  if (all(c("futime", "fustat") %in% colnames(gm))) {
+    surv <- gm
+    say("group_map.tsv contains futime/fustat columns")
+  }
+}
+
+has_survival <- !is.null(surv) &&
+  "futime" %in% colnames(surv) &&
+  "fustat" %in% colnames(surv) &&
+  "sample" %in% colnames(surv) &&
+  nrow(surv) >= 8 &&
+  sum(as.integer(as.character(surv$fustat))) >= 3
+
+if (!has_survival) {
+  say("NO_SURVIVAL_ENDPOINT")
+  say("当前数据集无生存终点（futime/fustat），Cox 回归不可执行。")
+  say("原因：GSE277173 是配对皮损 vs 皮损旁设计，series matrix 只有 tissue 字段。")
+  say("如需 Cox 分析，请在 survival_meta.tsv 中提供 sample/futime/fustat 列。")
+  writeLines(c(
+    "step=cox_analysis",
+    "seed=20261013",
+    "status=SKIPPED_NO_SURVIVAL_ENDPOINT",
+    "reason=GSE277173 has no survival data (futime/fustat). Paired lesion vs perilesional design.",
+    "how_to_enable=Provide survival_meta.tsv with columns: sample, futime (days), fustat (0/1).",
+    "outputs=cox_report.txt (placeholder)"
+  ), "cox_report.txt")
+  # 占位空表
+  write.table(data.frame(), "cox_univariate.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+  write.table(data.frame(), "cox_multivariate.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+  say("cox_analysis_done (skipped, no survival endpoint)")
+  quit(status = 0)
+}
+
+# ================= 有生存数据时执行完整 Cox 链 =================
+say("SURVIVAL_ENDPOINT_FOUND: n=", nrow(surv),
+    "events=", sum(as.integer(as.character(surv$fustat))))
+
+# 加载 hub 基因
+key <- if (file.exists(key_file)) read.delim(key_file, check.names = FALSE) else NULL
+genes <- if (!is.null(key) && "gene" %in% colnames(key)) as.character(key$gene) else rownames(expr)
+genes <- intersect(genes, rownames(expr))
+if (length(genes) < 3) fail("可用 hub 基因 < 3")
+
+samples <- intersect(as.character(surv$sample), colnames(expr))
+if (length(samples) < 8) fail("匹配样本 < 8")
+surv <- surv[match(samples, as.character(surv$sample)), ]
+say("matched samples:", length(samples), "genes:", length(genes))
+
+futime <- as.numeric(surv$futime)
+fustat <- as.integer(as.character(surv$fustat))
+if (any(!is.finite(futime)) || any(!is.finite(fustat))) fail("futime/fustat 含非有限值")
+
+X <- t(as.matrix(expr[genes, samples, drop = FALSE]))
+storage.mode(X) <- "double"
+
+# --- 1. 单因素 Cox（逐基因） ---
+uni_rows <- list()
+for (i in seq_along(genes)) {
+  g <- genes[i]
+  xv <- X[, i]
+  tryCatch({
+    fit <- coxph(Surv(futime, fustat) ~ xv)
+    s <- summary(fit)
+    uni_rows[[g]] <- data.frame(
+      gene = g,
+      HR = s$conf.int[1, "exp(coef)"],
+      HR_lower = s$conf.int[1, "lower .95"],
+      HR_upper = s$conf.int[1, "upper .95"],
+      p_value = s$coefficients[1, "Pr(>|z|)"],
+      stringsAsFactors = FALSE
+    )
+  }, error = function(e) {})
+}
+uni_df <- do.call(rbind, uni_rows)
+if (nrow(uni_df) == 0) fail("单因素 Cox 全部失败")
+uni_df <- uni_df[order(uni_df$p_value), ]
+write.table(uni_df, "cox_univariate.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+say("wrote cox_univariate.tsv (", nrow(uni_df), "genes )")
+sig_uni <- uni_df[uni_df$p_value < 0.05, ]
+say("significant (p<0.05):", nrow(sig_uni))
+
+# --- 2. LASSO-Cox + 多因素 Cox ---
+if (nrow(sig_uni) >= 2) {
+  sig_genes <- as.character(sig_uni$gene)
+  Xs <- X[, colnames(X) %in% sig_genes, drop = FALSE]
+  cv <- cv.glmnet(Xs, Surv(futime, fustat), family = "cox", alpha = 1,
+                  nfolds = min(10, nrow(Xs) - 1))
+  co <- coef(cv, s = "lambda.min")
+  lasso_genes <- rownames(co)[abs(co[, 1]) > 1e-10]
+  if (length(lasso_genes) >= 2) {
+    Xl <- X[, colnames(X) %in% lasso_genes, drop = FALSE]
+    colnames(Xl) <- colnames(X)[colnames(X) %in% lasso_genes]
+    multi <- coxph(Surv(futime, fustat) ~ ., data = as.data.frame(Xl))
+    ms <- summary(multi)
+    multi_df <- data.frame(
+      gene = names(ms$coefficients[, 1]),
+      HR = ms$conf.int[, "exp(coef)"],
+      HR_lower = ms$conf.int[, "lower .95"],
+      HR_upper = ms$conf.int[, "upper .95"],
+      p_value = ms$coefficients[, "Pr(>|z|)"],
+      stringsAsFactors = FALSE
+    )
+    write.table(multi_df, "cox_multivariate.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+    say("wrote cox_multivariate.tsv (", nrow(multi_df), "genes )")
+    forest_data <- multi_df
+    forest_title <- "Multivariate Cox (LASSO-selected)"
+  } else {
+    say("LASSO selected < 2 genes, using univariate significant genes for forest")
+    forest_data <- sig_uni
+    forest_title <- "Univariate Cox (p<0.05)"
+  }
+} else {
+  forest_data <- head(uni_df, 10)
+  forest_title <- "Univariate Cox (top 10 by p)"
+}
+
+# --- 3. 森林图 ---
+if (nrow(forest_data) > 0) {
+  n <- nrow(forest_data)
+  png("../figures/l1_27_cox_forest.png", width = 900, height = max(400, n * 50), res = 300)
+  par(mar = c(4, 8, 3, 2), mgp = c(2, 0.5, 0))
+  hr <- forest_data$HR
+  lo <- forest_data$HR_lower
+  hi <- forest_data$HR_upper
+  ylim <- c(0.5, n + 1.5)
+  xlim <- c(0, max(hi, na.rm = TRUE) * 1.3)
+  plot(1, type = "n", xlim = xlim, ylim = ylim, axes = FALSE,
+       xlab = "Hazard Ratio (95% CI)", ylab = "")
+  # 字号统一 >=8pt：R 默认 base 12pt，cex 0.75 → 9pt（规范下限 8pt，不得再低）
+  axis(1, at = pretty(xlim), cex.axis = 0.75)
+  abline(v = 1, lty = 2, col = "gray50")
+  y_pos <- n:1
+  segments(lo, y_pos, hi, y_pos, lwd = 2, col = "steelblue")
+  points(hr, y_pos, pch = 15, cex = 1.2,
+         col = ifelse(hr > 1, "#EE0000", "#3B4992"))
+  text(rep(par("usr")[2], n), y_pos,
+       paste0("HR=", sprintf("%.2f", hr), " (", sprintf("%.2f", lo), "-", sprintf("%.2f", hi), ")"),
+       adj = 0, cex = 0.75, xpd = TRUE)
+  text(rep(par("usr")[1], n), y_pos, forest_data$gene, adj = 1, cex = 0.75, xpd = TRUE)
+  mtext(forest_title, side = 3, line = 1, cex = 0.85)
+  dev.off()
+  say("wrote ../figures/l1_27_cox_forest.png")
+}
+
+# --- 4. 报告 ---
+lines <- c(
+  "step=cox_analysis",
+  paste("seed=", Sys.getenv("BIOANALYS_SEED")),
+  paste("samples=", length(samples), "genes=", length(genes)),
+  paste("events=", sum(fustat), "of", length(fustat)),
+  "method=univariate Cox (per hub gene) + LASSO-Cox + multivariate Cox",
+  paste("univariate_genes=", nrow(uni_df), "significant=", nrow(sig_uni)),
+  if (exists("multi_df")) paste("multivariate_genes=", nrow(multi_df)) else "",
+  "outputs=cox_univariate.tsv, cox_multivariate.tsv, l1_27_cox_forest.png, cox_report.txt"
+)
+writeLines(lines, "cox_report.txt")
+say("cox_analysis_done")
+RSCRIPT

@@ -1,0 +1,423 @@
+# AI 辅助生信分析工作台架构与执行总纲（v2.4 实战对齐版）
+
+---
+
+## 一、 架构拓扑与三大铁律
+
+### 1. “云-端”解耦架构拓扑
+
+* **本地交互层（零算力消耗）**：本地终端仅运行 Web 浏览器（访问工作台四大界面）或轻量级 IDE（VS Code Remote-SSH 直连服务器）。本地不保留代码副本、不参与任何计算。
+* **网络传输与自愈层**：SSH 隧道加密传输控制流与代码流；HTTP/S（配合外网穿透与 Token 鉴权）支持远程建项、大文件分片上传与结果预览；本地通过 `00_link_check.ps1` 实现断链自动重连（`adb forward` 重建 + `monkey` 自动拉起 Termux 服务）。
+* **远程计算与存储层（红米 K40 核心底座）**：
+* **物理硬件**：红米 K40（骁龙 870 八核处理器 + **12GB LPDDR5 运存** + **原生 UFS 3.1 高速闪存**，配合外置风冷与充电限流/旁路供电）。
+* **系统与容器层**：Android (Termux 底座，**无 Root 约束**) + Ubuntu (ARM64) 容器环境，通过 Conda/R 独立环境实现三条分析线的依赖隔离。
+* **长任务守护层**：所有计算任务强制通过 `nohup` / `tmux` 后台守护运行，基于每步退出码（`exit 0`）与产物校验实现断点续跑。
+
+
+
+### 2. 三大不可逾越的执行铁律
+
+1. **非肿瘤、非免疫浸润专精原则**：全流程专精非肿瘤领域（心脑血管、神经退行、代谢、纤维化、发育等），不主动加入临床生存预后、肿瘤免疫浸润、药物敏感性预测等未要求内容；前端内置正则黑名单直接拦截肿瘤/免疫相关词汇建项。
+2. **三条平行分析线物理与逻辑硬隔离原则**：
+* **线 1**：GEO Bulk 线（`line1_bulk`）
+* **线 2**：单细胞转录组 + 虚拟敲除线（`line2_scrna`）
+* **线 3**：单细胞空间转录组 + 虚拟敲除线（`line3_spatial`）
+* **隔离红线**：三条线不互相取参考、不合并、不跨线验证。**虚拟敲除绝不是第四条独立线**，而是线 2（第 10 步）和线 3（第 9 步）各自的末端模块。
+
+
+3. **R / Python 线内最优分工与单向桥接原则**：仅允许同一条线内部按工具优势混用 R 与 Python，严禁跨线混用。固定主语言、包版本与随机种子（`seed = 20261013`），严格控制语言切换次数（线 1 步骤 1-4 全 R，步骤 5-8 切 Python 1 次单向切换；线 2 切换 2 次；线 3 切换 1 次）。每次跨语言转换必须通过**桥接四项断言检查点**（基因名 Symbol 完整性、矩阵行列方向与稀疏性、细胞 Barcode 顺序、降维/空间坐标保留），由 `ops/verify_bridge_checkpoint.py` 自动执行。
+
+---
+
+## 二、 服务器端物理隔离目录结构规范
+
+统一锚定手机原生 Linux 分区路径 `/mnt/ssd/bio_data/`（经 `df -T` 只读校验为原生 `ext4`/`f2fs`，严禁写入 `/sdcard` 或任何 `fuse` 模拟层）：
+
+```text
+/mnt/ssd/bio_data/                  # 手机原生 UFS 3.1 高速分区根目录 (ext4/f2fs)
+├── ops/                            # 平台级算力削峰、存储门禁、桥接校验与守护脚本
+│   ├── check_storage_and_isolation.sh
+│   ├── run_throttled_task.sh
+│   └── verify_bridge_checkpoint.py
+├── line1_bulk/                     # 【线1】GEO Bulk 线独占物理目录 (100% 纯 R 闭环)
+│   ├── raw_data/                   # 原始 GEO 矩阵 / 平台 GPL 注释文件
+│   ├── processed/                  # 物理拆分为 train/ 与 val/ 子目录（严防数据泄漏）
+│   ├── results/                    # DEG/WGCNA/PPI/LASSO+RF/共表达/SHAP/聚类/外部验证结果
+│   └── envs/                       # 线1专属 R 环境配置与锁文件
+├── line2_scrna/                    # 【线2】单细胞转录组+虚拟敲除线独占物理目录
+│   ├── raw_data/                   # 原始 scRNA 矩阵 (.mtx/.h5ad)
+│   ├── processed/                  # QC/Harmony/注释/亚群文件 (.h5ad/.loom/.rds)
+│   ├── results/                    # 比例/DEG/Marker/富集/轨迹/CellChat/pySCENIC/虚拟敲除 DR genes
+│   └── envs/                       # 线2专属 Python + R 环境配置与锁文件
+├── line3_spatial/                  # 【线3】单细胞空间转录组+虚拟敲除线独占物理目录
+│   ├── raw_data/                   # 原始空间表达矩阵与切片坐标
+│   ├── processed/                  # 空间域识别 / Seurat·CARD·RCTD 反卷积注释数据
+│   ├── results/                    # 空间自相关/邻域共现/NICHES/虚拟敲除 DR 空间映射结果
+│   └── envs/                       # 线3专属 Python + R 环境配置与锁文件
+├── public_references/              # 公共标准参考图谱库（如 Allen Brain Atlas 等公共单细胞参考）
+│   └── (铁律：仅供线内合规调用，严禁从 line2 提取数据放入此处供 line3 反卷积使用)
+└── system_logs/                    # 自动化 JSON 台账、任务标准输出日志与 SHA256 校验记录
+
+```
+
+---
+
+## 三、 工作台前端与服务端四大视图界面设计
+
+### 1. 独立页面：新建项目向导页（Project Onboarding Portal）
+
+允许外网安全访问，所有表单操作与后端建项配置 `project_manifest.json` 1:1 对齐：
+
+* **模块 A（项目基本信息与非肿瘤合规拦截）**：填写项目名称、项目描述、物种（`Homo sapiens` / `Mus musculus` / `Rattus norvegicus`）、非肿瘤研究领域下拉框、具体疾病名称（前端内置正则黑名单 + 后端建项前复核双保险；命中即红字拦截并禁止提交）。
+  * **黑名单确认清单（2026-10-20 用户裁定：以 `BioanalysDesktop/server/tumor_blacklist.js` 的 27 条为规格正本，取代本条早期列举的 8 条示例）**：
+    - 英文 20 条：`cancer`、`tumor`、`tumour`、`carcinoma`、`glioma`、`sarcoma`、`lymphoma`、`leukemia`、`leukaemia`、`melanoma`、`adenocarcinoma`、`squamous cell carcinoma`、`immune infiltration`、`tumor microenvironment`、`tumour microenvironment`、`immune checkpoint`、`PD-L1`（`PD-?L?1`）、`CTLA-4`（`CTLA-?4`）、`oncogene`、`tumor suppressor`；
+    - 中文 7 条：`癌症`、`肿瘤`、`癌`、`免疫浸润`、`免疫检查点`、`肿瘤微环境`、`癌细胞`；
+    - 全部 `i` 大小写不敏感；中英文按子串匹配（如"癌"命中"癌变/致癌物"，属预期拦截）。
+  * **扩充依据**：上述均为明确肿瘤/免疫浸润语义词，与"非肿瘤、非免疫浸润专精"立规意图一致；**后续增删规则必须同时改本清单与 `tumor_blacklist.js`**，不允许任一侧单方面漂移。
+  * **已知边界**：`PD-?L?1` 理论上可命中含 `PD1` 子串的标识符（罕见，接受）；`领域下拉含"免疫"` 与拦截 `免疫浸润/免疫检查点` 不冲突——"免疫"作为研究领域合规，"免疫浸润/检查点"作为肿瘤机制词拦截。
+* **模块 B（数据来源、动态多分组与组内样本编号绑定）**：
+* **基础数据源信息**：数据库来源（GEO / ArrayExpress / 自有数据）、训练集编号（`train_gse`）、独立外部验证集编号（`val_gse`）、平台编号（`gpl`）、总样本数、非肿瘤非免疫组织来源，以及选填协变量（批次 `batch_col`、年龄、性别）。
+* **动态多分组管理（支持 $N \ge 2$ 组及多阶段疾病演进）**：支持三种分组模式（`二分类对比` / `多组无序对比` / `有序病情阶段演进`），动态点击 `[+ 新增分组]` 自由扩展分组数量，指定基准对照组（Reference）与阶段顺序（`stage_order`）。
+* **组内样本编号（GSM / Sample ID）录入与防重校验**：每个分组卡片内置样本编号多行文本域（支持逗号、空格、换行批量粘贴），前端实时统计各组样本数并执行跨组重复分配拦截。支持一键导入两列 `Sample_ID, Group_Name` 映射表。
+* **显式差异对比对（Contrasts）配置**：当分组数 $\ge 3$ 时，支持显式勾选差异分析对比组合并指定主对比对（Primary Contrast）。
+* **分片上传器**：支持 5MB 分片断点续传并自动校验 Bulk 与单细胞/空间数据格式。
+
+
+* **模块 C（级联流水线编排与全节点功能说明展示）**：
+* **第一级（单选物理锁）**：必选归属分析线（`line1_bulk` / `line2_scrna` / `line3_spatial`），选定后锁定对应物理目录并屏蔽其余两条线的所有功能。
+* **第二级（带功能详解的模块勾选与排序）**：前置 QC/标准化模块固定锁死在前序位置；下游模块支持勾选与排序。每个分析节点卡片在界面上直观展示 **4 项标准化说明**：① 功能简介（该步骤解决的生物学问题）、② 核心工具/算法（R/Python 实际工具栈）、③ 输入/输出产物（图表与 .tsv 名称）、④ 条件必填项与算力提示。若勾选“虚拟敲除”，强制弹出 `target_ko_gene` 必填框。
+* **第三级（算法与参数设置）**：支持展开配置关键阈值，留空则采用 K40 12G 运存安全默认值。
+
+
+* **模块 D（项目权限、算力保护策略确认与预期交付物说明）**：
+* **项目成员与权限设置（ACL）**：区分项目负责人（`owner`，完整执行与重跑权限）与只读协作者（`collaborator`，仅开放结果预览与下载）。
+* **算力削峰与断点恢复策略展示**：只读说明卡片，确认 nice/ionice 降权执行（**默认不静态绑核**——2026-10-20 契约变更，实测 EAS 动态调度更快，见 §六.3）、3 线程封顶、`7.5GB` 内存软熔断及基于 `exit 0` 检查点的断链自动续跑。
+* **预期输出结果配置（Expected Deliverables）**：带规格说明的勾选卡片，包括 Web 预览图集 (`300 DPI .png`)、全量统计结果表 (`.tsv`)、发表级矢量图副本 (`.pdf/.svg`，选填)、中间态检查点 (`.rds/.h5ad`)、结构化审计台账 (`system_logs/*.json`，区分 DEG vs DR Genes)。
+
+#### 前后端 1:1 对齐建项契约示例（`project_manifest.json`）
+
+```json
+{
+  "project_id": "PRJ_20261014_001",
+  "line_id": "line1_bulk",
+  "basic_info": {
+    "name": "缺血性脑卒中核心Hub基因筛选与SHAP可解释性验证",
+    "domain": "Neurovascular",
+    "disease": "Ischemic Stroke",
+    "species": "Homo sapiens",
+    "non_tumor_verified": true
+  },
+  "data_source": {
+    "source": "GEO",
+    "train_gse": ["GSE16561"],
+    "val_gse": ["GSE58294"],
+    "gpl": ["GPL6883", "GPL570"],
+    "sample_count": 132,
+    "tissue": "Peripheral Blood / Brain Cortex",
+    "groups": {
+      "Control": ["GSM416528", "GSM416529"],
+      "Treat": ["GSM416550", "GSM416551"]
+    },
+    "optional_meta": {
+      "batch_col": "GSE_batch",
+      "covariates": ["age", "sex"]
+    }
+  },
+  "pipeline_dag": [
+    {"order": 1, "step_id": "bulk_download_annot", "tool": "GEOquery", "lang": "R", "params": {}},
+    {"order": 2, "step_id": "bulk_combat_qc", "tool": "sva::ComBat", "lang": "R", "params": {}},
+    {"order": 3, "step_id": "bulk_deg_wgcna", "tool": "limma+WGCNA", "lang": "R", "params": {"log2fc": 0.585, "padj": 0.05}},
+    {"order": 4, "step_id": "bulk_enrich_ppi", "tool": "clusterProfiler+ggraph", "lang": "R", "params": {"top_hub": 20}},
+    {"order": 5, "step_id": "bulk_lasso_rf", "tool": "glmnet+randomForest", "lang": "R", "params": {"cv_folds": 10}},
+    {"order": 6, "step_id": "bulk_hub_coexpr", "tool": "corrr+ggraph", "lang": "R", "params": {"method": "spearman"}},
+    {"order": 7, "step_id": "bulk_shap_explain", "tool": "kernelshap+shapviz", "lang": "R", "params": {}},
+    {"order": 8, "step_id": "bulk_sample_cluster", "tool": "ConsensusClusterPlus", "lang": "R", "params": {"maxK": 4}},
+    {"order": 9, "step_id": "bulk_external_val", "tool": "pROC", "lang": "R", "params": {"freeze_model": true}}
+  ],
+  "acl_and_output": {
+    "members": ["researcher_01"],
+    "role": "owner",
+    "expected_formats": ["png_300dpi", "pdf_vector", "tsv_tables", "rds_checkpoint"]
+  }
+}
+
+```
+
+### 2. 客户分析输入端（Customer Input Console）
+
+供已建项目在日常运行中快速核对 GSE/GPL 分组信息、微调单步参数、触发断点续跑及查看当前流水线实时进度。
+
+### 3. 服务端运维与审计控制台（Server Admin & Self-Check Console）
+
+* **五维环境自检界面（Pre-flight Dashboard）**：
+1. **路径与 FUSE 红线检查灯**：只读执行 `df -T /mnt/ssd/bio_data`，确认为 `ext4`/`f2fs`，若出现 `fuse` 立即阻断。
+2. **F2FS 存储水位门禁灯**：可用空间低于 `20%` 时触发告警并阻断新任务提交，防前台阻塞式 GC。
+3. **SoC 算力、温度与 7.5G 内存监控灯**：实时展示 CPU 负载率（默认不绑核，EAS 动态调度，2026-10-20 契约变更）、传感器温度及容器 `7.5GB` 内存配额水位。
+4. **跨线隔离与 R/Python 桥接自检灯**：静态扫描脚本无跨线路径字符串；展示 R/Python 转换四项断言校验结果。
+5. **ADB/SSH 守护链路存活灯**：展示本地 `00_link_check.ps1` 心跳状态与 `tmux` 守护会话 PID。
+
+
+* **标准化可查台账界面（Standardized Ledger Viewer）**：可视化检索 `/mnt/ssd/bio_data/system_logs/` 下的所有 JSON 台账，支持按分析线、状态、耗时、内存峰值筛选审计。
+
+### 4. 分析结果预览与交付界面（Result Preview Studio）
+
+* **左侧流水线步骤树 + 右侧三栏预览**：展示 `300 DPI` PNG 图廊（Web 端 CSS 缩放显示）、Top 500 行交互式 `.tsv` 表格，以及 AI 结构化三段式解读（**结论 → 依据 → 限制**）。
+* **防混淆视觉强标签**：在结果卡片顶部醒目区分 **【DEG：差异表达基因（反映转录本丰度变化）】** 与 **【DR Genes：虚拟敲除差异调控基因（反映调控网络拓扑微扰，非直接表达量升降）】**。
+
+---
+
+## 四、 三条独立平行分析线完整落地路线与 R/Python 最优分工
+
+### 【线 1：GEO Bulk 线 v2.4】—— 9 步进阶标准流（R 步骤 1-4 + Python 步骤 5-8，1 次单向切换）
+
+* **独占目录**：`/mnt/ssd/bio_data/projects/<项目>/line1_bulk/`
+* **语言分工理由**：Bulk 矩阵体积小（内存占用 < 500MB），步骤 1-4 全程在 R 内串联 Bioconductor 统计生态（GEOquery/limma/WGCNA/clusterProfiler/STRING）；步骤 5-8 切换到 Python（`glmnet` R 侧 LASSO → Python `sklearn`/`shap`/`networkx`/`scipy` 做 ML/SHAP/共表达/聚类），因 ARM64 proot 容器装 `kernelshap`/`shapviz`/`ConsensusClusterPlus` 编译困难，实战验证 Python 方案内存更省且已产出 10 张合规图。图件命名 `l1_XX_<语义>.png`，seed=20261013。
+
+| 步骤 | 步骤名称 | 语言 | 输入 (Input) | 输出 (Output) | 核心工具包 | 关键执行与防踩坑纪律 |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Step 1** | GEO 数据获取与注释 | **R** | `train_gse`, `val_gse`, `gpl` | `expr_genes.tsv`, `group_map.tsv` | `GEOquery`, `Biobase` | 多探针对应同一基因取中位数，剔除无 Symbol 探针。 |
+| **Step 2** | QC + PCA | **R** | `expr_genes.tsv` + 分组表 | `qc_report.txt`, `pca_scores.tsv`, **`l1_01_correlation.png`**, **`l1_02_pca.png`** | `limma`, `ggplot2` | 样本相关性 + PCA 分组验证。 |
+| **Step 3** | 差异表达 (DEG) + WGCNA | **R** | `expr_genes.tsv` + 分组表 | `deg_all.tsv`, `wgcna_modules.tsv` | `limma`, `WGCNA` | WGCNA 取方差前 5000 基因，`nThreads = 3`。DEG ∩ WGCNA 关键模块进入下一步。 |
+| **Step 4** | 功能富集 + PPI 网络 + 初筛 Hub | **R** | 候选交集基因 | `enrichment_gsea_go.tsv`(GO BP/CC/MF), `enrichment_gsea_kegg.tsv`, `enrichment_kegg.tsv`, `ppi_hubs.tsv`, **`l1_07_ppi_network.png`**, **`l1_13_gsea_top.png`**, **`l1_15_kegg_top.png`**, **`l1_25_kegg_gsea_top.png`** | `clusterProfiler`(`gseGO`/`gseKEGG`/`enrichGO`/`enrichKEGG`), `STRING` | GO 三本体 + KEGG ORA + KEGG GSEA 全覆盖；STRING Degree 筛 Top hub。 |
+| **Step 5** | **LASSO + RFE + 单因素筛选核心 Hub** | **R(LASSO) + Python** | 初筛 Hub 表达矩阵 | `ml_lasso_genes.tsv`, `ml_rfe_genes.tsv`, `ml_univariate.tsv`, `ml_core_hub_genes.tsv`, **`l1_16_lasso_path.png`**, **`l1_17_lasso_cv.png`**, **`l1_18_rfe_curve.png`**, **`l1_19_univariate.png`**, **`l1_20_hub_overlap.png`** | `glmnet`(R, LASSO), `sklearn`(RFE/logistic), `statsmodels`(单因素) | LASSO 用 glmnet binomial 8 折 CV；RFE 用 logistic L2 4 折 stratified AUC；单因素 logistic 逐基因。三类交集取 core hub。 |
+| **Step 6** | **核心 Hub 共表达网络 + 特征重要性** | **Python** | `core_hub_genes` 表达矩阵 | `ml_corr_network.tsv`, `ml_importance.tsv`, **`l1_21_importance.png`**, **`l1_24_corr_network.png`** | `networkx`, `scipy`(Spearman), `sklearn.ensemble`(RF+GBDT) | Spearman r 共表达网络（|r|>=0.5）；RF+GBDT 双模型重要性条形。 |
+| **Step 7** | **SHAP 可解释性分析** | **Python** | `core_hub_genes` 表达矩阵 | `ml_shap.tsv`, **`l1_22_shap.png`**, **`l1_26_shap_waterfall.png`** | `shap.TreeExplainer`, `sklearn.ensemble.RandomForestClassifier` | TreeExplainer on RF；单样本 SHAP 瀑布图（f(X)=E[f(X)]+sum(SHAP)）。 |
+| **Step 8** | **样本聚类验证** | **Python** | 表达矩阵 + `core_hub_genes` | `ml_cluster_samples.tsv`, **`l1_23_cluster_heatmap.png`** | `scipy.cluster.hierarchy`(ward), `sklearn.metrics`(ARI) | ward 层次聚类 + 分组色条 + ARI 评估。 |
+| **Step 9** | **独立 GEO 外部数据集冻结验证** | **R** | 冻结模型系数 + 验证集矩阵 | `external_validation_preds.tsv`, `external_validation_report.txt`, **`l1_12_external_roc.png`** | `pROC`, `ggplot2` | 外部验证只冻结评估，不重新筛基因或调参。 |
+
+---
+
+### 【线 2：单细胞转录组 + 虚拟敲除线】—— 前置 + 10 步下游（Python 全程 + R 富集/LASSO 桥接，2 次受控切换）
+
+* **独占目录**：`/mnt/ssd/bio_data/projects/<项目>/line2_scrna/`
+* **语言分工理由**：全程 Python 主力（`Scanpy` 预处理/Harmony/聚类/UMAP/注释/组成/DEG/marker/亚群/拟时序/通讯/SCENIC/虚拟敲除），R 侧仅在富集（`clusterProfiler`/`GSVA` R 包）与 LASSO（`glmnet`）步骤桥接。图件命名 `l2_XX_<语义>.png`，seed=20261013。
+
+| 阶段 / 步骤 | 步骤名称 | 语言 | 输入 (Input) | 输出 (Output) | 核心工具包 | 关键执行与防踩坑纪律 |
+| --- | --- | --- | --- | --- | --- | --- |
+| **前置流程** | 下载 $\rightarrow$ QC $\rightarrow$ 标准化/高变 $\rightarrow$ 降维/UMAP $\rightarrow$ 去批次 $\rightarrow$ 初筛聚类 | **Python** | 原始单细胞矩阵 (`.mtx`/`.h5ad`) | `00_sc_harmony.h5ad` $\rightarrow$ **【桥接检查点 #1】** $\rightarrow$ `sc_annotated.rds` | `Scanpy`, `harmonypy`, `zellkonverter` | Python 高速完成全量预处理后，通过四项断言检查点（基因名、方向、细胞名、UMAP 坐标）无损转为 R 对象并完成细胞类型注释。 |
+| **下游 1** | 细胞类型比例/组成分析 | **R** | `sc_annotated.rds` | `01_cell_prop.png`, `prop_stat.tsv` | `speckle::propeller`, `ggplot2` | 统计 Control 与 Treat 组各细胞群比例差异显著性。 |
+| **下游 2** | 组间差异表达分析 (DEG) | **R** | `sc_annotated.rds` | `02_group_deg_by_celltype.tsv` | `Seurat::FindMarkers` | 固定各细胞类型内部，比较 Treat vs Control 的组间转录丰度变化。 |
+| **下游 3** | 细胞类型 Marker 基因鉴定 | **R** | `sc_annotated.rds` | `03_celltype_markers.tsv`, `03_top_marker_dotplot.png` | `Seurat::FindAllMarkers` | 鉴定各细胞群特异高表达 Marker（只画 Top N 气泡图/均值热图，全量落 `.tsv`）。 |
+| **下游 4** | 目标基因表达定位 | **R** | `sc_annotated.rds` + `target_gene` | `04_target_umap_vln.png` | `Seurat` (`FeaturePlot`, `VlnPlot`) | 锁定目标基因富集的核心细胞类型与状态。 |
+| **下游 5** | 目标细胞类型亚群再聚类 | **R** | 核心细胞类型子集 | `05_subcluster.rds`, `05_sub_umap.png` | `Seurat` | 单独提取核心细胞群重跑高变基因、PCA 与精细聚类，细分功能亚群。 |
+| **下游 6** | 多维功能富集分析 | **R** | 亚群 DEG / Marker | `06_go_kegg_reactome_gsea_gsva.tsv` | `clusterProfiler`, `ReactomePA`, `GSVA` | 覆盖 GO / KEGG / Reactome / GSEA / GSVA（GSVA 按亚群均值或 pseudo-bulk 计算防爆内存）。 |
+| **下游 7** | 拟时序/轨迹分析 | **R** | `05_subcluster.rds` | `07_monocle3_trajectory.png`, `track_genes.tsv` | `Monocle3` | 构建目标亚群状态转换伪时间轨迹，指定 Control 组富集端为起点。 |
+| **下游 8** | 细胞通讯分析 | **R** | `sc_annotated.rds` | `08_cellchat_net.png`, `cellchat_lr.tsv` | `CellChat` | 对比组间配受体互作强度与信号流变化（限制 `workers = 2`）。运行后导出 `05_subcluster.loom` $\rightarrow$ **【桥接检查点 #2】**。 |
+| **下游 9** | 转录因子调控分析 (TF) | **Python** | `05_subcluster.loom` | `09_pyscenic_regulons.tsv`, `09_tf_rss.png` | `pySCENIC` (CLI 模式) | 强制调用 Python `pySCENIC` 命令行并锁死 `--num_workers 3`，输出 Regulon 活性矩阵供 R 绘图。 |
+| **下游 10** | **虚拟敲除（本线末端模块）** | **R (主力)** | 本线 **WT/Control 组**核心细胞群原始 Count 矩阵 + `target_ko_gene` | `10_DR_genes_robust.tsv`, `10_ko_reg_network.png`, `10_DR_intersect_DEG_marker.tsv` | `scTenifoldKnk` (主力) / `CellOracle`, `Geneformer` (备选) | 1. 仅输入本线内野生型/对照组矩阵（细胞数建议 500~2,500）。<br>
+
+<br>2. **连续独立运行 3 次（不同随机种子）取稳健交集 DR genes**。<br>
+
+<br>3. 后续仅在线内完成：DR 基因富集、调控网络可视化、与本线 DEG/亚群 Marker 取交集。**严禁将 DR 基因混同于 DEG**。 |
+
+---
+
+### 【线 3：单细胞空间转录组 + 虚拟敲除线】—— 前置 + 9 步下游（Python 空间图统计 + Python 空间域/反卷积/虚拟敲除，0 次跨语言切换）
+
+* **独占目录**：`/mnt/ssd/bio_data/projects/<项目>/line3_spatial/`
+* **语言分工理由**：全程 Python（`Scanpy` + `Squidpy` + `liana` + `scTenifoldKnk` + `scipy.optimize.nnls`），因 ARM64 proot 容器装 `BayesSpace`/`NICHES`/`Seurat`/`CARD`/`RCTD` 编译困难，实战验证 Python 方案已稳定产出 69 张合规图。图件命名 `l3_<species>_XX_<语义>.png`，seed=20261013。
+
+| 阶段 / 步骤 | 步骤名称 | 语言 | 输入 (Input) | 输出 (Output) | 核心工具包 | 关键执行与防踩坑纪律 |
+| --- | --- | --- | --- | --- | --- | --- |
+| **前置 + 下游 3 & 4** | 空间 QC/标准化 $\rightarrow$ 空间自相关 (Moran's I) $\rightarrow$ 空间邻域/共现分析 | **Python** | 原始空间矩阵 + 坐标 | `gene_autocorr_{species}.tsv`, `domain_cooccurrence_{species}.tsv`, `spatial_qc_{species}.h5ad` | `Scanpy`, `Squidpy` | 空间图统计量与邻域共现计算。 |
+| **下游 1 & 2** | 空间域识别 $\rightarrow$ 空间域 Marker / 空间差异表达 | **Python** | `spatial_qc_{species}.h5ad` | `spatial_domains_{species}.h5ad`, `domain_markers_{species}.tsv` | `Scanpy`(`Leiden`), `scanpy.tl.rank_genes_groups` | 转录谱 + 空间坐标识别域；wilcoxon 域 marker top200。 |
+| **下游 5** | 区域组成差异分析 | **Python** | `spatial_domains_{species}.h5ad` | `sample_composition_{species}.tsv` | `Scanpy`, `scipy.stats` | 域组成比例差异（Kruskal-Wallis）。 |
+| **下游 6** | 空间通讯分析 | **Python** | `spatial_domains_{species}.h5ad` | `sample_communication_{species}.tsv` | `liana` consensus LR | KNN 邻域权重 domain 对级 LR 强度打分（不依赖 NICHES R 包）。 |
+| **下游 7** | **反卷积 / 细胞类型注释** | **Python** | `spatial_marker_{species}.h5ad` + 域 marker 自签名 | `celltype_scores_{species}.tsv`, `celltype_annotation_{species}.tsv`, **`l3_{species}_14_deconv_umap.png`**, **`l3_{species}_15_deconv_composition.png`** | `scipy.optimize.nnls`, `Scanpy` | **轻量级方案**：域 marker top5 构建签名矩阵 → NNLS 逐 spot 解卷积 → 归一化为比例。不依赖 R Seurat/CARD/RCTD（容器未装），不取自 line2 参考。报告标注为无监督近似。 |
+| **下游 8** | 目标基因空间定位 | **Python** | `spatial_marker_{species}.h5ad` + `target_gene` | `gene_localization_{species}.tsv` | `Scanpy` | 目标基因在空间域中的表达分布。 |
+| **下游 9** | **空间虚拟敲除（本线末端模块）** | **Python** | 本线 WT/Control 空间矩阵 + `target_ko_gene` | `ko_dr_genes_{species}.tsv`, `dr_enrichment_{species}.tsv`, `dr_overlap_{species}.tsv`, **`l3_{species}_10_dr_gsea_top.png`**, **`l3_{species}_11_dr_overlap.png`** | `scTenifoldKnk`, `gseapy` | 逐样本 spot 级运行；DR 基因富集（分物种库）+ 映射回坐标 + 域 marker 交集。图标题带 `[Virtual KO - DR Genes]` 角标。 |
+
+---
+
+## 五、 出图规范 v2.1（I/O 保护与发表级视觉标准）
+
+1. **强制无头渲染（杜绝 X11/GUI 内存泄漏）**：Python 端锁死 `matplotlib.use('Agg')`；R 端锁死 `options(bitmapType = 'cairo')`。
+2. **统一分辨率与紧凑裁剪**：所有图件输出统一为 `300 DPI` 的 `.png` 格式（满足 Web 预览 + 发表级双场景，Web 端 CSS 缩放显示），开启 `bbox_inches = 'tight'`。
+3. **大矩阵绘图硬熔断（禁画全量热图）**：严禁对超过 100 个基因或 2,000 个细胞的矩阵直接绘制全量热图。图片端仅绘制 **Top 30 ~ Top 50** 特征（单细胞优先按亚群均值或下采样绘制），**全量数值一律落盘为 `.tsv` 表格**。
+4. **非肿瘤固定配色与防混淆角标**：Control/WT 组统一冷色调（`#3B4992`），Treat/Disease 组统一暖色调（`#EE0000`）；所有虚拟敲除产出图表标题强制带 `[Virtual KO Perturbation - DR Genes]` 标识。
+
+---
+
+## 六、 红米 K40 (8核 12G 运存) 轻度算力优化与防崩执行套件（无 Root 纯净版）
+
+已彻底移除所有需要 Root 权限的无效操作（无 CPU 锁频、无 `sysctl` 脏页调参、无 `tmpfs` 挂载、无 `oom_score_adj`、无 Magisk），全部收敛为容器侧自动化配置与脚本：
+
+### 1. 容器全局线程封顶配置（`/etc/profile.d/bio_limits.sh`）
+
+```bash
+export OMP_NUM_THREADS=3
+export OPENBLAS_NUM_THREADS=3
+export MKL_NUM_THREADS=3
+export VECLIB_MAXIMUM_THREADS=3
+export NUMEXPR_NUM_THREADS=3
+export R_DATATABLE_NUM_PROCS_PERCENT=50
+export MPLBACKEND=Agg
+
+```
+
+### 2. 存储水位、FUSE 红线与跨线隔离门禁（`ops/check_storage_and_isolation.sh`）
+
+```bash
+#!/bin/bash
+# 用法: bash /mnt/ssd/bio_data/ops/check_storage_and_isolation.sh <line_id> <script_path>
+set -e
+LINE_ID="$1"
+SCRIPT_PATH="$2"
+TARGET_DIR="/mnt/ssd/bio_data"
+MIN_FREE_PERCENT=20
+
+# 1. 校验分析线合法性
+if [[ "$LINE_ID" != "line1_bulk" && "$LINE_ID" != "line2_scrna" && "$LINE_ID" != "line3_spatial" ]]; then
+    echo "[FATAL] 非法的流水线标识: $LINE_ID，严禁越界执行！"
+    exit 1
+fi
+
+# 2. 路径红线只读检查：拒绝 FUSE 模拟层 (/sdcard 等)
+FS_TYPE=$(df -T "$TARGET_DIR" | awk 'NR==2 {print $2}')
+if [[ "$FS_TYPE" == *"fuse"* || "$FS_TYPE" == *"sdcardfs"* ]]; then
+    echo "[FATAL] 数据目录 ($TARGET_DIR) 文件系统为 $FS_TYPE (FUSE层)，违反原生分区红线，阻断任务！"
+    exit 1
+fi
+
+# 3. F2FS/ext4 存储水位只读检查 (<20% 阻断防阻塞式 GC)
+USED_PERCENT=$(df -P "$TARGET_DIR" | awk 'NR==2 {print $5}' | tr -d '%')
+FREE_PERCENT=$((100 - USED_PERCENT))
+if [ "$FREE_PERCENT" -lt "$MIN_FREE_PERCENT" ]; then
+    echo "[ERROR] 原生存储剩余空间低于安全阈值：剩余 ${FREE_PERCENT}%, 要求 >= ${MIN_FREE_PERCENT}%."
+    echo "[ABORT] 触发 F2FS 前台 GC 保护门禁，阻断新任务提交。"
+    exit 1
+fi
+
+# 4. 跨线路径静态扫描 (严禁当前脚本引用其他两条线的目录)
+for OTHER_LINE in "line1_bulk" "line2_scrna" "line3_spatial"; do
+    if [ "$OTHER_LINE" != "$LINE_ID" ]; then
+        if grep -q "$OTHER_LINE" "$SCRIPT_PATH"; then
+            echo "[FATAL] 检测到跨线数据引用违规！脚本 $SCRIPT_PATH (归属 $LINE_ID) 试图访问 $OTHER_LINE！"
+            exit 1
+        fi
+    fi
+done
+
+echo "[OK] 门禁校验全部通过：文件系统=$FS_TYPE | 剩余空间=${FREE_PERCENT}% | 物理隔离线=$LINE_ID"
+exit 0
+
+```
+
+### 3. 统一降权执行与自动化台账包装器（`ops/run_throttled_task.sh`）
+
+> **2026-10-20 契约变更（用户拍板）**：默认**不静态绑核**。实测依据
+> （`docs/k40_cpu_affinity.md` §七，交替验证 3 轮每轮全胜）：「不绑核 + 3 线程」比
+> 原契约「taskset -c 4,5,6 + 3 线程」快 ~30%（Python matmul）/ 6-11%（R）——
+> EAS 动态调度可上 Prime 3.19GHz，静态绑 2.42GHz 大核反而封顶单线程上限；
+> OpenBLAS NO_AFFINITY 特性也与动态调度配合更好。保留 `BIO_PIN_CPUS=4,5,6`
+> 开关可恢复绑核；绑核失败（Android 动态核隔离可致 EINVAL，实测发生过）自动
+> 降级为不绑核，任务不因绑核失败而夭折。
+
+```bash
+#!/bin/bash
+# 用法: nohup bash /mnt/ssd/bio_data/ops/run_throttled_task.sh <task_id> <line_id> <step_name> <R|Python> <script_path> &
+set -e
+TASK_ID="$1"
+LINE_ID="$2"
+STEP_NAME="$3"
+LANG="$4"
+SCRIPT_PATH="$5"
+
+bash /mnt/ssd/bio_data/ops/check_storage_and_isolation.sh "$LINE_ID" "$SCRIPT_PATH"
+
+START_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+LOG_FILE="/mnt/ssd/bio_data/system_logs/${TASK_ID}.log"
+LEDGER_JSON="/mnt/ssd/bio_data/system_logs/${TASK_ID}_ledger.json"
+
+EXEC_CMD=$([ "$LANG" == "Python" ] && echo "python3" || echo "Rscript")
+
+set +e
+# 核心削峰动作（契约 2026-10-20）：默认不绑核，仅 nice/ionice 降权；
+# EAS 动态调度可用 Prime 核；BIO_PIN_CPUS=4,5,6 可恢复静态绑核（失败自动降级）
+BIO_PIN_CPUS="${BIO_PIN_CPUS:-}"
+AFFINITY_PIN=""
+AFFINITY_DESC="无绑核（EAS 动态调度）"
+if [ -n "$BIO_PIN_CPUS" ]; then
+    if taskset -c "$BIO_PIN_CPUS" true 2>/dev/null; then
+        AFFINITY_PIN="taskset -c $BIO_PIN_CPUS"
+        AFFINITY_DESC="taskset -c $BIO_PIN_CPUS"
+    else
+        echo "[wrapper] BIO_PIN_CPUS=$BIO_PIN_CPUS 不可用，降级为不绑核"
+        AFFINITY_DESC="BIO_PIN_CPUS 不可用降级"
+    fi
+fi
+$AFFINITY_PIN nice -n 10 ionice -c 2 -n 4 $EXEC_CMD "$SCRIPT_PATH" > "$LOG_FILE" 2>&1
+EXIT_CODE=$?
+set -e
+
+END_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+STATUS=$([ $EXIT_CODE -eq 0 ] && echo "completed" || echo "failed")
+
+cat <<EOF > "$LEDGER_JSON"
+{
+  "task_id": "$TASK_ID",
+  "line_id": "$LINE_ID",
+  "step_name": "$STEP_NAME",
+  "status": "$STATUS",
+  "start_time": "$START_TIME",
+  "end_time": "$END_TIME",
+  "environment": {
+    "language": "$LANG",
+    "wrapper": "$AFFINITY_DESC nice -n 10 ionice -c 2 -n 4",
+    "memory_limit_gb": 7.5
+  },
+  "checkpoint_status": "$([ $EXIT_CODE -eq 0 ] && echo "passed" || echo "halted")",
+  "error_log": "$([ $EXIT_CODE -eq 0 ] && echo "null" || echo "$LOG_FILE")"
+}
+EOF
+exit $EXIT_CODE
+
+```
+
+### 4. Python 与 R 脚本级 7.5GB 防崩头部模版
+
+* **Python 强制头部**：
+```python
+import os, sys, resource
+import matplotlib
+matplotlib.use('Agg')
+matplotlib.rcParams['savefig.dpi'] = 150
+matplotlib.rcParams['savefig.bbox'] = 'tight'
+
+def enable_memory_guard(max_gb: float = 7.5):
+    max_bytes = int(max_gb * 1024 * 1024 * 1024)
+    resource.setrlimit(resource.RLIMIT_AS, (max_bytes, max_bytes))
+
+enable_memory_guard(7.5)
+
+```
+
+
+* **R 强制头部**：
+```R
+options(bitmapType = "cairo", stringsAsFactors = FALSE)
+if (requireNamespace("data.table", quietly = TRUE)) data.table::setDTthreads(3)
+if (requireNamespace("future", quietly = TRUE)) {
+  future::plan("multisession", workers = 2)
+  options(future.globals.maxSize = 6.0 * 1024^3)
+}
+set.seed(2026)
+
+```
+
+
+
+---
+
+## 七、 顾问协作与交互标准协议（永久执行）
+
+1. **前置四要素确认**：每次编写生信分析代码前，必先确认 **①当前所属分析线（线1/线2/线3）、②具体步骤序号与名称、③已有输入数据格式与目标基因、④容器内 R/Python 环境状态**。若指令为笼统的“做下游分析”，必先请您指明具体是哪条线的哪一步，绝不自行泛化。
+2. **标准化输出三件套**：
+* **制定计划**：严格按 `分析线 → 步骤 → 输入 → 输出 → 工具(R/Python) → 注意事项` 输出。
+* **编写代码**：严格按 `运行环境 → 依赖包 → 含 7.5GB 防崩头与检查点的可运行代码 → 预期输出文件清单 → 常见报错排查` 输出。
+* **解读结果**：严格按 `核心结论 → 数据与统计依据 → 方法学与生物学限制` 输出，并严格区分 **DEG（表达丰度变化）** 与 **DR 基因（虚拟敲除网络调控变化）**。
+3.完成项目后要写完整的项目报告（html格式的）
+
+##
+---
+

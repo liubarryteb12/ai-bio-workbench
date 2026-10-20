@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+# qc_matrix：line1_bulk 步骤 4（QC）。对 prep_matrix 产出的基因表达矩阵做样本级质检。
+#
+# 做三件事：
+#   1. 契约核对：样本集合与 group_map 一致、基因名无重复、矩阵无 NA；
+#   2. 逐样本指标：检出基因数、表达中位数、与同组其他样本的 Spearman 相关中位数；
+#   3. 离群判定：组内相关中位数低于 (全体均值 - 3*SD) 判离群，有离群即失败
+#      （QC 是闸口，发现离群必须让人看，不带着疑问往下游走）。
+#
+# 产物（写入工作目录 <line>/processed/）：qc_report.txt / sample_qc.tsv。
+# 自校验内建：任一不过非零退出，台账记 failed。
+set -euo pipefail
+
+seed="${BIOANALYS_SEED:-UNSET}"
+if [ "$seed" = "UNSET" ]; then
+  echo "BIOANALYS_SEED 未注入（引擎契约：seed 必须注入）" >&2
+  exit 3
+fi
+
+declare -a INPUTS=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --input) INPUTS+=("$2"); shift 2 ;;
+    --output) shift 2 ;;
+    --seed) shift 2 ;;
+    *) echo "未知参数: $1" >&2; exit 2 ;;
+  esac
+done
+
+# 输入按文件名特征分流。模式必须前后都带 *：拿到的是绝对路径，前缀匹配永远不中（坑 #99）。
+expr_file=""
+group_file=""
+for path in "${INPUTS[@]:-}"; do
+  [ -n "$path" ] || continue
+  case "$path" in
+    *expr_genes*.tsv) expr_file="$path" ;;
+    *group_map*.tsv) group_file="$path" ;;
+    *) echo "无法识别的输入文件: $path（需要 expr_genes/group_map）" >&2; exit 2 ;;
+  esac
+done
+
+if [ -z "$expr_file" ] || [ -z "$group_file" ]; then
+  echo "缺少必需输入：expr_genes 与 group_map 都必须提供（当前 expr='$expr_file' group='$group_file'）" >&2
+  exit 2
+fi
+for required in "$expr_file" "$group_file"; do
+  if [ ! -f "$required" ]; then
+    echo "输入文件不存在: $required" >&2
+    exit 2
+  fi
+done
+
+echo "step_executed=qc_matrix"
+echo "bioanalys_seed=${seed}"
+echo "input_expr=${expr_file}"
+echo "input_group_map=${group_file}"
+
+EXPR_FILE="$expr_file" GROUP_FILE="$group_file" BIOANALYS_SEED="$seed" \
+Rscript --vanilla - <<'RSCRIPT'
+suppressPackageStartupMessages(library(data.table))
+
+expr_file  <- Sys.getenv("EXPR_FILE")
+group_file <- Sys.getenv("GROUP_FILE")
+seed       <- Sys.getenv("BIOANALYS_SEED")
+
+fail <- function(message) {
+  cat(sprintf("qc_matrix 自校验失败: %s\n", message), file = stderr())
+  quit(status = 1)
+}
+
+# --- 1. 读取与契约核对 ---
+expr <- fread(expr_file)
+group_map <- fread(group_file)
+if (names(expr)[1] != "gene") fail("expr 首列不是 gene")
+samples <- setdiff(names(expr), "gene")
+if (!setequal(samples, group_map$sample)) {
+  fail(sprintf("样本集合与 group_map 不一致: 仅 expr 有 [%s], 仅 group_map 有 [%s]",
+               paste(setdiff(samples, group_map$sample), collapse = ","),
+               paste(setdiff(group_map$sample, samples), collapse = ",")))
+}
+if (any(duplicated(expr$gene))) fail("基因名有重复")
+mat <- as.matrix(expr[, .SD, .SDcols = samples])
+if (any(is.na(mat))) fail("表达矩阵含 NA")
+groups <- setNames(group_map$group, group_map$sample)[samples]
+group_sizes <- table(groups)
+if (any(group_sizes < 2)) fail(sprintf("有分组样本数不足 2: %s", paste(names(group_sizes), collapse = "/")))
+
+# --- 2. 逐样本指标：组内 Spearman 相关中位数（离群判据） ---
+cor_mat <- cor(mat, method = "spearman")
+median_cor <- sapply(samples, function(s) {
+  same <- samples[groups == groups[[s]] & samples != s]
+  median(cor_mat[s, same])
+})
+# 离群阈值：全体均值 - 3*SD。样本量小时阈值偏松是故意的，QC 要的是"明显不像同组"的样本
+outlier_cutoff <- mean(median_cor) - 3 * stats::sd(median_cor)
+outliers <- names(which(median_cor < outlier_cutoff))
+
+sample_qc <- data.table(
+  sample = samples,
+  group = unname(groups),
+  genes_detected = colSums(mat > 0),
+  median_expr = round(apply(mat, 2, median), 3),
+  median_within_group_cor = round(as.numeric(median_cor), 4),
+  outlier = samples %in% outliers
+)
+
+# --- 3. 自校验：QC 是闸口，有离群就失败，不带着疑问往下游走 ---
+if (length(outliers) > 0) {
+  fail(sprintf("检出离群样本: %s（组内相关中位数 < %.4f）。先人工核查再下游",
+               paste(outliers, collapse = ","), outlier_cutoff))
+}
+
+# --- 4. 产物落盘 ---
+fwrite(sample_qc[order(group, sample)], "sample_qc.tsv", sep = "\t")
+report_lines <- c(
+  sprintf("step=qc_matrix"),
+  sprintf("seed=%s", seed),
+  sprintf("expr=%s", expr_file),
+  sprintf("group_map=%s", group_file),
+  sprintf("samples=%d", length(samples)),
+  sprintf("groups=%s", paste(sprintf("%s:%d", names(group_sizes), as.integer(group_sizes)), collapse = " ")),
+  sprintf("genes=%d", nrow(expr)),
+  sprintf("spearman_cor_range=%.4f - %.4f",
+          min(cor_mat[lower.tri(cor_mat)]), max(cor_mat[lower.tri(cor_mat)])),
+  sprintf("outlier_cutoff=%.4f", outlier_cutoff),
+  sprintf("outliers=%s", if (length(outliers) == 0) "无" else paste(outliers, collapse = ",")),
+  sprintf("median_expr_range=%.2f - %.2f", min(sample_qc$median_expr), max(sample_qc$median_expr))
+)
+writeLines(report_lines, "qc_report.txt")
+for (artifact in c("qc_report.txt", "sample_qc.tsv")) {
+  if (!file.exists(artifact) || file.info(artifact)$size == 0) {
+    fail(sprintf("产物缺失或为空: %s", artifact))
+  }
+}
+
+cat("samples=", length(samples), "\n", sep = "")
+cat("groups=", paste(sprintf("%s:%d", names(group_sizes), as.integer(group_sizes)), collapse = " "), "\n", sep = "")
+cat("spearman_cor_range=", sprintf("%.4f-%.4f", min(cor_mat[lower.tri(cor_mat)]), max(cor_mat[lower.tri(cor_mat)])), "\n", sep = "")
+cat("outlier_cutoff=", sprintf("%.4f", outlier_cutoff), "\n", sep = "")
+cat("outliers=", if (length(outliers) == 0) "无" else paste(outliers, collapse = ","), "\n", sep = "")
+RSCRIPT
+
+echo "qc_matrix done: qc_report.txt / sample_qc.tsv 已写入 $(pwd)"

@@ -1,0 +1,1469 @@
+/**
+ * BioanalysDesktop 后端入口
+ *
+ * 职责边界（本地零算力红线）：
+ *   本地只做三件事：跑 ssh / scp / adb、读写本软件自身配置、给前端提供接口。
+ *   除此之外的程序一律不启动（见 server/proc.js 白名单）。
+ *   所有计算命令都经 ssh 到 k40-ubuntu 执行。
+ */
+
+import http from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
+import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+
+import {
+  DEFAULT_SERIAL, SYSTEM_LOGS, LINES, DEFAULT_PROJECT, sanitizeProjectId, projectLineDir,
+  resolveLineFromDataType, normalizeDatasets, normalizeDataSource,
+} from './domain.js';
+import { findAdb, runSync } from './proc.js';
+import { checkLink } from './link.js';
+import { summarizeLedger, auditLedgerEntry } from './ledger.js';
+import { assertPathInsideProject, buildTreeFromFind } from './files.js';
+import { assertFiguresPath, parseFigureList, decorateFigures } from './figures.js';
+import {
+  pullLineOutputs, readLocalFigures, localFigurePath, LOCAL_OUTPUTS_ROOT,
+} from './pull.js';
+import {
+  CHUNK_SIZE, initUpload, writeChunk, listChunks, assembleChunks,
+  readHeader, validateUpload, remoteRawPath, cleanupUpload, sanitizeFilename,
+  deployedRawName,
+} from './upload.js';
+import {
+  buildProjectMeta, buildProjectMetaStrict, parseProjectList, buildCreateProjectCommand,
+  buildProjectListCommand, buildReadProjectMetaCommand, parseProjectMeta,
+  LINE_STEPS, PIPELINE_STEP_META,
+} from './project.js';
+import { checkTumorBlacklist, validateProjectFields, BLACKLIST_HINT } from './tumor_blacklist.js';
+import { auditCommand } from './audit.js';
+import { buildTaskScript } from './task.js';
+import { runTask } from './run.js';
+import {
+  runReportBuild, pullDeliverables, checkRemoteProjectDir,
+  isAllowedDeliverableName, localDeliverDir, localDeliverFilePath,
+} from './report.js';
+
+const PORT = Number(process.env.BAD_PORT || 8787);
+
+/**
+ * 工作台口令（HTTP Basic）。
+ * 8787 会经 frp 暴露到公网，frp 从本机 127.0.0.1 回连，服务端无法用来源地址区分内外，
+ * 所以只能整站鉴权：环境变量给了账号口令就强制校验，没给则保持本地开发/测试的免密行为。
+ * 正式常驻由 ops/serve_guard.ps1 注入口令（口令文件在用户主目录，不落源码）。
+ */
+const AUTH_USER = process.env.BAD_AUTH_USER || '';
+const AUTH_PASS = process.env.BAD_AUTH_PASS || '';
+const AUTH_ENABLED = Boolean(AUTH_USER && AUTH_PASS);
+
+/** 定长比较，避免按字节提前返回泄露口令前缀 */
+function safeEqual(left, right) {
+  const a = Buffer.from(String(left), 'utf8');
+  const b = Buffer.from(String(right), 'utf8');
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
+function isAuthorized(req) {
+  if (!AUTH_ENABLED) return true;
+  const header = req.headers.authorization || '';
+  if (!header.startsWith('Basic ')) return false;
+  let decoded;
+  try {
+    decoded = Buffer.from(header.slice(6), 'base64').toString('utf8');
+  } catch {
+    return false;
+  }
+  const split = decoded.indexOf(':');
+  if (split < 0) return false;
+  // 两项都比较完再合并结果，不因用户名错就短路
+  const userOk = safeEqual(decoded.slice(0, split), AUTH_USER);
+  const passOk = safeEqual(decoded.slice(split + 1), AUTH_PASS);
+  return userOk && passOk;
+}
+
+const adb = findAdb();
+
+/** 在跑的任务表：id -> {kill, projectId, lineId, step, startedAt}，中止与去重都靠它 */
+const runningTasks = new Map();
+
+/**
+ * SSE 订阅者表：taskId -> Set<write fn>。
+ * 日志先到 sink，再由 sink 推给所有订阅者；这样任务晚于连接启动也不丢消息。
+ */
+const logSinks = new Map();
+
+function createSink(taskId, write) {
+  if (!logSinks.has(taskId)) logSinks.set(taskId, new Set());
+  logSinks.get(taskId).add(write);
+  return write;
+}
+
+function dropSink(taskId, sink) {
+  const sinks = logSinks.get(taskId);
+  if (!sinks) return;
+  sinks.delete(sink);
+  if (sinks.size === 0) logSinks.delete(taskId);
+}
+
+/** 把一个 SSE 事件推给该任务的所有订阅者 */
+function sendEvent(taskId, event, data) {
+  const sinks = logSinks.get(taskId);
+  if (!sinks || sinks.size === 0) return;
+  // data 里可能有换行，SSE 要求按行拆成多个 data: 字段
+  const payload = String(data)
+    .split(/\r?\n/)
+    .map((line) => `data: ${line}`)
+    .join('\n');
+  for (const sink of sinks) {
+    try {
+      sink(`event: ${event}\n${payload}\n\n`);
+    } catch {
+      // 单个订阅者写失败（连接已断）不影响其他订阅者
+    }
+  }
+}
+
+function closeSink(taskId) {
+  logSinks.delete(taskId);
+}
+
+/**
+ * 从服务器读台账 JSON。
+ *
+ * 用 base64 传输而不是直接 cat，避免 JSON 里的引号、反斜杠、中文被 ssh 层破坏
+ * （会话 #1 已踩过这个坑：PowerShell heredoc 传 JSON 全变形）。
+ */
+async function fetchLedgerFromServer(logsDir = SYSTEM_LOGS) {
+  const listing = runRemote(`ls -1 '${logsDir}'/*.json 2>/dev/null || true`);
+  const names = listing
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.endsWith('.json'));
+
+  const entries = [];
+  for (const remotePath of names) {
+    const encoded = runRemote(`base64 -w0 '${remotePath}' 2>/dev/null || true`);
+    if (!encoded.trim()) continue;
+    const text = Buffer.from(encoded.trim(), 'base64').toString('utf8');
+    entries.push({
+      file: remotePath.split('/').pop(),
+      path: remotePath,
+      data: JSON.parse(text),
+    });
+  }
+  return { names: entries.map((entry) => entry.file), entries };
+}
+
+function runRemote(command) {
+  const result = runSync(
+    ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', 'k40-ubuntu', command],
+    { timeoutMs: 40000 }
+  );
+  return (result.stdout + '\n' + result.stderr)
+    .split(/\r?\n/)
+    .filter((line) => !line.startsWith('Warning: Permanently added'))
+    .join('\n')
+    .trim();
+}
+
+function json(res, status, payload) {
+  const body = JSON.stringify(payload, null, 2);
+  res.writeHead(status, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store',
+  });
+  res.end(body);
+}
+
+/**
+ * 解析 project 查询参数：缺省用默认项目；非法（含穿越字符）返回 null，调用方回 400。
+ */
+function resolveProjectParam(url) {
+  const raw = url.searchParams.get('project') || DEFAULT_PROJECT;
+  return sanitizeProjectId(raw);
+}
+
+/**
+ * 列出数据面全部项目（含元数据）。
+ * 项目目录存在但缺 project.json 时也列出，meta=null，不假装它不存在。
+ */
+function listProjectsWithMeta() {
+  const listing = runRemote(buildProjectListCommand());
+  const ids = parseProjectList(listing);
+  return ids.map((id) => {
+    const encoded = runRemote(buildReadProjectMetaCommand(id));
+    let meta = null;
+    if (encoded.trim()) {
+      meta = parseProjectMeta(Buffer.from(encoded.trim(), 'base64').toString('utf8'));
+    }
+    return { projectId: id, meta };
+  });
+}
+
+/**
+ * 列出一个项目某条线 figures/ 下的图件（含中文说明），供 API 与后端预览页共用。
+ *
+ * 优先读本地回搬副本 outputs/<项目>/<线>/figures/（规范要求图件回搬本地），
+ * 本地没有时才回落远端实时读取，并用 source 字段标明来源 —— 不能让
+ * "本地还没回搬"被误读成"这条线没出图"。
+ */
+function listFiguresForLine(projectId, lineId) {
+  const guard = assertFiguresPath(projectId, lineId);
+  if (!guard.ok) {
+    return { blocked: true, reason: guard.reason, figures: [] };
+  }
+  const local = readLocalFigures(projectId, lineId);
+  if (local) {
+    return {
+      blocked: false,
+      dir: local.dir,
+      source: 'local',
+      figures: decorateFigures(parseFigureList(
+        local.figures.map((f) => `${f.name}|${f.size}|${f.mtime}`).join('\n')
+      )),
+    };
+  }
+  const probe = runRemote(`if [ -d '${guard.dir}' ]; then echo EXISTS; else echo MISSING; fi`);
+  if (!probe.includes('EXISTS')) {
+    return { blocked: true, reason: `图件目录不存在: ${guard.dir}`, figures: [] };
+  }
+  const listing = runRemote(
+    `find '${guard.dir}' -maxdepth 1 -type f -printf '%f|%s|%T@\\n' 2>/dev/null`
+  );
+  return {
+    blocked: false,
+    dir: guard.dir,
+    source: 'remote',
+    figures: decorateFigures(parseFigureList(listing)),
+  };
+}
+
+/** HTML 转义，防文件名/说明里的特殊字符破坏预览页 */
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/**
+ * 渲染后端自带的出图预览页（服务端 HTML，不依赖前端构建产物）。
+ * @param {Array<{lineId: string, blocked: boolean, reason?: string, figures: Array}>} sections
+ * @param {string} projectId 当前项目
+ */
+function renderFiguresPreview(sections, projectId) {
+  const lineLabels = {
+    line1_bulk: '线1 / GEO bulk',
+    line2_scrna: '线2 / 单细胞转录组',
+    line3_spatial: '线3 / 空间转录组',
+  };
+  const total = sections.reduce((sum, s) => sum + (s.figures ? s.figures.length : 0), 0);
+  const body = sections.map((section) => {
+    const label = lineLabels[section.lineId] || section.lineId;
+    if (section.blocked || !section.figures || section.figures.length === 0) {
+      const reason = section.blocked ? section.reason : '该线 figures/ 暂无图件';
+      return `<h2>${escapeHtml(label)}</h2><p class="empty">${escapeHtml(reason)}</p>`;
+    }
+    const cards = section.figures.map((fig) => {
+      const url = `/api/figures/image?project=${encodeURIComponent(projectId)}&line=${encodeURIComponent(section.lineId)}&name=${encodeURIComponent(fig.name)}`;
+      const cap = fig.caption ? `<div class="cap">${escapeHtml(fig.caption)}</div>` : '';
+      return `<figure class="card">
+  <a href="${url}" target="_blank"><img src="${url}" alt="${escapeHtml(fig.name)}" loading="lazy"></a>
+  <figcaption><span class="fn">${escapeHtml(fig.name)}</span>${cap}<span class="sz">${escapeHtml(fig.sizeLabel || '')}</span></figcaption>
+</figure>`;
+    }).join('\n');
+    const sourceLabel = section.source === 'local' ? ' · 本地副本'
+      : section.source === 'remote' ? ' · 远端实时（尚未回搬）' : '';
+    return `<h2>${escapeHtml(label)}（${section.figures.length} 张${sourceLabel}）</h2>
+<div class="grid">
+${cards}
+</div>`;
+  }).join('\n');
+
+  return `<!DOCTYPE html>
+<html lang="zh"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BioanalysDesktop · 出图预览</title>
+<style>
+  body{font-family:system-ui,"Microsoft YaHei",sans-serif;margin:0;background:#f5f6f8;color:#1a1a1a}
+  header{background:#1f2937;color:#fff;padding:18px 28px}
+  header h1{margin:0;font-size:20px}
+  header p{margin:6px 0 0;font-size:13px;opacity:.85}
+  main{padding:18px 28px}
+  h2{font-size:16px;border-left:4px solid #2563eb;padding-left:10px;margin:24px 0 12px}
+  .empty{color:#7b8794;font-size:13px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+  .card{margin:0;background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);overflow:hidden}
+  .card img{width:100%;display:block;background:#fff}
+  figcaption{padding:8px 10px;font-size:12px;color:#374151;border-top:1px solid #eee;display:flex;flex-direction:column;gap:3px}
+  .fn{color:#0b5fff;font-family:Consolas,monospace;font-size:11px}
+  .cap{color:#52606d}
+  .sz{color:#9aa5b1;font-size:11px}
+</style></head>
+<body>
+<header>
+  <h1>出图预览（后端渲染）</h1>
+  <p>项目 ${escapeHtml(projectId)} · 共 ${total} 张 · 三条分析线 · 点击图片新窗口看原图 · 图件目录 projects/&lt;项目&gt;/&lt;线&gt;/figures/</p>
+</header>
+<main>
+${body}
+</main>
+</body></html>`;
+}
+
+/** 管理员工作台前端构建产物目录（vite build 输出） */
+const DIST_DIR = new URL('../dist/', import.meta.url);
+
+/**
+ * 客户需求收件箱：用户提交台（portal/serve.mjs）落盘目录。
+ *
+ * 解耦原则不变：portal 不调用工作台任何接口，工作台也不主动推送；
+ * 这里只是让管理员在新建项目时能主动读取该目录，替代"手工打开 JSON 抄一遍"。
+ * 目录位于仓库根，与 BioanalysDesktop 平级。
+ */
+const PORTAL_INBOX = fileURLToPath(new URL('../../portal/inbox/', import.meta.url));
+
+/**
+ * 需求文件名校验：只允许两种形态，禁止任何穿越。
+ *   - 旧格式：收件箱根目录的单个 `<时间戳>_需求_<项目名>.json`
+ *   - 新格式：提交包 `PKG_<时间戳>_<项目名>/requirement.json`
+ * 包名由 portal 生成（时间戳 + 中文项目名），故放行中文字符。
+ */
+function isSafeManifestName(name) {
+  if (typeof name !== 'string' || !name) return false;
+  if (name.includes('..') || name.includes('\\')) return false;
+  if (/^[\w\u4e00-\u9fa5.-]+\.json$/.test(name)) return true;
+  return /^PKG_[\w\u4e00-\u9fa5.-]+\/(requirement|package_manifest)\.json$/.test(name);
+}
+
+/** 读包清单（新格式才有）；解析失败返回 null，不让一个坏清单挡住整列表 */
+function readPackageManifest(relFile) {
+  const slash = relFile.indexOf('/');
+  if (slash < 0) return null;
+  const dir = relFile.slice(0, slash);
+  try {
+    return JSON.parse(fs.readFileSync(path.join(PORTAL_INBOX, dir, 'package_manifest.json'), 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 列出收件箱需求（按 mtime 倒序）。同时兼容两种落盘形态：
+ *   - 旧：根目录平铺 `<时间戳>_需求_<项目名>.json`
+ *   - 新：`PKG_<时间戳>_<项目名>/requirement.json` + package_manifest.json
+ * 目录不存在时返回 blocked，不假装"没有需求"；单个文件解析失败也如实列出 parseError。
+ */
+function listInboxManifests() {
+  let entries;
+  try {
+    entries = fs.readdirSync(PORTAL_INBOX, { withFileTypes: true });
+  } catch (cause) {
+    return {
+      blocked: true,
+      reason: `收件箱目录不存在或不可读: ${PORTAL_INBOX}`,
+      detail: cause instanceof Error ? cause.message : String(cause),
+      items: [],
+    };
+  }
+
+  const names = [];
+  for (const entry of entries) {
+    if (entry.isFile() && entry.name.toLowerCase().endsWith('.json')) {
+      names.push(entry.name);
+    } else if (entry.isDirectory() && entry.name.startsWith('PKG_')) {
+      const req = path.join(PORTAL_INBOX, entry.name, 'requirement.json');
+      if (fs.existsSync(req)) names.push(`${entry.name}/requirement.json`);
+    }
+  }
+
+  const items = names.map((file) => {
+    const full = path.join(PORTAL_INBOX, file);
+    let size = 0;
+    let mtime = '';
+    try {
+      const stat = fs.statSync(full);
+      size = stat.size;
+      mtime = stat.mtime.toISOString();
+    } catch {
+      // 文件刚被移走，跳过统计即可
+    }
+    let summary = null;
+    let parseError = null;
+    try {
+      const raw = JSON.parse(fs.readFileSync(full, 'utf8'));
+      // 旧需求文件是扁平数组（trainGse/valGse/gpl），归一化后统一成配对表；
+      // inferred=true 表示配对是按位置推断的，前端须提示用户核对
+      const pairing = normalizeDatasets(raw?.dataSource);
+      summary = {
+        name: raw?.basicInfo?.name || '',
+        disease: raw?.basicInfo?.disease || '',
+        domain: raw?.basicInfo?.domain || '',
+        species: raw?.basicInfo?.species || '',
+        dataType: raw?.dataSource?.dataType || '',
+        suggestedLine: resolveLineFromDataType(raw?.dataSource?.dataType),
+        // 配对表每行带 dataType / sampleCount / tissue（行级未填时已由
+        // normalizeDatasets 回落项目级），前端直接展示，不重算
+        datasets: pairing.datasets,
+        datasetsInferred: pairing.inferred,
+        sampleCount: Number(raw?.dataSource?.sampleCount) || 0,
+        tissue: raw?.dataSource?.tissue || '',
+        refCount: Array.isArray(raw?.references) ? raw.references.length : 0,
+        notes: typeof raw?.notes === 'string' ? raw.notes : '',
+        submittedAt: raw?.submitted_at || '',
+        stepCount: Array.isArray(raw?.pipelineDag) ? raw.pipelineDag.length : 0,
+        groupCount: Array.isArray(raw?.groupingDesign?.groups) ? raw.groupingDesign.groups.length : 0,
+      };
+    } catch (cause) {
+      parseError = cause instanceof Error ? cause.message : String(cause);
+    }
+    // 新格式带包清单：把附件计数一并给前端，列表页就能看出"这次提交带了几个文件"
+    const pkg = readPackageManifest(file);
+    return {
+      file, size, mtime, summary, parseError,
+      packageDir: pkg ? pkg.package_dir || file.split('/')[0] : null,
+      attachments: pkg && pkg.counts ? pkg.counts : null,
+    };
+  });
+
+  items.sort((a, b) => (a.mtime < b.mtime ? 1 : -1));
+  return { blocked: false, dir: PORTAL_INBOX, items };
+}
+
+/** 静态资源 MIME 映射 */
+const STATIC_MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.map': 'application/json; charset=utf-8',
+};
+
+/**
+ * 托管管理员工作台前端（dist/）。
+ * 8787 只提供管理员工作台（/）与后端 API；客户需求提交入口是独立服务（见 portal/），不在此端口。
+ * 无扩展名的路径按 SPA 回退到 index.html（React 单页，路由在客户端状态里）。
+ * @param {import('node:http').ServerResponse} res
+ * @param {string} pathname
+ */
+function serveStatic(res, pathname) {
+  const rel = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
+  // 防目录穿越
+  if (rel.includes('..')) {
+    return json(res, 400, { error: '非法路径' });
+  }
+  const lastSlash = rel.lastIndexOf('/');
+  const lastDot = rel.lastIndexOf('.');
+  const hasExt = lastDot > lastSlash;
+  const ext = hasExt ? rel.slice(lastDot).toLowerCase() : '';
+  // 有扩展名：只找该文件；无扩展名：先找同名文件再回退 index.html
+  const candidates = hasExt ? [rel] : [rel, `${rel}/index.html`, 'index.html'];
+
+  for (const candidate of candidates) {
+    try {
+      const filePath = fileURLToPath(new URL(candidate, DIST_DIR));
+      if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+        res.writeHead(200, {
+          'Content-Type': STATIC_MIME[ext] || 'application/octet-stream',
+          'Cache-Control': 'no-cache',
+          'X-Content-Type-Options': 'nosniff',
+        });
+        fs.createReadStream(filePath).pipe(res);
+        return;
+      }
+    } catch {
+      // 继续尝试下一个候选
+    }
+  }
+
+  // dist 尚未构建时的友好提示
+  if (!fs.existsSync(fileURLToPath(DIST_DIR))) {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+    return res.end(
+      '<!doctype html><meta charset="utf-8"><title>工作台未构建</title>' +
+      '<body style="font-family:sans-serif;max-width:640px;margin:80px auto;padding:0 20px;color:#0f172a">' +
+      '<h1 style="color:#0d9488">工作台前端尚未构建</h1>' +
+      '<p>请在 <code>BioanalysDesktop/</code> 目录执行 <code>npm run build</code> 生成 <code>dist/</code> 后刷新本页。</p>' +
+      '<p>开发模式可改用 <code>npm run dev</code>（Vite 监听 5173，API 代理到 8787）。</p>' +
+      '</body>'
+    );
+  }
+  return json(res, 404, { error: `静态资源未找到: ${pathname}` });
+}
+
+/**
+ * 从 pipelineDag 推断分析线：取命中步骤数最多的那条线。
+ * 为什么不用 dataType：需求文件可能缺 dataType（旧格式），但步骤 id 是母版固定的。
+ */
+function lineFromPipeline(dag) {
+  const ids = (Array.isArray(dag) ? dag : []).map((d) => d?.stepId).filter(Boolean);
+  if (!ids.length) return '';
+  let best = '';
+  let bestHits = 0;
+  for (const line of LINES) {
+    const hits = ids.filter((s) => LINE_STEPS[line].includes(s)).length;
+    if (hits > bestHits) { bestHits = hits; best = line; }
+  }
+  return best;
+}
+
+/**
+ * 把客户上传的数据文件从提交包复制到远端项目对应分析线的 raw_data/。
+ *
+ * 为什么要这一步：用户端上传的文件只落在本机 `portal/inbox/PKG_.../raw_data/`，
+ * 不搬过去的话，客户填的 `raw_data/xxx.tsv` 路径在服务器上根本不存在，第一步就会失败。
+ *
+ * 返回每个文件的部署结果；单个文件失败不中断其余文件，但整体会标记 ok=false，
+ * 由调用方把问题如实回给界面（不能假装建项完全成功）。
+ */
+function deployDataFiles(projectId, lineId, dataFiles) {
+  const results = [];
+  if (!Array.isArray(dataFiles) || !dataFiles.length) return { ok: true, results };
+  if (!lineId) {
+    return {
+      ok: false,
+      results: dataFiles.map((f) => ({
+        name: f.name, ok: false,
+        error: '无法从 pipelineDag 推断分析线，未部署',
+      })),
+    };
+  }
+  for (const file of dataFiles) {
+    const src = path.resolve(PORTAL_INBOX, file.path);
+    if (!src.startsWith(path.resolve(PORTAL_INBOX) + path.sep) || !fs.existsSync(src)) {
+      results.push({ name: file.name, ok: false, error: `提交包内找不到源文件: ${file.path}` });
+      continue;
+    }
+    let remote;
+    try {
+      remote = remoteRawPath(projectId, lineId, deployedRawName(file));
+    } catch (cause) {
+      results.push({ name: file.name, ok: false, error: cause.message });
+      continue;
+    }
+    const localSize = fs.statSync(src).size;
+    const scp = runSync(
+      ['scp', '-o', 'StrictHostKeyChecking=no', '-o', 'BatchMode=yes',
+        '-P', '10022', src, `root@127.0.0.1:${remote}`],
+      { timeoutMs: 900000 }
+    );
+    if (scp.code !== 0) {
+      results.push({ name: file.name, ok: false, error: `scp 失败: ${scp.stderr || scp.stdout}` });
+      continue;
+    }
+    const stat = runRemote(`stat -c %s '${remote}' 2>/dev/null || echo MISSING`);
+    const remoteSize = Number(stat.trim());
+    if (!Number.isFinite(remoteSize) || remoteSize !== localSize) {
+      results.push({
+        name: file.name, ok: false,
+        error: `字节校验不符（本地 ${localSize} / 远端 ${Number.isFinite(remoteSize) ? remoteSize : 'MISSING'}）`,
+      });
+      continue;
+    }
+    results.push({ name: file.name, ok: true, remotePath: remote, size: localSize });
+  }
+  return { ok: results.every((r) => r.ok), results };
+}
+
+const server = http.createServer(async (req, res) => {
+  const url = new URL(req.url, `http://127.0.0.1:${PORT}`);
+
+  if (url.pathname === '/api/health') {
+    return json(res, 200, { ok: true, service: 'bioanalys-desktop', port: PORT });
+  }
+
+  if (!isAuthorized(req)) {
+    res.writeHead(401, {
+      'WWW-Authenticate': 'Basic realm="BioanalysDesktop", charset="UTF-8"',
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+    });
+    return res.end(JSON.stringify({ error: '需要登录：请输入工作台账号口令' }));
+  }
+
+  if (url.pathname === '/api/projects/list') {
+    // 项目列表：数据面按项目分文件夹后，界面据此渲染项目选择器
+    try {
+      const projects = listProjectsWithMeta();
+      return json(res, 200, { defaultProject: DEFAULT_PROJECT, projects });
+    } catch (cause) {
+      return json(res, 500, {
+        error: cause instanceof Error ? cause.message : String(cause),
+        hint: '读项目列表失败；链路不通时先跑 /api/link/check',
+      });
+    }
+  }
+
+  if (url.pathname === '/api/projects/create' && req.method === 'POST') {
+    // 建项目：建三线数据子目录 + 写 project.json，已存在则拒绝（不覆盖）
+    // v2 支持四段式 manifest：basicInfo / dataSource / pipelineDag / aclAndOutput
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', () => {
+      let requested;
+      try {
+        requested = JSON.parse(body || '{}');
+      } catch (cause) {
+        return json(res, 400, { error: `请求体不是合法 JSON: ${cause.message}` });
+      }
+      const projectId = sanitizeProjectId(requested.projectId);
+      if (!projectId) {
+        return json(res, 400, {
+          error: `projectId 非法（只允许字母数字 . _ -，不以 . 开头，长度 <= 64）: ${requested.projectId}`,
+        });
+      }
+      let meta;
+      try {
+        // S24：建项入口走 strict 校验（R11 六条 + R12 联动 + line_id 枚举），
+        // 校验失败抛错由下方 catch 统一转 400；line_id 取自建项请求（aims.txt:96 契约）
+        meta = buildProjectMetaStrict({
+          id: projectId,
+          // v1 兼容
+          name: requested.name,
+          description: requested.description,
+          // v2 四段式
+          basicInfo: requested.basicInfo,
+          dataSource: requested.dataSource,
+          groupingDesign: requested.groupingDesign,
+          pipelineDag: requested.pipelineDag,
+          aclAndOutput: requested.aclAndOutput,
+          // aims v3.0 intake 四块
+          biologicalPriors: requested.biologicalPriors,
+          analysisCutoffs: requested.analysisCutoffs,
+          plotLayoutConfig: requested.plotLayoutConfig,
+          experimentalDesign: requested.experimentalDesign,
+          validationGroupMapping: requested.validationGroupMapping,
+          dataFiles: requested.dataFiles,
+          // S24/R2：WGCNA 参数契约（表单选填；normalizeWgcnaConfig 逐键回落默认）
+          wgcnaConfig: requested.wgcnaConfig,
+          lineId: requested.lineId,
+        });
+      } catch (cause) {
+        return json(res, 400, { error: cause.message });
+      }
+      const { command, remoteDir } = buildCreateProjectCommand(projectId, meta);
+      let output;
+      try {
+        output = runRemote(command);
+      } catch (cause) {
+        return json(res, 500, { error: `建项目失败: ${cause instanceof Error ? cause.message : String(cause)}` });
+      }
+      if (output.includes('EXISTS')) {
+        return json(res, 409, { error: `项目已存在: ${projectId}` });
+      }
+      if (!output.includes('CREATED')) {
+        return json(res, 500, { error: `建项目失败（无 CREATED 回执）: ${output}` });
+      }
+
+      // 数据文件部署：客户上传的矩阵/样本表要落到本项目本线的 raw_data/，
+      // 否则 project.json 里写的相对路径在服务器上是空的
+      const lineId = lineFromPipeline(meta.pipeline_dag)
+        || resolveLineFromDataType(meta.data_source?.data_type || requested.dataSource?.dataType);
+      const deploy = deployDataFiles(projectId, lineId, meta.data_files);
+      const deployNote = deploy.results.length
+        ? `；数据文件 ${deploy.results.filter((r) => r.ok).length}/${deploy.results.length} 已部署到 ${lineId || '（未识别分析线）'}/raw_data/`
+        : '';
+      return json(res, deploy.ok ? 200 : 207, {
+        ok: deploy.ok,
+        projectId,
+        meta,
+        dir: remoteDir,
+        line: lineId || null,
+        dataFiles: deploy.results,
+        message: (deploy.ok ? '建项完成' : '建项完成，但部分数据文件未部署成功') + deployNote,
+      });
+    });
+    return;
+  }
+
+  // 非肿瘤正则黑名单校验（前端实时调用，输入时红字拦截）
+  if (url.pathname === '/api/blacklist/check' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', () => {
+      let payload;
+      try {
+        payload = JSON.parse(body || '{}');
+      } catch {
+        return json(res, 400, { error: '请求体不是合法 JSON' });
+      }
+      const result = checkTumorBlacklist(payload.text || '');
+      return json(res, 200, { hit: result.hit, matches: result.matches, hint: BLACKLIST_HINT });
+    });
+    return;
+  }
+
+  // 三线可选步骤列表（前端级联勾选用）
+  if (url.pathname === '/api/projects/steps') {
+    return json(res, 200, { steps: LINE_STEPS, meta: PIPELINE_STEP_META });
+  }
+
+  // 单个项目的关键元数据：Studio 用它显示"这批图按什么模板/阈值出的"
+  if (url.pathname === '/api/projects/meta') {
+    const projectId = sanitizeProjectId(url.searchParams.get('project') || '');
+    if (!projectId) return json(res, 400, { error: 'project 参数非法' });
+    let meta = null;
+    try {
+      const encoded = runRemote(buildReadProjectMetaCommand(projectId));
+      if (encoded.trim()) {
+        meta = parseProjectMeta(Buffer.from(encoded.trim(), 'base64').toString('utf8'));
+      }
+    } catch (cause) {
+      return json(res, 500, {
+        error: `读取 project.json 失败: ${cause instanceof Error ? cause.message : String(cause)}`,
+      });
+    }
+    if (!meta) return json(res, 404, { error: `项目 ${projectId} 不存在或缺少 project.json` });
+    return json(res, 200, {
+      projectId,
+      // 只回出图相关与解读需要的字段，避免把整份 meta（含备注原文）透给只读视图
+      plotLayoutConfig: meta.plot_layout_config || null,
+      analysisCutoffs: meta.analysis_cutoffs || null,
+      dataSourceMode: meta.data_source?.data_source_mode || 'PUBLIC_DB',
+      focusGenes: meta.biological_priors?.focus_genes || [],
+      targetKoGene: meta.biological_priors?.target_ko_gene || '',
+      stepCount: Array.isArray(meta.pipeline_dag) ? meta.pipeline_dag.length : 0,
+    });
+  }
+
+  // 客户需求收件箱：列出 portal/inbox 下的需求文件（新建项目时导入用）
+  if (url.pathname === '/api/portal/inbox') {
+    return json(res, 200, listInboxManifests());
+  }
+
+  // 读取单份需求原文（文件名由前端从列表接口取得，服务端再校验一次）
+  if (url.pathname === '/api/portal/inbox/item') {
+    const name = url.searchParams.get('name') || '';
+    if (!isSafeManifestName(name)) {
+      return json(res, 400, { error: `需求文件名非法: ${name}` });
+    }
+    const full = path.join(PORTAL_INBOX, name);
+    if (!path.resolve(full).startsWith(path.resolve(PORTAL_INBOX))) {
+      return json(res, 400, { error: '路径越界' });
+    }
+    let manifest;
+    try {
+      manifest = JSON.parse(fs.readFileSync(full, 'utf8'));
+    } catch (cause) {
+      return json(res, 404, {
+        error: `读取或解析需求文件失败: ${cause instanceof Error ? cause.message : String(cause)}`,
+      });
+    }
+    const pairing = normalizeDatasets(manifest?.dataSource);
+    const packageManifest = readPackageManifest(name);
+    let sourceMode = 'PUBLIC_DB';
+    let accession = null;
+    try {
+      const normalized = normalizeDataSource(manifest?.dataSource, '');
+      sourceMode = normalized.mode;
+      accession = normalized.accession;
+    } catch (cause) {
+      // IN_HOUSE 模式但契约不全（例如用户手工改坏了需求文件）：据实返回错误，
+      // 不静默降级成 PUBLIC_DB，否则会把残缺需求当公共数据跑
+      return json(res, 400, {
+        error: `需求文件数据源契约不完整: ${cause instanceof Error ? cause.message : String(cause)}`,
+        file: name,
+      });
+    }
+    return json(res, 200, {
+      file: name,
+      manifest,
+      // 新格式：包清单（文献与数据文件的原名、归档名、sha256），旧格式为 null
+      packageDir: packageManifest ? packageManifest.package_dir : null,
+      packageManifest,
+      // 数据类型 → 分析线：服务端判定，前端不必自己实现映射；
+      // 缺失/非法时为空串，由前端回退到 stepId 反查（向后兼容旧需求文件）
+      dataType: manifest?.dataSource?.dataType || '',
+      suggestedLine: resolveLineFromDataType(manifest?.dataSource?.dataType),
+      // 数据集↔平台配对表（旧扁平格式已按位置归一化，inferred=true 须提示核对）
+      datasets: pairing.datasets,
+      datasetsInferred: pairing.inferred,
+      // 数据源双模态：IN_HOUSE_UPLOAD 时 accession 为 accession_and_platform 契约
+      dataSourceMode: sourceMode,
+      accession,
+    });
+  }
+
+  // 五维环境自检（前端视图3 调用）
+  if (url.pathname === '/api/selfcheck') {
+    const checks = [];
+    // 1. 路径与 FUSE 红线
+    try {
+      const fsType = runRemote('df -T /mnt/ssd/bio_data 2>/dev/null | awk "NR==2 {print $2}"').trim();
+      const isFuse = fsType.includes('fuse') || fsType.includes('sdcardfs');
+      checks.push({ id: 'fs_type', label: '文件系统类型', status: isFuse ? 'fail' : 'pass', value: fsType, detail: isFuse ? 'FUSE 层违规' : '原生 ext4/f2fs' });
+    } catch (e) {
+      checks.push({ id: 'fs_type', label: '文件系统类型', status: 'unknown', value: '', detail: '无法读取' });
+    }
+    // 2. 存储水位
+    try {
+      const dfOut = runRemote('df -P /mnt/ssd/bio_data 2>/dev/null | tail -1').trim().split(/\s+/);
+      const usedPct = (dfOut[4] || '0').replace('%', '').replace(/[^0-9]/g, '');
+      const freePct = 100 - parseInt(usedPct || '0', 10);
+      checks.push({ id: 'storage', label: '存储水位', status: freePct >= 20 ? 'pass' : 'fail', value: `${freePct}% free`, detail: freePct >= 20 ? '安全' : '低于 20% 门禁' });
+    } catch (e) {
+      checks.push({ id: 'storage', label: '存储水位', status: 'unknown', value: '', detail: '无法读取' });
+    }
+    // 3. CPU/内存（容器侧）
+    try {
+      const memInfo = runRemote('cat /proc/meminfo | head -1').trim();
+      checks.push({ id: 'memory', label: '内存', status: 'pass', value: memInfo, detail: '容器内存配额' });
+    } catch (e) {
+      checks.push({ id: 'memory', label: '内存', status: 'unknown', value: '', detail: '无法读取' });
+    }
+    // 4. 跨线隔离
+    try {
+      const isolationOk = runRemote('bash /mnt/ssd/bio_data/ops/check_storage_and_isolation.sh line1_bulk 2>/dev/null; echo $?').trim();
+      checks.push({ id: 'isolation', label: '跨线隔离', status: isolationOk.endsWith('0') ? 'pass' : 'fail', value: isolationOk, detail: '门禁脚本' });
+    } catch (e) {
+      checks.push({ id: 'isolation', label: '跨线隔离', status: 'unknown', value: '', detail: '门禁脚本未部署' });
+    }
+    // 5. ADB/SSH 链路（四段探测 + 服务状态）
+    try {
+      const linkResult = checkLink(adb);
+      const segSummary = linkResult.segments
+        .map((s) => `${s.name}:${s.pass ? 'ok' : 'FAIL'}`)
+        .join(' | ');
+      const failedSegs = linkResult.segments.filter((s) => !s.pass)
+        .map((s) => `${s.name} (${s.detail || ''})`)
+        .join('; ');
+      checks.push({
+        id: 'link',
+        label: 'ADB/SSH 链路',
+        status: linkResult.overall === 'pass' ? 'pass' : linkResult.overall === 'warn' ? 'warn' : 'fail',
+        value: segSummary,
+        detail: failedSegs || (linkResult.compute ? `CPU=${linkResult.compute.cpus}/${linkResult.compute.cpusTotal} Mem=${linkResult.compute.memoryGb}GB` : ''),
+      });
+    } catch (e) {
+      checks.push({ id: 'link', label: 'ADB/SSH 链路', status: 'unknown', value: '', detail: '无法检测: ' + (e instanceof Error ? e.message : String(e)) });
+    }
+    const allPass = checks.every((c) => c.status === 'pass');
+    return json(res, 200, { all_pass: allPass, checks });
+  }
+
+  if (url.pathname === '/api/link/check') {
+    // 四段自检 + 服务状态，链不通时也能拿到"断在哪段"的结构化结果
+    try {
+      const result = checkLink();
+      return json(res, 200, { serial: DEFAULT_SERIAL, adb, link: result });
+    } catch (cause) {
+      return json(res, 500, {
+        error: cause instanceof Error ? cause.message : String(cause),
+        hint: '先跑一次链路自检定位，或查看 con_hf/踩坑台账.md',
+      });
+    }
+  }
+
+  if (url.pathname === '/api/ledger/check') {
+    // 台账巡检：SSD 未挂载时必须显式报阻塞，不能假装 0 违规
+    const requested = url.searchParams.get('dir') || SYSTEM_LOGS;
+    const probe = runRemote(`if [ -d '${requested}' ]; then echo EXISTS; else echo MISSING; fi`);
+    if (!probe.includes('EXISTS')) {
+      return json(res, 200, {
+        blocked: true,
+        reason: `目录不存在: ${requested}`,
+        hint: '外挂 SSD 未挂载或路径不符，先解决数据面再巡检台账。不得当作"无违规"处理',
+        summary: null,
+      });
+    }
+
+    try {
+      const { entries } = await fetchLedgerFromServer(requested);
+      const audited = entries.map((entry) => ({
+        file: entry.file,
+        path: entry.path,
+        ...auditLedgerEntry(entry.data),
+      }));
+      const summary = summarizeLedger(entries.map((entry) => entry.data));
+      return json(res, 200, { blocked: false, dir: requested, summary, entries: audited });
+    } catch (cause) {
+      return json(res, 500, {
+        error: cause instanceof Error ? cause.message : String(cause),
+        hint: '读台账失败；若 JSON 单个文件损坏，错误信息里会带文件名',
+      });
+    }
+  }
+
+  if (url.pathname === '/api/files/tree') {
+    // 数据面浏览：限定本项目本线，越界一律拒绝；SSD 未挂载时阻塞态
+    const projectId = resolveProjectParam(url);
+    if (!projectId) {
+      return json(res, 400, { error: `project 参数非法（只允许字母数字 . _ -）` });
+    }
+    const lineId = url.searchParams.get('line') || LINES[0];
+    if (!LINES.includes(lineId)) {
+      return json(res, 400, { error: `line 参数非法: ${lineId}，只能是 ${LINES.join(' / ')}` });
+    }
+    const subdir = url.searchParams.get('sub') || '';
+    const lineDir = projectLineDir(projectId, lineId);
+    const guard = assertPathInsideProject(`${lineDir}/${subdir}`, projectId, lineId);
+    if (!guard.ok) {
+      return json(res, 400, { error: guard.reason });
+    }
+
+    const probe = runRemote(`if [ -d '${lineDir}' ]; then echo EXISTS; else echo MISSING; fi`);
+    if (!probe.includes('EXISTS')) {
+      return json(res, 200, {
+        blocked: true,
+        projectId,
+        lineId,
+        reason: `线目录不存在: ${lineDir}`,
+        hint: '项目未创建或该线目录未建，先在项目管理里建项目。不得当作"这条线没数据"处理',
+        tree: null,
+      });
+    }
+
+    const listing = runRemote(
+      `find '${guard.normalized}' -printf '%p|%y|%s|%T@\\n' 2>/dev/null | head -5000`
+    );
+    const tree = buildTreeFromFind(listing, projectId, lineId);
+    return json(res, 200, { blocked: false, projectId, lineId, root: guard.normalized, tree });
+  }
+
+  if (url.pathname === '/api/figures/list') {
+    // 图件浏览：列出本项目该线 figures/ 下的 PNG，供可视化界面渲染
+    const projectId = resolveProjectParam(url);
+    if (!projectId) {
+      return json(res, 400, { error: `project 参数非法（只允许字母数字 . _ -）` });
+    }
+    const lineId = url.searchParams.get('line') || LINES[0];
+    const guard = assertFiguresPath(projectId, lineId);
+    if (!guard.ok) {
+      return json(res, 400, { error: guard.reason });
+    }
+    const result = listFiguresForLine(projectId, lineId);
+    if (result.blocked) {
+      return json(res, 200, {
+        blocked: true,
+        projectId,
+        lineId,
+        reason: result.reason,
+        hint: '该线还没出图（跑 *_figures 步骤）或项目未创建',
+        figures: [],
+      });
+    }
+    return json(res, 200, {
+      blocked: false, projectId, lineId, dir: guard.dir,
+      source: result.source, figures: result.figures,
+    });
+  }
+
+  if (url.pathname === '/api/figures/pull' && req.method === 'POST') {
+    // 图件回搬：把远端 figures/（以及 results/）拉到本地 outputs/，供视图 4 离线查看。
+    // 本地只跑 scp，不触发任何计算（零算力红线）。
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', () => {
+      let payload;
+      try {
+        payload = JSON.parse(body || '{}');
+      } catch (cause) {
+        return json(res, 400, { error: `请求体不是合法 JSON: ${cause.message}` });
+      }
+      const projectId = sanitizeProjectId(payload.project || payload.projectId || '');
+      if (!projectId) {
+        return json(res, 400, { error: 'project 参数非法（只允许字母数字 . _ -）' });
+      }
+      const requested = payload.line || payload.lineId;
+      const lines = requested ? [requested] : LINES;
+      const badLine = lines.find((line) => !LINES.includes(line));
+      if (badLine) {
+        return json(res, 400, { error: `line 非法: ${badLine}，只能是 ${LINES.join(' / ')}` });
+      }
+      try {
+        const results = lines.map((line) => pullLineOutputs(projectId, line, {
+          force: Boolean(payload.force),
+        }));
+        return json(res, 200, {
+          ok: results.every((item) => item.failed === 0),
+          localRoot: LOCAL_OUTPUTS_ROOT,
+          results,
+        });
+      } catch (cause) {
+        return json(res, 500, { error: `回搬失败: ${cause.message}` });
+      }
+    });
+    return;
+  }
+
+  if (url.pathname === '/preview/figures') {
+    // 后端自带出图预览界面：服务端直接渲染 HTML 画廊，不依赖前端 React。
+    // 浏览器打开 http://127.0.0.1:<PORT>/preview/figures?project=<项目> 即可目视审核图件。
+    const projectId = resolveProjectParam(url);
+    if (!projectId) {
+      res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('project 参数非法（只允许字母数字 . _ -）');
+      return;
+    }
+    const sections = LINES.map((lineId) => {
+      const result = listFiguresForLine(projectId, lineId);
+      return { lineId, ...result };
+    });
+    const html = renderFiguresPreview(sections, projectId);
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store',
+    });
+    res.end(html);
+    return;
+  }
+
+  if (url.pathname === '/api/figures/image') {
+    // 取回单张图件字节（ssh + base64），直接以图片 MIME 返回给浏览器
+    const projectId = resolveProjectParam(url);
+    if (!projectId) {
+      return json(res, 400, { error: `project 参数非法（只允许字母数字 . _ -）` });
+    }
+    const lineId = url.searchParams.get('line') || LINES[0];
+    const name = url.searchParams.get('name') || '';
+    const guard = assertFiguresPath(projectId, lineId, name);
+    if (!guard.ok) {
+      return json(res, 400, { error: guard.reason });
+    }
+    // 优先读本地回搬副本；本地没有才回落远端（ssh + base64）。
+    // 本地副本是规范要求的离线可看形态，也避免每次翻图都走一次 ssh。
+    const localFile = localFigurePath(projectId, lineId, name);
+    const encoded = localFile ? null : runRemote(`base64 -w0 '${guard.dir}/${name}' 2>/dev/null || true`);
+    if (!localFile && !encoded.trim()) {
+      return json(res, 404, { error: `图件不存在或读取失败: ${name}` });
+    }
+    const buf = localFile ? fs.readFileSync(localFile) : Buffer.from(encoded.trim(), 'base64');
+    const lower = name.toLowerCase();
+    const mime = lower.endsWith('.png') ? 'image/png'
+      : lower.endsWith('.svg') ? 'image/svg+xml'
+      : lower.endsWith('.gif') ? 'image/gif'
+      : lower.endsWith('.webp') ? 'image/webp'
+      : 'image/jpeg';
+    res.writeHead(200, {
+      'Content-Type': mime,
+      'Cache-Control': 'no-store',
+      'X-Figure-Source': localFile ? 'local' : 'remote',
+    });
+    res.end(buf);
+    return;
+  }
+
+  if (url.pathname === '/api/report/build' && req.method === 'POST') {
+    // 客户交付报告生成（A4/R3）：远端跑引擎 + 三大件回搬本地，一个请求内完成。
+    // 失败（引擎退出码 1/2、scp 失败、交付件缺失）一律 500 且 error 带原文，不假成功。
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', async () => {
+      let requested;
+      try {
+        requested = JSON.parse(body || '{}');
+      } catch (cause) {
+        return json(res, 400, { error: `请求体不是合法 JSON: ${cause.message}` });
+      }
+      const projectId = sanitizeProjectId(requested.projectId);
+      if (!projectId) {
+        return json(res, 400, {
+          error: `projectId 非法（只允许字母数字 . _ -，不以 . 开头，长度 <= 64）: ${requested.projectId}`,
+        });
+      }
+      let remoteExists;
+      try {
+        remoteExists = await checkRemoteProjectDir(projectId);
+      } catch (cause) {
+        return json(res, 500, { ok: false, error: `远端链路检查失败: ${cause.message}` });
+      }
+      if (!remoteExists) {
+        return json(res, 400, { ok: false, error: `远端项目目录不存在: /mnt/ssd/bio_data/projects/${projectId}` });
+      }
+      try {
+        await runReportBuild(projectId);
+        const pulled = await pullDeliverables(projectId);
+        return json(res, 200, {
+          ok: true,
+          projectId,
+          files: pulled.files,
+          report_md_bytes: pulled.report_md_bytes,
+          report_html_bytes: pulled.report_html_bytes,
+        });
+      } catch (cause) {
+        return json(res, 500, {
+          ok: false,
+          error: cause instanceof Error ? cause.message : String(cause),
+        });
+      }
+    });
+    return;
+  }
+
+  if (url.pathname === '/api/report/files') {
+    // 本地已有交付文件清单：目录不存在或为空都是 200 + files:[]（不是 500）
+    const projectId = sanitizeProjectId(url.searchParams.get('projectId') || url.searchParams.get('project') || '');
+    if (!projectId) {
+      return json(res, 400, { error: 'projectId 参数非法' });
+    }
+    let files = [];
+    try {
+      const dir = localDeliverDir(projectId);
+      files = fs.readdirSync(dir)
+        .filter((name) => isAllowedDeliverableName(name))
+        .map((name) => ({ name, bytes: fs.statSync(path.join(dir, name)).size }));
+    } catch {
+      files = [];
+    }
+    return json(res, 200, { ok: true, projectId, files });
+  }
+
+  if (url.pathname === '/api/report/download') {
+    // 交付文件下载：白名单在 report.js（三大件模式），越界/穿越/不在集合一律 400；
+    // 永远只落 localDeliverDir 内，不回绝对路径。
+    const projectId = sanitizeProjectId(url.searchParams.get('projectId') || url.searchParams.get('project') || '');
+    if (!projectId) {
+      return json(res, 400, { error: 'projectId 参数非法' });
+    }
+    const name = url.searchParams.get('file') || '';
+    if (!isAllowedDeliverableName(name)) {
+      return json(res, 400, { error: `文件名非法或不在交付件允许集合内: ${name}` });
+    }
+    const file = localDeliverFilePath(projectId, name);
+    if (!file) {
+      return json(res, 404, { error: `交付文件不存在或尚未生成: ${name}（先 POST /api/report/build）` });
+    }
+    const stat = fs.statSync(file);
+    res.writeHead(200, {
+      'Content-Type': 'application/octet-stream',
+      'Content-Length': stat.size,
+      'Content-Disposition': `attachment; filename="${name}"`,
+      'Cache-Control': 'no-store',
+    });
+    fs.createReadStream(file).pipe(res);
+    return;
+  }
+
+  if (url.pathname === '/api/upload/init' && req.method === 'POST') {
+    // 数据导入第 1 步：创建上传会话（强制归属线）
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', () => {
+      let requested;
+      try {
+        requested = JSON.parse(body || '{}');
+      } catch (cause) {
+        return json(res, 400, { error: `请求体不是合法 JSON: ${cause.message}` });
+      }
+      const lineId = requested.lineId;
+      if (!LINES.includes(lineId)) {
+        return json(res, 400, { error: `必须指定归属线，且只能是 ${LINES.join(' / ')}` });
+      }
+      const projectId = sanitizeProjectId(requested.projectId || DEFAULT_PROJECT);
+      if (!projectId) {
+        return json(res, 400, { error: `projectId 非法（只允许字母数字 . _ -）: ${requested.projectId}` });
+      }
+      const safe = sanitizeFilename(requested.filename);
+      if (!safe) {
+        return json(res, 400, { error: `文件名非法或含路径穿越: ${requested.filename}` });
+      }
+      const uploadId = randomUUID();
+      try {
+        initUpload(uploadId);
+      } catch (cause) {
+        return json(res, 500, { error: cause.message });
+      }
+      return json(res, 200, {
+        uploadId, projectId, lineId, filename: safe, chunkSize: CHUNK_SIZE,
+        hint: '按 chunkSize 切分后依次 POST /api/upload/chunk?uploadId=&index=',
+      });
+    });
+    return;
+  }
+
+  if (url.pathname === '/api/upload/chunk' && req.method === 'POST') {
+    // 数据导入第 2 步：上传单个分片（原始二进制 body）
+    const uploadId = url.searchParams.get('uploadId') || '';
+    const index = url.searchParams.get('index') || '';
+    const chunks = [];
+    let size = 0;
+    req.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > CHUNK_SIZE * 2) { req.destroy(); return; }
+      chunks.push(chunk);
+    });
+    req.on('end', () => {
+      try {
+        writeChunk(uploadId, index, Buffer.concat(chunks));
+        return json(res, 200, { ok: true, index: Number(index), received: listChunks(uploadId) });
+      } catch (cause) {
+        return json(res, 400, { error: cause.message });
+      }
+    });
+    return;
+  }
+
+  if (url.pathname === '/api/upload/status') {
+    const uploadId = url.searchParams.get('uploadId') || '';
+    return json(res, 200, { uploadId, received: listChunks(uploadId) });
+  }
+
+  if (url.pathname === '/api/upload/complete' && req.method === 'POST') {
+    // 数据导入第 3 步：合并 + 格式校验 + scp 到线内 raw_data + 字节校验
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', () => {
+      let requested;
+      try {
+        requested = JSON.parse(body || '{}');
+      } catch (cause) {
+        return json(res, 400, { error: `请求体不是合法 JSON: ${cause.message}` });
+      }
+      const { uploadId, lineId, filename } = requested;
+      if (!LINES.includes(lineId)) {
+        return json(res, 400, { error: `lineId 非法: ${lineId}` });
+      }
+      const projectId = sanitizeProjectId(requested.projectId || DEFAULT_PROJECT);
+      if (!projectId) {
+        return json(res, 400, { error: `projectId 非法（只允许字母数字 . _ -）: ${requested.projectId}` });
+      }
+      let localPath;
+      try {
+        localPath = assembleChunks(uploadId, filename);
+      } catch (cause) {
+        return json(res, 400, { error: `合并分片失败: ${cause.message}` });
+      }
+      const header = readHeader(localPath);
+      const validation = validateUpload(filename, header);
+      if (!validation.ok) {
+        cleanupUpload(uploadId);
+        return json(res, 200, {
+          ok: false, validation,
+          hint: '格式校验未通过，未落盘到服务器（文件已从暂存清理）',
+        });
+      }
+      const remote = remoteRawPath(projectId, lineId, filename);
+      const localSize = fs.statSync(localPath).size;
+      const scp = runSync(
+        ['scp', '-o', 'StrictHostKeyChecking=no', '-o', 'BatchMode=yes',
+          '-P', '10022', localPath, `root@127.0.0.1:${remote}`],
+        { timeoutMs: 900000 }
+      );
+      if (scp.code !== 0) {
+        return json(res, 500, {
+          error: `scp 上传失败（code=${scp.code}）: ${scp.stderr || scp.stdout}`,
+          validation, localSize,
+        });
+      }
+      const remoteStat = runRemote(`stat -c %s '${remote}' 2>/dev/null || echo MISSING`);
+      const remoteSize = Number(remoteStat.trim());
+      const sizeMatch = Number.isFinite(remoteSize) && remoteSize === localSize;
+      cleanupUpload(uploadId);
+      return json(res, 200, {
+        ok: sizeMatch, validation, remotePath: remote,
+        localSize, remoteSize: Number.isFinite(remoteSize) ? remoteSize : null, sizeMatch,
+        hint: sizeMatch ? '上传完成，字节校验通过' : '上传后字节数不一致，请重试',
+      });
+    });
+    return;
+  }
+
+  if (url.pathname === '/api/tasks' && req.method === 'GET') {
+    // 在跑任务列表：让界面知道有没有重复下发。
+    // 字段名与 /api/tasks/submit 的返回值统一为 taskId —— 两处用不同名字
+    // （这里曾叫 id）会让调用方按 submit 的字段去比对列表，永远匹配不上，
+    // 长任务被误判成"已结束"（2026-10-19 端到端实测踩到）。
+    return json(res, 200, {
+      tasks: [...runningTasks.entries()].map(([taskId, task]) => ({
+        taskId,
+        projectId: task.projectId,
+        lineId: task.lineId,
+        step: task.step,
+        startedAt: task.startedAt,
+      })),
+    });
+  }
+
+  if (url.pathname === '/api/tasks/submit' && req.method === 'POST') {
+    // 任务下发：参数在服务端再校验一次，不信前端传来的东西
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', () => {
+      let requested;
+      try {
+        requested = JSON.parse(body || '{}');
+      } catch (cause) {
+        return json(res, 400, { error: `请求体不是合法 JSON: ${cause.message}` });
+      }
+
+      const lineId = requested.lineId;
+      if (!LINES.includes(lineId)) {
+        return json(res, 400, { error: `lineId 非法: ${lineId}，只能是 ${LINES.join(' / ')}` });
+      }
+      const projectId = sanitizeProjectId(requested.projectId || DEFAULT_PROJECT);
+      if (!projectId) {
+        return json(res, 400, { error: `projectId 非法（只允许字母数字 . _ -）: ${requested.projectId}` });
+      }
+      if (!requested.step || typeof requested.step !== 'string') {
+        return json(res, 400, { error: 'step 必填且必须是字符串' });
+      }
+      // step 是命令名（会被 shellQuote 成单个词执行），必须只含安全字符。
+      // 含空格的输入（如 "echo data_plane_ok"）必然 command not found，
+      // 还会把空格带进台账文件名，历史上把落盘命令的重定向拆断（2026-10-13 事故）。
+      // 在这里提前拒，参数请走 inputs/outputs。
+      if (!/^[A-Za-z0-9._-]+$/.test(requested.step)) {
+        return json(res, 400, {
+          error: `step 只能包含字母数字和 . _ -（命令名）: ${requested.step}。参数请用 inputs/outputs 传递`,
+        });
+      }
+
+      // inputs / outputs 必须是字符串数组。调用方（含脚本化的 PowerShell / curl）
+      // 很容易把单元素数组序列化成裸字符串，此时 task.js 的 inputs.map 会抛
+      // TypeError 并**直接打死整个服务**（2026-10-19 实测：8787 进程退出）。
+      // 参数类型错误是调用方问题，必须 400 返回，不能让服务端崩。
+      for (const field of ['inputs', 'outputs']) {
+        const value = requested[field];
+        if (value !== undefined && value !== null) {
+          if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
+            return json(res, 400, {
+              error: `${field} 必须是字符串数组，收到 ${typeof value}: ${JSON.stringify(value).slice(0, 120)}`,
+            });
+          }
+        }
+      }
+
+      // 同项目同线同步骤不允许并发第二次：生信任务重，跑重了难收拾
+      const duplicate = [...runningTasks.values()].some(
+        (task) => task.projectId === projectId && task.lineId === lineId && task.step === requested.step
+      );
+      if (duplicate) {
+        return json(res, 409, { error: `该步骤正在运行: ${projectId} / ${lineId} / ${requested.step}。等它结束或先中止` });
+      }
+
+      const taskId = `${projectId}-${lineId}-${Date.now()}`;
+      const taskSpec = {
+        projectId,
+        lineId,
+        step: requested.step,
+        inputs: requested.inputs || [],
+        outputs: requested.outputs || [],
+        seed: requested.seed,
+      };
+
+      // 审计提前到提交前：越界就不给 taskId，不启动、不占任务位。
+      // 整段包 try/catch：参数形态异常（如 inputs 传了对象）不能把服务打死，
+      // 必须是 400 返回 —— 一次崩溃会让所有在跑任务与 SSE 连接一起断。
+      let script;
+      try {
+        script = buildTaskScript(taskSpec);
+      } catch (cause) {
+        return json(res, 400, { error: `任务脚本构建失败（参数不合法）: ${cause.message}` });
+      }
+      const audit = auditCommand(script, lineId);
+      if (!audit.allowed) {
+        return json(res, 400, { error: audit.reason });
+      }
+
+      try {
+        const handle = runTask(
+          {
+            projectId,
+            lineId,
+            step: requested.step,
+            inputs: requested.inputs || [],
+            outputs: requested.outputs || [],
+            seed: requested.seed,
+          },
+          {
+            onStdout: (text) => sendEvent(taskId, 'stdout', text),
+            onStderr: (text) => sendEvent(taskId, 'stderr', text),
+            onExit: (code, entry) => {
+              runningTasks.delete(taskId);
+              sendEvent(taskId, 'exit', JSON.stringify({ code, entry }));
+              if (code !== 0) {
+                closeSink(taskId);
+                return;
+              }
+              // 步骤成功即自动回搬（aims §7.3）：产物做完就同步到本地，
+              // 不依赖用户手动点按钮。放 setImmediate 里是为了让 exit 事件先发出去，
+              // 且 scp 是同步调用，不能卡住 SSE 的收尾。
+              setImmediate(() => {
+                try {
+                  const pulled = pullLineOutputs(projectId, lineId);
+                  sendEvent(taskId, 'stdout',
+                    `[pull] 已回搬 ${pulled.pulled} 个文件（跳过 ${pulled.skipped}，失败 ${pulled.failed}）`
+                    + ` → ${pulled.localDir}\n`);
+                } catch (cause) {
+                  sendEvent(taskId, 'stderr', `[pull] 自动回搬失败: ${cause.message}\n`);
+                } finally {
+                  closeSink(taskId);
+                }
+              });
+            },
+          }
+        );
+        runningTasks.set(taskId, {
+          kill: handle.kill,
+          projectId,
+          lineId,
+          step: requested.step,
+          startedAt: new Date().toISOString(),
+        });
+        return json(res, 200, { taskId, projectId, lineId, step: requested.step });
+      } catch (cause) {
+        return json(res, 500, { error: cause instanceof Error ? cause.message : String(cause) });
+      }
+    });
+    return;
+  }
+
+  if (url.pathname === '/api/tasks/stop' && req.method === 'POST') {
+    const taskId = url.searchParams.get('id') || '';
+    const task = runningTasks.get(taskId);
+    if (!task) {
+      return json(res, 404, { error: `任务不在运行: ${taskId}` });
+    }
+    task.kill();
+    runningTasks.delete(taskId);
+    return json(res, 200, { stopped: taskId });
+  }
+
+  if (url.pathname === '/api/tasks/logs' && req.method === 'GET') {
+    // SSE：日志流。任务已被中止或不存在时，先告知再关流
+    const taskId = url.searchParams.get('id') || '';
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-store',
+      Connection: 'keep-alive',
+    });
+    res.write('retry: 1000\n\n');
+
+    if (!runningTasks.has(taskId)) {
+      res.write(`event: exit\ndata: ${JSON.stringify({ code: null, note: '任务不在运行（可能已结束或被中止）' })}\n\n`);
+      res.end();
+      return;
+    }
+
+    const sink = createSink(taskId, (text) => res.write(text));
+    req.on('close', () => {
+      dropSink(taskId, sink);
+    });
+    return;
+  }
+
+  // 非 API 路径：托管管理员工作台前端（dist/），无扩展名按 SPA 回退到 index.html
+  if (!url.pathname.startsWith('/api/')) {
+    return serveStatic(res, url.pathname);
+  }
+
+  return json(res, 404, { error: `未知接口: ${url.pathname}` });
+});
+
+server.listen(PORT, '127.0.0.1', () => {
+  console.log(`[bioanalys-desktop] backend listening on http://127.0.0.1:${PORT}`);
+  console.log(`[bioanalys-desktop] adb = ${adb}`);
+});
+
+export { server };

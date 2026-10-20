@@ -1,0 +1,10 @@
+# line1_bulk 分析环境声明（正本，分析中途不更换）
+
+台账 environment 字段由 BioanalysDesktop 从本文件读取；服务器侧副本由
+ops/06_deploy_scripts.ps1 部署到 /mnt/ssd/bio_data/envs/line1_bulk/（全局一份，所有项目共用），
+步骤脚本在服务器上读到的就是这份声明。改版本号 = 新分析项目，不做热切换。
+
+language=R
+version=4.3.3
+env_name=line1_bulk_env
+container_image=proot-ubuntu24.04-aarch64

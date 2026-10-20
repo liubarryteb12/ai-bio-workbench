@@ -1,0 +1,236 @@
+{
+  "probe_host": "localhost",
+  "probe_python": "3.12.3",
+  "interpreters": {
+    "R": {
+      "version": "Rscript (R) version 4.3.3 (2024-02-29)",
+      "source": "Rscript --version",
+      "error": null
+    },
+    "python3": {
+      "version": "3.12.3",
+      "source": "python3 --version",
+      "error": null
+    }
+  },
+  "r_packages": {
+    "WGCNA": {
+      "installed": true,
+      "version": "1.74",
+      "source": "Rscript -e 'if (requireNamespace(\"WGCNA\", quietly=TRUE)) cat(as.character(packageVersion(\"WGCNA\"))) else cat(\"__MISSING__\")'",
+      "error": null
+    },
+    "limma": {
+      "installed": true,
+      "version": "3.58.1",
+      "source": "Rscript -e 'if (requireNamespace(\"limma\", quietly=TRUE)) cat(as.character(packageVersion(\"limma\"))) else cat(\"__MISSING__\")'",
+      "error": null
+    },
+    "ggplot2": {
+      "installed": true,
+      "version": "4.0.3",
+      "source": "Rscript -e 'if (requireNamespace(\"ggplot2\", quietly=TRUE)) cat(as.character(packageVersion(\"ggplot2\"))) else cat(\"__MISSING__\")'",
+      "error": null
+    },
+    "clusterProfiler": {
+      "installed": true,
+      "version": "4.10.1",
+      "source": "Rscript -e 'if (requireNamespace(\"clusterProfiler\", quietly=TRUE)) cat(as.character(packageVersion(\"clusterProfiler\"))) else cat(\"__MISSING__\")'",
+      "error": null
+    },
+    "Seurat": {
+      "installed": true,
+      "version": "5.6.0",
+      "source": "Rscript -e 'if (requireNamespace(\"Seurat\", quietly=TRUE)) cat(as.character(packageVersion(\"Seurat\"))) else cat(\"__MISSING__\")'",
+      "error": null
+    },
+    "pheatmap": {
+      "installed": true,
+      "version": "1.0.12",
+      "source": "Rscript -e 'if (requireNamespace(\"pheatmap\", quietly=TRUE)) cat(as.character(packageVersion(\"pheatmap\"))) else cat(\"__MISSING__\")'",
+      "error": null
+    },
+    "data.table": {
+      "installed": true,
+      "version": "1.14.10",
+      "source": "Rscript -e 'if (requireNamespace(\"data.table\", quietly=TRUE)) cat(as.character(packageVersion(\"data.table\"))) else cat(\"__MISSING__\")'",
+      "error": null
+    },
+    "glmnet": {
+      "installed": true,
+      "version": "4.1.8",
+      "source": "Rscript -e 'if (requireNamespace(\"glmnet\", quietly=TRUE)) cat(as.character(packageVersion(\"glmnet\"))) else cat(\"__MISSING__\")'",
+      "error": null
+    },
+    "GSVA": {
+      "installed": true,
+      "version": "1.50.5",
+      "source": "Rscript -e 'if (requireNamespace(\"GSVA\", quietly=TRUE)) cat(as.character(packageVersion(\"GSVA\"))) else cat(\"__MISSING__\")'",
+      "error": null
+    },
+    "matrixStats": {
+      "installed": true,
+      "version": "1.2.0",
+      "source": "Rscript -e 'if (requireNamespace(\"matrixStats\", quietly=TRUE)) cat(as.character(packageVersion(\"matrixStats\"))) else cat(\"__MISSING__\")'",
+      "error": null
+    },
+    "survival": {
+      "installed": true,
+      "version": "3.5.8",
+      "source": "Rscript -e 'if (requireNamespace(\"survival\", quietly=TRUE)) cat(as.character(packageVersion(\"survival\"))) else cat(\"__MISSING__\")'",
+      "error": null
+    },
+    "org.Hs.eg.db": {
+      "installed": true,
+      "version": "3.18.0",
+      "source": "Rscript -e 'if (requireNamespace(\"org.Hs.eg.db\", quietly=TRUE)) cat(as.character(packageVersion(\"org.Hs.eg.db\"))) else cat(\"__MISSING__\")'",
+      "error": null
+    },
+    "ComplexHeatmap": {
+      "installed": true,
+      "version": "2.18.0",
+      "source": "Rscript -e 'if (requireNamespace(\"ComplexHeatmap\", quietly=TRUE)) cat(as.character(packageVersion(\"ComplexHeatmap\"))) else cat(\"__MISSING__\")'",
+      "error": null
+    },
+    "pROC": {
+      "installed": true,
+      "version": "1.18.5",
+      "source": "Rscript -e 'if (requireNamespace(\"pROC\", quietly=TRUE)) cat(as.character(packageVersion(\"pROC\"))) else cat(\"__MISSING__\")'",
+      "error": null
+    },
+    "GSEABase": {
+      "installed": true,
+      "version": "1.64.0",
+      "source": "Rscript -e 'if (requireNamespace(\"GSEABase\", quietly=TRUE)) cat(as.character(packageVersion(\"GSEABase\"))) else cat(\"__MISSING__\")'",
+      "error": null
+    }
+  },
+  "python_packages": {
+    "scanpy": {
+      "installed": true,
+      "version": "1.12.4",
+      "source": "python3 -c 'import scanpy; print(getattr(scanpy, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"scanpy\"))'",
+      "error": null
+    },
+    "anndata": {
+      "installed": true,
+      "version": "0.13.4",
+      "source": "python3 -c 'import anndata; print(getattr(anndata, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"anndata\"))'",
+      "error": null
+    },
+    "pandas": {
+      "installed": true,
+      "version": "2.3.3",
+      "source": "python3 -c 'import pandas; print(getattr(pandas, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"pandas\"))'",
+      "error": null
+    },
+    "numpy": {
+      "installed": true,
+      "version": "2.5.3",
+      "source": "python3 -c 'import numpy; print(getattr(numpy, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"numpy\"))'",
+      "error": null
+    },
+    "scipy": {
+      "installed": true,
+      "version": "1.18.1",
+      "source": "python3 -c 'import scipy; print(getattr(scipy, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"scipy\"))'",
+      "error": null
+    },
+    "scikit-learn": {
+      "installed": true,
+      "version": "1.9.1",
+      "source": "python3 -c 'import sklearn; print(getattr(sklearn, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"scikit-learn\"))'",
+      "error": null
+    },
+    "matplotlib": {
+      "installed": true,
+      "version": "3.11.2",
+      "source": "python3 -c 'import matplotlib; print(getattr(matplotlib, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"matplotlib\"))'",
+      "error": null
+    },
+    "seaborn": {
+      "installed": true,
+      "version": "0.13.2",
+      "source": "python3 -c 'import seaborn; print(getattr(seaborn, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"seaborn\"))'",
+      "error": null
+    },
+    "networkx": {
+      "installed": true,
+      "version": "3.7",
+      "source": "python3 -c 'import networkx; print(getattr(networkx, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"networkx\"))'",
+      "error": null
+    },
+    "statsmodels": {
+      "installed": true,
+      "version": "0.15.0",
+      "source": "python3 -c 'import statsmodels; print(getattr(statsmodels, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"statsmodels\"))'",
+      "error": null
+    },
+    "harmonypy": {
+      "installed": true,
+      "version": "2.0.2",
+      "source": "python3 -c 'import harmonypy; print(getattr(harmonypy, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"harmonypy\"))'",
+      "error": null
+    },
+    "liana": {
+      "installed": true,
+      "version": "1.10.0",
+      "source": "python3 -c 'import liana; print(getattr(liana, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"liana\"))'",
+      "error": null
+    },
+    "pyscenic": {
+      "installed": true,
+      "version": "0.12.1",
+      "source": "python3 -c 'import pyscenic; print(getattr(pyscenic, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"pyscenic\"))'",
+      "error": null
+    },
+    "gseapy": {
+      "installed": true,
+      "version": "1.3.1",
+      "source": "python3 -c 'import gseapy; print(getattr(gseapy, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"gseapy\"))'",
+      "error": null
+    },
+    "scTenifold": {
+      "installed": true,
+      "version": "0.5.1",
+      "source": "python3 -c 'import scTenifold; print(getattr(scTenifold, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"scTenifold\"))'",
+      "error": null
+    },
+    "squidpy": {
+      "installed": false,
+      "version": null,
+      "source": "python3 -c 'import squidpy; print(getattr(squidpy, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"squidpy\"))'",
+      "error": "ModuleNotFoundError: No module named 'squidpy'"
+    },
+    "arboreto": {
+      "installed": true,
+      "version": "0.1.6",
+      "source": "python3 -c 'import arboreto; print(getattr(arboreto, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"arboreto\"))'",
+      "error": null
+    },
+    "shap": {
+      "installed": true,
+      "version": "0.53.0",
+      "source": "python3 -c 'import shap; print(getattr(shap, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"shap\"))'",
+      "error": null
+    },
+    "h5py": {
+      "installed": true,
+      "version": "3.16.0",
+      "source": "python3 -c 'import h5py; print(getattr(h5py, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"h5py\"))'",
+      "error": null
+    },
+    "Pillow": {
+      "installed": true,
+      "version": "12.3.0",
+      "source": "python3 -c 'import PIL; print(getattr(PIL, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"Pillow\"))'",
+      "error": null
+    },
+    "adjustText": {
+      "installed": true,
+      "version": "1.4.0",
+      "source": "python3 -c 'import adjustText; print(getattr(adjustText, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"adjustText\"))'",
+      "error": null
+    }
+  }
+}

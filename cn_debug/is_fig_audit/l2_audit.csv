@@ -1,0 +1,8 @@
+figure,verdict,violations
+l2_01_lac_group_celltype.png,PASS,
+l2_02_score_distributions.png,PASS,
+l2_03_five_algorithm_corr.png,PASS,
+l2_04_wgcna_modules.png,PASS,
+l2_05_candidates_evidence.png,PASS,
+l2_06_pseudotime.png,PASS,
+l2_07_comm_top.png,PASS,

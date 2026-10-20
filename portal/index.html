@@ -1,0 +1,2061 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0d9488">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AC%3C/text%3E%3C/svg%3E">
+<meta name="description" content="生信分析需求提交表">
+<title>提交分析需求</title>
+<style>
+:root {
+  --brand: #0d9488;
+  --brand-dark: #0f766e;
+  --brand-soft: #ccfbf1;
+  --bg: #f6f8fb;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --text-faint: #94a3b8;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --success: #059669;
+  --success-soft: #ecfdf5;
+  --warn: #b45309;
+  --warn-soft: #fffbeb;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, .06);
+  --shadow: 0 1px 3px rgba(15, 23, 42, .08), 0 1px 2px rgba(15, 23, 42, .04);
+  color-scheme: light;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased;
+  touch-action: manipulation; padding-bottom: 80px;
+}
+.skip-link { position: absolute; left: -9999px; top: 8px; z-index: 100; background: var(--brand); color: #fff; padding: 10px 16px; border-radius: 8px; font-weight: 600; text-decoration: none; }
+.skip-link:focus { left: 8px; }
+:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; border-radius: 6px; }
+
+.site-header { background: linear-gradient(135deg, #0f766e, #0d9488 55%, #14b8a6); color: #fff; padding: 28px 24px 26px; }
+.header-inner { max-width: 900px; margin: 0 auto; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-mark { width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0; background: rgba(255, 255, 255, .18); display: flex; align-items: center; justify-content: center; font-size: 21px; }
+.brand h1 { font-size: 20px; font-weight: 700; letter-spacing: .2px; text-wrap: balance; }
+.brand p { font-size: 13px; opacity: .88; }
+.header-note { margin-top: 16px; display: inline-flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .22); padding: 6px 12px; border-radius: 999px; font-size: 12.5px; }
+
+.progress-wrap { background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 20; }
+.progress { max-width: 900px; margin: 0 auto; display: flex; list-style: none; padding: 0 12px; overflow-x: auto; }
+.progress li { flex: 1; min-width: 120px; display: flex; align-items: center; gap: 9px; padding: 14px 8px; font-size: 13px; color: var(--text-faint); border-bottom: 2.5px solid transparent; white-space: nowrap; }
+.progress li .num { width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0; background: var(--surface-2); border: 1.5px solid var(--border-strong); color: var(--text-muted); font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; }
+.progress li[aria-current="step"] { color: var(--brand-dark); font-weight: 600; border-bottom-color: var(--brand); }
+.progress li[aria-current="step"] .num { background: var(--brand); border-color: var(--brand); color: #fff; }
+.progress li[data-done="true"] { color: var(--text-muted); }
+.progress li[data-done="true"] .num { background: var(--brand-soft); border-color: var(--brand); color: var(--brand-dark); }
+
+main { max-width: 900px; margin: 0 auto; padding: 28px 24px 0; }
+.panel { display: none; }
+.panel.is-active { display: block; animation: rise .28s ease-out; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .panel.is-active { animation: none; } }
+
+.step-head { margin-bottom: 20px; }
+.step-head .eyebrow { color: var(--brand-dark); font-size: 12.5px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; }
+.step-head h2 { font-size: 23px; font-weight: 700; margin: 4px 0 6px; text-wrap: balance; }
+.step-head p { color: var(--text-muted); font-size: 14px; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px; margin-bottom: 18px; box-shadow: var(--shadow-sm); }
+.card-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.card-sub { color: var(--text-muted); font-size: 13px; margin-bottom: 16px; }
+
+.guide { display: flex; gap: 10px; align-items: flex-start; background: var(--brand-soft); border: 1px solid #99f6e4; color: #115e59; padding: 12px 14px; border-radius: var(--radius); font-size: 13px; margin-bottom: 18px; }
+.guide .ico { flex-shrink: 0; font-size: 15px; line-height: 1.5; }
+.guide strong { font-weight: 700; }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+@media (max-width: 640px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+.field { margin-bottom: 16px; }
+.field:last-child { margin-bottom: 0; }
+.field > label { display: block; font-size: 13.5px; font-weight: 600; margin-bottom: 6px; }
+.field .req { color: var(--danger); margin-left: 2px; }
+.hint { color: var(--text-muted); font-size: 12.5px; margin-top: 6px; line-height: 1.5; }
+.hint code { background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; font-size: 11.5px; }
+input[type="text"], input[type="number"], select, textarea { width: 100%; padding: 10px 12px; font-size: 14px; font-family: inherit; color: var(--text); background: var(--surface); border: 1.5px solid var(--border-strong); border-radius: var(--radius); transition: border-color .15s ease, box-shadow .15s ease; }
+input:hover, select:hover, textarea:hover { border-color: #94a3b8; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(13, 148, 136, .15); }
+textarea { resize: vertical; min-height: 76px; line-height: 1.55; }
+select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L2 4h8z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 34px; }
+input[aria-invalid="true"], textarea[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--danger); }
+
+.msg { font-size: 12.5px; margin-top: 6px; display: none; }
+.msg.is-shown { display: block; }
+.msg.err { color: var(--danger); }
+.msg.warn { color: var(--warn); }
+.field-error { background: var(--danger-soft); border: 1px solid #fecaca; color: #991b1b; padding: 9px 12px; border-radius: 8px; font-size: 12.5px; margin-top: 8px; }
+
+.check { display: flex; align-items: flex-start; gap: 10px; padding: 11px 13px; border: 1.5px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: border-color .15s ease, background-color .15s ease; margin-bottom: 9px; }
+.check:hover { border-color: var(--border-strong); background: var(--surface-2); }
+.check:has(input:checked) { border-color: var(--brand); background: var(--brand-soft); }
+.check input { margin-top: 3px; width: 17px; height: 17px; accent-color: var(--brand); flex-shrink: 0; }
+.check .ck-body { min-width: 0; }
+.check .ck-title { font-size: 13.5px; font-weight: 600; }
+.check .ck-desc { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+.check .tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 5px; margin-left: 7px; vertical-align: 1px; }
+.tag.must { background: #fee2e2; color: #b91c1c; }
+.tag.opt { background: #e0e7ff; color: #4338ca; }
+.tag.rec { background: var(--success-soft); color: var(--success); }
+
+.group-card { border: 1.5px solid var(--border); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 14px; background: var(--surface-2); }
+.group-card.has-dup { border-color: var(--danger); background: var(--danger-soft); }
+.group-head { display: flex; align-items: center; gap: 10px; margin-bottom: 13px; }
+.group-swatch { width: 22px; height: 22px; border-radius: 6px; border: 1.5px solid rgba(0, 0, 0, .12); flex-shrink: 0; }
+.group-head .g-title { font-weight: 700; font-size: 14px; }
+.group-count { margin-left: auto; font-size: 12.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.btn-del { background: none; border: 1px solid var(--border-strong); color: var(--text-muted); border-radius: 7px; padding: 5px 9px; font-size: 12px; cursor: pointer; font-family: inherit; transition: border-color .15s ease, color .15s ease; }
+.btn-del:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+
+.btn { font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; border-radius: var(--radius); padding: 11px 20px; border: 1.5px solid transparent; transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .1s ease; }
+.btn:active { transform: translateY(1px); }
+.btn-primary { background: var(--brand); color: #fff; box-shadow: var(--shadow-sm); }
+.btn-primary:hover:not(:disabled) { background: var(--brand-dark); }
+.btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+.btn-ghost { background: var(--surface); color: var(--text); border-color: var(--border-strong); }
+.btn-ghost:hover { background: var(--surface-2); border-color: #94a3b8; }
+.btn-sm { font-size: 13px; padding: 8px 14px; }
+.btn-add { background: var(--surface); border: 1.5px dashed var(--border-strong); color: var(--brand-dark); width: 100%; }
+.btn-add:hover { border-color: var(--brand); background: var(--brand-soft); }
+
+.form-nav { display: flex; gap: 12px; justify-content: space-between; align-items: center; margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--border); }
+.form-nav .right { display: flex; gap: 10px; }
+
+.banner { display: none; padding: 13px 16px; border-radius: var(--radius); font-size: 13.5px; margin-bottom: 18px; align-items: flex-start; gap: 9px; }
+.banner.is-shown { display: flex; }
+.banner.ok { background: var(--success-soft); border: 1px solid #a7f3d0; color: #065f46; }
+.banner.err { background: var(--danger-soft); border: 1px solid #fecaca; color: #991b1b; }
+
+.contrast-row { display: flex; align-items: center; gap: 10px; padding: 8px 11px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; font-size: 13px; }
+.contrast-row .c-name { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
+
+.step-list { display: flex; flex-direction: column; gap: 9px; }
+.step-item { border: 1.5px solid var(--border); border-radius: var(--radius); padding: 13px 15px; transition: border-color .15s ease; }
+.step-item:has(input:checked) { border-color: var(--brand); background: #f0fdfa; }
+.step-item.locked { background: var(--surface-2); }
+.step-item .st-head { display: flex; align-items: flex-start; gap: 10px; }
+.step-item .st-head input { margin-top: 3px; width: 17px; height: 17px; accent-color: var(--brand); flex-shrink: 0; }
+.step-item .st-body { min-width: 0; flex: 1; }
+.step-item .st-label { font-weight: 600; font-size: 13.5px; }
+.step-item .st-desc { font-size: 12.5px; color: var(--text-muted); margin-top: 3px; }
+.step-item .st-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 7px; font-size: 12px; color: var(--text-faint); }
+.step-item .st-meta b { color: var(--text-muted); font-weight: 600; }
+.step-item .st-note { display: inline-block; margin-top: 7px; background: var(--warn-soft); border: 1px solid #fde68a; color: var(--warn); font-size: 12px; padding: 3px 9px; border-radius: 6px; }
+.lock-badge { font-size: 11px; color: var(--text-faint); background: var(--surface-2); border: 1px solid var(--border); padding: 1px 7px; border-radius: 5px; margin-left: 6px; }
+
+.line-picker { display: grid; grid-template-columns: repeat(3, 1fr); gap: 11px; margin-bottom: 18px; }
+@media (max-width: 700px) { .line-picker { grid-template-columns: 1fr; } }
+.line-opt { border: 1.5px solid var(--border); border-radius: var(--radius); padding: 13px; cursor: pointer; transition: border-color .15s ease, background-color .15s ease; }
+.line-opt:hover { border-color: var(--border-strong); }
+.line-opt:has(input:checked) { border-color: var(--brand); background: var(--brand-soft); }
+.line-opt input { position: absolute; opacity: 0; pointer-events: none; }
+.line-opt .lo-title { font-weight: 700; font-size: 13.5px; }
+.line-opt .lo-desc { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.line-opt .lo-count { font-size: 11.5px; color: var(--brand-dark); font-weight: 600; margin-top: 6px; }
+/* 数据类型已定死分析线时，其余线置灰不可选 */
+.line-opt.is-locked { opacity: .4; cursor: not-allowed; pointer-events: none; }
+
+.summary-list { list-style: none; }
+.summary-list li { display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.summary-list li:last-child { border-bottom: none; }
+.summary-list .k { color: var(--text-muted); flex-shrink: 0; }
+.summary-list .v { text-align: right; word-break: break-word; min-width: 0; }
+
+.out-box { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; font-family: ui-monospace, Consolas, monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; max-height: 300px; overflow: auto; color: var(--text-muted); }
+.deliver-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+
+.site-footer { max-width: 900px; margin: 34px auto 0; padding: 20px 24px; color: var(--text-faint); font-size: 12.5px; border-top: 1px solid var(--border); }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+input[type="file"] { width: 100%; padding: 10px 12px; font-size: 13px; font-family: inherit; color: var(--text); background: var(--surface); border: 1.5px dashed var(--border-strong); border-radius: var(--radius); cursor: pointer; }
+input[type="file"]:hover { border-color: #94a3b8; }
+input[type="file"]:focus-visible { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(13, 148, 136, .15); }
+.ref-del { background: none; border: none; color: var(--danger); font-size: 12.5px; cursor: pointer; padding: 2px 6px; text-decoration: underline; }
+
+/* ============================================================
+   打印 / 存为 PDF 视图（对应第 5 步「打印 / 存为 PDF」）
+   屏幕上不显示；打印时隐藏全部屏幕交互元素，只输出 #print-report。
+   #print-report 的内容由 buildPrintReport() 在打印前按整份需求单重新生成，
+   因此导出的是"全项目内容 + 生成时刻时间戳"的完整快照，而不是屏幕上当前可见的一屏。
+   ============================================================ */
+#print-report { display: none; }
+.pr-head { border-bottom: 2.5px solid #111; padding-bottom: 8px; margin-bottom: 14px; }
+.pr-title { font-size: 17pt; margin: 0 0 6px; }
+.pr-sub { margin: 0; font-size: 10.5pt; color: #333; }
+.pr-stamp { margin: 2px 0 0; font-size: 10.5pt; color: #111; font-weight: 600; }
+.pr-section { margin: 0 0 14px; break-inside: avoid; page-break-inside: avoid; }
+.pr-h { font-size: 12.5pt; margin: 0 0 7px; padding-bottom: 3px; border-bottom: 1px solid #999; }
+table.pr-t { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0; }
+table.pr-t th, table.pr-t td { border: 1px solid #888; padding: 3px 6px; font-size: 10pt; text-align: left; vertical-align: top; word-break: break-word; overflow-wrap: anywhere; }
+table.pr-t th { background: #ececec; font-weight: 700; }
+table.pr-t td.pr-idx { text-align: center; }
+table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
+.pr-none { color: #666; font-size: 10pt; margin: 0; }
+.pr-pre { white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; border: 1px solid #888; padding: 7px 9px; font-size: 10pt; font-family: inherit; margin: 0; }
+.pr-foot { margin-top: 16px; border-top: 1px solid #999; padding-top: 7px; font-size: 9.5pt; color: #333; }
+.pr-foot p { margin: 0 0 3px; }
+
+@media print {
+  html, body { background: #fff !important; }
+  .skip-link, .site-header, .progress-wrap, #main-content, .site-footer { display: none !important; }
+  #print-report { display: block !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .pr-section { break-inside: avoid; page-break-inside: avoid; }
+  table.pr-t thead { display: table-header-group; }
+  @page { size: A4 portrait; margin: 14mm 12mm; }
+}
+
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">跳到主内容</a>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">🧬</div>
+      <div>
+        <h1>提交生信分析需求</h1>
+        <p>请填写以下信息，完成后生成需求文件交给对接人</p>
+      </div>
+    </div>
+    <div class="header-note">
+      <span aria-hidden="true">📄</span>
+      <span>填写完成后提交，需求将发送给对接人</span>
+    </div>
+  </div>
+</header>
+
+<nav class="progress-wrap" aria-label="填写步骤">
+  <ol class="progress" id="progress">
+    <li data-step="1" aria-current="step"><span class="num">1</span>项目信息</li>
+    <li data-step="2"><span class="num">2</span>数据来源</li>
+    <li data-step="3"><span class="num">3</span>分组设计</li>
+    <li data-step="4"><span class="num">4</span>分析流程</li>
+    <li data-step="5"><span class="num">5</span>提交需求</li>
+  </ol>
+</nav>
+
+<main id="main-content">
+  <form id="req-form" novalidate autocomplete="off">
+
+    <!-- ============ Step 1 ============ -->
+    <section class="panel is-active" data-panel="1" aria-labelledby="h-step1">
+      <div class="step-head">
+        <div class="eyebrow">第 1 步 / 共 5 步</div>
+        <h2 id="h-step1">项目基本信息</h2>
+        <p>给这次分析起个名字，并说明研究领域。带 <span class="req">*</span> 的为必填项。</p>
+      </div>
+      <div class="guide">
+        <span class="ico" aria-hidden="true">💡</span>
+        <span><strong>填写引导：</strong>项目名称写清楚研究主题，方便后续识别。疾病名称请填具体病种。</span>
+      </div>
+      <div class="card">
+        <div class="grid-2">
+          <div class="field">
+            <label for="f-name">项目名称<span class="req" aria-hidden="true">*</span></label>
+            <input type="text" id="f-name" name="projectName" required placeholder="例如：某疾病相关基因筛选…" aria-describedby="h-name">
+            <div class="hint" id="h-name">一句话概括研究主题。</div>
+            <div class="msg err" id="e-name" role="alert"></div>
+          </div>
+          <div class="field">
+            <label for="f-disease">疾病名称</label>
+            <input type="text" id="f-disease" name="disease" placeholder="例如：某类疾病名称…" aria-describedby="h-disease">
+            <div class="hint" id="h-disease">填写具体疾病名，便于匹配公共数据集。</div>
+            <div class="msg warn" id="e-disease" aria-live="polite"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label for="f-desc">项目描述</label>
+          <textarea id="f-desc" name="description" rows="2" placeholder="例如：探究某疾病组与对照组的差异表达基因…" aria-describedby="h-desc"></textarea>
+          <div class="hint" id="h-desc">补充研究背景与目标。</div>
+          <div class="msg warn" id="e-desc" aria-live="polite"></div>
+        </div>
+        <div class="grid-3">
+          <div class="field">
+            <label for="f-species">物种</label>
+            <select id="f-species" name="species">
+              <option value="Homo sapiens">Homo sapiens（人）</option>
+              <option value="Mus musculus">Mus musculus（小鼠）</option>
+              <option value="Rattus norvegicus">Rattus norvegicus（大鼠）</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-domain">研究领域</label>
+            <select id="f-domain" name="domain">
+              <option value="心脑血管">心脑血管</option>
+              <option value="神经退行">神经退行</option>
+              <option value="代谢">代谢</option>
+              <option value="纤维化">纤维化</option>
+              <option value="发育">发育</option>
+              <option value="免疫">免疫</option>
+              <option value="其他非肿瘤">其他非肿瘤</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="f-contact">联系方式</label>
+            <input type="text" id="f-contact" name="contact" placeholder="邮箱 / 电话…" autocomplete="off" aria-describedby="h-contact">
+            <div class="hint" id="h-contact">便于对接人联系你。</div>
+          </div>
+        </div>
+        <div class="field-error" id="bl-block" style="display:none" role="alert"></div>
+      </div>
+    </section>
+
+    <!-- ============ Step 2 ============ -->
+    <section class="panel" data-panel="2" aria-labelledby="h-step2">
+      <div class="step-head">
+        <div class="eyebrow">第 2 步 / 共 5 步</div>
+        <h2 id="h-step2">数据来源</h2>
+        <p>告诉我们数据从哪里来，以及样本的基本情况。</p>
+      </div>
+      <div class="guide">
+        <span class="ico" aria-hidden="true">💡</span>
+        <span><strong>填写引导：</strong>先选「数据类型」——它决定后续走哪条分析线（芯片 / Bulk、单细胞、空间转录组互不交叉）。若使用公共数据，请在下方的「数据集 ↔ 平台配对」表里逐行填写：每行一组「GSE 数据集编号 ↔ GPL 平台编号」，并标明用作训练集还是验证集。多组数据、或同一 GSE 涉及多个平台时，务必分开成多行写清楚对应关系。若为自有数据，请说明文件格式。</span>
+      </div>
+      <div class="card">
+        <div class="grid-2">
+          <div class="field">
+            <label for="f-datatype">数据类型<span class="req" aria-hidden="true">*</span></label>
+            <select id="f-datatype" name="dataType" aria-describedby="h-datatype">
+              <option value="">请选择…</option>
+              <option value="microarray">基因芯片（表达谱）</option>
+              <option value="bulk_rnaseq">Bulk RNA-seq（转录组测序）</option>
+              <option value="scrna">单细胞转录组（scRNA-seq）</option>
+              <option value="spatial">空间转录组（Visium 等）</option>
+            </select>
+            <div class="hint" id="h-datatype">决定走哪条分析线：芯片 / Bulk → 线 1，单细胞 → 线 2，空转 → 线 3。选定后第 4 步的分析线会自动锁定。</div>
+          </div>
+          <div class="field">
+            <label for="f-source">数据库来源</label>
+            <select id="f-source" name="dataSource">
+              <option value="GEO">GEO</option>
+              <option value="ArrayExpress">ArrayExpress</option>
+              <option value="自有数据">自有数据</option>
+            </select>
+          </div>
+        </div>
+        <div class="msg err" id="e-datatype" role="alert"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin: 8px 0 6px;">
+          <div class="card-title" style="margin:0;">数据集 ↔ 平台配对</div>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-add-dataset">＋ 新增数据集配对</button>
+        </div>
+        <div class="card-sub">每行一组「数据集编号 ↔ 平台编号」。多组数据上传时请逐行配对：不同平台走不同的探针注释与归一化，配对错了预处理就会跑偏。同一 GSE 有多个平台时分多行写。</div>
+        <div id="dataset-list"></div>
+        <div class="msg err" id="e-datasets" role="alert"></div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="f-sample-count">样本总数</label>
+            <input type="number" id="f-sample-count" name="sampleCount" min="0" inputmode="numeric" placeholder="例如 60…" aria-describedby="h-sample-count">
+            <div class="hint" id="h-sample-count">所有分组样本数量之和。</div>
+          </div>
+          <div class="field">
+            <label for="f-tissue">组织来源</label>
+            <input type="text" id="f-tissue" name="tissue" placeholder="例如：组织 / 体液来源…" aria-describedby="h-tissue">
+            <div class="hint" id="h-tissue">非肿瘤、非免疫浸润的组织或体液来源。</div>
+          </div>
+        </div>
+      </div>
+      <div class="card" id="mode-card">
+        <div class="card-title">数据来源模式<span class="req" aria-hidden="true">*</span></div>
+        <div class="card-sub">二选一：从公共数据库按编号获取，或把自有数据文件直接传给对接人。</div>
+        <label class="check">
+          <input type="radio" name="dataSourceMode" value="PUBLIC_DB" checked>
+          <div class="ck-body">
+            <div class="ck-title">公共数据库（GEO / ArrayExpress）</div>
+            <div class="ck-desc">按上方「数据集 ↔ 平台配对」填写的 GSE / GPL 编号获取数据，无需上传文件。</div>
+          </div>
+        </label>
+        <label class="check" style="margin-bottom:0;">
+          <input type="radio" name="dataSourceMode" value="IN_HOUSE_UPLOAD">
+          <div class="ck-body">
+            <div class="ck-title">自有数据上传<span class="tag must">需上传文件</span></div>
+            <div class="ck-desc">直接把表达矩阵、样本表、分组表等文件传给对接人；至少上传 1 个文件才能提交。</div>
+          </div>
+        </label>
+        <div id="upload-area" style="display:none;">
+          <div class="guide" style="margin:16px 0;">
+            <span class="ico" aria-hidden="true">📦</span>
+            <span><strong>上传规则（与服务端校验逐条一致）：</strong>训练集矩阵必须绑训练集 GSE，验证集矩阵必须绑验证集 GSE；样本表 / 分组表请绑训练集 GSE；平台注解与其他文件可不绑。文件名里的 GSE / GPL 编号必须与绑定编号一致。同一角色只保留一个文件（other 最多 5 个），重复上传会替换此前的文件。支持 .tsv .csv .txt .gz .zip .xlsx .h5ad .rds .mtx，单文件上限 5 GiB。</span>
+          </div>
+          <div class="grid-2">
+            <div class="field">
+              <label for="f-df-role">文件角色<span class="req" aria-hidden="true">*</span></label>
+              <select id="f-df-role" aria-describedby="h-df-role"></select>
+              <div class="hint" id="h-df-role"></div>
+            </div>
+            <div class="field">
+              <label for="f-df-bind">绑定数据集编号（GSE）</label>
+              <select id="f-df-bind" aria-describedby="h-df-bind"></select>
+              <div class="hint" id="h-df-bind"></div>
+            </div>
+          </div>
+          <div class="field">
+            <label for="f-df-file">选择文件<span class="req" aria-hidden="true">*</span></label>
+            <input type="file" id="f-df-file" accept=".tsv,.csv,.txt,.gz,.zip,.xlsx,.h5ad,.rds,.mtx" aria-describedby="h-df-file">
+            <div class="hint" id="h-df-file">支持 .tsv .csv .txt .gz .zip .xlsx .h5ad .rds .mtx；单文件上限 5 GiB。上传后的文件名需与所选角色对得上。</div>
+          </div>
+          <div class="msg warn" id="e-df-replace" aria-live="polite"></div>
+          <div class="msg err" id="e-df" role="alert"></div>
+          <div style="display:flex; gap:10px; align-items:center; margin-bottom:14px;">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-df-upload">上传该文件</button>
+            <span class="hint" style="margin:0;" id="df-count"></span>
+          </div>
+          <ul class="summary-list" id="df-list"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Step 3 ============ -->
+    <section class="panel" data-panel="3" aria-labelledby="h-step3">
+      <div class="step-head">
+        <div class="eyebrow">第 3 步 / 共 5 步</div>
+        <h2 id="h-step3">分组设计</h2>
+        <p>定义实验分组，并把每个样本编号归到对应分组。支持 2 组及以上的多阶段设计。</p>
+      </div>
+      <div class="guide">
+        <span class="ico" aria-hidden="true">💡</span>
+        <span><strong>填写引导：</strong>第 1 组默认为基准对照组。若研究「健康 → 轻度 → 重度」这类多阶段演进，请选择「有序阶段演进」并调整顺序。样本编号可直接从 Excel 整列粘贴，系统会自动统计并检查重复。</span>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label for="f-group-mode">分组模式</label>
+          <select id="f-group-mode" name="groupMode">
+            <option value="two_group">二分类对比（2 组，如 对照 vs 疾病）</option>
+            <option value="multi_group">多组无序对比（≥3 组，如 亚型 A / B / C）</option>
+            <option value="ordered_stage">有序阶段演进（≥3 组，如 健康 → 轻度 → 重度）</option>
+          </select>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin: 4px 0 12px;">
+          <div class="card-title" style="margin:0;">分组与样本绑定</div>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-bulk">一键粘贴分组表</button>
+        </div>
+        <div id="bulk-area" style="display:none; margin-bottom:14px;">
+          <label for="f-bulk" class="visually-hidden">批量粘贴分组表</label>
+          <textarea id="f-bulk" rows="5" spellcheck="false" placeholder="每行一组「样本编号,分组名」，例如：&#10;GSM000001,对照组&#10;GSM000002,对照组&#10;GSM000003,实验组…"></textarea>
+          <div class="hint">粘贴后点击「解析并填充」，系统会按分组名自动归类到下方卡片。</div>
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-bulk-apply">解析并填充</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="btn-bulk-cancel">取消</button>
+          </div>
+        </div>
+        <div id="group-list"></div>
+        <button type="button" class="btn btn-add" id="btn-add-group">＋ 新增分组 / 病情阶段</button>
+        <div class="msg err" id="e-groups" role="alert"></div>
+      </div>
+      <div class="card" id="contrast-card" style="display:none;">
+        <div class="card-title">差异对比对（Contrasts）</div>
+        <div class="card-sub">分组数 ≥ 3 时，请明确「谁比谁」。勾选需要的对比，并指定一个主对比对。</div>
+        <div id="contrast-list"></div>
+        <div class="hint">主对比对将用于核心建模。</div>
+      </div>
+    </section>
+
+    <!-- ============ Step 4 ============ -->
+    <section class="panel" data-panel="4" aria-labelledby="h-step4">
+      <div class="step-head">
+        <div class="eyebrow">第 4 步 / 共 5 步</div>
+        <h2 id="h-step4">分析流程</h2>
+        <p>选择一条分析线，并勾选需要的分析步骤。每个步骤都附有功能说明。</p>
+      </div>
+      <div class="guide">
+        <span class="ico" aria-hidden="true">💡</span>
+        <span><strong>填写引导：</strong>分析线由第 2 步的「数据类型」自动锁定（三条线互不交叉）：芯片 / Bulk → 线 1，单细胞 → 线 2，空间转录组 → 线 3。质控步骤已自动锁定，其余按需勾选。若勾选「虚拟敲除」，需指定目标基因。</span>
+      </div>
+      <div class="card">
+        <fieldset style="border:none;">
+          <legend class="card-title" style="margin-bottom:10px;">选择分析线</legend>
+          <div class="line-picker" id="line-picker">
+            <label class="line-opt">
+              <input type="radio" name="lineId" value="line1_bulk">
+              <div class="lo-title">线 1 · GEO Bulk</div>
+              <div class="lo-desc">芯片 / bulk RNA-seq：DEG、WGCNA、富集、PPI、机器学习、外部验证</div>
+              <div class="lo-count" data-count="line1_bulk"></div>
+            </label>
+            <label class="line-opt">
+              <input type="radio" name="lineId" value="line2_scrna">
+              <div class="lo-title">线 2 · 单细胞 + 虚拟敲除</div>
+              <div class="lo-desc">scRNA-seq：聚类注释、组成、DEG、富集、轨迹、通讯、SCENIC、虚拟敲除</div>
+              <div class="lo-count" data-count="line2_scrna"></div>
+            </label>
+            <label class="line-opt">
+              <input type="radio" name="lineId" value="line3_spatial">
+              <div class="lo-title">线 3 · 空间 + 虚拟敲除</div>
+              <div class="lo-desc">空间转录组：空间域、自相关、邻域共现、通讯、反卷积、空间虚拟敲除</div>
+              <div class="lo-count" data-count="line3_spatial"></div>
+            </label>
+          </div>
+        </fieldset>
+        <div class="msg err" id="e-line" role="alert"></div>
+      </div>
+      <div class="card" id="step-card" style="display:none;">
+        <div class="card-title" id="step-card-title">分析步骤</div>
+        <div class="card-sub">带锁图标的步骤为前置质控，不可取消。</div>
+        <div class="step-list" id="step-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">出图版式</div>
+        <div class="card-sub">只提供两种画幅：4:3 适合单栏插图，16:9 适合横向宽幅 / 双栏插图。全部图件按同一画幅出图。</div>
+        <div class="field">
+          <label for="f-layout">画幅</label>
+          <select id="f-layout" name="plotLayoutTemplate" aria-describedby="h-layout">
+            <option value="template_4x3" selected>4:3（图例右侧 · 单栏插图）</option>
+            <option value="template_16x9">16:9（图例底部 · 横向宽幅）</option>
+          </select>
+          <div class="hint" id="h-layout">选中的画幅会随需求单提交，出图时统一套用。</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ Step 5 ============ -->
+    <section class="panel" data-panel="5" aria-labelledby="h-step5">
+      <div class="step-head">
+        <div class="eyebrow">第 5 步 / 共 5 步</div>
+        <h2 id="h-step5">补充材料与提交</h2>
+        <p>可附上参考文献与补充说明，核对信息后提交给对接人；也可下载文件自行发送。</p>
+      </div>
+      <div class="guide">
+        <span class="ico" aria-hidden="true">💡</span>
+        <span><strong>如何使用：</strong>先按需上传参考文献、写好备注，再核对下方摘要，无误后点「提交给对接人」，系统会记录你的需求（参考文献会一并归档）。若提交失败，可点「下载需求文件」保存 <code>.json</code> 后发邮件 / 微信给对接人，或点「复制需求内容」直接粘贴到聊天窗口。</span>
+      </div>
+      <div class="card">
+        <div class="card-title">参考文献（可选，最多 5 篇）</div>
+        <div class="card-sub">上传与研究问题最相关的论文（PDF / Word / 文本 / 压缩包），供对接人在设计分析流程时参考。单篇上限 20MB，累计最多 5 篇；选中后即刻上传，全部上传成功才算数。</div>
+        <label for="f-refs" class="visually-hidden">选择参考文献文件</label>
+        <input type="file" id="f-refs" multiple accept=".pdf,.doc,.docx,.txt,.md,.zip" />
+        <div class="msg err" id="e-refs" role="alert"></div>
+        <ul class="summary-list" id="ref-list"></ul>
+      </div>
+      <div class="card">
+        <div class="card-title">备注 / 分析需求补充</div>
+        <div class="card-sub">写下更详细的研究目的、要解决的科学问题、期望的分析手段或已有结论。越具体越有助于定制分析流程；此处也会参与非肿瘤合规校验。</div>
+        <label for="f-notes" class="visually-hidden">分析需求补充说明</label>
+        <textarea id="f-notes" rows="6" maxlength="4000" placeholder="例如：我们关注 X 组与 Y 组之间的差异表达与通路富集，希望重点说明……"></textarea>
+        <div class="card-sub" style="margin-top:6px;" id="notes-count" aria-live="polite">0 / 4000</div>
+      </div>
+      <div class="card">
+        <div class="card-title">需求摘要</div>
+        <div class="card-sub">生成前请核对。</div>
+        <ul class="summary-list" id="summary"></ul>
+      </div>
+      <div class="card">
+        <div class="card-title">交付物偏好</div>
+        <div class="card-sub">勾选你希望收到的交付内容。</div>
+        <div id="output-list"></div>
+      </div>
+      <div class="banner" id="submit-banner" role="status" aria-live="polite"></div>
+      <div class="card" id="result-card" style="display:none;">
+        <div class="card-title" id="result-title">需求已提交</div>
+        <div class="card-sub" id="result-sub"></div>
+        <div class="out-box" id="result-json"></div>
+        <div class="deliver-actions">
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-download">下载需求文件</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-copy">复制需求内容</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-print">打印 / 存为 PDF</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="form-nav">
+      <button type="button" class="btn btn-ghost" id="btn-prev" disabled>← 上一步</button>
+      <div class="right">
+        <button type="button" class="btn btn-primary" id="btn-next">下一步 →</button>
+        <button type="button" class="btn btn-primary" id="btn-gen" style="display:none;">提交给对接人</button>
+      </div>
+    </div>
+  </form>
+</main>
+
+<!-- 打印 / 存为 PDF 专用视图：屏幕上不显示（CSS display:none），打印前由 JS 按整份需求单重新填满。
+     口诀：导出 PDF 不打印屏幕上这一屏，打印的是"全项目内容 + 生成时刻时间戳"的快照。 -->
+<div id="print-report"></div>
+
+<footer class="site-footer">
+  <p>本页仅用于采集分析需求。点击「提交给对接人」后，需求会记录到对接人处；也可下载文件自行发送。</p>
+  <p style="margin-top:6px;">如需修改，可随时返回对应步骤调整后重新提交。</p>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  // ============================================================
+  // 内置数据（与工作台解耦，本页不调用任何后端接口）
+  // ============================================================
+
+  // 非肿瘤黑名单（与工作台 tumor_blacklist.js 同源）
+  var BL_PATTERNS = [
+    /cancer/i, /tumor/i, /tumour/i, /carcinoma/i, /glioma/i, /sarcoma/i,
+    /lymphoma/i, /leukemia/i, /leukaemia/i, /melanoma/i, /adenocarcinoma/i,
+    /squamous\s*cell\s*carcinoma/i, /immune\s*infiltration/i,
+    /tumor\s*microenvironment/i, /tumour\s*microenvironment/i,
+    /immune\s*checkpoint/i, /PD-?L?1/i, /CTLA-?4/i, /oncogene/i,
+    /tumor\s*suppressor/i, /癌症/i, /肿瘤/i, /癌/i, /免疫浸润/i,
+    /免疫检查点/i, /肿瘤微环境/i, /癌细胞/i
+  ];
+  function checkBlacklist(text) {
+    var t = String(text || '');
+    if (!t.trim()) return [];
+    var hits = [];
+    BL_PATTERNS.forEach(function (re) {
+      var m = t.match(re);
+      if (m) hits.push(m[0]);
+    });
+    return hits.filter(function (v, i, a) { return a.indexOf(v) === i; });
+  }
+
+  // 数据类型 -> 分析线（与工作台、服务端同值枚举；两端解耦，各自持有同一份约定）
+  var DATA_TYPE_LINE = {
+    microarray: 'line1_bulk',
+    bulk_rnaseq: 'line1_bulk',
+    scrna: 'line2_scrna',
+    spatial: 'line3_spatial'
+  };
+  var DATA_TYPE_LABEL = {
+    microarray: '基因芯片（表达谱）',
+    bulk_rnaseq: 'Bulk RNA-seq（转录组测序）',
+    scrna: '单细胞转录组（scRNA-seq）',
+    spatial: '空间转录组（Visium 等）'
+  };
+
+  // 三条分析线步骤
+  var LINE_STEPS = {
+    line1_bulk: ['prep_matrix','qc_matrix','pca_matrix','deg_limma','wgcna_modules','enrichment_bulk','enrichment_figures','ppi_string','key_genes','ml_model','ml_hub_analysis','external_validation','bulk_figures'],
+    line2_scrna: ['ingest_counts','qc_cells','normalize_hvg','integrate_harmony','cluster_umap','annotate_celltypes','scrna_composition','deg_groups','subcluster','enrichment','enrichment_figures','pseudotime','cell_communication','scenic_tf','scenic_figures','tf_activity','virtual_knockout','summarize_dr','target_gene_localization','gsva_pathways','dr_post_analysis','scrna_figures'],
+    line3_spatial: ['ingest_spatial','qc_spots','normalize_hvg','dim_reduce','spatial_domains','spatial_markers','spatial_autocorr','spatial_cooccurrence','spatial_composition','spatial_communication','celltype_annotation','spatial_localization','spatial_knockout','dr_post_analysis','enrichment','enrichment_figures','spatial_figures']
+  };
+
+  // 步骤功能说明
+  var STEP_META = {
+    prep_matrix: { label: 'GEO 数据获取与探针注释', desc: '拉取 GEO 矩阵与 GPL 注释，探针转 Gene Symbol，多探针取中位数', tool: 'GEOquery, Biobase', io: 'expr_genes.tsv, group_map.tsv', note: '训练集与验证集分目录' },
+    qc_matrix: { label: '样本质控', desc: '检出基因数、组内中位相关性，标注离群样本', tool: 'limma, ggplot2', io: 'qc_report.txt, l1_05a/05b', note: '' },
+    pca_matrix: { label: 'PCA 与样本相关性', desc: 'PCA 分组验证 + 样本相关性热图', tool: 'limma, ggplot2', io: 'pca_scores.tsv, l1_01/02', note: '' },
+    deg_limma: { label: '差异表达分析 (DEG)', desc: 'limma 两组比较，火山图 + MA 图', tool: 'limma', io: 'deg_all.tsv, deg_sig.tsv, l1_03/06', note: 'DEG 0 显著时放宽到 nominal p' },
+    wgcna_modules: { label: 'WGCNA 共表达模块', desc: '方差前 5000 基因建网，模块-表型相关性', tool: 'WGCNA', io: 'wgcna_modules.tsv, module_trait.tsv', note: 'nThreads=3 防溢出' },
+    enrichment_bulk: { label: '功能富集 (GO/KEGG/GSEA)', desc: 'GO BP/CC/MF 三本体 GSEA + KEGG ORA/GSEA + 模块 ORA', tool: 'clusterProfiler', io: 'enrichment_gsea_go.tsv, enrichment_kegg.tsv', note: 'KEGG 需外网' },
+    enrichment_figures: { label: '富集出图', desc: '富集条形 top20 双标注', tool: 'matplotlib', io: 'l1_13/14/15/25', note: '' },
+    ppi_string: { label: 'PPI 网络 + Hub 初筛', desc: 'STRING 互作网络 Degree 筛 Top hub', tool: 'STRING API', io: 'ppi_edges.tsv, ppi_hubs.tsv, l1_07/08', note: '需外网 STRING' },
+    key_genes: { label: '交集关键基因', desc: 'DEG ∩ WGCNA 显著模块 ∩ PPI hub', tool: 'pandas', io: 'key_genes.tsv, l1_09', note: '' },
+    ml_model: { label: 'ML 建模 (LR+RF+LOOCV)', desc: '逻辑回归 + 随机森林 LOOCV ROC', tool: 'sklearn', io: 'ml_report.txt, l1_10/11', note: '探索性' },
+    ml_hub_analysis: { label: 'Hub 基因 ML 精筛 + 重要性评估', desc: 'LASSO+RFE+单因素筛选 → RF/GBDT/SHAP/聚类/共表达网络', tool: 'glmnet, sklearn, shap, networkx', io: 'ml_core_hub_genes.tsv, l1_16..26', note: '含 SHAP 瀑布图' },
+    external_validation: { label: '外部验证冻结评估', desc: '冻结模型在独立 GEO 验证集上 ROC', tool: 'pROC', io: 'external_validation_preds.tsv, l1_12', note: '零数据泄漏' },
+    bulk_figures: { label: 'Bulk 出图', desc: '相关性/PCA/火山/MA/topvar/QC 出图', tool: 'matplotlib', io: 'l1_01..06', note: '' },
+    ingest_counts: { label: '单细胞数据读入', desc: '读取 .mtx/.h5ad 原始矩阵', tool: 'Scanpy', io: 'scrna_raw.h5ad', note: '' },
+    qc_cells: { label: '细胞质控', desc: '过滤低质量细胞与双细胞，线粒体百分比', tool: 'Scanpy', io: 'scrna_qc.h5ad', note: '' },
+    normalize_hvg: { label: '标准化与高变基因', desc: 'normalize_total + log1p + HVG 筛选', tool: 'Scanpy', io: 'scrna_norm.h5ad', note: '' },
+    integrate_harmony: { label: '批次校正 (Harmony)', desc: '多样本 Harmony 去批次', tool: 'harmonypy', io: 'scrna_harmony.h5ad', note: '' },
+    cluster_umap: { label: '降维聚类 UMAP', desc: 'PCA → Leiden 聚类 → UMAP 可视化', tool: 'Scanpy', io: 'scrna_clustered.h5ad', note: '' },
+    annotate_celltypes: { label: '细胞类型注释', desc: '基于 marker 的细胞类型注释', tool: 'Scanpy', io: 'scrna_annotated.h5ad', note: '' },
+    scrna_composition: { label: '细胞类型比例/组成分析', desc: '量化各细胞类型丰度消长与统计显著性', tool: 'Scanpy, scipy', io: 'celltype_composition.tsv, l2_05/06', note: '' },
+    deg_groups: { label: '组间差异表达 (DEG)', desc: '固定细胞类型内 Treat vs Control 变化', tool: 'Scanpy', io: 'deg_all_by_celltype.tsv, l2_08/09', note: '' },
+    subcluster: { label: '目标细胞亚群再聚类', desc: '提取核心细胞群重跑 HVG+PCA+聚类', tool: 'Scanpy', io: 'subcluster.h5ad', note: '' },
+    enrichment: { label: '单细胞多维功能富集', desc: 'GO/KEGG/Reactome ORA + GSEA（5 库并行）', tool: 'gseapy', io: 'enrichment_ora.tsv, l2_11/12', note: 'GO BP/CC/MF + KEGG + Reactome' },
+    pseudotime: { label: '拟时序/轨迹分析', desc: '核心亚群状态转换伪时间轨迹', tool: 'Scanpy', io: 'pseudotime.h5ad', note: 'Control 组为起点' },
+    cell_communication: { label: '细胞通讯分析', desc: '配受体互作强度与信号流变化', tool: 'liana', io: 'cellchat_lr.tsv, l2_10', note: '' },
+    scenic_tf: { label: '转录因子调控分析 (SCENIC)', desc: 'GRNBoost2 → cisTarget motif → AUCell regulon 活性', tool: 'pySCENIC', io: 'scenic_regulons.csv, l2_scenic_01/02', note: '--num_workers 3' },
+    scenic_figures: { label: 'SCENIC 出图', desc: 'regulon 活性热图 + 特异性条形', tool: 'matplotlib', io: 'l2_scenic_01/02', note: '' },
+    tf_activity: { label: 'TF 活性打分 (ORA 近似)', desc: 'TF 靶基因 ORA 近似活性打分', tool: 'gseapy', io: 'tf_activity.tsv', note: 'SCENIC 的对照路线' },
+    virtual_knockout: { label: '虚拟敲除 (scTenifoldKnk)', desc: 'WT/Control 矩阵模拟敲除目标基因，输出 DR Genes', tool: 'scTenifoldKnk', io: 'ko_dr_genes.tsv', note: '【需指定目标敲除基因】' },
+    summarize_dr: { label: 'DR 基因汇总', desc: 'DR 基因多运行稳健交集 + 显著性排序', tool: 'pandas', io: 'dr_genes_summary.tsv', note: '' },
+    target_gene_localization: { label: '目标基因表达定位', desc: '敲除基因 ∪ celltype 差异 top5 的表达定位', tool: 'Scanpy', io: 'target_gene_localization.tsv, l2_13', note: '' },
+    gsva_pathways: { label: 'GSVA 通路活性打分', desc: 'pseudobulk → R GSVA → top30 变异通路热图', tool: 'GSVA', io: 'gsva_scores.tsv, l2_14', note: '' },
+    dr_post_analysis: { label: 'DR 后续分析', desc: 'DR 富集(GSEA) + 调控网络 + DR∩DEG∩marker 交集', tool: 'gseapy, networkx', io: 'dr_enrichment.tsv, l2_15/16/17', note: 'DR ≠ DEG' },
+    scrna_figures: { label: '单细胞出图', desc: 'UMAP×4/组成×14/marker/DEG 火山×7/计数/PCA', tool: 'matplotlib', io: 'l2_01..10', note: '' },
+    ingest_spatial: { label: '空间数据读入', desc: '读取空间表达矩阵与坐标', tool: 'Scanpy', io: 'spatial_raw.h5ad', note: '' },
+    qc_spots: { label: 'Spot 质控', desc: '过滤低质量 spot，线粒体百分比', tool: 'Scanpy', io: 'spatial_qc.h5ad', note: '' },
+    dim_reduce: { label: '降维 (PCA/UMAP)', desc: 'PCA → UMAP 空间可视化', tool: 'Scanpy', io: 'spatial_dimred.h5ad', note: '' },
+    spatial_domains: { label: '空间域识别', desc: '转录谱 + 空间坐标识别解剖/病理结构域', tool: 'Scanpy (Leiden)', io: 'spatial_domains.h5ad', note: '域身份样本私有' },
+    spatial_markers: { label: '空间域 Marker', desc: '各域 wilcoxon top200 marker', tool: 'Scanpy', io: 'domain_markers.tsv', note: '' },
+    spatial_autocorr: { label: '空间自相关 (Moran\'s I)', desc: '全切片基因 Moran\'s I 空间聚集梯度', tool: 'Squidpy', io: 'gene_autocorr.tsv', note: '' },
+    spatial_cooccurrence: { label: '空间邻域/共现', desc: '微米尺度物理毗邻偏好', tool: 'Squidpy', io: 'domain_cooccurrence.tsv', note: '' },
+    spatial_composition: { label: '区域组成差异', desc: '不同切片/微区域的结构组成变化', tool: 'Scanpy, scipy', io: 'sample_composition.tsv', note: '' },
+    spatial_communication: { label: '空间通讯分析', desc: 'KNN 邻域 domain 对级 LR 强度打分', tool: 'liana', io: 'sample_communication.tsv', note: '' },
+    celltype_annotation: { label: '反卷积/细胞类型注释', desc: '域 marker 签名 → NNLS 逐 spot 解卷积', tool: 'scipy.nnls, Scanpy', io: 'celltype_scores.tsv, l3_14/15', note: '轻量方案' },
+    spatial_localization: { label: '目标基因空间定位', desc: '目标基因在空间域中的表达分布', tool: 'Scanpy', io: 'gene_localization.tsv', note: '' },
+    spatial_knockout: { label: '空间虚拟敲除', desc: 'WT/Control 空间矩阵模拟敲除，输出 DR Genes', tool: 'scTenifoldKnk', io: 'ko_dr_genes.tsv', note: '【需指定目标敲除基因】' },
+    spatial_figures: { label: '空间出图', desc: '域图/目标基因/KO DR 逐样本 + 域统计', tool: 'matplotlib', io: 'l3_*_*', note: '逐样本画' }
+  };
+
+  var OUTPUT_DEFS = [
+    ['web_preview', 'Web 预览图集（300 DPI PNG）', '无头渲染、紧凑裁剪、英文标签，可直接用于网页预览与放大查看。', 'must'],
+    ['tsv_tables', '全量统计结果表（.tsv）', '完整基因列表、p 值、log2FC、SHAP 值、DR 基因排名，Excel 可直接打开。', 'must'],
+    ['pdf_vector', '发表级矢量图副本（.pdf / .svg）', '关键图件额外输出矢量副本，供论文排版无损缩放。', 'opt'],
+    ['checkpoint_archive', '中间态检查点（.rds / .h5ad）', '保留清洗后对象与冻结模型，便于后续追加分析。', 'rec'],
+    ['audit_ledger', '结构化审计台账（.json）', '每步耗时、输入输出校验码，严格区分 DEG 与 DR Genes。', 'must']
+  ];
+
+  // ============================================================
+  // 状态
+  // ============================================================
+  var state = {
+    step: 1,
+    groups: [
+      { id: 'g1', name: 'Control', role: 'reference', order: 0, color: '#3B4992', samples: '' },
+      { id: 'g2', name: 'Disease', role: 'disease_stage', order: 1, color: '#EE0000', samples: '' }
+    ],
+    groupSeq: 2,
+    // 数据集 ↔ 平台配对表：多组数据上传时，必须逐行说清「哪个 GPL 属于哪个 GSE」，
+    // 扁平的两个编号数组表达不了这层对应关系。
+    datasets: [
+      { id: 'd1', gse: '', gpl: '', role: 'train' },
+      { id: 'd2', gse: '', gpl: '', role: 'validation' }
+    ],
+    datasetSeq: 2,
+    // 参考文献：选中即上传，上传成功的才进这个数组（结构 = 服务端返回的 {name, path, size}）
+    refs: [],
+    // 上传会话 id：同一批参考文献与数据文件归到 inbox/{refs,uploads}/<sid>/ 一个目录下，便于整体归档。
+    // 服务端 buildPackagePlan 用 payload.uploadSid 推导 refs/<sid>/ 来源路径，故两边必须同值。
+    uploadSid: newUploadSid(),
+    // 数据来源模式：PUBLIC_DB（既有，按数据集编号从公共库获取）/ IN_HOUSE_UPLOAD（自有数据上传）
+    dataSourceMode: 'PUBLIC_DB',
+    // 已上传的数据文件（结构 = 服务端返回的 {name→原始文件名, path, size} + 角色与绑定编号）
+    dataFiles: [],
+    contrasts: [],
+    primary: '',
+    selected: {},
+    output: { web_preview: true, tsv_tables: true, pdf_vector: false, checkpoint_archive: true, audit_ledger: true }
+  };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
+
+  // 上传会话 id：形如 u + 12 位十六进制。服务端 SID_RE = /^[A-Za-z0-9_-]{6,64}$/，
+  // 共 13 位，落在区间内。参考文献与数据文件共用同一个 sid——服务端归档时用
+  // payload.uploadSid 推导 refs/<sid>/ 来源路径，两边不一致会让参考文献「缺失或越界」。
+  function newUploadSid() {
+    var out = 'u';
+    if (window.crypto && window.crypto.getRandomValues) {
+      var bytes = new Uint8Array(6);
+      window.crypto.getRandomValues(bytes);
+      for (var i = 0; i < bytes.length; i += 1) out += ('0' + bytes[i].toString(16)).slice(-2);
+      return out;
+    }
+    for (var j = 0; j < 12; j += 1) out += '0123456789abcdef'.charAt(Math.floor(Math.random() * 16));
+    return out;
+  }
+
+  function parseSamples(text) {
+    return String(text || '').split(/[\s,;，；]+/).map(function (s) { return s.trim(); }).filter(Boolean);
+  }
+  function el(tag, attrs, children) {
+    var n = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) {
+      if (k === 'class') n.className = attrs[k];
+      else if (k === 'text') n.textContent = attrs[k];
+      else if (k.indexOf('on') === 0) n.addEventListener(k.slice(2), attrs[k]);
+      else n.setAttribute(k, attrs[k]);
+    });
+    (children || []).forEach(function (c) { if (c) n.appendChild(c); });
+    return n;
+  }
+  function showMsg(id, text, cls) {
+    var m = $(id); if (!m) return;
+    m.textContent = text || '';
+    m.className = 'msg ' + (cls || 'err') + (text ? ' is-shown' : '');
+  }
+  function val(id) { var e = $(id); return e ? e.value.trim() : ''; }
+
+  // ============================================================
+  // 步骤导航
+  // ============================================================
+  function goStep(n, push) {
+    n = Math.max(1, Math.min(5, n));
+    state.step = n;
+    $$('.panel').forEach(function (p) { p.classList.toggle('is-active', Number(p.dataset.panel) === n); });
+    $$('#progress li').forEach(function (li) {
+      var s = Number(li.dataset.step);
+      if (s === n) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
+      li.dataset.done = s < n ? 'true' : 'false';
+    });
+    $('btn-prev').disabled = n === 1;
+    $('btn-next').style.display = n === 5 ? 'none' : '';
+    $('btn-gen').style.display = n === 5 ? '' : 'none';
+    if (n === 5) renderSummary();
+    if (push !== false) {
+      var h = document.querySelector('.panel.is-active h2');
+      if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
+    }
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }
+
+  // ============================================================
+  // 黑名单（本地正则，无网络）
+  // ============================================================
+  function blCheck(text, target) {
+    var hits = checkBlacklist(text);
+    if (hits.length) showMsg(target, '⚠ 含违规词：' + hits.join('、') + '。本平台专精非肿瘤领域。', 'warn');
+    else showMsg(target, '', 'warn');
+    refreshBlBlock();
+  }
+  function refreshBlBlock() {
+    var hits = [];
+    ['e-name', 'e-desc', 'e-disease'].forEach(function (id) {
+      var m = $(id);
+      if (m && m.classList.contains('is-shown') && m.textContent) hits.push(m.textContent.replace('⚠ ', ''));
+    });
+    var box = $('bl-block');
+    if (hits.length) { box.style.display = 'block'; box.textContent = '提交前请修改：' + hits.join('；'); }
+    else { box.style.display = 'none'; box.textContent = ''; }
+  }
+  function blHit() {
+    return ['e-name', 'e-desc', 'e-disease'].some(function (id) {
+      var m = $(id); return m && m.classList.contains('is-shown') && m.textContent;
+    });
+  }
+
+  // ============================================================
+  // 分组
+  // ============================================================
+  function groupDupIds() {
+    var seen = {}, dup = {};
+    state.groups.forEach(function (g) {
+      parseSamples(g.samples).forEach(function (s) { if (seen[s]) dup[s] = true; else seen[s] = true; });
+    });
+    return dup;
+  }
+  // 数据集 ↔ 平台配对表。多组数据上传时必须逐行标清「哪个 GPL 属于哪个 GSE」：
+  // 不同平台走不同探针注释与归一化，配对错了预处理就跑偏。
+  function renderDatasets() {
+    var wrap = $('dataset-list'); wrap.innerHTML = '';
+    state.datasets.forEach(function (d, idx) {
+      var head = el('div', { class: 'group-head' }, [
+        el('span', { class: 'g-title', text: '数据集 ' + (idx + 1) })
+      ]);
+      var del = el('button', { type: 'button', class: 'btn-del', text: '删除', 'aria-label': '删除数据集 ' + (idx + 1) });
+      del.addEventListener('click', function () {
+        if (state.datasets.length <= 1) return;
+        state.datasets.splice(idx, 1); renderDatasets(); renderSummary();
+      });
+      head.appendChild(del);
+
+      var gseField = el('div', { class: 'field' }, [
+        el('label', { for: 'd-gse-' + d.id, text: '数据集编号（GSE）' }),
+        el('input', { type: 'text', id: 'd-gse-' + d.id, placeholder: 'GSE00000…', spellcheck: 'false', autocapitalize: 'off' })
+      ]);
+      var gseIn = gseField.querySelector('input');
+      gseIn.value = d.gse;
+      gseIn.addEventListener('input', function (e) { d.gse = e.target.value; showMsg('e-datasets', '', 'err'); renderDfBinds(); });
+
+      var gplField = el('div', { class: 'field' }, [
+        el('label', { for: 'd-gpl-' + d.id, text: '平台编号（GPL）' }),
+        el('input', { type: 'text', id: 'd-gpl-' + d.id, placeholder: 'GPL0000…（测序数据可留空）', spellcheck: 'false', autocapitalize: 'off' })
+      ]);
+      var gplIn = gplField.querySelector('input');
+      gplIn.value = d.gpl;
+      gplIn.addEventListener('input', function (e) { d.gpl = e.target.value; });
+
+      var roleField = el('div', { class: 'field' }, [el('label', { for: 'd-role-' + d.id, text: '用途' })]);
+      var roleSel = el('select', { id: 'd-role-' + d.id });
+      [['train', '训练集（建模 / 特征筛选）'], ['validation', '验证集（独立验证）']].forEach(function (o) {
+        var op = el('option', { value: o[0], text: o[1] });
+        if (d.role === o[0]) op.selected = true;
+        roleSel.appendChild(op);
+      });
+      roleSel.addEventListener('change', function (e) { d.role = e.target.value; renderSummary(); renderDfBinds(); });
+      roleField.appendChild(roleSel);
+
+      wrap.appendChild(el('div', { class: 'group-card' }, [
+        head, el('div', { class: 'grid-3' }, [gseField, gplField, roleField])
+      ]));
+    });
+  }
+
+  function renderGroups() {
+    var wrap = $('group-list'); wrap.innerHTML = '';
+    var dups = groupDupIds();
+    var ordered = $('f-group-mode').value === 'ordered_stage';
+    state.groups.forEach(function (g, idx) {
+      var ids = parseSamples(g.samples);
+      var hasDup = ids.some(function (s) { return dups[s]; });
+      var swatch = el('span', { class: 'group-swatch' }); swatch.style.background = g.color;
+      var head = el('div', { class: 'group-head' }, [
+        swatch,
+        el('span', { class: 'g-title', text: '分组 ' + (idx + 1) }),
+        el('span', { class: 'group-count', text: '已录入 ' + ids.length + ' 个样本' })
+      ]);
+      if (state.groups.length > 2) {
+        var del = el('button', { type: 'button', class: 'btn-del', text: '删除', 'aria-label': '删除分组 ' + (idx + 1) });
+        del.addEventListener('click', function () { state.groups.splice(idx, 1); renderGroups(); renderContrasts(); });
+        head.appendChild(del);
+      }
+      var nameField = el('div', { class: 'field' }, [
+        el('label', { for: 'g-name-' + g.id, text: '分组名称' }),
+        el('input', { type: 'text', id: 'g-name-' + g.id, value: g.name, placeholder: '例如：对照组…' })
+      ]);
+      nameField.querySelector('input').addEventListener('input', function (e) { g.name = e.target.value; renderContrasts(); });
+
+      var roleField = el('div', { class: 'field' }, [el('label', { for: 'g-role-' + g.id, text: '分组角色' })]);
+      var roleSel = el('select', { id: 'g-role-' + g.id });
+      [['reference', '基准对照组（Reference）'], ['disease_stage', '疾病 / 实验组']].forEach(function (o) {
+        var op = el('option', { value: o[0], text: o[1] });
+        if (g.role === o[0]) op.selected = true;
+        roleSel.appendChild(op);
+      });
+      roleSel.addEventListener('change', function (e) {
+        var v = e.target.value;
+        if (v === 'reference') state.groups.forEach(function (x) { if (x !== g) x.role = 'disease_stage'; });
+        g.role = v; renderGroups();
+      });
+      roleField.appendChild(roleSel);
+      var fields = [nameField, roleField];
+      if (ordered) {
+        var orderField = el('div', { class: 'field' }, [
+          el('label', { for: 'g-order-' + g.id, text: '阶段顺序' }),
+          el('input', { type: 'number', id: 'g-order-' + g.id, value: String(g.order), min: '0', inputmode: 'numeric' })
+        ]);
+        orderField.querySelector('input').addEventListener('input', function (e) { g.order = Number(e.target.value) || 0; });
+        fields.push(orderField);
+      }
+      var colorField = el('div', { class: 'field' }, [el('label', { for: 'g-color-' + g.id, text: '标记色' })]);
+      var colorIn = el('input', { type: 'color', id: 'g-color-' + g.id, value: g.color });
+      colorIn.style.cssText = 'width:52px;height:38px;padding:2px;cursor:pointer;';
+      colorIn.addEventListener('input', function (e) { g.color = e.target.value; swatch.style.background = e.target.value; });
+      colorField.appendChild(colorIn);
+      fields.push(colorField);
+      var grid = el('div', { class: 'grid-3' }, fields);
+      var sampleField = el('div', { class: 'field' }, [
+        el('label', { for: 'g-samples-' + g.id, text: '样本编号' }),
+        el('textarea', { id: 'g-samples-' + g.id, rows: 3, placeholder: '粘贴归属本组的样本编号，如 GSM000001, GSM000002…（逗号 / 空格 / 换行分隔）' })
+      ]);
+      sampleField.querySelector('textarea').value = g.samples;
+      sampleField.querySelector('textarea').addEventListener('input', function (e) {
+        g.samples = e.target.value;
+        // 不能在这里调 renderGroups()：它会 wrap.innerHTML = '' 重建全部卡片，
+        // 正在输入的那个 textarea 被销毁，逐字符输入就丢焦点（粘贴只触发一次 input 所以看不出来）。
+        // 改为就地刷新样本计数、跨组重复高亮与提示（见 refreshGroupSampleUi）。
+        refreshGroupSampleUi();
+      });
+      var card = el('div', { class: 'group-card' + (hasDup ? ' has-dup' : '') }, [head, grid, sampleField]);
+      if (hasDup) card.appendChild(el('div', { class: 'field-error', text: '⚠ 该组存在与其他分组重复的样本编号，请检查。' }));
+      wrap.appendChild(card);
+    });
+    var anyDup = Object.keys(dups).length > 0;
+    showMsg('e-groups', anyDup ? '⚠ 样本编号跨组重复：' + Object.keys(dups).join('、') : '', 'err');
+  }
+
+  /**
+   * 样本编号输入时的就地刷新：只改已存在的卡片内的计数文字、has-dup 高亮与重复提示行，
+   * 不重建卡片（重建会销毁正在输入的元素 → 逐字符丢焦点，坑见 con_hf/踩坑台账.md #145）。
+   * 卡片与 state.groups 按下标一一对应（renderGroups 顺序 append，无重排）。
+   */
+  function refreshGroupSampleUi() {
+    var wrap = $('group-list');
+    var dups = groupDupIds();
+    state.groups.forEach(function (g, idx) {
+      var card = wrap.children[idx];
+      if (!card) return;
+      var ids = parseSamples(g.samples);
+      var count = card.querySelector('.group-count');
+      if (count) count.textContent = '已录入 ' + ids.length + ' 个样本';
+      var hasDup = ids.some(function (s) { return dups[s]; });
+      card.classList.toggle('has-dup', hasDup);
+      var err = card.querySelector('.field-error');
+      if (hasDup && !err) {
+        card.appendChild(el('div', { class: 'field-error', text: '⚠ 该组存在与其他分组重复的样本编号，请检查。' }));
+      } else if (!hasDup && err) {
+        err.remove();
+      }
+    });
+    var anyDup = Object.keys(dups).length > 0;
+    showMsg('e-groups', anyDup ? '⚠ 样本编号跨组重复：' + Object.keys(dups).join('、') : '', 'err');
+  }
+
+  function renderContrasts() {
+    var named = state.groups.filter(function (g) { return g.name.trim(); });
+    var card = $('contrast-card');
+    if (named.length < 3) { card.style.display = 'none'; state.contrasts = []; return; }
+    card.style.display = '';
+    var pairs = [];
+    for (var i = 0; i < named.length; i++)
+      for (var j = 0; j < named.length; j++)
+        if (i !== j && named[j].role === 'reference') pairs.push([named[i], named[j]]);
+    for (var a = 0; a < named.length; a++)
+      for (var b = a + 1; b < named.length; b++)
+        if (named[a].role !== 'reference' && named[b].role !== 'reference') pairs.push([named[b], named[a]]);
+    var seen = {};
+    state.contrasts = pairs.filter(function (p) {
+      var k = p[0].name + '|' + p[1].name;
+      if (seen[k]) return false; seen[k] = true; return true;
+    }).map(function (p) {
+      var ex = state.contrasts.find(function (c) { return c.case === p[0].name && c.ctrl === p[1].name; });
+      return { name: p[0].name + '_vs_' + p[1].name, case: p[0].name, ctrl: p[1].name, enabled: ex ? ex.enabled : true };
+    });
+    var wrap = $('contrast-list'); wrap.innerHTML = '';
+    state.contrasts.forEach(function (c, idx) {
+      var row = el('div', { class: 'contrast-row' });
+      var cb = el('input', { type: 'checkbox', id: 'ct-' + idx }); cb.checked = c.enabled;
+      cb.addEventListener('change', function () { c.enabled = cb.checked; });
+      var lbl = el('label', { for: 'ct-' + idx, class: 'c-name', text: c.name });
+      lbl.style.flex = '1'; lbl.style.cursor = 'pointer';
+      var radio = el('input', { type: 'radio', name: 'primaryContrast', id: 'pr-' + idx, value: c.name });
+      radio.checked = state.primary === c.name;
+      radio.addEventListener('change', function () { state.primary = c.name; });
+      var rlbl = el('label', { for: 'pr-' + idx, text: '主对比' });
+      rlbl.style.cssText = 'font-size:12px;color:#64748b;cursor:pointer;';
+      row.appendChild(cb); row.appendChild(lbl); row.appendChild(radio); row.appendChild(rlbl);
+      wrap.appendChild(row);
+    });
+    if (!state.primary && state.contrasts.length) state.primary = state.contrasts[0].name;
+  }
+
+  // ============================================================
+  // 分析线 + 步骤
+  // ============================================================
+  function renderLineCounts() {
+    $$('[data-count]').forEach(function (n) {
+      var cnt = (LINE_STEPS[n.dataset.count] || []).length;
+      n.textContent = cnt + ' 个可分析步骤';
+    });
+  }
+  function renderSteps(line) {
+    var card = $('step-card'), list = $('step-list');
+    var steps = LINE_STEPS[line] || [];
+    if (!line || !steps.length) { card.style.display = 'none'; return; }
+    card.style.display = '';
+    $('step-card-title').textContent = '分析步骤（' + steps.length + ' 个）';
+    list.innerHTML = '';
+    steps.forEach(function (s) {
+      var meta = STEP_META[s] || {};
+      var isQC = s.toLowerCase().indexOf('qc') >= 0 || s.toLowerCase().indexOf('ingest') >= 0;
+      var isKO = s.toLowerCase().indexOf('knockout') >= 0;
+      if (isQC) state.selected[s] = true;
+      var cb = el('input', { type: 'checkbox', id: 'st-' + s });
+      cb.checked = !!state.selected[s]; cb.disabled = isQC;
+      cb.addEventListener('change', function () { state.selected[s] = cb.checked; if (isKO) toggleKO(s, cb.checked); });
+      var labelEl = el('span', { class: 'st-label', text: (meta.label || s) });
+      if (isQC) labelEl.appendChild(el('span', { class: 'lock-badge', text: '🔒 前置必选' }));
+      var body = el('div', { class: 'st-body' }, [labelEl]);
+      if (meta.desc) body.appendChild(el('div', { class: 'st-desc', text: meta.desc }));
+      var metaRow = el('div', { class: 'st-meta' });
+      if (meta.tool) metaRow.appendChild(el('span', {}, [el('b', { text: '工具 ' }), el('span', { text: meta.tool })]));
+      if (meta.io) metaRow.appendChild(el('span', {}, [el('b', { text: '产物 ' }), el('span', { text: meta.io })]));
+      if (metaRow.childNodes.length) body.appendChild(metaRow);
+      if (meta.note) body.appendChild(el('span', { class: 'st-note', text: meta.note }));
+      var head = el('div', { class: 'st-head' }, [cb, body]);
+      list.appendChild(el('div', { class: 'step-item' + (isQC ? ' locked' : '') }, [head]));
+    });
+  }
+  function toggleKO(step, on) {
+    var existing = document.getElementById('ko-box-' + step);
+    if (!on) { if (existing) existing.remove(); return; }
+    if (existing) return;
+    var box = el('div', { class: 'field', id: 'ko-box-' + step, style: 'margin:10px 0 0 27px;' }, [
+      el('label', { for: 'ko-' + step, text: '目标敲除基因（必填）' }),
+      el('input', { type: 'text', id: 'ko-' + step, placeholder: '例如：某目标基因…', spellcheck: 'false' })
+    ]);
+    document.getElementById('st-' + step).closest('.step-item').appendChild(box);
+  }
+
+  // ============================================================
+  // 交付物
+  // ============================================================
+  function renderOutputs() {
+    var wrap = $('output-list'); wrap.innerHTML = '';
+    OUTPUT_DEFS.forEach(function (d) {
+      var key = d[0], title = d[1], desc = d[2], tag = d[3];
+      var cb = el('input', { type: 'checkbox', id: 'out-' + key }); cb.checked = !!state.output[key];
+      cb.addEventListener('change', function () { state.output[key] = cb.checked; renderSummary(); });
+      var tagEl = el('span', { class: 'tag ' + tag, text: tag === 'must' ? '必选' : tag === 'opt' ? '可选' : '推荐' });
+      var titleEl = el('span', { class: 'ck-title', text: title }); titleEl.appendChild(tagEl);
+      wrap.appendChild(el('label', { class: 'check', for: 'out-' + key }, [
+        cb, el('div', { class: 'ck-body' }, [titleEl, el('div', { class: 'ck-desc', text: desc })])
+      ]));
+    });
+  }
+
+  // ============================================================
+  // 参考文献上传（选中即刻逐篇上传，成功才计入 state.refs）
+  // ============================================================
+  var REF_MAX_FILES = 5;
+  var REF_MAX_BYTES = 20 * 1024 * 1024;
+  var REF_EXT = ['.pdf', '.doc', '.docx', '.txt', '.md', '.zip'];
+
+  function refExt(name) {
+    var i = String(name || '').lastIndexOf('.');
+    return i < 0 ? '' : String(name).slice(i).toLowerCase();
+  }
+
+  function renderRefs() {
+    var ul = $('ref-list'); ul.innerHTML = '';
+    state.refs.forEach(function (r, idx) {
+      var del = el('button', { type: 'button', class: 'ref-del', text: '移除', 'aria-label': '移除参考文献 ' + r.name });
+      del.addEventListener('click', function () {
+        state.refs.splice(idx, 1); renderRefs(); renderSummary();
+      });
+      ul.appendChild(el('li', {}, [
+        el('span', { class: 'k', text: (idx + 1) + '. ' + r.name }),
+        el('span', { class: 'v' }, [
+          el('span', { text: Math.max(1, Math.round(r.size / 1024)) + ' KB' }),
+          el('span', { text: ' ' }), del
+        ])
+      ]));
+    });
+  }
+
+  function uploadRefs(fileList) {
+    var incoming = Array.prototype.slice.call(fileList || []);
+    if (!incoming.length) return;
+    var room = REF_MAX_FILES - state.refs.length;
+    if (incoming.length > room) {
+      showMsg('e-refs', '最多 5 篇参考文献：当前已上传 ' + state.refs.length + ' 篇，本次只收前 ' + Math.max(room, 0) + ' 篇', 'err');
+      incoming = incoming.slice(0, Math.max(room, 0));
+    }
+    if (!incoming.length) return;
+    var skipped = [];
+    var queue = incoming.filter(function (f) {
+      if (REF_EXT.indexOf(refExt(f.name)) < 0) { skipped.push(f.name + '（格式不支持）'); return false; }
+      if (f.size > REF_MAX_BYTES) { skipped.push(f.name + '（超过 20MB）'); return false; }
+      return true;
+    });
+    if (skipped.length) showMsg('e-refs', '已跳过：' + skipped.join('；'), 'err');
+    if (!queue.length) return;
+
+    var done = 0;
+    var chain = Promise.resolve();
+    queue.forEach(function (f, i) {
+      chain = chain.then(function () {
+        showMsg('e-refs', '上传中 ' + (i + 1) + '/' + queue.length + '：' + f.name, 'warn');
+        return fetch('/api/references?sid=' + encodeURIComponent(state.uploadSid) + '&name=' + encodeURIComponent(f.name), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/octet-stream' },
+          body: f
+        }).then(function (res) {
+          return res.json().catch(function () { return {}; }).then(function (body) {
+            if (!res.ok || !body.ok) throw new Error(body.error || ('HTTP ' + res.status));
+            state.refs.push({ name: body.name, path: body.path, size: body.size });
+            done += 1;
+            renderRefs();
+          });
+        });
+      });
+    });
+    chain.then(function () {
+      showMsg('e-refs', '已上传 ' + done + ' 篇，累计 ' + state.refs.length + ' / ' + REF_MAX_FILES + ' 篇', 'warn');
+      renderRefs(); renderSummary();
+    }).catch(function (e) {
+      showMsg('e-refs', '上传失败：' + (e && e.message ? e.message : String(e)) + '（已成功的 ' + done + ' 篇保留）', 'err');
+      renderRefs(); renderSummary();
+    });
+  }
+
+  function updateNotesCount() {
+    $('notes-count').textContent = ($('f-notes').value || '').length + ' / 4000';
+  }
+
+  // ============================================================
+  // 数据文件上传（IN_HOUSE_UPLOAD 自有数据）
+  // 契约与 portal/lib/archive.mjs、portal/serve.mjs 逐条对齐（两端解耦，各自持一份同值副本）：
+  //   POST /api/datafiles?sid&role&bind&name，请求体为文件二进制裸流（非 multipart）
+  // 服务端在 /api/submit 时经 validateDataFiles + buildPackagePlan 归档成
+  // PKG_<时间戳>_<项目名>/raw_data/<角色>__<绑定>__<原名>。
+  // ============================================================
+  var DATA_ROLES = ['train_matrix', 'val_matrix', 'sample_sheet', 'group_map', 'platform_annotation', 'other'];
+  var DATA_ROLE_LABEL = {
+    train_matrix: '训练集表达矩阵',
+    val_matrix: '验证集表达矩阵',
+    sample_sheet: '样本信息表',
+    group_map: '分组映射表',
+    platform_annotation: '平台注解（GPL）',
+    other: '其他补充文件'
+  };
+  var DATA_ROLE_OPTIONS = [
+    ['train_matrix', '训练集表达矩阵（必绑训练集 GSE）'],
+    ['val_matrix', '验证集表达矩阵（必绑验证集 GSE）'],
+    ['sample_sheet', '样本信息表（请绑训练集 GSE）'],
+    ['group_map', '分组映射表（请绑训练集 GSE）'],
+    ['platform_annotation', '平台注解 / GPL（可不绑）'],
+    ['other', '其他补充文件（可不绑，最多 5 个）']
+  ];
+  var DATA_EXT = ['.tsv', '.csv', '.txt', '.gz', '.zip', '.xlsx', '.h5ad', '.rds', '.mtx'];
+  // 与服务端 portal/lib/archive.mjs 的 MAX_DATA_BYTES 保持一致（2026-10-20 起 5 GiB）；
+  // 服务端另支持 PORTAL_MAX_DATA_BYTES 环境变量覆盖，若运维改过服务端默认值，这里要同步改。
+  var MAX_DATA_BYTES = 5 * 1024 * 1024 * 1024;
+  // 与服务端 portal/lib/archive.mjs 的 MAX_DATA_FILES_PER_ROLE 保持一致（2026-10-20 起 5）；
+  // 仅约束 other 角色，其余角色由绑定策略硬性每角色 1 个。
+  var MAX_DATA_FILES_PER_ROLE = 5;
+  // 绑定策略（与服务端 validateDataFiles 的 PUBLIC_DB 分支同规则）：
+  //   train      必绑，且只能是训练集 GSE
+  //   validation 必绑，且只能是验证集 GSE
+  //   train_soft 请绑训练集 GSE，也可不绑
+  //   none       可不绑（绑了则必须是已填写的数据集 GSE）
+  var ROLE_BIND_POLICY = {
+    train_matrix: 'train',
+    val_matrix: 'validation',
+    sample_sheet: 'train_soft',
+    group_map: 'train_soft',
+    platform_annotation: 'none',
+    other: 'none'
+  };
+  var ROLE_BIND_HINT = {
+    train_matrix: '必须绑定训练集 GSE（上方用途为「训练集」的那一行）。',
+    val_matrix: '必须绑定验证集 GSE（上方用途为「验证集」的行）。',
+    sample_sheet: '请绑定训练集 GSE；该表同时适用于多个数据集时可不绑。',
+    group_map: '请绑定训练集 GSE；该表同时适用于多个数据集时可不绑。',
+    platform_annotation: '可不绑定；文件名含 GPL 编号时需与绑定编号一致。',
+    other: '可不绑定；文件名含 GSE / GPL 编号时需与绑定编号一致；最多 5 个。'
+  };
+
+  function currentMode() {
+    var r = document.querySelector('input[name="dataSourceMode"]:checked');
+    return r ? r.value : 'PUBLIC_DB';
+  }
+  function gseList(role) {
+    return state.datasets.filter(function (d) {
+      return d.gse.trim() && (!role || d.role === role);
+    }).map(function (d) { return d.gse.trim(); });
+  }
+  function dfUploaded(role) {
+    return state.dataFiles.filter(function (f) { return f.role === role; });
+  }
+
+  function renderDfRoles() {
+    var sel = $('f-df-role');
+    var prev = sel.value;
+    sel.innerHTML = '';
+    sel.appendChild(el('option', { value: '', text: '请选择文件角色…' }));
+    DATA_ROLE_OPTIONS.forEach(function (o) {
+      var role = o[0];
+      var done = dfUploaded(role).length;
+      var label = o[1];
+      if (role === 'other') {
+        if (done) label += '（已传 ' + done + '/' + MAX_DATA_FILES_PER_ROLE + '）';
+      } else if (done) {
+        label += '（已上传，再次上传将替换）';
+      }
+      var op = el('option', { value: role, text: label });
+      // other 满 3 个后无可做的合法动作，禁用；其余角色保持可选以便替换
+      if (role === 'other' && done >= MAX_DATA_FILES_PER_ROLE) op.disabled = true;
+      sel.appendChild(op);
+    });
+    if (prev && DATA_ROLES.indexOf(prev) >= 0
+      && !(prev === 'other' && dfUploaded('other').length >= MAX_DATA_FILES_PER_ROLE)) {
+      sel.value = prev;
+    }
+  }
+
+  function renderDfBinds() {
+    var sel = $('f-df-bind');
+    var role = $('f-df-role').value;
+    var prev = sel.value;
+    var policy = ROLE_BIND_POLICY[role] || '';
+    sel.innerHTML = '';
+    if (!role) {
+      sel.disabled = true;
+      sel.appendChild(el('option', { value: '', text: '请先选择文件角色' }));
+      $('h-df-bind').textContent = '角色决定可绑定的编号范围。';
+      $('h-df-role').textContent = '';
+      return;
+    }
+    sel.disabled = false;
+    var list = policy === 'train' ? gseList('train')
+      : policy === 'validation' ? gseList('validation')
+        : policy === 'train_soft' ? gseList('train')
+          : gseList('');
+    if (!list.length) {
+      sel.appendChild(el('option', { value: '', text: policy === 'validation' ? '（上方未填验证集 GSE）' : '（上方未填数据集 GSE）' }));
+    }
+    list.forEach(function (gse) {
+      var row = state.datasets.filter(function (d) { return d.gse.trim() === gse; })[0] || {};
+      sel.appendChild(el('option', { value: gse, text: gse + '（' + (row.role === 'validation' ? '验证集' : '训练集') + '）' }));
+    });
+    if (policy === 'train_soft' || policy === 'none') {
+      sel.appendChild(el('option', { value: '', text: '不绑定编号' }));
+    }
+    if (prev && Array.prototype.some.call(sel.options, function (o) { return o.value === prev; })) sel.value = prev;
+    $('h-df-role').textContent = ROLE_BIND_HINT[role] || '';
+    $('h-df-bind').textContent = (policy === 'train' || policy === 'validation')
+      ? '必填：只能选' + (policy === 'train' ? '训练集' : '验证集') + ' GSE（来自上方「数据集 ↔ 平台配对」）。'
+      : '可不绑定；一旦绑定，文件名里的 GSE / GPL 编号必须与它一致。';
+  }
+
+  function renderDfList() {
+    var ul = $('df-list');
+    ul.innerHTML = '';
+    state.dataFiles.forEach(function (f, idx) {
+      var del = el('button', { type: 'button', class: 'ref-del', text: '删除', 'aria-label': '删除数据文件 ' + f.name });
+      del.addEventListener('click', function () {
+        state.dataFiles.splice(idx, 1);
+        showMsg('e-df', '', 'err');
+        updateDfUi();
+        renderSummary();
+      });
+      ul.appendChild(el('li', {}, [
+        el('span', { class: 'k', text: (DATA_ROLE_LABEL[f.role] || f.role) + (f.bind ? ' · ' + f.bind : ' · 未绑定') }),
+        el('span', { class: 'v' }, [
+          el('span', { class: 'tag rec', text: '已上传' }),
+          el('span', { text: ' ' + f.name + ' · ' + fmtSize(f.size) + ' ' }),
+          del
+        ])
+      ]));
+    });
+    $('df-count').textContent = state.dataFiles.length
+      ? '已上传 ' + state.dataFiles.length + ' 个文件，提交时归档进 raw_data/'
+      : '';
+  }
+
+  // 角色 / 文件就绪状态 + 替换提示 + 按钮可用性（不重建下拉，避免打断正在选择的用户）
+  function refreshDfState() {
+    renderDfList();
+    var role = $('f-df-role').value;
+    var done = role ? dfUploaded(role).length : 0;
+    var file = $('f-df-file').files && $('f-df-file').files[0];
+    if (role && done && role !== 'other') {
+      showMsg('e-df-replace', '角色「' + (DATA_ROLE_LABEL[role] || role) + '」已上传过文件，再次上传将替换此前的文件（同一角色只保留一个）。', 'warn');
+    } else if (role === 'other' && done >= MAX_DATA_FILES_PER_ROLE) {
+      showMsg('e-df-replace', 'other 角色已满 ' + MAX_DATA_FILES_PER_ROLE + ' 个文件，请先删除再上传。', 'warn');
+    } else {
+      showMsg('e-df-replace', '', 'warn');
+    }
+    $('btn-df-upload').disabled = !role || !file;
+  }
+  function updateDfUi() {
+    renderDfRoles();
+    renderDfBinds();
+    refreshDfState();
+  }
+
+  // 前端预检：与服务端同规则，先拦一道，别等服务端 400
+  function dfPrecheck(role, bind, file) {
+    if (!role) return '请先选择文件角色';
+    if (!file) return '请先选择要上传的文件';
+    if (DATA_EXT.indexOf(refExt(file.name)) < 0) {
+      return '不支持的数据文件格式: ' + file.name + '（允许 ' + DATA_EXT.join(' / ') + '）';
+    }
+    if (file.size > MAX_DATA_BYTES) {
+      var limitText = MAX_DATA_BYTES >= 1024 * 1024 * 1024
+        ? (MAX_DATA_BYTES / 1024 / 1024 / 1024) + 'GiB'
+        : Math.round(MAX_DATA_BYTES / 1024 / 1024) + 'MiB';
+      return '单文件超过上限 ' + limitText + ': ' + file.name;
+    }
+    var policy = ROLE_BIND_POLICY[role];
+    var train = gseList('train'), val = gseList('validation'), all = gseList('');
+    if (policy === 'train') {
+      if (!bind) return '训练集矩阵必须绑定训练集 GSE（请先在上方「数据集 ↔ 平台配对」填写训练集 GSE）';
+      if (train.indexOf(bind) < 0) return '绑定编号 ' + bind + ' 不是训练集（训练集为 ' + (train[0] || '未填写') + '）';
+    } else if (policy === 'validation') {
+      if (!bind) return '验证集矩阵必须绑定验证集 GSE（请先在上方填写用途为「验证集」的数据集）';
+      if (val.indexOf(bind) < 0) return '绑定编号 ' + bind + ' 不是验证集';
+    } else if (bind && all.indexOf(bind) < 0) {
+      return '绑定编号 ' + bind + ' 不在需求填写的数据集列表里';
+    }
+    if (bind) {
+      var tokens = String(file.name).match(/(GSE|GPL)\d+/gi) || [];
+      var bad = tokens.filter(function (t) { return t.toUpperCase() !== bind.toUpperCase(); })[0];
+      if (bad) return '文件名中的 ' + bad + ' 与绑定编号 ' + bind + ' 不一致';
+    }
+    if (role === 'other' && dfUploaded('other').length >= MAX_DATA_FILES_PER_ROLE) {
+      return 'other 角色最多 ' + MAX_DATA_FILES_PER_ROLE + ' 个文件';
+    }
+    return '';
+  }
+
+  // 提交前再核对一遍：用户在步骤 2 改过数据集后，此前的绑定可能已失效
+  function dfSubmitProblem() {
+    if (!state.dataFiles.length) return '请至少上传 1 个数据文件（表达矩阵 / 样本表 / 分组表等）';
+    var train = gseList('train'), val = gseList('validation'), all = gseList('');
+    for (var i = 0; i < state.dataFiles.length; i += 1) {
+      var f = state.dataFiles[i];
+      var policy = ROLE_BIND_POLICY[f.role];
+      var label = DATA_ROLE_LABEL[f.role] || f.role;
+      if (policy === 'train' && (!f.bind || train.indexOf(f.bind) < 0)) {
+        return label + '必须绑定训练集 GSE（当前绑定：' + (f.bind || '空') + '）';
+      }
+      if (policy === 'validation' && (!f.bind || val.indexOf(f.bind) < 0)) {
+        return label + '必须绑定验证集 GSE（当前绑定：' + (f.bind || '空') + '）';
+      }
+      if (f.bind && all.indexOf(f.bind) < 0) {
+        return label + '的绑定编号 ' + f.bind + ' 不在需求填写的数据集列表里';
+      }
+      if (f.bind) {
+        var tokens = String(f.name).match(/(GSE|GPL)\d+/gi) || [];
+        var bad = tokens.filter(function (t) { return t.toUpperCase() !== f.bind.toUpperCase(); })[0];
+        if (bad) return label + '的文件名中的 ' + bad + ' 与绑定编号 ' + f.bind + ' 不一致';
+      }
+    }
+    return '';
+  }
+
+  function uploadDataFile() {
+    var role = $('f-df-role').value;
+    var bind = $('f-df-bind').value;
+    var file = $('f-df-file').files && $('f-df-file').files[0];
+    var problem = dfPrecheck(role, bind, file);
+    if (problem) { showMsg('e-df', problem, 'err'); return; }
+    var btn = $('btn-df-upload');
+    var old = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '上传中…';
+    showMsg('e-df', '上传中：' + file.name, 'warn');
+    // 裸二进制流（服务端 req.on('data') 直接收，不用 FormData / multipart）
+    var url = '/api/datafiles?sid=' + encodeURIComponent(state.uploadSid)
+      + '&role=' + encodeURIComponent(role)
+      + '&bind=' + encodeURIComponent(bind)
+      + '&name=' + encodeURIComponent(file.name);
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: file
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (body) {
+        return { status: res.status, body: body };
+      });
+    }).then(function (res) {
+      if (res.status !== 200 || !res.body || !res.body.ok) {
+        throw new Error((res.body && res.body.error) || ('HTTP ' + res.status));
+      }
+      // name 用原始文件名（用户在需求里「填写」的就是它）；path 用服务端返回的安全化落点
+      var entry = { role: role, bind: bind, name: file.name, size: res.body.size, path: res.body.path };
+      if (role === 'other') state.dataFiles.push(entry);
+      else state.dataFiles = state.dataFiles.filter(function (f) { return f.role !== role; }).concat([entry]);
+      showMsg('e-df', '已上传：' + file.name + ' → ' + res.body.path, 'warn');
+      $('f-df-file').value = '';
+    }).catch(function (e) {
+      // 服务端 error 原文展示，不静默吞
+      showMsg('e-df', '上传失败：' + (e && e.message ? e.message : String(e)), 'err');
+    }).then(function () {
+      btn.textContent = old;
+      updateDfUi();
+      renderSummary();
+    });
+  }
+
+  function onModeChange() {
+    state.dataSourceMode = currentMode();
+    var inHouse = state.dataSourceMode === 'IN_HOUSE_UPLOAD';
+    $('upload-area').style.display = inHouse ? '' : 'none';
+    if (inHouse) {
+      showMsg('e-df', '', 'err');
+      updateDfUi();
+    } else if (state.dataFiles.length) {
+      // 已上传的文件不会进 PUBLIC_DB 的 payload，提醒一句，避免用户以为带上去了
+      showMsg('e-df', '注意：已上传的 ' + state.dataFiles.length + ' 个数据文件不会随公共数据库模式提交。', 'warn');
+    }
+    renderSummary();
+  }
+
+  // ============================================================
+  // 摘要
+  // ============================================================
+  function renderSummary() {
+    var ul = $('summary'); ul.innerHTML = '';
+    var lineName = { line1_bulk: '线 1 · GEO Bulk', line2_scrna: '线 2 · 单细胞 + 虚拟敲除', line3_spatial: '线 3 · 空间 + 虚拟敲除' };
+    var dsPairs = state.datasets.filter(function (d) { return d.gse.trim(); }).map(function (d) {
+      var role = d.role === 'validation' ? '验证' : '训练';
+      var gpl = d.gpl.trim();
+      return gpl ? (d.gse.trim() + '↔' + gpl + '（' + role + '）') : (d.gse.trim() + '（' + role + '，未标平台）');
+    });
+    var lineSel = document.querySelector('input[name="lineId"]:checked');
+    var picked = Object.keys(state.selected).filter(function (k) { return state.selected[k]; });
+    var rows = [
+      ['项目名称', val('f-name') || '—'],
+      ['疾病', val('f-disease') || '—'],
+      ['物种', val('f-species')],
+      ['研究领域', val('f-domain')],
+      ['数据来源', val('f-source')],
+      ['数据类型', DATA_TYPE_LABEL[val('f-datatype')] || '—'],
+      ['数据集配对', dsPairs.length ? dsPairs.join('；') : '—'],
+      ['分组数', String(state.groups.length)],
+      ['分析线', lineSel ? (lineName[lineSel.value] || lineSel.value) : '未选择'],
+      ['分析步骤', picked.length ? picked.length + ' 个' : '未选择'],
+      ['参考文献', state.refs.length ? state.refs.length + ' 篇' : '未上传']
+    ];
+    // 自有上传模式才显示这两行，公共数据库路径的摘要与既往一致
+    if (state.dataSourceMode === 'IN_HOUSE_UPLOAD') {
+      rows.push(['数据来源模式', '自有数据上传']);
+      rows.push(['数据文件', state.dataFiles.length
+        ? state.dataFiles.map(function (f) {
+          return (DATA_ROLE_LABEL[f.role] || f.role) + (f.bind ? '（' + f.bind + '）' : '');
+        }).join('；')
+        : '未上传（至少 1 个）']);
+    } else if (state.dataFiles.length) {
+      // 上传过文件又切回公共数据库：在摘要里说清这些文件不会随本次提交，避免误判
+      rows.push(['数据文件', '已上传 ' + state.dataFiles.length + ' 个（当前为公共数据库模式，不会提交）']);
+    }
+    rows.forEach(function (r) {
+      ul.appendChild(el('li', {}, [el('span', { class: 'k', text: r[0] }), el('span', { class: 'v', text: r[1] })]));
+    });
+  }
+
+  // ============================================================
+  // 打印 / 存为 PDF：完整需求单快照（含生成时刻时间戳）
+  // ============================================================
+  // 为什么不直接 window.print()：直接打印只会输出屏幕上当前可见的那一屏（页头、步骤条、
+  // 按钮、页脚，加上第 5 步的几张卡片），而项目描述、联系方式、样本总数、组织来源、
+  // 分组与样本明细、对比对明细、分析步骤明细、目标敲除基因、交付物明细都不在其中。
+  // 这里按 buildManifest() 的完整结构重建一份打印专用视图，打印时隐藏全部屏幕元素，
+  // 只输出它。内容是打印那一刻重新读取的，所以任何步骤刚改过的值都会反映进来。
+  var LINE_LABEL = {
+    line1_bulk: '线 1 · GEO Bulk',
+    line2_scrna: '线 2 · 单细胞 + 虚拟敲除',
+    line3_spatial: '线 3 · 空间 + 虚拟敲除'
+  };
+  var GROUP_ROLE_LABEL = { reference: '基准对照组（Reference）', disease_stage: '疾病 / 实验组' };
+  var GROUP_MODE_LABEL = {
+    two_group: '二分类对比（2 组，如对照 vs 疾病）',
+    multi_group: '多组无序对比（≥3 组，如亚型 A / B / C）',
+    ordered_stage: '有序阶段演进（≥3 组，如健康 → 轻度 → 重度）'
+  };
+  var FORMAT_LABEL = {
+    png_300dpi: 'Web 预览图集（300 DPI PNG）',
+    tsv_tables: '全量统计结果表（.tsv）',
+    pdf_vector: '发表级矢量图副本（.pdf / .svg）',
+    rds_checkpoint: '中间态检查点（.rds / .h5ad）',
+    audit_json: '结构化审计台账（.json）'
+  };
+
+  function two(n) { return (n < 10 ? '0' : '') + n; }
+  function tsLocal(d) {
+    d = d || new Date();
+    return d.getFullYear() + '-' + two(d.getMonth() + 1) + '-' + two(d.getDate()) + ' ' +
+           two(d.getHours()) + ':' + two(d.getMinutes()) + ':' + two(d.getSeconds());
+  }
+  function tsFile(d) {
+    d = d || new Date();
+    return String(d.getFullYear()) + two(d.getMonth() + 1) + two(d.getDate()) + '_' +
+           two(d.getHours()) + two(d.getMinutes()) + two(d.getSeconds());
+  }
+  function prText(v) {
+    return (v === null || v === undefined || String(v).trim() === '') ? '—' : String(v);
+  }
+  function fmtSize(n) {
+    var v = Number(n) || 0;
+    if (v >= 1024 * 1024) return (v / 1024 / 1024).toFixed(2) + ' MB';
+    return Math.max(1, Math.round(v / 1024)) + ' KB';
+  }
+
+  function prSection(title, sub) {
+    var kids = [el('h3', { class: 'pr-h', text: title })];
+    if (sub) kids.push(el('p', { class: 'pr-none', text: sub }));
+    return el('section', { class: 'pr-section' }, kids);
+  }
+  // 键值表：左列固定 20% 宽（CSS .pr-kv td.pr-k），右列自动换行，长文本不撑破纸面
+  function prKV(pairs) {
+    var tb = el('table', { class: 'pr-t pr-kv' });
+    pairs.forEach(function (p) {
+      tb.appendChild(el('tr', {}, [
+        el('td', { class: 'pr-k', text: String(p[0]) }),
+        el('td', { text: prText(p[1]) })
+      ]));
+    });
+    return tb;
+  }
+  // 数据表：首列序号居中；table-layout:fixed + word-break 保证宽内容折行而不横向截断
+  function prTable(headers, rows, emptyText) {
+    if (!rows.length) return el('p', { class: 'pr-none', text: emptyText || '（未填写）' });
+    var tb = el('table', { class: 'pr-t' });
+    tb.appendChild(el('thead', {}, [el('tr', {}, headers.map(function (h) {
+      return el('th', { text: h });
+    }))]));
+    rows.forEach(function (r) {
+      var tr = el('tr');
+      r.forEach(function (c, i) {
+        tr.appendChild(el('td', { class: i === 0 ? 'pr-idx' : '', text: prText(c) }));
+      });
+      tb.appendChild(tr);
+    });
+    return tb;
+  }
+
+  function buildPrintReport() {
+    var root = $('print-report');
+    if (!root) return;
+    var m = null;
+    try { m = buildManifest(); } catch (e) { m = null; }
+    var now = new Date();
+    root.innerHTML = '';
+
+    var head = el('header', { class: 'pr-head' }, [
+      el('h1', { class: 'pr-title', text: '生信分析需求单' }),
+      el('p', { class: 'pr-sub', text: '完整需求快照（含全部 5 个步骤填写内容）' }),
+      el('p', { class: 'pr-stamp', text: '生成时间：' + tsLocal(now) })
+    ]);
+    if (window.__submitMeta && window.__submitMeta.at) {
+      head.appendChild(el('p', { class: 'pr-stamp', text: '提交时间：' + window.__submitMeta.at +
+        (window.__submitMeta.no ? '　需求编号：' + window.__submitMeta.no : '') }));
+    }
+    root.appendChild(head);
+
+    if (!m) {
+      root.appendChild(el('p', { class: 'pr-none', text: '未能读取表单内容，请先完成前面步骤后重试。' }));
+      return;
+    }
+
+    var b = m.basicInfo || {}, ds = m.dataSource || {}, g = m.groupingDesign || {}, ao = m.aclAndOutput || {};
+    var lineSel = document.querySelector('input[name="lineId"]:checked');
+    var blHits = checkBlacklist([val('f-name'), val('f-desc'), val('f-disease'), val('f-notes')].join(' '));
+
+    // 一、项目基本信息
+    var s1 = prSection('一、项目基本信息');
+    var s1Pairs = [
+      ['项目名称', b.name],
+      ['项目描述', b.description],
+      ['研究领域', b.domain],
+      ['疾病名称', b.disease],
+      ['物种', b.species],
+      ['联系方式', b.contact],
+      ['数据类型', DATA_TYPE_LABEL[ds.dataType] || ds.dataType],
+      ['数据库来源', ds.source],
+      ['组织来源', ds.tissue],
+      ['样本总数', ds.sampleCount ? String(ds.sampleCount) : ''],
+      ['分组模式', GROUP_MODE_LABEL[g.mode] || g.mode],
+      ['非肿瘤合规自查', blHits.length ? ('命中需修改：' + blHits.join('、')) : '本地校验通过（无肿瘤相关词命中）']
+    ];
+    // 只有自有上传才多这一行：公共数据库快照与既往逐字一致
+    if (ds.data_source_mode === 'IN_HOUSE_UPLOAD') s1Pairs.push(['数据来源模式', '自有数据上传（IN_HOUSE_UPLOAD）']);
+    s1.appendChild(prKV(s1Pairs));
+    root.appendChild(s1);
+
+    // 二、数据集 ↔ 平台配对
+    var s2 = prSection('二、数据集 ↔ 平台配对');
+    s2.appendChild(prTable(
+      ['序号', 'GSE 数据集编号', 'GPL 平台编号', '用途'],
+      (ds.datasets || []).map(function (x, i) {
+        return [i + 1, x.gse, x.gpl || '（未标平台，按数据类型默认注释）',
+                x.role === 'validation' ? '验证集' : '训练集'];
+      }),
+      '（未填写数据集）'
+    ));
+    root.appendChild(s2);
+
+    // 二·补、上传的数据文件（仅 IN_HOUSE_UPLOAD 且有文件时出现；PUBLIC_DB 快照不变）
+    if (m.dataFiles && m.dataFiles.length) {
+      var s2b = prSection('二·补、上传的数据文件',
+        '共 ' + m.dataFiles.length + ' 个（文件本体随需求包归档进 raw_data/）');
+      s2b.appendChild(prTable(
+        ['序号', '角色', '绑定编号', '文件名', '大小'],
+        m.dataFiles.map(function (f, i) {
+          return [i + 1, DATA_ROLE_LABEL[f.role] || f.role, f.bind || '（未绑定）', f.name, fmtSize(f.size)];
+        }),
+        '（未上传数据文件）'
+      ));
+      root.appendChild(s2b);
+    }
+
+    // 三、分组与样本绑定
+    var groups = g.groups || [];
+    var s3 = prSection('三、分组与样本绑定', '共 ' + groups.length + ' 个分组');
+    s3.appendChild(prTable(
+      ['序号', '分组名称', '分组角色', '阶段顺序', '标记色', '样本数', '样本编号'],
+      groups.map(function (x, i) {
+        var ids = x.sampleIds || [];
+        return [i + 1, x.groupName || '（未命名）', GROUP_ROLE_LABEL[x.role] || x.role,
+                String(x.stageOrder), x.colorHex || '', ids.length + ' 个', ids.join('、')];
+      }),
+      '（未设置分组）'
+    ));
+    root.appendChild(s3);
+
+    // 四、差异对比对
+    var s4 = prSection('四、差异对比对（Contrasts）');
+    s4.appendChild(prTable(
+      ['序号', '对比名称', '实验组 Case', '对照组 Ctrl', '主对比'],
+      (g.contrasts || []).map(function (c, i) {
+        return [i + 1, c.name, c.case, c.ctrl, c.isPrimary ? '★ 主对比（用于核心建模）' : ''];
+      }),
+      '（未设置对比对：两组设计默认按「第 2 组 vs 第 1 组」比较）'
+    ));
+    root.appendChild(s4);
+
+    // 五、分析线与分析步骤
+    var dag = m.pipelineDag || [];
+    var s5 = prSection('五、分析线与分析步骤', '共勾选 ' + dag.length + ' 个步骤');
+    s5.appendChild(prKV([
+      ['分析线', lineSel ? (LINE_LABEL[lineSel.value] || lineSel.value) : '未选择'],
+      ['目标敲除基因', ao.targetKoGene]
+    ]));
+    s5.appendChild(prTable(
+      ['序号', '步骤 ID', '步骤名称', '主要工具', '产出'],
+      dag.map(function (x) {
+        var meta = STEP_META[x.stepId] || {};
+        return [x.order, x.stepId, meta.label || x.stepId, meta.tool, meta.io];
+      }),
+      '（未勾选分析步骤）'
+    ));
+    root.appendChild(s5);
+
+    // 六、参考文献
+    var refs = m.references || [];
+    var s6 = prSection('六、参考文献', '共 ' + refs.length + ' 篇（文件本体已上传至收件箱 refs 目录）');
+    s6.appendChild(prTable(
+      ['序号', '文件名', '大小', '收件箱内相对路径'],
+      refs.map(function (r, i) { return [i + 1, r.name, fmtSize(r.size), r.path]; }),
+      '（未上传参考文献）'
+    ));
+    root.appendChild(s6);
+
+    // 七、备注 / 分析需求补充
+    var s7 = prSection('七、备注 / 分析需求补充');
+    s7.appendChild(el('pre', { class: 'pr-pre', text: (m.notes || '').trim() || '（未填写）' }));
+    root.appendChild(s7);
+
+    // 八、交付物偏好
+    var fmts = ao.expectedFormats || [];
+    var s8 = prSection('八、交付物偏好');
+    s8.appendChild(prTable(
+      ['序号', '期望交付内容'],
+      fmts.map(function (k, i) { return [i + 1, FORMAT_LABEL[k] || k]; }),
+      '（未勾选交付物）'
+    ));
+    root.appendChild(s8);
+
+    root.appendChild(el('footer', { class: 'pr-foot' }, [
+      el('p', { text: '本单由用户端「提交生信分析需求」页面自动生成，包含全部 5 个步骤的填写内容。' }),
+      el('p', { text: '生成时间：' + tsLocal(now) + '　（导出文件名同样带该时间戳，便于区分多次提交的版本）' })
+    ]));
+  }
+
+  // 打印前重建快照 + 把时间戳写进文档标题（浏览器「另存为 PDF」用标题作默认文件名）
+  // 原始标题只备份一次并留到 afterprint 触发后才清：afterprint 并非每次都可靠触发
+  // （取消打印 / 个别内嵌浏览器），若每次打印都覆盖备份，标题会被上一次的时间戳粘住。
+  var printTitleOriginal = null;
+  function printTitleRestore() {
+    if (printTitleOriginal !== null) {
+      document.title = printTitleOriginal;
+      printTitleOriginal = null;
+    }
+  }
+  function printRequirement() {
+    buildPrintReport();
+    if (printTitleOriginal === null) printTitleOriginal = document.title;
+    var name = val('f-name').replace(/[^\w\u4e00-\u9fa5-]+/g, '_').slice(0, 40) || '生信分析需求单';
+    document.title = name + '_需求单_' + tsFile(new Date());
+    window.print();
+  }
+
+  // 数据类型决定分析线：选定后自动勾选对应线并锁死其余两条（三线互不交叉）
+  function applyDataTypeToLine() {
+    var line = DATA_TYPE_LINE[val('f-datatype')] || '';
+    $$('input[name="lineId"]').forEach(function (r) {
+      var opt = r.closest('.line-opt');
+      var locked = !!line && r.value !== line;
+      r.disabled = locked;
+      if (opt) opt.classList.toggle('is-locked', locked);
+      if (line && r.value === line) r.checked = true;
+    });
+    if (line) {
+      // 换类型即换线：清空旧线勾选，按新线重渲染步骤（QC 会自动锁定）
+      state.selected = {};
+      renderSteps(line);
+      showMsg('e-line', '', 'err');
+    }
+  }
+
+  // ============================================================
+  // 校验
+  // ============================================================
+  function validateStep(n) {
+    var ok = true;
+    if (n === 1) {
+      if (!val('f-name')) { showMsg('e-name', '请填写项目名称', 'err'); ok = false; }
+      else if (blHit()) { showMsg('e-name', '', 'err'); ok = false; }
+      else showMsg('e-name', '', 'err');
+      if (blHit()) ok = false;
+    }
+    if (n === 2) {
+      // DATA_TYPE_LINE 既是必填校验也是枚举校验：只有四个合法 id 才有对应线
+      if (!DATA_TYPE_LINE[val('f-datatype')]) { showMsg('e-datatype', '请选择数据类型（它决定走哪条分析线）', 'err'); ok = false; }
+      else showMsg('e-datatype', '', 'err');
+      // 数据集配对：至少一组，且每行都必须填 GSE（GPL 决定线内预处理分支，测序数据可留空）
+      var dsMissing = state.datasets.filter(function (d) { return !d.gse.trim(); }).length;
+      if (!state.datasets.length) { showMsg('e-datasets', '至少需要一组数据集（填 GSE 编号）', 'err'); ok = false; }
+      else if (dsMissing) { showMsg('e-datasets', '有 ' + dsMissing + ' 组数据集未填编号（GSE），请补齐后再继续', 'err'); ok = false; }
+      else showMsg('e-datasets', '', 'err');
+      // 自有数据上传：至少 1 个文件，且每个文件的绑定仍对得上当前填写的数据集
+      if (state.dataSourceMode === 'IN_HOUSE_UPLOAD') {
+        var dfProblem = dfSubmitProblem();
+        if (dfProblem) { showMsg('e-df', dfProblem, 'err'); ok = false; }
+        else showMsg('e-df', '', 'err');
+      }
+    }
+    if (n === 3) {
+      if (state.groups.length < 2) { showMsg('e-groups', '至少需要 2 个分组', 'err'); ok = false; }
+      else if (Object.keys(groupDupIds()).length) { showMsg('e-groups', '存在跨组重复的样本编号', 'err'); ok = false; }
+      else showMsg('e-groups', '', 'err');
+    }
+    if (n === 4) {
+      var lineSel = document.querySelector('input[name="lineId"]:checked');
+      if (!lineSel) { showMsg('e-line', '请选择一条分析线', 'err'); ok = false; }
+      else showMsg('e-line', '', 'err');
+    }
+    return ok;
+  }
+
+  // ============================================================
+  // 生成需求文件
+  // ============================================================
+  function buildManifest() {
+    var lineSel = document.querySelector('input[name="lineId"]:checked');
+    var picked = Object.keys(state.selected).filter(function (k) { return state.selected[k]; });
+    var koInput = document.querySelector('[id^="ko-"]');
+    var formats = [];
+    if (state.output.web_preview) formats.push('png_300dpi');
+    if (state.output.tsv_tables) formats.push('tsv_tables');
+    if (state.output.pdf_vector) formats.push('pdf_vector');
+    if (state.output.checkpoint_archive) formats.push('rds_checkpoint');
+    if (state.output.audit_ledger) formats.push('audit_json');
+    var manifest = {
+      manifest_version: '1.0',
+      submitted_at: new Date().toISOString(),
+      basicInfo: {
+        name: val('f-name'),
+        description: val('f-desc'),
+        domain: val('f-domain'),
+        disease: val('f-disease'),
+        species: val('f-species'),
+        contact: val('f-contact'),
+        nonTumorVerified: true
+      },
+      dataSource: {
+        source: val('f-source'),
+        dataType: val('f-datatype'),
+        datasets: state.datasets.map(function (d) {
+          return { gse: d.gse.trim(), gpl: d.gpl.trim(), role: d.role };
+        }).filter(function (d) { return d.gse; }),
+        sampleCount: Number(val('f-sample-count')) || 0,
+        tissue: val('f-tissue')
+      },
+      groupingDesign: {
+        mode: $('f-group-mode').value,
+        groups: state.groups.map(function (g) {
+          return { groupName: g.name, role: g.role, stageOrder: g.order, colorHex: g.color, sampleIds: parseSamples(g.samples) };
+        }),
+        contrasts: state.contrasts.filter(function (c) { return c.enabled; }).map(function (c) {
+          return { name: c.name, case: c.case, ctrl: c.ctrl, isPrimary: c.name === state.primary };
+        })
+      },
+      pipelineDag: picked.map(function (s, i) { return { order: i + 1, stepId: s }; }),
+      aclAndOutput: {
+        collaborators: [],
+        expectedFormats: formats,
+        targetKoGene: koInput ? koInput.value.trim() : ''
+      },
+      // 出图版式：只保留 4:3 / 16:9 两档（2026-10-19 用户拍板）。
+      // 字段名与工作台一致（plotLayoutConfig.templateId），value 直接用新 template_id。
+      plotLayoutConfig: { templateId: val('f-layout') || 'template_4x3' },
+      // 参考文献：只记元数据与收件箱内相对路径，文件本体已由 /api/references 落在 inbox/refs/<sid>/
+      references: state.refs.map(function (r) { return { name: r.name, path: r.path, size: r.size }; }),
+      // 备注 / 分析需求补充说明（自由文本，参与服务端非肿瘤合规校验）
+      notes: val('f-notes')
+    };
+
+    // 自有数据上传（IN_HOUSE_UPLOAD）才带这三个字段；PUBLIC_DB 路径的 payload 形状与既往完全一致。
+    // uploaded_files 是服务端 validateDataFiles IN_HOUSE_UPLOAD 分支的硬校验：
+    // 它要求「上传文件名 == 用户在需求里填写的文件名」，这里直接取用户选中的原始文件名，
+    // 使两者按构造相等（basename 比对，服务端允许填相对路径）。
+    if (state.dataSourceMode === 'IN_HOUSE_UPLOAD') {
+      manifest.dataSource.data_source_mode = 'IN_HOUSE_UPLOAD';
+      var uploadedFiles = {};
+      state.dataFiles.forEach(function (f) { uploadedFiles[f.role] = f.name; });
+      manifest.dataSource.uploaded_files = uploadedFiles;
+      if (state.dataFiles.length) {
+        manifest.uploadSid = state.uploadSid;
+        manifest.dataFiles = state.dataFiles.map(function (f) {
+          return { role: f.role, bind: f.bind, name: f.name, size: f.size, path: f.path };
+        });
+      }
+    }
+    return manifest;
+  }
+
+  function collectManifest() {
+    var banner = $('submit-banner');
+    banner.className = 'banner'; banner.textContent = '';
+    if (!validateStep(1) || !validateStep(2) || !validateStep(3) || !validateStep(4) || blHit()) {
+      banner.className = 'banner err is-shown';
+      banner.textContent = '还有未完成的必填项，请返回前面的步骤检查。';
+      return null;
+    }
+    var manifest = buildManifest();
+    var json = JSON.stringify(manifest, null, 2);
+    window.__manifestJson = json;
+    window.__manifestName = (manifest.basicInfo.name || 'requirement').replace(/[^\w\u4e00-\u9fa5-]+/g, '_').slice(0, 40);
+    return json;
+  }
+
+  function submit() {
+    var banner = $('submit-banner');
+    // 包形态提交成功后，文件已被搬进 PKG_ 包（服务端 rename），同一 payload 再提交必 400；
+    // 直接拦住并说清原因，比甩一句服务端错误更好懂，也避免用户以为改改了就能重传。
+    if (window.__packageSubmitted) {
+      banner.className = 'banner err is-shown';
+      banner.textContent = '本次需求已提交成功，数据文件已归档；如需修改请刷新页面重新填写。';
+      return;
+    }
+    var json = collectManifest();
+    if (!json) return;
+    var btn = $('btn-gen');
+    var old = btn.textContent;
+    btn.disabled = true; btn.textContent = '提交中…';
+    fetch('/api/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: json
+    }).then(function (r) {
+      return r.json().then(function (d) { return { status: r.status, body: d }; });
+    }).then(function (res) {
+      if (res.status === 200 && res.body && res.body.ok) {
+        if (json.indexOf('"dataFiles"') >= 0) window.__packageSubmitted = true;
+        showResult(true, json, res.body.savedAs);
+      }
+      else showResult(false, json, (res.body && res.body.error) || ('HTTP ' + res.status));
+    }).catch(function () {
+      showResult(false, json, '网络异常，未能提交');
+    }).then(function () {
+      btn.disabled = false; btn.textContent = old;
+    });
+  }
+
+  function showResult(ok, json, extra) {
+    var banner = $('submit-banner');
+    $('result-card').style.display = '';
+    $('result-json').textContent = json;
+    if (ok) {
+      $('result-title').textContent = '需求已提交';
+      $('result-sub').textContent = '已记录（编号 ' + (extra || '—') + '）。你仍可下载或复制一份留存。';
+      banner.className = 'banner ok is-shown';
+      banner.textContent = '✓ 需求已提交给对接人，无需再手动发送。';
+      // 记下本次提交时刻与编号，打印出的需求单页首会一并带上（便于纸质留档对账）
+      window.__submitMeta = { at: tsLocal(new Date()), no: extra || '' };
+    } else {
+      $('result-title').textContent = '未能提交';
+      $('result-sub').textContent = '提交失败（' + (extra || '未知原因') + '）。请点下方「下载需求文件」或「复制需求内容」，自行发给对接人。';
+      banner.className = 'banner err is-shown';
+      banner.textContent = '⚠ 自动提交失败，请下载文件后手动发给对接人。';
+    }
+    $('result-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function download() {
+    if (!window.__manifestJson) return;
+    var blob = new Blob([window.__manifestJson], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (window.__manifestName || 'requirement') + '_需求.json';
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+
+  function copyJson() {
+    if (!window.__manifestJson) return;
+    var done = function () {
+      var btn = $('btn-copy'); var old = btn.textContent;
+      btn.textContent = '✓ 已复制'; setTimeout(function () { btn.textContent = old; }, 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(window.__manifestJson).then(done).catch(function () { fallbackCopy(done); });
+    } else { fallbackCopy(done); }
+  }
+  function fallbackCopy(done) {
+    var ta = document.createElement('textarea');
+    ta.value = window.__manifestJson; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) {}
+    ta.remove();
+  }
+
+  // ============================================================
+  // 事件绑定
+  // ============================================================
+  function bind() {
+    $('btn-prev').addEventListener('click', function () { goStep(state.step - 1); });
+    $('btn-next').addEventListener('click', function () { if (!validateStep(state.step)) return; goStep(state.step + 1); });
+    $('btn-gen').addEventListener('click', submit);
+    $('btn-download').addEventListener('click', download);
+    $('btn-copy').addEventListener('click', copyJson);
+    $('btn-print').addEventListener('click', printRequirement);
+    // 直接按 Ctrl+P 也要拿到完整需求单：隐藏了屏幕元素后若不重建，打印出来的会是一张白纸
+    window.addEventListener('beforeprint', buildPrintReport);
+    window.addEventListener('afterprint', printTitleRestore);
+
+    $('f-name').addEventListener('input', function (e) { blCheck(e.target.value, 'e-name'); });
+    $('f-desc').addEventListener('input', function (e) { blCheck(e.target.value, 'e-desc'); });
+    $('f-disease').addEventListener('input', function (e) { blCheck(e.target.value, 'e-disease'); });
+
+    $('f-group-mode').addEventListener('change', function () { renderGroups(); renderContrasts(); });
+    $('btn-add-group').addEventListener('click', function () {
+      state.groupSeq += 1;
+      var palette = ['#EE0000', '#F39B7F', '#8C6D31', '#55A868', '#8172B3'];
+      state.groups.push({ id: 'g' + state.groupSeq, name: '', role: 'disease_stage', order: state.groups.length, color: palette[(state.groupSeq - 3) % palette.length], samples: '' });
+      renderGroups(); renderContrasts();
+    });
+    $('btn-bulk').addEventListener('click', function () { var a = $('bulk-area'); a.style.display = a.style.display === 'none' ? '' : 'none'; });
+    $('btn-bulk-cancel').addEventListener('click', function () { $('bulk-area').style.display = 'none'; });
+    $('btn-bulk-apply').addEventListener('click', function () {
+      var lines = $('f-bulk').value.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+      var map = {};
+      lines.forEach(function (l) {
+        var parts = l.split(/[,\t，]+/).map(function (s) { return s.trim(); });
+        if (parts.length < 2) return;
+        var sid = parts[0], gname = parts.slice(1).join('_');
+        (map[gname] = map[gname] || []).push(sid);
+      });
+      var names = Object.keys(map);
+      if (!names.length) { showMsg('e-groups', '未解析到有效行，请按「样本编号,分组名」每行一条粘贴。', 'err'); return; }
+      showMsg('e-groups', '', 'err');
+      state.groups = names.map(function (n, i) {
+        return { id: 'g' + (i + 1), name: n, role: i === 0 ? 'reference' : 'disease_stage', order: i, color: i === 0 ? '#3B4992' : ['#EE0000', '#F39B7F', '#8C6D31', '#55A868'][(i - 1) % 4], samples: map[n].join('\n') };
+      });
+      state.groupSeq = names.length;
+      $('f-group-mode').value = names.length === 2 ? 'two_group' : 'multi_group';
+      $('bulk-area').style.display = 'none'; $('f-bulk').value = '';
+      renderGroups(); renderContrasts();
+    });
+
+    // 数据类型 → 自动锁定分析线
+    $('f-datatype').addEventListener('change', function () { applyDataTypeToLine(); renderSummary(); });
+
+    // 数据集 ↔ 平台配对表：新增一行、逐行编辑
+    $('btn-add-dataset').addEventListener('click', function () {
+      state.datasetSeq += 1;
+      state.datasets.push({ id: 'd' + state.datasetSeq, gse: '', gpl: '', role: state.datasets.length ? 'validation' : 'train' });
+      renderDatasets(); renderSummary(); renderDfBinds();
+    });
+
+    // 数据来源模式：PUBLIC_DB / IN_HOUSE_UPLOAD（后者显示数据文件上传区）
+    $$('input[name="dataSourceMode"]').forEach(function (r) {
+      r.addEventListener('change', onModeChange);
+    });
+    $('f-df-role').addEventListener('change', function () { renderDfBinds(); refreshDfState(); });
+    $('f-df-file').addEventListener('change', refreshDfState);
+    $('btn-df-upload').addEventListener('click', uploadDataFile);
+
+    $$('input[name="lineId"]').forEach(function (r) {
+      r.addEventListener('change', function () { state.selected = {}; renderSteps(r.value); showMsg('e-line', '', 'err'); });
+    });
+
+    // 参考文献：选中后即刻上传（清空 input 以便重选同名文件）
+    $('f-refs').addEventListener('change', function (e) {
+      uploadRefs(e.target.files);
+      e.target.value = '';
+    });
+
+    // 备注栏字数
+    $('f-notes').addEventListener('input', updateNotesCount);
+  }
+
+  function init() {
+    renderDatasets(); renderGroups(); renderContrasts(); renderOutputs(); renderLineCounts(); renderRefs(); updateNotesCount(); updateDfUi(); bind();
+    goStep(1, false);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+</script>
+</body>
+</html>

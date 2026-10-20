@@ -1,0 +1,242 @@
+#!/usr/bin/env bash
+# enrichment_bulk：line1_bulk 步骤 8 的功能富集（GSEA + ORA）。
+#
+# 输入（同 cwd）：deg_all.tsv（limma 全表：gene/log2FC/AveExpr/t/P_Value/adj_P_Val）
+#   + wgcna_modules.tsv（gene/module）+ wgcna_module_trait.tsv（模块-性状相关）。
+#
+# 口径（2026-10-13 拍板"样本量小也能做"；2026-10-14 补齐 GO CC/MF 与 KEGG GSEA）：
+#   1. GSEA（gseGO，全基因按 limma t 统计量降序）——**不依赖显著阈值**，正好
+#      适配本数据集 DEG 0 显著（BH 后无基因通过，min adj p=0.45）的情况：
+#      看整体表达趋势而非硬阈值筛选。ont = BP / CC / MF 三本体。
+#   1b. GSEA KEGG（gseKEGG）：需外网 KEGG REST API，tryCatch 失败则跳过并如实记录。
+#   2. WGCNA 模块 ORA（enrichGO）：对"与分组显著相关"的模块（p<0.05）基因做
+#      GO BP/CC/MF 三本体富集；无显著模块则记录并跳过（不硬凑）。
+#   3. KEGG ORA（enrichKEGG）需外网 KEGG REST API，tryCatch 失败则跳过并如实记录。
+#   4. symbol -> ENTREZID 转换丢失的基因如实报告（新基因/别名常见）。
+#
+# 产物：enrichment_gsea_go.tsv（含 ont 列 BP/CC/MF 合并）/ enrichment_gsea_kegg.tsv /
+#       enrichment_module_ora.tsv（含 ont 列）/ enrichment_kegg.tsv / enrichment_report.txt
+#
+# 自校验内建：输入存在、基因映射成功数 >= 100、GSEA 结果列齐全、
+# 模块 ORA 的 p 值在 [0,1]、模块基因集合与 wgcna_modules.tsv 一致。
+set -euo pipefail
+
+seed="${BIOANALYS_SEED:-UNSET}"
+if [ "$seed" = "UNSET" ]; then
+  echo "BIOANALYS_SEED 未注入（引擎契约：seed 必须注入）" >&2
+  exit 3
+fi
+
+declare -a INPUTS=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --input) INPUTS+=("$2"); shift 2 ;;
+    --output) shift 2 ;;
+    --seed) shift 2 ;;
+    *) echo "未知参数: $1" >&2; exit 2 ;;
+  esac
+done
+
+deg_file=""
+mod_file=""
+for path in "${INPUTS[@]:-}"; do
+  [ -n "$path" ] || continue
+  case "$path" in
+    *deg_all*.tsv) deg_file="$path" ;;
+    *wgcna_modules*.tsv) mod_file="$path" ;;
+    *wgcna_module_trait*.tsv) ;;   # 可选，脚本内按固定名找
+    *) echo "无法识别的输入文件: $path（需要 deg_all / wgcna_modules）" >&2; exit 2 ;;
+  esac
+done
+if [ -z "$deg_file" ] && [ -z "$mod_file" ]; then
+  echo "未传 --input，回退 cwd 固定文件名 deg_all.tsv / wgcna_modules.tsv" >&2
+fi
+# 未显式传 --input 时回退 cwd 固定文件名（引擎传绝对路径，手工试跑用 cwd）
+deg_file="${deg_file:-deg_all.tsv}"
+mod_file="${mod_file:-wgcna_modules.tsv}"
+for required in "$deg_file" "$mod_file"; do
+  [ -f "$required" ] || { echo "输入文件不存在: $required" >&2; exit 2; }
+done
+
+echo "step_executed=enrichment_bulk"
+echo "bioanalys_seed=${seed}"
+echo "input_deg=${deg_file}"
+echo "input_modules=${mod_file}"
+
+DEG_FILE="$deg_file" MOD_FILE="$mod_file" BIOANALYS_SEED="$seed" \
+Rscript - <<'RSCRIPT'
+suppressMessages({
+  library(clusterProfiler)
+  library(org.Hs.eg.db)
+})
+options(stringsAsFactors = FALSE)
+set.seed(as.integer(Sys.getenv("BIOANALYS_SEED")))
+
+fail <- function(msg) { cat("enrichment_bulk 自校验失败:", msg, "\n", file = stderr()); quit(status = 1) }
+log <- function(...) cat(..., "\n")
+
+deg <- read.delim(Sys.getenv("DEG_FILE"), check.names = FALSE)
+mods <- read.delim(Sys.getenv("MOD_FILE"), check.names = FALSE)
+if (!all(c("gene", "module") %in% colnames(mods))) fail("wgcna_modules 缺 gene/module 列")
+log("deg rows:", nrow(deg), " modules:", length(unique(mods$module)))
+
+# symbol -> ENTREZID
+map <- suppressWarnings(bitr(deg$gene, fromType = "SYMBOL", toType = "ENTREZID",
+                             OrgDb = org.Hs.eg.db))
+if (nrow(map) < 100) fail(sprintf("基因映射成功数 %d < 100", nrow(map)))
+deg_m <- merge(deg, map, by.x = "gene", by.y = "SYMBOL")
+log("mapped:", nrow(deg_m), "of", nrow(deg), "genes")
+
+# --- 1. GSEA（GO BP/CC/MF 三本体，按 t 降序） ---
+geneList <- deg_m$t
+names(geneList) <- deg_m$ENTREZID
+geneList <- sort(geneList, decreasing = TRUE)
+geneList <- geneList[!duplicated(names(geneList))]
+
+GO_ONT <- c("BP", "CC", "MF")
+gse_rows <- list()
+for (ont in GO_ONT) {
+  gse <- tryCatch(
+    gseGO(geneList = geneList, OrgDb = org.Hs.eg.db, ont = ont, keyType = "ENTREZID",
+          minGSSize = 10, maxGSSize = 500, pvalueCutoff = 0.5, pAdjustMethod = "BH",
+          verbose = FALSE, seed = TRUE),
+    error = function(e) { log(sprintf("GSEA GO %s 失败: %s", ont, conditionMessage(e))); NULL }
+  )
+  if (!is.null(gse) && nrow(as.data.frame(gse)) > 0) {
+    df <- as.data.frame(gse)
+    df$ont <- ont
+    df$library <- paste0("GO_", ont)
+    gse_rows[[ont]] <- df
+    log(sprintf("GSEA GO %s terms: %d sig(adj p<0.05): %d",
+                ont, nrow(df), sum(df$p.adjust < 0.05)))
+  } else {
+    log(sprintf("GSEA GO %s 无结果", ont))
+  }
+}
+gse_ok <- length(gse_rows) > 0
+gse_df <- if (gse_ok) do.call(rbind, gse_rows) else data.frame()
+if (nrow(gse_df) > 0 && any(gse_df$p.adjust < -1e-9 | gse_df$p.adjust > 1 + 1e-9)) {
+  fail("GSEA GO p.adjust 越界")
+}
+write.table(gse_df, "enrichment_gsea_go.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+
+# --- 1b. GSEA KEGG（需外网 KEGG REST API，失败则跳过并如实记录） ---
+gse_kegg_ok <- FALSE
+gse_kegg_df <- data.frame()
+tryCatch({
+  kk <- gseKEGG(geneList = geneList, organism = "hsa", keyType = "kegg",
+                minGSSize = 10, maxGSSize = 500, pvalueCutoff = 0.5, pAdjustMethod = "BH",
+                verbose = FALSE, seed = TRUE)
+  if (!is.null(kk) && nrow(as.data.frame(kk)) > 0) {
+    df <- as.data.frame(kk)
+    df$library <- "KEGG"
+    gse_kegg_df <<- df
+    gse_kegg_ok <<- TRUE
+    log(sprintf("GSEA KEGG terms: %d sig(adj p<0.05): %d",
+                nrow(df), sum(df$p.adjust < 0.05)))
+  } else {
+    log("GSEA KEGG 无结果")
+  }
+}, error = function(e) log("GSEA KEGG 失败（外网？）:", conditionMessage(e)))
+if (gse_kegg_ok && any(gse_kegg_df$p.adjust < -1e-9 | gse_kegg_df$p.adjust > 1 + 1e-9)) {
+  fail("GSEA KEGG p.adjust 越界")
+}
+write.table(gse_kegg_df, "enrichment_gsea_kegg.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+
+# --- 2. WGCNA 模块 ORA（GO BP/CC/MF 三本体） ---
+trait_file <- "wgcna_module_trait.tsv"
+sig_modules <- character(0)
+if (file.exists(trait_file)) {
+  mt <- read.delim(trait_file, check.names = FALSE)
+  if (all(c("module", "significant") %in% colnames(mt))) {
+    sig_modules <- as.character(mt$module[as.logical(mt$significant)])
+  }
+}
+log("significant modules for ORA:", paste(sig_modules, collapse = ","))
+
+mod_rows <- list()
+for (m in sig_modules) {
+  genes <- mods$gene[mods$module == m]
+  ent <- suppressWarnings(bitr(genes, fromType = "SYMBOL", toType = "ENTREZID",
+                               OrgDb = org.Hs.eg.db)$ENTREZID)
+  if (length(ent) < 5) { log(sprintf("  module %s: 映射基因 %d < 5，跳过", m, length(ent))); next }
+  for (ont in GO_ONT) {
+    ego <- tryCatch(
+      enrichGO(gene = ent, OrgDb = org.Hs.eg.db, ont = ont, keyType = "ENTREZID",
+               minGSSize = 10, maxGSSize = 500, pvalueCutoff = 0.5,
+               pAdjustMethod = "BH", readable = TRUE),
+      error = function(e) { log("  module", m, "ORA GO", ont, "失败:", conditionMessage(e)); NULL }
+    )
+    if (is.null(ego) || nrow(as.data.frame(ego)) == 0) next
+    df <- as.data.frame(ego)
+    df$module <- m
+    df$ont <- ont
+    df$n_module_genes <- length(ent)
+    mod_rows[[paste0(m, "_", ont)]] <- df
+  }
+}
+if (length(mod_rows) > 0) {
+  mod_all <- do.call(rbind, mod_rows)
+  if (any(mod_all$p.adjust < -1e-9 | mod_all$p.adjust > 1 + 1e-9)) fail("模块 ORA p.adjust 越界")
+  write.table(mod_all, "enrichment_module_ora.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+  log("module ORA rows:", nrow(mod_all))
+} else {
+  write.table(data.frame(), "enrichment_module_ora.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+  log("模块 ORA 无结果")
+}
+
+# --- 3. KEGG（需外网，可选） ---
+kegg_ok <- FALSE
+kegg_df <- data.frame()
+kegg_res <- tryCatch({
+  kk <- enrichKEGG(gene = deg_m$ENTREZID, organism = "hsa", keyType = "kegg",
+                   pvalueCutoff = 0.5, pAdjustMethod = "BH")
+  if (!is.null(kk) && nrow(as.data.frame(kk)) > 0) { kegg_ok <<- TRUE; as.data.frame(kk) }
+  else NULL
+}, error = function(e) { log("KEGG 失败（外网？）:", conditionMessage(e)); NULL })
+if (kegg_ok && !is.null(kegg_res)) {
+  write.table(kegg_res, "enrichment_kegg.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+  log("KEGG rows:", nrow(kegg_res))
+} else {
+  write.table(data.frame(), "enrichment_kegg.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+  log("KEGG 跳过（无外网或无结果）")
+}
+
+# --- 报告 ---
+gse_sig <- if (gse_ok && nrow(gse_df) > 0) sum(gse_df$p.adjust < 0.05) else 0
+gse_kegg_sig <- if (gse_kegg_ok) sum(gse_kegg_df$p.adjust < 0.05) else 0
+lines <- c(
+  "step=enrichment_bulk",
+  sprintf("seed=%d", as.integer(Sys.getenv("BIOANALYS_SEED"))),
+  sprintf("mapped_genes=%d of %d", nrow(deg_m), nrow(deg)),
+  "method=GSEA(gseGO BP/CC/MF + gseKEGG, 全基因按 limma t 降序, 不依赖显著阈值) + WGCNA 模块 ORA(enrichGO BP/CC/MF) + KEGG ORA(enrichKEGG)",
+  "note=本数据集 DEG 0 显著（BH 后无基因通过），故主分析走 GSEA 看整体趋势；模块 ORA 仅对与分组显著相关的模块做",
+  sprintf("gsea_go_ont=%s", paste(GO_ONT, collapse = "/")),
+  sprintf("gsea_go_ok=%s gsea_go_terms=%d gsea_go_sig=%d", gse_ok,
+          if (gse_ok) nrow(gse_df) else 0, gse_sig),
+  sprintf("gsea_kegg_ok=%s gsea_kegg_terms=%d gsea_kegg_sig=%d",
+          gse_kegg_ok, if (gse_kegg_ok) nrow(gse_kegg_df) else 0, gse_kegg_sig),
+  sprintf("significant_modules=%d module_ora_ok=%s module_ora_ont=%s",
+          length(sig_modules), length(mod_rows) > 0, paste(GO_ONT, collapse = "/")),
+  sprintf("kegg_ora_ok=%s", kegg_ok),
+  "outputs=enrichment_gsea_go.tsv, enrichment_gsea_kegg.tsv, enrichment_module_ora.tsv, enrichment_kegg.tsv, enrichment_report.txt"
+)
+if (gse_ok && nrow(gse_df) > 0 && "ont" %in% colnames(gse_df)) {
+  for (ont in GO_ONT) {
+    sub <- gse_df[gse_df$ont == ont, ]
+    if (nrow(sub) == 0) next
+    top <- head(sub[order(sub$p.adjust), ], 5)
+    lines <- c(lines, sprintf("top_gsea_GO_%s:", ont),
+               paste(sprintf("  %s (NES=%.2f adj_p=%.3g)", top$Description, top$NES, top$p.adjust),
+                     collapse = "\n"))
+  }
+}
+if (gse_kegg_ok && nrow(gse_kegg_df) > 0) {
+  top <- head(gse_kegg_df[order(gse_kegg_df$p.adjust), ], 5)
+  lines <- c(lines, "top_gsea_KEGG:",
+             paste(sprintf("  %s (NES=%.2f adj_p=%.3g)", top$Description, top$NES, top$p.adjust),
+                   collapse = "\n"))
+}
+writeLines(lines, "enrichment_report.txt")
+log("enrichment_bulk_done")
+RSCRIPT

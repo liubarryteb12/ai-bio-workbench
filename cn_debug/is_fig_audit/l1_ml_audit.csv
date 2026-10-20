@@ -1,0 +1,9 @@
+figure,verdict,violations
+l1_33_ml_roc.png,PASS,
+l1_34_ml_calibration.png,PASS,
+l1_35_ml_overlap.png,PASS,
+l1_36_ml_importance.png,PASS,
+l1_37_ml_roc_m2.png,PASS,
+l1_38_ml_calibration_m2.png,PASS,
+l1_39_ml_overlap_m2.png,PASS,
+l1_40_ml_importance_m2.png,PASS,

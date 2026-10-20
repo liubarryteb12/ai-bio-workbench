@@ -1,0 +1,20 @@
+{
+  "lineId": "line1_bulk",
+  "projectId": "PRJ_E2E_GSE277173",
+  "step": "bulk_figures",
+  "inputs": [
+    "/mnt/ssd/bio_data/projects/PRJ_E2E_GSE277173/line1_bulk/processed"
+  ],
+  "outputs": [
+    "/mnt/ssd/bio_data/projects/PRJ_E2E_GSE277173/line1_bulk/figures/l1_01_correlation.png",
+    "/mnt/ssd/bio_data/projects/PRJ_E2E_GSE277173/line1_bulk/figures/l1_02_pca.png",
+    "/mnt/ssd/bio_data/projects/PRJ_E2E_GSE277173/line1_bulk/figures/l1_03_volcano_fdr.png",
+    "/mnt/ssd/bio_data/projects/PRJ_E2E_GSE277173/line1_bulk/figures/l1_03_volcano_nominal.png",
+    "/mnt/ssd/bio_data/projects/PRJ_E2E_GSE277173/line1_bulk/figures/l1_04_topvar_heatmap.png",
+    "/mnt/ssd/bio_data/projects/PRJ_E2E_GSE277173/line1_bulk/figures/l1_05a_genes_detected.png",
+    "/mnt/ssd/bio_data/projects/PRJ_E2E_GSE277173/line1_bulk/figures/l1_05b_within_group_cor.png",
+    "/mnt/ssd/bio_data/projects/PRJ_E2E_GSE277173/line1_bulk/figures/l1_06_ma_fdr.png",
+    "/mnt/ssd/bio_data/projects/PRJ_E2E_GSE277173/line1_bulk/figures/l1_06_ma_nominal.png"
+  ],
+  "seed": 20261013
+}

@@ -1,0 +1,16 @@
+{
+  "task_id": "uuid-bad-2",
+  "line_id": "line1_bulk",
+  "step_name": "deg",
+  "status": "completed",
+  "environment": {
+    "language": "R",
+    "version": "4.3.3"
+  },
+  "io_files": {
+    "input": ["/data/data/com.termux/files/home/bio_data_logs_test/line1_bulk/processed/expr.tsv"],
+    "output": ["/data/data/com.termux/files/home/bio_data_logs_test/line1_bulk/results/deg.tsv"]
+  },
+  "checkpoint_status": "passed",
+  "error_log": null
+}

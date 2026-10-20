@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+# pca_matrix：line1_bulk 步骤 6（PCA）。对基因表达矩阵做主成分分析，看样本整体关系。
+#
+# 做法：取 SD 最大的 top 2000 个高变基因（固定个数写进报告，可复现；全量基因会被
+# 持家基因稀释），标准化后 prcomp，输出样本 PC 得分、方差解释比、PC1/PC2 散点图。
+#
+# 产物（写入工作目录 <line>/processed/）：pca_scores.tsv / pca_report.txt；
+# 图件写入 <line>/figures/l1_02_pca_step3.png（PNG 300dpi，figure_spec v2.2）。
+# 自校验内建：样本契约、无 NA、PC1+PC2 方差占比下限、产物非空，任一不过非零退出。
+set -euo pipefail
+
+seed="${BIOANALYS_SEED:-UNSET}"
+if [ "$seed" = "UNSET" ]; then
+  echo "BIOANALYS_SEED 未注入（引擎契约：seed 必须注入）" >&2
+  exit 3
+fi
+
+declare -a INPUTS=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --input) INPUTS+=("$2"); shift 2 ;;
+    --output) shift 2 ;;
+    --seed) shift 2 ;;
+    *) echo "未知参数: $1" >&2; exit 2 ;;
+  esac
+done
+
+# 输入按文件名特征分流。模式必须前后都带 *：拿到的是绝对路径，前缀匹配永远不中（坑 #99）。
+expr_file=""
+group_file=""
+for path in "${INPUTS[@]:-}"; do
+  [ -n "$path" ] || continue
+  case "$path" in
+    *expr_genes*.tsv) expr_file="$path" ;;
+    *group_map*.tsv) group_file="$path" ;;
+    *) echo "无法识别的输入文件: $path（需要 expr_genes/group_map）" >&2; exit 2 ;;
+  esac
+done
+
+if [ -z "$expr_file" ] || [ -z "$group_file" ]; then
+  echo "缺少必需输入：expr_genes 与 group_map 都必须提供（当前 expr='$expr_file' group='$group_file'）" >&2
+  exit 2
+fi
+for required in "$expr_file" "$group_file"; do
+  if [ ! -f "$required" ]; then
+    echo "输入文件不存在: $required" >&2
+    exit 2
+  fi
+done
+
+echo "step_executed=pca_matrix"
+echo "bioanalys_seed=${seed}"
+echo "input_expr=${expr_file}"
+echo "input_group_map=${group_file}"
+
+EXPR_FILE="$expr_file" GROUP_FILE="$group_file" BIOANALYS_SEED="$seed" \
+Rscript --vanilla - <<'RSCRIPT'
+suppressPackageStartupMessages({library(data.table); library(matrixStats); library(ggplot2)})
+
+expr_file  <- Sys.getenv("EXPR_FILE")
+group_file <- Sys.getenv("GROUP_FILE")
+seed       <- Sys.getenv("BIOANALYS_SEED")
+
+fail <- function(message) {
+  cat(sprintf("pca_matrix 自校验失败: %s\n", message), file = stderr())
+  quit(status = 1)
+}
+
+expr <- fread(expr_file)
+group_map <- fread(group_file)
+if (names(expr)[1] != "gene") fail("expr 首列不是 gene")
+samples <- setdiff(names(expr), "gene")
+if (!setequal(samples, group_map$sample)) fail("样本集合与 group_map 不一致")
+mat <- as.matrix(expr[, .SD, .SDcols = samples])
+rownames(mat) <- expr$gene
+if (any(is.na(mat))) fail("表达矩阵含 NA")
+groups <- setNames(group_map$group, group_map$sample)[samples]
+
+# 高变基因 top 2000（按 SD）：全量基因 PCA 会被持家基因稀释；个数固定，报告里写明
+top_n <- min(2000, nrow(mat))
+gene_sd <- rowSds(mat)
+top_genes <- order(gene_sd, decreasing = TRUE)[seq_len(top_n)]
+pca <- prcomp(t(mat[top_genes, , drop = FALSE]), center = TRUE, scale. = TRUE)
+var_explained <- summary(pca)$importance[2, ] * 100
+
+scores <- data.table(
+  sample = rownames(pca$x),
+  group = unname(groups[rownames(pca$x)]),
+  PC1 = round(pca$x[, 1], 4),
+  PC2 = round(pca$x[, 2], 4),
+  PC3 = round(pca$x[, 3], 4),
+  PC4 = round(pca$x[, 4], 4),
+  PC5 = round(pca$x[, 5], 4)
+)
+if (any(!is.finite(unlist(scores[, .SD, .SDcols = c("PC1", "PC2")])))) fail("PC 得分含非有限值")
+
+# 自校验：PC1+PC2 方差占比下限 20%。过低说明数据几乎没有结构，出图也没有解读价值
+if (var_explained[1] + var_explained[2] < 20) {
+  fail(sprintf("PC1+PC2 方差占比仅 %.1f%%，数据缺乏整体结构", var_explained[1] + var_explained[2]))
+}
+
+fwrite(scores[order(group, sample)], "pca_scores.tsv", sep = "\t")
+# 出图规范 v2.2：静态图统一 PNG 300dpi 落 <line>/figures/，图注在轴框外，
+# 二分类用标准色（对照 #3B4992 / 疾病 #EE0000）。
+dir.create("../figures", showWarnings = FALSE, recursive = TRUE)
+pca_png <- "../figures/l1_02_pca_step3.png"
+# groups 是 character 向量（不是 factor），levels() 会返回 NULL，必须用 unique 取组名
+group_levels <- sort(unique(as.character(groups)))
+group_colors <- if (length(group_levels) == 2) {
+  c("#3B4992", "#EE0000")
+} else {
+  rep(c("#3B4992", "#EE0000", "#4C72B0", "#DD8452", "#55A868", "#8172B3"),
+      length.out = length(group_levels))
+}
+p <- ggplot(scores, aes(x = PC1, y = PC2, color = group)) +
+  geom_point(size = 3) +
+  stat_ellipse(aes(color = group), type = "norm") +
+  scale_color_manual(values = setNames(group_colors, group_levels)) +
+  labs(caption = paste(
+    "line1: PCA on top variable genes (step pca_matrix)",
+    sprintf("PC1 %.1f%% | PC2 %.1f%%", var_explained[1], var_explained[2]),
+    sprintf("n=%d samples, top %d variable genes", length(samples), top_n),
+    sep = "\n")) +
+  theme_classic(base_size = 12) +
+  theme(plot.caption.position = "plot",
+        plot.caption = element_text(hjust = 0, size = 8))
+ggsave(pca_png, p, width = 6, height = 5, dpi = 300)
+
+report_lines <- c(
+  sprintf("step=pca_matrix"),
+  sprintf("seed=%s", seed),
+  sprintf("expr=%s", expr_file),
+  sprintf("group_map=%s", group_file),
+  sprintf("samples=%d", length(samples)),
+  sprintf("groups=%s", paste(sprintf("%s:%d", names(table(groups)), as.integer(table(groups))), collapse = " ")),
+  sprintf("top_variable_genes=%d", top_n),
+  sprintf("figure=%s (300dpi PNG)", pca_png),
+  sprintf("variance_explained=%s", paste(sprintf("PC%d:%.1f%%", 1:5, var_explained[1:5]), collapse = " "))
+)
+writeLines(report_lines, "pca_report.txt")
+for (artifact in c("pca_scores.tsv", "pca_report.txt", pca_png)) {
+  if (!file.exists(artifact) || file.info(artifact)$size == 0) {
+    fail(sprintf("产物缺失或为空: %s", artifact))
+  }
+}
+
+cat("top_variable_genes=", top_n, "\n", sep = "")
+cat("variance_explained=", paste(sprintf("PC%d:%.1f%%", 1:5, var_explained[1:5]), collapse = " "), "\n", sep = "")
+cat("pc1_range=", sprintf("%.2f-%.2f", min(scores$PC1), max(scores$PC1)), "\n", sep = "")
+RSCRIPT
+
+echo "pca_matrix done: pca_scores.tsv / pca_report.txt 已写入 $(pwd)；图件 ../figures/l1_02_pca_step3.png"

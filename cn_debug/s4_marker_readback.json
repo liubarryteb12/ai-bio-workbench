@@ -1,0 +1,217 @@
+[
+ {
+  "check": "mouse_shape",
+  "ok": true,
+  "detail": "(17283, 18628)"
+ },
+ {
+  "check": "mouse_obs_cols",
+  "ok": true,
+  "detail": "21 列"
+ },
+ {
+  "check": "mouse_domain_unchanged",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "check": "mouse_obs_names",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "check": "mouse_X_nnz",
+  "ok": true,
+  "detail": "75078043"
+ },
+ {
+  "check": "mouse_counts_nnz",
+  "ok": true,
+  "detail": "75078043"
+ },
+ {
+  "check": "mouse_X_pca_equal",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "check": "mouse_spatial_pair",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "check": "mouse_uns_spatial_samples",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "check": "mouse_uns_markers",
+  "ok": true,
+  "detail": "{\"domains_total\": 57, \"gene_id_note\": \"marker names 为 Ensembl ID，tsv 经 var['gene_symbol'] 映射出 symbol 列\", \"method\": \"scanpy_wilcoxon_per_domain\", \"n_genes\": 200, \"pts\": true, \"seed\": 20261013, \"source_h5ad\": \"/mnt/ssd/bio_data/line3_spatial/processed/spatial_domains_mouse.h5ad\", \"top_n\": 20}"
+ },
+ {
+  "check": "mouse_uns_domain_markers",
+  "ok": true,
+  "detail": "groups=['logfoldchanges', 'names', 'params', 'pts', 'pts_rest', 'pvals', 'pvals_adj', 'scores']"
+ },
+ {
+  "check": "mouse_domain_markers_200",
+  "ok": true,
+  "detail": "groups=57 min=200 max=200"
+ },
+ {
+  "check": "mouse_tsv_cols",
+  "ok": true,
+  "detail": "['group', 'rank', 'ensembl_id', 'gene_symbol', 'scores', 'logfoldchanges', 'pvals', 'pvals_adj', 'pct_nz_group', 'pct_nz_reference']"
+ },
+ {
+  "check": "mouse_tsv_rows",
+  "ok": true,
+  "detail": "1140 行（预期 1140）"
+ },
+ {
+  "check": "mouse_tsv_group_set",
+  "ok": true,
+  "detail": "57 域"
+ },
+ {
+  "check": "mouse_tsv_rank_range",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "check": "mouse_tsv_symbol_noNA",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "check": "mouse_tsv_scores_desc",
+  "ok": true,
+  "detail": "每组 scores 降序"
+ },
+ {
+  "check": "mouse_tsv_vs_uns",
+  "ok": true,
+  "detail": "mismatch=[]"
+ },
+ {
+  "check": "mouse_panel_hits_recorded",
+  "ok": true,
+  "detail": "{\"Adgre1\": \"NA\", \"C1qa\": \"JBO009_d1|rank100|score12.5\", \"C1qb\": \"JBO009_d0|rank183|score15.9\", \"Cd5l\": \"JBO009_d0|rank128|score18.6\", \"Clec4f\": \"JBO001_d0|rank138|score16.4\", \"Marco\": \"JBO006_d0|rank154|score12.7\", \"Siglecf\": \"NA\"}"
+ },
+ {
+  "check": "human_shape",
+  "ok": true,
+  "detail": "(6877, 19613)"
+ },
+ {
+  "check": "human_obs_cols",
+  "ok": true,
+  "detail": "21 列"
+ },
+ {
+  "check": "human_domain_unchanged",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "check": "human_obs_names",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "check": "human_X_nnz",
+  "ok": true,
+  "detail": "19319388"
+ },
+ {
+  "check": "human_counts_nnz",
+  "ok": true,
+  "detail": "19319388"
+ },
+ {
+  "check": "human_X_pca_equal",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "check": "human_spatial_pair",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "check": "human_uns_spatial_samples",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "check": "human_uns_markers",
+  "ok": true,
+  "detail": "{\"domains_total\": 18, \"gene_id_note\": \"marker names 为 Ensembl ID，tsv 经 var['gene_symbol'] 映射出 symbol 列\", \"method\": \"scanpy_wilcoxon_per_domain\", \"n_genes\": 200, \"pts\": true, \"seed\": 20261013, \"source_h5ad\": \"/mnt/ssd/bio_data/line3_spatial/processed/spatial_domains_human.h5ad\", \"top_n\": 20}"
+ },
+ {
+  "check": "human_uns_domain_markers",
+  "ok": true,
+  "detail": "groups=['logfoldchanges', 'names', 'params', 'pts', 'pts_rest', 'pvals', 'pvals_adj', 'scores']"
+ },
+ {
+  "check": "human_domain_markers_200",
+  "ok": true,
+  "detail": "groups=18 min=200 max=200"
+ },
+ {
+  "check": "human_tsv_cols",
+  "ok": true,
+  "detail": "['group', 'rank', 'ensembl_id', 'gene_symbol', 'scores', 'logfoldchanges', 'pvals', 'pvals_adj', 'pct_nz_group', 'pct_nz_reference']"
+ },
+ {
+  "check": "human_tsv_rows",
+  "ok": true,
+  "detail": "360 行（预期 360）"
+ },
+ {
+  "check": "human_tsv_group_set",
+  "ok": true,
+  "detail": "18 域"
+ },
+ {
+  "check": "human_tsv_rank_range",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "check": "human_tsv_symbol_noNA",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "check": "human_tsv_scores_desc",
+  "ok": true,
+  "detail": "每组 scores 降序"
+ },
+ {
+  "check": "human_tsv_vs_uns",
+  "ok": true,
+  "detail": "mismatch=[]"
+ },
+ {
+  "check": "human_panel_hits_recorded",
+  "ok": true,
+  "detail": "{\"ADGRE1\": \"NA\", \"C1QA\": \"JBO019_d4|rank180|score7.8\", \"C1QB\": \"JBO022_d0|rank183|score6.5\", \"CD5L\": \"NA\", \"CLEC4F\": \"NA\", \"MARCO\": \"JBO022_d0|rank102|score8.5\", \"SIGLEC1\": \"NA\"}"
+ },
+ {
+  "check": "report_step",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "check": "report_panel",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "check": "report_files",
+  "ok": true,
+  "detail": "['domain_markers_human.tsv', 'domain_markers_mouse.tsv', 'marker_report.txt', 'spatial_marker_human.h5ad', 'spatial_marker_mouse.h5ad']"
+ }
+]

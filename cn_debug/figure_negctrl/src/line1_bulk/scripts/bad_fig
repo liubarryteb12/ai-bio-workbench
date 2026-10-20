@@ -1,0 +1,9 @@
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+plt.rcParams.update({"font.size": 9})
+fig, ax = plt.subplots(figsize=(4, 3))
+ax.plot([1, 2], [1, 2])
+ax.text(0.5, 0.5, "x", fontsize=6)
+fig.savefig("../figures/l1_99_bad.png")
+plt.close("all")

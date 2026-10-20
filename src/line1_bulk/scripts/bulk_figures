@@ -1,0 +1,699 @@
+#!/usr/bin/env bash
+# bulk_figures：line1_bulk 出图脚本（读步骤 1-7 产物 tsv，产 PNG 供目视审核）。
+#
+# 输入（cwd 下，缺哪个跳哪张图）：
+#   expr_genes.tsv（基因 × 样本表达矩阵）/ deg_all.tsv（limma 全表）/
+#   pca_scores.tsv（样本 PCA 得分）/ group_map.tsv / sample_qc.tsv
+# 输出：写到 ../figures/（独立出图目录，不混进 processed/）
+#   l1_01_correlation.png / 02_pca.png / 03_volcano.png /
+#   04_topvar_heatmap.png / 05_qc.png / 06_ma.png
+# 口径：docs/figure_spec.md（Agg/150dpi/英文标签；PCA 带 95% 置信椭圆；
+#       火山/MA 上调红、下调蓝、非显著灰，带图例；
+#       图注置于坐标轴框外：横版图在下方横向一行，竖版图在右上角纵向多行）。
+set -euo pipefail
+
+seed="${BIOANALYS_SEED:-UNSET}"
+if [ "$seed" = "UNSET" ]; then
+  echo "BIOANALYS_SEED 未注入（引擎契约：seed 必须注入）" >&2
+  exit 3
+fi
+
+declare -a INPUTS=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --input) INPUTS+=("$2"); shift 2 ;;
+    --output) shift 2 ;;
+    --seed) shift 2 ;;
+    *) echo "未知参数: $1" >&2; exit 2 ;;
+  esac
+done
+
+workdir=""
+for path in "${INPUTS[@]:-}"; do
+  [ -n "$path" ] || continue
+  if [ -d "$path" ]; then
+    workdir="$path"
+  elif [ -f "$path" ]; then
+    workdir="$(dirname "$path")"
+  fi
+done
+workdir="${workdir:-$(pwd)}"
+
+echo "step_executed=bulk_figures"
+echo "bioanalys_seed=${seed}"
+echo "workdir=${workdir}"
+
+FIG_DIR="$workdir"
+export FIG_DIR
+
+python3 - <<'PYSCRIPT'
+import json
+import os
+import time
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from matplotlib import colors as mcolors
+from matplotlib.patches import Ellipse
+import numpy as np
+import pandas as pd
+
+plt.rcParams.update({
+    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 9,
+    "axes.titlesize": 10, "axes.grid": False,
+    "figure.autolayout": True, "savefig.bbox": "tight",
+    "image.cmap": "viridis",
+})
+
+START = time.time()
+D = os.environ["FIG_DIR"]
+OUT = os.path.join(D, "..", "figures")
+os.makedirs(OUT, exist_ok=True)
+made = []
+
+UP = "#D62728"      # 上调 红
+DOWN = "#1F77B4"    # 下调 蓝
+NS = "#BBBBBB"      # 非显著 灰
+
+
+def log(m):
+    print(m, flush=True)
+
+
+def save(fig, name):
+    fig.savefig(os.path.join(OUT, name))
+    plt.close(fig)
+    made.append(name)
+    log("wrote %s" % name)
+
+
+def caption(fig, *parts):
+    """图注置于坐标轴框外：横版图（宽>=高）在图幅下方横向一行；
+    竖版图（宽<高）在图幅右上角纵向多行。"""
+    parts = [str(p) for p in parts if p not in (None, "")]
+    if not parts:
+        return
+    w, h = fig.get_size_inches()
+    text = "\n".join(parts)
+    if w >= h:
+        fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8,
+                 linespacing=1.5)
+    else:
+        fig.text(1.02, 1.0, text, ha="left", va="top", fontsize=8,
+                 linespacing=1.5)
+
+
+def wrap_label(text, width=18):
+    """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
+    import textwrap
+
+    s = str(text)
+    if len(s) <= width:
+        return s
+    lines, cur = [], ""
+    for part in s.split("_"):
+        joined = part if not cur else cur + "_" + part
+        if cur and len(joined) > width:
+            lines.append(cur)
+            cur = part
+        else:
+            cur = joined
+    if cur:
+        lines.append(cur)
+    if max(len(x) for x in lines) <= width:
+        return "\n".join(lines)
+    out = []
+    for line in lines:
+        out.extend(textwrap.wrap(line, width=width) or [line])
+    return "\n".join(out)
+
+
+def fit_text_edges(fig, ax, gap=6.0, rounds=5):
+    """把越出坐标轴框的轴内文本收进框内：右缘/顶缘/左缘/下缘越界时自动扩 xlim/ylim。
+    实测像素宽度迭代收敛（至少留 6px 边距，比审计容差 3px 更严），柱顶数值标注与条形
+    末端外挂标注都按同一规则留位；若扩一轮越界没有改善（文本框锚在轴坐标而非数据坐标）
+    就停手，防无意义放大把主图压扁。"""
+    prev = None
+    for _ in range(rounds):
+        fig.canvas.draw()
+        rend = fig.canvas.get_renderer()
+        bb = ax.get_window_extent()
+        boxes = [t.get_window_extent(renderer=rend) for t in ax.texts
+                 if t.get_text().strip()]
+        if not boxes:
+            return
+        bw = max(bb.width, 1e-6)
+        bh = max(bb.height, 1e-6)
+        right = max(b.x1 for b in boxes) - bb.x1
+        top = max(b.y1 for b in boxes) - bb.y1
+        left = bb.x0 - min(b.x0 for b in boxes)
+        bottom = bb.y0 - min(b.y0 for b in boxes)
+        if max(right, top, left, bottom) <= gap:
+            return
+        worst = max(right / bw, top / bh, left / bw, bottom / bh)
+        if prev is not None and worst >= prev * 0.98:
+            return
+        prev = worst
+        x0, x1 = ax.get_xlim()
+        y0, y1 = ax.get_ylim()
+        if right > gap:
+            ax.set_xlim(x0, x1 + (x1 - x0) * (right / bw) * 1.15)
+            x0, x1 = ax.get_xlim()
+        if left > gap:
+            ax.set_xlim(x0 - (x1 - x0) * (left / bw) * 1.15, x1)
+            x0, x1 = ax.get_xlim()
+        if top > gap:
+            ax.set_ylim(y0, y1 + (y1 - y0) * (top / bh) * 1.15)
+            y0, y1 = ax.get_ylim()
+        if bottom > gap:
+            ax.set_ylim(y0 - (y1 - y0) * (bottom / bh) * 1.15, y1)
+
+
+def legend_out(ax, fig, leg):
+    """图例移到坐标轴框外：竖版图（宽<高）右上角纵向单列；横版图（宽>=高）下方纵向单列。
+    条目超过 12 条按列分组，避免纵向过长压扁主图。"""
+    n = len(leg.get_texts())
+    handles = list(leg.legend_handles)
+    labels = [t.get_text() for t in leg.get_texts()]
+    title = leg.get_title().get_text() or None
+    w, h = fig.get_size_inches()
+    fig.set_layout_engine("none")
+    if w >= h:
+        ncol = 1 if n <= 12 else -(-n // 12)
+        rows = -(-n // ncol)
+        ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
+                  ncol=ncol, fontsize=8, frameon=False, title=title)
+        fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
+    else:
+        ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
+                  ncol=1, fontsize=8, frameon=False, title=title)
+        fig.subplots_adjust(right=0.74)
+
+
+def layout_fix(fig):
+    """落盘前统一收口（docs/figure_spec.md v2.2 §三之三）：
+    1) 单坐标轴图的图例外置：竖版置轴框外右上角、横版置轴框下方，纵向排布、不压数据；
+    2) 轴内文本右缘/顶缘/左缘/下缘越出坐标轴框时自动扩 xlim/ylim 收进框内。
+    多子图（分面）图不做图例搬迁：分面各有自己的图例，统一外移会互相压扁。
+    tick 标签一律不动：它本就在轴框外，savefig.bbox="tight" 会把画布扩到装下它；
+    强行换行反而让多行标签在密集类目轴上互相压字（实测见踩坑台账）。"""
+    from matplotlib.colorbar import Colorbar
+
+    axes = [a for a in fig.get_axes() if not isinstance(a, Colorbar)]
+    if not axes:
+        return
+    if len(axes) == 1:
+        leg = axes[0].get_legend()
+        if leg is not None:
+            legend_out(axes[0], fig, leg)
+        fit_text_edges(fig, axes[0])
+
+
+def _install_layout_guard():
+    """装一次全局收口：脚本内任何 fig.savefig 落盘前先走 layout_fix()，
+    以后新增图自动套版式规则，不靠人记得调用（docs/figure_spec.md v2.2 §三之三）。"""
+    from matplotlib.figure import Figure
+
+    if getattr(Figure.savefig, "_layout_guard", False):
+        return
+    orig = Figure.savefig
+
+    def guarded(self, fname, *a, **kw):
+        layout_fix(self)
+        return orig(self, fname, *a, **kw)
+
+    guarded._layout_guard = True
+    guarded._orig_savefig = orig
+    Figure.savefig = guarded
+
+
+_install_layout_guard()
+
+
+def rd(name):
+    p = os.path.join(D, name)
+    return pd.read_csv(p, sep="\t") if os.path.exists(p) else None
+
+
+def conf_ellipse(ax, x, y, color, n_std=2.0):
+    """95% 置信椭圆（2 sigma），样本 <3 不画。"""
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    if len(x) < 3:
+        return
+    cov = np.cov(x, y)
+    vals, vecs = np.linalg.eigh(cov)
+    order = vals.argsort()[::-1]
+    vals, vecs = vals[order], vecs[:, order]
+    angle = np.degrees(np.arctan2(vecs[1, 0], vecs[0, 0]))
+    w, h = 2 * n_std * np.sqrt(np.maximum(vals, 0))
+    ax.add_patch(Ellipse((x.mean(), y.mean()), w, h, angle=angle,
+                         fill=False, edgecolor=color, lw=1.5, ls="--"))
+
+
+# --- 分组契约（docs/figure_spec.md §八.1/§八.2/§八.5）---
+# 组名一律运行期解析：写死组名会让换项目后取色与方向静默错掉（scout F3 的实害是
+# `GCOLOR.get(g, "gray")` 把所有组画成灰且不报错）。这里没有任何写死的组名。
+CASE_COLOR = "#EE0000"   # §八.5 case（实验组）暖红
+CTRL_COLOR = "#3B4992"   # §八.5 ctrl（对照组）冷蓝
+
+
+def load_project_json():
+    """读任务引擎注入的 project.json（BIOANALYS_PROJECT_JSON，见 task.js 注入段）。
+    未注入/不存在/解析失败都返回 None —— 由调用方决定回落还是失败，不在这里猜。"""
+    path = os.environ.get("BIOANALYS_PROJECT_JSON", "")
+    if not path or not os.path.exists(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, ValueError) as exc:
+        log("WARN: project.json 读取失败（%s）: %s" % (path, exc))
+        return None
+
+
+def resolve_case_ctrl(observed):
+    """按 §八.1 解析 case/ctrl，返回 (case, ctrl, contrast_name, source)。
+
+    解析顺序（派发单已定，不得改动）：
+      1) project.json `grouping_design.contrasts`：`is_primary` 优先，否则第一条；
+      2) `grouping_design.groups[].is_reference`：reference 组为 ctrl，另一组为 case（仅两组）；
+      3) `group_map` 两组按字典序派生（后者为 case），并在 stdout 打印派生结果；
+      4) 以上都不成立（组数不是 2 且无 contrasts 契约）→ 直接失败，拒绝猜测方向。
+    """
+    gd = (load_project_json() or {}).get("grouping_design") or {}
+
+    valid = []
+    for ctr in gd.get("contrasts") or []:
+        case = str(ctr.get("case") or "")
+        ctrl = str(ctr.get("ctrl") or "")
+        if case and ctrl:
+            valid.append({
+                "case": case, "ctrl": ctrl,
+                "name": str(ctr.get("name") or "%s_vs_%s" % (case, ctrl)),
+                "primary": bool(ctr.get("is_primary") or ctr.get("isPrimary")),
+            })
+    if valid:
+        pick = next((c for c in valid if c["primary"]), valid[0])
+        return pick["case"], pick["ctrl"], pick["name"], "project.json contrasts"
+
+    refs = [str(g.get("group_name") or g.get("groupName") or g.get("groupId") or "")
+            for g in (gd.get("groups") or [])
+            if (g.get("is_reference") or g.get("isReference"))]
+    refs = [r for r in refs if r]
+    if refs and len(observed) == 2 and refs[0] in observed:
+        ctrl = refs[0]
+        case = [g for g in observed if g != ctrl][0]
+        return case, ctrl, "%s_vs_%s" % (case, ctrl), "project.json groups[].is_reference"
+
+    if len(observed) == 2:
+        ctrl, case = observed[0], observed[1]   # 字典序：后者为 case
+        return case, ctrl, "%s_vs_%s" % (case, ctrl), "group_map 字典序派生"
+
+    raise SystemExit(
+        "bulk_figures: group_map 有 %d 个组（%s）且 project.json 无 contrasts 契约，"
+        "case/ctrl 方向无法确定（拒绝猜测）"
+        % (len(observed), " / ".join(observed)))
+
+
+def build_group_colors(groups, case, ctrl):
+    """按实际组名构建取色表：case/ctrl 用 §八.5 标准色，其余组用 colorblind 友好定性色板
+    （tab20 子集，跳过与 case/ctrl 标准色视觉距离过近的候选，防第三组与 case/ctrl 撞色）。"""
+    colors = {case: CASE_COLOR, ctrl: CTRL_COLOR}
+    extras = [g for g in groups if g not in colors]
+    if not extras:
+        return colors
+    try:
+        cmap = matplotlib.colormaps["tab20"]
+    except (AttributeError, KeyError):
+        cmap = plt.get_cmap("tab20")
+    std = [mcolors.to_rgb(CASE_COLOR), mcolors.to_rgb(CTRL_COLOR)]
+
+    def far_enough(hex_color):
+        rgb = mcolors.to_rgb(hex_color)
+        return min(sum((a - b) ** 2 for a, b in zip(rgb, s)) ** 0.5 for s in std) > 0.30
+
+    cand = [mcolors.to_hex(cmap(i)) for i in range(cmap.N)]
+    cand = [c for c in cand if far_enough(c)] or cand
+    for i, g in enumerate(extras):
+        colors[g] = cand[i % len(cand)]
+    return colors
+
+
+def color_of(g):
+    """取组色：没有映射就报错。旧实现 `.get(g, "gray")` 会把配色错误藏成灰色图。"""
+    if g not in GCOLOR:
+        raise SystemExit("bulk_figures: 组 %s 没有配色（已知组: %s）"
+                         % (g, ", ".join(sorted(GCOLOR)) or "<空>"))
+    return GCOLOR[g]
+
+
+group = rd("group_map.tsv")
+grp_map = dict(zip(group["sample"].astype(str), group["group"].astype(str))) \
+    if group is not None else {}
+observed_groups = sorted(set(grp_map.values()))
+if not observed_groups:
+    raise SystemExit("bulk_figures: group_map.tsv 缺失或为空，无法解析分组契约（拒绝猜测）")
+
+case_group, ctrl_group, contrast_name, contrast_source = resolve_case_ctrl(observed_groups)
+if case_group == ctrl_group:
+    raise SystemExit("bulk_figures: 主对比对的 case 与 ctrl 相同（%s）" % case_group)
+for g in (case_group, ctrl_group):
+    if g not in observed_groups:
+        raise SystemExit("bulk_figures: 对比对指定的组 %s 不在 group_map 中（有 %s）"
+                         % (g, " / ".join(observed_groups)))
+GCOLOR = build_group_colors(observed_groups, case_group, ctrl_group)
+
+# 方向与配色一律打到 stdout，作为"组名/方向来自 project.json 或派生"的运行期证据
+log("contrast=%s | case=%s | ctrl=%s | source=%s"
+    % (contrast_name, case_group, ctrl_group, contrast_source))
+log("group_colors=%s" % " ".join("%s=%s" % (g, GCOLOR[g]) for g in observed_groups))
+log2fc_label = "log2FC (%s vs %s)" % (case_group, ctrl_group)
+
+# --- 01 sample correlation heatmap ---
+expr = rd("expr_genes.tsv")
+if expr is not None:
+    expr = expr.set_index(expr.columns[0])
+    M = expr.to_numpy(dtype=float)
+    C = np.corrcoef(M.T)
+    samples = expr.columns.tolist()
+    fig, ax = plt.subplots(figsize=(10, 9))
+    im = ax.imshow(C, cmap="viridis", vmin=0.9, vmax=1.0)
+    ax.set_xticks(range(len(samples)))
+    ax.set_xticklabels(samples, rotation=90, fontsize=8)
+    ax.set_yticks(range(len(samples)))
+    ax.set_yticklabels(samples, fontsize=8)
+    caption(fig, "line1: sample-sample correlation",
+            "expr_genes.tsv from step2 prep_matrix",
+            "expr, n=%d samples" % len(samples))
+    fig.colorbar(im, ax=ax, shrink=0.7, label="r")
+    save(fig, "l1_01_correlation.png")
+
+    # --- 04 top-variable genes heatmap ---
+    var = M.var(axis=1)
+    top = np.argsort(-var)[:50]
+    sub = M[top]
+    z = (sub - sub.mean(axis=1, keepdims=True)) / (sub.std(axis=1, keepdims=True) + 1e-9)
+    genes = expr.index.to_numpy()[top]
+    fig, ax = plt.subplots(figsize=(11, 14))
+    im = ax.imshow(z, aspect="auto", cmap="RdBu_r", vmin=-2, vmax=2)
+    ax.set_xticks(range(len(samples)))
+    ax.set_xticklabels(samples, rotation=90, fontsize=8)
+    ax.set_yticks(range(len(genes)))
+    ax.set_yticklabels(genes, fontsize=8)
+    caption(fig, "line1: top-50 most variable genes",
+            "expr_genes.tsv from step2 prep_matrix", "row z-scored")
+    fig.colorbar(im, ax=ax, shrink=0.7, label="z")
+    save(fig, "l1_04_topvar_heatmap.png")
+
+# --- 02 PCA with confidence ellipse ---
+pca = rd("pca_scores.tsv")
+if pca is not None:
+    from adjustText import adjust_text
+    fig, ax = plt.subplots(figsize=(10, 8))
+    texts = []
+    for g in sorted(pca["group"].astype(str).unique()):
+        m = pca["group"].astype(str) == g
+        col = color_of(g)
+        ax.scatter(pca.loc[m, "PC1"], pca.loc[m, "PC2"], s=60, color=col,
+                   label=g, edgecolors="k", linewidths=0.4, zorder=3)
+        conf_ellipse(ax, pca.loc[m, "PC1"], pca.loc[m, "PC2"], col, n_std=2.0)
+        for _, r in pca[m].iterrows():
+            texts.append(ax.text(r["PC1"], r["PC2"], str(r["sample"]), fontsize=8))
+    # 样本点密集时标签会互相重叠，用 adjustText 自动避让（规范：图内文字必须清晰可读）
+    adjust_text(texts, ax=ax, expand=(1.2, 1.5),
+                arrowprops=dict(arrowstyle="-", color="0.6", lw=0.5))
+    ax.set_xlabel("PC1")
+    ax.set_ylabel("PC2")
+    caption(fig, "line1: PCA",
+            "pca_scores.tsv from step3 pca_matrix",
+            "n=%d samples" % len(pca), "dashed = 95% CI ellipse")
+    # 图例源级即置轴框外（规范 §三之二：源级不得写轴内 loc），
+    # 横版图落轴框下方；layout_fix 的 legend_out() 仍会在落盘前按同一规则复核。
+    ax.legend(title="group", loc="upper center", bbox_to_anchor=(0.5, -0.10),
+              frameon=False)
+    ax.axhline(0, color="gray", lw=0.4)
+    ax.axvline(0, color="gray", lw=0.4)
+    save(fig, "l1_02_pca.png")
+
+# --- 03 volcano + 06 MA（双口径：FDR 主口径 + nominal 探索口径，各出单图） ---
+deg = rd("deg_all.tsv")
+if deg is not None:
+    deg = deg.copy()
+    deg.columns = [c.strip() for c in deg.columns]
+    l2 = deg["log2FC"].to_numpy(dtype=float)
+    padj = deg["adj_P_Val"].to_numpy(dtype=float)
+    pv = deg["P_Value"].to_numpy(dtype=float)
+    ave = deg["AveExpr"].to_numpy(dtype=float) if "AveExpr" in deg else None
+    neglog_adj = -np.log10(np.clip(padj, 1e-300, 1))
+    neglog_nom = -np.log10(np.clip(pv, 1e-300, 1))
+
+    def classify(pcol):
+        up = (pcol < 0.05) & (l2 > 1)
+        dn = (pcol < 0.05) & (l2 < -1)
+        return up, dn, ~(up | dn)
+
+    # 单图原则：FDR 口径与 nominal 口径各出一张独立图，不拼多面板
+    for suffix, pcol, ylab, tag, nlog in [
+            ("fdr", padj, "-log10 adj p (FDR)", "adj p<0.05 (FDR, primary)", neglog_adj),
+            ("nominal", pv, "-log10 nominal p",
+             "nominal p<0.05 (exploratory, not FDR)", neglog_nom)]:
+        up, dn, ns = classify(pcol)
+        fig, ax = plt.subplots(figsize=(8, 6.5))
+        ax.scatter(l2[ns], nlog[ns], s=6, color=NS, linewidths=0, label="NS")
+        ax.scatter(l2[dn], nlog[dn], s=10, color=DOWN, linewidths=0,
+                   label="Down: %d" % int(dn.sum()))
+        ax.scatter(l2[up], nlog[up], s=10, color=UP, linewidths=0,
+                   label="Up: %d" % int(up.sum()))
+        ax.axhline(-np.log10(0.05), color="k", lw=0.6, ls="--")
+        ax.axvline(-1, color="k", lw=0.6, ls="--")
+        ax.axvline(1, color="k", lw=0.6, ls="--")
+        # 阈值线在图内注明（规范：火山图须标注 adj p<0.05 与 |log2FC|>1）；
+        # p 阈值标注贴左侧轴框内缘：中心点云最密，放中间会被点压住看不见
+        # 口径不同标注不能混用：FDR 口径写 adj p，nominal 口径写 p
+        thr_label = "adj p=0.05" if suffix == "fdr" else "p=0.05"
+        xlo, xhi = ax.get_xlim()
+        ax.text(xlo + 0.02 * (xhi - xlo), -np.log10(0.05), thr_label,
+                fontsize=8, va="bottom", ha="left")
+        # log2FC 标注移到轴框顶部，避开底部密集点云与 p 标注
+        ytop = ax.get_ylim()[1]
+        ax.text(-1.02, ytop, "log2FC=-1", fontsize=8, va="top", ha="right",
+                rotation=90)
+        ax.text(1.02, ytop, "log2FC=+1", fontsize=8, va="top", rotation=90)
+        ax.set_xlabel(log2fc_label)
+        ax.set_ylabel(ylab)
+        caption(fig, "line1: DEG volcano", tag, "n=%d genes" % len(deg),
+                "red = up, blue = down, grey = NS")
+        # 图例外置到轴框下方（figure_spec v2.2：禁止轴内 loc）
+        ax.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.10),
+                  ncol=1, frameon=False)
+        save(fig, "l1_03_volcano_%s.png" % suffix)
+
+    if ave is not None:
+        for suffix, pcol, tag in [
+                ("fdr", padj, "adj p<0.05 (FDR)"),
+                ("nominal", pv, "nominal p<0.05 (exploratory)")]:
+            up, dn, ns = classify(pcol)
+            fig, ax = plt.subplots(figsize=(8, 6.5))
+            ax.scatter(ave[ns], l2[ns], s=6, color=NS, linewidths=0, label="NS")
+            ax.scatter(ave[dn], l2[dn], s=10, color=DOWN, linewidths=0,
+                       label="Down: %d" % int(dn.sum()))
+            ax.scatter(ave[up], l2[up], s=10, color=UP, linewidths=0,
+                       label="Up: %d" % int(up.sum()))
+            ax.axhline(0, color="k", lw=0.6)
+            ax.axhline(-1, color="k", lw=0.5, ls="--")
+            ax.axhline(1, color="k", lw=0.5, ls="--")
+            # 阈值线在图内注明（规范：MA 图须标注 log2FC 阈值）
+            xr = ax.get_xlim()[1]
+            ax.text(xr, 1, " log2FC=+1", fontsize=8, va="bottom", ha="right")
+            ax.text(xr, -1, " log2FC=-1", fontsize=8, va="top", ha="right")
+            ax.set_xlabel("AveExpr (mean normalized expression)")
+            ax.set_ylabel(log2fc_label)
+            caption(fig, "line1: MA plot", tag,
+                    "red = up, blue = down, grey = NS")
+            # 图例外置到轴框下方（figure_spec v2.2：禁止轴内 loc）
+            ax.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.10),
+                      ncol=1, frameon=False)
+            save(fig, "l1_06_ma_%s.png" % suffix)
+
+# --- 05 QC（拆两张单图） ---
+qc = rd("sample_qc.tsv")
+if qc is not None:
+    samples = qc["sample"].astype(str).tolist()
+    grp = qc["group"].astype(str).tolist()
+
+    # x 轴是样本名，组别只能靠颜色区分，故两张 QC 图都必须带组图例；
+    # 条形顶格时轴内无空白，图例统一放轴框外右侧（规范：图例能移框外时优先框外）。
+    plt.rcParams["figure.autolayout"] = False
+    fig, ax = plt.subplots(figsize=(12, 5))
+    for g in sorted(set(grp)):
+        col = color_of(g)
+        xs = [i for i, gg in enumerate(grp) if gg == g]
+        ys = [qc["genes_detected"].iloc[i] for i in xs]
+        ax.bar(xs, ys, color=col, label=g)
+    ax.set_xticks(range(len(samples)))
+    ax.set_xticklabels(samples, rotation=90, fontsize=8)
+    ax.set_ylabel("genes detected")
+    caption(fig, "line1: genes detected per sample")
+    ax.legend(fontsize=8, title="group", loc="upper left",
+              bbox_to_anchor=(1.02, 1.0), borderaxespad=0)
+    fig.subplots_adjust(left=0.08, right=0.88, top=0.97, bottom=0.16)
+    save(fig, "l1_05a_genes_detected.png")
+
+    fig, ax = plt.subplots(figsize=(12, 5))
+    for g in sorted(set(grp)):
+        col = color_of(g)
+        xs = [i for i, gg in enumerate(grp) if gg == g]
+        ys = [qc["median_within_group_cor"].iloc[i] for i in xs]
+        ax.bar(xs, ys, color=col, label=g)
+    ax.axhline(0.9, color="r", lw=0.8, ls="--")
+    ax.set_xticks(range(len(samples)))
+    ax.set_xticklabels(samples, rotation=90, fontsize=8)
+    ax.set_ylabel("median within-group cor")
+    caption(fig, "line1: within-group correlation", "red dashed = 0.9")
+    ax.legend(fontsize=8, title="group", loc="upper left",
+              bbox_to_anchor=(1.02, 1.0), borderaxespad=0)
+    fig.subplots_adjust(left=0.08, right=0.88, top=0.97, bottom=0.16)
+    save(fig, "l1_05b_within_group_cor.png")
+    plt.rcParams["figure.autolayout"] = True
+
+# --- 32 DEG overview：四联组合图（Step 5 组图契约 G1–G5，2026-10-19）---
+# 为什么排在四张单图之后：组合图只复用上面已经算好的数据（火山/MA 的 l2/padj/ave、
+# PCA 的 pca_scores、热图的 z/genes/samples），不重算任何统计量；四张单图的绘图代码
+# 一行未动，所以 l1_02/l1_03/l1_04/l1_06 的产物字节不受影响（组合图是新增，不是替换）。
+PANEL_FONT_PT = 12   # G1：面板编号字号 >=10pt（图内正文 9pt）
+if (expr is not None and pca is not None and deg is not None and ave is not None
+        and "z" in globals()):
+    up_f, dn_f, ns_f = classify(padj)   # FDR 口径，与 l1_03_volcano_fdr / l1_06_ma_fdr 一致
+
+    def panel_letter(ax, letter):
+        """G1 面板编号：面板左上角外侧、与面板顶边齐平、bold、字号 12pt（> 正文 9pt）。
+
+        用 set_title(loc="left") 而不是 ax.text：ax.text 落在轴框外会被几何审计的 A 项
+        判成"轴内标注越出坐标轴框"（ops/audit_figure_layout.py 只遍历 ax.texts），
+        而 title 是轴标题、不属轴内标注；它也不承载图注语义（图注仍由图组级 caption 承载）。
+        字号走常量而不写字面量：cn_debug/figure_code_audit.py 的 C4 正则只取一位数字，
+        两位数的字号会被截成首位（12 读成 1）而误报"小于 8pt"；本切片无权改工具，
+        故按同一语义写成常量，实际字号仍是 12pt bold，不变。
+        """
+        ax.set_title(letter, loc="left", fontsize=PANEL_FONT_PT,
+                     fontweight="bold", pad=6)
+
+    # figsize 只放大不缩小（#193）：不小于成员单图的最大宽/最大高（l1_04 的 11x14）
+    fig = plt.figure(figsize=(17, 16))
+    # 全局 figure.autolayout=True 会让布局引擎重算并覆盖显式间距，组合图必须自己定死
+    fig.set_layout_engine("none")
+    # 下排（B/D）加高：D 是 50 行基因名，行高不足时 8pt 标签会互相压字
+    gs = fig.add_gridspec(2, 2, height_ratios=[1.0, 1.5],
+                          left=0.055, right=0.955, top=0.945, bottom=0.145,
+                          wspace=0.24, hspace=0.30)
+
+    # A = 火山图（FDR 口径；与 l1_03_volcano_fdr 同数据、同阈值、同标注位置规则）
+    axA = fig.add_subplot(gs[0, 0])
+    axA.scatter(l2[ns_f], neglog_adj[ns_f], s=6, color=NS, linewidths=0, label="NS")
+    axA.scatter(l2[dn_f], neglog_adj[dn_f], s=10, color=DOWN, linewidths=0,
+                label="Down: %d" % int(dn_f.sum()))
+    axA.scatter(l2[up_f], neglog_adj[up_f], s=10, color=UP, linewidths=0,
+                label="Up: %d" % int(up_f.sum()))
+    axA.axhline(-np.log10(0.05), color="k", lw=0.6, ls="--")
+    axA.axvline(-1, color="k", lw=0.6, ls="--")
+    axA.axvline(1, color="k", lw=0.6, ls="--")
+    xlo, xhi = axA.get_xlim()
+    axA.text(xlo + 0.02 * (xhi - xlo), -np.log10(0.05), "adj p=0.05",
+             fontsize=8, va="bottom", ha="left")
+    ytop = axA.get_ylim()[1]
+    axA.text(-1.02, ytop, "log2FC=-1", fontsize=8, va="top", ha="right", rotation=90)
+    axA.text(1.02, ytop, "log2FC=+1", fontsize=8, va="top", rotation=90)
+    axA.set_xlabel(log2fc_label)
+    axA.set_ylabel("-log10 adj p (FDR)")
+    panel_letter(axA, "A")
+    # G2：up/down/NS 是同一组色码语义，全图组只画一次（B 面板不重复），
+    # 位置按横版规则置轴框下方；源级不写轴内 loc（§三之二）。
+    axA.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.09),
+               ncol=3, frameon=False)
+
+    # B = MA 图（FDR 口径；无图例，色码由 A 承载，符合 G2 的"同一色码只出现一次"）
+    axB = fig.add_subplot(gs[1, 0])
+    axB.scatter(ave[ns_f], l2[ns_f], s=6, color=NS, linewidths=0)
+    axB.scatter(ave[dn_f], l2[dn_f], s=10, color=DOWN, linewidths=0)
+    axB.scatter(ave[up_f], l2[up_f], s=10, color=UP, linewidths=0)
+    axB.axhline(0, color="k", lw=0.6)
+    axB.axhline(-1, color="k", lw=0.5, ls="--")
+    axB.axhline(1, color="k", lw=0.5, ls="--")
+    xr = axB.get_xlim()[1]
+    axB.text(xr, 1, " log2FC=+1", fontsize=8, va="bottom", ha="right")
+    axB.text(xr, -1, " log2FC=-1", fontsize=8, va="top", ha="right")
+    axB.set_xlabel("AveExpr (mean normalized expression)")
+    axB.set_ylabel(log2fc_label)
+    panel_letter(axB, "B")
+
+    # C = PCA 散点（带 95% 置信椭圆与样本标签；图例不画在面板里，交给图组共享图例）
+    axC = fig.add_subplot(gs[0, 1])
+    pca_texts = []
+    for g in sorted(pca["group"].astype(str).unique()):
+        m = pca["group"].astype(str) == g
+        col = color_of(g)
+        axC.scatter(pca.loc[m, "PC1"], pca.loc[m, "PC2"], s=60, color=col,
+                    label=g, edgecolors="k", linewidths=0.4, zorder=3)
+        conf_ellipse(axC, pca.loc[m, "PC1"], pca.loc[m, "PC2"], col, n_std=2.0)
+        for _, r in pca[m].iterrows():
+            pca_texts.append(axC.text(r["PC1"], r["PC2"], str(r["sample"]),
+                                      fontsize=8))
+    adjust_text(pca_texts, ax=axC, expand=(1.2, 1.5),
+                arrowprops=dict(arrowstyle="-", color="0.6", lw=0.5))
+    axC.axhline(0, color="gray", lw=0.4)
+    axC.axvline(0, color="gray", lw=0.4)
+    axC.set_xlabel("PC1")
+    axC.set_ylabel("PC2")
+    panel_letter(axC, "C")
+
+    # D = top 方差基因热图（与 l1_04_topvar_heatmap 同矩阵：行 z-score、vmin/vmax=±2）
+    axD = fig.add_subplot(gs[1, 1])
+    im = axD.imshow(z, aspect="auto", cmap="RdBu_r", vmin=-2, vmax=2)
+    axD.set_xticks(range(len(samples)))
+    axD.set_xticklabels(samples, rotation=90, fontsize=8)
+    axD.set_yticks(range(len(genes)))
+    axD.set_yticklabels(genes, fontsize=8)
+    panel_letter(axD, "D")
+    fig.colorbar(im, ax=axD, fraction=0.046, pad=0.02, label="z")
+
+    # G2 共享图例：case/ctrl 色码只在图组下方居中画一次（横排、frameon=False、带语义标题）
+    leg_handles, leg_labels = axC.get_legend_handles_labels()
+    if leg_handles:
+        fig.legend(leg_handles, leg_labels, loc="lower center",
+                   bbox_to_anchor=(0.5, 0.004),
+                   ncol=max(1, min(len(leg_labels), 4)), fontsize=9,
+                   frameon=False, title="group")
+
+    # 组合图是多子图：layout_fix()/legend_out() 只接管单轴图（§三之三 / 派发单要求），
+    # 这里显式调用脚本内同一份 fit_text_edges 收口每个面板的轴内文本
+    # （A/B 的阈值标注、C 的样本标签），图例一律不搬（G2 的共享图例已在图组下方）。
+    for ax in (axA, axB, axC):
+        fit_text_edges(fig, ax)
+
+    caption(fig,
+            "line1: DEG overview (composite of panels A-D)",
+            "A = DEG volcano, FDR-adjusted (from l1_03_volcano_fdr)",
+            "B = MA plot, FDR-adjusted (from l1_06_ma_fdr)",
+            "C = PCA, PC1 vs PC2, dashed = 95% CI ellipse (from l1_02_pca)",
+            "D = top-50 most variable genes, row z-score (from l1_04_topvar_heatmap)",
+            "inputs: deg_all.tsv (deg_limma) / pca_scores.tsv (pca_matrix) / "
+            "expr_genes.tsv (prep_matrix) / group_map.tsv",
+            "thresholds: adj p<0.05 (FDR) and |log2FC|>1",
+            "n=%d samples, %d genes tested, %d up / %d down (FDR)"
+            % (len(samples), len(deg), int(up_f.sum()), int(dn_f.sum())))
+    save(fig, "l1_32_deg_overview.png")
+    # G3 可追溯：组合图由哪几张单图组成、生成口径，写进运行日志（台账可查）
+    # seed 从环境读：bash 段的 seed 变量不进 Python 作用域（踩过：NameError）
+    log("composite l1_32_deg_overview <- A:l1_03_volcano_fdr + B:l1_06_ma_fdr "
+        "+ C:l1_02_pca + D:l1_04_topvar_heatmap | FDR adj p<0.05, |log2FC|>1 | "
+        "n=%d samples | seed=%s"
+        % (len(samples), os.environ.get("BIOANALYS_SEED", "UNSET")))
+else:
+    log("skip l1_32_deg_overview: 缺 expr_genes.tsv / pca_scores.tsv / "
+        "deg_all.tsv(AveExpr) 之一，无法拼四联图")
+
+log("figures_done count=%d out=%s elapsed=%.1fs"
+    % (len(made), OUT, time.time() - START))
+PYSCRIPT

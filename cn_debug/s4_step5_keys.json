@@ -1,0 +1,146 @@
+{
+ "mouse": {
+  "obs_cols": [
+   "array_col",
+   "array_row",
+   "barcode",
+   "condition",
+   "condition_class",
+   "domain",
+   "group",
+   "gsm",
+   "in_tissue",
+   "n_genes_by_counts",
+   "ncount",
+   "nfeature",
+   "pct_mito",
+   "platform_id",
+   "pxl_col_fullres",
+   "pxl_row_fullres",
+   "sample_id",
+   "species",
+   "strain",
+   "tissue",
+   "total_counts"
+  ],
+  "var_cols": [
+   "dispersions",
+   "dispersions_norm",
+   "feature_type",
+   "gene_symbol",
+   "genome",
+   "highly_variable",
+   "means"
+  ],
+  "uns_keys": [
+   "coord_note",
+   "dimred",
+   "domains",
+   "gene_id_type",
+   "genome",
+   "grouping_check",
+   "hvg",
+   "image_note",
+   "log1p",
+   "normalization",
+   "pca",
+   "qc",
+   "samples",
+   "seed",
+   "source_h5ad",
+   "source_soft_human",
+   "source_soft_mouse",
+   "source_tar",
+   "spatial",
+   "species",
+   "warnings"
+  ],
+  "layers": [
+   "None",
+   "counts"
+  ],
+  "obsm": [
+   "X_pca",
+   "X_umap",
+   "spatial"
+  ],
+  "shape": [
+   17283,
+   18628
+  ],
+  "X_format": "csr",
+  "domain_nunique": 57
+ },
+ "human": {
+  "obs_cols": [
+   "array_col",
+   "array_row",
+   "barcode",
+   "condition",
+   "condition_class",
+   "domain",
+   "group",
+   "gsm",
+   "in_tissue",
+   "n_genes_by_counts",
+   "ncount",
+   "nfeature",
+   "pct_mito",
+   "platform_id",
+   "pxl_col_fullres",
+   "pxl_row_fullres",
+   "sample_id",
+   "species",
+   "strain",
+   "tissue",
+   "total_counts"
+  ],
+  "var_cols": [
+   "dispersions",
+   "dispersions_norm",
+   "feature_type",
+   "gene_symbol",
+   "genome",
+   "highly_variable",
+   "means"
+  ],
+  "uns_keys": [
+   "coord_note",
+   "dimred",
+   "domains",
+   "gene_id_type",
+   "genome",
+   "grouping_check",
+   "hvg",
+   "image_note",
+   "log1p",
+   "normalization",
+   "pca",
+   "qc",
+   "samples",
+   "seed",
+   "source_h5ad",
+   "source_soft_human",
+   "source_soft_mouse",
+   "source_tar",
+   "spatial",
+   "species",
+   "warnings"
+  ],
+  "layers": [
+   "None",
+   "counts"
+  ],
+  "obsm": [
+   "X_pca",
+   "X_umap",
+   "spatial"
+  ],
+  "shape": [
+   6877,
+   19613
+  ],
+  "X_format": "csr",
+  "domain_nunique": 18
+ }
+}

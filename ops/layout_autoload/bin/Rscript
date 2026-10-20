@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Rscript 垫片（零重写外挂的一部分）
+#
+# 母版 R 脚本统一用 `Rscript --vanilla - <<'RSCRIPT'` 调用，而 --vanilla 会跳过
+# R_PROFILE_USER（连同站点/环境文件），出图模板挂载就静默失效了。
+# 这里把 --vanilla 降级为等价组合（不保存/不恢复 + 不读站点与环境文件），
+# 保留 user profile，其余参数原样透传。任务脚本把本目录放在 PATH 最前面即可。
+set -euo pipefail
+
+REAL_RSCRIPT="/usr/bin/Rscript"
+
+args=()
+for arg in "$@"; do
+  if [ "$arg" = "--vanilla" ]; then
+    args+=(--no-save --no-restore --no-site-file --no-environ)
+  else
+    args+=("$arg")
+  fi
+done
+
+exec "$REAL_RSCRIPT" "${args[@]}"

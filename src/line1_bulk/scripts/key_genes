@@ -1,0 +1,316 @@
+#!/usr/bin/env bash
+# key_genes：line1_bulk 步骤 9 交集关键基因（DEG ∩ WGCNA 显著模块 ∩ PPI hub）。
+#
+# 输入（同 cwd）：deg_all.tsv + wgcna_modules.tsv + wgcna_module_trait.tsv + ppi_hubs.tsv。
+#
+# 口径（用户 2026-10-13 拍板"样本量小也能做，容忍精度不高"）：
+#   本数据集 DEG 0 显著（BH 后无基因通过，min adj p=0.45）。若严格用 adj p<0.05
+#   取 DEG，交集必为空。故 DEG 侧**放宽到 nominal p<0.05**，并在报告与产物列
+#   明确标注 deg_criteria=nominal_p_lt_0.05（非 FDR），不伪装成严格 DEG。
+#   WGCNA 侧优先 = 模块内 hub 基因（wgcna_hub_genes.tsv，|kME|>=0.8 & |GS|>=0.2）；
+#   读不到该文件时回退到"与分组显著相关模块的全部基因"，并在报告注明回退。
+#   PPI 侧 = degree top N hub。
+#
+# 自校验内建：输入存在、各来源基因集非空、交集结果与集合运算一致、
+# 报告写明 DEG 判据放宽。
+set -euo pipefail
+
+seed="${BIOANALYS_SEED:-UNSET}"
+if [ "$seed" = "UNSET" ]; then
+  echo "BIOANALYS_SEED 未注入（引擎契约：seed 必须注入）" >&2
+  exit 3
+fi
+
+declare -a INPUTS=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --input) INPUTS+=("$2"); shift 2 ;;
+    --output) shift 2 ;;
+    --seed) shift 2 ;;
+    *) echo "未知参数: $1" >&2; exit 2 ;;
+  esac
+done
+
+deg_file=""; mod_file=""; trait_file=""; hub_file=""; whub_file=""
+for path in "${INPUTS[@]:-}"; do
+  [ -n "$path" ] || continue
+  case "$path" in
+    *deg_all*.tsv) deg_file="$path" ;;
+    *wgcna_hub*.tsv) whub_file="$path" ;;
+    *wgcna_modules*.tsv) mod_file="$path" ;;
+    *wgcna_module_trait*.tsv) trait_file="$path" ;;
+    *ppi_hubs*.tsv) hub_file="$path" ;;
+    *) echo "无法识别的输入: $path" >&2; exit 2 ;;
+  esac
+done
+for f in "$deg_file" "$mod_file" "$trait_file" "$hub_file"; do
+  [ -n "$f" ] && [ -f "$f" ] || { echo "缺少或不存在输入: $f" >&2; exit 2; }
+done
+# wgcna_hub_genes.tsv 是可选输入：老项目没有该产物时回退到显著模块全量
+if [ -n "$whub_file" ] && [ ! -f "$whub_file" ]; then
+  echo "wgcna_hub 输入不存在，回退到显著模块全量: $whub_file" >&2
+  whub_file=""
+fi
+
+echo "step_executed=key_genes"
+echo "bioanalys_seed=${seed}"
+
+DEG_FILE="$deg_file" MOD_FILE="$mod_file" TRAIT_FILE="$trait_file" HUB_FILE="$hub_file" \
+WGCNA_HUB_FILE="$whub_file" BIOANALYS_SEED="$seed" python3 - <<'PYSCRIPT'
+import os
+import sys
+import time
+
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import pandas as pd
+
+plt.rcParams.update({"figure.dpi": 300, "savefig.dpi": 300, "font.size": 9,
+                     "axes.titlesize": 10, "axes.grid": False,
+                     "figure.autolayout": True, "savefig.bbox": "tight",
+                     "image.cmap": "viridis"})
+
+
+def caption(fig, *parts):
+    """图注置于坐标轴框外：横版图（宽>=高）在图幅下方横向一行；
+    竖版图（宽<高）在图幅右上角纵向多行。"""
+    parts = [str(p) for p in parts if p not in (None, "")]
+    if not parts:
+        return
+    w, h = fig.get_size_inches()
+    text = "\n".join(parts)
+    if w >= h:
+        fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8,
+                 linespacing=1.5)
+    else:
+        fig.text(1.02, 1.0, text, ha="left", va="top", fontsize=8,
+                 linespacing=1.5)
+
+
+def wrap_label(text, width=18):
+    """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
+    import textwrap
+
+    s = str(text)
+    if len(s) <= width:
+        return s
+    lines, cur = [], ""
+    for part in s.split("_"):
+        joined = part if not cur else cur + "_" + part
+        if cur and len(joined) > width:
+            lines.append(cur)
+            cur = part
+        else:
+            cur = joined
+    if cur:
+        lines.append(cur)
+    if max(len(x) for x in lines) <= width:
+        return "\n".join(lines)
+    out = []
+    for line in lines:
+        out.extend(textwrap.wrap(line, width=width) or [line])
+    return "\n".join(out)
+
+
+def fit_text_edges(fig, ax, gap=6.0, rounds=5):
+    """把越出坐标轴框的轴内文本收进框内：右缘/顶缘/左缘/下缘越界时自动扩 xlim/ylim。
+    实测像素宽度迭代收敛（至少留 6px 边距，比审计容差 3px 更严），柱顶数值标注与条形
+    末端外挂标注都按同一规则留位；若扩一轮越界没有改善（文本框锚在轴坐标而非数据坐标）
+    就停手，防无意义放大把主图压扁。"""
+    prev = None
+    for _ in range(rounds):
+        fig.canvas.draw()
+        rend = fig.canvas.get_renderer()
+        bb = ax.get_window_extent()
+        boxes = [t.get_window_extent(renderer=rend) for t in ax.texts
+                 if t.get_text().strip()]
+        if not boxes:
+            return
+        bw = max(bb.width, 1e-6)
+        bh = max(bb.height, 1e-6)
+        right = max(b.x1 for b in boxes) - bb.x1
+        top = max(b.y1 for b in boxes) - bb.y1
+        left = bb.x0 - min(b.x0 for b in boxes)
+        bottom = bb.y0 - min(b.y0 for b in boxes)
+        if max(right, top, left, bottom) <= gap:
+            return
+        worst = max(right / bw, top / bh, left / bw, bottom / bh)
+        if prev is not None and worst >= prev * 0.98:
+            return
+        prev = worst
+        x0, x1 = ax.get_xlim()
+        y0, y1 = ax.get_ylim()
+        if right > gap:
+            ax.set_xlim(x0, x1 + (x1 - x0) * (right / bw) * 1.15)
+            x0, x1 = ax.get_xlim()
+        if left > gap:
+            ax.set_xlim(x0 - (x1 - x0) * (left / bw) * 1.15, x1)
+            x0, x1 = ax.get_xlim()
+        if top > gap:
+            ax.set_ylim(y0, y1 + (y1 - y0) * (top / bh) * 1.15)
+            y0, y1 = ax.get_ylim()
+        if bottom > gap:
+            ax.set_ylim(y0 - (y1 - y0) * (bottom / bh) * 1.15, y1)
+
+
+def legend_out(ax, fig, leg):
+    """图例移到坐标轴框外：竖版图（宽<高）右上角纵向单列；横版图（宽>=高）下方纵向单列。
+    条目超过 12 条按列分组，避免纵向过长压扁主图。"""
+    n = len(leg.get_texts())
+    handles = list(leg.legend_handles)
+    labels = [t.get_text() for t in leg.get_texts()]
+    title = leg.get_title().get_text() or None
+    w, h = fig.get_size_inches()
+    fig.set_layout_engine("none")
+    if w >= h:
+        ncol = 1 if n <= 12 else -(-n // 12)
+        rows = -(-n // ncol)
+        ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
+                  ncol=ncol, fontsize=8, frameon=False, title=title)
+        fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
+    else:
+        ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
+                  ncol=1, fontsize=8, frameon=False, title=title)
+        fig.subplots_adjust(right=0.74)
+
+
+def layout_fix(fig):
+    """落盘前统一收口（docs/figure_spec.md v2.2 §三之三）：
+    1) 单坐标轴图的图例外置：竖版置轴框外右上角、横版置轴框下方，纵向排布、不压数据；
+    2) 轴内文本右缘/顶缘/左缘/下缘越出坐标轴框时自动扩 xlim/ylim 收进框内。
+    多子图（分面）图不做图例搬迁：分面各有自己的图例，统一外移会互相压扁。
+    tick 标签一律不动：它本就在轴框外，savefig.bbox="tight" 会把画布扩到装下它；
+    强行换行反而让多行标签在密集类目轴上互相压字（实测见踩坑台账）。"""
+    from matplotlib.colorbar import Colorbar
+
+    axes = [a for a in fig.get_axes() if not isinstance(a, Colorbar)]
+    if not axes:
+        return
+    if len(axes) == 1:
+        leg = axes[0].get_legend()
+        if leg is not None:
+            legend_out(axes[0], fig, leg)
+        fit_text_edges(fig, axes[0])
+
+
+def _install_layout_guard():
+    """装一次全局收口：脚本内任何 fig.savefig 落盘前先走 layout_fix()，
+    以后新增图自动套版式规则，不靠人记得调用（docs/figure_spec.md v2.2 §三之三）。"""
+    from matplotlib.figure import Figure
+
+    if getattr(Figure.savefig, "_layout_guard", False):
+        return
+    orig = Figure.savefig
+
+    def guarded(self, fname, *a, **kw):
+        layout_fix(self)
+        return orig(self, fname, *a, **kw)
+
+    guarded._layout_guard = True
+    guarded._orig_savefig = orig
+    Figure.savefig = guarded
+
+
+_install_layout_guard()
+
+START = time.time()
+NOMINAL_P = 0.05
+HUB_TOP = 50
+
+
+def fail(m):
+    sys.stderr.write("key_genes 自校验失败: %s\n" % m)
+    sys.stderr.flush()
+    sys.exit(1)
+
+
+def log(m):
+    print(m, flush=True)
+
+
+deg = pd.read_csv(os.environ["DEG_FILE"], sep="\t")
+deg.columns = [c.strip() for c in deg.columns]
+mods = pd.read_csv(os.environ["MOD_FILE"], sep="\t")
+trait = pd.read_csv(os.environ["TRAIT_FILE"], sep="\t")
+hubs = pd.read_csv(os.environ["HUB_FILE"], sep="\t")
+
+# DEG 侧（放宽到 nominal p<0.05，如实标注）
+if "P_Value" not in deg.columns:
+    fail("deg_all 缺 P_Value 列")
+deg_set = set(deg.loc[deg["P_Value"] < NOMINAL_P, "gene"].astype(str))
+# WGCNA 侧：优先模块内 hub 表；老项目无该产物时回退显著模块全量
+whub_file = os.environ.get("WGCNA_HUB_FILE", "")
+sig_mods = trait.loc[trait["significant"].astype(bool), "module"].astype(str).tolist()
+if whub_file and os.path.exists(whub_file):
+    whub = pd.read_csv(whub_file, sep="\t")
+    wgcna_set = set(whub["gene"].astype(str))
+    wgcna_source = "wgcna_hub_genes.tsv (|kME|>=0.8 & |GS|>=0.2)"
+else:
+    wgcna_set = set(mods.loc[mods["module"].astype(str).isin(sig_mods), "gene"].astype(str))
+    wgcna_source = "wgcna_modules.tsv significant modules (fallback)"
+# PPI 侧
+hub_set = set(hubs.head(HUB_TOP)["gene"].astype(str))
+
+log("DEG(nominal p<0.05)=%d WGCNA=%d [%s] PPI(top%d hub)=%d"
+    % (len(deg_set), len(wgcna_set), wgcna_source, HUB_TOP, len(hub_set)))
+if not deg_set or not wgcna_set or not hub_set:
+    fail("某来源基因集为空（DEG=%d WGCNA=%d PPI=%d）" % (len(deg_set), len(wgcna_set), len(hub_set)))
+
+three = deg_set & wgcna_set & hub_set
+deg_wgcna = deg_set & wgcna_set
+deg_ppi = deg_set & hub_set
+wgcna_ppi = wgcna_set & hub_set
+
+# 交集基因明细（附各来源证据）
+rows = []
+for g in sorted(three):
+    d = deg[deg["gene"].astype(str) == g].iloc[0]
+    degrow = hubs[hubs["gene"].astype(str) == g]
+    rows.append({
+        "gene": g,
+        "log2FC": float(d["log2FC"]),
+        "P_Value": float(d["P_Value"]),
+        "adj_P_Val": float(d["adj_P_Val"]) if "adj_P_Val" in deg.columns else None,
+        "in_DEG_nominal": True,
+        "in_WGCNA_sig_module": True,
+        "in_WGCNA_hub": True,
+        "in_PPI_hub_top": True,
+        "ppi_degree": int(degrow["degree"].iloc[0]) if len(degrow) else 0,
+    })
+out = pd.DataFrame(rows)
+out.to_csv("key_genes.tsv", sep="\t", index=False)
+log("wrote key_genes.tsv (%d 三线交集基因)" % len(out))
+
+# 交集规模单图
+labels = ["DEG&WGCNA", "DEG&PPI", "WGCNA&PPI", "3-way"]
+vals = [len(deg_wgcna), len(deg_ppi), len(wgcna_ppi), len(three)]
+fig, ax = plt.subplots(figsize=(8, 5))
+ax.bar(labels, vals, color=["#4C72B0", "#DD8452", "#55A868", "#C44E52"])
+for i, v in enumerate(vals):
+    ax.text(i, v, str(v), ha="center", va="bottom", fontsize=9)
+ax.set_ylabel("gene count")
+caption(fig, "line1: key gene intersection",
+        "DEG nominal p<0.05 / WGCNA sig / PPI hub")
+fig.savefig("../figures/l1_09_key_genes.png")
+plt.close(fig)
+log("wrote ../figures/l1_09_key_genes.png")
+
+lines = [
+    "step=key_genes",
+    "seed=%d" % int(os.environ["BIOANALYS_SEED"]),
+    "deg_criteria=nominal_p_lt_0.05（放宽：本数据集 DEG 0 显著，BH 后无基因通过，min adj p=0.45；不伪装成严格 DEG）",
+    "wgcna_criteria=%s" % wgcna_source,
+    "ppi_criteria=STRING degree top %d hub" % HUB_TOP,
+    "n_deg=%d n_wgcna=%d n_ppi=%d" % (len(deg_set), len(wgcna_set), len(hub_set)),
+    "n_deg_wgcna=%d n_deg_ppi=%d n_wgcna_ppi=%d n_three=%d"
+    % (len(deg_wgcna), len(deg_ppi), len(wgcna_ppi), len(three)),
+    "limitation_note=16 样本 + DEG 判据放宽，交集基因为探索性候选，需更大样本验证",
+    "three_way_genes=%s" % (sorted(three)[:50]),
+    "outputs=key_genes.tsv, ../figures/l1_09_key_genes.png, key_genes_report.txt",
+    "elapsed_seconds=%.1f" % (time.time() - START),
+]
+with open("key_genes_report.txt", "w", encoding="utf-8") as fh:
+    fh.write("\n".join(lines) + "\n")
+log("key_genes_done")
+PYSCRIPT

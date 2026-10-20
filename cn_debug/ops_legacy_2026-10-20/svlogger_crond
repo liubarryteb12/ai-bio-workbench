@@ -1,0 +1,4 @@
+#!/data/data/com.termux/files/usr/bin/sh
+# 手写 svlogger：不使用 $LOGDIR（runsvdir 启动的子进程拿不到该变量）
+# 原因见工作台踩坑台账 #88
+exec svlogd -tt /data/data/com.termux/files/usr/var/log/crond

@@ -1,0 +1,554 @@
+#!/usr/bin/env bash
+# ml_diagnostics：line1_bulk 诊断模型增强（补 SOP Stage 8 缺口：校准曲线 / DCA / 单基因对比 / Nomogram 门槛）。
+#
+# 背景：ml_model（LOOCV LR/RF）与 external_validation 给 AUC；本步补三件套：
+#   ① 校准曲线（LOOCV out-of-fold 预测 vs 观测，含 calibration slope/intercept）
+#   ② DCA 决策曲线（手写 net benefit，零新依赖；rmda 容器未装）
+#   ③ 单基因 ROC 保守性对比（逐个核心基因 AUC vs 组合分数）
+#   Nomogram 设诚实门槛：min(组样本数) >= 40 且 预测因子数 <= min(组)/10（EPV>=10）才画，
+#   否则跳过并书面写明原因（小样本 Nomogram 方法学无效，不硬画）。
+#   有独立外部集（cwd 下 val_expr_genes.tsv + val_group_map.tsv）时并行算外部指标；
+#   无外部集时结论上限按 SOP Stage 8 降级为「候选标志物，未泛化验证」。
+#
+# 输入（cwd 或 --input 绝对路径）：expr_genes.tsv + group_map.tsv + ml_core_hub_genes.tsv
+#   可选：val_expr_genes.tsv + val_group_map.tsv（外部验证集，比例与训练集一致）
+# 输出（cwd）：ml_diag_model.tsv / ml_diag_metrics.tsv / ml_diag_dca.tsv /
+#   ml_diag_pergene_roc.tsv / _ml_diag_gate.txt / ml_diagnostics_report.txt
+#   ../figures/：l1_27_diag_roc.png / l1_28_diag_calibration.png / l1_29_diag_dca.png
+#   （门槛达标时另加）l1_30_diag_nomogram.png
+# 口径：docs/figure_spec.md v2.2 + canonical helper；正类=字典序第一组标签（与 ml_hub_analysis 口径一致）。
+# 参数（写死，禁散落硬编码）：LOOCV；校准分箱 4-5；DCA 阈值网格 0.01-0.99 step 0.01；
+#   组合模型 LogisticRegression(C=1.0, liblinear)；外部集标准化用训练集均值/标准差（防泄露）。
+set -euo pipefail
+
+seed="${BIOANALYS_SEED:-UNSET}"
+if [ "$seed" = "UNSET" ]; then
+  echo "BIOANALYS_SEED 未注入（引擎契约：seed 必须注入）" >&2
+  exit 3
+fi
+
+declare -a INPUTS=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --input) INPUTS+=("$2"); shift 2 ;;
+    --output) shift 2 ;;
+    --seed) shift 2 ;;
+    *) echo "未知参数: $1" >&2; exit 2 ;;
+  esac
+done
+
+expr_file=""; group_file=""; core_file=""
+for path in "${INPUTS[@]:-}"; do
+  [ -n "$path" ] || continue
+  case "$path" in
+    *expr_genes*.tsv) expr_file="$path" ;;
+    *group_map*.tsv) group_file="$path" ;;
+    *core_hub_genes*.tsv) core_file="$path" ;;
+    *) echo "无法识别的输入: $path" >&2; exit 2 ;;
+  esac
+done
+expr_file="${expr_file:-expr_genes.tsv}"
+group_file="${group_file:-group_map.tsv}"
+core_file="${core_file:-ml_core_hub_genes.tsv}"
+for f in "$expr_file" "$group_file" "$core_file"; do
+  [ -f "$f" ] || { echo "缺少必需输入：$f（需先跑 ml_hub_analysis 产出 ml_core_hub_genes.tsv）" >&2; exit 2; }
+done
+
+echo "step_executed=ml_diagnostics"
+echo "bioanalys_seed=${seed}"
+
+EXPR_FILE="$expr_file" GROUP_FILE="$group_file" CORE_FILE="$core_file" BIOANALYS_SEED="$seed" \
+python3 - <<'PYSCRIPT'
+import os
+import time
+
+import numpy as np
+import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_auc_score, roc_curve
+from scipy import stats
+
+plt.rcParams.update({
+    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 9,
+    "axes.titlesize": 10, "axes.grid": False,
+    "figure.autolayout": True, "savefig.bbox": "tight",
+    "image.cmap": "viridis",
+})
+
+START = time.time()
+OUT = "../figures"
+os.makedirs(OUT, exist_ok=True)
+made = []
+SEED = int(os.environ.get("BIOANALYS_SEED", "0"))
+C_MODEL, C_GENE = "#D62728", "#1F77B4"
+
+
+def log(m):
+    print(m, flush=True)
+
+
+def save(fig, name):
+    fig.savefig(os.path.join(OUT, name))
+    plt.close(fig)
+    made.append(name)
+    log("wrote %s" % name)
+
+
+def caption(fig, *parts):
+    """图注置于坐标轴框外：竖版图（宽<高）在右上角纵向多行；
+    横版图（宽>=高）在图幅下方纵向多行（一条一行，不横向拼接）。"""
+    parts = [str(p) for p in parts if p not in (None, "")]
+    if not parts:
+        return
+    w, h = fig.get_size_inches()
+    text = "\n".join(parts)
+    if w >= h:
+        fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8,
+                 linespacing=1.5)
+    else:
+        fig.text(1.02, 1.0, text, ha="left", va="top", fontsize=8,
+                 linespacing=1.5)
+
+
+def wrap_label(text, width=18):
+    """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
+    import textwrap
+
+    s = str(text)
+    if len(s) <= width:
+        return s
+    lines, cur = [], ""
+    for part in s.split("_"):
+        joined = part if not cur else cur + "_" + part
+        if cur and len(joined) > width:
+            lines.append(cur)
+            cur = part
+        else:
+            cur = joined
+    if cur:
+        lines.append(cur)
+    if max(len(x) for x in lines) <= width:
+        return "\n".join(lines)
+    out = []
+    for line in lines:
+        out.extend(textwrap.wrap(line, width=width) or [line])
+    return "\n".join(out)
+
+
+def fit_text_edges(fig, ax, gap=6.0, rounds=5):
+    """把越出坐标轴框的轴内文本收进框内：右缘/顶缘/左缘/下缘越界时自动扩 xlim/ylim。"""
+    prev = None
+    for _ in range(rounds):
+        fig.canvas.draw()
+        rend = fig.canvas.get_renderer()
+        bb = ax.get_window_extent()
+        boxes = [t.get_window_extent(renderer=rend) for t in ax.texts
+                 if t.get_text().strip()]
+        if not boxes:
+            return
+        bw = max(bb.width, 1e-6)
+        bh = max(bb.height, 1e-6)
+        right = max(b.x1 for b in boxes) - bb.x1
+        top = max(b.y1 for b in boxes) - bb.y1
+        left = bb.x0 - min(b.x0 for b in boxes)
+        bottom = bb.y0 - min(b.y0 for b in boxes)
+        if max(right, top, left, bottom) <= gap:
+            return
+        worst = max(right / bw, top / bh, left / bw, bottom / bh)
+        if prev is not None and worst >= prev * 0.98:
+            return
+        prev = worst
+        x0, x1 = ax.get_xlim()
+        y0, y1 = ax.get_ylim()
+        if right > gap:
+            ax.set_xlim(x0, x1 + (x1 - x0) * (right / bw) * 1.15)
+            x0, x1 = ax.get_xlim()
+        if left > gap:
+            ax.set_xlim(x0 - (x1 - x0) * (left / bw) * 1.15, x1)
+            x0, x1 = ax.get_xlim()
+        if top > gap:
+            ax.set_ylim(y0, y1 + (y1 - y0) * (top / bh) * 1.15)
+            y0, y1 = ax.get_ylim()
+        if bottom > gap:
+            ax.set_ylim(y0 - (y1 - y0) * (bottom / bh) * 1.15, y1)
+
+
+def legend_out(ax, fig, leg):
+    """图例移到坐标轴框外：竖版图右上角纵向单列；横版图下方纵向单列。
+    条目超过 12 条按列分组，避免纵向过长压扁主图。"""
+    n = len(leg.get_texts())
+    handles = list(leg.legend_handles)
+    labels = [t.get_text() for t in leg.get_texts()]
+    title = leg.get_title().get_text() or None
+    w, h = fig.get_size_inches()
+    fig.set_layout_engine("none")
+    if w >= h:
+        ncol = 1 if n <= 12 else -(-n // 12)
+        rows = -(-n // ncol)
+        ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
+                  ncol=ncol, fontsize=8, frameon=False, title=title)
+        fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
+    else:
+        ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
+                  ncol=1, fontsize=8, frameon=False, title=title)
+        fig.subplots_adjust(right=0.74)
+
+
+def layout_fix(fig):
+    """落盘前统一收口（docs/figure_spec.md v2.2 §三之三）：
+    1) 单坐标轴图的图例外置；2) 轴内文本越界自动扩 xlim/ylim 收进框内。
+    多子图（分面）图不做图例搬迁；tick 标签一律不动。"""
+    from matplotlib.colorbar import Colorbar
+
+    axes = [a for a in fig.get_axes() if not isinstance(a, Colorbar)]
+    if not axes:
+        return
+    if len(axes) == 1:
+        leg = axes[0].get_legend()
+        if leg is not None:
+            legend_out(axes[0], fig, leg)
+        fit_text_edges(fig, axes[0])
+
+
+def _install_layout_guard():
+    """装一次全局收口：脚本内任何 fig.savefig 落盘前先走 layout_fix()。"""
+    from matplotlib.figure import Figure
+
+    if getattr(Figure.savefig, "_layout_guard", False):
+        return
+    orig = Figure.savefig
+
+    def guarded(self, fname, *a, **kw):
+        layout_fix(self)
+        return orig(self, fname, *a, **kw)
+
+    guarded._layout_guard = True
+    guarded._orig_savefig = orig
+    Figure.savefig = guarded
+
+
+_install_layout_guard()
+
+
+# ---------- 1) 数据与口径 ----------
+expr = pd.read_csv(os.environ["EXPR_FILE"], sep="\t", index_col=0)
+gm = pd.read_csv(os.environ["GROUP_FILE"], sep="\t")
+core_tab = pd.read_csv(os.environ["CORE_FILE"], sep="\t")
+core_genes = [str(g) for g in core_tab["gene"].tolist()]
+
+samples = [s for s in gm["sample"].astype(str) if s in expr.columns]
+if len(samples) < 8:
+    raise SystemExit("可用样本 %d < 8，终止" % len(samples))
+grp_map = dict(zip(gm["sample"].astype(str), gm["group"].astype(str)))
+labels = sorted(set(grp_map[s] for s in samples))
+if len(labels) != 2:
+    raise SystemExit("分组必须恰为 2 组（实际 %d 组），终止" % len(labels))
+pos = labels[0]
+y = np.array([1 if grp_map[s] == pos else 0 for s in samples], dtype=int)
+genes = [g for g in core_genes if g in expr.index]
+if len(genes) < 2:
+    raise SystemExit("core hub 基因在表达矩阵中不足 2，终止")
+
+X = expr.loc[genes, samples].T.astype(float)
+if X.isna().any().any():
+    n_na = int(X.isna().sum().sum())
+    X = X.fillna(X.mean())
+    log("WARN: 表达矩阵含 %d 个 NA，已按列均值填充" % n_na)
+mu, sd = X.mean(), X.std(ddof=0).replace(0.0, 1.0)
+z = (X - mu) / sd
+score = z.mean(axis=1).to_numpy()
+log("load: %d samples x %d genes, pos=%s(%d) neg=%s(%d)"
+    % (len(samples), len(genes), pos, int(y.sum()), labels[1], int((1 - y).sum())))
+
+# ---------- 2) 组合模型（LOOCV out-of-fold） ----------
+oof = np.zeros(len(samples), dtype=float)
+for i in range(len(samples)):
+    tr = [j for j in range(len(samples)) if j != i]
+    m = LogisticRegression(C=1.0, solver="liblinear", random_state=SEED)
+    m.fit(score[tr].reshape(-1, 1), y[tr])
+    oof[i] = m.predict_proba(score[i].reshape(1, -1))[0, 1]
+full = LogisticRegression(C=1.0, solver="liblinear", random_state=SEED)
+full.fit(score.reshape(-1, 1), y)
+coef = float(full.coef_[0, 0])
+intercept = float(full.intercept_[0])
+auc_int = float(roc_auc_score(y, oof))
+
+model_rows = [{
+    "predictor": "composite_score(mean z of %d core genes)" % len(genes),
+    "coef": coef, "odds_ratio": float(np.exp(coef)), "intercept": intercept,
+    "fit": "full-data logistic (binary)", "seed": SEED,
+    "note": "EPV gate for per-gene model: min_class=%d predictors=%d"
+            % (int(min(y.sum(), (1 - y).sum())), len(genes)),
+}]
+
+
+def wilson(k, n, alpha=0.05):
+    if n == 0:
+        return (float("nan"), float("nan"))
+    p = k / n
+    zc = stats.norm.ppf(1 - alpha / 2)
+    den = 1 + zc ** 2 / n
+    ctr = (p + zc ** 2 / (2 * n)) / den
+    half = zc * np.sqrt(p * (1 - p) / n + zc ** 2 / (4 * n ** 2)) / den
+    return (ctr - half, ctr + half)
+
+
+def calib(yv, pv, nbin=5):
+    n = len(pv)
+    nbin = int(min(nbin, max(2, n // 4)))
+    qs = np.quantile(pv, np.linspace(0, 1, nbin + 1))
+    qs[0], qs[-1] = -np.inf, np.inf
+    rows = []
+    for b in range(nbin):
+        m = (pv > qs[b]) & (pv <= qs[b + 1])
+        k = int(yv[m].sum())
+        lo, hi = wilson(k, int(m.sum()))
+        rows.append({"bin": b + 1, "n": int(m.sum()), "k": k,
+                     "pred_mean": float(pv[m].mean()) if m.sum() else float("nan"),
+                     "obs_rate": k / int(m.sum()) if m.sum() else float("nan"),
+                     "ci_low": lo, "ci_high": hi})
+    lp = np.log(np.clip(pv, 1e-6, 1 - 1e-6) / (1 - np.clip(pv, 1e-6, 1 - 1e-6)))
+    cm = LogisticRegression(C=1e6, solver="liblinear")
+    cm.fit(lp.reshape(-1, 1), yv)
+    return rows, float(cm.coef_[0, 0]), float(cm.intercept_[0])
+
+
+cal_rows, cal_slope, cal_inter = calib(y, oof)
+pd.DataFrame(cal_rows).to_csv("_ml_diag_calib.tsv", sep="\t", index=False)
+
+
+def dca_table(yv, pv):
+    n = len(pv)
+    pt = np.round(np.arange(0.01, 1.0, 0.01), 4)
+    out = []
+    base_rate = (yv == 1).mean()
+    for t in pt:
+        tp = int(((pv >= t) & (yv == 1)).sum())
+        fp = int(((pv >= t) & (yv == 0)).sum())
+        out.append({"threshold": float(t),
+                    "nb_model": tp / n - fp / n * t / (1 - t),
+                    "nb_all": base_rate - (1 - base_rate) * t / (1 - t),
+                    "nb_none": 0.0})
+    return pd.DataFrame(out)
+
+
+dca = dca_table(y, oof)
+dca.to_csv("_ml_diag_dca.tsv", sep="\t", index=False)
+
+# ---------- 3) 单基因 ROC 保守性对比（oriented AUC = max(AUC, 1-AUC)，方向如实标注） ----------
+pg = []
+for g in genes:
+    a = float(roc_auc_score(y, X[g].to_numpy()))
+    _, p = stats.mannwhitneyu(X.loc[y == 1, g], X.loc[y == 0, g],
+                              alternative="two-sided")
+    pg.append({"gene": g, "auc_raw": a,
+               "auc_oriented": max(a, 1.0 - a),
+               "direction": ("high in %s" % pos) if a >= 0.5 else ("high in %s" % labels[1]),
+               "mannwhitney_p": float(p)})
+pg = pd.DataFrame(pg).sort_values("auc_oriented", ascending=False)
+best = pg.iloc[0]
+
+# ---------- 4) 外部验证集（可选，标准化用训练集统计量，防泄露） ----------
+ext = {}
+if os.path.exists("val_expr_genes.tsv") and os.path.exists("val_group_map.tsv"):
+    ve = pd.read_csv("val_expr_genes.tsv", sep="\t", index_col=0)
+    vg = pd.read_csv("val_group_map.tsv", sep="\t")
+    vs = [s for s in vg["sample"].astype(str) if s in ve.columns]
+    vgm = dict(zip(vg["sample"].astype(str), vg["group"].astype(str)))
+    vlab = sorted(set(vgm[s] for s in vs))
+    if len(vs) >= 4 and len(vlab) == 2 and vlab == labels:
+        vX = ve.loc[genes, vs].T.astype(float)
+        vz = (vX - mu) / sd
+        vscore = vz.mean(axis=1).to_numpy()
+        vy = np.array([1 if vgm[s] == pos else 0 for s in vs], dtype=int)
+        vp = 1.0 / (1.0 + np.exp(-(coef * vscore + intercept)))
+        ext = {"n": len(vs), "pos": int(vy.sum()), "neg": int((1 - vy).sum()),
+               "auc": float(roc_auc_score(vy, vp)), "p": vp, "y": vy,
+               "cal": calib(vy, vp), "dca": dca_table(vy, vp)}
+        log("external: n=%d auc=%.3f" % (ext["n"], ext["auc"]))
+    else:
+        log("WARN: 外部集分组与训练集不一致或样本不足，跳过外部验证")
+
+
+# ---------- 5) 图 l1_27 ROC ----------
+fpr, tpr, _ = roc_curve(y, oof)
+fig, ax = plt.subplots(figsize=(7, 7))
+ax.plot([0, 1], [0, 1], color="#999999", lw=1, ls="--", label="random (AUC=0.5)")
+ax.plot(fpr, tpr, color=C_MODEL, lw=2,
+        label="composite model (LOOCV, AUC=%.3f)" % auc_int)
+for _, r in pg.iterrows():
+    fpr_g, tpr_g, _ = roc_curve(y, X[r["gene"]].to_numpy())
+    ax.plot(fpr_g, tpr_g, color=C_GENE, lw=0.8, alpha=0.35)
+ax.plot([], [], color=C_GENE, lw=1, alpha=0.8,
+        label="single genes (n=%d; best %s oriented AUC=%.3f, %s)"
+               % (len(pg), best["gene"], best["auc_oriented"], best["direction"]))
+if ext:
+    fpr_e, tpr_e, _ = roc_curve(ext["y"], ext["p"])
+    ax.plot(fpr_e, tpr_e, color=C_MODEL, lw=2, ls="--",
+            label="external (n=%d, AUC=%.3f)" % (ext["n"], ext["auc"]))
+ax.set_xlabel("false positive rate (1 - specificity)")
+ax.set_ylabel("true positive rate (sensitivity)")
+caption(fig, "line1 ml_diagnostics: ROC of core-gene composite vs single genes",
+        "internal = LOOCV out-of-fold predictions; seed=%d; n=%d" % (SEED, len(samples)),
+        "red = composite model, blue = individual core genes (raw direction)",
+        "oriented AUC = max(AUC, 1-AUC); composite coefficient absorbs gene direction")
+save(fig, "l1_27_diag_roc.png")
+
+# ---------- 6) 图 l1_28 校准曲线 ----------
+cd = pd.DataFrame(cal_rows)
+fig, ax = plt.subplots(figsize=(7, 7))
+ax.plot([0, 1], [0, 1], color="#999999", lw=1, ls="--", label="ideal")
+ax.errorbar(cd["pred_mean"], cd["obs_rate"],
+            yerr=[cd["obs_rate"] - cd["ci_low"], cd["ci_high"] - cd["obs_rate"]],
+            fmt="o", color=C_MODEL, capsize=3,
+            label="LOOCV predictions (slope=%.2f, intercept=%.2f)" % (cal_slope, cal_inter))
+if ext:
+    vc = pd.DataFrame(ext["cal"][0])
+    ax.errorbar(vc["pred_mean"], vc["obs_rate"],
+                yerr=[vc["obs_rate"] - vc["ci_low"], vc["ci_high"] - vc["obs_rate"]],
+                fmt="s", color="#2CA02C", capsize=3,
+                label="external (slope=%.2f, intercept=%.2f)" % (ext["cal"][1], ext["cal"][2]))
+ax.set_xlabel("predicted probability (bin mean)")
+ax.set_ylabel("observed event rate")
+ax.set_xlim(-0.02, 1.02)
+ax.set_ylim(-0.02, 1.02)
+caption(fig, "line1 ml_diagnostics: calibration of LOOCV predictions",
+        "quantile bins with Wilson 95% CI; slope=1 & intercept=0 = perfect",
+        "small n: bin counts in ml_diag_metrics.tsv")
+save(fig, "l1_28_diag_calibration.png")
+
+# ---------- 7) 图 l1_29 DCA ----------
+fig, ax = plt.subplots(figsize=(7, 6))
+ax.plot(dca["threshold"], dca["nb_model"], color=C_MODEL, lw=2, label="composite model")
+ax.plot(dca["threshold"], dca["nb_all"], color="#7F7F7F", lw=1, ls="--", label="treat all")
+ax.plot(dca["threshold"], dca["nb_none"], color="#000000", lw=1, label="treat none")
+if ext:
+    ax.plot(ext["dca"]["threshold"], ext["dca"]["nb_model"], color=C_MODEL,
+            lw=1.5, ls="--", label="external model")
+ax.set_xlabel("threshold probability")
+ax.set_ylabel("net benefit")
+ax.set_ylim(bottom=-0.05)
+caption(fig, "line1 ml_diagnostics: decision curve analysis (LOOCV)",
+        "net benefit = TP/n - FP/n * pt/(1-pt); thresholds 0.01-0.99",
+        "model curve above treat-all/none = clinical usefulness")
+save(fig, "l1_29_diag_dca.png")
+
+# ---------- 8) 落盘表 + gate ----------
+pd.DataFrame(model_rows).to_csv("ml_diag_model.tsv", sep="\t", index=False)
+pg.to_csv("ml_diag_pergene_roc.tsv", sep="\t", index=False)
+dca.to_csv("ml_diag_dca.tsv", sep="\t", index=False)
+
+metric_rows = [
+    {"metric": "n_samples", "internal": len(samples), "external": ext.get("n", ""), "note": "pos=%s" % pos},
+    {"metric": "n_class", "internal": "%d/%d" % (int(y.sum()), int((1 - y).sum())),
+     "external": ("%d/%d" % (ext["pos"], ext["neg"])) if ext else "", "note": "pos/neg"},
+    {"metric": "auc_model_loocv", "internal": round(auc_int, 4), "external": round(ext["auc"], 4) if ext else "",
+     "note": "composite of %d core genes, LOOCV" % len(genes)},
+    {"metric": "auc_best_single_gene", "internal": round(float(best["auc_oriented"]), 4), "external": "",
+     "note": "gene=%s %s oriented; mannwhitney_p=%.3g"
+             % (best["gene"], best["direction"], float(best["mannwhitney_p"]))},
+    {"metric": "calibration_slope", "internal": round(cal_slope, 4),
+     "external": round(ext["cal"][1], 4) if ext else "", "note": "ideal=1"},
+    {"metric": "calibration_intercept", "internal": round(cal_inter, 4),
+     "external": round(ext["cal"][2], 4) if ext else "", "note": "ideal=0"},
+]
+pd.DataFrame(metric_rows).to_csv("ml_diag_metrics.tsv", sep="\t", index=False)
+
+min_class = int(min(y.sum(), (1 - y).sum()))
+epv = min_class / max(len(genes), 1)
+gate_nomo = min_class >= 40 and len(genes) <= min_class // 10
+gate_reason = "" if gate_nomo else (
+    "min_class=%d < 40 或 EPV=%.1f < 10（predictors=%d）——小样本 nomogram 方法学无效，按 SOP Stage 8 降级"
+    % (min_class, epv, len(genes)))
+with open("_ml_diag_gate.txt", "w") as fh:
+    fh.write("1\n" if gate_nomo else "0\n")
+if gate_nomo:
+    nomo = z.copy()
+    nomo.insert(0, "y", y)
+    nomo.to_csv("_ml_diag_nomo_input.tsv", sep="\t", index=False)
+    with open("_ml_diag_nomo_vars.txt", "w") as fh:
+        fh.write("\n".join(list(z.columns)) + "\n")
+
+log("gate_nomogram=%d %s" % (int(gate_nomo), gate_reason))
+log("metrics: auc=%.4f best_gene=%s(oriented %.4f) cal_slope=%.3f" %
+    (auc_int, best["gene"], float(best["auc_oriented"]), cal_slope))
+
+
+# ---------- 9) 报告 ----------
+ext_ok = bool(ext)
+ceiling = ("外部验证集已用（n=%d）：结论可表述为独立队列初步泛化，仍需前瞻样本确认"
+           % ext["n"]) if ext_ok else (
+          "无独立外部验证集：按 SOP Stage 8，结论上限为「候选标志物，未泛化验证」，"
+          "不得表述为诊断模型")
+lines = [
+    "step=ml_diagnostics",
+    "seed=%d" % SEED,
+    "samples=%d (%s=%d vs %s=%d), core_genes=%d, source=%s"
+    % (len(samples), pos, int(y.sum()), labels[1], int((1 - y).sum()),
+       len(genes), os.environ["CORE_FILE"]),
+    "",
+    "[model] logistic on composite_score (mean z of core genes), LOOCV predictions",
+    "  coef=%.4f intercept=%.4f AUC(LOOCV)=%.4f"
+    % (coef, intercept, auc_int),
+    "  best single gene: %s oriented AUC=%.4f (%s, mannwhitney p=%.3g)"
+    % (best["gene"], float(best["auc_oriented"]), best["direction"],
+       float(best["mannwhitney_p"])),
+    "[calibration] slope=%.4f intercept=%.4f (ideal 1/0), bins=%d"
+    % (cal_slope, cal_inter, len(cal_rows)),
+    "[dca] thresholds 0.01-0.99, table ml_diag_dca.tsv (%d rows)"
+    % len(dca),
+    "",
+    "[nomogram gate] %s" % ("PASS" if gate_nomo else "SKIPPED: " + gate_reason),
+    "[external] %s" % ("n=%d AUC=%.4f" % (ext["n"], ext["auc"]) if ext_ok else "none (val files absent)"),
+    "",
+    "[conclusion ceiling] %s" % ceiling,
+    "[limitations]",
+    "  1. 小样本探索性：所有 AUC/校准/DCA 均为 LOOCV 内部性能，非临床性能声明。",
+    "  2. 组合分数=核心基因均值 z，权重相等，未做系数加权（n 太小不稳定，如实声明）。",
+    "  3. 校准分箱按 OOF 预测分位数切分，箱内样本少，CI 宽；目视为主。",
+    "  4. DCA 为手写 net benefit（rmda 容器未装），与 rmda 口径一致（零依赖）。",
+    "",
+    "[figures] " + "; ".join(made),
+    "[elapsed] %.1fs" % (time.time() - START),
+]
+with open("ml_diagnostics_report.txt", "w") as fh:
+    fh.write("\n".join(lines) + "\n")
+log("report written, figures=%d, elapsed=%.1fs" % (len(made), time.time() - START))
+PYSCRIPT
+
+# ---------- Nomogram（仅 gate=1 时执行；rms 容器已实测在装） ----------
+if [ "$(cat _ml_diag_gate.txt 2>/dev/null || echo 0)" = "1" ]; then
+  BIOANALYS_SEED="$seed" Rscript - <<'RSCRIPT'
+fail <- function(msg) { cat("ml_diagnostics(R) 自校验失败:", msg, "\n", file = stderr()); quit(status = 1) }
+seed <- as.integer(Sys.getenv("BIOANALYS_SEED"))
+set.seed(seed)
+suppressMessages({
+  library(rms)
+})
+d <- read.delim("_ml_diag_nomo_input.tsv", check.names = FALSE)
+varnames <- trimws(readLines("_ml_diag_nomo_vars.txt"))
+varnames <- varnames[nzchar(varnames)]
+if (!all(c("y", varnames) %in% colnames(d))) fail("nomogram 输入缺列")
+if (nrow(d) < 80) fail(paste("nomogram gate 通过了但样本数", nrow(d), "< 80，拒绝"))
+f <- as.formula(paste("y ~", paste(varnames, collapse = " + ")))
+dd <- datadist(d)
+options(datadist = "dd")
+fit <- lrm(f, data = d, x = TRUE, y = TRUE)
+nom <- nomogram(fit, fun = function(x) plogis(x),
+                fun.at = c(0.1, 0.3, 0.5, 0.7, 0.9),
+                funlabel = "Predicted risk")
+png("../figures/l1_30_diag_nomogram.png", width = 2400, height = 1500, res = 300)
+plot(nom)
+dev.off()
+cat("nomogram_done predictors=", length(varnames), " n=", nrow(d), "\n", sep = "")
+say_coef <- paste(varnames, round(coef(fit), 3), sep = "=", collapse = " ")
+cat("lrm_coefficients:", say_coef, "\n")
+RSCRIPT
+else
+  echo "nomogram=skipped (EPV gate not met; reason in ml_diagnostics_report.txt)"
+fi
+
+echo "ml_diagnostics_done"

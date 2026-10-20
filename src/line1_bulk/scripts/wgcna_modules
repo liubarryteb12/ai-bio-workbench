@@ -1,0 +1,636 @@
+#!/usr/bin/env bash
+# wgcna_modules：line1_bulk 步骤 7 的 WGCNA 部分（共表达网络 + 模块-性状关联）。
+#
+# 输入（同 cwd，步骤 1/5 产物）：expr_genes.tsv（基因 × 样本）+ group_map.tsv。
+#
+# 口径与边界（用户 2026-10-13 拍板"样本量小也能做，容忍精度不高"）：
+#   1. 16 样本处于 WGCNA 可靠区间下沿（官方建议 >=15），结果按**探索性**解读，
+#      报告写明样本量限制，不夸大为可靠共表达网络。
+#   2. 网络类型 signed（区分正负相关），TOMType signed，minModuleSize=20
+#      （小样本下调小模块门槛以保留结构），mergeCutHeight=0.25，deepSplit=2。
+#   3. 软阈值：在 powers 1..30 中选第一个 SFT.R.sq >= 0.8 的 power；若都不达标
+#      取 R^2 最大的 power 并在报告注明"未达 0.8 无标度拟合标准"。
+#   4. 模块-性状关联：**这是原表达谱的共表达网络，不是差异基因比对**。性状表型按组展开，
+#      一个组一列指示变量（1=该样本属于该组），两组就是两列；不把多个组压成单一列，
+#      也不放 "<case>_vs_<ctrl>" 对比列（那一列与 case 组指示列数值相同，却以组间比对
+#      命名，会把"组成员关系"错呈现成"组间比对表型"，用户 2026-10-19 纠正）。
+#      模块与每一列分别算 Pearson 相关；模块排序与显著性判定统一依据 **case 组表型列**
+#      （与旧对比列数值等价，排序/显著性/GS/hub 结果不变）。
+#      项目级 contrasts / groups 读不到时（老项目、非建项通道跑的单机任务）回落
+#      到 group_map 的两组自动派生：字典序在后的组为 case，前者为 ctrl，并在报告注明回落。
+#   5. 参数口径：默认取 aims Step 3 契约（方差前 top_n_genes=5000 单块建网、
+#      minModuleSize=20 / mergeCutHeight=0.25 / deepSplit=2 / 模块 p<0.05 /
+#      hub |kME|>=0.8 & |GS|>=0.2 / maxBlockSize=5000），可被 project.json 的
+#      wgcna_config 覆盖；实际生效值与来源（project.json|default）写进 wgcna_report.txt。
+#   6. 产物位置：统计表与报告同时落 processed/ 与 results/（aims §7.3：results/ 是
+#      "必须回搬"的交付正本目录）；图件只 PNG 落 ../figures/（aims §5.1）。
+#
+# 自校验内建：输入存在且非空、样本数 >= 8、模块数 >= 1、每模块基因数 > 0、
+# 模块-性状相关在 [-1,1]、基因模块分配覆盖全部保留基因。
+set -euo pipefail
+
+seed="${BIOANALYS_SEED:-UNSET}"
+if [ "$seed" = "UNSET" ]; then
+  echo "BIOANALYS_SEED 未注入（引擎契约：seed 必须注入）" >&2
+  exit 3
+fi
+
+declare -a INPUTS=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --input) INPUTS+=("$2"); shift 2 ;;
+    --output) shift 2 ;;
+    --seed) shift 2 ;;
+    *) echo "未知参数: $1" >&2; exit 2 ;;
+  esac
+done
+
+expr_file=""
+group_file=""
+for path in "${INPUTS[@]:-}"; do
+  [ -n "$path" ] || continue
+  case "$path" in
+    *expr_genes*.tsv) expr_file="$path" ;;
+    *group_map*.tsv) group_file="$path" ;;
+    *) echo "无法识别的输入文件: $path（需要 expr_genes/group_map）" >&2; exit 2 ;;
+  esac
+done
+if [ -z "$expr_file" ] || [ -z "$group_file" ]; then
+  echo "缺少必需输入：expr_genes 与 group_map 都必须提供" >&2
+  exit 2
+fi
+for required in "$expr_file" "$group_file"; do
+  [ -f "$required" ] || { echo "输入文件不存在: $required" >&2; exit 2; }
+done
+
+echo "step_executed=wgcna_modules"
+echo "bioanalys_seed=${seed}"
+echo "input_expr=${expr_file}"
+echo "input_group_map=${group_file}"
+
+EXPR_FILE="$expr_file" GROUP_FILE="$group_file" BIOANALYS_SEED="$seed" \
+Rscript - <<'RSCRIPT'
+suppressMessages({
+  library(WGCNA)
+  library(ggplot2)
+})
+options(stringsAsFactors = FALSE)
+enableWGCNAThreads(nThreads = 3)
+
+# base R 图件统一 par（SCI 基座，可选挂载）：
+# png() 每开一个设备都会把 par 重置为默认值，所以不能只在开头调一次，
+# 必须包一层"开设备 + 设 par"的助手，4 张图统一走它。
+# 主题层没挂（没有 BIOANALYS_THEME / 非建项通道）时 exists 守卫保证照常出图。
+fig_png <- function(path, width_in, height_in) {
+  png(path, width = width_in * 300, height = height_in * 300, res = 300)
+  if (exists("bioanalys_par", mode = "function")) bioanalys_par()
+}
+
+expr_file <- Sys.getenv("EXPR_FILE")
+group_file <- Sys.getenv("GROUP_FILE")
+seed <- as.integer(Sys.getenv("BIOANALYS_SEED"))
+set.seed(seed)
+
+fail <- function(msg) { cat("wgcna_modules 自校验失败:", msg, "\n", file = stderr()); quit(status = 1) }
+log <- function(...) cat(..., "\n")
+
+# R 基础没有 %||%（rlang 的），这里自己定义：取第一个非空值
+`%||%` <- function(a, b) if (is.null(a)) b else a
+
+expr <- read.delim(expr_file, row.names = 1, check.names = FALSE)
+if (ncol(expr) < 8) fail(sprintf("样本数 %d < 8", ncol(expr)))
+gm <- read.delim(group_file, check.names = FALSE)
+if (!all(c("sample", "group") %in% colnames(gm))) fail("group_map 缺 sample/group 列")
+gm$sample <- as.character(gm$sample)
+gm$group <- as.character(gm$group)
+log("expr:", nrow(expr), "genes x", ncol(expr), "samples")
+
+# --- 项目配置读取（分组契约 + WGCNA 参数）---
+# project.json 由任务脚本注入路径（BIOANALYS_PROJECT_JSON），母版只读该变量。
+# 必须放在方差过滤之前：TOP_N 由 wgcna_config 决定，而过滤在建网前就要做。
+project_json <- Sys.getenv("BIOANALYS_PROJECT_JSON", "")
+groups_spec <- list()
+contrasts_spec <- list()
+trait_source <- "group_map_derived"
+contrast_used <- NA_character_
+
+read_project_grouping <- function(path) {
+  if (!nzchar(path) || !file.exists(path)) return(NULL)
+  if (!requireNamespace("jsonlite", quietly = TRUE)) return(NULL)
+  tryCatch(jsonlite::fromJSON(path, simplifyVector = FALSE), error = function(e) NULL)
+}
+
+proj <- NULL
+if (nzchar(project_json)) proj <- read_project_grouping(project_json)
+
+if (!is.null(proj)) {
+  gd <- proj$grouping_design
+  if (!is.null(gd) && length(gd$groups) > 0) {
+    trait_source <- "project.json grouping_design"
+    for (g in gd$groups) {
+      gname <- as.character(g$group_name %||% g$groupName %||% g$groupId)
+      is_ref <- isTRUE(g$is_reference %||% g$isReference)
+      groups_spec[[length(groups_spec) + 1]] <- list(name = gname, is_reference = is_ref)
+    }
+    if (!is.null(gd$contrasts)) {
+      for (ctr in gd$contrasts) {
+        cname <- as.character(ctr$name %||% "")
+        ccase <- as.character(ctr$case %||% "")
+        cctrl <- as.character(ctr$ctrl %||% "")
+        cprim <- isTRUE(ctr$is_primary %||% ctr$isPrimary)
+        if (nzchar(cname) && nzchar(ccase) && nzchar(cctrl)) {
+          contrasts_spec[[length(contrasts_spec) + 1]] <-
+            list(name = cname, case = ccase, ctrl = cctrl, primary = cprim)
+        }
+      }
+    }
+    # 有主对比对就用它；否则取第一个；都没有则由 groups 的 reference/非 reference 推
+    if (length(contrasts_spec) > 0) {
+      prim <- Filter(function(x) x$primary, contrasts_spec)
+      contrast_used <- (if (length(prim) > 0) prim[[1]] else contrasts_spec[[1]])$name
+    }
+  }
+}
+
+# --- WGCNA 参数：优先 project.json 的 wgcna_config，读不到用 aims Step 3 默认值 ---
+# 默认值与 aims/aims.txt Step 3 契约一致（方差前 5000 单块建网、|kME|>=0.8 & |GS|>=0.2）。
+# 硬编码过：参数不可审计、不同项目无法调阈值（WGCNA 审计 C-04）。
+wgcna_defaults <- list(
+  top_n_genes = 5000L, min_module_size = 20L, merge_cut_height = 0.25,
+  deep_split = 2L, power_rule = "first_r2_ge_0.8_else_max",
+  module_p_threshold = 0.05, hub_kme_min = 0.8, hub_gs_min = 0.2,
+  max_block_size = 5000L
+)
+wgcna_cfg <- wgcna_defaults
+wgcna_cfg_source <- "default"
+if (!is.null(proj) && !is.null(proj$wgcna_config) && length(proj$wgcna_config) > 0) {
+  src <- proj$wgcna_config
+  num <- function(key, dft) {
+    v <- suppressWarnings(as.numeric(src[[key]]))
+    if (is.null(v) || length(v) == 0 || is.na(v)) dft else v
+  }
+  wgcna_cfg <- list(
+    top_n_genes = as.integer(num("top_n_genes", wgcna_defaults$top_n_genes)),
+    min_module_size = as.integer(num("min_module_size", wgcna_defaults$min_module_size)),
+    merge_cut_height = num("merge_cut_height", wgcna_defaults$merge_cut_height),
+    deep_split = as.integer(num("deep_split", wgcna_defaults$deep_split)),
+    power_rule = as.character(src$power_rule %||% wgcna_defaults$power_rule),
+    module_p_threshold = num("module_p_threshold", wgcna_defaults$module_p_threshold),
+    hub_kme_min = num("hub_kme_min", wgcna_defaults$hub_kme_min),
+    hub_gs_min = num("hub_gs_min", wgcna_defaults$hub_gs_min),
+    max_block_size = as.integer(num("max_block_size", wgcna_defaults$max_block_size))
+  )
+  wgcna_cfg_source <- "project.json"
+}
+log(sprintf("wgcna_config_source=%s | top_n=%d minModuleSize=%d mergeCutHeight=%.2f deepSplit=%d | hub |kME|>=%.2f & |GS|>=%.2f | module_p<%.3f | maxBlockSize=%d",
+            wgcna_cfg_source, wgcna_cfg$top_n_genes, wgcna_cfg$min_module_size,
+            wgcna_cfg$merge_cut_height, wgcna_cfg$deep_split,
+            wgcna_cfg$hub_kme_min, wgcna_cfg$hub_gs_min,
+            wgcna_cfg$module_p_threshold, wgcna_cfg$max_block_size))
+
+# --- 方差前 N 基因过滤（aims Step 3 / project.js 的设计口径，N 由 wgcna_config 定）---
+# 设计写的是"截取方差前 5000 基因构建网络"。不落实会有两个后果：
+#   1) blockwiseModules 默认 maxBlockSize=5000，全量 20019 基因会被切成 5 块，
+#      模块不能跨块，"全基因共表达网络"退化成"分块网络"；
+#   2) TOM 内存按基因数平方增长，全量约 3.2 GB，手机端扛不住。
+# 过滤后 5000 基因正好落在一个块内，内存约 200 MB。
+TOP_N <- wgcna_cfg$top_n_genes
+gv <- apply(expr, 1, var, na.rm = TRUE)
+gv[is.na(gv)] <- 0
+keep_genes <- names(sort(gv, decreasing = TRUE))[seq_len(min(TOP_N, length(gv)))]
+expr <- expr[keep_genes, , drop = FALSE]
+writeLines(keep_genes, "wgcna_input_genes.txt")
+log(sprintf("variance filter: %d -> %d genes (top %d by variance)", length(gv), nrow(expr), TOP_N))
+
+
+# 表达矩阵：genes x samples -> samples x genes
+datExpr0 <- as.data.frame(t(expr))
+# 对齐分组到样本顺序
+rownames(gm) <- gm$sample
+if (!all(rownames(datExpr0) %in% gm$sample)) fail("表达矩阵样本与 group_map 不匹配")
+sample_order <- rownames(datExpr0)
+sample_group <- gm[sample_order, "group"]
+log("groups:", paste(names(table(sample_group)), table(sample_group), collapse = " "))
+
+# project.json 不可用时的回落：group_map 的两个组按字典序定 case/ctrl
+observed_groups <- sort(unique(as.character(sample_group)))
+case_group <- ctrl_group <- NA_character_
+if (!is.na(contrast_used) && length(contrasts_spec) > 0) {
+  prim <- Filter(function(x) x$primary, contrasts_spec)
+  pick <- if (length(prim) > 0) prim[[1]] else contrasts_spec[[1]]
+  case_group <- pick$case
+  ctrl_group <- pick$ctrl
+} else if (length(observed_groups) == 2) {
+  ctrl_group <- observed_groups[1]
+  case_group <- observed_groups[2]
+  contrast_used <- sprintf("%s_vs_%s", case_group, ctrl_group)
+} else {
+  # 组数不是 2 且没有 contrasts 契约：不猜方向，直接失败并说明
+  fail(sprintf("group_map 有 %d 个组且 project.json 无 contrasts 契约，模块-性状比对方向无法确定（拒绝猜测）",
+               length(observed_groups)))
+}
+if (identical(case_group, ctrl_group)) fail("主对比对的 case 与 ctrl 相同")
+for (g in c(case_group, ctrl_group)) {
+  if (!g %in% observed_groups) fail(sprintf("对比对指定的组 %s 不在 group_map 中（有 %s）", g,
+                                            paste(observed_groups, collapse = " / ")))
+}
+
+# --- 性状矩阵：一个组一列指示变量（WGCNA 标准的"模块-表型"呈现）---
+# 2026-10-19 用户纠正口径：这是**原表达谱**的共表达网络分析，不是差异基因比对。
+# 性状表型按组展开，一个组一列（两组 = 两列）；不再放 "<case>_vs_<ctrl>" 对比列——
+# 那一列与 case 组指示列数值完全相同，却用组间比对的名字命名，会把"组成员关系"
+# 错呈现成"组间比对表型"。组名一律从 group_map / project.json 读，不硬编码。
+observed_groups_all <- sort(unique(as.character(sample_group)))
+if (length(groups_spec) > 0) {
+  declared <- vapply(groups_spec, function(g) as.character(g$name), "")
+  missing <- setdiff(declared, observed_groups_all)
+  if (length(missing) > 0) {
+    log("WARN: project.json 声明的组在 group_map 中无样本，跳过其性状列: ",
+        paste(missing, collapse = ", "))
+  }
+  absent <- setdiff(observed_groups_all, declared)
+  if (length(absent) > 0) {
+    log("WARN: group_map 有 project.json 未声明的组，仍按数据建性状列: ",
+        paste(absent, collapse = ", "))
+  }
+}
+# 列序固定：非 case 组在前、case 组在最后，与 "case vs ctrl" 阅读方向一致
+trait_groups <- c(setdiff(observed_groups_all, case_group), case_group)
+trait_list <- list()
+for (gn in trait_groups) {
+  trait_list[[gn]] <- as.integer(as.character(sample_group) == gn)
+}
+trait <- as.data.frame(trait_list, stringsAsFactors = FALSE)
+rownames(trait) <- sample_order
+# 模块排序 / 显著性判定依据取 case 组表型列。它与旧的对比列（case=1/ctrl=0）数值
+# 完全相同，因此模块排序、p 值、GS 与 hub 判定结果一律不变，只是不再用 "vs" 命名展示。
+trait_col <- case_group
+log(sprintf("trait source=%s | trait columns (one per group)=%s | ranking basis=%s (case) | contrast=%s (case=%s vs ctrl=%s)",
+            trait_source, paste(colnames(trait), collapse = ", "), trait_col,
+            contrast_used, case_group, ctrl_group))
+
+# 基因/样本质量检查
+gsg <- goodSamplesGenes(datExpr0, verbose = 0)
+if (!gsg$allOK) {
+  log("剔除不良基因", sum(!gsg$goodGenes), "不良样本", sum(!gsg$goodSamples))
+  datExpr0 <- datExpr0[gsg$goodSamples, gsg$goodGenes]
+}
+datExpr <- datExpr0
+if (ncol(datExpr) < 100) fail(sprintf("保留基因数 %d < 100", ncol(datExpr)))
+
+# --- 样本离群检测（标准 WGCNA 预处理节点）---
+# goodSamplesGenes 只查缺失值，不判断离群。16 样本下单个离群样本足以改变模块结构，
+# 因此补样本聚类 + 连接度 Z.k：|Z.k| > 2.5 标为候选离群，报告列出但不自动剔除
+# （样本太少，删一个代价很大，是否剔除由分析者决定）。
+sample_tree <- hclust(dist(datExpr), method = "average")
+ZT <- scale(datExpr)
+Z.k <- scale(apply(ZT, 1, function(x) mean(abs(x))))
+zvals <- as.numeric(Z.k)
+names(zvals) <- rownames(datExpr)
+outliers <- names(zvals)[abs(zvals) > 2.5]
+writeLines(sprintf("sample=%s Z.k=%.3f%s", names(zvals), zvals,
+                   ifelse(names(zvals) %in% outliers, " *outlier", "")),
+           "wgcna_sample_outliers.txt")
+log(sprintf("sample outliers (|Z.k|>2.5): %d%s", length(outliers),
+            if (length(outliers)) paste0(" [", paste(outliers, collapse = ","), "]") else ""))
+
+# 样本聚类树 + 分组色条（PNG 300dpi）
+sample_png <- "../figures/l1_30_wgcna_sample_tree.png"
+fig_png(sample_png, 6, 5)
+# 左侧留 9 行：group 色条的组名画在色条左边，margin 不够会被裁成 "up (LS vs NLS)"
+par(mar = c(4, 9, 3, 2), oma = c(3.5, 0, 0, 0))
+group_colors <- ifelse(as.character(sample_group) == case_group, "#EE0000", "#3B4992")
+names(group_colors) <- sample_order
+plotDendroAndColors(sample_tree,
+                    colors = data.frame(group = group_colors[rownames(datExpr)],
+                                        row.names = rownames(datExpr)),
+                    groupLabels = "group",
+                    # 不要传 dendroLabels=TRUE：该参数要的是标签向量，TRUE 会被当成
+                    # 长度 1 的标签，plot.hclust 直接报 "invalid dendrogram input"
+                    # （2026-10-19 实测）。默认即用 hclust 的样本名。
+                    cex.dendroLabels = 0.7, cex.groupLabels = 0.8,
+                    hang = 0.03, addGuide = TRUE, guideHang = 0.05,
+                    main = "Sample clustering")
+mtext(sprintf("line1: sample clustering | %d samples, %d genes | |Z.k|>2.5: %d",
+              nrow(datExpr), ncol(datExpr), length(outliers)),
+      side = 1, outer = TRUE, line = 1.2, at = 0.01, adj = 0, cex = 0.75)
+dev.off()
+
+
+# 软阈值
+powers <- c(1:10, seq(12, 30, by = 2))
+sft <- pickSoftThreshold(datExpr, powerVector = powers, networkType = "signed", verbose = 0)
+fit <- sft$fitIndices
+cand <- which(fit$SFT.R.sq >= 0.8)
+power <- if (length(cand) > 0) fit$Power[cand[1]] else fit$Power[which.max(fit$SFT.R.sq)]
+scale_ok <- length(cand) > 0
+log(sprintf("chosen power=%d (R^2=%.3f, scale_free_ok=%s)",
+            power, fit$SFT.R.sq[which(fit$Power == power)][1], scale_ok))
+
+# 软阈值诊断图（figure_spec v2.2：PNG 300dpi 落 <line>/figures/，不用 PDF）
+dir.create("../figures", showWarnings = FALSE, recursive = TRUE)
+softpower_png <- "../figures/l1_28_wgcna_softpower.png"
+fig_png(softpower_png, 7, 5)
+par(mfrow = c(1, 2), mar = c(4.5, 5, 4, 1), oma = c(3.5, 0, 0, 0))
+# 左图：无标度拟合。y 轴必须扩到阈值之上，否则 abline(h=0.8) 画在视野外，
+# 图上等于没有阈值线（2026-10-19 实测：R² 最高 0.75，0.8 线完全不可见）。
+# 顶部留足 headroom：两条文字标注要各占一行，不能挤在一起
+y_top <- max(0.95, max(fit$SFT.R.sq, na.rm = TRUE) + 0.18)
+plot(fit$Power, fit$SFT.R.sq, xlab = "soft power", ylab = "scale free R^2",
+     main = "Scale independence", type = "b", ylim = c(min(0, fit$SFT.R.sq), y_top))
+abline(h = 0.8, col = "red", lty = 2, lwd = 1.2)
+# 阈值标注放左侧：原来放在右端，和 "chosen power" 标注在右上方互相压字（2026-10-19 实测）
+text(min(fit$Power), 0.8, "threshold R^2 = 0.8", col = "red",
+     adj = c(0, -0.35), cex = 0.75)
+# 选中 power 的竖线 + 标注：文字右对齐放在竖线左侧，避免超出右框被裁
+abline(v = power, col = "#3B4992", lty = 3, lwd = 1.2)
+text(power, y_top, sprintf("chosen power = %d", power), col = "#3B4992",
+     adj = c(1.08, 1), cex = 0.75)
+# 右图：平均连通度，同样标出选中 power（文字放竖线左侧，右侧会出框）
+plot(fit$Power, fit$mean.k., xlab = "soft power", ylab = "mean connectivity",
+     main = "Mean connectivity", type = "b")
+abline(v = power, col = "#3B4992", lty = 3, lwd = 1.2)
+text(power, max(fit$mean.k., na.rm = TRUE) * 0.98, sprintf("chosen power = %d", power),
+     col = "#3B4992", adj = c(1.08, 1), cex = 0.75)
+# 图注置轴框外（底部整幅，一条一行；at 留 1% 左边距，防 png 设备贴边裁字）
+mtext(sprintf("line1: WGCNA soft-threshold diagnostics | chosen power=%d | scale-free R^2=%.2f (threshold 0.8)",
+              power, fit$SFT.R.sq[which(fit$Power == power)][1]),
+      side = 1, outer = TRUE, line = 1.2, at = 0.01, adj = 0, cex = 0.8)
+dev.off()
+
+# 建网（signed）。maxBlockSize 取"配置值与实际基因数的较大者"，保证单块建网：
+# 配置默认 5000 与入网基因数一致；若调小 top_n_genes，用实际基因数兜底仍是单块；
+# 若调大 top_n_genes 超过配置的 max_block_size，按配置分块并在报告写明分块数
+# （口径可审计，不悄悄退化成分块网络——2026-10-19 WGCNA 审计 C-01 的根因）。
+max_block <- max(wgcna_cfg$max_block_size, ncol(datExpr))
+net <- blockwiseModules(
+  datExpr, power = power, networkType = "signed", TOMType = "signed",
+  minModuleSize = wgcna_cfg$min_module_size,
+  mergeCutHeight = wgcna_cfg$merge_cut_height,
+  deepSplit = wgcna_cfg$deep_split,
+  maxBlockSize = max_block,
+  numericLabels = TRUE, pamRespectsDendro = FALSE, saveTOMs = FALSE,
+  verbose = 0, randomSeed = seed
+)
+n_blocks <- as.integer(ceiling(ncol(datExpr) / max_block))
+log(sprintf("network: %d genes, maxBlockSize=%d, n_blocks=%d", ncol(datExpr), max_block, n_blocks))
+moduleLabels <- net$colors
+moduleColors <- labels2colors(moduleLabels)
+n_mod <- length(unique(moduleColors))
+log("modules:", n_mod, paste(sort(table(moduleColors), decreasing = TRUE), collapse = " "))
+if (n_mod < 1) fail("模块数 < 1")
+
+# 模块-性状关联：对每个性状列（主对比对 + 各组指示变量）分别算 Pearson 相关
+MEs <- net$MEs
+me_names <- colnames(MEs)
+# trait 必须与 datExpr 的样本顺序一致（goodSamplesGenes 可能剔了样本）
+trait_kept <- trait[rownames(datExpr), , drop = FALSE]
+mod_trait_cor <- cor(MEs, trait_kept, use = "p")
+mod_trait_p <- corPvalueStudent(mod_trait_cor, nrow(datExpr))
+
+# 主对比对那一列作为排序与判定依据（报告注明依据）
+cor_vec <- as.numeric(mod_trait_cor[, trait_col])
+p_vec <- as.numeric(mod_trait_p[, trait_col])
+names(cor_vec) <- me_names
+names(p_vec) <- me_names
+
+# MEs 列名 ME0/ME1... 对应 moduleLabels 的数字标签（不是颜色），
+# 用数字标签表算每模块基因数（table(moduleColors) 键是颜色名，会错配出 NA）。
+lab_str <- gsub("^ME", "", me_names)
+n_gene_tab <- table(moduleLabels)
+n_gene_vec <- as.integer(n_gene_tab[lab_str])
+n_gene_vec[is.na(n_gene_vec)] <- 0L
+
+mod_rows <- data.frame(
+  module = labels2colors(as.integer(lab_str)),   # 颜色名（下游 enrichment_bulk 用）
+  module_label = lab_str,                         # WGCNA 数字标签（grey=0 为未分配）
+  n_genes = n_gene_vec,
+  # 主对比对：case 组为 1。cor>0 = 模块特征在 case 组升高（正相关），
+  # cor<0 = 模块特征在 case 组降低。方向随 case/ctrl 定义，不硬编码任何组名。
+  cor_group = signif(cor_vec, 4),
+  p_group = signif(p_vec, 4),
+  cor_group_trait = trait_col
+)
+# 每个组一列明细（一个组对应一个性状表型）：与上面 cor_group/p_group 并列，
+# 便于直接看到"模块在哪个组的表型里升高/降低"，不必自己按符号推。
+for (gn in colnames(trait_kept)) {
+  mod_rows[[paste0("cor_trait_", gn)]] <- signif(as.numeric(mod_trait_cor[, gn]), 4)
+  mod_rows[[paste0("p_trait_", gn)]] <- signif(as.numeric(mod_trait_p[, gn]), 4)
+}
+mod_rows <- mod_rows[order(-abs(mod_rows$cor_group)), ]
+mod_rows$significant <- mod_rows$p_group < wgcna_cfg$module_p_threshold
+
+# 自校验
+if (any(abs(mod_rows$cor_group) > 1 + 1e-9)) fail("模块-性状相关越界")
+if (sum(mod_rows$n_genes) != length(moduleColors)) fail("模块基因数不覆盖全部")
+
+# --- 基因-模块表 + kME / GS（标准 WGCNA 关键基因筛选节点）---
+# kME：基因表达与该基因所属模块特征基因的相关（module membership）；
+# GS ：基因表达与主对比对性状（case=1/ctrl=0）的相关（gene significance）。
+# 这两列是模块内 hub 筛选的依据；没有它们，下游只能把整个模块的基因一视同仁。
+gene_module <- data.frame(
+  gene = colnames(datExpr),
+  module = moduleColors,
+  module_label = moduleLabels,
+  stringsAsFactors = FALSE
+)
+kme_mat <- cor(datExpr, MEs, use = "p")
+gene_module$kME <- signif(as.numeric(kme_mat[cbind(
+  seq_len(nrow(gene_module)),
+  match(paste0("ME", gene_module$module_label), me_names)
+)]), 4)
+gs_vec <- as.numeric(cor(datExpr, trait_kept[[trait_col]], use = "p"))  # trait_col = case 组表型列
+gene_module$GS <- signif(gs_vec, 4)
+gene_module$p.GS <- signif(as.numeric(corPvalueStudent(gs_vec, nrow(datExpr))), 4)
+if (any(is.na(gene_module$kME)) || any(is.na(gene_module$GS))) fail("kME/GS 出现 NA")
+if (any(abs(gene_module$kME) > 1 + 1e-9) || any(abs(gene_module$GS) > 1 + 1e-9)) {
+  fail("kME/GS 越界")
+}
+
+write.table(gene_module, "wgcna_modules.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+write.table(mod_rows, "wgcna_module_trait.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+write.table(gene_module, "wgcna_gene_traits.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+# 模块特征基因导出：下游可复用模块级表型，不必重跑 WGCNA
+me_out <- data.frame(sample = rownames(MEs), MEs, check.names = FALSE)
+write.table(me_out, "wgcna_module_eigengenes.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+log("wrote wgcna_modules.tsv (", nrow(gene_module), "genes )")
+log("wrote wgcna_module_trait.tsv (", nrow(mod_rows), "modules )")
+log("wrote wgcna_gene_traits.tsv (", nrow(gene_module), "genes, kME/GS )")
+log("wrote wgcna_module_eigengenes.tsv (", nrow(me_out), "samples )")
+
+# hub：显著模块（p<配置阈值、非 grey）内 |kME|>=配置值 且 |GS|>=配置值，每模块最多 20 个。
+# 若某显著模块无人达标，回退取该模块 |kME| 最大的 1 个并标 fallback=TRUE，
+# 避免"显著模块一个 hub 都没有"导致下游交集为空。
+sig_colors <- setdiff(mod_rows$module[mod_rows$significant], "grey")
+hub_list <- list()
+for (mc in sig_colors) {
+  d <- gene_module[gene_module$module == mc, , drop = FALSE]
+  d <- d[order(-abs(d$kME)), , drop = FALSE]
+  hit <- d[abs(d$kME) >= wgcna_cfg$hub_kme_min & abs(d$GS) >= wgcna_cfg$hub_gs_min, , drop = FALSE]
+  fb <- nrow(hit) == 0
+  if (fb) hit <- d[1, , drop = FALSE]
+  if (nrow(hit) > 20) hit <- hit[seq_len(20), , drop = FALSE]
+  hit$fallback <- fb
+  hub_list[[mc]] <- hit
+}
+if (length(hub_list) > 0) {
+  hub <- do.call(rbind, hub_list)
+} else {
+  hub <- gene_module[0, , drop = FALSE]
+  hub$fallback <- logical(0)
+}
+write.table(hub, "wgcna_hub_genes.tsv", sep = "\t", quote = FALSE, row.names = FALSE)
+log("wrote wgcna_hub_genes.tsv (", nrow(hub), "hub genes in", length(sig_colors),
+    "significant modules )")
+
+# MM-GS 散点：x=|kME|、y=|GS|，红线为 hub 阈值，标注每模块 top1
+# 编号用 l1_31：l1_27 已被 cox_analysis 的森林图占用（无生存数据时不出图，但编号必须唯一）。
+mmgs_png <- "../figures/l1_31_wgcna_mm_gs.png"
+fig_png(mmgs_png, 6, 5)
+# 右侧留 7 行放图例（图例必须在轴框外，figure_spec v2.2 §三之二）；
+# 底部 oma 留 4.5 行放两行图注，避免长句在 6in 画布右缘被裁。
+par(mar = c(4.5, 5, 3, 7), oma = c(4.5, 0, 0, 0))
+if (length(sig_colors) == 0) {
+  plot(0, 0, type = "n", xlim = c(0, 1), ylim = c(0, 1),
+       xlab = "module membership |kME|", ylab = "gene significance |GS|",
+       main = "Module membership vs gene significance")
+  text(0.5, 0.5, "no significant module", cex = 0.9, col = "grey40")
+} else {
+  sig_genes <- gene_module[gene_module$module %in% sig_colors, , drop = FALSE]
+  pal <- c("#3B4992", "#EE0000", "#55A868", "#DD8452", "#8172B3",
+           "#937860", "#DA8BC3", "#8C8C8C", "#CCB974", "#64B5CD")
+  cols <- setNames(rep(pal, length.out = length(sig_colors)), sig_colors)
+  plot(abs(sig_genes$kME), abs(sig_genes$GS), pch = 19, cex = 0.7,
+       col = cols[sig_genes$module], xlim = c(0, 1), ylim = c(0, 1),
+       xlab = "module membership |kME|", ylab = "gene significance |GS|",
+       main = "Module membership vs gene significance")
+  abline(v = wgcna_cfg$hub_kme_min, col = "red", lty = 2, lwd = 1.1)
+  abline(h = wgcna_cfg$hub_gs_min, col = "red", lty = 2, lwd = 1.1)
+  text(wgcna_cfg$hub_kme_min - 0.01, 0.02, sprintf("kME = %.2f", wgcna_cfg$hub_kme_min),
+       col = "red", adj = c(1, 0), cex = 0.7)
+  text(0.02, wgcna_cfg$hub_gs_min + 0.01, sprintf("GS = %.2f", wgcna_cfg$hub_gs_min),
+       col = "red", adj = c(0, 0), cex = 0.7)
+  lab <- do.call(rbind, lapply(split(sig_genes, sig_genes$module),
+                               function(d) head(d[order(-abs(d$kME)), ], 1)))
+  if (!is.null(lab) && nrow(lab) > 0) {
+    # 只标每模块 top1：top3 在 kME/GS 接近时会互相压字（2026-10-19 实测
+    # ITGB2/IFI30/CD68 叠在一起）；完整 hub 清单见 wgcna_hub_genes.tsv。
+    text(abs(lab$kME), abs(lab$GS), lab$gene, pos = 3, cex = 0.7, col = "grey20")
+  }
+  # 图例放轴框外右侧（xpd=NA 允许画进 margin）
+  legend(x = 1.03, y = 1.0, legend = sig_colors, col = cols[sig_colors], pch = 19,
+         bty = "n", cex = 0.75, title = "module", xpd = NA)
+}
+mtext(sprintf("line1: module membership vs gene significance | GS basis=%s (case-group phenotype column)", trait_col),
+      side = 1, outer = TRUE, line = 1.2, at = 0.01, adj = 0, cex = 0.75)
+mtext(sprintf("%d significant module(s), %d hub genes (|kME|>=%.2f & |GS|>=%.2f)",
+              length(sig_colors), nrow(hub), wgcna_cfg$hub_kme_min, wgcna_cfg$hub_gs_min),
+      side = 1, outer = TRUE, line = 2.6, at = 0.01, adj = 0, cex = 0.75)
+dev.off()
+
+# 模块-性状热图（PNG 300dpi）：**一个组一列**，两组就是两列（用户 2026-10-19 口径）。
+# 行序与 mod_rows 一致（按 |cor| 降序），因此先按 mod_rows 的模块数字标签取行。
+trait_h_in <- max(3, nrow(mod_rows) * 0.35 + 1.5)
+trait_w_in <- max(6, 1.2 + 1.6 * ncol(trait_kept))
+trait_png <- "../figures/l1_29_wgcna_module_trait.png"
+fig_png(trait_png, trait_w_in, trait_h_in)
+# oma 给底部图注留整幅宽度：mtext(side=1) 默认只在绘图区内排版，
+# 6in 画布减去 mar 左右各 8/7 行后只剩约 3.4in，长图注必然被右缘裁掉
+# （2026-10-19 实测：l1_29 图注截断在 "case=LS vs c..."）。改用 outer=TRUE 占满整幅。
+par(mar = c(6, 8, 3, 7), oma = c(4.5, 0, 0, 0))
+me_order <- paste0("ME", mod_rows$module_label)
+cor_mat <- mod_trait_cor[me_order, , drop = FALSE]
+labeledHeatmap(
+  # x 标签是组名（一个组一列表型），不是 "case vs ctrl" 对比名
+  Matrix = cor_mat,
+  xLabels = colnames(cor_mat), yLabels = mod_rows$module, ySymbols = mod_rows$module,
+  colorLabels = FALSE, colors = blueWhiteRed(50),
+  textMatrix = round(cor_mat, 2), setStdMargins = FALSE,
+  cex.text = 0.8, zlim = c(-1, 1),
+  main = "Module-trait correlation"
+)
+# colorbar 必须带 label（figure_spec §三之二），图注置轴框外底部
+mtext("correlation r", side = 4, line = 5, cex = 0.8)
+# 图注三要素：每列是什么（一个组一列）/ case-ctrl 方向与判定依据 / 来源与样本数
+mtext(sprintf("line1: module-trait correlation | one column per group: %s",
+              paste(colnames(cor_mat), collapse = ", ")),
+      side = 1, outer = TRUE, line = 1.2, at = 0.01, adj = 0, cex = 0.75)
+mtext(sprintf("trait source=%s | case=%s vs ctrl=%s | module order by |cor| with %s (case) | n=%d samples, %d modules",
+              trait_source, case_group, ctrl_group, trait_col, nrow(datExpr), nrow(mod_rows)),
+      side = 1, outer = TRUE, line = 2.6, at = 0.01, adj = 0, cex = 0.75)
+dev.off()
+
+# 报告
+# 交付级产物清单：统计表 + 报告（图件不进来，aims §5.1 规定图只落 figures/）。
+# 必须先定义再被下面 outputs= 行引用，且 results/ 复制段也用它——定义一次，两处引用。
+results_artifacts <- c("wgcna_modules.tsv", "wgcna_module_trait.tsv", "wgcna_gene_traits.tsv",
+                       "wgcna_hub_genes.tsv", "wgcna_module_eigengenes.tsv",
+                       "wgcna_sample_outliers.txt", "wgcna_input_genes.txt", "wgcna_report.txt")
+sig_mods <- mod_rows[mod_rows$significant, ]
+lines <- c(
+  "step=wgcna_modules",
+  sprintf("seed=%d", seed),
+  sprintf("samples=%d genes_input=%d genes_used=%d", nrow(datExpr), length(gv), ncol(datExpr)),
+  sprintf("variance_filter=top %d by variance", TOP_N),
+  sprintf("network=signed power=%d scale_free_R2_ok=%s", power, scale_ok),
+  sprintf("network_block=maxBlockSize=%d n_blocks=%d", max_block, n_blocks),
+  sprintf("modules=%d (含 grey 未分配模块)", n_mod),
+  sprintf("grey_unassigned_genes=%d", sum(moduleColors == "grey")),
+  sprintf("hub_genes=%d (|kME|>=%.2f & |GS|>=%.2f, top20/module; fallback_modules=%d)",
+          nrow(hub), wgcna_cfg$hub_kme_min, wgcna_cfg$hub_gs_min,
+          sum(hub$fallback, na.rm = TRUE)),
+  sprintf("wgcna_config_source=%s", wgcna_cfg_source),
+  sprintf("wgcna_config=top_n_genes=%d min_module_size=%d merge_cut_height=%.2f deep_split=%d power_rule=%s module_p_threshold=%.3f hub_kme_min=%.2f hub_gs_min=%.2f max_block_size=%d",
+          wgcna_cfg$top_n_genes, wgcna_cfg$min_module_size, wgcna_cfg$merge_cut_height,
+          wgcna_cfg$deep_split, wgcna_cfg$power_rule, wgcna_cfg$module_p_threshold,
+          wgcna_cfg$hub_kme_min, wgcna_cfg$hub_gs_min, wgcna_cfg$max_block_size),
+  sprintf("sample_outliers_Zk_gt_2.5=%d%s", length(outliers),
+          if (length(outliers)) paste0(" (", paste(outliers, collapse = ","), ")") else ""),
+  sprintf("trait_source=%s", trait_source),
+  sprintf("trait_columns=%s (one column per group: 1=in group, 0=not)",
+          paste(colnames(trait), collapse = ",")),
+  sprintf("module_trait_basis=%s (case-group phenotype column; direction identical to primary contrast %s)",
+          trait_col, contrast_used),
+  sprintf("primary_contrast=%s (case=%s vs ctrl=%s)", contrast_used, case_group, ctrl_group),
+  "grouping_note=原表达谱共表达网络（非差异基因比对）：性状按组展开，一个组一列，不把多个组压成单一列；cor>0 = 模块特征在该组样本中升高",
+  "limitation_note=16 样本处于 WGCNA 可靠区间下沿，结果为探索性；模块划分与模块-性状相关需在更大样本上复现",
+  if (!scale_ok) "soft_power_note=未找到 R^2>=0.8 的 power，取 R^2 最大者，无标度拟合不理想（小样本常见）" else "soft_power_note=R^2>=0.8 达标",
+  "module_trait (按 |cor| 降序, 依据 case 组表型列):",
+  paste(sprintf("  %-12s n=%4d cor=%+.3f p=%.4g%s",
+                mod_rows$module, mod_rows$n_genes, mod_rows$cor_group, mod_rows$p_group,
+                ifelse(mod_rows$significant, " *", "")), collapse = "\n"),
+  sprintf("significant_modules=%d", nrow(sig_mods)),
+  sprintf("figures=%s, %s, %s, %s (300dpi PNG)", sample_png, mmgs_png, softpower_png, trait_png),
+  sprintf("outputs=processed/{%s} + results/{%s} + figures/l1_28,l1_29,l1_30,l1_31 (300dpi PNG)",
+          paste(results_artifacts, collapse = ","), paste(results_artifacts, collapse = ","))
+)
+writeLines(lines, "wgcna_report.txt")
+
+# --- 交付级产物暂存 results/（aims §7.3：results/ 是"必须回搬"的交付正本目录）---
+# 母版脚本长期把统计表写在 processed/，results/ 恒空，交付报告引擎只能靠
+# "results/ 为空则回落 processed/" 兜底（WGCNA 审计 W-05）。这里把本步骤的
+# 交付级表格与报告复制一份到 results/，让规范目录名实属实。
+# 图件不复制：aims §5.1 规定图一律 PNG 落 figures/，results/ 只放表与报告。
+results_dir <- "../results"
+dir.create(results_dir, showWarnings = FALSE, recursive = TRUE)
+for (a in results_artifacts) {
+  ok <- file.copy(a, file.path(results_dir, a), overwrite = TRUE)
+  if (!ok) fail(sprintf("交付级产物复制到 results/ 失败: %s", a))
+}
+log("wrote results/ 交付级产物 ", length(results_artifacts), " 个")
+
+# 产物必须真的落盘且非空（PNG 设备异常不会自动让脚本失败）
+for (artifact in c(sample_png, mmgs_png, softpower_png, trait_png)) {
+  if (!file.exists(artifact) || file.info(artifact)$size == 0) {
+    stop(sprintf("图件缺失或为空: %s", artifact))
+  }
+}
+for (artifact in c("wgcna_modules.tsv", "wgcna_module_trait.tsv", "wgcna_gene_traits.tsv",
+                   "wgcna_hub_genes.tsv", "wgcna_module_eigengenes.tsv",
+                   "wgcna_sample_outliers.txt", "wgcna_input_genes.txt", "wgcna_report.txt")) {
+  if (!file.exists(artifact) || file.info(artifact)$size == 0) {
+    stop(sprintf("表格/报告缺失或为空: %s", artifact))
+  }
+}
+log("wgcna_modules_done")
+RSCRIPT

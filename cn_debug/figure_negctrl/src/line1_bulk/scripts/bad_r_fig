@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# 负对照样本：R png() 设备未声明 res=（R 默认 72dpi）
+Rscript - <<'RSCRIPT'
+png("out1.png", width = 600, height = 400)
+plot(1:10)
+dev.off()
+RSCRIPT

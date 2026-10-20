@@ -1,0 +1,111 @@
+# 出图模板自动挂载（R 侧）
+#
+# 与 Python 侧 ops/layout_autoload/sitecustomize.py 对等：
+# 母版脚本按"绝对只读"不能改，但客户选的 plot_layout_config 必须生效。
+# 只要任务环境里给了 BIOANALYS_PROJECT_JSON，Rscript 启动时会加载本文件
+# （通过 R_PROFILE_USER 环境变量），把 ggsave 包一层，落盘前套用模板。
+#
+# 保守原则：
+#   * 只在明确设置了 BIOANALYS_PROJECT_JSON 时介入，日常 R 交互零影响；
+#   * 只 patch ggsave（母版 R 出图脚本的落盘入口），不动 print/plot 的默认设备；
+#   * 任何异常都吞掉并写 warning —— 模板是增强，出图失败才是事故；
+#   * 幂等：同一会话重复 source 只包一层。
+
+local({
+  project_json <- Sys.getenv("BIOANALYS_PROJECT_JSON", "")
+  if (!nzchar(project_json) || !file.exists(project_json)) return(invisible(NULL))
+  if (identical(Sys.getenv("BIOANALYS_LAYOUT_DISABLE"), "1")) return(invisible(NULL))
+
+  # layout_helper.R 的定位：优先用任务脚本显式给的 BIOANALYS_LAYOUT_LIB，
+  # 其次按部署约定找 bin/ 与 ops/。R_PROFILE_USER 场景下 sys.frame() 不可靠，
+  # 所以不依赖"本文件在哪"来推断。
+  candidates <- c(
+    Sys.getenv("BIOANALYS_LAYOUT_LIB", ""),
+    "/mnt/ssd/bio_data/bin",
+    "/mnt/ssd/bio_data/ops",
+    "/mnt/ssd/bio_data/ops/layout_autoload"
+  )
+  helper <- NULL
+  for (dir in candidates) {
+    if (!nzchar(dir) || is.na(dir)) next
+    p <- file.path(dir, "layout_helper.R")
+    if (file.exists(p)) { helper <- p; break }
+  }
+  if (is.null(helper)) {
+    warning("[layout_autoload] 找不到 layout_helper.R，跳过模板应用", call. = FALSE)
+    return(invisible(NULL))
+  }
+
+  if (!requireNamespace("jsonlite", quietly = TRUE)) {
+    warning("[layout_autoload] 缺少 jsonlite，跳过模板应用", call. = FALSE)
+    return(invisible(NULL))
+  }
+
+  spec <- tryCatch({
+    project <- jsonlite::fromJSON(project_json, simplifyVector = FALSE)
+    project$plot_layout_config
+  }, error = function(e) {
+    warning(sprintf("[layout_autoload] 读取 project.json 失败：%s", conditionMessage(e)), call. = FALSE)
+    NULL
+  })
+  if (is.null(spec)) spec <- list()
+
+  tryCatch(source(helper, local = FALSE), error = function(e) {
+    warning(sprintf("[layout_autoload] 加载 layout_helper.R 失败：%s", conditionMessage(e)), call. = FALSE)
+  })
+  if (!exists("apply_sci_plot_layout_r", mode = "function")) return(invisible(NULL))
+
+  if (isTRUE(get0(".bioanalys_ggsave_patched", ifnotfound = FALSE))) return(invisible(NULL))
+
+  # 主题层（SCI 基座）：默认关闭（BIOANALYS_THEME 未设 = 0），由项目显式打开。
+  # 放在 ggsave 包装之前 source，保证 print/plot 与 ggsave 两条路都带上主题。
+  # 部署约定：与 Rprofile 同在 /mnt/ssd/bio_data/ops/layout_autoload/ 的上一级 ops/ 下。
+  for (cand in c("/mnt/ssd/bio_data/ops/fig_theme.R", "ops/fig_theme.R")) {
+    if (file.exists(cand)) {
+      tryCatch(source(cand, local = FALSE), error = function(e) {
+        warning(sprintf("[layout_autoload] 加载 fig_theme.R 失败：%s", conditionMessage(e)), call. = FALSE)
+      })
+      break
+    }
+  }
+
+  # 保存原始 ggsave，包装后写回 ggplot2 命名空间（脚本里调 ggplot2::ggsave 也能命中）
+  original <- ggplot2::ggsave
+  wrapped <- function(filename, plot = ggplot2::last_plot(), ...) {
+    dots <- list(...)
+    tryCatch({
+      if (inherits(plot, "ggplot")) {
+        plot <- apply_sci_plot_layout_r(plot, spec)
+        # 模板只能放大、不能缩小：母版脚本的 width/height 是按内容量定的
+        # （如 50 基因热图要更高才放得下标签），压到 16:9 会把标签挤重叠。
+        # 母版脚本普遍显式传 width/height（如 pca_matrix: ggsave(..., width=6, height=5)）。
+        # 若原样塞进 ... 再补模板 width，R 会报 "formal argument matched by multiple
+        # actual arguments"，被下面的 tryCatch 吞掉后模板就静默失效。必须先摘掉。
+        override <- dots
+        cur_w <- suppressWarnings(as.numeric(override$width))
+        cur_h <- suppressWarnings(as.numeric(override$height))
+        override$width <- NULL
+        override$height <- NULL
+        override$units <- NULL
+        override$dpi <- NULL
+        tpl <- layout_figsize_r(spec)
+        final_w <- if (is.na(cur_w)) tpl[1] else max(cur_w, tpl[1])
+        final_h <- if (is.na(cur_h)) tpl[2] else max(cur_h, tpl[2])
+        return(do.call(original, c(
+          list(filename = filename, plot = plot,
+               width = final_w, height = final_h, units = "in",
+               dpi = normalize_layout_spec_r(spec)$dpi),
+          override
+        )))
+      }
+    }, error = function(e) {
+      warning(sprintf("[layout_autoload] 应用模板失败，按原样落盘：%s", conditionMessage(e)), call. = FALSE)
+    })
+    do.call(original, c(list(filename = filename, plot = plot), dots))
+  }
+  # R_PROFILE_USER 阶段 utils 未必已 attach，必须显式 utils::
+  utils::assignInNamespace("ggsave", wrapped, ns = "ggplot2")
+  assign(".bioanalys_ggsave_patched", TRUE, envir = globalenv())
+  message(sprintf("[layout_autoload] 已挂载出图模板：%s",
+                  if (is.null(spec$template_id)) "template_4x3" else spec$template_id))
+})

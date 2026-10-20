@@ -1,0 +1,498 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-19",
+  "scope": "本项目三条分析线实际在用的解释器与包（版本号由远端容器实采，不抄文档）",
+  "probe": {
+    "script": "cn_debug/2026-10-19_s11_collect_versions.py",
+    "raw_output": "2026-10-19_s11_versions_raw.json",
+    "host": "localhost",
+    "probe_python": "3.12.3",
+    "channel": "adb forward tcp:10022 -> ssh k40-ubuntu -> proot-distro ubuntu",
+    "policy": "只读探测：不安装、不升级、不改容器环境"
+  },
+  "seed": {
+    "value": 20261013,
+    "source": "aims/aims.txt 铁律#3 契约值 20261013；运行时由任务引擎以 BIOANALYS_SEED 注入（BioanalysDesktop/server/task.js:54），各步骤实际取值另见任务台账 random_seed 字段"
+  },
+  "interpreters": [
+    {
+      "name": "R",
+      "version": "4.3.3",
+      "version_raw": "Rscript (R) version 4.3.3 (2024-02-29)",
+      "language": "R",
+      "role": "统计建模、富集分析与图件（线 1 步骤 1-4；线 2 富集/LASSO 桥接）",
+      "lines": [
+        "line1_bulk",
+        "line2_scrna"
+      ],
+      "source": "Rscript --version"
+    },
+    {
+      "name": "python3",
+      "version": "3.12.3",
+      "version_raw": "3.12.3",
+      "language": "python3",
+      "role": "机器学习、单细胞/空间分析与图件（线 1 步骤 5-8；线 2/线 3 主体）",
+      "lines": [
+        "line1_bulk",
+        "line2_scrna",
+        "line3_spatial"
+      ],
+      "source": "python3 --version"
+    }
+  ],
+  "packages": [
+    {
+      "name": "WGCNA",
+      "version": "1.74",
+      "installed": true,
+      "language": "R",
+      "role": "加权共表达网络构建、动态剪切树划分模块、模块-性状关联（wgcna_modules）",
+      "lines": [
+        "line1_bulk"
+      ],
+      "source": "Rscript -e 'if (requireNamespace(\"WGCNA\", quietly=TRUE)) cat(as.character(packageVersion(\"WGCNA\"))) else cat(\"__MISSING__\")'",
+      "citation": "WGCNA"
+    },
+    {
+      "name": "limma",
+      "version": "3.58.1",
+      "installed": true,
+      "language": "R",
+      "role": "DEG 线性模型 + 经验贝叶斯收缩（deg_limma）",
+      "lines": [
+        "line1_bulk"
+      ],
+      "source": "Rscript -e 'if (requireNamespace(\"limma\", quietly=TRUE)) cat(as.character(packageVersion(\"limma\"))) else cat(\"__MISSING__\")'",
+      "citation": "limma",
+      "note": "本目录无 limma 原始论文，引用处会明写「未获取」"
+    },
+    {
+      "name": "ggplot2",
+      "version": "4.0.3",
+      "installed": true,
+      "language": "R",
+      "role": "线 1 全部 l1_* 图件绘制",
+      "lines": [
+        "line1_bulk"
+      ],
+      "source": "Rscript -e 'if (requireNamespace(\"ggplot2\", quietly=TRUE)) cat(as.character(packageVersion(\"ggplot2\"))) else cat(\"__MISSING__\")'",
+      "citation": null
+    },
+    {
+      "name": "clusterProfiler",
+      "version": "4.10.1",
+      "installed": true,
+      "language": "R",
+      "role": "GO BP/CC/MF 与 KEGG 的 ORA / GSEA（enrichment_bulk）",
+      "lines": [
+        "line1_bulk"
+      ],
+      "source": "Rscript -e 'if (requireNamespace(\"clusterProfiler\", quietly=TRUE)) cat(as.character(packageVersion(\"clusterProfiler\"))) else cat(\"__MISSING__\")'",
+      "citation": null
+    },
+    {
+      "name": "data.table",
+      "version": "1.14.10",
+      "installed": true,
+      "language": "R",
+      "role": "大表读写与分组聚合",
+      "lines": [
+        "line1_bulk"
+      ],
+      "source": "Rscript -e 'if (requireNamespace(\"data.table\", quietly=TRUE)) cat(as.character(packageVersion(\"data.table\"))) else cat(\"__MISSING__\")'",
+      "citation": null
+    },
+    {
+      "name": "glmnet",
+      "version": "4.1.8",
+      "installed": true,
+      "language": "R",
+      "role": "LASSO 特征筛选（ml_model）",
+      "lines": [
+        "line1_bulk"
+      ],
+      "source": "Rscript -e 'if (requireNamespace(\"glmnet\", quietly=TRUE)) cat(as.character(packageVersion(\"glmnet\"))) else cat(\"__MISSING__\")'",
+      "citation": null
+    },
+    {
+      "name": "survival",
+      "version": "3.5.8",
+      "installed": true,
+      "language": "R",
+      "role": "Cox 比例风险模型（cox_analysis）",
+      "lines": [
+        "line1_bulk"
+      ],
+      "source": "Rscript -e 'if (requireNamespace(\"survival\", quietly=TRUE)) cat(as.character(packageVersion(\"survival\"))) else cat(\"__MISSING__\")'",
+      "citation": null
+    },
+    {
+      "name": "org.Hs.eg.db",
+      "version": "3.18.0",
+      "installed": true,
+      "language": "R",
+      "role": "Gene Symbol → Entrez ID 注释（富集分析入参）",
+      "lines": [
+        "line1_bulk"
+      ],
+      "source": "Rscript -e 'if (requireNamespace(\"org.Hs.eg.db\", quietly=TRUE)) cat(as.character(packageVersion(\"org.Hs.eg.db\"))) else cat(\"__MISSING__\")'",
+      "citation": null
+    },
+    {
+      "name": "matrixStats",
+      "version": "1.2.0",
+      "installed": true,
+      "language": "R",
+      "role": "矩阵行列统计（QC 与网络构建）",
+      "lines": [
+        "line1_bulk"
+      ],
+      "source": "Rscript -e 'if (requireNamespace(\"matrixStats\", quietly=TRUE)) cat(as.character(packageVersion(\"matrixStats\"))) else cat(\"__MISSING__\")'",
+      "citation": null
+    },
+    {
+      "name": "GSVA",
+      "version": "1.50.5",
+      "installed": true,
+      "language": "R",
+      "role": "GSVA 通路活性评分（gsva_pathways）",
+      "lines": [
+        "line2_scrna"
+      ],
+      "source": "Rscript -e 'if (requireNamespace(\"GSVA\", quietly=TRUE)) cat(as.character(packageVersion(\"GSVA\"))) else cat(\"__MISSING__\")'",
+      "citation": null
+    },
+    {
+      "name": "GSEABase",
+      "version": "1.64.0",
+      "installed": true,
+      "language": "R",
+      "role": "GSVA 输入基因集封装",
+      "lines": [
+        "line2_scrna"
+      ],
+      "source": "Rscript -e 'if (requireNamespace(\"GSEABase\", quietly=TRUE)) cat(as.character(packageVersion(\"GSEABase\"))) else cat(\"__MISSING__\")'",
+      "citation": null
+    },
+    {
+      "name": "Seurat",
+      "version": "5.6.0",
+      "installed": true,
+      "language": "R",
+      "role": "已安装；三条线的步骤脚本均未 library()（线 2/线 3 走 scanpy）",
+      "lines": [],
+      "source": "Rscript -e 'if (requireNamespace(\"Seurat\", quietly=TRUE)) cat(as.character(packageVersion(\"Seurat\"))) else cat(\"__MISSING__\")'",
+      "citation": null,
+      "note": "容器内可用但未进入本项目流程，故不作为方法学引用"
+    },
+    {
+      "name": "pheatmap",
+      "version": "1.0.12",
+      "installed": true,
+      "language": "R",
+      "role": "已安装；步骤脚本未 library()（热图由 ComplexHeatmap/ggplot2 路线承担）",
+      "lines": [],
+      "source": "Rscript -e 'if (requireNamespace(\"pheatmap\", quietly=TRUE)) cat(as.character(packageVersion(\"pheatmap\"))) else cat(\"__MISSING__\")'",
+      "citation": null
+    },
+    {
+      "name": "ComplexHeatmap",
+      "version": "2.18.0",
+      "installed": true,
+      "language": "R",
+      "role": "已安装；步骤脚本未 library()",
+      "lines": [],
+      "source": "Rscript -e 'if (requireNamespace(\"ComplexHeatmap\", quietly=TRUE)) cat(as.character(packageVersion(\"ComplexHeatmap\"))) else cat(\"__MISSING__\")'",
+      "citation": null
+    },
+    {
+      "name": "pROC",
+      "version": "1.18.5",
+      "installed": true,
+      "language": "R",
+      "role": "已安装；步骤脚本未 library()（AUC 由 sklearn 计算）",
+      "lines": [],
+      "source": "Rscript -e 'if (requireNamespace(\"pROC\", quietly=TRUE)) cat(as.character(packageVersion(\"pROC\"))) else cat(\"__MISSING__\")'",
+      "citation": null
+    },
+    {
+      "name": "scanpy",
+      "version": "1.12.4",
+      "installed": true,
+      "language": "Python",
+      "role": "单细胞/空间预处理、HVG、PCA、邻居图、聚类、UMAP、DEG、DPT 拟时序",
+      "lines": [
+        "line2_scrna",
+        "line3_spatial"
+      ],
+      "source": "python3 -c 'import scanpy; print(getattr(scanpy, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"scanpy\"))'",
+      "citation": "Scanpy"
+    },
+    {
+      "name": "anndata",
+      "version": "0.13.4",
+      "installed": true,
+      "language": "Python",
+      "role": "AnnData 容器与 h5ad 读写",
+      "lines": [
+        "line2_scrna",
+        "line3_spatial"
+      ],
+      "source": "python3 -c 'import anndata; print(getattr(anndata, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"anndata\"))'",
+      "citation": null
+    },
+    {
+      "name": "pandas",
+      "version": "2.3.3",
+      "installed": true,
+      "language": "Python",
+      "role": "结果表读写与整形",
+      "lines": [
+        "line1_bulk",
+        "line2_scrna",
+        "line3_spatial"
+      ],
+      "source": "python3 -c 'import pandas; print(getattr(pandas, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"pandas\"))'",
+      "citation": null
+    },
+    {
+      "name": "numpy",
+      "version": "2.5.3",
+      "installed": true,
+      "language": "Python",
+      "role": "数值计算与稀疏矩阵",
+      "lines": [
+        "line1_bulk",
+        "line2_scrna",
+        "line3_spatial"
+      ],
+      "source": "python3 -c 'import numpy; print(getattr(numpy, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"numpy\"))'",
+      "citation": null
+    },
+    {
+      "name": "scipy",
+      "version": "1.18.1",
+      "installed": true,
+      "language": "Python",
+      "role": "稀疏矩阵运算、统计检验、置换检验、NNLS",
+      "lines": [
+        "line1_bulk",
+        "line2_scrna",
+        "line3_spatial"
+      ],
+      "source": "python3 -c 'import scipy; print(getattr(scipy, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"scipy\"))'",
+      "citation": null
+    },
+    {
+      "name": "scikit-learn",
+      "version": "1.9.1",
+      "installed": true,
+      "language": "Python",
+      "role": "机器学习模型、PCA/降维、交叉验证与 AUC",
+      "lines": [
+        "line1_bulk",
+        "line2_scrna",
+        "line3_spatial"
+      ],
+      "source": "python3 -c 'import sklearn; print(getattr(sklearn, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"scikit-learn\"))'",
+      "citation": null
+    },
+    {
+      "name": "matplotlib",
+      "version": "3.11.2",
+      "installed": true,
+      "language": "Python",
+      "role": "三线全部图件绘制",
+      "lines": [
+        "line1_bulk",
+        "line2_scrna",
+        "line3_spatial"
+      ],
+      "source": "python3 -c 'import matplotlib; print(getattr(matplotlib, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"matplotlib\"))'",
+      "citation": null
+    },
+    {
+      "name": "seaborn",
+      "version": "0.13.2",
+      "installed": true,
+      "language": "Python",
+      "role": "已安装；三条线脚本均未 import（图件统一走 matplotlib + 自定义主题）",
+      "lines": [],
+      "source": "python3 -c 'import seaborn; print(getattr(seaborn, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"seaborn\"))'",
+      "citation": null
+    },
+    {
+      "name": "networkx",
+      "version": "3.7",
+      "installed": true,
+      "language": "Python",
+      "role": "PPI / 共表达网络拓扑与枢纽基因打分",
+      "lines": [
+        "line1_bulk",
+        "line2_scrna"
+      ],
+      "source": "python3 -c 'import networkx; print(getattr(networkx, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"networkx\"))'",
+      "citation": null
+    },
+    {
+      "name": "statsmodels",
+      "version": "0.15.0",
+      "installed": true,
+      "language": "Python",
+      "role": "统计模型与多重检验校正",
+      "lines": [
+        "line1_bulk"
+      ],
+      "source": "python3 -c 'import statsmodels; print(getattr(statsmodels, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"statsmodels\"))'",
+      "citation": null
+    },
+    {
+      "name": "harmonypy",
+      "version": "2.0.2",
+      "installed": true,
+      "language": "Python",
+      "role": "批次整合 Harmony（integrate_harmony）",
+      "lines": [
+        "line2_scrna"
+      ],
+      "source": "python3 -c 'import harmonypy; print(getattr(harmonypy, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"harmonypy\"))'",
+      "citation": "harmony",
+      "note": "本项目用 Python 端 harmonypy 实现；本地 PDF 为 R 包 harmony 手册（非原始论文），引用处标注该差异"
+    },
+    {
+      "name": "liana",
+      "version": "1.10.0",
+      "installed": true,
+      "language": "Python",
+      "role": "细胞间通讯 consensus 资源 + rank_aggregate（cell_communication / spatial_communication）",
+      "lines": [
+        "line2_scrna",
+        "line3_spatial"
+      ],
+      "source": "python3 -c 'import liana; print(getattr(liana, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"liana\"))'",
+      "citation": null
+    },
+    {
+      "name": "pyscenic",
+      "version": "0.12.1",
+      "installed": true,
+      "language": "Python",
+      "role": "SCENIC 转录因子活性推断（scenic_tf）",
+      "lines": [
+        "line2_scrna"
+      ],
+      "source": "python3 -c 'import pyscenic; print(getattr(pyscenic, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"pyscenic\"))'",
+      "citation": null
+    },
+    {
+      "name": "arboreto",
+      "version": "0.1.6",
+      "installed": true,
+      "language": "Python",
+      "role": "SCENIC GRN 推断后端（pyscenic 依赖）",
+      "lines": [
+        "line2_scrna"
+      ],
+      "source": "python3 -c 'import arboreto; print(getattr(arboreto, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"arboreto\"))'",
+      "citation": null
+    },
+    {
+      "name": "gseapy",
+      "version": "1.3.1",
+      "installed": true,
+      "language": "Python",
+      "role": "Python 侧 GSEA / 富集（enrichment）",
+      "lines": [
+        "line2_scrna",
+        "line3_spatial"
+      ],
+      "source": "python3 -c 'import gseapy; print(getattr(gseapy, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"gseapy\"))'",
+      "citation": null
+    },
+    {
+      "name": "scTenifold",
+      "version": "0.5.1",
+      "installed": true,
+      "language": "Python",
+      "role": "虚拟敲除 scTenifoldKnk 网络扰动（virtual_knockout / spatial_knockout）",
+      "lines": [
+        "line2_scrna",
+        "line3_spatial"
+      ],
+      "source": "python3 -c 'import scTenifold; print(getattr(scTenifold, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"scTenifold\"))'",
+      "citation": null
+    },
+    {
+      "name": "shap",
+      "version": "0.53.0",
+      "installed": true,
+      "language": "Python",
+      "role": "SHAP 模型可解释性（ml_hub_analysis）",
+      "lines": [
+        "line1_bulk"
+      ],
+      "source": "python3 -c 'import shap; print(getattr(shap, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"shap\"))'",
+      "citation": null
+    },
+    {
+      "name": "h5py",
+      "version": "3.16.0",
+      "installed": true,
+      "language": "Python",
+      "role": "HDF5/h5ad 底层直读（spatial ingest）",
+      "lines": [
+        "line3_spatial"
+      ],
+      "source": "python3 -c 'import h5py; print(getattr(h5py, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"h5py\"))'",
+      "citation": null
+    },
+    {
+      "name": "Pillow",
+      "version": "12.3.0",
+      "installed": true,
+      "language": "Python",
+      "role": "空间图件/图像读取",
+      "lines": [
+        "line3_spatial"
+      ],
+      "source": "python3 -c 'import PIL; print(getattr(PIL, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"Pillow\"))'",
+      "citation": null
+    },
+    {
+      "name": "adjustText",
+      "version": "1.4.0",
+      "installed": true,
+      "language": "Python",
+      "role": "图件标签避让",
+      "lines": [
+        "line1_bulk",
+        "line2_scrna"
+      ],
+      "source": "python3 -c 'import adjustText; print(getattr(adjustText, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"adjustText\"))'",
+      "citation": null
+    },
+    {
+      "name": "squidpy",
+      "version": null,
+      "installed": false,
+      "language": "Python",
+      "role": "未安装；线 3 空间统计（Moran's I / 邻域富集 / 共现）为 numpy 原生实现",
+      "lines": [],
+      "source": "python3 -c 'import squidpy; print(getattr(squidpy, \"__version__\", None) or __import__(\"importlib.metadata\", fromlist=[\"x\"]).version(\"squidpy\"))'",
+      "citation": null,
+      "note": "容器内不可 import，故不引用 Squidpy 论文",
+      "install_error": "ModuleNotFoundError: No module named 'squidpy'"
+    }
+  ],
+  "platform_citations": [
+    {
+      "key": "Bioconductor",
+      "lines": [
+        "line1_bulk",
+        "line2_scrna"
+      ],
+      "reason": "线 1/线 2 的 R 侧包（limma、WGCNA、clusterProfiler、org.Hs.eg.db、GSVA、GSEABase）均来自 Bioconductor 发行版，属平台级引用"
+    }
+  ]
+}
