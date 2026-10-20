@@ -220,6 +220,15 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
   @page { size: A4 portrait; margin: 14mm 12mm; }
 }
 
+  /* 访问令牌输入区（B4）：默认不渲染，仅 /health 报 auth_required 时由 initAuth() 显示；
+     未启用实例的页面与既往完全一致。 */
+  #token-gate { display: none; max-width: 920px; margin: 14px auto 0; padding: 12px 16px;
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; }
+  #token-gate .token-title { font-size: 13px; font-weight: 600; color: #0f172a; }
+  #token-gate .token-hint { display: block; font-size: 12px; color: #64748b; margin-top: 2px; }
+  #token-gate input { display: block; margin-top: 8px; width: 100%; max-width: 360px;
+    padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; }
+
 </style>
 </head>
 <body>
@@ -241,6 +250,14 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     </div>
   </div>
 </header>
+
+<!-- 访问令牌输入区（B4）：默认 display:none（见 #token-gate 样式），
+     服务端 /health 报 auth_required 时才显示；未启用实例零渲染变化。 -->
+<div id="token-gate" role="region" aria-label="访问令牌">
+  <span class="token-title">访问令牌</span>
+  <span class="token-hint" id="token-hint-text">本实例已启用访问令牌，请输入对接人提供的 token</span>
+  <input id="f-token" type="password" autocomplete="off" placeholder="access token" aria-describedby="token-hint-text" />
+</div>
 
 <nav class="progress-wrap" aria-label="填写步骤">
   <ol class="progress" id="progress">
@@ -701,6 +718,40 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
   ];
 
   // ============================================================
+  // ============================================================
+  // 可选 Token 鉴权（B4）：/health 报 auth_required 时才启用。
+  // 未启用时零变化：不显示 token 区、请求不加 Authorization 头（既有客户无感）。
+  // ============================================================
+  var authRequired = false;
+  var AUTH_STORAGE_KEY = 'portal_token';
+  // authRequired 为 false 时返回原 headers（浅拷贝），行为与既往完全一致
+  function authHeaders(extra) {
+    var h = extra ? Object.assign({}, extra) : {};
+    if (!authRequired) return h;
+    var token = '';
+    try { token = localStorage.getItem(AUTH_STORAGE_KEY) || ''; } catch (e) { token = ''; }
+    if (token) h.Authorization = 'Bearer ' + token;
+    return h;
+  }
+  // 401 时在服务端 error 原文后追加重输提示；非 401 原样返回
+  function authDeniedHint(status, message) {
+    if (status !== 401) return message;
+    return message + '（本实例已启用访问令牌：请在页面顶部重新输入 token 后重试）';
+  }
+  function initAuth() {
+    fetch('/health').then(function (r) { return r.json(); }).then(function (health) {
+      if (!health || !health.auth_required) return;
+      authRequired = true;
+      $('token-gate').style.display = 'block';
+      var input = $('f-token');
+      try { input.value = localStorage.getItem(AUTH_STORAGE_KEY) || ''; } catch (e) { input.value = ''; }
+      input.addEventListener('input', function () {
+        try { localStorage.setItem(AUTH_STORAGE_KEY, input.value.trim()); } catch (e) { /* 隐私模式存不进则仅本次会话生效 */ }
+      });
+      if (!input.value) input.focus();
+    }).catch(function () { /* /health 不可达：按未启用处理，后续请求失败会原样报错 */ });
+  }
+
   // 状态
   // ============================================================
   var state = {
@@ -1133,11 +1184,11 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
         showMsg('e-refs', '上传中 ' + (i + 1) + '/' + queue.length + '：' + f.name, 'warn');
         return fetch('/api/references?sid=' + encodeURIComponent(state.uploadSid) + '&name=' + encodeURIComponent(f.name), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/octet-stream' },
+          headers: authHeaders({ 'Content-Type': 'application/octet-stream' }),
           body: f
         }).then(function (res) {
           return res.json().catch(function () { return {}; }).then(function (body) {
-            if (!res.ok || !body.ok) throw new Error(body.error || ('HTTP ' + res.status));
+            if (!res.ok || !body.ok) throw new Error(authDeniedHint(res.status, body.error || ('HTTP ' + res.status)));
             state.refs.push({ name: body.name, path: body.path, size: body.size });
             done += 1;
             renderRefs();
@@ -1409,7 +1460,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       + '&name=' + encodeURIComponent(file.name);
     fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/octet-stream' },
+      headers: authHeaders({ 'Content-Type': 'application/octet-stream' }),
       body: file
     }).then(function (res) {
       return res.json().catch(function () { return {}; }).then(function (body) {
@@ -1417,7 +1468,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       });
     }).then(function (res) {
       if (res.status !== 200 || !res.body || !res.body.ok) {
-        throw new Error((res.body && res.body.error) || ('HTTP ' + res.status));
+        throw new Error(authDeniedHint(res.status, (res.body && res.body.error) || ('HTTP ' + res.status)));
       }
       // name 用原始文件名（用户在需求里「填写」的就是它）；path 用服务端返回的安全化落点
       var entry = { role: role, bind: bind, name: file.name, size: res.body.size, path: res.body.path };
@@ -1904,7 +1955,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     btn.disabled = true; btn.textContent = '提交中…';
     fetch('/api/submit', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
       body: json
     }).then(function (r) {
       return r.json().then(function (d) { return { status: r.status, body: d }; });
@@ -1913,7 +1964,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
         if (json.indexOf('"dataFiles"') >= 0) window.__packageSubmitted = true;
         showResult(true, json, res.body.savedAs);
       }
-      else showResult(false, json, (res.body && res.body.error) || ('HTTP ' + res.status));
+      else showResult(false, json, authDeniedHint(res.status, (res.body && res.body.error) || ('HTTP ' + res.status)));
     }).catch(function () {
       showResult(false, json, '网络异常，未能提交');
     }).then(function () {
@@ -2050,6 +2101,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
   }
 
   function init() {
+    initAuth();
     renderDatasets(); renderGroups(); renderContrasts(); renderOutputs(); renderLineCounts(); renderRefs(); updateNotesCount(); updateDfUi(); bind();
     goStep(1, false);
   }
