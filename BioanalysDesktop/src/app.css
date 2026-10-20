@@ -522,6 +522,8 @@ body {
 .selfcheck-dot-pass { background: #e6f6ec; color: #0f7b3f; border: 3px solid #0f7b3f; }
 .selfcheck-dot-fail { background: #fdecea; color: #b3261e; border: 3px solid #b3261e; }
 .selfcheck-dot-unknown { background: #f0f2f5; color: #52606d; border: 3px solid #9aa5b1; }
+/* warn 档：温度进降频区、内存贴 90%、负载超核数 —— 能跑但该降载，别和 unknown 混成一个灰灯 */
+.selfcheck-dot-warn { background: #fff8e1; color: #8a6d00; border: 3px solid #b58900; }
 
 .selfcheck-label {
   font-size: 14px;

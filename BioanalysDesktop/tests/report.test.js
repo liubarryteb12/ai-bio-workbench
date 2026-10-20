@@ -78,9 +78,35 @@ function fixtureBytes(name) {
  *   - find ... -printf         → 回三大件清单（PRJ_PULL_MISS 只给 md，测缺失路径）
  *   - scp                      → 真的把垫片字节写到本地落点（模拟传输成功）
  */
+/** 记录全部 ssh 远端命令，供"门禁拦下后没有白跑打包"这类断言用 */
+const sshCalls = [];
+
 function dispatchSpawn(program, args) {
   if (program === 'ssh') {
     const remoteCmd = args[args.length - 1];
+    sshCalls.push(remoteCmd);
+    // 交付前置门禁查询（D4）：命令里含 print "DF|"
+    if (remoteCmd.includes('print "DF|"')) {
+      if (remoteCmd.includes('PRJ_TEST_FULL')) {
+        return fakeChild({ exitCode: 0, stdoutText: 'DF|95%\nEND|\n' });
+      }
+      if (remoteCmd.includes('PRJ_TEST_BADLEDGER')) {
+        return fakeChild({
+          exitCode: 0,
+          stdoutText: 'DF|42%\nLEDGER|2026-10-20_211500_PRJ_TEST_BADLEDGER_deg.json|failed\nEND|\n',
+        });
+      }
+      if (remoteCmd.includes('PRJ_TEST_RUNNING')) {
+        return fakeChild({
+          exitCode: 0,
+          stdoutText: 'DF|42%\nLEDGER|2026-10-20_212000_PRJ_TEST_RUNNING_deg.json|running\nEND|\n',
+        });
+      }
+      if (remoteCmd.includes('PRJ_TEST_TRUNC')) {
+        return fakeChild({ exitCode: 0, stdoutText: 'DF|42%\n' });
+      }
+      return fakeChild({ exitCode: 0, stdoutText: 'DF|42%\nEND|\n' });
+    }
     if (remoteCmd.includes('test -d')) {
       if (remoteCmd.includes('PRJ_TEST_MISSING')) {
         return fakeChild({ exitCode: 1, stderrText: 'No such file or directory\n' });
@@ -140,6 +166,11 @@ function dispatchSpawn(program, args) {
 before(() => {
   mock.method(childProcess, 'spawn', (program, args) => dispatchSpawn(program, args));
 });
+
+/** 某项目 id 的远端命令里是否真的跑过打包引擎（门禁拦下时必须是 false） */
+function buildRan(projectId) {
+  return sshCalls.some((cmd) => cmd.includes('build_client_report.py') && cmd.includes(projectId));
+}
 
 after(() => {
   mock.restoreAll();
@@ -307,3 +338,110 @@ test('GET /api/report/download：路径穿越与不在允许集合 → 400', asy
   const outsideSet = await api('/api/report/download?projectId=PRJ_TEST_OK&file=notes.txt');
   assert.equal(outsideSet.status, 400);
 });
+
+// ------------------------------------------------------------
+// 4. 交付前置门禁接线（D4：docs/delivery_package_spec.md 第三节 3/5/6 条）
+// ------------------------------------------------------------
+
+test('POST /api/report/build：磁盘水位不足 → 409 且点名 storage、打包引擎未被调用', async () => {
+  const res = await api('/api/report/build', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId: 'PRJ_TEST_FULL' }),
+  });
+  assert.equal(res.status, 409);
+  const body = await res.json();
+  assert.equal(body.ok, false);
+  assert.match(body.error, /前置门禁未通过/);
+  assert.match(body.error, /storage/);
+  assert.match(body.error, /剩余 5%/);
+  assert.equal(body.preflight.checks.find((c) => c.name === 'storage').ok, false);
+  assert.equal(buildRan('PRJ_TEST_FULL'), false, '门禁未过时不许白跑打包引擎');
+});
+
+test('POST /api/report/build：有失败台账 → 409 且点名 failed_ledger 与台账文件名', async () => {
+  const res = await api('/api/report/build', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId: 'PRJ_TEST_BADLEDGER' }),
+  });
+  assert.equal(res.status, 409);
+  const body = await res.json();
+  assert.match(body.error, /failed_ledger/);
+  assert.match(body.error, /2026-10-20_211500_PRJ_TEST_BADLEDGER_deg\.json/);
+  assert.equal(body.preflight.failedLedgers.length, 1);
+  assert.equal(buildRan('PRJ_TEST_BADLEDGER'), false, '有失败台账时不许白跑打包引擎');
+});
+
+test('POST /api/report/build：有进行中任务 → 409 且点名 running', async () => {
+  const res = await api('/api/report/build', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId: 'PRJ_TEST_RUNNING' }),
+  });
+  assert.equal(res.status, 409);
+  const body = await res.json();
+  assert.match(body.error, /running/);
+  assert.equal(buildRan('PRJ_TEST_RUNNING'), false);
+});
+
+test('POST /api/report/build：远端输出缺 END 标记 → 409 且点名 remote_output', async () => {
+  const res = await api('/api/report/build', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId: 'PRJ_TEST_TRUNC' }),
+  });
+  assert.equal(res.status, 409);
+  const body = await res.json();
+  assert.match(body.error, /remote_output/);
+  assert.equal(buildRan('PRJ_TEST_TRUNC'), false);
+});
+
+test('POST /api/report/build：门禁全过 → 200 且响应带 preflight 四道闸与 sha256 旁挂', async () => {
+  const res = await api('/api/report/build', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId: 'PRJ_TEST_OK' }),
+  });
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.preflight.ok, true);
+  assert.deepEqual(
+    body.preflight.checks.map((c) => c.name),
+    ['storage', 'running', 'failed_ledger', 'remote_output']
+  );
+  assert.equal(buildRan('PRJ_TEST_OK'), true, '门禁全过才应真的跑打包引擎');
+  assert.ok(Array.isArray(body.sidecars), '响应必须带 sha256 旁挂清单');
+  for (const item of body.sidecars) {
+    assert.match(item.sha256, /^[0-9a-f]{64}$/);
+    assert.equal(item.sidecar, `${item.name}.sha256`);
+    const onDisk = fs.readFileSync(path.join(localDeliverDir('PRJ_TEST_OK'), item.sidecar), 'utf8');
+    assert.equal(onDisk, `${item.sha256}  ${item.name}\n`);
+  }
+});
+
+test('POST /api/report/build：force=true 放行失败台账（水位与运行中任务仍拦）', async () => {
+  const res = await api('/api/report/build', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId: 'PRJ_TEST_BADLEDGER', force: true }),
+  });
+  // 失败台账被放行后继续打包：本项目的打包垫片回 200，但三大件清单为空 → 回搬失败
+  // 必须是"回搬阶段明确报错"，不能假成功；关键断言是它已经越过了门禁。
+  const body = await res.json();
+  assert.equal(res.status, 500);
+  assert.match(body.error, /Analysis_Report|三大件|缺失/);
+  assert.equal(buildRan('PRJ_TEST_BADLEDGER'), true, 'force 后必须真的继续打包');
+});
+
+test('POST /api/report/build：force=true 也不放行磁盘水位不足', async () => {
+  const res = await api('/api/report/build', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId: 'PRJ_TEST_FULL', force: true }),
+  });
+  assert.equal(res.status, 409);
+  const body = await res.json();
+  assert.match(body.error, /storage/);
+});
+

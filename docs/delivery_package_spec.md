@@ -3,7 +3,8 @@
 > 版本：v1.0（2026-10-14）
 > 适用对象：`ops/09_package_delivery.ps1`（PC 侧入口，ssh 驱动远端打包）
 > 上位约束：`docs/delivery_supervisor_prompt.md` v3.0 第五节、`docs/directories.md`
-> 实现状态：**规范已定，脚本尚未实现**（首个真实项目验收通过后按本规范实现）
+> 实现状态：**打包能力已由 `ops/build_client_report.py` + 8787 入口 `server/report.js` 承担**；
+> `ops/09_package_delivery.ps1` 不再实现（2026-10-21 裁定，见下节「零」）。
 
 > **2026-10-18 补充：本规范的部分内容已被 `aims.txt` v3.0 §7.2 取代。**
 >
@@ -14,6 +15,24 @@
 >   --project <dir>`），本文第六节的 `09_package_delivery.ps1` 仍未实现。
 > - 本文第三节的前置门禁里，**存储水位、失败台账确认、`.sha256` 旁挂文件**三项尚未并入
 >   `build_client_report.py`；若要严格执行本规范，需在 PC 侧入口补齐这三道闸。
+## 零、实现现状（2026-10-21 起以此为准）
+
+本规范的**打包动作**已经落地，落点与本文原来的设想不同，读本文时以本节为准：
+
+| 能力 | 实际实现 | 位置 |
+|---|---|---|
+| 交付包（三大件 + tar.gz + delivery_manifest） | `ops/build_client_report.py`（服务器侧引擎，退出码 0/1/2） | 远端 `python3 ops/build_client_report.py --project <项目目录>` |
+| 工作台触发 + 三大件回搬本地 | `runReportBuild` + `pullDeliverables` | `BioanalysDesktop/server/report.js`，端点 `POST /api/report/build` |
+| 前置门禁：存储水位 >= 20% | `runReportPreflight`（`df -P` 解析剩余百分比） | 同上，`PREFLIGHT_MIN_FREE_PCT = 20` |
+| 前置门禁：无进行中任务 | 同上（扫本项目台账 `status=running`） | 同上 |
+| 前置门禁：失败台账需人工确认 | 同上（`force: true` 对应本文的 `-Force`） | 同上，HTTP 412 拒绝并列出失败台账 |
+| 前置门禁：远端输出完整性 | 同上（缺 `END|` 标记判输出截断） | 同上，防 argv 静默截断老坑 |
+| `.sha256` 旁挂校验文件 | `writeSha256Sidecars`（`<文件>.sha256`，sha256sum 可直接 `-c`） | 同上，回搬成功后自动生成 |
+| 包内 `CHECKSUMS.sha256` | 引擎未产出，本地旁挂文件是当前口径 | 待引擎侧补齐 |
+
+**因此**：本文第二节点名的入口 `ops/09_package_delivery.ps1` **作废**，不要照它新建脚本；
+本文第三节六条门禁里第 3/5/6 条已在 8787 调用侧实现（引擎 CLI 直跑仍不检查，属于已知边界）；
+第四至七节描述的包内结构与脱敏规则由引擎负责，仍具约束力。
 
 ## 一、定位与边界
 

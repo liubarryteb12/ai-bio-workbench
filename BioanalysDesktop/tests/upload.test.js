@@ -6,7 +6,7 @@ import path from 'node:path';
 import {
   sanitizeFilename, extAllowed, detectMagic, suggestModality, validateUpload,
   initUpload, writeChunk, listChunks, assembleChunks, cleanupUpload,
-  remoteRawPath, deployedRawName, UPLOAD_ROOT,
+  remoteRawPath, deployedRawName, uploadDir, UPLOAD_ROOT,
 } from '../server/upload.js';
 
 test('sanitizeFilename：正常文件名通过', () => {
@@ -111,6 +111,18 @@ test('分片不连续时 assemble 报错', () => {
   } finally {
     cleanupUpload(uploadId);
   }
+});
+
+test('uploadDir：点段 uploadId 被拒（消毒后点号仍存活，会跳出上传根）', () => {
+  // 历史行为：只剥非 [A-Za-z0-9._-] 字符，'..' 原样存活，path.join(UPLOAD_ROOT,'..') 指到 .uploads 的父目录
+  assert.equal(uploadDir('..'), null);
+  assert.equal(uploadDir('.'), null);
+  assert.equal(uploadDir('a..b'), null);
+  assert.equal(uploadDir(''), null);
+  // 正常 randomUUID 与带点/下划线的 id 仍然可用，且一定落在 UPLOAD_ROOT 之内
+  const ok = uploadDir('0b7c9f7e-1a2b-4c3d-8e9f-0123456789ab');
+  assert.equal(path.dirname(ok), UPLOAD_ROOT);
+  assert.equal(path.dirname(uploadDir('sess_2026-10-21.v1')), UPLOAD_ROOT);
 });
 
 test('deployedRawName：group_map 归一为母版契约名 grouping.txt', () => {

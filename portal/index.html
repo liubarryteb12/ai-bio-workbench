@@ -409,7 +409,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
         <div id="upload-area" style="display:none;">
           <div class="guide" style="margin:16px 0;">
             <span class="ico" aria-hidden="true">📦</span>
-            <span><strong>上传规则（与服务端校验逐条一致）：</strong>训练集矩阵必须绑训练集 GSE，验证集矩阵必须绑验证集 GSE；样本表 / 分组表请绑训练集 GSE；平台注解与其他文件可不绑。文件名里的 GSE / GPL 编号必须与绑定编号一致。同一角色只保留一个文件（other 最多 5 个），重复上传会替换此前的文件。支持 .tsv .csv .txt .gz .zip .xlsx .h5ad .rds .mtx，单文件上限 5 GiB。</span>
+            <span><strong>上传规则（与服务端校验逐条一致）：</strong>训练集矩阵必须绑训练集 GSE，验证集矩阵必须绑验证集 GSE；样本表 / 分组表请绑训练集 GSE；平台注解与其他文件可不绑。文件名里的 GSE / GPL 编号必须与绑定编号一致。同一角色只保留一个文件（other 最多 5 个），重复上传会替换此前的文件。支持 .h5ad .h5 .loom .mtx .tar .gz .zip .txt .tsv .csv .soft .xlsx .rds .rdata，单文件上限 5 GiB。</span>
           </div>
           <div class="grid-2">
             <div class="field">
@@ -425,8 +425,8 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
           </div>
           <div class="field">
             <label for="f-df-file">选择文件<span class="req" aria-hidden="true">*</span></label>
-            <input type="file" id="f-df-file" accept=".tsv,.csv,.txt,.gz,.zip,.xlsx,.h5ad,.rds,.mtx" aria-describedby="h-df-file">
-            <div class="hint" id="h-df-file">支持 .tsv .csv .txt .gz .zip .xlsx .h5ad .rds .mtx；单文件上限 5 GiB。上传后的文件名需与所选角色对得上。</div>
+            <input type="file" id="f-df-file" accept=".h5ad,.h5,.loom,.mtx,.tar,.gz,.zip,.txt,.tsv,.csv,.soft,.xlsx,.rds,.rdata" aria-describedby="h-df-file">
+            <div class="hint" id="h-df-file">支持 .h5ad .h5 .loom .mtx .tar .gz .zip .txt .tsv .csv .soft .xlsx .rds .rdata；单文件上限 5 GiB。上传后的文件名需与所选角色对得上。</div>
           </div>
           <div class="msg warn" id="e-df-replace" aria-live="polite"></div>
           <div class="msg err" id="e-df" role="alert"></div>
@@ -1233,8 +1233,10 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     ['platform_annotation', '平台注解 / GPL（可不绑）'],
     ['other', '其他补充文件（可不绑，最多 5 个）']
   ];
-  var DATA_EXT = ['.tsv', '.csv', '.txt', '.gz', '.zip', '.xlsx', '.h5ad', '.rds', '.mtx'];
-  // 与服务端 portal/lib/archive.mjs 的 MAX_DATA_BYTES 保持一致（2026-10-20 起 5 GiB）；
+  // 唯一权威在 shared/data_formats.mjs，改动必须同步，有测试把守（BioanalysDesktop/tests/data_format_parity.test.js）；
+  // 本页是浏览器单文件页面、无打包步骤，无法 import，只能保留字面量副本。
+  var DATA_EXT = ['.h5ad', '.h5', '.loom', '.mtx', '.tar', '.gz', '.zip', '.txt', '.tsv', '.csv', '.soft', '.xlsx', '.rds', '.rdata'];
+  // 唯一权威在 shared/data_formats.mjs 的 MAX_DATA_BYTES（2026-10-20 起 5 GiB）；
   // 服务端另支持 PORTAL_MAX_DATA_BYTES 环境变量覆盖，若运维改过服务端默认值，这里要同步改。
   var MAX_DATA_BYTES = 5 * 1024 * 1024 * 1024;
   // 与服务端 portal/lib/archive.mjs 的 MAX_DATA_FILES_PER_ROLE 保持一致（2026-10-20 起 5）；

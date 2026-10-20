@@ -59,7 +59,7 @@ AI辅助生信分析流程工作台/
 | `projects/<项目>/<line>/scripts/` | 客户数据需适配时，从 `bin/<line>/` 复制母版到此改，跑通后留档；不改母版 | 代理 `mkdir -p` |
 | `projects/<项目>/deliverables/` | 客户交付包三大件（适配代码 / 图表与表格 / 解读报告） | 代理 `mkdir -p` |
 
-交付包结构与打包规则见 `docs/delivery_package_spec.md`（v1.0），打包入口规划为 `ops/09_package_delivery.ps1`（脚本尚未实现，规范先行）。
+交付包结构与打包规则见 `docs/delivery_package_spec.md`（v1.0，**实现现状见该文「零」节**）：打包由服务器侧 `ops/build_client_report.py` 承担，工作台入口是 `POST /api/report/build`（`BioanalysDesktop/server/report.js`，含存储水位 / 进行中任务 / 失败台账三道前置门禁与 `.sha256` 旁挂）；原规划的 `ops/09_package_delivery.ps1` 已作废，不再实现。
 
 适配副本不经工作台任务引擎（它只认全局 `bin/<line>/`），而是直跑 ops 包装器：
 `bash /mnt/ssd/bio_data/ops/run_throttled_task.sh <task_id> <line> <step> <R|Python> <项目内脚本绝对路径>`。

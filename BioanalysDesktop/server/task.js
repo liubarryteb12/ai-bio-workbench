@@ -7,7 +7,145 @@
  */
 
 import { randomUUID } from 'node:crypto';
+// default 导入而非具名导入：ESM 具名导入是链接期快照，测试拦截不到（见 run.js 同款注释）。
+// 桥接校验的同步 ssh 执行必须可在进程内被测试垫片替换。
+import childProcess from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { LINES, DEFAULT_PROJECT, projectLineDir, binDir, sanitizeProjectId } from './domain.js';
+import { assertAllowedProgram } from './proc.js';
+
+/** 本地母版根：src/<line>/scripts/<step>（src 是母版，远端 bin 是部署产物） */
+const SRC_SCRIPTS_ROOT = process.env.BIOANALYS_SRC_ROOT
+  || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'src');
+
+/** 桥接四项断言引擎（aims §一.3 钦定；ops/ 属另一会话域，只调用不修改） */
+export const BRIDGE_ENGINE_REMOTE = '/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py';
+
+/** 桥接校验 ssh 同步超时：引擎内部 RDS 分支自带 120s，h5ad 大文件读取留足余量 */
+export const BRIDGE_SSH_TIMEOUT_MS = 300000;
+
+/** 桥接检查命令构建失败（stepName/lineId 非法等），调用方应转 400 */
+export class BridgeCheckError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'BridgeCheckError';
+  }
+}
+
+/** 命令位的 Rscript 调用（行首或分隔符后；`BIOANALYS_SEED=x Rscript`、`["Rscript"` 也算） */
+const RSCRIPT_CALL_RE = /(^|[\s;&|"])Rscript(?=[\s"']|$)/;
+/** 命令位的 python/python3 调用（heredoc 首行 `python3 - <<'PYSCRIPT'` 即此形态） */
+const PYTHON_CALL_RE = /(^|[\s;&|])python3?(?=[\s"']|$)/;
+
+/**
+ * 检查一个步骤是否需要过桥接四项断言，并给出可观测的判定依据。
+ *
+ * 判定依据只能来自仓库事实：读 src/<line>/scripts/<stepName> 本地母版，
+ * 统计命令位的 Rscript 与 python 调用数，两者都 ≥1 才是跨语言步骤（单语言不过桥）。
+ * 母版不存在时 bilingual=false，调用方必须 warn（不许静默当"不需要"，也不许阻断提交）。
+ *
+ * @returns {{bilingual: boolean, masterExists: boolean, masterPath: string|null,
+ *            rCount: number, pCount: number, reason: string}}
+ */
+export function inspectBridgeNeed(lineId, stepName) {
+  const base = { bilingual: false, masterExists: false, masterPath: null, rCount: 0, pCount: 0, reason: '' };
+  if (!LINES.includes(lineId) || !/^[A-Za-z0-9._-]+$/.test(String(stepName ?? ''))) {
+    return { ...base, reason: 'lineId 或 stepName 非法，无法定位母版' };
+  }
+  const masterPath = path.join(SRC_SCRIPTS_ROOT, lineId, 'scripts', String(stepName));
+  if (!fs.existsSync(masterPath)) {
+    return { ...base, masterPath, reason: `母版不存在: ${masterPath}` };
+  }
+  const content = fs.readFileSync(masterPath, 'utf8');
+  const lines = content.split(/\r?\n/);
+  const rCount = lines.filter((line) => RSCRIPT_CALL_RE.test(line)).length;
+  const pCount = lines.filter((line) => PYTHON_CALL_RE.test(line)).length;
+  return {
+    bilingual: rCount >= 1 && pCount >= 1,
+    masterExists: true,
+    masterPath,
+    rCount,
+    pCount,
+    reason: '',
+  };
+}
+
+/**
+ * needsBridgeCheck：桥接判定的布尔门（specs 指定的纯函数签名）。
+ * 判定依据与 warn 信息用 inspectBridgeNeed 取。
+ */
+export function needsBridgeCheck(lineId, stepName) {
+  const need = inspectBridgeNeed(lineId, stepName);
+  return need.bilingual;
+}
+
+/**
+ * 构造桥接四项断言的远端执行命令。
+ *
+ * 引擎 CLI 契约（ops/verify_bridge_checkpoint.py）要求 --input 指向一个真实存在的
+ * .h5ad/.rds 文件，因此 inputs 必须参与构造——提交层拿到的就是本次任务声明的输入，
+ * 不是编造：取第一个 .h5ad/.rds 输入；相对路径按该项目该线 processed/ 解析。
+ * --from/--to 按引擎自身语义定：check_h5ad 用 anndata（Python 产物）、check_rds 用 R（R 产物）。
+ *
+ * @param {string} lineId
+ * @param {string} stepName
+ * @param {{inputs?: string[], projectId?: string}} [options]
+ * @returns {{command: string, remoteScript: string, inputFile: string, fromLang: string, toLang: string, reason: string|null}}
+ *          command 与 remoteScript 同值（契约字段）；无可校验输入时两者为 null + reason
+ * @throws {BridgeCheckError} lineId 非法，或 stepName 含 shell 元字符（拒绝，不消毒放行）
+ */
+export function buildBridgeCheckCommand(lineId, stepName, { inputs = [], projectId = DEFAULT_PROJECT } = {}) {
+  if (!LINES.includes(lineId)) {
+    throw new BridgeCheckError(`line_id 非法: ${lineId}`);
+  }
+  if (!/^[A-Za-z0-9._-]+$/.test(String(stepName ?? ''))) {
+    throw new BridgeCheckError(`step 含 shell 元字符或非法字符，拒绝进入桥接命令: ${stepName}`);
+  }
+  const list = Array.isArray(inputs) ? inputs : [];
+  const raw = list.find((item) => /\.(h5ad|rds)$/i.test(String(item)));
+  if (raw === undefined) {
+    return {
+      command: null, remoteScript: null, inputFile: null, fromLang: null, toLang: null,
+      reason: 'inputs 中没有 .h5ad/.rds（桥接引擎仅支持这两种格式），无法构造校验命令',
+    };
+  }
+  const inputPath = String(raw).startsWith('/')
+    ? String(raw)
+    : `${projectLineDir(projectId, lineId)}/processed/${raw}`;
+  const isH5ad = /\.h5ad$/i.test(inputPath);
+  const fromLang = isH5ad ? 'Python' : 'R';
+  const toLang = isH5ad ? 'R' : 'Python';
+  // 末尾 2>&1：引擎 fail() 把 [BRIDGE FAIL] 原因写 stderr，而真链实测（K40 高负载时）
+  // ssh 回传的 stderr 通道会间歇性丢失，导致提交层 400 error 里点不了断言项。
+  // 把 stderr 并入 stdout 单通道后，[BRIDGE FAIL]/[BRIDGE OK] 一律走 stdout 稳定回传；
+  // shellQuote 对 --input 的单引号转义不变，命令结构其余不变。
+  const remoteScript = `python3 ${BRIDGE_ENGINE_REMOTE} --input ${shellQuote(inputPath)} --from ${fromLang} --to ${toLang} 2>&1`;
+  return { command: remoteScript, remoteScript, inputFile: inputPath, fromLang, toLang, reason: null };
+}
+
+/**
+ * 同步执行桥接校验（照 run.js 的 ssh 范式：BatchMode + ConnectTimeout）。
+ * 返回 { code, stdout, stderr, durationMs }；spawnSync 超时/启动失败时 code 为 -1。
+ * 只在 index.js 提交层调用（同步阻塞在请求回调里，失败必须有明确 HTTP 回应）。
+ */
+export function runBridgeCheckSync(plan) {
+  assertAllowedProgram(['ssh']);
+  const startedAt = Date.now();
+  const result = childProcess.spawnSync(
+    'ssh',
+    ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', 'k40-ubuntu', plan.remoteScript],
+    { encoding: 'utf8', timeout: BRIDGE_SSH_TIMEOUT_MS, windowsHide: true },
+  );
+  return {
+    code: result.status ?? -1,
+    stdout: result.stdout ?? '',
+    stderr: result.stderr ?? '',
+    durationMs: Date.now() - startedAt,
+  };
+}
 
 /**
  * 项目元数据文件路径。任务脚本要把 project.json 的位置告诉出图模板外挂，

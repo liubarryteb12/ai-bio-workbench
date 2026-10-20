@@ -204,3 +204,16 @@
 ### 我建议的执行顺序（goal 模式自主推进）
 S26（已派，P0）→ S27 交付报告入口 → S28 桥接接线 → S29 TaskPanel →
 S30 杂项收敛（D3/白名单/续传/守护说明）→ B 批等你授权。
+
+---
+
+## 落地状态（2026-10-21 收口，以此为准）
+
+A 批全部完成：A1/A2（S26）、A3（D3 事实性漂移已修：`aims/aims.txt:140` 为 `png_300dpi`，`src/App.tsx:1888` 写 300 DPI）、A4（S27 交付报告入口）、A5（S28 桥接四项断言接线）、A6（`ops/README.md` 收敛说明）、A7（S29 TaskPanel + `validateTaskPaths`）、A8（S30 白名单单一事实源 `shared/data_formats.mjs` + S32 断点续传）。
+
+B 批：B4（portal `PORTAL_TOKEN` 可选鉴权，S31）与 B5（git 初始化）已完成；**B1/B2/B3 仍待用户授权**——B1 实测已无收益（`cn_debug/scenic_db` 与 `ops/__pycache__` 早已不存在，剩余可删约 0.36MB）；B2 未执行（`_archive/` 未建，待归档 7 个 ops 脚本 + `geo_mining_sop_v1.md` 约 50KB）；B3 口径差未裁。
+
+C 批维持原判。D 批：D1 由提交层兜住（脚本内仍 0 调用）、D2 口径未定义（非缺陷）、D3 已修、D4 已作废并改由 8787 侧四道闸承担、D5 已实现（4MB 分片续传）、D6 已收敛（`server/selfcheck.js`：温度/内存/负载 + 三线逐线隔离 + 桥接存在性）、D7 维持跳过。
+
+验证：`npm test` 382/382 pass、`npm run build` exit 0、`npx tsc --noEmit` exit 0。详见 `con_hf/handoff.md` 末条与 `con_hf/操作台账.md` 2026-10-21 条目。
+

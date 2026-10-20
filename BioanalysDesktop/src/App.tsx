@@ -270,6 +270,66 @@ type UploadResult = {
   hint?: string;
   error?: string;
 };
+/** GET /api/upload/status 的响应（S32 续传）。字段全部可选：前端只认 typeof 校验过的值 */
+type UploadStatus = {
+  ok?: boolean;
+  uploadId?: string;
+  exists?: boolean;
+  reason?: string;
+  chunks?: number[];
+  nextIndex?: number;
+  receivedBytes?: number;
+  chunkSize?: number;
+  /** 向后兼容字段：与 chunks 同内容（服务端既有键） */
+  received?: number[];
+  error?: string;
+};
+
+/**
+ * 上传会话的本地缓存键（S32 续传）。
+ *
+ * 为什么要缓存 uploadId：POST /api/upload/init 每次都生成新的 randomUUID，
+ * 只按「选文件 → init → 从 0 传」的流程，断线重试必然拿到新 id，
+ * 服务端已落盘的分片就永远查不到。把「文件指纹 → uploadId」记在 localStorage，
+ * 重试（含刷新页面）时先按旧 id 查 status，才能真正从 nextIndex 续传。
+ * 指纹含 size 与 lastModified：同名但内容不同的文件不会误续传。
+ */
+const UPLOAD_ID_STORE_PREFIX = 'bioanalys.uploadId.';
+
+function uploadFingerprint(project: string, lineId: string, file: File): string {
+  return [project, lineId, file.name, file.size, file.lastModified].join('|');
+}
+
+function readStoredUploadId(fingerprint: string): string | null {
+  try {
+    return window.localStorage.getItem(UPLOAD_ID_STORE_PREFIX + fingerprint);
+  } catch {
+    return null;   // 隐私模式禁用 localStorage：退化为不跨刷新续传，不影响上传本身
+  }
+}
+
+function storeUploadId(fingerprint: string, uploadId: string): void {
+  try {
+    window.localStorage.setItem(UPLOAD_ID_STORE_PREFIX + fingerprint, uploadId);
+  } catch {
+    // 同上：写不进去就只在本轮内存里用，不抛给用户
+  }
+}
+
+function forgetUploadId(fingerprint: string): void {
+  try {
+    window.localStorage.removeItem(UPLOAD_ID_STORE_PREFIX + fingerprint);
+  } catch {
+    // 同上
+  }
+}
+
+/** 服务端 nextIndex 夹到 [0, total]：异常值一律回 0（宁可重传，不越界） */
+function resumeStartIndex(status: UploadStatus | null, total: number): number {
+  const raw = status && typeof status.nextIndex === 'number' ? status.nextIndex : 0;
+  if (!Number.isFinite(raw) || raw < 0) return 0;
+  return Math.min(Math.floor(raw), total);
+}
 
 // 三态守卫
 type ApiState<T> = { kind: 'loading' } | { kind: 'failed'; message: string } | { kind: 'ok'; data: T };
@@ -2133,10 +2193,20 @@ function PreFlightDashboard() {
     void run();
   }, [run]);
 
+  // 四档：pass/fail/warn/unknown。warn 是"能跑但该降载"（温度进降频区、内存贴 90%、负载超核数），
+  // 不能和 unknown（读不到）混成一个灰灯，否则用户分不清"没事"和"没测到"。
   const dotClass = (status: string) =>
-    status === 'pass' ? 'selfcheck-dot-pass' : status === 'fail' ? 'selfcheck-dot-fail' : 'selfcheck-dot-unknown';
+    status === 'pass'
+      ? 'selfcheck-dot-pass'
+      : status === 'fail'
+        ? 'selfcheck-dot-fail'
+        : status === 'warn'
+          ? 'selfcheck-dot-warn'
+          : 'selfcheck-dot-unknown';
   const dotText = (status: string) =>
-    status === 'pass' ? 'OK' : status === 'fail' ? 'FAIL' : '?';
+    status === 'pass' ? 'OK' : status === 'fail' ? 'FAIL' : status === 'warn' ? '!' : '?';
+  const hasFail = (result?.checks ?? []).some((c) => c.status === 'fail');
+  const hasWarn = (result?.checks ?? []).some((c) => c.status === 'warn');
 
   return (
     <div className="view-container">
@@ -2154,6 +2224,10 @@ function PreFlightDashboard() {
           <div className="selfcheck-summary">
             {result.all_pass ? (
               <span className="badge badge-pass">全部通过</span>
+            ) : hasFail ? (
+              <span className="badge badge-fail">存在未通过项</span>
+            ) : hasWarn ? (
+              <span className="badge badge-warn">存在告警项</span>
             ) : (
               <span className="badge badge-fail">存在未通过项</span>
             )}
@@ -2629,12 +2703,28 @@ function DeliveryReportCard({ project }: { project: string }) {
 // 任务面板（复用现有逻辑，改为 CSS class）
 // ============================================================
 
+/**
+ * 客户端路径形态预检（S29 / R9）：只提示，不阻断提交。
+ * 判据在服务端 validateTaskPaths；这里只挑"明显缺 projects/ 段"的行提醒，
+ * 历史三线形态与 processed/ 下的相对文件名仍可提交。
+ */
+function pathShapeWarnings(text: string): string[] {
+  return text
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter((item) => item !== '' && !item.includes('projects/'));
+}
+
 function TaskPanel({ project }: { project: string }) {
   const [line, setLine] = useState<string>(LINES[0]);
   const [step, setStep] = useState('');
-  const [seed, setSeed] = useState('42');
+  // 契约固定种子（aims §一.3）：默认值就是台账复现所需的种子，改动需用户自己负责
+  const [seed, setSeed] = useState('20261013');
   const [inputs, setInputs] = useState('');
   const [outputs, setOutputs] = useState('');
+  // 步骤清单（/api/projects/steps）与"自定义步骤"开关：下拉是便利入口，不收回手填
+  const [stepsData, setStepsData] = useState<StepsResponse['steps'] | null>(null);
+  const [stepCustom, setStepCustom] = useState(false);
   const [taskId, setTaskId] = useState<string | null>(null);
   const [logs, setLogs] = useState<LogLine[]>([]);
   const [exitInfo, setExitInfo] = useState<{ code: number | null; entry: TaskEntry | null; note?: string } | null>(null);
@@ -2650,6 +2740,20 @@ function TaskPanel({ project }: { project: string }) {
   }, [logs]);
 
   useEffect(() => () => eventSourceRef.current?.close(), []);
+
+  // 步骤清单来自 /api/projects/steps（三线步骤由 src/ 母版定义）。
+  // 拉不到就静默退回纯手填，不阻塞下发（R10：自由文本入口保留）。
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/projects/steps');
+        const payload = (await res.json()) as StepsResponse;
+        setStepsData(payload.steps);
+      } catch {
+        // 静默：下拉为空时用户仍可"自定义"手填命令名
+      }
+    })();
+  }, []);
 
   const appendLog = useCallback((stream: LogLine['stream'], text: string) => {
     setLogs((prev) => [...prev, { stream, text }]);
@@ -2732,6 +2836,9 @@ function TaskPanel({ project }: { project: string }) {
           ? { cls: 'badge-unknown', text: '已中止' }
           : { cls: 'badge-fail', text: `exit ${exitInfo.code}（失败）` };
 
+  const lineSteps: string[] = stepsData ? (stepsData[line as keyof typeof stepsData] ?? []) : [];
+  const shapeWarnings = [...pathShapeWarnings(inputs), ...pathShapeWarnings(outputs)];
+
   return (
     <div className="card">
       <div className="card-head">
@@ -2748,7 +2855,11 @@ function TaskPanel({ project }: { project: string }) {
         {LINES.map((item) => (
           <button key={item} type="button"
             className={`chip${line === item ? ' chip-active' : ''}`}
-            onClick={() => setLine(item)}>
+            onClick={() => {
+              setLine(item);
+              // 换线后旧步骤名不属于新线，清空避免带着上一条线的步骤提交
+              if (!stepCustom) setStep('');
+            }}>
             {LINE_LABELS[item as keyof typeof LINE_LABELS]}
           </button>
         ))}
@@ -2757,19 +2868,40 @@ function TaskPanel({ project }: { project: string }) {
       <div className="form-grid-2">
         <div className="form-group">
           <label className="form-label">步骤名</label>
-          <input className="form-input" value={step}
-            onChange={(e) => setStep(e.target.value)}
-            placeholder="命令名，仅限字母数字与 . _ -" />
+          <select className="form-input"
+            value={stepCustom ? '__custom__' : (lineSteps.includes(step) ? step : '')}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === '__custom__') {
+                setStepCustom(true);
+                setStep('');
+              } else {
+                setStepCustom(false);
+                setStep(value);
+              }
+            }}>
+            <option value="">{lineSteps.length > 0 ? '选择步骤（或自定义）' : '步骤清单未加载，可选自定义'}</option>
+            {lineSteps.map((item) => (
+              <option key={item} value={item}>{item}</option>
+            ))}
+            <option value="__custom__">自定义（手动输入命令名）</option>
+          </select>
+          {stepCustom && (
+            <input className="form-input" style={{ marginTop: 8 }} value={step}
+              onChange={(e) => setStep(e.target.value)}
+              placeholder="命令名，仅限字母数字与 . _ -" />
+          )}
         </div>
         <div className="form-group">
           <label className="form-label">随机种子</label>
           <input className="form-input" value={seed}
             onChange={(e) => setSeed(e.target.value)} inputMode="numeric" />
+          <p className="subtle">契约固定种子 20261013（aims §一.3）；改动将使结果不可复现</p>
         </div>
       </div>
       <p className="hint">
         步骤名即远端执行的命令名（只能包含字母数字与 . _ -），参数请走下方输入/输出文件。
-        三线步骤清单由独立的 src/ 分析代码设计定义。
+        下拉清单来自 /api/projects/steps，取不到或需要新步骤时选「自定义」手填。
       </p>
 
       <div className="form-grid-2">
@@ -2777,17 +2909,33 @@ function TaskPanel({ project }: { project: string }) {
           <label className="form-label">输入文件（每行一个）</label>
           <textarea className="form-input" rows={3} value={inputs}
             onChange={(e) => setInputs(e.target.value)}
-            placeholder={`/mnt/ssd/bio_data/${line}/processed/data/expr.tsv`}
+            placeholder={`/mnt/ssd/bio_data/projects/${project}/${line}/processed/data/expr.tsv`}
             style={{ fontFamily: 'monospace' }} />
         </div>
         <div className="form-group">
           <label className="form-label">输出文件（每行一个）</label>
           <textarea className="form-input" rows={3} value={outputs}
             onChange={(e) => setOutputs(e.target.value)}
-            placeholder={`/mnt/ssd/bio_data/${line}/results/deg.tsv`}
+            placeholder={`/mnt/ssd/bio_data/projects/${project}/${line}/results/deg.tsv`}
             style={{ fontFamily: 'monospace' }} />
         </div>
       </div>
+      <p className="hint">
+        路径须属于当前项目 {project}；提交前会校验归属与形态（跨项目、含 ..、系统目录一律 400），
+        存在性由远端任务自行报错。历史三线形态与 processed/ 下的相对文件名仍可提交。
+      </p>
+
+      {shapeWarnings.length > 0 && (
+        <div className="block-box" style={{ background: '#fffbe6', borderColor: '#f5d9a8', color: '#8a5a00' }}>
+          <strong>路径形态提醒（仅提示，不阻断提交）</strong>
+          <p className="hint" style={{ color: '#8a5a00' }}>
+            以下 {shapeWarnings.length} 条路径缺少 projects/&lt;项目&gt; 段：
+            {shapeWarnings.slice(0, 5).join('、')}
+            {shapeWarnings.length > 5 ? ` 等 ${shapeWarnings.length} 条` : ''}。
+            可能是历史三线形态或 processed/ 下的相对文件名，请确认是刻意使用。
+          </p>
+        </div>
+      )}
 
       {submitError && (
         <div className="block-box" style={{ background: '#fdecea', borderColor: '#f5b7b1', color: '#b3261e' }}>
@@ -3046,12 +3194,24 @@ function FiguresPanel({ project }: { project: string }) {
 // 上传面板
 // ============================================================
 
+/** 查服务端已落盘分片；任何失败（网络错、400、非 JSON）都按「没有会话」处理 */
+async function fetchUploadStatus(uploadId: string): Promise<UploadStatus | null> {
+  try {
+    const response = await fetch(`/api/upload/status?uploadId=${encodeURIComponent(uploadId)}`);
+    if (!response.ok) return null;
+    return (await response.json()) as UploadStatus;
+  } catch {
+    return null;
+  }
+}
+
 function UploadPanel({ project }: { project: string }) {
   const [lineId, setLineId] = useState<string>('');
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState('');
+  const [resumeNote, setResumeNote] = useState('');
   const [result, setResult] = useState<UploadResult | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -3059,17 +3219,53 @@ function UploadPanel({ project }: { project: string }) {
     if (!lineId) { setStatus('请先选择归属线'); return; }
     if (!file) { setStatus('请先选择文件'); return; }
     if (file.size === 0) { setStatus('文件为空'); return; }
-    setBusy(true); setResult(null); setProgress(0); setStatus('上传中...');
+    const fingerprint = uploadFingerprint(project, lineId, file);
+    setBusy(true); setResult(null); setProgress(0); setResumeNote('');
+    setStatus('检查断点...');
     try {
-      const initRes = await fetch('/api/upload/init', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId: project, lineId, filename: file.name }),
-      });
-      const init = await initRes.json();
-      if (init.error) throw new Error(init.error);
-      const { uploadId, chunkSize } = init as { uploadId: string; chunkSize: number };
+      // 1) 先看有没有上次没传完的会话（缓存的 uploadId + 服务端 status）。
+      //    init 每次都给新 uuid，所以不缓存 id 的话断线重试必然从 0 开始。
+      let uploadId: string | null = readStoredUploadId(fingerprint);
+      let chunkSize = 0;
+      let nextIndex = 0;
+      if (uploadId) {
+        const previous = await fetchUploadStatus(uploadId);
+        if (previous && previous.exists && typeof previous.chunkSize === 'number') {
+          chunkSize = previous.chunkSize;
+          nextIndex = previous.nextIndex ?? 0;
+        } else {
+          // 会话已被清理（上次传完或服务端重启）：忘掉旧 id，走新建会话
+          uploadId = null;
+          forgetUploadId(fingerprint);
+        }
+      }
+      if (!uploadId) {
+        const initRes = await fetch('/api/upload/init', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ projectId: project, lineId, filename: file.name }),
+        });
+        const init = await initRes.json();
+        if (init.error) throw new Error(init.error);
+        uploadId = (init as { uploadId: string }).uploadId;
+        chunkSize = (init as { chunkSize: number }).chunkSize;
+        // 新建会话后仍查一次 status：init 只建目录，正常 nextIndex=0；
+        // 若目录里已有分片（同一 id 被复用的边界情况）也能兜住，不白重传。
+        const initial = await fetchUploadStatus(uploadId);
+        if (initial && typeof initial.nextIndex === 'number') nextIndex = initial.nextIndex;
+        if (initial && typeof initial.chunkSize === 'number') chunkSize = initial.chunkSize;
+        storeUploadId(fingerprint, uploadId);
+      }
+      if (!chunkSize || chunkSize <= 0) throw new Error('服务端未返回分片大小');
       const total = Math.ceil(file.size / chunkSize);
-      for (let i = 0; i < total; i += 1) {
+      const startIndex = resumeStartIndex({ nextIndex }, total);
+      if (startIndex > 0) {
+        setResumeNote(`已从第 ${startIndex + 1} 片续传（共 ${total} 片，跳过已收 ${startIndex} 片）`);
+        setProgress(Math.round((startIndex / total) * 100));
+      }
+      setStatus(startIndex >= total
+        ? '分片已全部就绪，直接合并...'
+        : (startIndex > 0 ? `续传中...（已收 ${startIndex}/${total} 片）` : '上传中...'));
+      for (let i = startIndex; i < total; i += 1) {
         const blob = file.slice(i * chunkSize, (i + 1) * chunkSize);
         const r = await fetch(
           `/api/upload/chunk?uploadId=${encodeURIComponent(uploadId)}&index=${i}`,
@@ -3084,9 +3280,13 @@ function UploadPanel({ project }: { project: string }) {
       });
       const comp: UploadResult = await compRes.json();
       setResult(comp);
+      // complete 走到合并/校验就说明服务端已清理暂存目录，缓存 id 作废；
+      // scp 失败（只有 error 无 validation）时目录还在，保留 id 以便重试直接合并。
+      if (comp.ok || comp.validation) forgetUploadId(fingerprint);
       setStatus(comp.error ? `失败：${comp.error}`
         : (comp.ok ? '上传完成，字节校验通过' : (comp.hint || '未通过')));
     } catch (cause) {
+      setResumeNote('已传分片已保留，点「继续上传」从断点续传');
       setStatus('失败：' + (cause as Error).message);
     } finally {
       setBusy(false);
@@ -3098,7 +3298,8 @@ function UploadPanel({ project }: { project: string }) {
       <div className="card-head">
         <h2 className="card-title">数据导入</h2>
       </div>
-      <p className="hint">上传原始数据到服务器对应线的 raw_data/。分片上传 + 格式校验 + 强制归属线。</p>
+      <p className="hint">上传原始数据到服务器对应线的 raw_data/。4MB 分片上传 + 断点续传 + 格式校验 + 强制归属线。</p>
+      <p className="hint">断点续传：同一浏览器内中断后重试（含刷新页面）会先查 GET /api/upload/status，从已落盘分片之后继续；换浏览器或清空本地存储后需从头传。</p>
 
       <div className="form-group">
         <label className="form-label">归属线（必选）</label>
@@ -3122,7 +3323,7 @@ function UploadPanel({ project }: { project: string }) {
 
       <div className="chip-row">
         <button className="btn btn-primary" onClick={() => void upload()} disabled={busy}>
-          {busy ? `上传中 ${progress}%` : '开始上传'}
+          {busy ? `上传中 ${progress}%` : (resumeNote ? '继续上传' : '开始上传')}
         </button>
         {file && !busy && (
           <button className="btn" onClick={() => {
@@ -3137,6 +3338,7 @@ function UploadPanel({ project }: { project: string }) {
           <div className="progress-inner" style={{ width: `${progress}%` }} />
         </div>
       )}
+      {resumeNote && <p className="subtle">{resumeNote}</p>}
       {status && <p className={result?.error ? 'error-text' : 'subtle'}>{status}</p>}
 
       {result?.validation && (

@@ -20,9 +20,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 import childProcess from 'node:child_process';
 
-import { HOSTS, SSD_ROOT, PROJECTS_ROOT, sanitizeProjectId } from './domain.js';
+import { HOSTS, SSD_ROOT, PROJECTS_ROOT, SYSTEM_LOGS, sanitizeProjectId } from './domain.js';
 import { assertAllowedProgram } from './proc.js';
 import { stripSshNoise } from './run.js';
 
@@ -262,3 +263,173 @@ export async function pullDeliverables(projectId) {
     report_html_bytes: html ? html.bytes : 0,
   };
 }
+
+// ---------------------------------------------------------------
+// 交付前置门禁（docs/delivery_package_spec.md 第三节第 3/5/6 条）
+//
+// 规范里这三道闸原本属于「尚未实现的 ops/09_package_delivery.ps1」，但打包能力
+// 实际由 ops/build_client_report.py 承担、入口在 8787（server/report.js），
+// 引擎本身不含水位/台账/校验和检查（已 grep 确认）。所以把三道闸补在调用侧：
+// 引擎跑之前先问远端三件事，任一不过就不许生成交付包，避免「包出来了但项目里
+// 还有失败步骤」这种最难解释的假交付。
+//
+// 口径（与 spec 一致）：
+//   1. 存储水位：df -P 剩余 >= 20%（打包本身要写几十 MB 到数百 MB）
+//   2. 无进行中任务：本项目台账不得有 status=running
+//   3. 失败台账需确认：存在 status=failed 时必须 -Force（这里对应 force=true）
+// 另加一条防御：远端输出必须带回 END 标记，缺标记按「输出被截断」判失败
+// （本项目历史上吃过 argv 静默截断的亏，见 run.js buildLedgerWriteCommand 注释）。
+// ---------------------------------------------------------------
+
+/** 打包前要求的最小剩余空间百分比（spec §三.3：剩余 >= 20%） */
+export const PREFLIGHT_MIN_FREE_PCT = 20;
+
+/**
+ * 远端门禁查询命令（纯函数，不碰 ssh，可单测）。
+ *
+ * 输出协议（一行一条，便于单测断言，不依赖 JSON 解析失败时的容错）：
+ *   DF|<used_pct>%              挂载点已用百分比
+ *   LEDGER|<basename>|<status>  本项目每一条台账的状态
+ *   END|                        输出完整标记
+ *
+ * 台账是 JSON.stringify(entry, null, 2) 落的盘，status 是顶层字段（见 task.js
+ * buildLedgerEntry 的字段顺序），所以 grep 首个 "status": 命中就是顶层状态，
+ * 不会被 checkpoint_status 干扰（那个键名前面是 checkpoint_，不带引号，匹配不上）。
+ */
+export function buildPreflightCommand(projectId) {
+  const safe = sanitizeProjectId(projectId);
+  if (!safe) throw new Error(`projectId 非法: ${projectId}`);
+  const storage = `df -P '${SSD_ROOT}' | awk 'NR==2 {print "DF|" $5}'`;
+  const ledgers = `grep -l '"project_id": "${safe}"' '${SYSTEM_LOGS}'/*.json 2>/dev/null`
+    + ` | while IFS= read -r f; do`
+    + ` s=$(grep -m1 -o '"status": "[a-z_]*"' "$f" | sed 's/.*: "//; s/"$//');`
+    + ` echo "LEDGER|$(basename "$f")|$s";`
+    + ` done`;
+  return { command: `${storage}; ${ledgers}; echo 'END|'`, remoteProjectDir: `${PROJECTS_ROOT}/${safe}` };
+}
+
+/**
+ * 解析门禁查询输出（纯函数）。
+ * @returns {{usedPct: number|null, ledgers: Array<{file: string, status: string}>, sawEnd: boolean}}
+ */
+export function parsePreflightOutput(text) {
+  const lines = String(text ?? '').split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  let usedPct = null;
+  const ledgers = [];
+  let sawEnd = false;
+  for (const line of lines) {
+    if (line === 'END|') { sawEnd = true; continue; }
+    const df = /^DF\|(\d+)%?$/.exec(line);
+    if (df) { usedPct = Number(df[1]); continue; }
+    const ledger = /^LEDGER\|([^|]+)\|([A-Za-z_]*)$/.exec(line);
+    if (ledger) ledgers.push({ file: ledger[1], status: ledger[2] || 'unknown' });
+  }
+  return { usedPct, ledgers, sawEnd };
+}
+
+/**
+ * 跑三道门禁。ok=false 时调用方必须拒绝打包（spec §三：任一不过即 exit 1）。
+ *
+ * @param {string} projectId
+ * @param {{force?: boolean}} options force=true 对应 spec 的 -Force：已知有失败台账
+ *        且人工确认过产物完整性时才允许继续
+ * @returns {Promise<{ok: boolean, projectId: string, usedPct: number|null, freePct: number|null,
+ *   force: boolean, checks: Array<{name: string, ok: boolean, detail: string}>,
+ *   failedLedgers: Array<{file: string, status: string}>, summary: string}>}
+ */
+export async function runReportPreflight(projectId, { force = false } = {}) {
+  const safe = sanitizeProjectId(projectId);
+  if (!safe) throw new Error(`projectId 非法: ${projectId}`);
+  const { command } = buildPreflightCommand(safe);
+  const { stdout } = await runSsh(command);
+  const parsed = parsePreflightOutput(stdout);
+
+  const checks = [];
+
+  const freePct = parsed.usedPct === null ? null : 100 - parsed.usedPct;
+  checks.push({
+    name: 'storage',
+    ok: freePct !== null && freePct >= PREFLIGHT_MIN_FREE_PCT,
+    detail: freePct === null
+      ? `存储水位未知（df 输出未解析到，远端输出: ${JSON.stringify(String(stdout).slice(-200))}）`
+      : `剩余 ${freePct}%（要求 >= ${PREFLIGHT_MIN_FREE_PCT}%，已用 ${parsed.usedPct}%）`,
+  });
+
+  const running = parsed.ledgers.filter((item) => item.status === 'running');
+  checks.push({
+    name: 'running',
+    ok: running.length === 0,
+    detail: running.length === 0
+      ? '无进行中任务'
+      : `有 ${running.length} 条进行中台账：${running.map((item) => item.file).join(', ')}`,
+  });
+
+  const failed = parsed.ledgers.filter((item) => item.status === 'failed');
+  checks.push({
+    name: 'failed_ledger',
+    ok: failed.length === 0 || force === true,
+    detail: failed.length === 0
+      ? '无失败台账'
+      : `有 ${failed.length} 条失败台账（${failed.map((item) => item.file).join(', ')}）`
+        + (force === true ? '，已按 force 继续' : '，需人工确认产物完整后加 force 重试'),
+  });
+
+  checks.push({
+    name: 'remote_output',
+    ok: parsed.sawEnd,
+    detail: parsed.sawEnd ? '远端输出完整（收到 END 标记）' : '远端输出缺 END 标记（疑似命令被截断或未执行完）',
+  });
+
+  const ok = checks.every((check) => check.ok);
+  const summary = ok
+    ? `前置门禁全部通过（${checks.map((check) => check.detail).join('；')}）`
+    : `前置门禁未通过：${checks.filter((check) => !check.ok).map((check) => `[${check.name}] ${check.detail}`).join('；')}`;
+
+  return {
+    ok,
+    projectId: safe,
+    usedPct: parsed.usedPct,
+    freePct,
+    force: force === true,
+    checks,
+    failedLedgers: failed,
+    summary,
+  };
+}
+
+/**
+ * 给本地已回搬的交付件补 .sha256 旁挂文件（spec §一「生成校验清单，客户可自行核验」）。
+ *
+ * 引擎不打 CHECKSUMS.sha256（已 grep 确认），这里在本地缓存目录补一份
+ * `<文件名>.sha256`，格式是 sha256sum 的 `<hex>  <name>`，客户侧可直接
+ * `sha256sum -c <name>.sha256` 复核。
+ *
+ * @returns {Array<{name: string, sha256: string, sidecar: string}>}
+ */
+export function writeSha256Sidecars(projectId) {
+  const safe = sanitizeProjectId(projectId);
+  if (!safe) throw new Error(`projectId 非法: ${projectId}`);
+  const dir = localDeliverDir(safe);
+  let names;
+  try {
+    names = fs.readdirSync(dir);
+  } catch {
+    return [];
+  }
+  const written = [];
+  for (const name of names.sort()) {
+    if (!isAllowedDeliverableName(name)) continue;
+    const file = path.join(dir, name);
+    let bytes;
+    try {
+      bytes = fs.readFileSync(file);
+    } catch {
+      continue;
+    }
+    const digest = createHash('sha256').update(bytes).digest('hex');
+    fs.writeFileSync(`${file}.sha256`, `${digest}  ${name}\n`, 'utf8');
+    written.push({ name, sha256: digest, sidecar: `${name}.sha256` });
+  }
+  return written;
+}
+

@@ -9,9 +9,16 @@
  * "看起来校验了、其实没比对"，所以 validateDataFiles 逐条锁死，契约由
  * BioanalysDesktop/tests/portal_archive.test.js 固化（改这里必须先让那边红）。
  *
- * 零依赖，供 portal/serve.mjs 使用；两端（用户端 / 工作台）不共享代码，
- * 同一份约定各自持有一份副本。
+ * 白名单与体积上限的默认值统一来自仓库根 shared/data_formats.mjs（S30 /
+ * 架构评审 2.3 A8），本模块只做提交台侧适配（环境变量覆盖）并保留既有导出名；
+ * 其余约定（角色枚举、包名、校验规则）仍只在本模块。
  */
+
+import {
+  DATA_EXT as SHARED_DATA_EXT,
+  MAX_DATA_BYTES as SHARED_MAX_DATA_BYTES,
+  extOf,
+} from '../../shared/data_formats.mjs';
 
 /** 数据文件角色枚举：三类必需文件 + 平台注解 + 兜底 */
 export const DATA_ROLES = [
@@ -19,18 +26,23 @@ export const DATA_ROLES = [
   'platform_annotation', 'other',
 ];
 
-/** 扩展名白名单：常见生信输入；可执行与脚本一律拒绝 */
-export const DATA_EXT = ['.tsv', '.csv', '.txt', '.gz', '.zip', '.xlsx', '.h5ad', '.rds', '.mtx'];
+/**
+ * 扩展名白名单：常见生信输入；可执行与脚本一律拒绝。
+ * 唯一权威在 shared/data_formats.mjs（两端并集，14 项）；这里 re-export 既有导出名，
+ * 既有 import 方（portal/serve.mjs、tests）不受影响。
+ */
+export const DATA_EXT = SHARED_DATA_EXT;
 
 /**
  * 单文件体积上限（字节）。2026-10-20 用户拍板 5 GiB；依据：单细胞/空间 RAW tar
  * 常见 1–3GB，IS 项目 line3 原始包实测 1.89GB（con_hf/handoff.md 有记录）。
+ * 默认值（5 GiB）的唯一来源是 shared/data_formats.mjs 的 MAX_DATA_BYTES；
  * 可用环境变量 PORTAL_MAX_DATA_BYTES（字节数）覆盖，仅为让超限负路径可被真测，
  * 默认行为不变；validateDataFiles 与 serve.mjs 均 import 本常量，覆盖后两端同步生效。
  */
 export const MAX_DATA_BYTES = Number(process.env.PORTAL_MAX_DATA_BYTES) > 0
   ? Number(process.env.PORTAL_MAX_DATA_BYTES)
-  : 5 * 1024 * 1024 * 1024;
+  : SHARED_MAX_DATA_BYTES;
 
 /** 同一角色允许的文件数：仅约束 other 角色；其余角色由 validateDataFiles 硬编码为每角色 1 个 */
 export const MAX_DATA_FILES_PER_ROLE = 5;
@@ -38,13 +50,6 @@ export const MAX_DATA_FILES_PER_ROLE = 5;
 /** 取 basename：吃掉路径分隔，`../../etc/passwd` → `passwd` */
 function basename(name) {
   return String(name ?? '').split(/[\\/]+/).pop();
-}
-
-/** 取小写扩展名（`.tar.gz` 这类双扩展名取最后一段） */
-function extOf(name) {
-  const base = basename(name);
-  const dot = base.lastIndexOf('.');
-  return dot >= 0 ? base.slice(dot).toLowerCase() : '';
 }
 
 /**

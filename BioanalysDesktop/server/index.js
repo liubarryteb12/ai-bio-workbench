@@ -15,10 +15,15 @@ import { fileURLToPath } from 'node:url';
 
 import {
   DEFAULT_SERIAL, SYSTEM_LOGS, LINES, DEFAULT_PROJECT, sanitizeProjectId, projectLineDir,
-  resolveLineFromDataType, normalizeDatasets, normalizeDataSource,
+  resolveLineFromDataType, normalizeDatasets, normalizeDataSource, SSD_ROOT,
 } from './domain.js';
 import { findAdb, runSync } from './proc.js';
 import { checkLink } from './link.js';
+import {
+  buildHardwareCommand, parseHardwareOutput, evaluateHardware,
+  buildIsolationCommand, parseIsolationOutput, evaluateIsolation,
+  STORAGE_MIN_FREE_PCT,
+} from './selfcheck.js';
 import { summarizeLedger, auditLedgerEntry } from './ledger.js';
 import { assertPathInsideProject, buildTreeFromFind } from './files.js';
 import { assertFiguresPath, parseFigureList, decorateFigures } from './figures.js';
@@ -28,7 +33,7 @@ import {
 import {
   CHUNK_SIZE, initUpload, writeChunk, listChunks, assembleChunks,
   readHeader, validateUpload, remoteRawPath, cleanupUpload, sanitizeFilename,
-  deployedRawName,
+  deployedRawName, uploadStatus,
 } from './upload.js';
 import {
   buildProjectMeta, buildProjectMetaStrict, parseProjectList, buildCreateProjectCommand,
@@ -37,11 +42,15 @@ import {
 } from './project.js';
 import { checkTumorBlacklist, validateProjectFields, BLACKLIST_HINT } from './tumor_blacklist.js';
 import { auditCommand } from './audit.js';
-import { buildTaskScript } from './task.js';
+import {
+  buildTaskScript, needsBridgeCheck, inspectBridgeNeed, buildBridgeCheckCommand,
+  runBridgeCheckSync, BridgeCheckError,
+} from './task.js';
 import { runTask } from './run.js';
 import {
   runReportBuild, pullDeliverables, checkRemoteProjectDir,
   isAllowedDeliverableName, localDeliverDir, localDeliverFilePath,
+  runReportPreflight, writeSha256Sidecars,
 } from './report.js';
 
 const PORT = Number(process.env.BAD_PORT || 8787);
@@ -167,6 +176,31 @@ function runRemote(command) {
     .trim();
 }
 
+/**
+ * 桥接输出的 ssh noise 过滤：只留引擎原文。
+ *
+ * 真链实测（K40 高负载、known_hosts 首次写入时）stderr 会混进 ssh 客户端自身
+ * 的提示行（`Warning: Permanently added ... to the list of known hosts`），
+ * 这些不是引擎内容。若不滤掉，400 error 会把 ssh 提示和引擎 [BRIDGE FAIL]
+ * 原文糊在一起，调用方难以点名是哪个断言没过。
+ * 风险：按最保守口径只删已知 noise 前缀，其余一律保留；两通道重复内容只留一份
+ * （2>&1 后 stdout/stderr 可能同文），避免 error 里重复刷屏。
+ */
+function sanitizeBridgeOutput(stdout = '', stderr = '') {
+  const noise = /^(Warning: Permanently added|Warning: .*known hosts)/i;
+  const lines = [];
+  const seen = new Set();
+  for (const chunk of [stdout, stderr]) {
+    for (const line of String(chunk ?? '').split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || noise.test(trimmed) || seen.has(trimmed)) continue;
+      seen.add(trimmed);
+      lines.push(line);
+    }
+  }
+  return lines.join('\n').trim();
+}
+
 function json(res, status, payload) {
   const body = JSON.stringify(payload, null, 2);
   res.writeHead(status, {
@@ -174,6 +208,98 @@ function json(res, status, payload) {
     'Cache-Control': 'no-store',
   });
   res.end(body);
+}
+
+// ── 任务提交路径预校验（S29 / R9）────────────────────────────────────
+// 为什么在提交层再校验一次归属：/api/tasks/submit 是脚本化调用（curl / PowerShell
+// / E2E）也会直接打的接口，前端形态预检只是提示。口径与台账审计（ledger.js 的
+// extractProject / classifyPath）和文件访问守卫（files.js 的 assertPathInsideProject）
+// 对齐，避免"提交放行、落盘才判死"。
+//
+// 兼容红线：迁移前的历史形态 /mnt/ssd/bio_data/<line>/... 必须继续放行（E2E 旧形态），
+// ledger.js 对不含 /projects/ 的路径按 legacy 处理（extractProject 返回 null）；
+// processed/ 下的裸相对文件名由 shell 按 cwd 解析，天然落在本项目本线内，也放行。
+// public_references 是只读共享读入口（files.js 文件头），可作输入、不可作输出
+// （ledger.js 对 output 写 public 判违规）。项目段比对大小写敏感，与 ledger.js 同口径。
+
+/** 单条路径的归属判定：null 表示放行，否则给出原因与细节 */
+function inspectTaskPath(pathLike, projectId, direction) {
+  const unified = pathLike.replace(/\\/g, '/');
+  // 先禁 ..：必须在任何归一化之前判，否则 /projects/<pid>/../<other> 会绕过项目比对
+  if (unified.split('/').includes('..')) {
+    return { reason: '含 ..', detail: '禁止用 .. 穿越目录' };
+  }
+  if (/^[A-Za-z]:\//.test(unified)) {
+    return { reason: 'Windows 绝对路径', detail: `远端是 Linux，路径必须位于 ${SSD_ROOT}` };
+  }
+  if (!unified.startsWith('/')) {
+    // 裸相对路径：任务脚本先 cd 到 <项目>/<线>/processed/，由 shell 解析，落在本项目本线内
+    return null;
+  }
+  if (unified === SSD_ROOT || unified === `${SSD_ROOT}/`) {
+    return { reason: '不是文件路径', detail: `指向数据根 ${SSD_ROOT}` };
+  }
+  if (!unified.startsWith(`${SSD_ROOT}/`)) {
+    return { reason: '不在数据根之下', detail: `必须位于 ${SSD_ROOT}` };
+  }
+  const segments = unified.slice(SSD_ROOT.length + 1).split('/');
+  const [head, second] = segments;
+  if (head === 'projects') {
+    if (!second) {
+      return { reason: '缺少项目段', detail: `期望 ${SSD_ROOT}/projects/<项目>/...` };
+    }
+    if (second !== projectId) {
+      return { reason: '跨项目', detail: `属于项目 ${second}，当前项目为 ${projectId}` };
+    }
+    return null;
+  }
+  if (head === 'public_references') {
+    if (direction === 'output') {
+      return { reason: '输出不得写只读共享区', detail: 'public_references 是只读共享读入口' };
+    }
+    return null;
+  }
+  if (head === 'system_logs') {
+    return { reason: '系统目录禁止作为任务输入/输出', detail: 'system_logs 由台账通道写入' };
+  }
+  if (LINES.includes(head)) {
+    // 历史三线形态：迁移前 E2E 的现行写法，按 ledger.js 的 legacy 判据放行
+    return null;
+  }
+  return {
+    reason: '不属于本项目',
+    detail: `既不在 ${SSD_ROOT}/projects/${projectId}/ 下，也不是历史三线形态`,
+  };
+}
+
+/**
+ * 任务提交前的路径归属预校验（S29 / R9）。纯函数：不读文件、不连远端。
+ * @param {string[]} inputs
+ * @param {string[]} outputs
+ * @param {string} projectId 已经过 sanitizeProjectId 的项目 id
+ * @returns {{ok: true} | {ok: false, error: string}}
+ */
+export function validateTaskPaths(inputs, outputs, projectId) {
+  const fields = [
+    { field: 'inputs', list: inputs, direction: 'input' },
+    { field: 'outputs', list: outputs, direction: 'output' },
+  ];
+  for (const { field, list, direction } of fields) {
+    if (!Array.isArray(list)) continue; // 数组类型校验在 submit 里更早返回 400
+    for (let index = 0; index < list.length; index += 1) {
+      const raw = list[index];
+      const label = `${field}[${index}]`;
+      if (typeof raw !== 'string' || raw.trim() === '') {
+        return { ok: false, error: `${label} 路径非法（空值或非字符串）: ${JSON.stringify(raw)}` };
+      }
+      const verdict = inspectTaskPath(raw.trim(), projectId, direction);
+      if (verdict) {
+        const detail = verdict.detail ? `，${verdict.detail}` : '';
+        return { ok: false, error: `${label} 路径非法（${verdict.reason}）: ${raw.trim()}${detail}` };
+      }
+    }
+  }
+  return { ok: true };
 }
 
 /**
@@ -812,23 +938,23 @@ const server = http.createServer(async (req, res) => {
       const dfOut = runRemote('df -P /mnt/ssd/bio_data 2>/dev/null | tail -1').trim().split(/\s+/);
       const usedPct = (dfOut[4] || '0').replace('%', '').replace(/[^0-9]/g, '');
       const freePct = 100 - parseInt(usedPct || '0', 10);
-      checks.push({ id: 'storage', label: '存储水位', status: freePct >= 20 ? 'pass' : 'fail', value: `${freePct}% free`, detail: freePct >= 20 ? '安全' : '低于 20% 门禁' });
+      checks.push({ id: 'storage', label: '存储水位', status: freePct >= STORAGE_MIN_FREE_PCT ? 'pass' : 'fail', value: `${freePct}% free`, detail: freePct >= STORAGE_MIN_FREE_PCT ? '安全' : `低于 ${STORAGE_MIN_FREE_PCT}% 门禁` });
     } catch (e) {
       checks.push({ id: 'storage', label: '存储水位', status: 'unknown', value: '', detail: '无法读取' });
     }
-    // 3. CPU/内存（容器侧）
+    // 3. SoC 算力 / 温度 / 7.5GB 内存水位（aims §3 第 3 条；判据全在 selfcheck.js）
     try {
-      const memInfo = runRemote('cat /proc/meminfo | head -1').trim();
-      checks.push({ id: 'memory', label: '内存', status: 'pass', value: memInfo, detail: '容器内存配额' });
+      const raw = runRemote(buildHardwareCommand());
+      checks.push({ id: 'memory', label: 'SoC 算力/温度/内存', ...evaluateHardware(parseHardwareOutput(raw)) });
     } catch (e) {
-      checks.push({ id: 'memory', label: '内存', status: 'unknown', value: '', detail: '无法读取' });
+      checks.push({ id: 'memory', label: 'SoC 算力/温度/内存', status: 'unknown', value: '', detail: '无法读取: ' + (e instanceof Error ? e.message : String(e)) });
     }
-    // 4. 跨线隔离
+    // 4. 三线隔离 + 桥接四项断言（原来只跑 line1_bulk，D6 收敛为逐线）
     try {
-      const isolationOk = runRemote('bash /mnt/ssd/bio_data/ops/check_storage_and_isolation.sh line1_bulk 2>/dev/null; echo $?').trim();
-      checks.push({ id: 'isolation', label: '跨线隔离', status: isolationOk.endsWith('0') ? 'pass' : 'fail', value: isolationOk, detail: '门禁脚本' });
+      const raw = runRemote(buildIsolationCommand());
+      checks.push({ id: 'isolation', label: '跨线隔离与桥接', ...evaluateIsolation(parseIsolationOutput(raw)) });
     } catch (e) {
-      checks.push({ id: 'isolation', label: '跨线隔离', status: 'unknown', value: '', detail: '门禁脚本未部署' });
+      checks.push({ id: 'isolation', label: '跨线隔离与桥接', status: 'unknown', value: '', detail: '无法读取: ' + (e instanceof Error ? e.message : String(e)) });
     }
     // 5. ADB/SSH 链路（四段探测 + 服务状态）
     try {
@@ -1082,15 +1208,31 @@ const server = http.createServer(async (req, res) => {
       if (!remoteExists) {
         return json(res, 400, { ok: false, error: `远端项目目录不存在: /mnt/ssd/bio_data/projects/${projectId}` });
       }
+      // 交付前置门禁（D4 / docs/delivery_package_spec.md 第三节 3/5/6 条）：
+      // 打包前先查磁盘水位、运行中任务、失败台账，任一不过即 409 且原样回报，
+      // 避免"打包成功但产物不可信"。force:true 仅放行失败台账，水位与运行中任务仍拦。
+      let preflight;
+      try {
+        preflight = await runReportPreflight(projectId, { force: requested.force === true });
+      } catch (cause) {
+        return json(res, 500, { ok: false, error: `交付前置检查失败: ${cause.message}` });
+      }
+      if (!preflight.ok) {
+        return json(res, 409, { ok: false, error: preflight.summary, preflight });
+      }
       try {
         await runReportBuild(projectId);
         const pulled = await pullDeliverables(projectId);
+        // 旁挂 sha256：包内 CHECKSUMS 尚未生成，先在本地交付目录落 .sha256 便于复核
+        const sidecars = writeSha256Sidecars(projectId);
         return json(res, 200, {
           ok: true,
           projectId,
           files: pulled.files,
           report_md_bytes: pulled.report_md_bytes,
           report_html_bytes: pulled.report_html_bytes,
+          preflight,
+          sidecars,
         });
       } catch (cause) {
         return json(res, 500, {
@@ -1206,8 +1348,28 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === '/api/upload/status') {
+    // 数据导入第 2.5 步：查询已落盘分片，供前端断点续传（S32 / 架构评审 A8-R5）。
+    // 向后兼容：uploadId / received 两个既有键原样保留（既有调用方按 received 判空），
+    // 本次只增补 exists / chunks / nextIndex / receivedBytes / chunkSize。
     const uploadId = url.searchParams.get('uploadId') || '';
-    return json(res, 200, { uploadId, received: listChunks(uploadId) });
+    const status = uploadStatus(uploadId);
+    if (status.reason === 'invalid_id') {
+      // 缺失或含路径穿越（'..'、分隔符、隐藏名）：400，绝不下探文件系统
+      return json(res, 400, { ok: false, error: `uploadId 非法或缺失: ${uploadId}` });
+    }
+    if (!status.ok) {
+      // 没传过：HTTP 仍 200（404 会让前端走错误分支），前端据 nextIndex=0 从 0 开始
+      return json(res, 200, {
+        uploadId, received: [], exists: false, chunks: [], nextIndex: 0,
+        receivedBytes: 0, chunkSize: CHUNK_SIZE, ok: false, reason: 'not_found',
+      });
+    }
+    return json(res, 200, {
+      ok: true, uploadId, exists: true,
+      chunks: status.chunks, nextIndex: status.nextIndex,
+      receivedBytes: status.receivedBytes, chunkSize: status.chunkSize,
+      received: status.chunks,
+    });
   }
 
   if (url.pathname === '/api/upload/complete' && req.method === 'POST') {
@@ -1364,6 +1526,58 @@ const server = http.createServer(async (req, res) => {
       const audit = auditCommand(script, lineId);
       if (!audit.allowed) {
         return json(res, 400, { error: audit.reason });
+      }
+
+      // S29 / R9：路径归属预校验，放在审计之后、桥接检查之前：
+      // 先拦越界路径，避免为一条注定非法的路径去跑远端桥接校验（白耗 ssh 往返）。
+      const pathCheck = validateTaskPaths(requested.inputs || [], requested.outputs || [], projectId);
+      if (!pathCheck.ok) {
+        return json(res, 400, { error: pathCheck.error });
+      }
+
+      // ── 桥接四项断言检查点（S28 / 架构评审 D1）──────────────────────────
+      // aims §一.3：每次跨语言转换必须过 ops/verify_bridge_checkpoint.py。
+      // 58 个分析脚本 0 调用（铁律空转），接线位置定为提交层——只有这里全知
+      // "这一步是不是跨语言步骤"。母版缺失不阻断提交（保持既有行为），但必须
+      // warn 可观测；K40 不可达时明确 503，绝不静默放过。
+      const bridgeNeed = inspectBridgeNeed(lineId, requested.step);
+      if (!bridgeNeed.masterExists) {
+        console.warn(`[bridge] ${lineId}/${requested.step} 母版缺失，跳过桥接判定: ${bridgeNeed.reason}`);
+      }
+      if (needsBridgeCheck(lineId, requested.step)) {
+        let bridgePlan;
+        try {
+          bridgePlan = buildBridgeCheckCommand(lineId, requested.step, {
+            inputs: requested.inputs || [],
+            projectId,
+          });
+        } catch (cause) {
+          const detail = cause instanceof BridgeCheckError ? cause.message : `桥接命令构建异常: ${cause.message}`;
+          return json(res, 400, { error: `桥接检查命令构建失败: ${detail}` });
+        }
+        if (!bridgePlan.remoteScript) {
+          // 引擎只认 .h5ad/.rds；双语步骤但输入全是 tsv 等时无法构造校验命令。
+          // 不编造参数、不阻断提交（阻断是回归），warn 留痕并已在 S28 报告上报。
+          console.warn(`[bridge] ${lineId}/${requested.step} 需要桥接校验但${bridgePlan.reason}，本次未过引擎`);
+        } else {
+          console.log(`[bridge] ${lineId}/${requested.step} 为跨语言步骤，执行四项断言: ${bridgePlan.remoteScript}`);
+          const bridge = runBridgeCheckSync(bridgePlan);
+          const bridgeOutput = sanitizeBridgeOutput(bridge.stdout, bridge.stderr);
+          if (bridge.code === 0) {
+            console.log(`[bridge] ${lineId}/${requested.step} 四项断言通过`);
+          } else if (bridge.code === 255 || bridge.code === -1) {
+            // ssh 自身连接失败是 255；spawnSync 超时/启动失败 status=null → runBridgeCheckSync 归 -1。
+            // 这是"校验无法执行"，不是"校验通过"：明确 503，不许静默放过。
+            return json(res, 503, {
+              error: `桥接校验无法执行（K40 不可达）: exit=${bridge.code} ${bridgeOutput.slice(-500)}`,
+            });
+          } else {
+            // 引擎明确判死：引擎原文（[BRIDGE FAIL] ...）点名是哪个断言没过
+            return json(res, 400, {
+              error: `桥接四项断言未通过（${lineId}/${requested.step}），引擎原文: ${bridgeOutput}`,
+            });
+          }
+        }
       }
 
       try {

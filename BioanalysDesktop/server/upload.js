@@ -13,6 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { LINES, projectLineDir, sanitizeProjectId } from './domain.js';
+import { DATA_EXT, isAllowedDataFile } from '../../shared/data_formats.mjs';
 
 /** 上传暂存根（本软件工作目录内，不污染源码） */
 export const UPLOAD_ROOT = path.join(process.cwd(), '.uploads');
@@ -20,11 +21,12 @@ export const UPLOAD_ROOT = path.join(process.cwd(), '.uploads');
 /** 分片大小 4MB */
 export const CHUNK_SIZE = 4 * 1024 * 1024;
 
-/** 允许的扩展名白名单（GEO / 10x / h5ad / 通用表） */
-export const ALLOWED_EXT = [
-  '.h5ad', '.h5', '.loom', '.mtx', '.tar', '.gz', '.zip',
-  '.txt', '.tsv', '.csv', '.soft', '.xlsx', '.rds', '.rdata',
-];
+/**
+ * 允许的扩展名白名单（GEO / 10x / h5ad / 通用表）。
+ * 唯一权威在仓库根 shared/data_formats.mjs（S30 / 架构评审 2.3 A8）：
+ * 本文件只 re-export 既有导出名，既有 import 方（server/index.js、tests）不受影响。
+ */
+export const ALLOWED_EXT = DATA_EXT;
 
 /**
  * 文件名消毒：严格拒绝含路径分隔符、.. 或隐藏文件的名字。
@@ -44,10 +46,12 @@ export function sanitizeFilename(name) {
   return raw;
 }
 
-/** 扩展名是否在白名单内（含双扩展名如 .mtx.gz / .tar.gz） */
+/**
+ * 扩展名是否在白名单内（含双扩展名如 .mtx.gz / .tar.gz）。
+ * 判定委托 shared/data_formats.mjs，与用户提交台（portal）同一口径。
+ */
 export function extAllowed(name) {
-  const lower = String(name).toLowerCase();
-  return ALLOWED_EXT.some((e) => lower.endsWith(e));
+  return isAllowedDataFile(name);
 }
 
 /**
@@ -127,7 +131,9 @@ export function validateUpload(name, headerBuf) {
 /** 上传会话目录 */
 export function uploadDir(uploadId) {
   const safe = String(uploadId).replace(/[^A-Za-z0-9._-]/g, '');
-  if (!safe) return null;
+  // 点号本身在白名单里，所以 '..' 能活过上面的过滤；path.join(UPLOAD_ROOT, '..') 会跳出上传根，
+  // 等于让分片写进 .uploads 的父目录。这里显式拒绝点段与任何含 '..' 的 id（正常 id 是 randomUUID）。
+  if (!safe || safe === '.' || safe === '..' || safe.includes('..')) return null;
   return path.join(UPLOAD_ROOT, safe);
 }
 
@@ -161,6 +167,57 @@ export function listChunks(uploadId) {
     .map((f) => Number(f.replace('.part', '')))
     .filter((n) => Number.isInteger(n))
     .sort((a, b) => a - b);
+}
+
+/**
+ * 上传会话的续传状态（纯函数，供 HTTP 层与单测复用）。
+ *
+ * 续传口径：nextIndex 取「从 0 开始第一个缺失的分片序号」，即最小缺失口径。
+ * 例：已收 [0,1,3] → nextIndex=2，前端从 2 起补传，3 会被重写一次
+ * （writeChunk 是覆盖写，幂等），assemble 仍要求 0..N 连续。
+ * 之所以不用「连续段长度」口径：[0,2] 两种口径都得 1，但 [1,2] 缺 0 时
+ * 连续段口径会给出 0 却让 1、2 白占空间；最小缺失口径语义更直白，
+ * 且与 assembleChunks 的「必须从 0 连续」判定天然一致。
+ *
+ * uploadId 走 sanitizeFilename 同款消毒：'..'、路径分隔符、隐藏名一律拒绝，
+ * 非法 id 只返回 reason='invalid_id'，绝不让调用方拿到可穿越的目录路径。
+ *
+ * @returns {{ok: boolean, uploadId: string, exists: boolean, reason?: string,
+ *   chunks: number[], nextIndex: number, receivedBytes: number, chunkSize: number}}
+ */
+export function uploadStatus(uploadId) {
+  const raw = String(uploadId ?? '');
+  const base = {
+    ok: false, uploadId: raw, exists: false, chunks: [],
+    nextIndex: 0, receivedBytes: 0, chunkSize: CHUNK_SIZE,
+  };
+  const safe = sanitizeFilename(raw);
+  if (!safe) return { ...base, reason: 'invalid_id' };
+  const dir = path.join(UPLOAD_ROOT, safe);
+  let exists = false;
+  try {
+    exists = fs.statSync(dir).isDirectory();
+  } catch {
+    exists = false;   // 没传过（目录不存在）或不可读，一律按未开始处理
+  }
+  if (!exists) return { ...base, reason: 'not_found' };
+  // 复用 listChunks 扫描分片（不另写一套扫描）；脏文件名已被 Number 过滤，
+  // 这里再滤掉负序号与重复项，避免一个 -1.part 让 nextIndex 永远算成 0。
+  const chunks = [...new Set(listChunks(safe).filter((n) => n >= 0))].sort((a, b) => a - b);
+  let receivedBytes = 0;
+  for (const idx of chunks) {
+    try {
+      receivedBytes += fs.statSync(path.join(dir, `${idx}.part`)).size;
+    } catch {
+      // 并发删除（别的请求刚清理会话）：该片不计入字节数，不影响其余判定
+    }
+  }
+  const present = new Set(chunks);
+  let nextIndex = 0;
+  while (present.has(nextIndex)) nextIndex += 1;
+  return {
+    ok: true, uploadId: raw, exists: true, chunks, nextIndex, receivedBytes, chunkSize: CHUNK_SIZE,
+  };
 }
 
 /** 合并分片为完整文件，返回本地路径 */

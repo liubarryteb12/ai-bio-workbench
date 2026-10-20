@@ -3074,3 +3074,40 @@ S19 完成后请勿重复改 index.html 的 MAX_DATA_BYTES/MAX_DATA_FILES_PER_RO
 - 本地下载的素材在 `cn_debug/`：GSE30528_family.soft.gz、GPL571.annot.tsv(.gz)、build_gpl571.py、GSE30528_sm.txt(.gz)——恢复时可直接复用，不必重下。
 
 **恢复入口**：等用户整理完想法后的新指令；若继续 line1 开跑，按上面「卡住的 Bug」诊断顺序走。
+
+---
+
+## 2026-10-21 · 架构评审落地收口（S28-S32 + D4/D5/D6），团队并行切片全绿
+
+**说明**：上一节「暂停点」之后主会话已继续推进 S25-S32，暂停点条目的"不要自行续跑"已被后续指令取代；本条是最新状态。
+
+**触发**：用户指令「理解项目内容后自行组建团队完善和优化项目」。执行依据 `con_hf/architecture_review_2026-10-20.md`（结论：框架不重构，只做断链补齐 + 重叠收敛 + 历史清理）。
+
+**团队**：Lead + 4 名 teammate（s29-taskpanel / s30-upload / audit-probe / s32-upload-resume），按文件域切分避免并发写冲突；共享任务板 task-1..task-4 全部 completed。
+
+**本轮落地（按切片）**
+- **S28 桥接四项断言接线**：`server/index.js` 提交层在 `auditCommand` 之后调用 `needsBridgeCheck`/`runBridgeCheckSync`，桥接不过 400 并回传断言明细。D1 的实际缺口（58 脚本 0 调用）由提交层兜住；脚本内不自查仍是已知边界。
+- **S29 TaskPanel + 路径预校验**：`server/index.js` 新增 `validateTaskPaths`（越界 400，位于 S28 桥接块之前）；`src/App.tsx` 种子默认 20261013、步骤下拉（/api/projects/steps，保留手填）、placeholder 改真实形态 + 黄色形态提醒。新增 `tests/task_submit_validation.test.js` 17 条。
+- **S30 白名单单一事实源**：新增 `shared/data_formats.mjs`（DATA_EXT 14 项 :28-31、MAX_DATA_BYTES 5GiB :39、extOf :47-51、isAllowedDataFile :61-63）；`server/upload.js` 的 ALLOWED_EXT 直接 re-export，`portal/lib/archive.mjs` 引用它，`portal/index.html:1238` 只留副本并由 `tests/data_format_parity.test.js` 把守。
+- **S31 只读审计**（报告 `con_hf/dispatch/S30_audit_report.md`）：3 条待归因 failed 台账已归因为多执行者并发跑同一验证脚本（每次自起临时 8787）的引擎形态，排除第二实例/计划任务/watchdog/远端 cron。D3 已修、D4 作废、D5/D6 已由本轮处理、D7 维持跳过。
+- **S32 断点续传**：`upload.js` 新增 `uploadStatus`（最小缺失 nextIndex）；`GET /api/upload/status` 重写（invalid→400、not_found→200 `{ok:false,reason:'not_found',nextIndex:0}`）；`App.tsx` 以「文件指纹→uploadId」localStorage 缓存实现真续传（init 每次新 UUID，只按字面 init 后查 status 续传恒为 0）。新增 `tests/upload_resume.test.js` 19 条；`aims/aims.txt:83` 的 D5 改为 4MB 断点续传已实现。
+- **D4 交付前置门禁（Lead）**：`server/report.js` 新增 `runReportPreflight`（四道闸：存储水位 ≥20% / 无 running 台账 / 失败台账需 force / 远端输出截断检测）与 `writeSha256Sidecars`（`<file>.sha256` 可被 sha256sum -c 直接复核）；已接线进 `POST /api/report/build`：!ok → 409 带 `{preflight}`，成功响应回传 `preflight` + `sidecars`。文档：`docs/delivery_package_spec.md` 新增「零、实现现状」并裁定 `ops/09_package_delivery.ps1` 作废；`docs/directories.md:62` 指向真实入口。新增 `tests/report_preflight.test.js` 15 条 + `tests/report.test.js` 扩 7 条 HTTP 用例。
+- **D6 五维自检（Lead）**：新增 `server/selfcheck.js` 纯函数模块——第 3 维从「读 /proc/meminfo 头行即 pass」改为 SoC 负载/温度/7.5GB 内存配额实判（fail: ≥95°C 或内存满；warn: ≥85°C 或内存 ≥90% 或 负载/核数 ≥1.5；缺 END 判 unknown）；第 4 维从硬编码 line1_bulk 改为三线逐线门禁 + 桥接脚本存在性（桥接缺失 → warn）。前端 `src/App.tsx` 的 dotClass/dotText 增 warn 档（`!` + `.selfcheck-dot-warn`），汇总徽标新增「存在告警项」。新增 `tests/selfcheck.test.js` 16 条。
+- **uploadDir 加固（Lead）**：`server/upload.js` 的 uploadId 消毒只剥非 `[A-Za-z0-9._-]` 字符，点号存活使 `'..'` 能跳出 `.uploads` 根；现显式拒绝点段与含 `..` 的 id，`tests/upload.test.js` 补回归用例。
+
+**验证（收口实测，2026-10-21 00:4x）**
+- `cd BioanalysDesktop && npm test` → **tests 382 / pass 382 / fail 0 / exit 0**（约 3.7s；本轮起点基线 296）
+- `npm run build` → `✓ built in 652ms`（`dist/assets/index-BlTq92y6.js` 218.43 kB / gzip 71.40 kB）
+- `npx tsc --noEmit` → exit 0；改动服务端文件 `node --check` 全 exit 0
+- 未连 K40 真机（测试全用 ssh 垫片），未改 `CHUNK_SIZE`（仍 4MB，前端从 init/status 的 chunkSize 读，未硬编码）
+
+**已知边界 / 下轮候选**
+1. `.uploads` 陈旧会话无 TTL：1-3GB 级数据放弃后会滞留磁盘，建议排 GC。
+2. 续传依赖 localStorage：换浏览器/清站点数据只能从头传（UI 文案已写明）；根治需确定性 uploadId。
+3. 前端续传分支无自动化测试（uploadFingerprint/resumeStartIndex 是 .tsx 私有），靠 tsc + 服务端 HTTP E2E 兜底。
+4. `ledger.classifyPath` 与 `validateTaskPaths` 的"合法根"口径差（S29 已标注，需改 ledger.js）。
+5. 桥接四项断言仍只在提交层执行，58 个脚本内部 0 调用。
+6. **B 批不可逆操作待用户授权**：B1 已无收益（scenic_db/__pycache__ 早已不存在，剩余可删约 0.36MB）；B2 归档未执行（7 个 ops 脚本 + geo_mining_sop_v1.md 约 50KB，`_archive/` 未建）；B3 黑名单 provenance 29 条 vs aims 8 条口径差未裁。
+
+**改动文件清单（本轮）**：新增 `shared/data_formats.mjs`、`BioanalysDesktop/server/selfcheck.js`、`tests/{selfcheck,report_preflight,data_format_parity,task_submit_validation,upload_resume}.test.js`；改 `server/{index,task,report,upload}.js`、`src/App.tsx`、`src/app.css`、`portal/{index.html,lib/archive.mjs}`、`aims/aims.txt:83`、`docs/{delivery_package_spec,directories}.md`；报告 `con_hf/dispatch/S{28,29,30,31,32}*.md` + `con_hf/操作台账.md` 同日条目。
+
