@@ -26,6 +26,16 @@
 | `../bin/layout_helper.R` | 服务器 `bin/` | 同上（R/ggplot2）：`apply_sci_plot_layout_r(p, spec, footnote_text, badge_text)` + `layout_save_r()` | 2026-10-18 在 k40-ubuntu 实跑 24 条断言全过，三模板均落盘；已部署 `/mnt/ssd/bio_data/bin/` |
 | `build_client_report.py` | 服务器 `ops/` | 客户交付包七章解读报告引擎：扫描项目产物 → 生成 `Analysis_Report.md` + 单文件交互 `Analysis_Report.html` → 归集 `01_Adapted_Scripts` / `02_Figures_and_Tables` / `03_Interpretation_Report` → 打 `<id>_Client_Delivery.tar.gz`。`--dry-run` 预览、`--no-tar` 只出三大件、`--self-test` 自检。第二章新增「软件与版本登记 / 随机种子 / 方法学引用」三段，数据读 `software_versions.json` + `reference_citations.json`（缺失时正文明确写"版本清单缺失"，不静默） | 2026-10-19 S11 后自检 30 条全过；`PRJ_E2E_GSE277173` 实跑 exit 0，版本表含 WGCNA 1.74 / limma 3.58.1，引用 2 条（WGCNA + Bioconductor），limma 明写"本目录无原始论文" |
 | `gen_reference_index.py` | 本地仓库 | 从 `reference/生信分析可用参考文献/citations.json` 生成人读索引 `INDEX.md`，并逐个校验 PDF 路径真实存在（`--check` 只校验不写盘）。改文献信息改 JSON 后重跑，避免索引与报告引用两套说法 | 2026-10-19 生成 18 个 PDF 全覆盖索引，`--check` PASS |
+| `run_throttled_task.sh` | 服务器 | 统一降权执行包装器 + 自动台账 JSON（aims §六.3）。默认不绑核仅 nice/ionice 降权（2026-10-20 契约变更，实测 EAS 动态调度更快），`BIO_PIN_CPUS=4,5,6` 可恢复静态绑核 | 长任务守护主通道；**台账只有 `project_id`/`random_seed` 两字段的历史缺口待补** |
+| `verify_bridge_checkpoint.py` | 服务器 | 跨语言转换四项断言（基因名完整性 / 矩阵行列方向与稀疏性 / 细胞 Barcode 顺序 / 降维与空间坐标保留） | **当前 58 个分析脚本 0 次调用它（aims §一.3 铁律空转）**，8787 提交层统一接线在整改队列 |
+| `check_storage_and_isolation.sh` | 服务器 | 存储水位门禁（<20% 阻断）+ FUSE 红线 + 跨线路径静态扫描（aims §六.2 四门禁） | 隔离红线的服务器侧执行者 |
+| `bio_limits.sh` | 服务器 | 容器全局线程封顶与无头渲染配置（aims §六.1，落 `/etc/profile.d/`） | 已在容器生效 |
+| `bio_memory_guard.py` | 服务器 | Python 脚本级 7.5GB 软熔断头部模板（aims §六.4） | 与 `bio_r_header.R` 配对 |
+| `bio_r_header.R` | 服务器 | R 脚本级 7.5GB 防崩头部模板（aims §六.4） | R 脚本入口 `source()` 它 |
+| `07_pull_outputs.ps1` | PC | 产物回搬通道：远端 `projects/<id>/<line>/{figures,results}` → 本地 `outputs/`；同名同大小才跳过（#186 修复后规则）+ 字节校验 | 与 `06` 构成"下发-回搬"一对 |
+| `08_migrate_to_projects.ps1` / `.sh` | PC / 服务器 | 数据面一次性迁移：顶层三线目录 → `projects/<id>/<line>/` 结构（2026-10 已完成的历史迁移） | 历史工具，保留备查 |
+| `audit_figure_layout.py` | 服务器 | 出图布局合规审计（真渲染判决 A–E，`--runner bash --seed` 真跑脚本取几何） | 出图规范四工具之一；`--seed` 必须传真种子（#190 教训） |
+| `fig_theme.py` / `fig_theme.R` | 服务器 | 出图主题层。Python 侧默认关（`BIOANALYS_PY_THEME=1` 开，实测对显式传参脚本零收益 #193）；R 侧仅 base R par（ggplot 走 SCI 模板 #193） | 底座保留、默认不启用 |
 
 ### 交付报告依赖的两份清单
 
@@ -36,6 +46,29 @@
 
 部署方式与 `build_client_report.py` 相同（scp 直送 `ops/`）。两份清单都缺失时报告照常生成，
 只在正文写明缺什么——报告引擎不允许因为缺清单就静默少写一段。
+
+## 该信哪个：一张决策表（认知负担解药）
+
+「断链 / 服务挂 / 台账不对 / 图不合规 / 要交付」各只有**一个**正确入口：
+
+| 你的处境 | 唯一入口 | 别用 |
+|---|---|---|
+| ssh 连不上 K40 / 隧道断 | `00_link_check.ps1`（四段自检 + 自动重建） | 手动 `adb forward` 再手动试 |
+| 8787 或 8080 服务没起/崩了 | `serve_guard.ps1`（注入口令常驻） | 裸 `node server/index.js`（缺口令环境） |
+| 手机六服务挂 / reboot 后双 runsvdir 抢锁 | `fix_runsvdir.sh`（必须 `run-as com.termux sh` 执行） | 逐条 `sv up` 手工拉 |
+| Termux 服务被系统杀 | `bio_watchdog.sh`（runit 自愈，49 秒拉起） | 另写 cron 保活 |
+| 改完分析脚本要上线 | `06_deploy_scripts.ps1 -Line <线>` | 手动 scp（无字节校验） |
+| 跑完要收图收表 | `07_pull_outputs.ps1 -Project <项目> -Line <线>` | 手动 scp 单文件 |
+| 台账合法性存疑 | `03_check_logs_remote.sh`（`04` 是它的一键 PC 壳） | 人肉 cat JSON 判断 |
+| 代码疑似跨线引用 | `02_check_isolation.ps1` | grep 了就算 |
+| 图件合规存疑 | `docs/figure_spec.md` §七 四工具 | 肉眼看 |
+| 要给客户交付 | 8787 `/api/report/build`（内部调 `build_client_report.py`） | ssh 上手跑 CLI（S27 前的老路） |
+| 测试数据上盘 | `05_push_testdata.ps1` | 手动 scp 到 raw_data |
+
+**分层记忆法**：PC 侧 `*.ps1` 管"在 Windows 上点什么"；服务器侧 `*.sh`/`*.py` 管
+"在 K40 上执行什么"；手机 Termux 侧管"Android 层保活"。三层各司其职，
+**没有一个是另一个的替代品**——2026-10-20 架构评审曾误判"六套管家重复建设"，
+逐项核查后确认全部在职（`con_hf/architecture_review_2026-10-20.md` §2.3）。
 
 
 ## 日常用法
