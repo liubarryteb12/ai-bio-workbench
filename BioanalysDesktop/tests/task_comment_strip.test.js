@@ -210,3 +210,36 @@ test('P3: inspectBridgeNeed 返回值结构不变（七个字段，母版缺失�
   assert.equal(need.pCount, 0);
   assert.match(need.reason, /母版不存在/);
 });
+
+test('P3 收紧: guardWired 只看可执行代码，注释里提 bridge_guard.sh 不算接线', () => {
+  // 全仓母版巡检：guardWired 为真时，剥离注释后的代码里必须真的出现 bridge_guard.sh。
+  // 反过来也检查一遍：代码里有调用就必须为真（不许把真接线判成没接）。
+  const GUARD = /bridge_guard\.sh/;
+  const masters = listMasters();
+  assert.ok(masters.length >= 50, `母版数量异常: ${masters.length}`);
+  let wired = 0;
+  for (const m of masters) {
+    const content = fs.readFileSync(m.abs, 'utf8');
+    const code = stripShellAndCodeComments(content);
+    const need = inspectBridgeNeed(m.lineId, m.step);
+    assert.equal(need.guardWired, GUARD.test(code), `${m.lineId}/${m.step}: guardWired 与剥离后代码不一致`);
+    if (need.guardWired) wired += 1;
+  }
+  assert.ok(wired >= 1, '至少应有一个母版真的调用了 bridge_guard.sh');
+});
+
+test('P3 收紧: 只在注释里提到 bridge_guard.sh 的母版判为未接线', () => {
+  // 造一份"注释里有、代码里没有"的文本，验证剥离后判据的语义（纯函数层面）
+  const text = [
+    '#!/usr/bin/env bash',
+    '# 本步骤依赖 bridge_guard.sh 做跨语言断言',
+    'set -euo pipefail',
+    'python3 - <<PYSCRIPT',
+    'print(1)',
+    'PYSCRIPT',
+    '',
+  ].join('\n');
+  const code = stripShellAndCodeComments(text);
+  assert.equal(/bridge_guard\.sh/.test(text), true);
+  assert.equal(/bridge_guard\.sh/.test(code), false);
+});

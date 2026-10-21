@@ -201,3 +201,23 @@
   并且只把「脚本文件」纳入比对（`$rel -notlike '*.md'`），文档缺失不算部署漂移（见 D-17）。
 - **防回归单测**：`BioanalysDesktop/tests/deploy_and_parity_guard.test.js` 两条
   （「xargs 必须 || true」「README.md 等文档不算部署漂移」）。
+
+### P-22 proot 容器里的 `/proc/uptime` 是静态假文件，`uptime` 不能用来判断重启
+
+- **所属域**：运维 / 真机取证
+- **现象与复现**：多次 `ssh k40-ubuntu uptime` 都显示 `up 2 min`，据此判断「容器每几分钟重启一次」，
+  并把它当成 P-19（curl 下大文件被打断）与 P-20（部署校验 ssh 失败）的根因。
+  实际连续三次采样 `ps -eo pid,etime,comm | grep proot`：`4200 11:51` → `12:23` → `12:54`，
+  **同一 pid 稳定增长**；Termux 宿主 `uptime` 显示 `up 1 day, 8:27`。容器并没有重启。
+- **RCA**：proot-distro 启动时把宿主的若干 `/proc` 文件替换成 `sysdata/` 下的**静态副本**并 bind 进来
+  （见 proot 命令行里的 `--bind=.../sysdata/uptime:/proc/uptime`）。该文件在容器生命周期内不再更新，
+  读到的永远是「容器启动时的宿主 uptime」，看起来就像一个刚启动 2 分钟的系统。
+  另注意容器内时钟是 UTC（宿主是 CST，差 8 小时），拿容器时间戳做算术会再错一次。
+- **永久修复**：判断容器是否重启只看两条：① `ps -eo pid,etime,comm | grep -i proot` 的 etime 是否
+  单调增长（pid 变了或 etime 归零才算重启）；② Termux 宿主侧 `ssh k40 uptime`。
+  `uptime` / `/proc/uptime` 一律不作为重启证据。
+- **连带修正**：P-19 的「proot 长进程不保证存活」与 P-20 的「窗口内容器重启」两条 RCA 结论作废，
+  真实原因尚未定位（候选：Termux/Android 后台休眠掐断 ssh 会话、sshd 会话数上限）。
+  永久修复（本机下载再 scp、单次 ssh 批量校验）仍然有效，因为它们消除的是「长连接 + 多次 ssh」
+  这个放大器，与重启与否无关。
+- **防回归**：无单测（运维事实），本条目即取证结论；后续真机脚本一律用 etime 判活。

@@ -3470,3 +3470,45 @@ ssh 连接失败 → SKIP exit 0（K40 离线母版仍可跑）；
 3. `mergeIsolationChecks` 的 value 是字符串拼接，前端未结构化展示。
 4. `memory_peak.tsv` 写在进程 cwd，需确认任务引擎 cwd 是否等于输出目录。
 5. B 批不可逆操作仍待用户授权（B1 / B2 / B3，见第七轮待办第 4 条）。
+
+### 第九轮（2026-10-21，line1_bulk 全步骤真机跑通 = M1 DoD 收口）
+
+#### 做了什么
+
+1. **line1_bulk 全链真机跑批 15/15 exit 0**（M1 DoD 最后一项）：新增取证脚本
+   `cn_debug/2026-10-21_m1_line1_chain.mjs`，对 `PRJ_E2E_GSE277173` 逐步走真实 HTTP 契约
+   `POST /api/tasks/submit`，完成判定靠 `/api/tasks` 列表消失，结果判定读远端台账 JSON 的
+   `status` / `exit_code`（不看「看起来成功」）。跑批前先 `tar czf _backup_20261021_pre_m1.tar.gz`
+   备份了 processed/results/figures（9.8MB）。
+   - 覆盖 14 个 `LINE_STEPS` + `cox_analysis`：prep_matrix → qc_matrix → pca_matrix → deg_limma →
+     wgcna_modules → enrichment_bulk → enrichment_figures → ppi_string → key_genes → ml_model →
+     ml_hub_analysis → ml_diagnostics → external_validation → cox_analysis → bulk_figures。
+   - 结果：**15 步全部 status=completed exit_code=0**，单步耗时 3s~2.6min（enrichment_bulk 最久），
+     台账 16 份（含 ppi_string 一次重试）。产物时间戳全为 2026-10-21 11:02~11:03，图件 39 张。
+   - 唯一一次 FAIL 是取证脚本自身的台账等待超时（ppi_string 首跑 26s 完成，但 `latestLedger` 的
+     `ls -t` 那一次 ssh 没回来，90s 判「未找到台账」），重试一次即 PASS；步骤本身没失败。
+2. **纠正「容器频繁重启」的误判（P-22）**：连续采样 `ps -eo pid,etime,comm | grep -i proot` 得
+   `4200 11:51 → 12:23 → 12:54`（同一 pid 稳定增长），Termux 宿主 `uptime` 为 `up 1 day, 8:27`，
+   **容器并没有重启**。proot-distro 把 `/proc/uptime` 换成 `sysdata/uptime` 的静态副本并 bind 进来，
+   所以 `uptime` 永远显示「up 2 min」。已写进 `pitfalls_ledger.md` P-22，并注明 P-19 / P-20 的
+   「容器重启」RCA 作废（永久修复仍然有效：它们消除的是长连接与多次 ssh 这个放大器）。
+3. **收紧 `guardWired`（P3 遗留）**：`server/task.js` 的 `inspectBridgeNeed` 里
+   `guardWired: GUARD_CALL_RE.test(content)` 改为 `test(code)`（`code` 是剥离注释后的文本），
+   注释里提 `bridge_guard.sh` 不再假阳性。`tests/task_comment_strip.test.js` 加 2 条：
+   全仓 58 个母版巡检（guardWired 必须与剥离后代码一致，且至少一个真接线）+ 纯函数语义用例。
+4. **确认 `memory_peak.tsv` 落点没问题**：`server/task.js:242` 生成的任务脚本首行是
+   `cd <project>/<line>/processed`，母版 cwd 即输出目录，峰值文件落在 processed/ 下，符合预期。
+
+#### 验证
+
+- `npm test`：见提交前全量跑（`task_comment_strip` 26 条、`bridge_guard_invariant` 9 条全绿）。
+- line1 全链：15/15 步 `status=completed exit_code=0`，台账 16 份，图件 39 张。
+- 容器存活取证：proot pid 4200 etime 单调增长，宿主 uptime 1 day 8h。
+
+#### 待办（第十轮）
+
+1. `cn_debug/2026-10-21_m1_line1_chain.mjs` 的台账等待要更稳（首跑 90s 超时误报一次），
+   建议改成「先查台账文件是否存在，再解析 JSON」，并把 ssh 失败与台账缺失分开报。
+2. line2 / line3 尚未做同类全链真机取证（line2 缺 `00_sc_harmony.h5ad`，gsva 走 pre-dimred 降级）。
+3. `mergeIsolationChecks` 的 value 仍是字符串拼接，前端未结构化展示。
+4. B 批不可逆操作仍待用户授权（B1 / B2 / B3）。

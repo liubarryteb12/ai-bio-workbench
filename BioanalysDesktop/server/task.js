@@ -123,7 +123,8 @@ export function inspectBridgeNeed(lineId, stepName) {
     masterPath,
     rCount,
     pCount,
-    guardWired: GUARD_CALL_RE.test(content),
+    // guardWired 也只看可执行代码：注释里提 bridge_guard.sh 不算接线（P3 遗留的假阳性）
+    guardWired: GUARD_CALL_RE.test(code),
     reason: '',
   };
 }
