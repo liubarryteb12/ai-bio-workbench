@@ -162,10 +162,11 @@ test('注入的 MAX_DATA_BYTES 等于 shared 权威（5 GiB）', () => {
   assert.equal(SHARED_MAX, 5 * 1024 * 1024 * 1024);
 });
 
-test('注入的 BL_PATTERNS 与权威 8 条同序同源（source + flags）', () => {
+test('注入的 BL_PATTERNS 与权威 20 条同序同源（source + flags）', () => {
   const parsed = JSON.parse(injectedJsonText(pageHtml));
   const expected = BLACKLIST_PATTERNS.map((re) => ({ source: re.source, flags: re.flags }));
-  assert.equal(parsed.BL_PATTERNS.length, 8);
+  assert.equal(parsed.BL_PATTERNS.length, BLACKLIST_PATTERNS.length);
+  assert.equal(parsed.BL_PATTERNS.length, 20);
   assert.deepEqual(parsed.BL_PATTERNS, expected);
 });
 
@@ -192,7 +193,8 @@ test('注入脚本重建的正则与 checkTumorBlacklist 判定矩阵一致', ()
 test('served 页面仍保留三处离线字面量副本（服务端注入不删副本）', () => {
   assert.deepEqual(parseLiteralExt(pageHtml), SHARED_EXT);
   assert.equal(parseLiteralMax(pageHtml), SHARED_MAX);
-  assert.equal(parseLiteralBlacklist(pageHtml).length, 8);
+  assert.equal(parseLiteralBlacklist(pageHtml).length, BLACKLIST_PATTERNS.length);
+  assert.equal(parseLiteralBlacklist(pageHtml).length, 20);
 });
 
 test('剥掉注入后，页面仍能读到与权威一致的字面量（离线双击场景）', () => {

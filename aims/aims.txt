@@ -42,7 +42,7 @@
 * 全流程专精非肿瘤领域（心脑血管、神经退行、代谢、纤维化、发育等），严禁主动加入临床生存预后、肿瘤免疫浸润、药物敏感性预测等未要求内容。
 
 
-* 建项时前后端双保险拦截：权威规格正本为 **§三.1 模块 A 的 8 条黑名单**（2026-10-21 裁定收敛），单一事实源为 `BioanalysDesktop/server/tumor_blacklist.js`；提交台 `portal/index.html` 由 `portal/serve.mjs` 动态注入或由 `BioanalysDesktop/tests/tumor_blacklist_parity.test.js` 强一致把守。
+* 建项时前后端双保险拦截：权威规格正本为 **§三.1 模块 A 的 20 条黑名单**（2026-10-21 二次裁定：以 aims 为准，吸纳实现侧 27 条中可用的 12 条，剔除 8 条冗余项），单一事实源为 `BioanalysDesktop/server/tumor_blacklist.js`；提交台 `portal/index.html` 由 `portal/serve.mjs` 动态注入或由 `BioanalysDesktop/tests/tumor_blacklist_parity.test.js` 强一致把守。
 
 
 
@@ -138,16 +138,19 @@
 * 填写项目名称、项目描述、物种（`Homo sapiens` / `Mus musculus` / `Rattus norvegicus`）、非肿瘤研究领域下拉框、具体疾病名称（前端即时红字拦截 + 后端建项前权威复核双保险）。
 
 
-* **黑名单确认清单（8 条规格正本，`BioanalysDesktop/server/tumor_blacklist.js` 逐条实现）**：
+* **黑名单确认清单（20 条规格正本，`BioanalysDesktop/server/tumor_blacklist.js` 逐条实现）**：
 
 
-* **英文 5 条**：`cancer`、`tumor`、`carcinoma`、`glioma`、`immune infiltration`（正则 `immune\s*infiltration`，允许词间空白）；
+* **英文 16 条**：`cancer`、`tumor`、`tumour`（英式拼写）、`carcinoma`、`glioma`、`sarcoma`、`lymphoma`、`leukemia`、`leukaemia`、`melanoma`、`immune infiltration`（正则 `immune\s*infiltration`）、`immune checkpoint`（正则 `immune\s*checkpoint`）、`PD-L1`（正则 `(?<![A-Za-z0-9])PD-?L1(?![0-9])`）、`PD-1`（正则 `(?<![A-Za-z0-9])PD-?1(?![0-9])`）、`CTLA-4`（正则 `CTLA-?4`）、`oncogene`；
 
 
-* **中文 3 条**：`肿瘤`、`癌`、`免疫浸润`；
+* **中文 4 条**：`肿瘤`、`癌`、`免疫浸润`、`免疫检查点`；
 
 
-* **匹配规则**：全部 `i` 大小写不敏感，中英文按子串匹配（如“癌”命中“癌变/致癌物”、“非肿瘤”命中“肿瘤”，属预期拦截）。
+* **匹配规则**：英文全部 `i` 大小写不敏感，中英文按子串匹配（如“癌”命中“癌变/致癌物”、“非肿瘤”命中“肿瘤”，属预期拦截）。**唯一例外**是 `PD-L1` / `PD-1` 两条必须带左右边界，否则 `GPD1`、`SLC40A1` 这类基因符号会被误伤（2026-10-21 实测）。
+
+
+* **沿革（2026-10-21 二次裁定）**：本清单最初为 8 条（`cancer`/`tumor`/`carcinoma`/`glioma`/`immune infiltration`/`肿瘤`/`癌`/`免疫浸润`）；实现侧历史自行扩充到 27 条，同日先被收敛回 8 条，随后用户裁定「以 aims 为准，吸纳 27 条中可用的并对齐」。**可用判据三条**：① 明确属肿瘤或免疫浸润语义；② 不被既有父词覆盖（冗余项不入清单）；③ 误伤风险可接受。据此吸纳 12 条（见上），剔除 8 条冗余项：`adenocarcinoma`、`squamous cell carcinoma`（均含 `carcinoma`）、`tumor microenvironment`、`tumour microenvironment`、`tumor suppressor`（均含 `tumor`/`tumour`）、`癌症`（含 `癌`）、`肿瘤微环境`（含 `肿瘤`）、`癌细胞`（含 `癌`）。最终 8 + 12 = 20 条。
 
 
 * **治理纪律**：严禁开发人员未经规格裁定私自扩充拦截词；`portal/serve.mjs` 在响应 `portal/index.html` 时支持编译期/运行期注入共享契约，且两侧一致性由 `tumor_blacklist_parity.test.js` 强制把守。
@@ -494,7 +497,7 @@
 
 | 条款章节 | 核心规范内容 | 权威代码实现落点 | 守护测试 / 验证脚本 | 当前状态 |
 | --- | --- | --- | --- | --- |
-| **§一.2 铁律 1** | 肿瘤/免疫浸润 8 条黑名单拦截 | `BioanalysDesktop/server/tumor_blacklist.js` + `portal/index.html` | `tests/tumor_blacklist_parity.test.js` | 已对齐（8 条正本）
+| **§一.2 铁律 1** | 肿瘤/免疫浸润 20 条黑名单拦截 | `BioanalysDesktop/server/tumor_blacklist.js` + `portal/index.html` | `tests/tumor_blacklist_parity.test.js` | 已对齐（20 条正本）
 
  |
 | **§一.2 铁律 2** | 三线物理与逻辑硬隔离 | `ops/check_storage_and_isolation.sh` + `server/selfcheck.js` 第 4 维 | `tests/selfcheck.test.js` + `tests/audit.test.js` | 已实现

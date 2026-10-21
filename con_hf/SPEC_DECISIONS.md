@@ -215,3 +215,38 @@
   `BioanalysDesktop/tests/deploy_and_parity_guard.test.js`。
 - **验证测试名**：`deploy_and_parity_guard.test.js` 的「校验阶段必须是单次 ssh 批量」「链路失败与文件缺失必须分开判定」
   「可执行位一次批量置位」。
+
+## D-19 黑名单二次裁定：由实现侧 27 条吸纳 12 条可用项，定为 20 条
+
+- **编号**：D-19
+- **日期**：2026-10-21
+- **问题背景与冲突点**：非肿瘤黑名单出现三段沿革：规格正本 8 条 -> 实现侧自行扩充到 27 条（注释仍写"与工作台同源"）
+  -> 同日先收敛回 8 条。收敛后用户裁定「以 aims 为准，吸纳 27 条中可用的并对齐」。冲突点在于：27 条里哪些是
+  "规格该有的"、哪些只是同义冗余；收敛过头会漏拦（英式拼写 `tumour`、`sarcoma` 等原本拦得住），
+  收得太多则条款与实现再次脱钩。
+- **备选方案对比**：① 保持 8 条 —— 英式拼写与肉瘤/淋巴瘤/白血病/黑色素瘤等实体瘤会漏拦，违反铁律 1 的初衷；
+  ② 全盘恢复 27 条 —— 其中 8 条被父词完全覆盖（`adenocarcinoma` ⊂ `carcinoma`、`癌症` ⊂ `癌`），
+  纯属清单噪音，且回到"实现侧单方面定规格"的老路；③ 按三条判据吸纳可用项（选中）。
+- **最终拍板结论**：采用 ③。**可用判据**：① 明确属肿瘤或免疫浸润语义；② 不被既有父词覆盖；③ 误伤风险可接受。
+  据此吸纳 12 条：`tumour`、`sarcoma`、`lymphoma`、`leukemia`、`leukaemia`、`melanoma`、
+  `immune checkpoint`、`PD-L1`、`PD-1`、`CTLA-4`、`oncogene`、`免疫检查点`；
+  剔除 8 条冗余项：`adenocarcinoma`、`squamous cell carcinoma`、`tumor microenvironment`、
+  `tumour microenvironment`、`tumor suppressor`、`癌症`、`肿瘤微环境`、`癌细胞`。
+  最终 **8 + 12 = 20 条**。同时修正 PD 两条的边界：原 `/PD-?L?1/i` 会把 `GPD1`、`SLC40A1`
+  当成 PD1 命中（真误伤），改为 `/(?<![A-Za-z0-9])PD-?L1(?![0-9])/i` 与
+  `/(?<![A-Za-z0-9])PD-?1(?![0-9])/i`，仍允许省略连字符（`PDL1`/`PD1`）。
+- **受影响条款**：aims §一.2 铁律 1（8 条 -> 20 条）、§三.1 模块 A「黑名单确认清单」（整块重写：英文 16 + 中文 4 +
+  匹配规则 + 沿革 + 治理纪律）、§九 落点表（20 条正本）。
+- **同步修改文件清单**：`aims/aims.txt`、`BioanalysDesktop/server/tumor_blacklist.js`、
+  `portal/index.html`（纯前端副本，同序 20 条）、`BioanalysDesktop/tests/tumor_blacklist.test.js`（重写 16 条）、
+  `BioanalysDesktop/tests/tumor_blacklist_parity.test.js`（EXPECTED 20 条 + 判定矩阵 + PD 边界）、
+  `BioanalysDesktop/tests/portal_inject.test.js`（条数改为与权威实现动态比对）、
+  `BioanalysDesktop/tests/aims_drift_guard.test.js`（§一.2 断言 8 -> 20）、
+  `docs/delivery_supervisor_prompt.md`（监督方口径）、`项目交付报告.html`（交付材料口径 30 -> 20）。
+- **验证测试名**：`tumor_blacklist.test.js` 的「黑名单恰好 20 条，且与 aims 清单逐条同序一致」「PD 边界：
+  GPD1 / SLC40A1 等基因符号不许被误伤」「被剔除的 8 条冗余项仍因父词命中」；
+  `tumor_blacklist_parity.test.js` 的「权威实现恰好 20 条」「portal 副本逐条与权威实现同源同序」
+  「两侧判定矩阵完全一致」；`portal_inject.test.js` 的「注入的 BL_PATTERNS 与权威 20 条同序同源」。
+- **遗留**：`con_hf/handoff.md`、`con_hf/操作台账.md`、`con_hf/dispatch/B3_blacklist_report.md`、
+  `aims/old/*` 里出现的"8 条"是**历史记录**（描述当时的收敛动作），按台账纪律不回改；
+  本条与 `con_hf/dispatch/B3_absorb_report.md` 记录二次裁定结果。

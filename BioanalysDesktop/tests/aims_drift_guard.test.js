@@ -108,9 +108,9 @@ test('§九 状态列只用受控词表（禁止散文式状态）', () => {
   assert.deepEqual(bad, [], '§九 状态列出现词表外的写法：\n' + bad.join('\n'));
 });
 
-test('§一.2 三大铁律：8 条黑名单、阶段感知 --stage、seed 都在', () => {
+test('§一.2 三大铁律：20 条黑名单、阶段感知 --stage、seed 都在', () => {
   const s = section('## 一、', '## 二、');
-  assert.ok(s.includes('8 条黑名单'), '§一.2 没写 8 条黑名单正本');
+  assert.ok(s.includes('20 条黑名单'), '§一.2 没写 20 条黑名单正本（2026-10-21 二次裁定口径）');
   assert.ok(s.includes('tumor_blacklist.js'), '§一.2 没点名黑名单单一事实源');
   assert.ok(s.includes('--stage post-dimred') && s.includes('--stage pre-dimred'), '§一.2 缺阶段感知 --stage 口径');
   assert.ok(s.includes('20261013'), '§一.2 缺全局随机种子');
