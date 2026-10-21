@@ -34,6 +34,26 @@ START_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 LOG_FILE="/mnt/ssd/bio_data/system_logs/${TASK_ID}.log"
 LEDGER_JSON="/mnt/ssd/bio_data/system_logs/${TASK_ID}_ledger.json"
 
+# --- 运行中标记（可观测性）：任务被容器 abort / 被 kill 时不会留下台账，只留这个标记 ---
+# 为什么放在子目录：台账校验脚本按 system_logs/*.json 通配，标记不能混进去当台账（会被判 VIOLATION）。
+# 清理纪律：正常结束在写完台账之后 rm 掉；只有异常终止才会留下，7 天后由本脚本启动时清理。
+RUNNING_DIR="/mnt/ssd/bio_data/system_logs/_running"
+RUNNING_JSON="$RUNNING_DIR/${TASK_ID}.json"
+mkdir -p "$RUNNING_DIR"
+find "$RUNNING_DIR" -maxdepth 1 -name '*.json' -mtime +7 -delete 2>/dev/null || true
+cat <<RUNEOF > "$RUNNING_JSON"
+{
+  "task_id": "$TASK_ID",
+  "line_id": "$LINE_ID",
+  "step_name": "$STEP_NAME",
+  "status": "running",
+  "start_time": "$START_TIME",
+  "wrapper_pid": $$,
+  "note": "运行中标记：正常结束会删除；若残留说明任务被中断（容器 abort / kill），见 con_hf/pitfalls_ledger.md P-23"
+}
+RUNEOF
+echo "[wrapper] 运行中标记已落盘: $RUNNING_JSON"
+
 # 选解释器：如果传了 R/Python/bash 就用对应解释器，否则靠脚本自身 shebang
 case "$LANG_SPEC" in
     R|Rscript) EXEC_CMD="Rscript" ;;
@@ -96,5 +116,8 @@ cat <<EOF > "$LEDGER_JSON"
   "error_log": "$([ $EXIT_CODE -eq 0 ] && echo "null" || echo "$LOG_FILE")"
 }
 EOF
+
+# 台账写成功才删运行中标记：标记残留 == 任务被中断的取证
+rm -f "$RUNNING_JSON"
 
 exit $EXIT_CODE

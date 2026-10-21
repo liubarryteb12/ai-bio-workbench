@@ -250,3 +250,27 @@
 - **遗留**：`con_hf/handoff.md`、`con_hf/操作台账.md`、`con_hf/dispatch/B3_blacklist_report.md`、
   `aims/old/*` 里出现的"8 条"是**历史记录**（描述当时的收敛动作），按台账纪律不回改；
   本条与 `con_hf/dispatch/B3_absorb_report.md` 记录二次裁定结果。
+## D-20 任务运行中标记：把「被中断」变成可取证状态
+
+- **日期**：2026-10-21
+- **问题背景与冲突点**：`ops/run_throttled_task.sh` 只在任务结束时写台账。任务被容器 abort（P-23）、被 kill、
+  或被 OOM 时，`system_logs/` 里**什么都不留** —— 事后无法区分「根本没跑」「跑了被打断」「跑了但脚本崩了」，
+  2026-10-21 的 SCENIC 就是这样：跑了 31 分钟被 proot abort，没有台账也没有日志，只能靠外部日志反推。
+- **备选方案对比**：① 不处理（现状）：台账语义干净，但中断无痕；② 任务开始就写一条 `status=running` 的正规台账、
+  结束时覆盖成 completed/failed：可取证，但 `ops/03_check_logs_remote.sh` 会把 running 条目判成 VIOLATION
+  （它按 `system_logs/*.json` 通配逐个校验），且「一条台账被改写两次」破坏审计可追溯性；
+  ③ **运行中标记写到 `system_logs/_running/<task_id>.json` 子目录**，正常结束在写完台账后删除，异常终止才留下。
+- **最终拍板结论**：采用 ③。理由：子目录天然被 `*.json` 通配排除（不污染台账校验与日志列表）；
+  「标记残留」本身就是中断取证，不需要改台账语义；正常路径删除，零额外审计负担。
+  配套纪律：① 删除必须排在写完台账之后，且**不许用 `trap`**（SIGTERM 也会带走证据）；
+  ② 过期标记（>7 天）在脚本启动时用 `find ... -mtime +7 -delete` 清理，避免永久堆积；
+  ③ 标记里记 `wrapper_pid`，便于和 Termux 侧 proot 崩溃时间点对齐。
+- **受影响条款**：§三.2 任务下发与台账通道（台账通道新增「运行中标记」档，不改台账字段与校验口径）、
+  §一.2 铁律 3 双保险（中断可取证）。
+- **同步修改文件清单**：`ops/run_throttled_task.sh`（RUNNING_DIR / RUNNING_JSON / 过期清理 / 结束时 rm）、
+  `BioanalysDesktop/tests/wrapper_running_marker.test.js`（新增）。
+- **验证测试名**：`wrapper_running_marker.test.js` 的「标记落在 system_logs/_running 子目录（不污染 *.json 台账通配）」
+  「标记字段齐全且 status=running」「正常结束在写完台账之后才删标记（标记残留即中断取证）」
+  「过期标记（>7 天）在启动时清理」「真跑标记段：JSON 可解析、字段正确、删掉后不再存在」
+  「模拟中断（不执行删除）：标记留下且可解析出中断信息」「包装器语法正确且仍是 LF-only」。
+- **遗留**：标记不参与自检五维，也不进交付物；若要「中断次数」进运维报表，需另加汇总脚本（未做）。
