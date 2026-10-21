@@ -85,7 +85,7 @@
 * **动态多分组管理（支持 $N \ge 2$ 组及多阶段疾病演进）**：支持三种分组模式（`二分类对比` / `多组无序对比` / `有序病情阶段演进`），动态点击 `[+ 新增分组]` 自由扩展分组数量，指定基准对照组（Reference）与阶段顺序（`stage_order`）。
 * **组内样本编号（GSM / Sample ID）录入与防重校验**：每个分组卡片内置样本编号多行文本域（支持逗号、空格、换行批量粘贴），前端实时统计各组样本数并执行跨组重复分配拦截。支持一键导入两列 `Sample_ID, Group_Name` 映射表。
 * **显式差异对比对（Contrasts）配置**：当分组数 $\ge 3$ 时，支持显式勾选差异分析对比组合并指定主对比对（Primary Contrast）。
-* **分片上传器**：4MB 分片断点续传（已实现：uploadId 由「项目 + 归属线 + 文件名 + 大小 + 修改时间」经 shared/upload_session.mjs 确定性派生，刷新/换浏览器/换设备都能凭 GET /api/upload/status 从 nextIndex 续传；服务端 24 小时未动的会话由 GC 自动清理，BIO_UPLOAD_TTL_HOURS 可覆盖；TTL 之外还有总量配额闸门，`.uploads` 存活会话总占用超过 `BIO_UPLOAD_QUOTA_BYTES`（默认 20GiB，`0` 表示一个都不收）时，从 mtime 最旧的会话开始淘汰，10 分钟内被写过的活跃会话一律不淘汰，清理后仍超配额则 `POST /api/upload/init` 回 507 并给出当前占用与配额字节数）并自动校验 Bulk 与单细胞/空间数据格式。
+* **分片上传器**：4MB 分片断点续传（已实现：uploadId 由「项目 + 归属线 + 文件名 + 大小 + 修改时间」经 shared/upload_session.mjs 确定性派生，刷新/换浏览器/换设备都能凭 GET /api/upload/status 从 nextIndex 续传；服务端 24 小时未动的会话由 GC 自动清理，BIO_UPLOAD_TTL_HOURS 可覆盖；TTL 之外还有总量配额闸门，`.uploads` 存活会话总占用超过 `BIO_UPLOAD_QUOTA_BYTES`（默认 20GiB，`0` 表示一个都不收）时，从 mtime 最旧的会话开始淘汰，10 分钟内被写过的活跃会话一律不淘汰，清理后仍超配额则 `POST /api/upload/init` 回 507 并给出当前占用与配额字节数）四个上传端点（`init` / `chunk` / `status` / `complete`）的 4xx/5xx 错误体统一为 `{ok:false, error}`，成功响应形状不变；并自动校验 Bulk 与单细胞/空间数据格式。
 * **数据格式白名单与体积上限（单一事实源）**：14 类扩展名（`.h5ad` / `.h5` / `.loom` / `.mtx` / `.tar` / `.gz` / `.zip` / `.txt` / `.tsv` / `.csv` / `.soft` / `.xlsx` / `.rds` / `.rdata`）与单文件 `5GiB` 上限统一由 `shared/data_formats.mjs` 的 `DATA_EXT` / `MAX_DATA_BYTES` 维护，工作台 8787 与客户提交台 8080 共用同一份；提交台仍可用 `PORTAL_MAX_DATA_BYTES` 覆盖上限。改白名单只改该文件，再同步 `portal/index.html` 的字面量、`accept` 属性与提示文案（两侧一致性由 `BioanalysDesktop/tests/data_format_parity.test.js` 把守）。
 
 
@@ -153,7 +153,7 @@
 
 供已建项目在日常运行中快速核对 GSE/GPL 分组信息、微调单步参数、触发断点续跑及查看当前流水线实时进度。
 
-* **任务提交三道闸**：① 路径归属预校验——输入/输出必须落在 §二 的合法根内且归属当前项目，越界直接 `400`；② 命令审计——脚本中出现其他分析线字符串一律拒绝（`server/audit.js`）；③ 桥接四项断言——脚本涉及 R/Python 切换时，提交层调用 `ops/verify_bridge_checkpoint.py`，断言不过即 `400` 并回传断言明细。
+* **任务提交三道闸**：① 路径归属预校验——输入/输出必须落在 §二 的合法根内且归属当前项目，越界直接 `400`；② 命令审计——脚本中出现其他分析线字符串一律拒绝（`server/audit.js`）；③ 桥接四项断言——脚本涉及 R/Python 切换时，提交层调用 `ops/verify_bridge_checkpoint.py`，断言不过即 `400` 并回传断言明细。母版内部另有第二道守卫：`src/bridge_guard.sh` 由 bilingual 母版在首次 `Rscript` 前自调（输入非 `.h5ad`/`.rds`、K40 离线或引擎不可达时打印 `[BRIDGE SKIP]` 放行；断言失败透传非 0 退出码），提交层与母版内双保险，「bilingual 母版必须调守卫且早于第一次 `Rscript`」由 `tests/bridge_guard_invariant.test.js` 钉为不变量。
 * **断点续跑契约**：以 `exit 0` + 产物存在性为检查点；台账 JSON 落 `system_logs/`，`status` 取 `running` / `completed` / `failed`。
 
 ### 3. 服务端运维与审计控制台（Server Admin & Self-Check Console）
@@ -179,7 +179,7 @@
 * **左侧流水线步骤树 + 右侧三栏预览**：展示 `300 DPI` PNG 图廊（Web 端 CSS 缩放显示）、Top 500 行交互式 `.tsv` 表格，以及 AI 结构化三段式解读（**结论 → 依据 → 限制**）。
 * **防混淆视觉强标签**：在结果卡片顶部醒目区分 **【DEG：差异表达基因（反映转录本丰度变化）】** 与 **【DR Genes：虚拟敲除差异调控基因（反映调控网络拓扑微扰，非直接表达量升降）】**。
 * **交付前置门禁（`POST /api/report/build` → `server/report.js` 的 `runReportPreflight`）**：四道闸——① 存储水位 ≥ `20%`；② 无 `running` 状态台账；③ 存在 `failed` 台账时必须显式 `force`（放行也如实列出，不隐藏）；④ 远端输出必须带结束标记（防 argv 静默截断）。任一不过即回 `409` 并带四道闸明细，不产出交付包。
-* **交付完整性旁挂**：交付包回搬本地后对包内文件写 `<文件>.sha256`（`sha256sum -c` 可直接复核）；包内 `CHECKSUMS` 清单仍为已知缺口。
+* **交付完整性双凭证**：包内由 `ops/build_client_report.py` 的 `write_checksums` 生成 `CHECKSUMS.sha256`（每行 `<64 位 sha256>` + 两空格 + 相对路径，按路径排序，清单自身不入列，`sha256sum -c` 可直接复核；写在 `delivery_manifest.json` 之后、打 tar 之前，故清单本身也在包内）；回搬本地后 `server/report.js` 再对落盘文件写 `<文件>.sha256` 旁挂。两者覆盖对象不同——包内清单是随包凭证，旁挂是本地即时校验。已知边界：清单为明文，只证完整性不证来源，不抗「连包一起换」。
 * **打包本体**：`ops/build_client_report.py` 产出 `<项目>_Client_Delivery.tar.gz` + `Analysis_Report.md` / `.html` + `delivery_manifest.json`；`ops/09_package_delivery.ps1` 已作废（2026-10-21 裁定）。
 
 ---
@@ -465,7 +465,7 @@ set.seed(2026)
 | §五 出图规范 v2.1 | `ops/fig_theme.py` / `ops/fig_theme.R` / `ops/audit_figure_layout.py` / `docs/figure_spec.md` | 已实现（137 张图三线全 PASS） |
 | §六 防崩执行套件 | `ops/bio_limits.sh` / `ops/check_storage_and_isolation.sh` / `ops/run_throttled_task.sh` | 已实现（默认不绑核） |
 
-上述条款的可执行断言集中在 `BioanalysDesktop/tests/`（全量 `npm test` 486 条）。**改条款必须同步改落点与断言**，断言红了优先怀疑落点漂移，不要放宽断言。
+上述条款的可执行断言集中在 `BioanalysDesktop/tests/`（全量 `npm test` 488 条）。**改条款必须同步改落点与断言**，断言红了优先怀疑落点漂移，不要放宽断言。
 
 ---
 

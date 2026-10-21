@@ -153,3 +153,45 @@ test('§六 防崩套件标注了与 8787 自检的同口径要求', () => {
   assert.ok(section.includes('同口径要求'), '§六 缺「同口径要求」提示（避免界面绿、脚本红）');
   assert.ok(section.includes('selfcheck.js'), '§六 同口径要求没点名 server/selfcheck.js');
 });
+
+test('四项边界的机制写进了框架条款正文（不只在 §八 对照表里）', () => {
+  // ① 包内 CHECKSUMS：§三.4 必须写清生成函数与文件名，且不能留着过期论断。
+  const s34 = AIMS.slice(
+    AIMS.indexOf('### 4. 分析结果预览与交付界面'),
+    AIMS.indexOf('## 四、'),
+  );
+  assert.ok(s34.includes('write_checksums'), '§三.4 没写包内清单的生成函数 write_checksums');
+  assert.ok(s34.includes('CHECKSUMS.sha256'), '§三.4 没写包内清单文件名 CHECKSUMS.sha256');
+  assert.ok(!s34.includes('仍为已知缺口'), '§三.4 还留着「包内 CHECKSUMS 仍为已知缺口」的过期论断');
+
+  // ② 桥接守卫：§三.2 除了提交层三道闸，必须写明母版内部的第二道守卫。
+  const s32 = AIMS.slice(
+    AIMS.indexOf('### 2. 客户分析输入端'),
+    AIMS.indexOf('### 3. 服务端运维与审计控制台'),
+  );
+  for (const needle of ['bridge_guard.sh', '[BRIDGE SKIP]', 'bridge_guard_invariant.test.js']) {
+    assert.ok(s32.includes(needle), `§三.2 没写母版内桥接守卫的「${needle}」`);
+  }
+
+  // ③④ 上传总量配额与统一错误体：§三.1 模块 B。
+  const s31 = AIMS.slice(
+    AIMS.indexOf('### 1. 独立页面：新建项目向导页'),
+    AIMS.indexOf('### 2. 客户分析输入端'),
+  );
+  for (const needle of ['BIO_UPLOAD_QUOTA_BYTES', '507', '{ok:false, error}']) {
+    assert.ok(s31.includes(needle), `§三.1 模块 B 没写上传治理的「${needle}」`);
+  }
+});
+
+test('aims 全文不得残留已被实现取代的过期论断', () => {
+  // 这些短语都曾真实存在于 aims 里，实现落地后必须清掉；留着就是文档骗人。
+  const stale = [
+    '仍为已知缺口',
+    'CHECKSUMS 清单仍为已知缺口',
+    '断点续传未实现',
+    '五维自检缺温度',
+  ];
+  for (const phrase of stale) {
+    assert.ok(!AIMS.includes(phrase), `aims 仍残留过期论断：「${phrase}」`);
+  }
+});
