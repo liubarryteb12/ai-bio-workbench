@@ -1,4 +1,4 @@
-<#
+﻿<#
   ops/06_deploy_scripts.ps1  —  src/ 分析脚本部署通道（P3-S0）
 
   背景：任务引擎按命令名执行 step（buildTaskScript 拼 step + 参数并注入本线 bin 到 PATH），
@@ -140,28 +140,75 @@ foreach ($item in $pending) {
     Write-Host "[deploy] FAIL scp 失败: $($item.Local)" -ForegroundColor Red
     exit 1
   }
-  if (-not $item.Executable) { continue }
-  # 步骤名即文件名，必须可执行：部署通道负责置位，本地也建议置位保持一致
-  $chmodOut = & ssh -o ConnectTimeout=10 -o BatchMode=yes $targetHost "chmod 755 '$($item.Remote)' && echo CHMOD_OK" 2>&1
+}
+
+# --- 3.5 可执行位批量置位（2026-10-21 起一次 ssh 搞定，不再逐文件 chmod） ---
+# 坑 P-20：原先 58 个文件各来一次 ssh（chmod 58 次 + 校验 58 次），proot 容器在这个窗口内
+# 重启一次，就把已经成功落盘的文件报成 MISSING（假红灯），退出码 1 但实际部署成功。
+$execRemotes = @($pending | Where-Object { $_.Executable } | ForEach-Object { $_.Remote })
+if ($execRemotes.Count -gt 0) {
+  $chmodCmd = 'chmod 755 ' + (($execRemotes | ForEach-Object { "'" + $_ + "'" }) -join ' ') + ' && echo CHMOD_OK'
+  $chmodOut = & ssh -o ConnectTimeout=10 -o BatchMode=yes $targetHost $chmodCmd 2>&1
   if ($LASTEXITCODE -ne 0 -or -not ($chmodOut | Where-Object { "$_" -match 'CHMOD_OK' })) {
-    Write-Host "[deploy] FAIL chmod 失败: $($item.Remote)" -ForegroundColor Red
+    Write-Host '[deploy] FAIL 批量 chmod 755 失败：' -ForegroundColor Red
+    $chmodOut | ForEach-Object { Write-Host "  $_" }
     exit 1
   }
 }
 
-# --- 4. 字节校验（本地 vs 远端 stat） ---
-Write-Host '[deploy] 校验服务器侧文件字节数...'
+# --- 4. 远端校验（字节数 + 可执行位，一次 ssh 批量取回） ---
+# 契约：链路失败（ssh 连续两次非 0）判「链路失败」，绝不算成「文件缺失」；
+#       只有远端明确回 MISSING 才算文件缺失（假红灯和假绿灯一样有害，见 P-20）。
+$listArgs = ($pending | ForEach-Object { "'" + $_.Remote + "'" }) -join ' '
+$checkCmd = (@(
+  "printf '%s" + [char]92 + "n' " + $listArgs + ' | while IFS= read -r p; do'
+  '  if [ ! -e "$p" ]; then printf "MISSING|%s\n" "$p"; continue; fi'
+  '  s=$(stat -c %s "$p" 2>/dev/null || echo -1)'
+  '  if [ -x "$p" ]; then x=1; else x=0; fi'
+  '  printf "FILE|%s|%s|%s\n" "$p" "$s" "$x"'
+  'done'
+) -join ([string][char]10))
+
+Write-Host '[deploy] 校验服务器侧文件（字节数 + 可执行位，单次 ssh 批量）...'
+$checkOut = $null
+for ($attempt = 1; $attempt -le 2; $attempt++) {
+  $checkOut = & ssh -o ConnectTimeout=10 -o BatchMode=yes $targetHost $checkCmd 2>&1
+  if ($LASTEXITCODE -eq 0) { break }
+  if ($attempt -eq 1) { Write-Host '[deploy] 校验 ssh 失败，重试一次...' -ForegroundColor Yellow; Start-Sleep -Seconds 2 }
+}
+if ($LASTEXITCODE -ne 0) {
+  Write-Host '[deploy] FAIL 校验链路失败（ssh 连续两次非 0，不是文件缺失）：' -ForegroundColor Red
+  $checkOut | ForEach-Object { Write-Host "  $_" }
+  exit 1
+}
+
+$sizeMap = @{}
+$execMap = @{}
+foreach ($line in $checkOut) {
+  $s = "$line"
+  if ($s -match '^FILE\|(.+)\|(-?\d+)\|([01])$') {
+    $sizeMap[$matches[1]] = [int64]$matches[2]
+    $execMap[$matches[1]] = ($matches[3] -eq '1')
+  }
+  elseif ($s -match '^MISSING\|(.+)$') {
+    $sizeMap[$matches[1]] = $null
+  }
+}
+
 $mismatch = 0
 foreach ($item in $pending) {
-  $r = & ssh -o ConnectTimeout=10 -o BatchMode=yes $targetHost "stat -c '%s' '$($item.Remote)' 2>/dev/null || echo MISSING" 2>&1
-  $remoteBytes = ($r | Where-Object { "$_" -match '^\d+$' } | Select-Object -First 1)
-  if (-not $remoteBytes) {
+  if (-not $sizeMap.ContainsKey($item.Remote)) {
+    Write-Host "  [校验] NO_RESULT $($item.Remote)（远端未返回该路径的结果）" -ForegroundColor Red
+    $mismatch++
+    continue
+  }
+  if ($null -eq $sizeMap[$item.Remote]) {
     Write-Host "  [校验] MISSING $($item.Remote)" -ForegroundColor Red
     $mismatch++
     continue
   }
-  if ([int64]$remoteBytes -ne $item.Bytes) {
-    Write-Host "  [校验] SIZE_MISMATCH $($item.Remote) 本地 $($item.Bytes) vs 远端 $remoteBytes" -ForegroundColor Red
+  if ($sizeMap[$item.Remote] -ne $item.Bytes) {
+    Write-Host "  [校验] SIZE_MISMATCH $($item.Remote) 本地 $($item.Bytes) vs 远端 $($sizeMap[$item.Remote])" -ForegroundColor Red
     $mismatch++
   }
 }
@@ -176,8 +223,7 @@ if ($mismatch -gt 0) {
 $execMismatch = 0
 foreach ($item in $pending) {
   if (-not $item.Executable) { continue }
-  $r = & ssh -o ConnectTimeout=10 -o BatchMode=yes $targetHost "test -x '$($item.Remote)' && echo EXEC_OK || echo EXEC_NO" 2>&1
-  if (-not ($r | Where-Object { "$_" -match 'EXEC_OK' })) {
+  if (-not $execMap.ContainsKey($item.Remote) -or -not $execMap[$item.Remote]) {
     Write-Host "  [复核] NOT_EXECUTABLE $($item.Remote)" -ForegroundColor Red
     $execMismatch++
   }

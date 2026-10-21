@@ -148,6 +148,29 @@ ssh k40-ubuntu "chmod 755 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript"
 部署后下一次任务下发即生效（`task.js` 会在生成的脚本里注入 `PYTHONPATH`、`R_PROFILE_USER`
 和 PATH 垫片）。验证方式：任务 stderr 出现 `[layout_autoload] 已挂载出图模板: <template_id>`。
 
+## 部署落点与一致性（`src/` 镜像 vs `bin/` 执行）
+
+远端有**两个落点**，别把它们搞混（裁定见 `con_hf/SPEC_DECISIONS.md` D-17）：
+
+| 落点 | 谁写 | 谁用 | 权限 | 说明 |
+| --- | --- | --- | --- | --- |
+| `/mnt/ssd/bio_data/src/<line>/scripts/<step>` | `ops/sync_and_verify_remote.ps1` | 没人执行 | 644 | 仓库镜像，供审计、哈希对账、`diff` 查漂移 |
+| `/mnt/ssd/bio_data/bin/<line>/<step>` | `ops/06_deploy_scripts.ps1` | 任务引擎（`task.js` 注入 PATH） | 755 | **真正跑的那份** |
+
+结论：`sync` 成功 ≠ 引擎跑的是新版本。改完母版后的正确顺序是
+`06_deploy_scripts.ps1 -Force` 部署 → `sync_and_verify_remote.ps1 -All` 对账。
+
+`sync` 脚本第 6 步会单独核对「仓库 vs `bin/` 落点」，输出：
+
+```
+[ OK ] 部署一致性：仓库与 bin/ 落点 55/55 一致
+[WARN] 部署漂移 3/55：仓库已改但 bin/ 未重新部署，引擎仍跑旧版本；跑 ops/06_deploy_scripts.ps1 -Force 修复
+```
+
+漂移结论同时写进远端 `system_logs/sync_manifest.json` 的 `deploy` 字段与 `con_hf/ops_ledger.md`
+台账的「部署」列；带 `-FailOnDrift` 时漂移即 exit 1（可用于提交前检查）。`README.md` 这类文档
+不进 `bin/`，不计入漂移。
+
 ## 离线参考数据：STRING v12.0（line1 步骤 8 用）
 
 `src/line1_bulk/scripts/ppi_string` 是**离线优先**的：先读本机 STRING 边表，只有离线文件
@@ -160,16 +183,26 @@ ssh k40-ubuntu "chmod 755 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript"
   9606.protein.info.v12.0.txt.gz
 ```
 
-下载（在容器里跑，或在本机下好再 scp 上去）：
+下载：**在本机下好再 scp 进容器，不要直接在容器里 curl**（容器是 proot，长连接会被重启打断，
+留下残片 `.gz`，见坑 P-19；本机实测 ~700KB/s，比容器内快且不被打断）：
 
+```powershell
+# ① 本机下载（可断点续传：-C -）
+New-Item -ItemType Directory -Force -Path C:\Users\Public\stringdb | Out-Null
+Set-Location C:\Users\Public\stringdb
+curl.exe -sS -C - -o 9606.protein.links.v12.0.txt.gz https://stringdb-downloads.org/download/protein.links.v12.0/9606.protein.links.v12.0.txt.gz
+curl.exe -sS -C - -o 9606.protein.info.v12.0.txt.gz  https://stringdb-downloads.org/download/protein.info.v12.0/9606.protein.info.v12.0.txt.gz
+
+# ② 推上容器
+ssh k40-ubuntu "mkdir -p /mnt/ssd/bio_data/public_references/stringdb"
+scp C:\Users\Public\stringdb\9606.protein.*.txt.gz k40-ubuntu:/mnt/ssd/bio_data/public_references/stringdb/
+
+# ③ 校验完整性（links 约 83MB 压缩 / 解压后 13,715,405 行（含表头，实测 2026-10-21）；info 约 2MB / 19,699 行）
+ssh k40-ubuntu "cd /mnt/ssd/bio_data/public_references/stringdb && gzip -t 9606.protein.links.v12.0.txt.gz && gzip -t 9606.protein.info.v12.0.txt.gz && zcat 9606.protein.links.v12.0.txt.gz | wc -l"
 ```
-mkdir -p /mnt/ssd/bio_data/public_references/stringdb
-cd /mnt/ssd/bio_data/public_references/stringdb
-curl -fLO https://stringdb-downloads.org/download/protein.links.v12.0/9606.protein.links.v12.0.txt.gz
-curl -fLO https://stringdb-downloads.org/download/protein.info.v12.0/9606.protein.info.v12.0.txt.gz
-# 校验完整性（links 约 57.6MB / 解压后约 400 万行边）
-gzip -t 9606.protein.links.v12.0.txt.gz && zcat 9606.protein.links.v12.0.txt.gz | wc -l
-```
+
+`gzip -t` 不通过就是残片（下载被打断），删掉重下即可；`ppi_string` 现在会把这种残片
+判成「离线文件读取失败（下载中断）」并给出同一条指引，不会再甩 Python traceback。
 
 三个环境变量可在任务下发时覆盖（`server/task.js` 透传 env）：
 

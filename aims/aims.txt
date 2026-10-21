@@ -232,7 +232,7 @@
 3. **SoC 算力、温度与 7.5G 内存监控灯**：展示 CPU 负载率（负载 $\div$ 核数 $\ge 1.5$ 为 `warn`）、传感器温度（$\ge 85^\circ\text{C}$ `warn` / $\ge 95^\circ\text{C}$ `fail`）、cgroup v2 内存水位（按 `7.5GB` 配额计，$\ge 90\%$ `warn` / $\ge 100\%$ `fail`）。
 
 
-4. **跨线隔离、桥接引擎与远端版本一致性灯**：逐线跑 `check_storage_and_isolation.sh`；检查 `verify_bridge_checkpoint.py` 在位状态；**比对本地与远端 `bridge_guard.sh` 及核心母版的 SHA256 校验和，不一致即判 `warn`/`fail` 防版本漂移**。三件事共用一盏灯：隔离门禁与 SHA256 比对各自出状态，取最坏（`fail` > `warn` > `unknown` > `pass`）合并上报，`detail` 必须点名到具体坏在隔离还是坏在版本漂移（`selfcheck.js` 的 `mergeIsolationChecks`）。第 1~4 维的远端读数一律走严格执行（`proc.js` 的 `runSshStrict`）：ssh 退出码非 0 或输出为空即抛错落 `unknown`，**严禁把空输出当成「读到了空值」判 `pass`**（假绿灯比红灯危险）。
+4. **跨线隔离、桥接引擎与远端版本一致性灯**：逐线跑 `check_storage_and_isolation.sh`；检查 `verify_bridge_checkpoint.py` 在位状态；**比对本地与远端 `bridge_guard.sh` 及核心母版的 SHA256 校验和，不一致即判 `warn`/`fail` 防版本漂移**。三件事共用一盏灯：隔离门禁与 SHA256 比对各自出状态，取最坏（`fail` > `warn` > `unknown` > `pass`）合并上报，`detail` 必须点名到具体坏在隔离还是坏在版本漂移（`selfcheck.js` 的 `mergeIsolationChecks`）。第 1~4 维的远端读数一律走严格执行（`proc.js` 的 `runSshStrict`）：ssh 退出码非 0 或输出为空即抛错落 `unknown`，**严禁把空输出当成「读到了空值」判 `pass`**（假绿灯比红灯危险）。**注意远端有两个落点**：自检第 4 维比的是「仓库 vs 远端 `src/` 镜像」（审计副本），而任务引擎通过 PATH 执行的是 `bin/<线>/<步骤名>`（由 `ops/06_deploy_scripts.ps1` 部署）；两者长期可能不一致，故 `ops/sync_and_verify_remote.ps1` 第 6 步单独核对「仓库 vs `bin/` 落点」，漂移写进 manifest 的 `deploy` 字段与台账「部署」列，`-FailOnDrift` 时漂移即 exit 1（见 SPEC_DECISIONS D-17）。
 
 
 5. **ADB/SSH 守护链路存活灯**：展示本地 `00_link_check.ps1` 心跳状态与远端 `tmux` 守护会话 PID。

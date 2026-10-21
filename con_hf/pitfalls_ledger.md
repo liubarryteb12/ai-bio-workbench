@@ -153,3 +153,51 @@
 - **RCA**：Windows 控制台默认代码页 cp936，Python 按它编码 stdout，而管道另一端（node/测试）按 UTF-8 解码。
 - **永久修复方案**：引擎启动时对 stdout/stderr 调 `reconfigure(encoding="utf-8")`（失败静默忽略），输出编码不再依赖宿主默认值。
 - **防回归单测用例路径**：BioanalysDesktop/tests/bridge_stage.test.js（损坏输入与文件不存在两条用例要求输出含中文结论原文）。
+
+### P-19 容器内 curl 下大文件被 proot 重启打断，留下残片 .gz
+
+- **所属域**：运维 / 离线参考数据
+- **现象与复现**：在 K40 Ubuntu 容器里 `curl` STRING v12.0 links（83MB）到
+  `public_references/stringdb/`，跑到 2.4~3.7MB 时容器重启（`uptime` 只剩 2 分钟），
+  curl 进程消失、文件 mtime 停住，磁盘上留下半截 `.gz`。此后 `ppi_string` 认为
+  "离线文件存在" 走进离线分支，读到流尾直接抛 `EOFError: Compressed file ended before
+  the end-of-stream marker was reached`（Python traceback）。
+- **RCA**：两层原因。① proot 容器不保证长时间前台进程存活（本轮 30 分钟内重启两次），
+  大文件下载必须当成"可能被打断"的任务；② 脚本只用 `os.path.isfile` 判断离线文件是否可用，
+  存在性不等于完整性。
+- **永久修复**：① 下载放到**本机**（Windows `curl.exe`，实测 ~700KB/s）再 `scp` 进容器，
+  容器只负责接收，不再承担长连接；② `ppi_string` 增加 `READ_ERRORS` 白名单
+  （`OSError`/`EOFError`/`zlib.error`/`UnicodeDecodeError`），把读失败折成
+  `离线 protein.links 读取失败（...），文件可能是下载中断的残片：<path>。先跑 gzip -t <path> 验证，
+  不通过就删掉重下（curl -C - 可续传）` 并 exit 1，不再甩 traceback。
+- **防回归单测**：`BioanalysDesktop/tests/ppi_string_offline.test.js` 两条
+  （「静态：离线读失败必须折成修复指引，不许裸 traceback」「下载中断的残片 .gz：exit 1 且给 gzip -t 指引，不冒 traceback」，
+  后者把 4000 行边表 gzip 后截到 55% 真跑）。
+
+### P-20 逐文件 ssh 校验在容器重启窗口内变成假红灯
+
+- **所属域**：运维 / 部署通道
+- **现象与复现**：`pwsh -File ops/06_deploy_scripts.ps1 -Force` 部署 58 个文件，前面 scp 全成功，
+  但校验段刷出 21 行 `[校验] MISSING /mnt/ssd/bio_data/bin/...`，脚本 exit 1。随后手工 `ls`
+  发现这些文件全在，且哈希与仓库一致（55/55）。同时 `ssh k40-ubuntu uptime` 显示容器刚重启 2 分钟。
+- **RCA**：原实现「一个文件一次 ssh」共 58 次 stat + 58 次 chmod，整个窗口跨了十几秒；
+  proot 容器在这段时间里重启，后半段 ssh 直接失败，`2>&1` 的输出里没有 `^\d+$` 行，
+  代码就落进 `if (-not $remoteBytes)` 分支判 MISSING —— 把「链路故障」误报成「文件缺失」。
+- **永久修复**：① 校验与 chmod 都合并成**单次 ssh**（printf 喂 while 循环，回 `FILE|path|size|exec` /
+  `MISSING|path`）；② ssh 非 0 先重试一次，仍非 0 才报「校验链路失败（不是文件缺失）」；
+  ③ 远端没回某路径结果时单列一档 `NO_RESULT`，不并入 MISSING（见 D-18）。
+- **防回归单测**：`BioanalysDesktop/tests/deploy_and_parity_guard.test.js` 三条
+  （「校验阶段必须是单次 ssh 批量」「链路失败与文件缺失必须分开判定」「可执行位一次批量置位」）。
+
+### P-21 xargs 的 123 退出码让整段解析被跳过
+
+- **所属域**：运维 / 同步脚本
+- **现象与复现**：`ops/sync_and_verify_remote.ps1` 新增的第 6 步（部署一致性）首跑报
+  `[WARN] 部署漂移 58/58（bin 落点缺失或不可读）`，但 58 个母版明明都在 `bin/` 下。
+- **RCA**：命令是 `printf ... | xargs sha256sum 2>/dev/null`。`bin/` 里有 3 个 README.md 这类
+  文档没有部署过去，sha256sum 对它们报错，xargs 于是整体退出 123；PS 侧写的是
+  `if ($binRes.Code -eq 0) { 解析 }`，退出码非 0 就把整段解析跳过，$binMap 空 → 全部判缺失。
+- **永久修复**：命令尾部加 `|| true`（缺文件是常态，不该让退出码决定要不要解析），
+  并且只把「脚本文件」纳入比对（`$rel -notlike '*.md'`），文档缺失不算部署漂移（见 D-17）。
+- **防回归单测**：`BioanalysDesktop/tests/deploy_and_parity_guard.test.js` 两条
+  （「xargs 必须 || true」「README.md 等文档不算部署漂移」）。

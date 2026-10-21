@@ -3418,3 +3418,55 @@ ssh 连接失败 → SKIP exit 0（K40 离线母版仍可跑）；
 4. B 批不可逆操作仍待用户授权：B1 删 `cn_debug/scenic_db/`（689MB）+ 24 个 `subagent_*.log`（4.9MB）
    + `ops/__pycache__`；B2 归档 2.2 节文件到 `_archive/`；B3 黑名单 provenance 29 条 vs aims 8 条口径对齐。
 5. `memory_peak.tsv` 写在进程 cwd，需确认任务引擎 cwd 是否等于输出目录。
+
+### 第八轮（2026-10-21，STRING 离线跑通 + 部署双落点澄清 + 部署一致性核对）
+
+#### 做了什么
+
+1. **STRING v12.0 离线参考数据就位并验证**：本机 `curl.exe -C -` 下载（容器内 curl 被 proot 重启
+   打断，留过 2.4MB / 3.7MB 残片，见 P-19），`scp` 进容器 `public_references/stringdb/`（3.27s）。
+   实测 `9606.protein.links.v12.0.txt.gz` = 83,164,437 字节、`9606.protein.info.v12.0.txt.gz` =
+   1,970,090 字节；容器内 `gzip -t` 两份 OK，`zcat ... | wc -l` = **13,715,405 行**（含表头）。
+   `ops/README.md` 按实测改正行数与下载方式（本机下载三步：curl → scp → 容器内 gzip -t 校验）。
+2. **`ppi_string` 离线真机跑通（M1 DoD 证据之一）**：exit 0，
+   `offline_scan rows=13715404 low_score=357646 dup=27791 self=0 kept=27791`，
+   `STRING edges=27791 (source=offline, min_score=400)`，产出 `ppi_edges.tsv`（766,687 字节）、
+   `ppi_hubs.tsv`（9,664 基因）、`l1_07_ppi_network.png`、`l1_08_ppi_hubs.png`。
+   日志里「protein.info 缺 ENSP 符号，保留 ENSP 原名」的警告属预期（info 只有 19,699 行）。
+3. **澄清远端有两个落点（D-17）**：`sync` 写 `src/<线>/scripts/`（镜像，644，只审计用），
+   引擎跑 `bin/<线>/<步骤名>`（755，`06_deploy_scripts.ps1` 部署）。实测 `bin/` 里 3 个母版
+   落后仓库（`ml_diagnostics`、`ml_hub_analysis`、`virtual_knockout`），说明**同步成功不等于
+   引擎跑新版本**。跑 `06_deploy_scripts.ps1 -Force` 后 `bin/` 与仓库 **55/55 一致**。
+   这条也顺带解掉了上一轮担心的「母版落 644 直跑 Permission denied」：`bin/` 是 755，
+   `src/` 那份没人执行。
+4. **`06_deploy_scripts.ps1` 去假红灯（D-18 / P-20）**：原实现逐文件 ssh（58 次 stat + 58 次
+   chmod），容器在窗口内重启导致后半段 ssh 失败，脚本把已落盘的文件报成 MISSING 并 exit 1。
+   改为 scp 完成后一条批量 `chmod 755`，校验合并成**单次 ssh**（`printf` 喂 `while IFS= read -r p`
+   回 `FILE|path|size|exec` / `MISSING|path`），ssh 非 0 重试一次，仍失败判「校验链路失败
+   （不是文件缺失）」。复跑 `[deploy] PASS 55 个脚本 + 3 个环境清单`，RC=0。
+5. **`sync_and_verify_remote.ps1` 新增第 6 步「部署一致性」**：把仓库母版哈希与远端 `bin/` 落点
+   逐个比对，输出 `[ OK ] 部署一致性：仓库与 bin/ 落点 55/55 一致` 或 `[WARN] 部署漂移 K/N`，
+   写进 manifest 的 `deploy` 字段与台账「部署」列，`-FailOnDrift` 时漂移 exit 1（P-21 的坑：
+   `xargs` 因 3 个 README 缺失整体退 123 会让解析整段被跳过，已加 `|| true` 且只比脚本）。
+6. **台账与规格**：`SPEC_DECISIONS.md` 加 D-17 / D-18；`pitfalls_ledger.md` 加 P-20 / P-21；
+   `aims/aims.txt` §三.3 第 4 维补「远端有两个落点」的口径；`ops/README.md` 新增
+   「部署落点与一致性（`src/` 镜像 vs `bin/` 执行）」小节（含决策表与正确操作顺序）。
+
+#### 验证
+
+- `npm test`：**672/672 pass，0 fail**（约 26s），其中新增 `tests/deploy_and_parity_guard.test.js` 10 条。
+- `ops/06_deploy_scripts.ps1 -Force`：55 个脚本 + 3 个环境清单部署完成，字节校验 + 可执行位复核全过，RC=0。
+- `ops/sync_and_verify_remote.ps1 -All`：76/76 一致，镜像 1/1 一致，部署一致性 55/55 一致，RC=0。
+- `ppi_string` 真机：exit 0，`source=offline`，27,791 条边。
+- `aims_drift_guard`：14/14 绿。
+
+#### 待办（第九轮）
+
+1. **line1 全链真机 exit 0**（M1 DoD 最后一项）：STRING 数据已就位，可以逐步骤跑
+   `prep_matrix → qc → pca → deg_limma → wgcna → enrichment → ppi_string → ml_* → key_genes
+   → external_validation`。风险：容器频繁重启（`uptime` 常见 2 分钟），长链可能被打断，
+   需先查 Termux 侧 / `dmesg` 找重启原因，或分批跑并核对产物。
+2. `inspectBridgeNeed` 的 `guardWired` 仍按原文匹配（注释里提 `bridge_guard.sh` 会假阳性，P3 遗留）。
+3. `mergeIsolationChecks` 的 value 是字符串拼接，前端未结构化展示。
+4. `memory_peak.tsv` 写在进程 cwd，需确认任务引擎 cwd 是否等于输出目录。
+5. B 批不可逆操作仍待用户授权（B1 / B2 / B3，见第七轮待办第 4 条）。

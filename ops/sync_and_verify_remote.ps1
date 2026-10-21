@@ -267,6 +267,60 @@ if ($Files -contains 'src/bridge_guard.sh') {
     }
 }
 
+# 第 6 步：部署一致性（仓库 -> 引擎真正执行的 bin/<线>/）
+# 本脚本只写 $RemoteRoot/src/...（仓库镜像，供审计与哈希对账）；任务引擎通过 PATH 执行的却是
+# $RemoteRoot/bin/<线>/<步骤名>（由 ops/06_deploy_scripts.ps1 部署）。两个落点长期可能不一致
+# （2026-10-21 实测 3 个母版落后：ml_diagnostics / ml_hub_analysis / virtual_knockout），
+# 而自检第 4 维只比「仓库 vs 镜像」，看不到这种漂移 —— 所以在同步末尾单独比一次。
+$deployPairs = @()
+foreach ($rel in $Files) {
+    # 只比步骤脚本：README.md 这类文档不进 bin/（部署通道只送可执行步骤），不是漂移。
+    if ($rel -notlike '*.md' -and $rel -match '^src/(line\d_[a-z0-9_]+)/scripts/(.+)$') {
+        $deployPairs += [pscustomobject]@{
+            Repo = $rel
+            Bin  = ($RemoteRoot + '/bin/' + $Matches[1] + '/' + $Matches[2])
+        }
+    }
+}
+$deployDrift = @()
+$deployChecked = 0
+$deployNote = '未执行'
+if ($deployPairs.Count -gt 0) {
+    # xargs 只要有一个文件读不到就整体退 123（路径不存在是常态，例如 bin/ 里没部署的文档），
+    # 所以必须 `|| true`：否则退出码非 0 会让下面的解析整段跳过，把全部文件误判成缺失。
+    $binCmd = "printf '%s" + [char]92 + "n' " + (($deployPairs | ForEach-Object { "'" + $_.Bin + "'" }) -join ' ') + ' | xargs sha256sum 2>/dev/null || true'
+    $binRes = Invoke-Remote -Command $binCmd
+    $binMap = @{}
+    if ($binRes.Code -eq 0) {
+        foreach ($line in ($binRes.Output -split $NL)) {
+            $line = $line.Trim()
+            if ($line -match '^([0-9a-f]{64})\s+\*?(.+)$') { $binMap[$Matches[2].Trim()] = $Matches[1] }
+        }
+    }
+    foreach ($pair in $deployPairs) {
+        $deployChecked++
+        $want = $local[$pair.Repo]
+        $got = $binMap[$pair.Bin]
+        if ($null -eq $got) {
+            $deployDrift += ('{0}（bin 落点缺失或不可读）' -f $pair.Repo)
+        } elseif ($got -ne $want) {
+            $deployDrift += ('{0}（仓库 {1} != bin {2}）' -f $pair.Repo, $want.Substring(0, 12), $got.Substring(0, 12))
+        }
+    }
+    if ($deployDrift.Count -eq 0) {
+        $deployNote = ('部署 {0}/{0} 一致' -f $deployChecked)
+        Write-Host ('[ OK ] 部署一致性：仓库与 bin/ 落点 {0}/{0} 一致' -f $deployChecked)
+    } else {
+        $deployNote = ('部署漂移 {0}/{1}' -f $deployDrift.Count, $deployChecked)
+        Write-Host ('[WARN] 部署漂移 {0}/{1}：仓库已改但 bin/ 未重新部署，引擎仍跑旧版本；跑 ops/06_deploy_scripts.ps1 -Force 修复：' -f $deployDrift.Count, $deployChecked) -ForegroundColor Yellow
+        $deployDrift | ForEach-Object { Write-Host ('       ' + $_) }
+        if ($FailOnDrift) {
+            Write-Host '[FAIL] -FailOnDrift：检测到部署漂移（仓库 vs bin/）' -ForegroundColor Red
+            exit 1
+        }
+    }
+}
+
 $stamp = (Get-Date).ToString('yyyy-MM-ddTHH:mm:sszzz')
 $status = if ($mismatch.Count -eq 0) { 'OK' } else { 'MISMATCH' }
 Write-Host ('== 对账结果：{0}/{1} 一致，状态 {2}' -f $matched, $Files.Count, $status)
@@ -286,6 +340,7 @@ $manifest = [pscustomobject]@{
     drift = @($drift)
     new_files = @($absent)
     mirror = $mirrorNote
+    deploy = $deployNote
     files = $entries
 }
 $manifestJson = ($manifest | ConvertTo-Json -Depth 5 -Compress)
@@ -337,6 +392,7 @@ if (-not (Test-Path $ledgerFile)) {
     [System.IO.File]::WriteAllText($ledgerFile, $headText, (New-Object System.Text.UTF8Encoding($false)))
 }
 $row = '- {0} | {1} | {2}:{3} | {4}/{5} 一致 | 漂移 {6} | {9} | {7} | manifest: {8}' -f $stamp, $status, $SshTarget, $RemoteRoot, $matched, $Files.Count, $drift.Count, (($Files) -join ' '), $manifestNote, $mirrorNote
+$row += ' | 部署: ' + $deployNote
 if ($mismatch.Count -gt 0) {
     $row += ' | 不一致: ' + ($mismatch -join '; ')
 }

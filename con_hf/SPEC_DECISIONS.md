@@ -172,3 +172,46 @@
 - **受影响条款**：§一.2 铁律 2、§三.3 第 4 维。
 - **同步修改文件清单**：ops/verify_bridge_checkpoint.py（存在性检查 + 异常折行 + UTF-8 输出）、src/bridge_guard.sh（契约 3c 分支）、tests/bridge_stage.test.js（+2 条真跑引擎）、tests/bridge_guard_local.test.js（崩溃改判 FAIL，另加 ssh 255 仍 SKIP）。
 - **验证测试名**：tests/bridge_stage.test.js（13 条）、tests/bridge_guard_local.test.js（7 条）；真机验证：`bash /mnt/ssd/bio_data/ops/bridge_guard.sh --input /tmp/bad.h5ad ...` → `[BRIDGE FAIL] 引擎无法校验输入（OSError: ...）` + `GUARD_EXIT=1`。
+
+### D-17 远端有两个落点：`src/`（仓库镜像）与 `bin/`（引擎真正执行）
+
+- **编号**：D-17
+- **日期**：2026-10-21
+- **问题背景与冲突点**：`ops/sync_and_verify_remote.ps1` 把文件同步到 `$RemoteRoot/src/<线>/scripts/...`
+  （保持仓库目录结构），而任务引擎是通过 PATH 执行 `$RemoteRoot/bin/<线>/<步骤名>`（由
+  `ops/06_deploy_scripts.ps1` 部署）。两处各写各的：同步成功 ≠ 引擎跑的是新版本。
+  2026-10-21 实测 `bin/` 里有 3 个母版落后于仓库（ml_diagnostics、ml_hub_analysis、virtual_knockout），
+  而自检第 4 维只比「仓库 vs 镜像」，一盏灯都没亮 —— 这是比哈希不一致更隐蔽的假绿灯。
+- **备选方案对比**：① 让同步脚本直接写 `bin/`（把两个落点合成一个）—— 会与 `06_deploy_scripts.ps1`
+  的部署契约（同名拒绝、逐文件字节校验、可执行位复核）打架，且镜像就没人维护了；
+  ② 在同步脚本末尾加「第 6 步 部署一致性」，只比对不写入，漂移就报出来（选中）；
+  ③ 改自检第 4 维去比 `bin/` —— 自检是只读探针，跑一次要对 55 个文件做哈希，代价高且语义混淆。
+- **最终拍板结论**：采用 ②。同步脚本第 6 步把「仓库哈希」与「远端 `bin/` 落点哈希」逐文件比对，
+  输出 `[ OK ] 部署一致性：仓库与 bin/ 落点 N/N 一致` 或 `[WARN] 部署漂移 K/N`，并写进 manifest
+  的 `deploy` 字段与台账的「部署」列；`-FailOnDrift` 时漂移即 exit 1。修复动作固定为
+  `pwsh -File ops/06_deploy_scripts.ps1 -Force`。README.md 这类文档不进 `bin/`，不算漂移。
+- **受影响条款**：aims §三.3 第 4 维（版本一致性灯的口径）；`ops/README.md` 部署章节。
+- **同步修改文件清单**：`ops/sync_and_verify_remote.ps1`（第 6 步 + manifest `deploy` 字段 + 台账列）、
+  `BioanalysDesktop/tests/deploy_and_parity_guard.test.js`、`ops/README.md`。
+- **验证测试名**：`deploy_and_parity_guard.test.js` 的「sync_and_verify_remote.ps1 含第 6 步部署一致性」
+  与「sync manifest 与台账都要带部署一致性结论」。
+
+### D-18 部署通道的校验必须单次 ssh 批量，且「链路失败」≠「文件缺失」
+
+- **编号**：D-18
+- **日期**：2026-10-21
+- **问题背景与冲突点**：`ops/06_deploy_scripts.ps1` 原本对 58 个文件逐个 `ssh stat`（58 次）+ 逐个
+  `ssh chmod`（58 次）。2026-10-21 真机部署时容器在窗口内重启一次，后半段 ssh 全部失败，
+  脚本把**已经成功落盘**的文件报成 `MISSING` 并 exit 1（假红灯），而实际 55 个母版全部到位。
+- **备选方案对比**：① 加 `Start-Sleep` 重试整个部署 —— 治不了根，窗口还在；② 逐文件 ssh 改成一次
+  批量 ssh（选中），并给「ssh 连续两次非 0」单列一档 `校验链路失败`，与「远端明确回 MISSING」分开；
+  ③ 干脆去掉校验 —— 直接违背部署通道的存在意义。
+- **最终拍板结论**：采用 ②。校验用一条远端命令：`printf` 把路径喂给 `while IFS= read -r p`，
+  逐个回 `FILE|<path>|<size>|<exec>` 或 `MISSING|<path>`，PS 侧解析成两张表（size / exec），
+  再逐文件比对；可执行位也并入同一次 ssh。chmod 同样合并成一条 `chmod 755 p1 p2 ...`。
+  ssh 非 0 先重试一次，仍非 0 才判「校验链路失败（不是文件缺失）」。
+- **受影响条款**：部署通道契约（ops/README.md）；M1 DoD「本地远端 SHA256 一致」的取证方式。
+- **同步修改文件清单**：`ops/06_deploy_scripts.ps1`（3.5 批量 chmod、第 4 步批量校验、第 5 步可执行位复核）、
+  `BioanalysDesktop/tests/deploy_and_parity_guard.test.js`。
+- **验证测试名**：`deploy_and_parity_guard.test.js` 的「校验阶段必须是单次 ssh 批量」「链路失败与文件缺失必须分开判定」
+  「可执行位一次批量置位」。
