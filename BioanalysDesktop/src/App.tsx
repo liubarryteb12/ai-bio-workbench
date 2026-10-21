@@ -2,6 +2,11 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import './app.css';
 
 import { LINES, LINE_LABELS } from '../server/domain.js';
+import {
+  fileFingerprint, forgetUploadId, readStoredUploadId, resumeStartIndex, storeUploadId,
+  uploadIdFromFingerprint,
+} from './lib/uploadSession';
+import type { UploadStatus } from './lib/uploadSession';
 
 // ============================================================
 // 类型定义
@@ -270,66 +275,10 @@ type UploadResult = {
   hint?: string;
   error?: string;
 };
-/** GET /api/upload/status 的响应（S32 续传）。字段全部可选：前端只认 typeof 校验过的值 */
-type UploadStatus = {
-  ok?: boolean;
-  uploadId?: string;
-  exists?: boolean;
-  reason?: string;
-  chunks?: number[];
-  nextIndex?: number;
-  receivedBytes?: number;
-  chunkSize?: number;
-  /** 向后兼容字段：与 chunks 同内容（服务端既有键） */
-  received?: number[];
-  error?: string;
-};
-
-/**
- * 上传会话的本地缓存键（S32 续传）。
- *
- * 为什么要缓存 uploadId：POST /api/upload/init 每次都生成新的 randomUUID，
- * 只按「选文件 → init → 从 0 传」的流程，断线重试必然拿到新 id，
- * 服务端已落盘的分片就永远查不到。把「文件指纹 → uploadId」记在 localStorage，
- * 重试（含刷新页面）时先按旧 id 查 status，才能真正从 nextIndex 续传。
- * 指纹含 size 与 lastModified：同名但内容不同的文件不会误续传。
- */
-const UPLOAD_ID_STORE_PREFIX = 'bioanalys.uploadId.';
-
-function uploadFingerprint(project: string, lineId: string, file: File): string {
-  return [project, lineId, file.name, file.size, file.lastModified].join('|');
-}
-
-function readStoredUploadId(fingerprint: string): string | null {
-  try {
-    return window.localStorage.getItem(UPLOAD_ID_STORE_PREFIX + fingerprint);
-  } catch {
-    return null;   // 隐私模式禁用 localStorage：退化为不跨刷新续传，不影响上传本身
-  }
-}
-
-function storeUploadId(fingerprint: string, uploadId: string): void {
-  try {
-    window.localStorage.setItem(UPLOAD_ID_STORE_PREFIX + fingerprint, uploadId);
-  } catch {
-    // 同上：写不进去就只在本轮内存里用，不抛给用户
-  }
-}
-
-function forgetUploadId(fingerprint: string): void {
-  try {
-    window.localStorage.removeItem(UPLOAD_ID_STORE_PREFIX + fingerprint);
-  } catch {
-    // 同上
-  }
-}
-
-/** 服务端 nextIndex 夹到 [0, total]：异常值一律回 0（宁可重传，不越界） */
-function resumeStartIndex(status: UploadStatus | null, total: number): number {
-  const raw = status && typeof status.nextIndex === 'number' ? status.nextIndex : 0;
-  if (!Number.isFinite(raw) || raw < 0) return 0;
-  return Math.min(Math.floor(raw), total);
-}
+// 上传会话（断点续传）的纯逻辑在 src/lib/uploadSession.ts：
+// 文件指纹与确定性 uploadId 的权威定义是仓库根 shared/upload_session.mjs，
+// 前端与 server/upload.js 同源，保证两边算出同一个会话 id。
+// 抽成独立模块是为了让 node --test 直接 import 覆盖指纹、夹取、缓存损坏等分支。
 
 // 三态守卫
 type ApiState<T> = { kind: 'loading' } | { kind: 'failed'; message: string } | { kind: 'ok'; data: T };
@@ -3219,30 +3168,46 @@ function UploadPanel({ project }: { project: string }) {
     if (!lineId) { setStatus('请先选择归属线'); return; }
     if (!file) { setStatus('请先选择文件'); return; }
     if (file.size === 0) { setStatus('文件为空'); return; }
-    const fingerprint = uploadFingerprint(project, lineId, file);
+    const fingerprint = fileFingerprint(project, lineId, file);
+    // 确定性 id：同一文件（项目 + 线 + 名字 + 大小 + 修改时间）在任何浏览器算出的 id 都相同，
+    // 所以刷新、换浏览器、换设备都能直接按它查已落盘分片接着传。
+    const deterministicId = uploadIdFromFingerprint(fingerprint);
     setBusy(true); setResult(null); setProgress(0); setResumeNote('');
     setStatus('检查断点...');
     try {
-      // 1) 先看有没有上次没传完的会话（缓存的 uploadId + 服务端 status）。
-      //    init 每次都给新 uuid，所以不缓存 id 的话断线重试必然从 0 开始。
-      let uploadId: string | null = readStoredUploadId(fingerprint);
+      // 1) 确定性 id 优先：服务端有这个会话就直接续传，没有就走 init。
+      let uploadId: string | null = deterministicId || null;
       let chunkSize = 0;
       let nextIndex = 0;
       if (uploadId) {
         const previous = await fetchUploadStatus(uploadId);
         if (previous && previous.exists && typeof previous.chunkSize === 'number') {
           chunkSize = previous.chunkSize;
-          nextIndex = previous.nextIndex ?? 0;
+          nextIndex = typeof previous.nextIndex === 'number' ? previous.nextIndex : 0;
         } else {
-          // 会话已被清理（上次传完或服务端重启）：忘掉旧 id，走新建会话
-          uploadId = null;
-          forgetUploadId(fingerprint);
+          uploadId = null;   // 首次传 / 会话已被 GC：走 init
+        }
+      }
+      // 2) 升级兼容：老版本把 init 返回的 randomUUID 缓存在 localStorage 里。
+      //    确定性 id 没命中时再用旧缓存 id 探一次，命中也续传，同一个文件不白重传。
+      if (!uploadId) {
+        const legacyId = readStoredUploadId(fingerprint);
+        if (legacyId && legacyId !== deterministicId) {
+          const legacy = await fetchUploadStatus(legacyId);
+          if (legacy && legacy.exists && typeof legacy.chunkSize === 'number') {
+            uploadId = legacyId;
+            chunkSize = legacy.chunkSize;
+            nextIndex = typeof legacy.nextIndex === 'number' ? legacy.nextIndex : 0;
+          } else {
+            forgetUploadId(fingerprint);
+          }
         }
       }
       if (!uploadId) {
         const initRes = await fetch('/api/upload/init', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ projectId: project, lineId, filename: file.name }),
+          // 带上指纹：服务端用同一个纯函数派生 uploadId，老服务端会忽略这个字段。
+          body: JSON.stringify({ projectId: project, lineId, filename: file.name, fingerprint }),
         });
         const init = await initRes.json();
         if (init.error) throw new Error(init.error);
@@ -3253,7 +3218,8 @@ function UploadPanel({ project }: { project: string }) {
         const initial = await fetchUploadStatus(uploadId);
         if (initial && typeof initial.nextIndex === 'number') nextIndex = initial.nextIndex;
         if (initial && typeof initial.chunkSize === 'number') chunkSize = initial.chunkSize;
-        storeUploadId(fingerprint, uploadId);
+        // 只缓存非确定性 id（老服务端回落 UUID 时才有意义）；确定性 id 由指纹现算，不必缓存。
+        if (uploadId !== deterministicId) storeUploadId(fingerprint, uploadId);
       }
       if (!chunkSize || chunkSize <= 0) throw new Error('服务端未返回分片大小');
       const total = Math.ceil(file.size / chunkSize);
@@ -3299,7 +3265,7 @@ function UploadPanel({ project }: { project: string }) {
         <h2 className="card-title">数据导入</h2>
       </div>
       <p className="hint">上传原始数据到服务器对应线的 raw_data/。4MB 分片上传 + 断点续传 + 格式校验 + 强制归属线。</p>
-      <p className="hint">断点续传：同一浏览器内中断后重试（含刷新页面）会先查 GET /api/upload/status，从已落盘分片之后继续；换浏览器或清空本地存储后需从头传。</p>
+      <p className="hint">断点续传：上传会话 id 由「项目 + 归属线 + 文件名 + 大小 + 修改时间」确定性派生，刷新、换浏览器、换设备都会先查 GET /api/upload/status，从已落盘分片之后继续；服务端 24 小时没动过的会话会被自动清理。</p>
 
       <div className="form-group">
         <label className="form-label">归属线（必选）</label>

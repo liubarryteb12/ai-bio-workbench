@@ -10,12 +10,12 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 import {
   DEFAULT_SERIAL, SYSTEM_LOGS, LINES, DEFAULT_PROJECT, sanitizeProjectId, projectLineDir,
-  resolveLineFromDataType, normalizeDatasets, normalizeDataSource, SSD_ROOT,
+  resolveLineFromDataType, normalizeDatasets, normalizeDataSource,
 } from './domain.js';
 import { findAdb, runSync } from './proc.js';
 import { checkLink } from './link.js';
@@ -24,7 +24,7 @@ import {
   buildIsolationCommand, parseIsolationOutput, evaluateIsolation,
   STORAGE_MIN_FREE_PCT,
 } from './selfcheck.js';
-import { summarizeLedger, auditLedgerEntry } from './ledger.js';
+import { summarizeLedger, auditLedgerEntry, inspectTaskPath } from './ledger.js';
 import { assertPathInsideProject, buildTreeFromFind } from './files.js';
 import { assertFiguresPath, parseFigureList, decorateFigures } from './figures.js';
 import {
@@ -33,7 +33,7 @@ import {
 import {
   CHUNK_SIZE, initUpload, writeChunk, listChunks, assembleChunks,
   readHeader, validateUpload, remoteRawPath, cleanupUpload, sanitizeFilename,
-  deployedRawName, uploadStatus,
+  deployedRawName, uploadStatus, resolveUploadId, gcStaleUploads, maybeGcStaleUploads,
 } from './upload.js';
 import {
   buildProjectMeta, buildProjectMetaStrict, parseProjectList, buildCreateProjectCommand,
@@ -210,67 +210,9 @@ function json(res, status, payload) {
   res.end(body);
 }
 
-// ── 任务提交路径预校验（S29 / R9）────────────────────────────────────
-// 为什么在提交层再校验一次归属：/api/tasks/submit 是脚本化调用（curl / PowerShell
-// / E2E）也会直接打的接口，前端形态预检只是提示。口径与台账审计（ledger.js 的
-// extractProject / classifyPath）和文件访问守卫（files.js 的 assertPathInsideProject）
-// 对齐，避免"提交放行、落盘才判死"。
-//
-// 兼容红线：迁移前的历史形态 /mnt/ssd/bio_data/<line>/... 必须继续放行（E2E 旧形态），
-// ledger.js 对不含 /projects/ 的路径按 legacy 处理（extractProject 返回 null）；
-// processed/ 下的裸相对文件名由 shell 按 cwd 解析，天然落在本项目本线内，也放行。
-// public_references 是只读共享读入口（files.js 文件头），可作输入、不可作输出
-// （ledger.js 对 output 写 public 判违规）。项目段比对大小写敏感，与 ledger.js 同口径。
-
-/** 单条路径的归属判定：null 表示放行，否则给出原因与细节 */
-function inspectTaskPath(pathLike, projectId, direction) {
-  const unified = pathLike.replace(/\\/g, '/');
-  // 先禁 ..：必须在任何归一化之前判，否则 /projects/<pid>/../<other> 会绕过项目比对
-  if (unified.split('/').includes('..')) {
-    return { reason: '含 ..', detail: '禁止用 .. 穿越目录' };
-  }
-  if (/^[A-Za-z]:\//.test(unified)) {
-    return { reason: 'Windows 绝对路径', detail: `远端是 Linux，路径必须位于 ${SSD_ROOT}` };
-  }
-  if (!unified.startsWith('/')) {
-    // 裸相对路径：任务脚本先 cd 到 <项目>/<线>/processed/，由 shell 解析，落在本项目本线内
-    return null;
-  }
-  if (unified === SSD_ROOT || unified === `${SSD_ROOT}/`) {
-    return { reason: '不是文件路径', detail: `指向数据根 ${SSD_ROOT}` };
-  }
-  if (!unified.startsWith(`${SSD_ROOT}/`)) {
-    return { reason: '不在数据根之下', detail: `必须位于 ${SSD_ROOT}` };
-  }
-  const segments = unified.slice(SSD_ROOT.length + 1).split('/');
-  const [head, second] = segments;
-  if (head === 'projects') {
-    if (!second) {
-      return { reason: '缺少项目段', detail: `期望 ${SSD_ROOT}/projects/<项目>/...` };
-    }
-    if (second !== projectId) {
-      return { reason: '跨项目', detail: `属于项目 ${second}，当前项目为 ${projectId}` };
-    }
-    return null;
-  }
-  if (head === 'public_references') {
-    if (direction === 'output') {
-      return { reason: '输出不得写只读共享区', detail: 'public_references 是只读共享读入口' };
-    }
-    return null;
-  }
-  if (head === 'system_logs') {
-    return { reason: '系统目录禁止作为任务输入/输出', detail: 'system_logs 由台账通道写入' };
-  }
-  if (LINES.includes(head)) {
-    // 历史三线形态：迁移前 E2E 的现行写法，按 ledger.js 的 legacy 判据放行
-    return null;
-  }
-  return {
-    reason: '不属于本项目',
-    detail: `既不在 ${SSD_ROOT}/projects/${projectId}/ 下，也不是历史三线形态`,
-  };
-}
+// ── 任务提交路径预校验（S29 / R9；2026-10-21 收敛到 ledger.js 单一事实源）──
+// 单路径归属判定已移到 ledger.js 的 inspectTaskPath / analyzePath，与台账审计
+// （classifyPath）、文件访问守卫共用同一套"合法根"口径；本文件只保留批量包装。
 
 /**
  * 任务提交前的路径归属预校验（S29 / R9）。纯函数：不读文件、不连远端。
@@ -1311,7 +1253,24 @@ const server = http.createServer(async (req, res) => {
       if (!safe) {
         return json(res, 400, { error: `文件名非法或含路径穿越: ${requested.filename}` });
       }
-      const uploadId = randomUUID();
+      // 确定性 id：客户端带指纹（project|lineId|name|size|lastModified 的纯函数派生）时，
+      // 前后端算出同一个 id，刷新或换浏览器都能接着传；不带指纹则回落 randomUUID，
+      // 老客户端的 HTTP 契约完全不变（响应里多一个 deterministic 字段，旧调用方会忽略）。
+      const resolved = resolveUploadId({
+        fingerprint: requested.fingerprint,
+        projectId,
+        lineId,
+        filename: safe,
+        size: requested.size,
+        lastModified: requested.lastModified,
+      });
+      if (!resolved.uploadId) {
+        return json(res, 400, { error: 'fingerprint 非法：必须是 <=1024 字符的字符串且不含控制字符' });
+      }
+      // 惰性清理陈旧会话：放在参数校验之后、建目录之前。内部节流 10 分钟一次，
+      // 且自己吞掉所有异常（清理失败不能连累上传）。
+      maybeGcStaleUploads();
+      const uploadId = resolved.uploadId;
       try {
         initUpload(uploadId);
       } catch (cause) {
@@ -1319,6 +1278,7 @@ const server = http.createServer(async (req, res) => {
       }
       return json(res, 200, {
         uploadId, projectId, lineId, filename: safe, chunkSize: CHUNK_SIZE,
+        deterministic: resolved.deterministic,
         hint: '按 chunkSize 切分后依次 POST /api/upload/chunk?uploadId=&index=',
       });
     });
@@ -1674,6 +1634,20 @@ const server = http.createServer(async (req, res) => {
 
   return json(res, 404, { error: `未知接口: ${url.pathname}` });
 });
+
+// 启动时清一次陈旧上传会话：TTL 24h（BIO_UPLOAD_TTL_HOURS 可覆盖），只删 .uploads 下
+// 合法 id 且长期没动过的会话目录。旁路动作，失败只记日志，不能影响服务启动。
+try {
+  const gcReport = gcStaleUploads();
+  if (gcReport.removed.length > 0) {
+    console.log(`[bioanalys-desktop] 启动清理陈旧上传会话 ${gcReport.removed.length} 个`);
+  }
+  for (const err of gcReport.errors) {
+    console.warn(`[bioanalys-desktop] 启动清理上传会话出错（已忽略）: ${err.name || '<root>'}: ${err.message}`);
+  }
+} catch (cause) {
+  console.warn(`[bioanalys-desktop] 启动清理上传会话异常（已忽略）: ${cause.message}`);
+}
 
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`[bioanalys-desktop] backend listening on http://127.0.0.1:${PORT}`);

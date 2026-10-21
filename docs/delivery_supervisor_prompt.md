@@ -58,7 +58,7 @@
 - **禁改前后端框架**：严禁修改 `BioanalysDesktop/src/`（前端四视图）与 `BioanalysDesktop/server/`（14 模块 + 入口及 109 个单测）。
 - **禁改 ops 防崩底座**：严禁修改 ops 6 件套（`/mnt/ssd/bio_data/ops/` 下 5 个 + `/etc/profile.d/bio_limits.sh`）。
 - **禁改原始母版代码**：严禁直接修改 `bin/<line>/` 或 `src/<line>/scripts/` 下的 53 个原始模板脚本。
-- **禁破隔离与合规红线**：严禁跨线读取数据（如严禁从 `line2` 提取单细胞数据给 `line3` 做反卷积参考）；严禁绕过 27 条肿瘤/免疫浸润中英文正则黑名单（`server/tumor_blacklist.js`）；严禁把虚拟敲除当成第四条独立线。
+- **禁破隔离与合规红线**：严禁跨线读取数据（如严禁从 `line2` 提取单细胞数据给 `line3` 做反卷积参考）；严禁绕过 8 条肿瘤/免疫浸润中英文正则黑名单（`server/tumor_blacklist.js`，2026-10-21 按 `aims/aims.txt` §三.1 规格正本由 27 条收敛）；严禁把虚拟敲除当成第四条独立线。
 
 ### 2. 项目实例沙盒复制与自主适配原则（方案 A）
 - **工作沙盒锚定**：所有客户项目操作严格限定在 `/mnt/ssd/bio_data/projects/<project_id>/<line>/` 目录下。

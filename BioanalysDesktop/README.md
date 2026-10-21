@@ -36,6 +36,10 @@ BioanalysDesktop/
 └── dist/            # 构建产物
 ```
 
+前端与服务端共用的纯函数（数据格式白名单、上传会话指纹）放在**仓库根** `shared/`：
+`shared/data_formats.mjs`、`shared/upload_session.mjs`。`vite.config.js` 的
+`server.fs.allow` 已放行 `'..'`，dev 模式下也能直接 import（`build`/`start` 会内联）。
+
 ## 跑起来
 
 ```
@@ -48,6 +52,9 @@ npm run dev        # 后端 8787 + 前端 5173 同时起
 
 改端口：`BAD_PORT=9000 npm run dev:server`。
 
+上传会话 GC 的保留时长：`BIO_UPLOAD_TTL_HOURS=48 npm run dev:server`（默认 24 小时，
+非正数/非法值回落默认；启动时跑一次，之后由 `POST /api/upload/init` 惰性触发，10 分钟节流）。
+
 ## 已有能力
 
 | 接口 | 状态 |
@@ -57,7 +64,8 @@ npm run dev        # 后端 8787 + 前端 5173 同时起
 | `GET /api/projects/list` / `POST /api/projects/create` | 可用，项目管理（数据面按项目分文件夹，`projects/<项目>/<线>/`） |
 | `GET /api/files/tree?project=&line=&sub=` | 可用，项目内本线目录树 |
 | `GET /api/figures/list` / `GET /api/figures/image` / `GET /preview/figures` | 可用，图件浏览 + 后端自带画廊页（均带 project 参数） |
-| `POST /api/upload/init` / `chunk` / `complete` | 可用，分片上传 + 格式校验 + 落项目内 raw_data |
+| `POST /api/upload/init` / `chunk` / `complete` | 可用，分片上传 + 格式校验 + 落项目内 raw_data；`init` 带 `fingerprint` 时由纯函数确定性派生 uploadId（响应 `deterministic: true`），不带则回落 `randomUUID`（旧客户端契约不变） |
+| `GET /api/upload/status` | 可用，续传查询：返回 `chunks` / `nextIndex`（最小缺失口径）/ `receivedBytes` / `chunkSize`；`not_found` 回 200 `{ok:false}` 而不是 404 |
 | `POST /api/tasks/submit` / `GET /api/tasks` / `GET /api/tasks/logs`(SSE) / `POST /api/tasks/stop` | 可用，任务下发 + 日志流 + 中止 |
 | `GET /api/ledger/check` | 可用，台账巡检 |
 
@@ -67,7 +75,7 @@ npm run dev        # 后端 8787 + 前端 5173 同时起
 npm test
 ```
 
-当前 108 条全绿，含一条真连服务器验证（经 ssh 接缝拿 CONTAINER_OK）。
+当前 445 条全绿（2026-10-21），含一条真连服务器验证（经 ssh 接缝拿 CONTAINER_OK）。
 这条测试链路不通时会红，正是我们要的信号，不要删。
 
 ## 三线隔离怎么落

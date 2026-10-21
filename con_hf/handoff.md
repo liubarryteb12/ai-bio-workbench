@@ -1328,7 +1328,7 @@ PowerShell 管道 UTF-8 化的显示假象）：
 | 后端模块 | 14+入口 | server/*.js = 15（14 模块 + index.js） | ✓ |
 | 单测 | 109 | 109（13 测试文件） | ✓ |
 | ops 件套 | 6 文件在 ops/ | ops/ **5 个**；bio_limits.sh 在 `/etc/profile.d/` | **已修正提示词** |
-| 黑名单 | 27 | 27 条正则 | ✓ |
+| 黑名单 | 27 | 27 条正则（2026-10-21 收敛为规格正本 8 条，见 `aims/aims.txt` §三.1） | ✓ 已改判 |
 | 出图 DPI | 300 | 300（rcParams + savefig + 规范） | ✓ |
 | 出图规范版本 | v2.1 | 文件头已对齐 v2.1 | ✓ |
 | 图件数 | — | line1 29 / line2 37 / line3 69 = **135** | ✓ |
@@ -3110,4 +3110,34 @@ S19 完成后请勿重复改 index.html 的 MAX_DATA_BYTES/MAX_DATA_FILES_PER_RO
 6. **B 批不可逆操作待用户授权**：B1 已无收益（scenic_db/__pycache__ 早已不存在，剩余可删约 0.36MB）；B2 归档未执行（7 个 ops 脚本 + geo_mining_sop_v1.md 约 50KB，`_archive/` 未建）；B3 黑名单 provenance 29 条 vs aims 8 条口径差未裁。
 
 **改动文件清单（本轮）**：新增 `shared/data_formats.mjs`、`BioanalysDesktop/server/selfcheck.js`、`tests/{selfcheck,report_preflight,data_format_parity,task_submit_validation,upload_resume}.test.js`；改 `server/{index,task,report,upload}.js`、`src/App.tsx`、`src/app.css`、`portal/{index.html,lib/archive.mjs}`、`aims/aims.txt:83`、`docs/{delivery_package_spec,directories}.md`；报告 `con_hf/dispatch/S{28,29,30,31,32}*.md` + `con_hf/操作台账.md` 同日条目。
+
+## 2026-10-21（第二轮）— 用户授权七项落地：B1/B2/B3 + 上传会话可靠性 + ledger 口径对齐
+
+**触发**：用户一句话全批七项——「B1 清理，B2 归档，B3 黑名单口径收敛到 8 条。.uploads 陈旧会话无 TTL；续传依赖 localStorage；前端续传分支无自动化测试；ledger.classifyPath 与 validateTaskPaths 的"合法根"口径差。采纳」。自主执行，不再回问。
+
+**团队**：Lead + 3 名 teammate（blacklist-arch / upload-session / ledger-align），共享任务板 task-5..task-7 全部 completed；Lead 自办 B1/B2、跨文件副本同步（portal / docs / handoff）、集成与总验证。切片报告：`con_hf/dispatch/{B1_B2,B3_blacklist,ledger_align,upload_session}_report.md`。
+
+**本轮落地（按切片）**
+- **B1 清理**：删 `cn_debug/*.log` 21 个（497,925B）+ `__pycache__` 7 个（545,052B）= 1,042,977B（约 1.0MB）。评审估的 689MB 收益不存在（`cn_debug/scenic_db/`、`ops/__pycache__` 早已不存在）。取证脚本保留。
+- **B2 归档（部分执行）**：新建 `_archive/{README.md,docs,ops}`；`git mv docs/geo_mining_sop_v1.md`、`ops/01_fix_svlogger.ps1` 入库归档；`ops/README.md` 与 `docs/geo_mining_sop_v2.md:3` 引用同步。**未按评审 §2.2 全量搬**：`serve_guard.ps1`/`bio_watchdog.sh`/`fix_runsvdir.sh`/`04_check_logs.ps1` 保留在职（A6 判定它们是决策表唯一入口；`03_check_logs_remote.sh` 是 `04` 调用的本体，壳+体不是重复），`ops/svlogger_*` 本地不存在；`cn_debug/` 266 个文件改加 `cn_debug/README.md` 索引而非搬家（保留判决证据 + dispatch 报告按文件名引用）。
+- **B3 黑名单收敛到 8 条**：`server/tumor_blacklist.js` 27 → 8（与 `aims/aims.txt` §三.1 逐条同序，数组 export 供测试锁口径），顺修 `validateProjectFields` 的 null/undefined TypeError；`aims/aims.txt:72-77` 改为「8 条正本 + 沿革 + 已知边界」；`portal/index.html:619-628` 纯前端副本同步；新增 `tests/tumor_blacklist.test.js` 15 条 + `tests/tumor_blacklist_parity.test.js` 7 条（逐条同序 + 24 样例判定矩阵 + 6 个历史扩充词负例）。
+- **ledger 口径对齐**：`server/ledger.js` 新增 `analyzePath` / `classifyPath` / `isPathUnderLegalRoot` / `inspectTaskPath`；`server/index.js` 删除本地私有 `inspectTaskPath`（原 213-273 行）改为 import，`validateTaskPaths` 未改即复用，`SSD_ROOT` 导入移除。**有意行为收紧**：提交侧相对路径只接受裸文件名与 `projects/<pid>/...`。`tests/ledger.test.js` 22 条（含 19 条两处口径一致性表）。
+- **上传会话可靠性**：新增 `shared/upload_session.mjs`（确定性 uploadId = `up-` + sha256(project|lineId|name|size|lastModified) 前 16 hex，零依赖 ESM，自带同步 SHA-256）；`server/upload.js` 加 `resolveUploadId`（`fingerprint` 键出现即校验，非法 400；缺省用 size+lastModified 重算；都没有才 randomUUID）与 GC（TTL 24h / `BIO_UPLOAD_TTL_HOURS` / 10 分钟节流 / 启动跑一次 / 只碰合法 id 一级目录 / 异常全吞）；新增 `src/lib/uploadSession.ts`（`.tsx` 私有逻辑抽成可被 `node --test` import 的模块），`App.tsx` 改「确定性 id 先查 status → 命中即续传 → 旧 UUID 兼容探测 → 才 init」；新增 `tests/upload_session.test.js` 31 条（含 6 条 in-process 真 HTTP，全程 ssh 垫片 0 次）。
+- **vite dev 放行仓库根 shared**：`BioanalysDesktop/vite.config.js` 的 `server.fs.allow` 加 `'..'`（保留 `searchForWorkspaceRoot`）；实测 `GET /@fs/<repo>/shared/upload_session.mjs` → 200 / 47,943 字节。
+
+**验证（本轮收口实测）**
+- `cd BioanalysDesktop && npm test` → **tests 445 / pass 445 / fail 0 / exit 0**（约 3.8s；上一轮 382）
+- `npx tsc --noEmit` → exit 0；`npm run build` → `✓ built in 698ms`（`dist/assets/index-eGcWQRjO.js` 221.62 kB / gzip 73.22 kB）
+- `node --check` 改动服务端文件 + `vite.config.js` 全 exit 0；dev server `/@fs` 冒烟 200
+- 未连 K40 真机（全部 ssh 垫片），未装包，未改 `package.json`
+
+**已知边界 / 下轮候选**
+1. GC 只管 TTL 不管配额：`.uploads` 没有总量上限，1-3GB 级放弃数据最多滞留 24h10min。
+2. 客户端指纹含 `File.lastModified`：复制/同步改 mtime 会被当新文件重传（宁可重传不误续传）。
+3. `POST /api/upload/init` 的 400 错误体是 `{error}`，`GET /api/upload/status` 的是 `{ok:false,error}`，形状不一致，建议单列切片统一。
+4. 桥接四项断言仍只在提交层执行（58 个脚本内部 0 调用，D1 的脚本内缺口未补）。
+5. `项目交付报告.html`（2026-10-14 冻结交付物）里的历史数字是快照，**故意不改**；`con_hf/2026-10-20_调研_三线定制数据集与实验设计.md:145` 仍指向已归档的 `docs/geo_mining_sop_v1.md`（历史文档按追加不重写纪律保留）。
+6. 改 `vite.config.js` 后需**重启 `npm run dev`** 才生效。
+
+**改动文件清单（第二轮）**：新增 `shared/upload_session.mjs`、`BioanalysDesktop/src/lib/uploadSession.ts`、`tests/{tumor_blacklist,tumor_blacklist_parity,upload_session}.test.js`、`_archive/README.md`、`cn_debug/README.md`；改 `server/{index,ledger,tumor_blacklist,upload}.js`、`src/App.tsx`、`vite.config.js`、`tests/ledger.test.js`、`aims/aims.txt`、`portal/index.html`、`ops/README.md`、`docs/{delivery_supervisor_prompt,geo_mining_sop_v2}.md`、`BioanalysDesktop/README.md`。
 

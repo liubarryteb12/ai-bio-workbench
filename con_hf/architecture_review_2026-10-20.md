@@ -217,3 +217,21 @@ C 批维持原判。D 批：D1 由提交层兜住（脚本内仍 0 调用）、D
 
 验证：`npm test` 382/382 pass、`npm run build` exit 0、`npx tsc --noEmit` exit 0。详见 `con_hf/handoff.md` 末条与 `con_hf/操作台账.md` 2026-10-21 条目。
 
+---
+
+## 落地状态（2026-10-21 第二轮收口，以此为准）
+
+**B 批已全部处置**（用户一句话全批）：
+- **B1 已执行**：删 `cn_debug/*.log` 21 个 + `__pycache__` 7 个，合计 1,042,977 字节（约 1.0MB）。评审估的 689MB 收益**不存在**——`cn_debug/scenic_db/` 与 `ops/__pycache__` 早已不存在。
+- **B2 部分执行（有理由）**：`_archive/{README.md,docs,ops}` 已建，`docs/geo_mining_sop_v1.md` 与 `ops/01_fix_svlogger.ps1` 已归档，`ops/README.md` / `docs/geo_mining_sop_v2.md` 引用同步。**未搬** `serve_guard.ps1` / `bio_watchdog.sh` / `fix_runsvdir.sh` / `04_check_logs.ps1`——A6 已判定它们是 `ops/README.md` 决策表的唯一入口，`03_check_logs_remote.sh` 是 `04` 调用的服务端本体（壳+体不构成重复）；`ops/svlogger_*` 本地本就不存在。`cn_debug/` 266 个受控文件改加 `cn_debug/README.md` 索引（§2.5 要求保留判决证据）。
+- **B3 已收敛**：`server/tumor_blacklist.js` 27 → **8 条**（与 `aims/aims.txt` §三.1 逐条同序），`portal/index.html` 副本同步，`tests/tumor_blacklist.test.js` 15 条 + `tests/tumor_blacklist_parity.test.js` 7 条把守；`aims/aims.txt:72-77` 改为「8 条正本 + 沿革 + 已知边界」。
+
+**本轮同时关掉的四条遗留**：ledger 口径差（`ledger.js` 的 `analyzePath`/`inspectTaskPath` 成为唯一事实源，`server/index.js` 删除私有实现改为复用）、`.uploads` 无 TTL（GC 24h + `BIO_UPLOAD_TTL_HOURS`）、续传依赖 localStorage（确定性 uploadId 由 `shared/upload_session.mjs` 派生，前后端同一实现）、前端续传分支无测试（逻辑抽到 `src/lib/uploadSession.ts`，`node --test` 直接 import）。
+
+**行为变化（升级注意）**：
+1. 任务提交的**相对路径收紧**：只接受裸文件名与 `projects/<项目>/...`，`processed/x.tsv` 这类"目录+文件名"现被 400 拒绝（报「相对路径缺少合法根」）。绝对路径与历史三线形态不变。
+2. `POST /api/upload/init` 支持 `fingerprint`，响应多一个 `deterministic` 字段；不带 `fingerprint` 的老调用方行为完全不变（仍 `randomUUID`）。
+3. 上传会话 24 小时未动会被 GC 删除（可 `BIO_UPLOAD_TTL_HOURS` 覆盖）；改 `vite.config.js` 后需重启 `npm run dev`。
+
+**验证**：`npm test` **445/445 pass**、`npm run build` exit 0（698ms / 221.62 kB）、`npx tsc --noEmit` exit 0、dev server `/@fs` 取 `shared/upload_session.mjs` 200。详见 `con_hf/handoff.md` 末条与 `con_hf/操作台账.md` 2026-10-21（第二轮）条目。
+

@@ -1,6 +1,6 @@
 # 非肿瘤·非免疫 GEO 生信分析架构师规范（SOP v2.1 · 正本）
 
-> **版本记录**：v2.0 = 用户 2026-10-20 提供的完整结构化版（Role/Profile/Constrains/Workflow/OutputFormat），**取代 v1**（`docs/geo_mining_sop_v1.md`，已加取代横幅存档）。
+> **版本记录**：v2.0 = 用户 2026-10-20 提供的完整结构化版（Role/Profile/Constrains/Workflow/OutputFormat），**取代 v1**（v1 已于 2026-10-21 归档至 `_archive/docs/geo_mining_sop_v1.md`）。
 > **v2.1（同日）**：在 v2 正文**一字未改**的前提下，新增**附录 C · 工作台适配层**——把规范增量适配到生信分析工作台的三线架构、portal 建项契约、K40 执行链路、台账验收体系与算力约束。正文与附录 A/B 继续有效；工作台内执行以「正文 + 附录 C」为准。
 > **执行适配**：本规范在生信工作台内执行时，Stage 11 的 00_config–06_report 目录树与 FigNNx 命名按 2026-10-20 用户裁决映射到工作台既有体系（见附录 B 裁决 3、附录 C 适配 3），规范正文本身不做改写。
 

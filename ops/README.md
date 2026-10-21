@@ -9,8 +9,8 @@
 | 脚本 | 位置 | 用途 | 实测状态 |
 |---|---|---|---|
 | `00_link_check.ps1` | PC | 链路四段自检：设备 → forward → Termux sshd → 容器 sshd，加四服务状态 | exit 0 |
-| `01_fix_svlogger.ps1` | PC | 修复 log 子服务 crash-loop（坑#88），可回滚 | exit 0 |
-| `01_fix_svlogger.ps1` 依赖的模板 | PC → 手机 | `svlogger_sshd` / `svlogger_crond` / `svlogger_ssh-agent` | 已生效 |
+| `_archive/ops/01_fix_svlogger.ps1`（已归档 2026-10-21） | PC | 修复 log 子服务 crash-loop（坑#88），可回滚。一次性修复器，2026-10-20 reboot 后已执行完成；**若复发从 `_archive/` 取回**（`git mv _archive/ops/01_fix_svlogger.ps1 ops/`） | exit 0 |
+| 上述脚本依赖的模板 | PC → 手机 | `svlogger_sshd` / `svlogger_crond` / `svlogger_ssh-agent`（本地 `ops/` 下本就不存在，只在远端 Termux 服务目录） | 已生效 |
 | `02_check_isolation.ps1` | PC | 校验 `src/<line>/` 代码无跨线引用 | exit 0，反向验证过 |
 | `03_check_logs_remote.sh` | 服务器 | 校验台账 JSON 的 `line_id` 与路径合法性（含跨线、缺种子检查） | 双向验证过 |
 | `04_check_logs.ps1` | PC | `03` 的一键入口：自动 scp + ssh 执行 + 传回退出码 | exit 0/1 三条路径验证过 |
@@ -65,6 +65,8 @@
 | 要给客户交付 | 8787 `/api/report/build`（内部调 `build_client_report.py`） | ssh 上手跑 CLI（S27 前的老路） |
 | 测试数据上盘 | `05_push_testdata.ps1` | 手动 scp 到 raw_data |
 
+**归档区**：`_archive/` 只放冷备脚本，不参与日常链路；归档清单与"为何有些评审建议归档却保留在职"见 `_archive/README.md`。
+
 **分层记忆法**：PC 侧 `*.ps1` 管"在 Windows 上点什么"；服务器侧 `*.sh`/`*.py` 管
 "在 K40 上执行什么"；手机 Termux 侧管"Android 层保活"。三层各司其职，
 **没有一个是另一个的替代品**——2026-10-20 架构评审曾误判"六套管家重复建设"，
@@ -81,9 +83,10 @@ pwsh -File ops/00_link_check.ps1
 
 它会告诉你断在哪一段。若 FAIL，先搜 `con_hf/踩坑台账.md` 再动手。
 
-重启手机后若 `sv status` 出现 `down: log`，跑：
+重启手机后若 `sv status` 出现 `down: log`（坑 #88 复发），从归档区取回修复器再跑：
 
 ```
+git mv _archive/ops/01_fix_svlogger.ps1 ops/01_fix_svlogger.ps1
 pwsh -File ops/01_fix_svlogger.ps1
 ```
 

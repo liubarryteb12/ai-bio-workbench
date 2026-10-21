@@ -616,15 +616,12 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
   // 内置数据（与工作台解耦，本页不调用任何后端接口）
   // ============================================================
 
-  // 非肿瘤黑名单（与工作台 tumor_blacklist.js 同源）
+  // 非肿瘤黑名单（8 条，与 aims/aims.txt §三.1 规格正本逐条一致）
+  // 权威实现：BioanalysDesktop/server/tumor_blacklist.js。本页是纯前端副本（本页不调后端），
+  // 两侧一致性由 BioanalysDesktop/tests/tumor_blacklist_parity.test.js 把守；改这里必须同时改服务端。
   var BL_PATTERNS = [
-    /cancer/i, /tumor/i, /tumour/i, /carcinoma/i, /glioma/i, /sarcoma/i,
-    /lymphoma/i, /leukemia/i, /leukaemia/i, /melanoma/i, /adenocarcinoma/i,
-    /squamous\s*cell\s*carcinoma/i, /immune\s*infiltration/i,
-    /tumor\s*microenvironment/i, /tumour\s*microenvironment/i,
-    /immune\s*checkpoint/i, /PD-?L?1/i, /CTLA-?4/i, /oncogene/i,
-    /tumor\s*suppressor/i, /癌症/i, /肿瘤/i, /癌/i, /免疫浸润/i,
-    /免疫检查点/i, /肿瘤微环境/i, /癌细胞/i
+    /cancer/i, /tumor/i, /carcinoma/i, /glioma/i, /immune\s*infiltration/i,
+    /肿瘤/, /癌/, /免疫浸润/
   ];
   function checkBlacklist(text) {
     var t = String(text || '');

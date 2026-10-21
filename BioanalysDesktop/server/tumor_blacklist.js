@@ -4,37 +4,29 @@
  * aims v2.3 铁律 1：非肿瘤、非免疫浸润专精原则。
  * 前端实时拦截 + 后端建项前再校验（双保险）。
  * 命中时返回违规词列表，调用方拒绝建项。
+ *
+ * 规格正本：aims/aims.txt §三.1 模块 A「黑名单确认清单」，共 8 条。
+ * 2026-10-21 用户裁定收敛：本文件早期自行扩充到 27 条（tumour / sarcoma /
+ * lymphoma / leukemia / leukaemia / melanoma / immune checkpoint / PD-L1 /
+ * CTLA-4 / oncogene / 免疫检查点 等），超出规格列举范围，违反项目铁律
+ * 「只按规格中经确认的黑名单和校验规则实现拦截，不要自行扩充规则」，
+ * 现回退到 8 条。增删规则必须同时改 aims 清单与本文件，不允许任一侧单方面漂移。
  */
 
-/** 黑名单正则：中英文肿瘤/免疫浸润关键词 */
-const BLACKLIST_PATTERNS = [
+/**
+ * 黑名单正则：中英文肿瘤/免疫浸润关键词，共 8 条，与 aims 清单逐条同序。
+ * 导出仅供 tests/tumor_blacklist.test.js 锁定口径（条数与逐条正则），业务代码
+ * 请走 checkTumorBlacklist / validateProjectFields，不要直接使用本数组。
+ */
+export const BLACKLIST_PATTERNS = [
   /cancer/i,
   /tumor/i,
-  /tumour/i,
   /carcinoma/i,
   /glioma/i,
-  /sarcoma/i,
-  /lymphoma/i,
-  /leukemia/i,
-  /leukaemia/i,
-  /melanoma/i,
-  /adenocarcinoma/i,
-  /squamous\s*cell\s*carcinoma/i,
   /immune\s*infiltration/i,
-  /tumor\s*microenvironment/i,
-  /tumour\s*microenvironment/i,
-  /immune\s*checkpoint/i,
-  /PD-?L?1/i,
-  /CTLA-?4/i,
-  /oncogene/i,
-  /tumor\s*suppressor/i,
-  /癌症/i,
-  /肿瘤/i,
-  /癌/i,
-  /免疫浸润/i,
-  /免疫检查点/i,
-  /肿瘤微环境/i,
-  /癌细胞/i,
+  /肿瘤/,
+  /癌/,
+  /免疫浸润/,
 ];
 
 /** 匹配后的友好提示 */
@@ -70,10 +62,12 @@ export function checkTumorBlacklist(text) {
  * @returns {{hit: boolean, matches: string[], field: string|null}}
  */
 export function validateProjectFields(fields) {
+  // fields 允许缺省或非对象：正常调用方总会传对象，但这里不该成为崩溃点
+  const source = fields && typeof fields === 'object' ? fields : {};
   const keys = ['name', 'description', 'disease', 'tissue', 'notes'];
-  const allKeys = [...new Set([...keys, ...Object.keys(fields || {})])];
+  const allKeys = [...new Set([...keys, ...Object.keys(source)])];
   for (const key of allKeys) {
-    const val = fields[key];
+    const val = source[key];
     if (!val) continue;
     const result = checkTumorBlacklist(val);
     if (result.hit) {

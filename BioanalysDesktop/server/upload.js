@@ -11,9 +11,14 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 import { LINES, projectLineDir, sanitizeProjectId } from './domain.js';
 import { DATA_EXT, isAllowedDataFile } from '../../shared/data_formats.mjs';
+import { isSafeUploadId, uploadFingerprint, uploadIdFromFingerprint } from '../../shared/upload_session.mjs';
+
+/** uploadId 安全判定与前端本地缓存校验同源（shared/upload_session.mjs），此处转出便于单测与调用方复用 */
+export { isSafeUploadId };
 
 /** 上传暂存根（本软件工作目录内，不污染源码） */
 export const UPLOAD_ROOT = path.join(process.cwd(), '.uploads');
@@ -128,21 +133,69 @@ export function validateUpload(name, headerBuf) {
   return { ok: reasons.length === 0, reasons, warnings, ext: path.extname(sanitized), magic, modality };
 }
 
-/** 上传会话目录 */
+/**
+ * 上传会话目录；id 不合法返回 null。
+ *
+ * 判定委托 shared/upload_session.mjs 的 isSafeUploadId（与前端缓存校验同一口径）：
+ * 只允许 [A-Za-z0-9._-]，拒绝空串 / 点段 / 任何含 '..' 的串 / 隐藏名。
+ * 比旧实现更严格：旧实现先把非法字符「剥掉」再判定，'a/b' 会被静默改写成 'ab'，
+ * 让一个非法 id 悄悄指向另一个会话目录；现在一律返回 null，由调用方报 400。
+ */
 export function uploadDir(uploadId) {
-  const safe = String(uploadId).replace(/[^A-Za-z0-9._-]/g, '');
-  // 点号本身在白名单里，所以 '..' 能活过上面的过滤；path.join(UPLOAD_ROOT, '..') 会跳出上传根，
-  // 等于让分片写进 .uploads 的父目录。这里显式拒绝点段与任何含 '..' 的 id（正常 id 是 randomUUID）。
-  if (!safe || safe === '.' || safe === '..' || safe.includes('..')) return null;
-  return path.join(UPLOAD_ROOT, safe);
+  const raw = String(uploadId ?? '');
+  if (!isSafeUploadId(raw)) return null;
+  return path.join(UPLOAD_ROOT, raw);
 }
 
-/** 创建上传会话目录 */
+/** 创建上传会话目录（幂等：已存在时只补建，不碰已落盘分片） */
 export function initUpload(uploadId) {
   const dir = uploadDir(uploadId);
   if (!dir) throw new Error(`uploadId 非法: ${uploadId}`);
   fs.mkdirSync(dir, { recursive: true });
   return dir;
+}
+
+/**
+ * 解析 POST /api/upload/init 的上传会话 id（纯函数，便于单测）。
+ *
+ * 三种来源，优先级从高到低：
+ *   1. 请求带 fingerprint：客户端用 shared/upload_session.mjs 的同一纯函数算出指纹，
+ *      服务端只做派生，前后端得到同一个 id（刷新 / 换浏览器都能续传）。
+ *   2. 请求带 size + lastModified（脚本或老客户端）：服务端用同一纯函数重算指纹再派生；
+ *      调用方必须已把 projectId / lineId / filename 换成校验后的值。
+ *   3. 都不带：回落 randomUUID，保持既有 HTTP 契约（老客户端仍按服务端给的 id 上传）。
+ *
+ * @returns {{uploadId: string, deterministic: boolean, reason?: string}}
+ */
+export function resolveUploadId(requested = {}) {
+  const fingerprint = requested?.fingerprint;
+  // 只要请求体里出现了 fingerprint 键，就必须是合法非空字符串：宁可 400 报错，
+  // 也不要悄悄回落到随机 UUID（那样前端以为能续传，实际每次都新建会话）。
+  // 键完全缺省（undefined）才算「老客户端」，走下面的 size + lastModified 或 UUID 分支。
+  if (fingerprint !== undefined) {
+    if (
+      typeof fingerprint !== 'string'
+      || fingerprint.length === 0
+      || fingerprint.length > 1024
+      || /[\u0000-\u001f\u007f]/.test(fingerprint)
+    ) {
+      return { uploadId: '', deterministic: false, reason: 'invalid_fingerprint' };
+    }
+    return { uploadId: uploadIdFromFingerprint(fingerprint), deterministic: true };
+  }
+  const size = requested?.size;
+  const lastModified = requested?.lastModified;
+  if (Number.isFinite(size) && size >= 0 && Number.isFinite(lastModified) && lastModified >= 0) {
+    const fromFacts = uploadFingerprint({
+      project: requested?.projectId,
+      lineId: requested?.lineId,
+      name: requested?.filename,
+      size,
+      lastModified,
+    });
+    return { uploadId: uploadIdFromFingerprint(fromFacts), deterministic: true };
+  }
+  return { uploadId: randomUUID(), deterministic: false };
 }
 
 /** 写入一个分片 */
@@ -287,3 +340,117 @@ export function cleanupUpload(uploadId) {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 }
+
+// ============================================================
+// 陈旧上传会话清理（.uploads 下超过 TTL 的 <uploadId>/ 目录）
+//
+// 为什么需要：客户端中断上传后会话目录会永久留在 .uploads 里，占磁盘且让
+// 「这个 id 还有没有分片」的判断失真。会话目录的 mtime 随每个分片写入刷新，
+// 所以「mtime 早于 now - ttl」就是「这个会话已经没人动了」的可靠信号。
+// ============================================================
+
+/** 默认 TTL：24 小时。超过这个时长没有新分片写入的会话目录视为陈旧 */
+export const DEFAULT_UPLOAD_TTL_HOURS = 24;
+
+/** 惰性清理最小间隔：10 分钟最多扫一次 .uploads，避免每个 init 都 readdir */
+export const GC_MIN_INTERVAL_MS = 10 * 60 * 1000;
+
+/** TTL 毫秒数：BIO_UPLOAD_TTL_HOURS 可覆盖（正数小时），非法值回落 24h */
+export function uploadTtlMs(env = process.env) {
+  const hours = Number(env?.BIO_UPLOAD_TTL_HOURS);
+  if (Number.isFinite(hours) && hours > 0) return Math.round(hours * 60 * 60 * 1000);
+  return DEFAULT_UPLOAD_TTL_HOURS * 60 * 60 * 1000;
+}
+
+function messageOf(cause) {
+  return cause instanceof Error ? cause.message : String(cause);
+}
+
+/**
+ * 删除 .uploads 下陈旧的会话目录（root / now / ttl / fs 全部可注入，便于单测）。
+ *
+ * 判定口径：
+ *   - 只看 UPLOAD_ROOT 的一级目录，且目录名必须过 isSafeUploadId；不是本模块建的目录一律不碰；
+ *   - 目录 mtime 比 now 早超过 ttlMs 才删（age === ttlMs 保留，边界不删）；
+ *   - 单个目录的 stat / rm 失败只记 errors，不抛出：清理是旁路动作，不能连累上传请求；
+ *   - UPLOAD_ROOT 不存在（还没传过任何文件）按正常状态处理，不记错。
+ *
+ * @returns {{scanned: number, removed: string[], kept: string[], errors: Array<{name: string, message: string}>}}
+ */
+export function gcStaleUploads({
+  root = UPLOAD_ROOT,
+  now = Date.now(),
+  ttlMs = uploadTtlMs(),
+  fsImpl = fs,
+  logger = console,
+} = {}) {
+  const report = { scanned: 0, removed: [], kept: [], errors: [] };
+  let entries;
+  try {
+    entries = fsImpl.readdirSync(root, { withFileTypes: true });
+  } catch (cause) {
+    if (cause && cause.code === 'ENOENT') return report;
+    report.errors.push({ name: '', message: messageOf(cause) });
+    return report;
+  }
+  for (const entry of entries) {
+    const name = String(entry?.name ?? '');
+    if (!entry?.isDirectory?.()) continue;
+    if (!isSafeUploadId(name)) continue;
+    report.scanned += 1;
+    const dir = path.join(root, name);
+    let mtimeMs;
+    try {
+      mtimeMs = fsImpl.statSync(dir).mtimeMs;
+    } catch (cause) {
+      report.errors.push({ name, message: messageOf(cause) });
+      continue;
+    }
+    if (now - mtimeMs <= ttlMs) {
+      report.kept.push(name);
+      continue;
+    }
+    try {
+      fsImpl.rmSync(dir, { recursive: true, force: true });
+      report.removed.push(name);
+    } catch (cause) {
+      report.errors.push({ name, message: messageOf(cause) });
+      logger?.warn?.(`[bioanalys-desktop] 清理陈旧上传会话失败（已忽略）: ${name}: ${messageOf(cause)}`);
+    }
+  }
+  return report;
+}
+
+/** 惰性清理的节流状态；-Infinity 表示「从未跑过」 */
+let lastGcAt = Number.NEGATIVE_INFINITY;
+
+/** 重置节流状态（仅供测试：让下一次 maybeGcStaleUploads 一定真正执行） */
+export function resetUploadGcThrottle() {
+  lastGcAt = Number.NEGATIVE_INFINITY;
+}
+
+/**
+ * 惰性清理入口：默认 10 分钟最多执行一次，异常一律吞掉。
+ *
+ * 服务启动时直接调 gcStaleUploads() 跑一次全量；每次 init 调本函数（节流）。
+ * 必须吞异常的理由：上传接口不能因为一次目录清理失败就 500。
+ *
+ * @returns {ReturnType<typeof gcStaleUploads>|null} 本次真正执行时返回报告；被节流跳过返回 null
+ */
+export function maybeGcStaleUploads(options = {}) {
+  const now = Number.isFinite(options.now) ? options.now : Date.now();
+  const minIntervalMs = Number.isFinite(options.minIntervalMs) ? options.minIntervalMs : GC_MIN_INTERVAL_MS;
+  if (now - lastGcAt < minIntervalMs) return null;
+  lastGcAt = now;
+  try {
+    const report = gcStaleUploads({ ...options, now });
+    if (report.removed.length > 0) {
+      (options.logger || console)?.log?.(`[bioanalys-desktop] 清理陈旧上传会话 ${report.removed.length} 个`);
+    }
+    return report;
+  } catch (cause) {
+    (options.logger || console)?.warn?.(`[bioanalys-desktop] 上传会话清理异常（已忽略）: ${messageOf(cause)}`);
+    return null;
+  }
+}
+

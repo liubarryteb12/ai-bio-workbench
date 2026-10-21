@@ -69,18 +69,18 @@
 允许外网安全访问，所有表单操作与后端建项配置 `project_manifest.json` 1:1 对齐：
 
 * **模块 A（项目基本信息与非肿瘤合规拦截）**：填写项目名称、项目描述、物种（`Homo sapiens` / `Mus musculus` / `Rattus norvegicus`）、非肿瘤研究领域下拉框、具体疾病名称（前端内置正则黑名单 + 后端建项前复核双保险；命中即红字拦截并禁止提交）。
-  * **黑名单确认清单（2026-10-20 用户裁定：以 `BioanalysDesktop/server/tumor_blacklist.js` 的 27 条为规格正本，取代本条早期列举的 8 条示例）**：
-    - 英文 20 条：`cancer`、`tumor`、`tumour`、`carcinoma`、`glioma`、`sarcoma`、`lymphoma`、`leukemia`、`leukaemia`、`melanoma`、`adenocarcinoma`、`squamous cell carcinoma`、`immune infiltration`、`tumor microenvironment`、`tumour microenvironment`、`immune checkpoint`、`PD-L1`（`PD-?L?1`）、`CTLA-4`（`CTLA-?4`）、`oncogene`、`tumor suppressor`；
-    - 中文 7 条：`癌症`、`肿瘤`、`癌`、`免疫浸润`、`免疫检查点`、`肿瘤微环境`、`癌细胞`；
-    - 全部 `i` 大小写不敏感；中英文按子串匹配（如"癌"命中"癌变/致癌物"，属预期拦截）。
-  * **扩充依据**：上述均为明确肿瘤/免疫浸润语义词，与"非肿瘤、非免疫浸润专精"立规意图一致；**后续增删规则必须同时改本清单与 `tumor_blacklist.js`**，不允许任一侧单方面漂移。
-  * **已知边界**：`PD-?L?1` 理论上可命中含 `PD1` 子串的标识符（罕见，接受）；`领域下拉含"免疫"` 与拦截 `免疫浸润/免疫检查点` 不冲突——"免疫"作为研究领域合规，"免疫浸润/检查点"作为肿瘤机制词拦截。
+  * **黑名单确认清单（2026-10-21 用户裁定：以本清单 8 条为规格正本，`BioanalysDesktop/server/tumor_blacklist.js` 逐条实现）**：
+    - 英文 5 条：`cancer`、`tumor`、`carcinoma`、`glioma`、`immune infiltration`（正则 `immune\s*infiltration`，允许词间空白）；
+    - 中文 3 条：`肿瘤`、`癌`、`免疫浸润`；
+    - 全部 `i` 大小写不敏感；中英文按子串匹配（如"癌"命中"癌变/致癌物"、"非肿瘤"命中"肿瘤"，属预期拦截）。
+  * **出处与沿革**：上述 8 条为 aims 早期列举原文（2026-10-21 按 S21 侦察报告 `con_hf/dispatch/S21_scout_workbench_gaps.md` 疑点 h 逐字复核）。2026-10-20 曾裁定以 `tumor_blacklist.js` 当时自行扩充的 27 条为规格正本；2026-10-21 用户裁定收敛回本清单 8 条，理由是那 19 条扩充（`tumour`、`sarcoma`、`lymphoma`、`leukemia`、`leukaemia`、`melanoma`、`immune checkpoint`、`PD-L1`、`CTLA-4`、`oncogene`、`免疫检查点` 等）没有规格条文依据，违反项目铁律"只按规格中经确认的黑名单和校验规则实现拦截，不要自行扩充规则"。**后续增删规则必须同时改本清单与 `tumor_blacklist.js`**，不允许任一侧单方面漂移。
+  * **已知边界**：收敛后英式拼写 `tumour`、`sarcoma`、`lymphoma`、`leukemia/leukaemia`、`melanoma`、`immune checkpoint`、`PD-L1/PD1`、`CTLA-4`、`oncogene`、`免疫检查点` 不再单独拦截（其中 `adenocarcinoma`、`squamous cell carcinoma` 仍因含 `carcinoma` 命中，`tumor microenvironment` 仍因含 `tumor` 命中，`肿瘤微环境`/`癌细胞`/`癌症` 仍因含 `肿瘤`/`癌` 命中）；`领域下拉含"免疫"` 与拦截 `免疫浸润` 不冲突——"免疫"作为研究领域合规，"免疫浸润"作为肿瘤机制词拦截。
 * **模块 B（数据来源、动态多分组与组内样本编号绑定）**：
 * **基础数据源信息**：数据库来源（GEO / ArrayExpress / 自有数据）、训练集编号（`train_gse`）、独立外部验证集编号（`val_gse`）、平台编号（`gpl`）、总样本数、非肿瘤非免疫组织来源，以及选填协变量（批次 `batch_col`、年龄、性别）。
 * **动态多分组管理（支持 $N \ge 2$ 组及多阶段疾病演进）**：支持三种分组模式（`二分类对比` / `多组无序对比` / `有序病情阶段演进`），动态点击 `[+ 新增分组]` 自由扩展分组数量，指定基准对照组（Reference）与阶段顺序（`stage_order`）。
 * **组内样本编号（GSM / Sample ID）录入与防重校验**：每个分组卡片内置样本编号多行文本域（支持逗号、空格、换行批量粘贴），前端实时统计各组样本数并执行跨组重复分配拦截。支持一键导入两列 `Sample_ID, Group_Name` 映射表。
 * **显式差异对比对（Contrasts）配置**：当分组数 $\ge 3$ 时，支持显式勾选差异分析对比组合并指定主对比对（Primary Contrast）。
-* **分片上传器**：4MB 分片断点续传（已实现：GET /api/upload/status 查询已落盘分片，前端从 nextIndex 续传）并自动校验 Bulk 与单细胞/空间数据格式。
+* **分片上传器**：4MB 分片断点续传（已实现：uploadId 由「项目 + 归属线 + 文件名 + 大小 + 修改时间」经 shared/upload_session.mjs 确定性派生，刷新/换浏览器/换设备都能凭 GET /api/upload/status 从 nextIndex 续传；服务端 24 小时未动的会话由 GC 自动清理，BIO_UPLOAD_TTL_HOURS 可覆盖）并自动校验 Bulk 与单细胞/空间数据格式。
 
 
 * **模块 C（级联流水线编排与全节点功能说明展示）**：
