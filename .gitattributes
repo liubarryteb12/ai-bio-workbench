@@ -1,0 +1,40 @@
+# 换行纪律：分析代码跑在 Linux（K40 proot 容器）上，必须 LF。
+#
+# 为什么需要这个文件：仓库原本没有 .gitattributes 且 core.autocrlf=true，索引里虽然是 LF，
+# 但 Windows 上 checkout 出来的工作区会被改写成 CRLF。CRLF 的后果不是"不好看"：
+#   - awk 的数值比较会退化成字符串比较（踩坑台账 #103），阈值判断静默出错；
+#   - #!/usr/bin/env bash 的 shebang 带 \r 会找不到解释器；
+#   - Python/R 里含 \r 的字符串常量会把结果写脏。
+# 索引一直是 LF，所以本文件不产生内容变更，只钉住"checkout 到工作区也是 LF"。
+#
+# 规则顺序有意义：后面的规则覆盖前面的同名属性。
+
+*.sh      text eol=lf
+*.bash    text eol=lf
+*.R       text eol=lf
+*.r       text eol=lf
+*.py      text eol=lf
+*.mjs     text eol=lf
+*.js      text eol=lf
+*.cjs     text eol=lf
+*.ts      text eol=lf
+*.tsx     text eol=lf
+*.jsx     text eol=lf
+*.css     text eol=lf
+*.html    text eol=lf
+*.json    text eol=lf
+*.md      text eol=lf
+*.txt     text eol=lf
+*.csv     text eol=lf
+*.tsv     text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+
+# 分析母版是无扩展名文件（src/<line>/scripts/deg_limma 等 58 个），扩展名规则覆盖不到，
+# 按目录整体钉住；ops/ 下还有 layout_autoload/bin/Rscript、layout_autoload/Rprofile 同理。
+src/**    text eol=lf
+ops/**    text eol=lf
+shared/** text eol=lf
+
+# PowerShell 只在 Windows 上跑，保持 CRLF（中文 .ps1 另需 UTF-8 with BOM，见 docs/coding-standards.md）
+*.ps1     text eol=crlf
