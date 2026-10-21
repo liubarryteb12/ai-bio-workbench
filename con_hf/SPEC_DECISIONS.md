@@ -274,3 +274,39 @@
   「过期标记（>7 天）在启动时清理」「真跑标记段：JSON 可解析、字段正确、删掉后不再存在」
   「模拟中断（不执行删除）：标记留下且可解析出中断信息」「包装器语法正确且仍是 LF-only」。
 - **遗留**：标记不参与自检五维，也不进交付物；若要「中断次数」进运维报表，需另加汇总脚本（未做）。
+---
+
+## D-21 引擎下发改走「命令串模式」包装器：母版路径给门禁，命令串给 bash -c
+
+- **日期**：2026-10-21
+- **问题背景与冲突点**：`buildTaskScript` 的 throttled 分支把整条 `rawCmd`（含母版路径 + 全部 `--input`）当作
+  `ops/run_throttled_task.sh` 的第 5 个参数 `SCRIPT_PATH` 传给包装器。包装器随后以 `bash "$SCRIPT_PATH"` 的方式执行，
+  于是**引号、`&&`、管道、重定向全部被当成脚本路径的一部分**：单引号拼出的路径带空格即失败，`|`、`>` 直接语法错误。
+  与此同时「走包装器拿线程封顶 / 门禁 / 削峰」又必须保留（`/etc/profile.d/bio_limits.sh` 只在登录 shell 生效，
+  而引擎直跑母版不经过登录 shell，OMP 会裸奔到 8 核触发降频）。
+- **备选方案对比**：
+  ① 保持直跑（不套包装器）：最简单，但丢线程封顶 + 门禁 + 削峰，K40 上实测会掉速 30%；
+  ② 修包装器的脚本路径分支，让它对 `$5` 做二次解析（eval / 按空格切）：能跑，但**任何含空格路径、含引号参数、
+    含管道的命令都会以难以预料的方式失败**，等于把 shell 词法重新实现一遍，且门禁拿到的 `$5` 仍是拼接串、无法 stat 到真实文件；
+  ③ **新增命令串模式**：`buildTaskScript` 只 export `BIO_EXEC_CMD=<shellQuote(rawCmd)>`（原样一条字符串，shellQuote 保证引号安全），
+     包装器用 `bash -c "$BIO_EXEC_CMD"` 执行；`$5` 改传母版绝对路径 `binDir/<step>` 供门禁校验，不再承载命令。
+- **最终拍板结论**：采用 ③。三条不可回退的契约：
+  1. `BIO_EXEC_CMD` 分支必须排在 `EXEC_CMD`（脚本路径模式）之前，旧路径模式只作向后兼容保留；
+  2. 第 5 参固定为母版绝对路径，**不许再出现 `self ${rawCmd}`**（门禁要能 stat 到真实文件，审计要能识别母版）；
+  3. 台账开关 `BIO_WRAPPER_LEDGER=0` 只包住「写台账」段，`rm -f "$RUNNING_JSON"` 必须留在开关外
+     （否则运行中标记永不清理，与 D-20 冲突）。
+  附带收益：`run.js` 重试路径与 `index.js` 提交路径现在共用同一条 `buildTaskScript({...task, throttled:true})`，
+  不会出现「重试时命令与首次不一致」。
+- **受影响条款**：§六.3 任务下发通道（命令构造方式由「参数透传」改为「命令串 + 母版路径」）。
+- **同步修改文件清单**：`BioanalysDesktop/server/task.js`（buildTaskScript 的 throttled 分支重写）、
+  `BioanalysDesktop/server/run.js:36`（改传 `throttled: true`）、`ops/run_throttled_task.sh`（命令串模式 + 台账开关）、
+  `BioanalysDesktop/tests/wrapper_exec_modes.test.js`（新增 9 条）、`BioanalysDesktop/tests/wrapper_wiring.test.js`（新增 8 条）、
+  `BioanalysDesktop/tests/target_ko_gene.test.js`（$5 断言同步）。
+- **验证测试名**：`wrapper_exec_modes.test.js`（真跑 patched 副本：命令串模式 exit 0 且真的写文件、引号与管道原意生效、
+  `exit 7` 透传 + 台账 failed + checkpoint_status=halted、`BIO_WRAPPER_LEDGER=0` 不写台账但标记照删、脚本路径模式向后兼容；
+  静态：分支顺序 / 台账开关边界 / D-21 说明 / LF-only+bash -n）；
+  `wrapper_wiring.test.js`（run.js 必须 `throttled:true`、两个 export 在包装器之前、`$5`=bin 下母版绝对路径、
+  **用真实 bash 解回 BIO_EXEC_CMD 与 rawCmd 逐字符比对**、审计对包装后脚本 allowed、禁止 `self ${rawCmd}` 回潮）。
+- **真机验证**：`ops/run_throttled_task.sh` 已部署到 k40-ubuntu（sha256 一致）。命令串模式探针 RC=0 且产物落盘；
+  `BIO_EXEC_CMD='exit 7'` 探针 RC=7 且台账 status=failed / checkpoint_status=halted。
+- **遗留**：18901 引擎服务当时仍跑旧代码（P13 起的进程无 watch），翻牌后需重启并复验一步真走命令串模式。

@@ -330,10 +330,19 @@ export function buildTaskScript(task) {
   ].filter(Boolean).join(' ');
 
   if (throttled) {
-    // 通过 ops/run_throttled_task.sh 包装：默认不绑核（EAS 动态调度，2026-10-20 契约变更，实测更快）+ nice/ionice 降权 + 门禁 + 台账 JSON
-    const taskId = `task_$(date +%s)_${Math.random().toString(36).slice(2, 8)}`;
+    // 走 ops/run_throttled_task.sh：nice/ionice 降权 + 存储水位与跨线门禁 + 线程封顶（aims §六.3）。
+    // 用**命令串模式**（BIO_EXEC_CMD），$5 只给门禁做跨线静态扫描，传母版绝对路径。
+    // 2026-10-21 之前这里把整条 rawCmd 当 $5 传，包装器随后执行 "$SCRIPT_PATH" —— 那是一个
+    // 含空格的文件名，必然 ENOENT，所以 throttled 分支长期不可用，引擎（run.js）只能
+    // throttled=false 绕过包装器直跑，降权/门禁/线程封顶对工作台下发的任务全部失效（D-21）。
+    const wrapperTaskId = `task_$(date +%s)_${Math.random().toString(36).slice(2, 8)}`;
+    // 命令串要整串再套一层单引号：里面本来就含 '--input' 这类单引号，shellQuote 负责 ''' 转义
+    lines.push(`export BIO_EXEC_CMD=${shellQuote(rawCmd)}`);
+    // 引擎自己有权威台账（server/run.js persistEntry，字段含 project_id/seed），
+    // 包装器再写一份精简台账就成了双账，故关掉包装器台账（D-21）
+    lines.push('export BIO_WRAPPER_LEDGER=0');
     lines.push(
-      `bash /mnt/ssd/bio_data/ops/run_throttled_task.sh ${taskId} ${lineId} ${shellQuote(step)} self ${rawCmd}`
+      `bash /mnt/ssd/bio_data/ops/run_throttled_task.sh ${wrapperTaskId} ${lineId} ${shellQuote(step)} self ${shellQuote(`${binDir(lineId)}/${step}`)}`
     );
   } else {
     lines.push(rawCmd);

@@ -17,6 +17,15 @@
 #   tensor_decomp 产物是 n_genes x n_genes，24969 基因要 15GB  dense 矩阵，
 #   手机 11G 内存放不下；2000 HVG 是聚类/整合同款基因空间，口径一致。
 #
+# 敲除基因来源（2026-10-21 全链取证后改造，对齐 aims/aims.txt:185）：
+#   工作台要求勾选虚拟敲除时强制弹出 target_ko_gene 必填框，所以基因不许再写死。
+#   解析优先级：--ko-gene 参数 > 环境变量 BIO_KO_GENE > 项目元数据
+#   $BIOANALYS_PROJECT_JSON 里的 biological_priors.target_ko_gene（前端模块 C 的录入位，
+#   提交层已把该路径导出为环境变量）> 兜底 TNF（上面 2026-10-13 定稿口径）。
+#   选中的基因与来源都写进台账行 ko_gene= 与 ko_gene_source=，任何一次跑批都能回溯
+#   "这份 DR 是敲哪个基因敲出来的"。基因仍须过下面两道闸：必须在 HVG 清单内、
+#   在目标群体表达占比 > sc_QC 基因闸。
+#
 # 方法口径（scTenifoldpy 0.5.1，与 R 包 scTenifoldKnk 默认参数等价）：
 #   scTenifoldKnk(data, ko_genes=TNF)：qc(sc_QC+cpm_norm) -> nc(make_networks
 #   10 网 x 500 细胞自助抽样, n_comp=3, q=0.9) -> td(CP 分解 K=3) ->
@@ -42,11 +51,13 @@ fi
 # 前缀匹配永远不中（坑 #99）。
 declare -a INPUTS=()
 output_count=0
+ko_gene=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --input) INPUTS+=("$2"); shift 2 ;;
     --output) output_count=$((output_count + 1)); shift 2 ;;
     --seed) shift 2 ;;
+    --ko-gene) ko_gene="$2"; shift 2 ;;
     *) echo "未知参数: $1" >&2; exit 2 ;;
   esac
 done
@@ -75,13 +86,63 @@ for f in "$annotated_file" "$norm_file" "$hvg_file"; do
   fi
 done
 
+# 敲除基因解析（顺序见文件头注释）：参数 > 环境变量 > 项目元数据 > TNF 兜底。
+# project.json 可能不存在（E2E 项目默认没有）或字段为空，任何读取异常都当"没指定"，
+# 不许让一个可选元数据把整步打挂。
+ko_gene_source="cli:--ko-gene"
+if [ -z "${ko_gene:-}" ]; then
+  ko_gene="$(printf '%s' "${BIO_KO_GENE:-}" | tr -d '[:space:]')"
+  ko_gene_source="env:BIO_KO_GENE"
+fi
+if [ -z "${ko_gene:-}" ]; then
+  # Python 侧输出 "holder.target_ko_gene=基因"，用 = 切分即可拿到基因与来源字段名
+  # （基因名不可能含 =，比 read 分列更省事，也不依赖 IFS 与 here-string）。
+  meta_gene="$(python3 - "${BIOANALYS_PROJECT_JSON:-}" <<'PYGENE'
+import json
+import sys
+
+
+def read_gene(path):
+    if not path:
+        return ""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            meta = json.load(fh)
+    except (OSError, ValueError):
+        return ""
+    if not isinstance(meta, dict):
+        return ""
+    for holder in ("biological_priors", "acl_and_output"):
+        block = meta.get(holder)
+        if isinstance(block, dict):
+            value = block.get("target_ko_gene")
+            if isinstance(value, str) and value.strip():
+                return holder + ".target_ko_gene=" + value.strip()
+    return ""
+
+
+print(read_gene(sys.argv[1] if len(sys.argv) > 1 else ""))
+PYGENE
+)"
+  if [ -n "${meta_gene:-}" ]; then
+    ko_gene="${meta_gene#*=}"
+    ko_gene_source="project.json:${meta_gene%%=*}"
+  fi
+fi
+if [ -z "${ko_gene:-}" ]; then
+  ko_gene="TNF"
+  ko_gene_source="fallback:TNF"
+fi
+
 echo "step_executed=virtual_knockout"
 echo "bioanalys_seed=${seed}"
 echo "input_annotated=${annotated_file}"
 echo "input_norm=${norm_file}"
 echo "input_hvg=${hvg_file}"
+echo "ko_gene=${ko_gene}"
+echo "ko_gene_source=${ko_gene_source}"
 
-ANNOTATED_FILE="$annotated_file" NORM_FILE="$norm_file" HVG_FILE="$hvg_file" BIOANALYS_SEED="$seed" \
+ANNOTATED_FILE="$annotated_file" NORM_FILE="$norm_file" HVG_FILE="$hvg_file" BIOANALYS_SEED="$seed" KO_GENE="$ko_gene" KO_GENE_SOURCE="$ko_gene_source" \
 python3 - <<'PYSCRIPT'
 import gc
 import os
@@ -99,7 +160,11 @@ import scTenifold as st
 ad.settings.allow_write_nullable_strings = False
 
 START = time.time()
-KO_GENE = "TNF"
+# 敲除基因由 bash 包装层解析后经环境变量传入（参数 / BIO_KO_GENE / project.json / TNF 兜底），
+# Python 侧不再写死：写死会让 aims:185 的 target_ko_gene 必填框永远空转。
+KO_GENE = os.environ.get("KO_GENE", "").strip()
+# 基因的指定渠道（cli / env / project.json / fallback），随结果一起落台账。
+KO_GENE_SOURCE = os.environ.get("KO_GENE_SOURCE", "unknown").strip() or "unknown"
 POPULATION = "Psoriasis"
 N_NETS = 10
 N_SAMP_CELLS = 500
@@ -123,6 +188,15 @@ def fail(message):
 
 def log(message):
     print(message, flush=True)
+
+
+if not KO_GENE:
+    fail("敲除基因未注入：bash 包装层应通过 KO_GENE 环境变量传入（--ko-gene / BIO_KO_GENE / project.json / TNF 兜底）")
+
+# 来源口径随基因走：基因可由客户指定，所以不能再用写死的"银屑病经典细胞因子"描述，
+# 只保留与基因无关的两条选择依据（网内 HVG + 表达闸），另附指定渠道。
+KO_GENE_PROVENANCE = ("由 %s 指定；选择依据：HVG 2000 网内基因（步骤 3 按 dispersion 选取）"
+                      "且目标群体表达占比超过 sc_QC 5%% 基因闸" % KO_GENE_SOURCE)
 
 
 PEAK_FILE = "memory_peak.tsv"
@@ -328,7 +402,8 @@ out.uns["virtual_knockout"] = {
     "method": "scTenifoldKnk_virtual_knockout",
     "sctenifoldpy_version": getattr(st, "__version__", "0.5.1"),
     "ko_gene": KO_GENE,
-    "ko_gene_provenance": "步骤 3 top HVG（dispersion 选取，hub 性质）；银屑病经典细胞因子；本线内选取",
+    "ko_gene_provenance": KO_GENE_PROVENANCE,
+    "ko_gene_source": KO_GENE_SOURCE,
     "population": POPULATION,
     "population_column": "diagnosis",
     "expression_source": norm_file,

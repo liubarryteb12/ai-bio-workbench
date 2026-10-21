@@ -97,10 +97,72 @@ test('P-22 的「容器从不重启」结论已标注作废并指向 P-23', () =
   assert.ok(p22.includes('更正') && p22.includes('P-23'), 'P-22 里要更正并指向 P-23');
 });
 
-test('ops/README.md 有「容器内禁用 ps / pgrep」小节与替代手段表', () => {
+test('ops/README.md 有「容器内禁用递归遍历命令」小节与替代手段表', () => {
   const text = fs.readFileSync(path.join(REPO, 'ops', 'README.md'), 'utf8');
-  assert.ok(text.includes('## 容器内禁用 ps / pgrep'), '缺该小节标题');
+  assert.ok(text.includes('## 容器内禁用递归遍历命令'), '缺该小节标题（2026-10-21 从「禁用 ps / pgrep」扩为递归遍历）');
   assert.ok(text.includes("ssh k40-ubuntu 'echo ALIVE'"), '缺 echo ALIVE 替代手段');
   assert.ok(text.includes('P-23'), '要指向 P-23');
   assert.ok(text.includes('看不到') && text.includes('guest 进程'), '要提醒宿主 ps 看不到 guest 进程');
 });
+
+test('P-24：判活不得用 /proc/loadavg（读的是 Android 宿主负载）', () => {
+  const text = fs.readFileSync(path.join(REPO, 'con_hf', 'pitfalls_ledger.md'), 'utf8');
+  assert.ok(/### P-24 /.test(text), '缺 P-24 条目');
+  const p24 = text.slice(text.indexOf('### P-24'));
+  assert.ok(p24.includes('/proc/loadavg'), '要写明 loadavg 是宿主负载');
+  assert.ok(p24.includes('判活'), '要给出判活口径');
+  assert.ok(p24.includes('/api/tasks/logs'), '首选手段必须是引擎 SSE 日志');
+  assert.ok(p24.includes('误杀'), '要记下误杀两次的事实');
+});
+
+test('P-24：ops/README.md 有判活小节，且四个可信手段齐全', () => {
+  const text = fs.readFileSync(path.join(REPO, 'ops', 'README.md'), 'utf8');
+  assert.ok(text.includes('## 怎么判断「任务还在跑」还是「卡死了」'), '缺判活小节');
+  for (const need of ['/api/tasks/logs', '_scenic_expr_tmp.csv', 'system_logs/*<PROJECT>*', 'ls -lt']) {
+    assert.ok(text.includes(need), '判活小节缺手段：' + need);
+  }
+  assert.ok(text.includes('P-24'), '要指向 P-24');
+});
+
+test('P-24：链路取证脚本不得用 loadavg 判活', () => {
+  const files = listFiles(path.join(REPO, 'cn_debug'), ['.mjs'])
+    .filter((f) => /chain\.mjs$/.test(f));
+  assert.ok(files.length >= 2, '应扫到 line1/line2/line3 链路脚本');
+  for (const file of files) {
+    const text = fs.readFileSync(file, 'utf8');
+    const codeLines = text.split('\n').filter((line) => !isCommentLine(line));
+    const hits = codeLines.filter((line) => /loadavg/.test(line));
+    assert.deepEqual(hits, [], path.basename(file) + ' 用 loadavg 判活（P-24）');
+  }
+});
+test('P-25：proot abort 不限于「容器内跑 ps」，崩溃取证口径已写进台账', () => {
+  const text = fs.readFileSync(path.join(REPO, 'con_hf', 'pitfalls_ledger.md'), 'utf8');
+  assert.ok(/### P-25 /.test(text), '缺 P-25 条目');
+  const p25 = text.slice(text.indexOf('### P-25'));
+  assert.ok(p25.includes('13:44:42'), '要点名第二次崩溃的时间点');
+  assert.ok(p25.includes('path.c'), '要保留断言原文');
+  assert.ok(/没有任何容器内递归命令/.test(p25), '要写明「不是 ps 触发」这条取证');
+  assert.ok(p25.includes('P-23'), '要点明 P-23 的必要条件关系');
+});
+
+test('P-25：链路 runner 必须用「快照 + 只认新增台账」而不是时间比较', () => {
+  const files = listFiles(path.join(REPO, 'cn_debug'), ['.mjs'])
+    .filter((f) => /chain\.mjs$/.test(f));
+  assert.ok(files.length >= 2, '应扫到 line1/line2/line3 链路脚本');
+  for (const file of files) {
+    const text = fs.readFileSync(file, 'utf8');
+    const codeLines = text.split('\n').filter((line) => !isCommentLine(line));
+    // 只禁「比较」：把 start_time 当门槛用来定位台账（跨时区 + 时钟漂移会假失败）；
+    // 只读出来打印是允许的。
+    const bad = codeLines.filter((line) => /start_time\s*(>=|<=|<|>)|startTime\s*(>=|<=|<|>)|ledger\.start_time\s*\?|\(since|since\s*\)/.test(line));
+    assert.deepEqual(bad, [], path.basename(file) + ' 用时间比较定位台账（时钟漂移会假失败，P-25）：\n' + bad.join('\n'));
+  }
+});
+
+test('P-25：D-20 运行中标记是中断取证的兜底（不许被 tie 掉）', () => {
+  const text = fs.readFileSync(path.join(REPO, 'con_hf', 'pitfalls_ledger.md'), 'utf8');
+  const p25 = text.slice(text.indexOf('### P-25'));
+  assert.ok(p25.includes('_running'), 'P-25 要指向运行中标记目录');
+  assert.ok(p25.includes('D-20'), 'P-25 要指向 D-20 裁定');
+});
+

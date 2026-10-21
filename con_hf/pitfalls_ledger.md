@@ -235,7 +235,15 @@
   其中某些条目在 proot 的翻译表里解析成空路径，`compare_paths2()` 对长度 0 的路径触发断言（`length1 > 0`），
   整个 proot 进程收到 SIGABRT 退出，容器内**所有**进程（含正在跑的 R/python 任务）一起死。
   这解释了此前被误判为「容器不定时重启」的多次任务中断。
-- **永久修复**：容器内**禁用** `ps` / `pgrep` / `pkill` / `find -newermt` 这类遍历 `/proc` 的命令。判活与取证改用：
+- **2026-10-21 13:09 补充取证（触发面比 ps 更宽）**：13:09:02 与 13:09:11 又连崩两次，
+  当时**没有**任何 ps/pgrep 在跑，我执行的是一条 `grep -rl <taskId> /mnt/ssd/bio_data/system_logs/`；
+  两个被 abort 的进程分别是 19369 / 19831。故触发面应表述为「**任何递归目录遍历**」：
+  `ps`/`pgrep`/`pkill` 遍历 `/proc`、`grep -r`/`grep -R` 经 fts(3) 逐层 `openat`+`fchdir`、
+  `find`（含 `-newermt`）、`du`/`ls -R` 这类同样逐层下降的工具都在危险集合里。
+  判据：**只要一条命令会「自己决定下一层看哪个目录」就属于危险集合**；
+  显式列出路径的 `ls <dir>`、`ls -t <glob> | head`、`cat <file>`、`test -f <file>` 是安全的。
+- **永久修复**：容器内**禁用递归遍历**类命令：`ps` / `pgrep` / `pkill` / `find`（含 `-newermt`）/ `grep -r` / `grep -R` / `du` / `ls -R`。
+  需要「按名字找文件」时，先用 `ls -t <glob>` 取清单再逐个 `test -f`；判活与取证改用：
   ① 台账新增：`ls -t /mnt/ssd/bio_data/system_logs/*<PROJECT>* | head`；
   ② 产物 mtime：`ls -lt <项目>/<线>/processed | head`；
   ③ 单点检查（确知 pid 时）：`ls /proc/<pid>`；
@@ -244,4 +252,29 @@
 - **连带修正**：P-22 的「容器从不重启」结论作废 —— `uptime` 是静态假文件这一点仍然成立，
   但**真重启确实存在**，且触发者是我们自己的 `ps` 探针；P-19 / P-20 的「proot 长进程被打断」现象有了确切根因。
 - **防回归单测**：`BioanalysDesktop/tests/proot_probe_guard.test.js`（静态断言：所有可能通过 ssh 进容器的脚本里，
-  凡出现 `k40-ubuntu` 的文件不得出现 guest 侧 `ps -eo/ps aux/ps -ef`、`pgrep`、`pkill`；并断言本条目与 ops/README.md 的禁令文字在位）。
+  凡出现 `k40-ubuntu` 的文件不得出现 guest 侧 `ps -eo/ps aux/ps -ef`、`pgrep`、`pkill`、`grep -r`/`grep -R`、`find`、`du`、`ls -R`；
+  并断言本条目与 ops/README.md 的禁令文字在位；历史一次性取证脚本按白名单豁免，新增文件不得再犯）。
+
+### P-24 容器内 `/proc/loadavg` 是 Android 宿主的负载，用它判活会误杀正在跑的任务
+
+- **所属域**：运维 / 任务判活（K40 proot 容器）
+- **现象与复现条件**：line2 的 scenic_tf 在跑 GRNBoost2（纯 CPU、前 20 分钟不出产物），此时容器内 `cat /proc/loadavg` 显示 `0.12 0.07 0.02`、`processed/` 也没有新文件。据此判「卡死」并杀掉重试，13:0x-13:16 连续误杀两次；事后用同一条命令手工直跑，1 分钟就打到 GRNBoost2（日志 `[6.6s] dask threads=3`），证明脚本一直正常。
+- **RCA**：proot 只做路径重映射，**不隔离 /proc/loadavg**，读到的是 Android 宿主的全局负载；宿主此刻主要空闲/IO，容器内 CPU 密集任务在宿主的 runnable 计数里并不显著。同源的还有：容器内 `uptime` 是 proot bind 进来的静态假文件（P-22），`/proc/<pid>/cmdline` 不可读，guest 进程在宿主 `ps` 里看不到。**即容器内没有任何可信的「本任务在不在跑」的进程级信号。**
+- **判活正确顺序（唯一可信口径）**：
+  ① 引擎 SSE 日志 `GET /api/tasks/logs?id=<taskId>`（实时远端 stdout，最直接）；
+  ② 该步的临时产物出现（如 scenic_tf 的 `_scenic_expr_tmp.csv` 约 2 分钟出现）；
+  ③ 台账文件名新增：`ls -t /mnt/ssd/bio_data/system_logs/*<PROJECT>* | head`；
+  ④ 产物 mtime：`ls -lt <项目>/<线>/processed | head`。
+  **`/proc/loadavg`、进程数、`/api/tasks` 里任务在不在，一律不能当判活依据**：`/api/tasks` 里任务消失只说明本机 ssh 子进程结束，没有台账就是「被杀 / 无输出退出」，这时要看日志而不是猜。
+- **安全的旁证**：本机（Windows）侧 `Get-CimInstance Win32_Process` 看 ssh.exe 的 CommandLine 是安全的（不涉及 guest /proc），能看到引擎下发的完整远端命令，可用于手工复现；Termux 宿主侧 `ssh k40 'ps -eo pid,etime,args | grep -i proot'` 只能判容器是否换 pid（P-23），看不到 guest 进程。
+- **口径提醒**：自检第 3 维（`server/selfcheck.js` 的 `cat /proc/loadavg`）读到的是**宿主**负载，不是容器内任务负载；它衡量「手机整体忙不忙」有效，衡量「我这个任务在不在跑」无效。
+- **永久修复方案**：判活一律走上表四步；任务重试前必须先在 SSE 日志里看到「确实没有输出增长」的证据，禁止只凭 loadavg/进程数/无新产物就杀任务。
+- **防回归单测用例路径**：`BioanalysDesktop/tests/proot_probe_guard.test.js`（断言本条目含 `/proc/loadavg` 与「判活」口径、ops/README.md 有判活小节、cn_debug 下链路脚本不得出现 `loadavg` 判活）。
+### P-25 proot 崩溃与「递归遍历」无关：13:44:42 那次 abort 时本机没跑任何容器内命令
+
+- **所属域**：K40 容器稳定性 / 任务中断取证
+- **现象与复现条件**：2026-10-21 13:44:42，Termux 侧 sshd 日志出现 `path.c:546 assertion "length1 > 0" failed`、`signal 6 from process 23069`，随后 `Server listening` 重启；当时 line2 的 scenic_tf 正在跑 GRNBoost2（任务被一起带走）。同一台机器 13:20-13:47 之间还有若干次正常 accept/disconnect。
+- **RCA**：复盘当时的操作序列，本机只跑了本机 PowerShell 与宿主侧 `ssh k40 'ps ...'`，**没有任何容器内递归命令**（P-23 认定的触发条件是「容器内跑 `ps -ef` / `pgrep` / `find` 这类会遍历 /proc 的命令」）。所以 proot abort 的触发条件比 P-23 记录的更宽：宿主侧对 proot 进程的某些操作、或容器内高负载下的路径解析竞态，都可能触发同一条 path.c 断言。P-23 的「递归遍历会触发」仍然成立，但它不是必要条件。
+- **永久修复方案**：① 不能把「不跑 ps 就不会崩」当保险，长任务必须用 `system_logs/_running/<task_id>.json` 残留来取证中断（D-20）；② 长链取证脚本按「快照 + 只认新增台账」定位台账（P15 runner 的做法），避免时钟漂移叠加崩溃造成假失败；③ 重跑前先确认 proot pid / etime 是否变化（只认这个，容器内 uptime 不可信，P-22）。
+- **防回归单测用例路径**：`BioanalysDesktop/tests/proot_probe_guard.test.js`（P-23/P-24/P-25 三条并存，且断言 runner 用「快照 + 新增台账」而不是时间比较）。
+

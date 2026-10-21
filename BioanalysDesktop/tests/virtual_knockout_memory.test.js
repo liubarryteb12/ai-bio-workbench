@@ -113,19 +113,38 @@ test('每个 del 的目标都先有赋值，且删除之后不再被引用（不
 });
 
 test('数值口径与随机序列未变：常量原文一致、随机源仍只有 seed', () => {
+  // 敲除基因已改成四级来源解析（P13），不再写死 TNF，因此不在这张常量表里；
+  // 它的解析链路由下一条测试单独盯。
   const constants = [
-    'KO_GENE = "TNF"', 'POPULATION = "Psoriasis"', 'N_NETS = 10', 'N_SAMP_CELLS = 500',
+    'POPULATION = "Psoriasis"', 'N_NETS = 10', 'N_SAMP_CELLS = 500',
     'N_COMP = 3', 'Q_VALUE = 0.9', 'TD_RANK = 3', 'MA_DIMS = 2', 'TOP_N = 20',
     'SIG_LEVEL = 0.05', 'QC_MIN_PERCENT = 0.05',
   ];
   for (const c of constants) {
     assert.ok(SOURCE.includes(c), '常量被改动: ' + c);
   }
+  assert.equal(SOURCE.includes('KO_GENE = "TNF"'), false, 'Python 侧不许再把敲除基因写死成 TNF');
   assert.equal(SOURCE.includes('np.random'), false, '新增了 numpy 随机源');
   assert.equal(SOURCE.includes('import random'), false, '新增了 python random');
   assert.equal(SOURCE.includes('random.seed'), false, '新增了 random.seed');
   assert.ok(SOURCE.includes('"seed": seed_int'));
   assert.ok(SOURCE.includes('dr = scn.build()'));
+});
+
+test('敲除基因走四级来源解析（--ko-gene > BIO_KO_GENE > project.json > TNF 兜底）', () => {
+  // Python 侧只认环境变量，不再写死基因
+  assert.ok(SOURCE.includes('KO_GENE = os.environ.get("KO_GENE", "").strip()'), 'Python 侧必须从环境变量取敲除基因');
+  assert.ok(SOURCE.includes('KO_GENE_SOURCE = os.environ.get("KO_GENE_SOURCE", "unknown")'), 'Python 侧必须记录来源渠道');
+  assert.ok(/if not KO_GENE:\s*\n\s*fail\(/.test(SOURCE), '空基因必须 fail 而不是静默兜底');
+  // bash 包装层四级来源齐全
+  assert.ok(SOURCE.includes('--ko-gene)'), '缺 --ko-gene 参数');
+  assert.ok(SOURCE.includes('BIO_KO_GENE'), '缺 BIO_KO_GENE 环境变量通道');
+  assert.ok(SOURCE.includes('biological_priors'), '缺 project.json biological_priors 通道');
+  assert.ok(SOURCE.includes('acl_and_output'), '缺 project.json acl_and_output 通道');
+  assert.ok(SOURCE.includes('target_ko_gene'), '缺 target_ko_gene 字段');
+  assert.ok(SOURCE.includes('fallback:TNF'), '缺 TNF 兜底标记');
+  assert.ok(SOURCE.includes('KO_GENE="$ko_gene"'), 'bash 层没有把解析结果传给 Python 侧');
+  assert.ok(SOURCE.includes('ko_gene_source'), '台账必须记录基因来源');
 });
 
 test('原有产物写入与自校验未删：三个产物文件、fail 分支、uns 键', () => {

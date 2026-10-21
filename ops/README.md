@@ -219,9 +219,10 @@ info 表缺失时保留 `9606.ENSP...` 原始 ID 并打 warning，不中断。
 目录**尚不存在**，即离线分支暂不可用。首次跑 line1 步骤 8 之前必须先按上面命令预下载，
 否则任务只能走网络 API（外网抖动时直接 exit 1）。
 
-## 容器内禁用 ps / pgrep（会让 proot 自己 abort，杀掉在跑任务）
+## 容器内禁用递归遍历命令（会让 proot 自己 abort，杀掉在跑任务）
 
-2026-10-21 实测：在 `k40-ubuntu` 容器里执行 `ps -eo ...` / `pgrep -a ...` / `pkill` 这类遍历 `/proc` 的命令，
+2026-10-21 实测：在 `k40-ubuntu` 容器里执行 `ps -eo ...` / `pgrep -a ...` / `pkill` / `grep -r ...` / `find ...` / `du` / `ls -R`
+这类**递归目录遍历**命令（`ps`/`pgrep` 遍历 `/proc`，`grep -r`/`find` 走 fts(3) 逐层下降），
 会触发 proot 的路径断言并让**整个容器退出**（Termux 侧 `$PREFIX/var/log/ubuntu-sshd/current` 里留下
 `./path/path.c:546: ... assertion "length1 > 0" failed` + `proot warning: signal 6 received`），
 容器内正在跑的分析任务（含已跑 31 分钟的 SCENIC）随之消失、不留台账。详见 con_hf/pitfalls_ledger.md P-23。
@@ -234,10 +235,39 @@ info 表缺失时保留 `9606.ENSP...` 原始 ID 并打 warning，不中断。
 | 某步跑完了吗 | `pgrep -a python3` | `ls -t /mnt/ssd/bio_data/system_logs/*<PROJECT>* \| head` |
 | 产物有没有更新 | `ps -eo pcpu,args` | `ls -lt <项目>/<线>/processed \| head` |
 | 容器有没有重启 | 容器内 `uptime`（静态假文件，P-22） | Termux 宿主侧 `ssh k40 'ps -eo pid,etime,args \| grep -i proot'` |
+| 某个文件在不在 | `find /mnt/ssd -name 'x*'` | `ls -t /mnt/ssd/bio_data/system_logs/*x* \| head` 再逐个 `test -f` |
+| 某目录里有几个文件 | `du -sh` / `ls -R` | `ls -1 <dir> \| wc -l`（只列一层） |
+
+判据：**只要一条命令会「自己决定下一层看哪个目录」就属于危险集合**；
+显式点名路径的 `ls <dir>`、`ls -t <glob> | head`、`cat <file>`、`test -f <file>` 是安全的。
+13:09 那次连崩就是一条 `grep -rl <taskId> system_logs/` 造成的（没有 ps 参与）。
 
 注意：宿主侧 `ps` **看不到** guest 进程（`ssh k40 'ps -eo ... \| grep python3'` 输出为空），
 所以它只能用来判「proot 进程有没有换 pid」，不能用来判任务存活。
 `BioanalysDesktop/tests/proot_probe_guard.test.js` 会静态拦住往容器里塞这些命令的脚本。
+
+## 怎么判断「任务还在跑」还是「卡死了」（判活口径）
+
+容器内**没有任何可信的进程级信号**：`/proc/loadavg` 读的是 Android 宿主的全局负载（任务在满负荷跑时它可能显示 0.1），
+`uptime` 是 proot bind 进来的静态假文件，`/proc/<pid>/cmdline` 不可读，guest 进程在宿主 `ps` 里也看不到。
+2026-10-21 就有人拿 `loadavg=0.12` + 「processed 没新文件」判 scenic_tf 卡死，连续误杀两次（真跑 30 分钟才出产物）。
+
+按这个顺序判活，只有这四步可信：
+
+| 顺序 | 手段 | 命令 / 位置 |
+| --- | --- | --- |
+| ① | 引擎 SSE 日志（最直接，实时远端 stdout） | `GET /api/tasks/logs?id=<taskId>` |
+| ② | 该步临时产物出现 | 例：scenic_tf 的 `processed/_scenic_expr_tmp.csv`（约 2 分钟） |
+| ③ | 台账新增 | `ls -t /mnt/ssd/bio_data/system_logs/*<PROJECT>* \| head` |
+| ④ | 产物 mtime | `ls -lt <项目>/<线>/processed \| head` |
+
+**不能当判活依据**：`/proc/loadavg`、进程数、`/api/tasks` 里任务在不在。
+`/api/tasks` 里任务消失只说明本机 ssh 子进程结束；没有台账就是「被杀 / 无输出退出」，这时看日志，不要猜。
+
+安全的旁证：本机 `Get-CimInstance Win32_Process` 看 ssh.exe 的 CommandLine（能看到引擎下发的完整远端命令，可用于手工复现），
+以及 Termux 宿主侧 `ssh k40 'ps -eo pid,etime,args \| grep -i proot'`（只判容器是否换 pid）。
+
+详见 con_hf/pitfalls_ledger.md 的 P-23（递归遍历会 abort proot）与 P-24（loadavg 是宿主负载）。
 
 ## 路径速查
 

@@ -31,25 +31,57 @@ function ssh(cmd) {
     { encoding: 'utf8', timeout: 120000 });
 }
 
-function latestLedger(step) {
+/**
+ * 台账定位：提交前快照 + 只认新增文件。
+ * 2026-10-21 之前用 start_time >= 本地提交时刻比较，踩了两个坑：
+ *   - K40 容器是 UTC、本地是 CST(+8)，跨时区比较大小时整条链路假失败；
+ *   - 台账文件名正则 `*_${step}_*` 会误命中前缀更长的步骤（enrichment_figures vs enrichment）。
+ * 现在改成「快照差集 + 严格 ledPattern 二次过滤」，与 line2/line3 runner 同口径（P-25）。
+ */
+function listLedgers(step) {
   try {
-    const out = ssh(`ls -t /mnt/ssd/bio_data/system_logs/*${PROJECT}*_${step}_*.json 2>/dev/null | head -1`);
-    const file = out.trim().split('\n')[0];
-    if (!file) return null;
-    return { file, ...JSON.parse(ssh(`cat '${file}'`)) };
-  } catch {
-    return null;
+    const out = ssh(`ls -t /mnt/ssd/bio_data/system_logs/*${PROJECT}*_${step}_*.json 2>/dev/null`);
+    return { ok: true, files: out.trim().split('\n').filter((f) => ledPattern(step).test(f)) };
+  } catch (err) {
+    return { ok: false, files: [], err: String(err && err.message || err) };
   }
 }
 
-async function waitLedger(step, since, timeoutMs = 90000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    const ledger = latestLedger(step);
-    if (ledger && (!since || ledger.start_time >= since)) return ledger;
-    await sleep(2000);
+function ledPattern(step) {
+  // 台账名形如 <PROJECT>_<line>_<step>_<taskid>.json：step 段必须完整匹配，防前缀误命中
+  return new RegExp(`_${step.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}_[0-9a-f]+\\.json$`);
+}
+
+function readLedger(file) {
+  try {
+    const exists = ssh(`test -f '${file}' && echo LEDGER_YES || echo LEDGER_NO`);
+    if (!/LEDGER_YES/.test(exists)) return { ok: false, kind: 'missing', err: '远端无此文件: ' + file };
+    return { ok: true, ledger: JSON.parse(ssh(`cat '${file}'`)) };
+  } catch (err) {
+    return { ok: false, kind: 'ssh', err: String(err && err.message || err) };
   }
-  return null;
+}
+
+async function waitNewLedger(step, before, timeoutMs = 90000) {
+  const deadline = Date.now() + timeoutMs;
+  let lastErr = '';
+  while (Date.now() < deadline) {
+    const listed = listLedgers(step);
+    if (!listed.ok) {
+      lastErr = listed.err;
+      await sleep(3000);
+      continue;
+    }
+    const fresh = listed.files.find((file) => !before.has(file));
+    if (fresh) {
+      const read = readLedger(fresh);
+      if (read.ok) return { ledger: read.ledger, file: fresh, err: '' };
+      if (read.kind === 'missing') { lastErr = read.err; await sleep(2000); continue; }
+      return { ledger: null, file: fresh, err: read.kind + ': ' + read.err };
+    }
+    await sleep(3000);
+  }
+  return { ledger: null, file: null, err: lastErr || '90s 内未见新增台账' };
 }
 
 const STEPS = [
@@ -78,7 +110,13 @@ async function runningIds() {
 
 async function attempt(spec, index, tryNo) {
   const label = `${index + 1}. ${spec.step}${tryNo > 1 ? ` (retry ${tryNo - 1})` : ''}`;
-  const submittedAt = new Date().toISOString();
+  // 提交前快照台账文件名（不用时间比较：容器 UTC / 本地 CST，且时钟会漂）
+  const before = listLedgers(spec.step);
+  if (!before.ok) {
+    check(`${label} 台账快照`, false, before.err);
+    return false;
+  }
+  const beforeSet = new Set(before.files);
   const submit = await fetch(`${BASE}/api/tasks/submit`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -107,14 +145,15 @@ async function attempt(spec, index, tryNo) {
   }
 
   await sleep(1500);
-  const ledger = await waitLedger(spec.step, submittedAt);
-  if (!ledger) {
-    check(`${label} 台账`, false, '90s 内未找到台账文件');
+  const found = await waitNewLedger(spec.step, beforeSet);
+  if (!found.ledger) {
+    check(`${label} 台账`, false, found.err || '90s 内未见新增台账');
     return false;
   }
+  const ledger = found.ledger;
   const ok = ledger.status === 'completed';
   check(`${label} 结果`, ok,
-    `status=${ledger.status} exit=${ledger.exit_code} ${ledger.start_time}→${ledger.end_time}`
+    `status=${ledger.status} exit=${ledger.exit_code} ${String(ledger.start_time || '?')}→${String(ledger.end_time || '?')}`
     + (ok ? '' : `\n    error=${String(ledger.error_log || '').replace(/\n/g, '\n    ').slice(0, 900)}`));
   return ok;
 }

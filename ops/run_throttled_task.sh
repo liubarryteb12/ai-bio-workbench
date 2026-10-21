@@ -1,7 +1,23 @@
 #!/bin/bash
 # run_throttled_task.sh：统一绑核降权执行包装器 + 自动台账 JSON 落盘
-# 用法: nohup bash /mnt/ssd/bio_data/ops/run_throttled_task.sh \
+# 用法（两种执行体，见下方「执行体形态」）：
+#   ① 脚本路径模式（手工直跑）：
+#      nohup bash /mnt/ssd/bio_data/ops/run_throttled_task.sh \
 #          <task_id> <line_id> <step_name> <R|Python> <script_path> [script_args...] &
+#   ② 命令串模式（工作台引擎下发）：
+#      BIO_EXEC_CMD='<完整命令>' BIO_WRAPPER_LEDGER=0 \
+#          bash /mnt/ssd/bio_data/ops/run_throttled_task.sh \
+#          <task_id> <line_id> <step_name> self <母版绝对路径> &
+#
+# 执行体形态（2026-10-21 新增，D-21）：
+#   ① 脚本路径模式：$5 是母版绝对路径，按 LANG_SPEC 选解释器执行（手工直跑用）。
+#   ② 命令串模式：env BIO_EXEC_CMD 非空时，整串交给 `bash -c` 执行；$5 此时**不参与执行**，
+#      只用于门禁 check_storage_and_isolation.sh 的跨线静态扫描（传母版绝对路径）。
+#      为什么需要：工作台引擎下发的命令带 --input/--output 引号与多段拼接，当成「脚本路径」
+#      传进来会被 `"$SCRIPT_PATH"` 当成一个含空格的文件名（ENOENT）——这正是 throttled 分支
+#      长期不可用、引擎一直绕过包装器直跑的原因（无 nice/ionice 降权、无门禁、无线程封顶）。
+#   台账开关 BIO_WRAPPER_LEDGER（默认 1）：引擎自己有权威台账（server/run.js persistEntry，
+#      字段含 project_id/seed），再让包装器写一份精简台账就成了双账，故引擎侧置 0。
 #
 # 执行面策略（2026-10-20 契约变更，用户拍板）：
 #   **默认不静态绑核**——实测依据 docs/k40_cpu_affinity.md §七（交替验证 3 轮每轮全胜）：
@@ -79,7 +95,10 @@ fi
 
 # 核心削峰执行
 set +e
-if [ -n "$EXEC_CMD" ]; then
+if [ -n "${BIO_EXEC_CMD:-}" ]; then
+    # 命令串模式：整串交给 bash -c，保证提交层写的引号、管道、&& 都按原意解析
+    $AFFINITY_PIN nice -n 10 ionice -c 2 -n 4 bash -c "$BIO_EXEC_CMD" > "$LOG_FILE" 2>&1
+elif [ -n "$EXEC_CMD" ]; then
     if [ -n "$SCRIPT_ARGS" ]; then
         $AFFINITY_PIN nice -n 10 ionice -c 2 -n 4 $EXEC_CMD "$SCRIPT_PATH" $SCRIPT_ARGS > "$LOG_FILE" 2>&1
     else
@@ -99,6 +118,8 @@ set -e
 END_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 STATUS=$([ $EXIT_CODE -eq 0 ] && echo "completed" || echo "failed")
 
+# BIO_WRAPPER_LEDGER=0：引擎自己有权威台账（含 project_id/seed），再写一份精简台账就是双账
+if [ "${BIO_WRAPPER_LEDGER:-1}" = "1" ]; then
 cat <<EOF > "$LEDGER_JSON"
 {
   "task_id": "$TASK_ID",
@@ -116,6 +137,9 @@ cat <<EOF > "$LEDGER_JSON"
   "error_log": "$([ $EXIT_CODE -eq 0 ] && echo "null" || echo "$LOG_FILE")"
 }
 EOF
+else
+    echo "[wrapper] BIO_WRAPPER_LEDGER=0：跳过包装器台账（由工作台引擎写权威台账，避免双账）"
+fi
 
 # 台账写成功才删运行中标记：标记残留 == 任务被中断的取证
 rm -f "$RUNNING_JSON"

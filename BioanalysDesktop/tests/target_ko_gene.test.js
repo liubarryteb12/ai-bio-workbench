@@ -185,7 +185,8 @@ test('P14: throttled 包装下 BIO_KO_GENE 的 export 仍排在 run_throttled_ta
   const wrapperAt = script.indexOf('run_throttled_task.sh');
   assert.ok(exportAt > 0, `应有 export 行: ${script}`);
   assert.ok(wrapperAt > exportAt, 'export 必须在包装器调用之前（bash 子进程继承环境）');
-  assert.match(script, /self 'virtual_knockout'/);
+  // D-21：包装器 $5 现在是母版绝对路径（bin/<线>/<步骤名>），不再把整条命令串当脚本路径
+  assert.match(script, /self '\/mnt\/ssd\/bio_data\/bin\/line2_scrna\/virtual_knockout'/);
 });
 
 // ───────────── C. 提交层真 HTTP ─────────────

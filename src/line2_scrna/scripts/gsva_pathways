@@ -2,10 +2,14 @@
 # gsva_pathways：line2_scrna 通路活性打分 GSVA（aims 线2 下游第 6 项，GO/KEGG/Reactome/GSEA/GSVA 之 GSVA）。
 #
 # 输入（cwd 下）：
-#   00_sc_harmony.h5ad（步骤 4 产物：含 X_pca/X_umap 的整合矩阵，首选输入源）
-#   scrna_norm.h5ad（步骤 3 产物：全基因 log 归一化表达，24969 基因；仅当
-#     00_sc_harmony.h5ad 尚未产出时回落使用，且桥接断言随之显式降级为
-#     --stage pre-dimred）
+#   整合矩阵（步骤 4 产物：含 X_pca 降维坐标，首选输入源）。按候选名依次探测：
+#     00_sc_harmony.h5ad（aims v2.5 §四 的规范名）
+#     -> scrna_harmony.h5ad（PIPELINE_STEP_META 里 integrate_harmony 的 io 名）
+#     -> scrna_integrated.h5ad（integrate_harmony 母版实际写出的文件名）
+#   三个名字互不相同是 2026-10-21 全链取证发现的衔接缺口：只认第一个会让整链
+#   永远走降级分支，所以这里按"规范名 -> 元数据名 -> 实际产物名"兜住。
+#   scrna_norm.h5ad（步骤 3 产物：全基因 log 归一化表达，24969 基因；仅当上述
+#     整合矩阵全部缺失时回落使用，且桥接断言随之显式降级为 --stage pre-dimred）
 #   scrna_deg.h5ad（步骤 15 产物：obs['celltype']，与 norm 细胞索引对齐）
 #   ../references/gmt_cache/*.gmt（Enrichr 基因集缓存，离线复用）
 # 输出（cwd 下）：
@@ -40,21 +44,62 @@ done
 echo "step_executed=gsva_pathways"
 echo "bioanalys_seed=${seed}"
 
-# 输入源规范（aims v2.5 §四 线2）：本步骤下游统一以带降维坐标的 00_sc_harmony.h5ad
-# 为输入，严禁直接消费步骤 3 的 scrna_norm.h5ad —— 后者没有 X_pca/X_umap/spatial，
-# 会让桥接第 4 项断言（Embedding 保留）必然失败。00_sc_harmony.h5ad 尚未产出时回落
-# scrna_norm.h5ad，同时把桥接断言显式降级为 --stage pre-dimred（降级要留痕，不静默）。
-NORM="00_sc_harmony.h5ad"
+# 输入源规范（aims v2.5 §四 线2）：本步骤下游统一以带降维坐标的整合矩阵为输入，
+# 严禁直接消费步骤 3 的 scrna_norm.h5ad：后者没有 X_pca/X_umap/spatial，会让桥接
+# 第 4 项断言（Embedding 保留）必然失败。整合矩阵三个候选名按"规范名 -> 元数据名
+# -> 实际产物名"顺序探测；只有全部缺失时才回落 scrna_norm.h5ad，并把桥接断言显式
+# 降级为 --stage pre-dimred（降级必须留痕，不许静默）。
+NORM=""
+for _cand in "00_sc_harmony.h5ad" "scrna_harmony.h5ad" "scrna_integrated.h5ad"; do
+  if [ -f "$_cand" ]; then
+    NORM="$_cand"
+    break
+  fi
+done
 BRIDGE_STAGE="post-dimred"
-if [ ! -f "$NORM" ]; then
+if [ -z "$NORM" ]; then
   NORM="scrna_norm.h5ad"
   BRIDGE_STAGE="pre-dimred"
-  echo "[gsva_pathways] 未找到 00_sc_harmony.h5ad，回落 scrna_norm.h5ad（桥接断言 stage=pre-dimred）" >&2
+  echo "[gsva_pathways] 整合矩阵三个候选名（00_sc_harmony / scrna_harmony / scrna_integrated）均缺失，回落 scrna_norm.h5ad（桥接断言 stage=pre-dimred）" >&2
 fi
 if [ ! -f "$NORM" ]; then
-  echo "[gsva_pathways] 缺少输入矩阵：00_sc_harmony.h5ad 与 scrna_norm.h5ad 均不存在" >&2
+  echo "[gsva_pathways] 缺少输入矩阵：整合矩阵候选名与 scrna_norm.h5ad 均不存在" >&2
   exit 1
 fi
+
+# 名字对上不等于坐标还在：只读 h5ad 的 /obsm 键名（h5py 只扫元数据，不加载矩阵，
+# 毫秒级），确认真的有 X_pca/X_umap/spatial 才敢宣称 post-dimred。探测失败或没有
+# 坐标就如实降级，而不是让桥接第 4 项在 R 侧硬失败（那会变成整链断点）。
+# 探测退出码约定：0 = 有坐标；1 = 没有坐标；2 = 探测本身跑不了（缺 h5py / 文件打不开），
+# 此时不冒充结论，保留 post-dimred 并留痕，让后续 Python 脚本用真实报错说话。
+PROBE_RC=0
+python3 - "$NORM" <<'PYPROBE' || PROBE_RC=$?
+import sys
+
+try:
+    import h5py
+except ImportError:
+    raise SystemExit(2)
+
+keys = []
+try:
+    with h5py.File(sys.argv[1], "r") as fh:
+        if "obsm" in fh:
+            keys = [str(k) for k in fh["obsm"].keys()]
+except OSError:
+    raise SystemExit(2)
+raise SystemExit(0 if any(k in keys for k in ("X_pca", "X_umap", "spatial")) else 1)
+PYPROBE
+if [ "$BRIDGE_STAGE" = "post-dimred" ]; then
+  if [ "$PROBE_RC" -eq 1 ]; then
+    BRIDGE_STAGE="pre-dimred"
+    echo "[gsva_pathways] $NORM 的 obsm 里没有 X_pca/X_umap/spatial，桥接断言降级 stage=pre-dimred" >&2
+  elif [ "$PROBE_RC" -ne 0 ]; then
+    echo "[gsva_pathways] obsm 探测不可用（rc=$PROBE_RC：缺 h5py 或文件打不开），保留 stage=post-dimred" >&2
+  fi
+fi
+echo "input_matrix=$NORM"
+echo "bridge_stage=$BRIDGE_STAGE"
 
 # 1) Python 侧：做 pseudobulk（celltype 均值），落中间 tsv
 BIO_GSVA_NORM="$NORM" python3 - <<'PYSCRIPT'
@@ -410,7 +455,7 @@ plt.rcParams["figure.autolayout"] = True
 deg = ad.read_h5ad("scrna_deg.h5ad")
 deg.uns["gsva"] = {
     "method": "GSVA (R GSVA pkg, kcdf=Gaussian) on per-celltype pseudobulk",
-    "input_matrix": "scrna_norm.h5ad X (full genes, log-normalized)",
+    "input_matrix": "%s X (full genes, log-normalized)" % NORM,
     "n_pathways": int(mat.shape[0]),
     "n_celltypes": int(mat.shape[1]),
     "celltypes": celltypes,
@@ -425,7 +470,7 @@ lines = [
     "step=gsva_pathways",
     "seed=%d" % SEED,
     "method=GSVA (R GSVA, kcdf=Gaussian) on per-celltype pseudobulk",
-    "input=scrna_norm.h5ad full-gene log-normalized matrix (not HVG subset)",
+    "input=%s full-gene log-normalized matrix (not HVG subset)" % NORM,
     "n_pathways=%d" % mat.shape[0],
     "n_celltypes=%d" % len(celltypes),
     "celltypes=%s" % ",".join(celltypes),

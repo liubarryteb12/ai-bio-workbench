@@ -33,7 +33,10 @@ import { assertAllowedProgram } from './proc.js';
 export function runTask(task, handlers = {}) {
   const startedAt = new Date().toISOString();
   // 远端执行与审计用同一份脚本，避免"审的是一套、跑的是另一套"
-  const script = buildTaskScript(task);
+  // throttled: true —— 工作台任务必须经 ops/run_throttled_task.sh（nice/ionice 降权 + 存储水位与
+  // 跨线门禁 + 线程封顶，aims §六.3）。2026-10-21 之前这里是默认 false，等于整条契约对引擎任务
+  // 全部失效（D-21）；包装器缺 BIO_EXEC_CMD 支持时传命令串会 ENOENT，现已由命令串模式解决。
+  const script = buildTaskScript({ ...task, throttled: true });
   const audit = auditCommand(script, task.lineId);
   if (!audit.allowed) {
     // 审计不过就不启动，直接把拒绝原因当 stderr 抛给调用方

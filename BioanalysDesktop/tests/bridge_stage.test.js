@@ -165,9 +165,16 @@ test('守卫遇到未知 stage 打印 SKIP 并 exit 0（不因参数问题拖垮
   assert.match(res.stdout + res.stderr, /未知 --stage/);
 });
 
-test('gsva_pathways 首选 00_sc_harmony.h5ad，回落时显式降级为 pre-dimred', () => {
+test('gsva_pathways 按三候选顺序取整合矩阵，回落时显式降级为 pre-dimred', () => {
   const src = fs.readFileSync(GSVA, 'utf8');
-  assert.match(src, /NORM="00_sc_harmony\.h5ad"/, '首选输入源必须是 00_sc_harmony.h5ad');
+  // 候选顺序：规范名 -> PIPELINE_STEP_META 元数据名 -> 母版实际产物名（P13 修命名衔接）
+  const loop = src.match(/for _cand in ([^\n;]+); do/);
+  assert.ok(loop, '未找到整合矩阵候选循环');
+  assert.deepEqual(
+    [...loop[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]),
+    ['00_sc_harmony.h5ad', 'scrna_harmony.h5ad', 'scrna_integrated.h5ad'],
+    '候选顺序必须是 规范名 -> 元数据名 -> 实际产物名',
+  );
   assert.match(src, /BRIDGE_STAGE="post-dimred"/, '默认阶段必须是 post-dimred');
   assert.match(src, /NORM="scrna_norm\.h5ad"\s*\n\s*BRIDGE_STAGE="pre-dimred"/, '回落 scrna_norm 时必须同步降级');
   assert.match(src, /--stage "\$BRIDGE_STAGE"/, '守卫调用必须透传阶段');
@@ -177,18 +184,20 @@ test('gsva_pathways 首选 00_sc_harmony.h5ad，回落时显式降级为 pre-dim
   assert.doesNotMatch(src, /^NORM = "scrna_norm\.h5ad"$/m, 'python heredoc 里不许再硬编码输入源');
 });
 
-test('gsva_pathways 的输入源解析在三种目录状态下行为正确', { skip: NEED_BASH }, () => {
+test('gsva_pathways 的输入源解析在各种目录状态下行为正确（候选优先级 + 回落）', { skip: NEED_BASH }, () => {
   const src = fs.readFileSync(GSVA, 'utf8');
-  const start = src.indexOf('NORM="00_sc_harmony.h5ad"');
-  const endMarker = '缺少输入矩阵';
-  const end = src.indexOf('exit 1', src.indexOf(endMarker));
+  const start = src.indexOf('NORM=""');
+  const endMarker = 'echo "bridge_stage=$BRIDGE_STAGE"';
+  const end = src.indexOf(endMarker);
   assert.ok(start > 0 && end > start, '未能从母版里定位输入源解析块');
-  const block = src.slice(start, src.indexOf('\nfi', end) + 3);
+  const block = src.slice(start, end + endMarker.length);
 
   const cases = [
-    { name: '只有 00_sc_harmony', files: ['00_sc_harmony.h5ad'], expectCode: 0, expectNorm: '00_sc_harmony.h5ad', expectStage: 'post-dimred' },
+    { name: '三个候选都在，选规范名', files: ['00_sc_harmony.h5ad', 'scrna_harmony.h5ad', 'scrna_integrated.h5ad'], expectCode: 0, expectNorm: '00_sc_harmony.h5ad', expectStage: 'post-dimred' },
+    { name: '缺规范名，选元数据名', files: ['scrna_harmony.h5ad', 'scrna_integrated.h5ad'], expectCode: 0, expectNorm: 'scrna_harmony.h5ad', expectStage: 'post-dimred' },
+    { name: '只有实际产物名', files: ['scrna_integrated.h5ad'], expectCode: 0, expectNorm: 'scrna_integrated.h5ad', expectStage: 'post-dimred' },
     { name: '只有 scrna_norm（回落）', files: ['scrna_norm.h5ad'], expectCode: 0, expectNorm: 'scrna_norm.h5ad', expectStage: 'pre-dimred' },
-    { name: '两个都没有', files: [], expectCode: 1 },
+    { name: '全都没有', files: [], expectCode: 1 },
   ];
   for (const c of cases) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gsva-input-'));
