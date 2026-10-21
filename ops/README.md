@@ -219,6 +219,26 @@ info 表缺失时保留 `9606.ENSP...` 原始 ID 并打 warning，不中断。
 目录**尚不存在**，即离线分支暂不可用。首次跑 line1 步骤 8 之前必须先按上面命令预下载，
 否则任务只能走网络 API（外网抖动时直接 exit 1）。
 
+## 容器内禁用 ps / pgrep（会让 proot 自己 abort，杀掉在跑任务）
+
+2026-10-21 实测：在 `k40-ubuntu` 容器里执行 `ps -eo ...` / `pgrep -a ...` / `pkill` 这类遍历 `/proc` 的命令，
+会触发 proot 的路径断言并让**整个容器退出**（Termux 侧 `$PREFIX/var/log/ubuntu-sshd/current` 里留下
+`./path/path.c:546: ... assertion "length1 > 0" failed` + `proot warning: signal 6 received`），
+容器内正在跑的分析任务（含已跑 31 分钟的 SCENIC）随之消失、不留台账。详见 con_hf/pitfalls_ledger.md P-23。
+
+判活 / 取证的替代手段（都在容器内安全）：
+
+| 想知道 | 别用 | 改用 |
+| --- | --- | --- |
+| 容器还活着吗 | `ps -eo pid,etime,comm \| grep proot` | `ssh k40-ubuntu 'echo ALIVE'`（跑通即活） |
+| 某步跑完了吗 | `pgrep -a python3` | `ls -t /mnt/ssd/bio_data/system_logs/*<PROJECT>* \| head` |
+| 产物有没有更新 | `ps -eo pcpu,args` | `ls -lt <项目>/<线>/processed \| head` |
+| 容器有没有重启 | 容器内 `uptime`（静态假文件，P-22） | Termux 宿主侧 `ssh k40 'ps -eo pid,etime,args \| grep -i proot'` |
+
+注意：宿主侧 `ps` **看不到** guest 进程（`ssh k40 'ps -eo ... \| grep python3'` 输出为空），
+所以它只能用来判「proot 进程有没有换 pid」，不能用来判任务存活。
+`BioanalysDesktop/tests/proot_probe_guard.test.js` 会静态拦住往容器里塞这些命令的脚本。
+
 ## 路径速查
 
 - Termux 底座别名：`k40`（8022）

@@ -27,6 +27,34 @@ export const BRIDGE_ENGINE_REMOTE = '/mnt/ssd/bio_data/ops/verify_bridge_checkpo
 /** 桥接校验 ssh 同步超时：引擎内部 RDS 分支自带 120s，h5ad 大文件读取留足余量 */
 export const BRIDGE_SSH_TIMEOUT_MS = 300000;
 
+/**
+ * 需要"敲除靶基因"的步骤（aims:185「勾选虚拟敲除强制弹出 target_ko_gene 必填框」）。
+ *
+ * 为什么写死这张表而不是从 PIPELINE_STEP_META 里按关键词猜：步骤名就是远端命令名
+ * （src/<line>/scripts/ 下的母版文件名），它是稳定契约；而 note 里的【需指定
+ * target_ko_gene】是给人看的说明文字，随时可能被改文案，拿它当判据会在改文案时静默失效。
+ */
+export const KNOCKOUT_STEPS = ['virtual_knockout', 'spatial_knockout'];
+
+/**
+ * 靶基因符号的合法形态：首字符必须是字母或数字，其余为字母数字与 . _ -，总长 1..32。
+ *
+ * 为什么要卡首字符：靶基因会被写进远端环境变量，母版再拿去查 HVG/取表达；
+ * 以 - 或 . 开头（如 "-x"、"../etc"）在下游任何按 argv 解析的实现里都会被当成
+ * 选项或相对路径，是注入与误读的常见入口。合法基因符号本身也不会这么开头。
+ */
+export const KO_GENE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/;
+
+/** 该步骤是否必须带靶基因（提交层与脚本构造层共用同一张表，避免两处判据分叉） */
+export function requiresKoGene(stepName) {
+  return KNOCKOUT_STEPS.includes(String(stepName ?? ''));
+}
+
+/** 靶基因符号是否合法（纯函数，零依赖；提交层用它出 400，母版契约里写明同名环境变量） */
+export function isValidKoGene(value) {
+  return typeof value === 'string' && KO_GENE_PATTERN.test(value);
+}
+
 /** 桥接检查命令构建失败（stepName/lineId 非法等），调用方应转 400 */
 export class BridgeCheckError extends Error {
   constructor(message) {
@@ -226,11 +254,14 @@ function shellQuote(text) {
  * bin 全局一份，所有项目共用（代码本体不随项目复制）。
  * 没有这一行，服务器上找不到命令，一切 step 都是 command not found。
  *
- * @param {{projectId?: string, lineId: string, step: string, inputs: string[], outputs: string[], seed?: number, throttled?: boolean}} task
+ * @param {{projectId?: string, lineId: string, step: string, inputs: string[], outputs: string[], seed?: number, throttled?: boolean, targetKoGene?: string}} task
  * @returns {string}
  */
 export function buildTaskScript(task) {
-  const { projectId = DEFAULT_PROJECT, lineId, step, inputs = [], outputs = [], seed, throttled = false } = task;
+  const {
+    projectId = DEFAULT_PROJECT, lineId, step, inputs = [], outputs = [], seed, throttled = false,
+    targetKoGene,
+  } = task;
   if (!LINES.includes(lineId)) {
     throw new Error(`line_id 非法: ${lineId}`);
   }
@@ -246,6 +277,24 @@ export function buildTaskScript(task) {
   if (seed !== undefined && seed !== null) {
     // 写进环境而不是塞进命令行，是为了让 R/Python 侧读取方式统一
     lines.push('export BIOANALYS_SEED="$SEED"');
+  }
+
+  // P14 / aims:185：虚拟敲除的靶基因从提交层透传到母版，注入方式与种子一致（环境变量）。
+  // 选环境变量而不是命令行参数的原因：
+  //   1. 母版是 Python（virtual_knockout）与 Python（spatial_knockout），读 os.environ 一处口径；
+  //   2. 参数位已被 --input/--output/--seed 占用，加位置参数会破坏既有母版解析；
+  //   3. export 出来的变量是子进程继承的，ops/run_throttled_task.sh 只是 bash 子进程
+  //      （内部再 nice/ionice 起解释器），不吞环境，变量能一路到母版。
+  // 非敲除步骤即使传了 targetKoGene 也不注入：一张表（requiresKoGene）管到底，语义是"忽略"。
+  // 缺基因就抛错而不是退回 TNF 兜底：母版兜底只用于直连 K40 手工跑（stderr 留痕），
+  // 提交层是唯一全知"这次敲的是谁"的地方，静默跑 TNF 会产出与用户预期不符的结论。
+  if (requiresKoGene(step)) {
+    if (!isValidKoGene(targetKoGene)) {
+      throw new Error(
+        `虚拟敲除步骤必须指定合法 target_ko_gene（字母数字与 . _ -，长度 1..32）: ${JSON.stringify(targetKoGene ?? null)}`
+      );
+    }
+    lines.push(`export BIO_KO_GENE=${shellQuote(targetKoGene)}`);
   }
 
   // R 端还需要一个 Rscript 垫片：母版 R 脚本统一写 `Rscript --vanilla`，

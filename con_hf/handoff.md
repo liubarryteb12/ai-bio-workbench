@@ -3512,3 +3512,63 @@ ssh 连接失败 → SKIP exit 0（K40 离线母版仍可跑）；
 2. line2 / line3 尚未做同类全链真机取证（line2 缺 `00_sc_harmony.h5ad`，gsva 走 pre-dimred 降级）。
 3. `mergeIsolationChecks` 的 value 仍是字符串拼接，前端未结构化展示。
 4. B 批不可逆操作仍待用户授权（B1 / B2 / B3）。
+
+### 第十轮（2026-10-21，B 批裁定落地 + 靶基因打通 + line2/line3 取证启动）
+
+#### 用户裁定（本轮指令原话）
+
+> B1 采纳，B2 采纳，B3，以 aims 为准，吸纳 provenance 29 条中可用的并对齐。
+> line2/line3 全链真机取证，并修复问题
+
+#### 做了什么
+
+1. **B1 收尾**：`cn_debug/scenic_db/`（689MB）与 24 个 `subagent_*.log` 早前已删（见
+   `con_hf/dispatch/B1_B2_report.md`，实释放约 1.0MB）；本轮补删残留 `ops/__pycache__/`
+   （1 个 `render_report_html.cpython-314.pyc`，46,645 字节，未被 git 跟踪）。
+2. **B2 无需动作**：`_archive/` 已有 3 个文件，评审建议归档的守护脚本经逐条核查全部在职，
+   理由写在 `_archive/README.md` §二。
+3. **B3 二次裁定：黑名单 8 → 20 条**（commit `546e81f`，11 files +354/-104）。以 aims 为准，
+   按三条判据（明确肿瘤/免疫浸润语义、不被父词覆盖、误伤可接受）从实现侧 27 条吸纳 12 条
+   （tumour / sarcoma / lymphoma / leukemia / leukaemia / melanoma / immune checkpoint /
+   PD-L1 / PD-1 / CTLA-4 / oncogene / 免疫检查点），剔除 8 条冗余（adenocarcinoma、
+   squamous cell carcinoma、tumor/tumour microenvironment、tumor suppressor、癌症、肿瘤微环境、癌细胞）。
+   PD 两条加左右边界（`(?<![A-Za-z0-9])PD-?L1(?![0-9])`），修掉原 `/PD-?L?1/i` 命中 GPD1 / SLC40A1 的误伤。
+   三处副本（aims 规格、`server/tumor_blacklist.js`、`portal/index.html`）同步，
+   6 个测试文件同步，新增 D-19 裁定与 `con_hf/dispatch/B3_absorb_report.md`。
+4. **P14 靶基因必填打通**：`/api/tasks/submit` 增 `targetKoGene`（1..32 字符，字母数字 `._-`），
+   `step ∈ {virtual_knockout, spatial_knockout}` 时缺失即 400（在 `buildTaskScript` / `runTask` 之前，
+   不白跑 ssh）；`buildTaskScript` 注入 `export BIO_KO_GENE=<gene>`；前端 `App.tsx` 弹出必填框并拦截。
+5. **line3 母版真的读 BIO_KO_GENE**（本轮补的落地缺口）：`src/line3_spatial/scripts/spatial_knockout`
+   原来把敲除基因硬编码成 `KO_GENE = "Spp1"`，P14 的必填校验因此只是形式。现按 line2 步骤 9 同口径
+   解析：`--ko-gene` > `BIO_KO_GENE` > `project.json` 的 `biological_priors.target_ko_gene` >
+   线内证据兜底 Spp1，解析结果经环境变量注入 python 并落台账 `ko_gene=` / `ko_gene_source=`。
+   新增 `tests/spatial_knockout_kogene.test.js`（11 条，含 6 条真跑解析块）。
+6. **`server/project.js` 的 line3 步骤元数据对齐母版真实产物**：`ingest_spatial` 的 io 由
+   虚构的 `spatial_raw.h5ad` 改为 `spatial_counts_mouse.h5ad, spatial_counts_human.h5ad, samples_meta.tsv`；
+   `spatial_knockout` 的 io 改为两物种分文件，note 由「spot 级按域聚合」（已实测废弃）
+   改为「逐样本 spot 级运行」。
+7. **gsva 输入源三候选探测**（line2 全链取证发现）：`00_sc_harmony.h5ad`（规范名）→
+   `scrna_harmony.h5ad`（元数据名）→ `scrna_integrated.h5ad`（母版实际产物名），
+   并用 h5py 只读 `/obsm` 键名确认真有坐标才宣称 `stage=post-dimred`，否则如实降级 pre-dimred。
+8. **line3 取证 runner 就绪**：`cn_debug/2026-10-21_m1_line3_chain.mjs`（17 步，顺序严格对齐
+   `server/project.js:246-252`），三处取证可靠性改进（提交前台账快照只认新增文件 / 台账文件名
+   严格正则二次过滤 / ssh 失败与台账缺失分开报）+ 下发前 preflight。
+
+#### 验证
+
+- B3 四件套测试：`node --test tests/tumor_blacklist_parity.test.js tests/portal_inject.test.js
+  tests/aims_drift_guard.test.js tests/tumor_blacklist.test.js` → 54/54 pass。
+- P14：`tests/target_ko_gene.test.js` 16/16 pass，`npx tsc --noEmit` exit 0。
+- line3 靶基因：`tests/spatial_knockout_kogene.test.js` 11/11 pass（6 条真跑 bash 解析块）。
+- `server/project.js` 元数据改动后 `tests/project*.test.js` 23/23 pass。
+
+#### 待办（第十一轮）
+
+1. line2 全链真机取证（`upload-session` 在跑，已完成 8/22 步）。
+2. line3 全链真机取证（runner 已就绪，等 line2 收尾后跑，K40 只有 7.5GB 内存，两条重链不许并发）。
+3. P13 改动引起的 4 条既有测试变红待改口径（`tests/bridge_stage.test.js` 两条、
+   `tests/virtual_knockout_memory.test.js` 两条）。
+4. `enrichment` / `dr_post_analysis` 的 `gmt_cache` 目录仍写死 `../references/gmt_cache`，
+   建议做成 `BIO_GMT_CACHE` 环境变量（当前两份 E2E 项目的 references 都已链接，不阻塞）。
+5. line1 与 line3 两份取证 runner 有重复实现，可抽 `cn_debug/lib/chain_runner.mjs`。
+6. `mergeIsolationChecks` 的 value 仍是字符串拼接，前端未结构化展示。

@@ -16,9 +16,11 @@
 #      （+敲除基因），与 line2 步骤 9 "HVG 2000 上的 counts" 同口径：全基因
 #      18628 x ~1700 spot 建共表达网络实测不可行（tenifold 逐基因建网，3 分钟
 #      无进展且容器反复重启）。
-#   2. 敲除基因 = 线内证据选定的 KO_GENE（默认 Spp1：mouse 步骤 12 target5、
-#      步骤 6 巨噬域 marker Cd5l/C1qb 同域出现、肝巨噬细胞主题；用户可改）。
-#      不取 line2 的 TNF（三线不交叉原则）。
+#   2. 敲除基因解析优先级（与 line2 步骤 9 同口径）：--ko-gene 参数 > 环境变量
+#      BIO_KO_GENE（引擎契约 P14 注入）> 项目元数据 target_ko_gene > 线内证据兜底
+#      Spp1（mouse 步骤 12 target5、步骤 6 巨噬域 marker Cd5l/C1qb 同域出现、肝
+#      巨噬细胞主题）。不取 line2 的 TNF（三线不交叉原则）。实际生效基因与来源
+#      落台账 ko_gene= / ko_gene_source=，不静默。
 #   3. DR genes = d_regulation 全表（adj p<0.05 且非敲除基因为显著 DR，口径同
 #      line2 步骤 9：DR≠DEG，计算模拟非实验验证）。敲除基因自动排除出期望计算
 #      （scTenifold 行为，与 R 版一致）。
@@ -52,11 +54,13 @@ fi
 
 declare -a INPUTS=()
 output_count=0
+ko_gene=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --input) INPUTS+=("$2"); shift 2 ;;
     --output) output_count=$((output_count + 1)); shift 2 ;;
     --seed) shift 2 ;;
+    --ko-gene) ko_gene="$2"; shift 2 ;;
     *) echo "未知参数: $1" >&2; exit 2 ;;
   esac
 done
@@ -84,14 +88,68 @@ for path in "$mouse_h5ad" "$human_h5ad"; do
   fi
 done
 
+# 敲除基因解析（顺序与 line2 步骤 9 同口径）：参数 > 环境变量 BIO_KO_GENE >
+# 项目元数据 target_ko_gene > 线内证据兜底 Spp1。引擎契约（P14）要求虚拟敲除步骤
+# 必须显式给靶基因，所以这里必须真的读 BIO_KO_GENE，否则提交层校验只是形式。
+# project.json 可能不存在或字段为空，任何读取异常都当"没指定"，不许让可选元数据
+# 把整步打挂。
+ko_gene_source="cli:--ko-gene"
+if [ -z "${ko_gene:-}" ]; then
+  ko_gene="$(printf '%s' "${BIO_KO_GENE:-}" | tr -d '[:space:]')"
+  ko_gene_source="env:BIO_KO_GENE"
+fi
+if [ -z "${ko_gene:-}" ]; then
+  # Python 侧输出 "holder.target_ko_gene=基因"，用 = 切分即可拿到基因与来源字段名
+  # （基因名不可能含 =，比 read 分列更省事，也不依赖 IFS 与 here-string）。
+  meta_gene="$(python3 - "${BIOANALYS_PROJECT_JSON:-}" <<'PYGENE'
+import json
+import sys
+
+
+def read_gene(path):
+    if not path:
+        return ""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            meta = json.load(fh)
+    except (OSError, ValueError):
+        return ""
+    if not isinstance(meta, dict):
+        return ""
+    for holder in ("biological_priors", "acl_and_output"):
+        block = meta.get(holder)
+        if isinstance(block, dict):
+            value = block.get("target_ko_gene")
+            if isinstance(value, str) and value.strip():
+                return holder + ".target_ko_gene=" + value.strip()
+    return ""
+
+
+print(read_gene(sys.argv[1] if len(sys.argv) > 1 else ""))
+PYGENE
+)"
+  if [ -n "${meta_gene:-}" ]; then
+    ko_gene="${meta_gene#*=}"
+    ko_gene_source="project.json:${meta_gene%%=*}"
+  fi
+fi
+if [ -z "${ko_gene:-}" ]; then
+  ko_gene="Spp1"
+  ko_gene_source="fallback:Spp1"
+fi
+
 echo "step_executed=spatial_knockout"
 echo "bioanalys_seed=${seed}"
 echo "input_mouse=${mouse_h5ad}"
 echo "input_human=${human_h5ad}"
+echo "ko_gene=${ko_gene}"
+echo "ko_gene_source=${ko_gene_source}"
 
 KO_INPUTS="$mouse_h5ad
 $human_h5ad"
 export KO_INPUTS
+export KO_GENE="$ko_gene"
+export KO_GENE_SOURCE="$ko_gene_source"
 export KO_OUTDIR="${KO_OUTDIR:-$(pwd)}"
 
 python3 - <<'PYSCRIPT'
@@ -110,7 +168,14 @@ ad.settings.allow_write_nullable_strings = False
 
 START = time.time()
 SEED = int(os.environ["BIOANALYS_SEED"])
-KO_GENE = "Spp1"        # 线内证据敲除基因（mouse；human 无 Spp1 ortholog 表达时换线内 top）
+# 敲除基因由 bash 包装层解析后经环境变量传入（--ko-gene / BIO_KO_GENE /
+# project.json target_ko_gene / Spp1 兜底），与 line2 步骤 9 同口径。
+KO_GENE = os.environ.get("KO_GENE", "").strip()
+if not KO_GENE:
+    sys.stderr.write("spatial_knockout 自校验失败: 敲除基因未注入（bash 包装层应通过 "
+                     "KO_GENE 环境变量传入：--ko-gene / BIO_KO_GENE / project.json / Spp1 兜底）\n")
+    sys.exit(1)
+KO_GENE_SOURCE = os.environ.get("KO_GENE_SOURCE", "unknown").strip() or "unknown"
 ALPHA = 0.05
 N_CPUS = 3              # 手机端 3 大核算力上限（aims.txt 削峰规范）
 NEED_COLS = ["Gene", "Distance", "Z", "FC", "p-value", "adjusted p-value"]
@@ -485,8 +550,9 @@ report_lines = [
     "跨物种不共享基因网络；mito spot 按全 counts 口径预剔（阈值 0.1、^MT- 匹配同"
     "scTenifold），scTenifold 库内 mito 过滤以 max_mito_ratio=1.0 关闭（其默认过滤"
     "在 HVG 子矩阵上算比率会失真放大约 5 倍，小鼠样本被大量误剔）",
-    "ko_gene_note=KO_GENE 默认线内证据基因（mouse Spp1：步骤 12 target5 + 步骤 6 "
-    "巨噬域 marker 同域）；物种不适配时回退线内 top 目标基因；不取 line2 基因（三线不交叉）",
+    "ko_gene_note=敲除基因来源 %s（优先级 --ko-gene > BIO_KO_GENE > project.json > "
+    "线内证据兜底 Spp1：步骤 12 target5 + 步骤 6 巨噬域 marker 同域）；物种不适配时"
+    "回退线内 top 目标基因；不取 line2 基因（三线不交叉）" % KO_GENE_SOURCE,
     "limitation_note=DR≠DEG；单样本 spot 单元数（mouse 438-2348 / human 530-2500）"
     "远小于 line2 细胞级（2747 细胞），网络质量不能直接对比；计算模拟非实验验证；"
     "建议换 seed 复核稳健性",

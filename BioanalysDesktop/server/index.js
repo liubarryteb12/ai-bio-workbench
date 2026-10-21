@@ -46,7 +46,7 @@ import { checkTumorBlacklist, validateProjectFields, BLACKLIST_HINT } from './tu
 import { auditCommand } from './audit.js';
 import {
   buildTaskScript, needsBridgeCheck, inspectBridgeNeed, buildBridgeCheckCommand,
-  runBridgeCheckSync, BridgeCheckError,
+  runBridgeCheckSync, BridgeCheckError, requiresKoGene, isValidKoGene, KNOCKOUT_STEPS,
 } from './task.js';
 import { runTask } from './run.js';
 import {
@@ -1505,6 +1505,32 @@ const server = http.createServer(async (req, res) => {
         });
       }
 
+      // P14 / aims:185：虚拟敲除必须由用户指定靶基因（target_ko_gene）。
+      // 为什么在提交层就拦：母版里写死 KO_GENE 时，用户勾了"虚拟敲除"却敲的是别人的基因，
+      // 产物看起来一切正常（DR 表、显著性、图都出），结论却是错的，事后无从发现。
+      // 语义：敲除步骤缺失或非法一律 400；非敲除步骤传了也接受，但 task.js 不注入（忽略）。
+      const needsKo = requiresKoGene(requested.step);
+      let targetKoGene = '';
+      if (requested.targetKoGene !== undefined && requested.targetKoGene !== null && requested.targetKoGene !== '') {
+        if (typeof requested.targetKoGene !== 'string') {
+          return json(res, 400, {
+            error: `targetKoGene 必须是字符串（基因符号）: ${JSON.stringify(requested.targetKoGene).slice(0, 80)}`,
+          });
+        }
+        targetKoGene = requested.targetKoGene.trim();
+        if (targetKoGene !== '' && !isValidKoGene(targetKoGene)) {
+          return json(res, 400, {
+            error: `targetKoGene 非法（只允许字母数字与 . _ -，长度 1..32，首字符不能是 . 或 -）: ${targetKoGene}`,
+          });
+        }
+      }
+      if (needsKo && targetKoGene === '') {
+        return json(res, 400, {
+          error: `虚拟敲除必须指定 target_ko_gene：步骤 ${requested.step} 在 ${lineId} 上需要靶基因`
+            + `（请求体字段 targetKoGene，例如 "TNF"）。可选项见 ${KNOCKOUT_STEPS.join(' / ')}`,
+        });
+      }
+
       // inputs / outputs 必须是字符串数组。调用方（含脚本化的 PowerShell / curl）
       // 很容易把单元素数组序列化成裸字符串，此时 task.js 的 inputs.map 会抛
       // TypeError 并**直接打死整个服务**（2026-10-19 实测：8787 进程退出）。
@@ -1536,6 +1562,8 @@ const server = http.createServer(async (req, res) => {
         inputs: requested.inputs || [],
         outputs: requested.outputs || [],
         seed: requested.seed,
+        // 非敲除步骤这里是空串，task.js 只在 requiresKoGene(step) 时注入，语义一致
+        targetKoGene: targetKoGene || undefined,
       };
 
       // 审计提前到提交前：越界就不给 taskId，不启动、不占任务位。
@@ -1620,6 +1648,8 @@ const server = http.createServer(async (req, res) => {
             inputs: requested.inputs || [],
             outputs: requested.outputs || [],
             seed: requested.seed,
+            // 与上面 taskSpec 同源：审计用的脚本与实际跑的脚本必须带同一个靶基因
+            targetKoGene: targetKoGene || undefined,
           },
           {
             onStdout: (text) => sendEvent(taskId, 'stdout', text),

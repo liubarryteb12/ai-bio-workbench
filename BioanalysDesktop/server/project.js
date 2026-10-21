@@ -295,7 +295,7 @@ export const PIPELINE_STEP_META = {
   dr_post_analysis: { label: 'DR 后续分析', desc: 'DR 富集(GSEA) + 调控网络(SCENIC regulon ∩ DR) + DR∩DEG∩marker 交集', tool: 'gseapy, networkx', io: 'dr_enrichment.tsv, dr_regulatory_network.tsv, dr_overlap.tsv, l2_15/16/17', note: 'DR ≠ DEG' },
   scrna_figures: { label: '单细胞出图', desc: 'UMAP×4/组成×14/marker/DEG 火山×7/计数/PCA', tool: 'matplotlib', io: 'l2_01..10', note: '' },
   // line3_spatial
-  ingest_spatial: { label: '空间数据读入', desc: '读取空间表达矩阵与坐标', tool: 'Scanpy', io: 'spatial_raw.h5ad', note: '' },
+  ingest_spatial: { label: '空间数据读入', desc: '读取空间表达矩阵与坐标', tool: 'Scanpy', io: 'spatial_counts_mouse.h5ad, spatial_counts_human.h5ad, samples_meta.tsv', note: '两物种分文件落盘（原写 spatial_raw.h5ad 与母版实际产物不符）' },
   qc_spots: { label: 'Spot 质控', desc: '过滤低质量 spot，线粒体百分比', tool: 'Scanpy', io: 'spatial_qc.h5ad, spot_qc_metrics.tsv', note: '' },
   dim_reduce: { label: '降维 (PCA/UMAP)', desc: 'PCA → UMAP 空间可视化', tool: 'Scanpy', io: 'spatial_dimred.h5ad', note: '' },
   spatial_domains: { label: '空间域识别', desc: '转录谱 + 空间坐标识别解剖/病理结构域', tool: 'Scanpy (Leiden)', io: 'spatial_domains.h5ad', note: '域身份样本私有' },
@@ -305,7 +305,7 @@ export const PIPELINE_STEP_META = {
   spatial_composition: { label: '区域组成差异', desc: '不同切片/微区域的结构组成变化', tool: 'Scanpy, scipy.stats', io: 'sample_composition.tsv', note: 'KW 检验' },
   spatial_communication: { label: '空间通讯分析', desc: 'KNN 邻域 domain 对级 LR 强度打分', tool: 'liana consensus LR', io: 'sample_communication.tsv', note: '' },
   spatial_localization: { label: '目标基因空间定位', desc: '目标基因在空间域中的表达分布', tool: 'Scanpy', io: 'gene_localization.tsv', note: '' },
-  spatial_knockout: { label: '空间虚拟敲除', desc: 'WT/Control 空间矩阵模拟敲除，输出 DR Genes', tool: 'scTenifoldKnk (R)', io: 'ko_dr_genes.tsv, spatial_knockout.h5ad', note: '【需指定 target_ko_gene】spot 级按域聚合' },
+  spatial_knockout: { label: '空间虚拟敲除', desc: 'WT/Control 空间矩阵模拟敲除，输出 DR Genes', tool: 'scTenifoldKnk (R)', io: 'ko_dr_genes_mouse.tsv, ko_dr_genes_human.tsv, spatial_knockout_mouse.h5ad, spatial_knockout_human.h5ad', note: '【需指定 target_ko_gene】逐样本 spot 级运行（域聚合路线实测废弃）' },
   celltype_annotation: { label: '反卷积/细胞类型注释', desc: '域 marker top5 签名 → NNLS 逐 spot 解卷积 → 比例归一化', tool: 'scipy.optimize.nnls, Scanpy', io: 'celltype_scores.tsv, celltype_annotation.tsv, l3_14/15', note: '轻量方案，不依赖 R Seurat/CARD/RCTD' },
   spatial_figures: { label: '空间出图', desc: '域图/目标基因/KO DR 逐样本 + 域统计 + Moran/DR/UMAP/组成', tool: 'matplotlib', io: 'l3_*_*', note: '逐样本画，跨样本坐标不可比' },
 };

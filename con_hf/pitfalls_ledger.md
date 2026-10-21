@@ -221,3 +221,27 @@
   永久修复（本机下载再 scp、单次 ssh 批量校验）仍然有效，因为它们消除的是「长连接 + 多次 ssh」
   这个放大器，与重启与否无关。
 - **防回归**：无单测（运维事实），本条目即取证结论；后续真机脚本一律用 etime 判活。
+  （**2026-10-21 更正**：容器内 `ps` 本身会 abort proot，见 P-23 —— etime 判活只能在 Termux 宿主侧跑。）
+
+### P-23 在容器内跑 ps / pgrep 会 abort 整个 proot（path.c 断言），杀掉所有在跑任务
+
+- **所属域**：运维 / 真机取证（所有通过 ssh 进 k40-ubuntu 执行的命令）
+- **现象与复现**：2026-10-21 12:57:22 与 12:57:51 容器在两分钟内连崩两次，正在跑的 scenic_tf（12:26 起，已跑 31 分钟）随之消失、无台账、无 exit_code。
+  Termux 侧 `/data/data/com.termux/files/usr/var/log/ubuntu-sshd/current` 里留下三条（12:06:07 / 12:57:22 / 12:57:51）：
+  `./path/path.c:546: Comparison compare_paths2(const char *, size_t, const char *, size_t): assertion "length1 > 0" failed`
+  紧跟 `proot warning: signal 6 received from process <pid>`，随后 `Server listening on 0.0.0.0 port 10022.`（runsv 的 ubuntu-sshd 服务把 proot 重新拉起来）。
+  三次崩溃都紧接在我从容器内跑 `ps -eo pid,etime,args` / `pgrep -a python3` / `pgrep -af proot` 之后。
+- **RCA**：proot 用 ptrace 做路径翻译，`ps`/`pgrep` 会遍历 `/proc/<pid>` 并读 cmdline、cwd、fd 等符号链接；
+  其中某些条目在 proot 的翻译表里解析成空路径，`compare_paths2()` 对长度 0 的路径触发断言（`length1 > 0`），
+  整个 proot 进程收到 SIGABRT 退出，容器内**所有**进程（含正在跑的 R/python 任务）一起死。
+  这解释了此前被误判为「容器不定时重启」的多次任务中断。
+- **永久修复**：容器内**禁用** `ps` / `pgrep` / `pkill` / `find -newermt` 这类遍历 `/proc` 的命令。判活与取证改用：
+  ① 台账新增：`ls -t /mnt/ssd/bio_data/system_logs/*<PROJECT>* | head`；
+  ② 产物 mtime：`ls -lt <项目>/<线>/processed | head`；
+  ③ 单点检查（确知 pid 时）：`ls /proc/<pid>`；
+  ④ 判容器是否重启：Termux 宿主侧 `ssh k40 'ps -eo pid,etime,args | grep -i proot'`（宿主进程，不经过 proot，安全）。
+  注意宿主侧 `ps` **看不到** guest 进程（实测 `ssh k40 'ps -eo ... | grep python3'` 输出为空），所以不能用它判任务存活。
+- **连带修正**：P-22 的「容器从不重启」结论作废 —— `uptime` 是静态假文件这一点仍然成立，
+  但**真重启确实存在**，且触发者是我们自己的 `ps` 探针；P-19 / P-20 的「proot 长进程被打断」现象有了确切根因。
+- **防回归单测**：`BioanalysDesktop/tests/proot_probe_guard.test.js`（静态断言：所有可能通过 ssh 进容器的脚本里，
+  凡出现 `k40-ubuntu` 的文件不得出现 guest 侧 `ps -eo/ps aux/ps -ef`、`pgrep`、`pkill`；并断言本条目与 ops/README.md 的禁令文字在位）。

@@ -2664,6 +2664,18 @@ function pathShapeWarnings(text: string): string[] {
     .filter((item) => item !== '' && !item.includes('projects/'));
 }
 
+/**
+ * 虚拟敲除类步骤（aims:185）：选中它们时靶基因必填。
+ *
+ * 这张表与服务端 server/task.js 的 KNOCKOUT_STEPS 同源同内容。前端留一份只为
+ * "选完就能看见必填框、按钮即时禁用"，不承担最终裁决：绕过前端的调用方
+ * （脚本、curl）由 /api/tasks/submit 的 400 拦住。
+ */
+const KO_STEPS = ['virtual_knockout', 'spatial_knockout'];
+
+/** 基因符号形态：首字符字母或数字，其余字母数字与 . _ -，总长 1..32（与服务端同口径） */
+const KO_GENE_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/;
+
 function TaskPanel({ project }: { project: string }) {
   const [line, setLine] = useState<string>(LINES[0]);
   const [step, setStep] = useState('');
@@ -2674,6 +2686,8 @@ function TaskPanel({ project }: { project: string }) {
   // 步骤清单（/api/projects/steps）与"自定义步骤"开关：下拉是便利入口，不收回手填
   const [stepsData, setStepsData] = useState<StepsResponse['steps'] | null>(null);
   const [stepCustom, setStepCustom] = useState(false);
+  // 虚拟敲除靶基因（aims:185）：只有敲除类步骤才显示与提交，其它步骤该值为空且不注入
+  const [koGene, setKoGene] = useState('');
   const [taskId, setTaskId] = useState<string | null>(null);
   const [logs, setLogs] = useState<LogLine[]>([]);
   const [exitInfo, setExitInfo] = useState<{ code: number | null; entry: TaskEntry | null; note?: string } | null>(null);
@@ -2703,6 +2717,11 @@ function TaskPanel({ project }: { project: string }) {
       }
     })();
   }, []);
+
+  // 当前步骤是否属于虚拟敲除（决定靶基因框是否显示与必填）。
+  // 必须在 submit 之前声明：submit 的依赖数组在渲染时就会求值，
+  // 声明在后面会撞上 const 的暂时性死区（ReferenceError）。
+  const needsKoGene = KO_STEPS.includes(step.trim());
 
   const appendLog = useCallback((stream: LogLine['stream'], text: string) => {
     setLogs((prev) => [...prev, { stream, text }]);
@@ -2738,6 +2757,19 @@ function TaskPanel({ project }: { project: string }) {
       setSubmitError('step 必填');
       return;
     }
+    // 敲除步骤的前端拦截：与服务端同口径，先在这里给出人话提示，
+    // 免得用户点了下发才收到 400（服务端仍是唯一权威）。
+    const gene = koGene.trim();
+    if (needsKoGene) {
+      if (!gene) {
+        setSubmitError('虚拟敲除必须指定靶基因（target_ko_gene）');
+        return;
+      }
+      if (!KO_GENE_RE.test(gene)) {
+        setSubmitError('靶基因非法：只允许字母数字与 . _ -，长度 1..32，首字符不能是 . 或 -');
+        return;
+      }
+    }
     setSubmitting(true);
     try {
       const response = await fetch('/api/tasks/submit', {
@@ -2750,6 +2782,8 @@ function TaskPanel({ project }: { project: string }) {
           inputs: inputs.split(/\r?\n/).map((item) => item.trim()).filter(Boolean),
           outputs: outputs.split(/\r?\n/).map((item) => item.trim()).filter(Boolean),
           seed: seed.trim() === '' ? undefined : Number(seed),
+          // 只有敲除步骤带靶基因；其它步骤不传（服务端语义：传了也忽略）
+          targetKoGene: needsKoGene ? gene : undefined,
         }),
       });
       const payload = await response.json();
@@ -2765,7 +2799,7 @@ function TaskPanel({ project }: { project: string }) {
     } finally {
       setSubmitting(false);
     }
-  }, [line, step, seed, inputs, outputs, openLogStream, project]);
+  }, [line, step, seed, inputs, outputs, openLogStream, project, koGene, needsKoGene]);
 
   const stop = useCallback(async () => {
     if (!taskId) return;
@@ -2787,13 +2821,16 @@ function TaskPanel({ project }: { project: string }) {
 
   const lineSteps: string[] = stepsData ? (stepsData[line as keyof typeof stepsData] ?? []) : [];
   const shapeWarnings = [...pathShapeWarnings(inputs), ...pathShapeWarnings(outputs)];
+  // 靶基因填了但形态不对：黄色提示 + 禁用下发按钮（空值另由必填提示与 submit 拦截负责）
+  const koGeneInvalid = needsKoGene && koGene.trim() !== '' && !KO_GENE_RE.test(koGene.trim());
 
   return (
     <div className="card">
       <div className="card-head">
         <h2 className="card-title">任务下发 + 日志流</h2>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-primary" onClick={() => void submit()} disabled={submitting || running}>
+          <button className="btn btn-primary" onClick={() => void submit()}
+            disabled={submitting || running || (needsKoGene && !KO_GENE_RE.test(koGene.trim()))}>
             {submitting ? '提交中...' : running ? '运行中...' : '下发任务'}
           </button>
           <button className="btn" onClick={() => void stop()} disabled={!running}>中止</button>
@@ -2852,6 +2889,24 @@ function TaskPanel({ project }: { project: string }) {
         步骤名即远端执行的命令名（只能包含字母数字与 . _ -），参数请走下方输入/输出文件。
         下拉清单来自 /api/projects/steps，取不到或需要新步骤时选「自定义」手填。
       </p>
+
+      {needsKoGene && (
+        <div className="form-group">
+          <label className="form-label">敲除靶基因 target_ko_gene（必填）</label>
+          <input className="form-input" value={koGene}
+            onChange={(e) => setKoGene(e.target.value)}
+            placeholder="基因符号，如 TNF（line2 默认）/ Spp1（line3 mouse 默认）" />
+          <p className="subtle">
+            步骤 {step.trim()} 是虚拟敲除：必须指定敲除谁的基因，下发时写入远端环境变量 BIO_KO_GENE。
+            基因符号只能含字母数字与 . _ -（长度 1..32），空值或不合法时下发按钮禁用。
+          </p>
+          {koGeneInvalid && (
+            <p className="hint" style={{ color: '#b3261e' }}>
+              基因符号非法：只允许字母数字与 . _ -，长度 1..32，首字符不能是 . 或 -
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="form-grid-2">
         <div className="form-group">
