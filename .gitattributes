@@ -9,6 +9,9 @@
 #
 # 规则顺序有意义：后面的规则覆盖前面的同名属性。
 
+.gitattributes text eol=lf
+.gitignore  text eol=lf
+
 *.sh      text eol=lf
 *.bash    text eol=lf
 *.R       text eol=lf
