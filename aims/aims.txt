@@ -85,7 +85,7 @@
 * **动态多分组管理（支持 $N \ge 2$ 组及多阶段疾病演进）**：支持三种分组模式（`二分类对比` / `多组无序对比` / `有序病情阶段演进`），动态点击 `[+ 新增分组]` 自由扩展分组数量，指定基准对照组（Reference）与阶段顺序（`stage_order`）。
 * **组内样本编号（GSM / Sample ID）录入与防重校验**：每个分组卡片内置样本编号多行文本域（支持逗号、空格、换行批量粘贴），前端实时统计各组样本数并执行跨组重复分配拦截。支持一键导入两列 `Sample_ID, Group_Name` 映射表。
 * **显式差异对比对（Contrasts）配置**：当分组数 $\ge 3$ 时，支持显式勾选差异分析对比组合并指定主对比对（Primary Contrast）。
-* **分片上传器**：4MB 分片断点续传（已实现：uploadId 由「项目 + 归属线 + 文件名 + 大小 + 修改时间」经 shared/upload_session.mjs 确定性派生，刷新/换浏览器/换设备都能凭 GET /api/upload/status 从 nextIndex 续传；服务端 24 小时未动的会话由 GC 自动清理，BIO_UPLOAD_TTL_HOURS 可覆盖）并自动校验 Bulk 与单细胞/空间数据格式。
+* **分片上传器**：4MB 分片断点续传（已实现：uploadId 由「项目 + 归属线 + 文件名 + 大小 + 修改时间」经 shared/upload_session.mjs 确定性派生，刷新/换浏览器/换设备都能凭 GET /api/upload/status 从 nextIndex 续传；服务端 24 小时未动的会话由 GC 自动清理，BIO_UPLOAD_TTL_HOURS 可覆盖；TTL 之外还有总量配额闸门，`.uploads` 存活会话总占用超过 `BIO_UPLOAD_QUOTA_BYTES`（默认 20GiB，`0` 表示一个都不收）时，从 mtime 最旧的会话开始淘汰，10 分钟内被写过的活跃会话一律不淘汰，清理后仍超配额则 `POST /api/upload/init` 回 507 并给出当前占用与配额字节数）并自动校验 Bulk 与单细胞/空间数据格式。
 * **数据格式白名单与体积上限（单一事实源）**：14 类扩展名（`.h5ad` / `.h5` / `.loom` / `.mtx` / `.tar` / `.gz` / `.zip` / `.txt` / `.tsv` / `.csv` / `.soft` / `.xlsx` / `.rds` / `.rdata`）与单文件 `5GiB` 上限统一由 `shared/data_formats.mjs` 的 `DATA_EXT` / `MAX_DATA_BYTES` 维护，工作台 8787 与客户提交台 8080 共用同一份；提交台仍可用 `PORTAL_MAX_DATA_BYTES` 覆盖上限。改白名单只改该文件，再同步 `portal/index.html` 的字面量、`accept` 属性与提示文案（两侧一致性由 `BioanalysDesktop/tests/data_format_parity.test.js` 把守）。
 
 
@@ -453,8 +453,9 @@ set.seed(2026)
 | §二 目录结构 | 远端 `projects/<项目>/<线>/{raw_data,processed,results,figures}` | 已按实测校准 |
 | §二 合法根与归属口径 | `server/ledger.js` 的 `analyzePath` / `inspectTaskPath` | 单一事实源（提交层 / 台账 / 文件守卫共用） |
 | §三.1 模块 A 黑名单 | 同 §一.2 铁律 1 | 8 条正本 + 出处沿革 + 已知边界 |
-| §三.1 模块 B 分片上传 | `server/upload.js`（4MB 分片 / 确定性 uploadId / 24h GC）+ `shared/upload_session.mjs` + `src/lib/uploadSession.ts` | 已实现（S32 + 本轮） |
+| §三.1 模块 B 分片上传 | `server/upload.js`（4MB 分片 / 确定性 uploadId / 24h GC）+ `shared/upload_session.mjs` + `src/lib/uploadSession.ts` | 已实现（S32 + 本轮 + task-8 总量配额） |
 | §三.1 模块 B 格式白名单 | `shared/data_formats.mjs`（14 类 / 5GiB） | 单一事实源，8787 与 8080 共用 |
+| §三.1 模块 B 上传会话治理 | `server/upload.js`（`gcStaleUploads` 两段式：TTL + 总量配额）+ `server/index.js`（`uploadError` 统一错误体 / init 507 闸门） | 已实现（task-8，24 条用例 + 真机 507 冒烟） |
 | §三.2 任务提交三道闸 | `POST /api/tasks/submit`：路径预校验 → 命令审计 → 桥接检查 | 已实现 |
 | §三.3 五维自检 | `GET /api/selfcheck` + `server/selfcheck.js`（pass/warn/fail/unknown） | 已实现（含 warn 档与 unknown 兜底） |
 | §三.3 台账审计口径 | `server/ledger.js` + `ops/03_check_logs_remote.sh` | 同口径 |
@@ -464,7 +465,7 @@ set.seed(2026)
 | §五 出图规范 v2.1 | `ops/fig_theme.py` / `ops/fig_theme.R` / `ops/audit_figure_layout.py` / `docs/figure_spec.md` | 已实现（137 张图三线全 PASS） |
 | §六 防崩执行套件 | `ops/bio_limits.sh` / `ops/check_storage_and_isolation.sh` / `ops/run_throttled_task.sh` | 已实现（默认不绑核） |
 
-上述条款的可执行断言集中在 `BioanalysDesktop/tests/`（全量 `npm test` 462 条）。**改条款必须同步改落点与断言**，断言红了优先怀疑落点漂移，不要放宽断言。
+上述条款的可执行断言集中在 `BioanalysDesktop/tests/`（全量 `npm test` 486 条）。**改条款必须同步改落点与断言**，断言红了优先怀疑落点漂移，不要放宽断言。
 
 ---
 

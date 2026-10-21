@@ -27,7 +27,7 @@ import { EventEmitter } from 'node:events';
 import { Readable, Writable } from 'node:stream';
 
 import {
-  DEFAULT_UPLOAD_TTL_HOURS, GC_MIN_INTERVAL_MS, UPLOAD_ROOT,
+  DEFAULT_UPLOAD_QUOTA_BYTES, DEFAULT_UPLOAD_TTL_HOURS, GC_MIN_INTERVAL_MS, UPLOAD_ROOT,
   cleanupUpload, gcStaleUploads, maybeGcStaleUploads, resetUploadGcThrottle,
   resolveUploadId, uploadDir, uploadTtlMs,
 } from '../server/upload.js';
@@ -277,7 +277,12 @@ test('C: 真文件系统：只删合法 id 且过期的会话目录，文件/非
 test('C: UPLOAD_ROOT 不存在（还没传过任何文件）按正常空状态处理', () => {
   const missing = path.join(os.tmpdir(), 'bio-upload-gc-missing-' + process.pid + '-' + Date.now());
   const report = gcStaleUploads({ root: missing, now: Date.now(), ttlMs: 1000, logger: quiet });
-  assert.deepEqual(report, { scanned: 0, removed: [], kept: [], errors: [] });
+  // task-8 给 gcStaleUploads 报告加了配额字段（totalBytes/quotaBytes/overQuota/evicted/active），
+  // deepEqual 对键集严格，这里同步期望值：空根下这些字段各自的零值。
+  assert.deepEqual(report, {
+    scanned: 0, removed: [], kept: [], errors: [],
+    evicted: [], totalBytes: 0, quotaBytes: DEFAULT_UPLOAD_QUOTA_BYTES, overQuota: false, active: [],
+  });
 });
 
 test('C: readdir 失败：ENOENT 不算错，其余错误只记 errors 不抛', () => {

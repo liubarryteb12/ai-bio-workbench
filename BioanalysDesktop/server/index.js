@@ -209,6 +209,20 @@ function json(res, status, payload) {
   });
   res.end(body);
 }
+/**
+ * 上传链路错误响应单一出口（task-8 / B）。
+ * 以前 init / chunk 回 {error}，status 回 {ok:false, error}，两种形状并存，
+ * 前端只能猜；现在四个端点（init / chunk / status / complete）的 4xx/5xx 一律走这里，
+ * 统一回 {ok:false, error}。ok:false 是新增字段，前端（App.tsx 只读 error）不受影响；
+ * HTTP 状态码语义不变，调用方传什么状态码就回什么。
+ * 成功响应不走本函数。
+ * @param {import('node:http').ServerResponse} res
+ * @param {number} status
+ * @param {string} message 非空字符串
+ */
+function uploadError(res, status, message) {
+  return json(res, status, { ok: false, error: String(message ?? '') });
+}
 
 // ── 任务提交路径预校验（S29 / R9；2026-10-21 收敛到 ledger.js 单一事实源）──
 // 单路径归属判定已移到 ledger.js 的 inspectTaskPath / analyzePath，与台账审计
@@ -1239,19 +1253,19 @@ const server = http.createServer(async (req, res) => {
       try {
         requested = JSON.parse(body || '{}');
       } catch (cause) {
-        return json(res, 400, { error: `请求体不是合法 JSON: ${cause.message}` });
+        return uploadError(res, 400, `请求体不是合法 JSON: ${cause.message}`);
       }
       const lineId = requested.lineId;
       if (!LINES.includes(lineId)) {
-        return json(res, 400, { error: `必须指定归属线，且只能是 ${LINES.join(' / ')}` });
+        return uploadError(res, 400, `必须指定归属线，且只能是 ${LINES.join(' / ')}`);
       }
       const projectId = sanitizeProjectId(requested.projectId || DEFAULT_PROJECT);
       if (!projectId) {
-        return json(res, 400, { error: `projectId 非法（只允许字母数字 . _ -）: ${requested.projectId}` });
+        return uploadError(res, 400, `projectId 非法（只允许字母数字 . _ -）: ${requested.projectId}`);
       }
       const safe = sanitizeFilename(requested.filename);
       if (!safe) {
-        return json(res, 400, { error: `文件名非法或含路径穿越: ${requested.filename}` });
+        return uploadError(res, 400, `文件名非法或含路径穿越: ${requested.filename}`);
       }
       // 确定性 id：客户端带指纹（project|lineId|name|size|lastModified 的纯函数派生）时，
       // 前后端算出同一个 id，刷新或换浏览器都能接着传；不带指纹则回落 randomUUID，
@@ -1265,16 +1279,26 @@ const server = http.createServer(async (req, res) => {
         lastModified: requested.lastModified,
       });
       if (!resolved.uploadId) {
-        return json(res, 400, { error: 'fingerprint 非法：必须是 <=1024 字符的字符串且不含控制字符' });
+        return uploadError(res, 400, 'fingerprint 非法：必须是 <=1024 字符的字符串且不含控制字符');
       }
       // 惰性清理陈旧会话：放在参数校验之后、建目录之前。内部节流 10 分钟一次，
       // 且自己吞掉所有异常（清理失败不能连累上传）。
-      maybeGcStaleUploads();
+      // task-8 A：清理完若仍超过 .uploads 总量配额（大量「正在传」的会话撑爆磁盘），
+      // 直接拒绝新会话，回 507 Payload Too Large：请求本身合法，是服务端存储配额
+      // 已耗尽；用 400 会误导用户去改请求参数。配额数字进错误体，前端能直接展示。
+      const gcReport = maybeGcStaleUploads();
+      if (gcReport && gcReport.overQuota === true) {
+        return uploadError(
+          res, 507,
+          `上传暂存空间已满：当前占用 ${gcReport.totalBytes} 字节，超过配额 ${gcReport.quotaBytes} 字节；`
+          + `请等待进行中的上传完成或清理旧会话后重试`
+        );
+      }
       const uploadId = resolved.uploadId;
       try {
         initUpload(uploadId);
       } catch (cause) {
-        return json(res, 500, { error: cause.message });
+        return uploadError(res, 500, cause.message);
       }
       return json(res, 200, {
         uploadId, projectId, lineId, filename: safe, chunkSize: CHUNK_SIZE,
@@ -1301,7 +1325,7 @@ const server = http.createServer(async (req, res) => {
         writeChunk(uploadId, index, Buffer.concat(chunks));
         return json(res, 200, { ok: true, index: Number(index), received: listChunks(uploadId) });
       } catch (cause) {
-        return json(res, 400, { error: cause.message });
+        return uploadError(res, 400, cause.message);
       }
     });
     return;
@@ -1315,7 +1339,7 @@ const server = http.createServer(async (req, res) => {
     const status = uploadStatus(uploadId);
     if (status.reason === 'invalid_id') {
       // 缺失或含路径穿越（'..'、分隔符、隐藏名）：400，绝不下探文件系统
-      return json(res, 400, { ok: false, error: `uploadId 非法或缺失: ${uploadId}` });
+      return uploadError(res, 400, `uploadId 非法或缺失: ${uploadId}`);
     }
     if (!status.ok) {
       // 没传过：HTTP 仍 200（404 会让前端走错误分支），前端据 nextIndex=0 从 0 开始
@@ -1341,21 +1365,21 @@ const server = http.createServer(async (req, res) => {
       try {
         requested = JSON.parse(body || '{}');
       } catch (cause) {
-        return json(res, 400, { error: `请求体不是合法 JSON: ${cause.message}` });
+        return uploadError(res, 400, `请求体不是合法 JSON: ${cause.message}`);
       }
       const { uploadId, lineId, filename } = requested;
       if (!LINES.includes(lineId)) {
-        return json(res, 400, { error: `lineId 非法: ${lineId}` });
+        return uploadError(res, 400, `lineId 非法: ${lineId}`);
       }
       const projectId = sanitizeProjectId(requested.projectId || DEFAULT_PROJECT);
       if (!projectId) {
-        return json(res, 400, { error: `projectId 非法（只允许字母数字 . _ -）: ${requested.projectId}` });
+        return uploadError(res, 400, `projectId 非法（只允许字母数字 . _ -）: ${requested.projectId}`);
       }
       let localPath;
       try {
         localPath = assembleChunks(uploadId, filename);
       } catch (cause) {
-        return json(res, 400, { error: `合并分片失败: ${cause.message}` });
+        return uploadError(res, 400, `合并分片失败: ${cause.message}`);
       }
       const header = readHeader(localPath);
       const validation = validateUpload(filename, header);
@@ -1374,10 +1398,7 @@ const server = http.createServer(async (req, res) => {
         { timeoutMs: 900000 }
       );
       if (scp.code !== 0) {
-        return json(res, 500, {
-          error: `scp 上传失败（code=${scp.code}）: ${scp.stderr || scp.stdout}`,
-          validation, localSize,
-        });
+        return uploadError(res, 500, `scp 上传失败（code=${scp.code}）: ${scp.stderr || scp.stdout}`);
       }
       const remoteStat = runRemote(`stat -c %s '${remote}' 2>/dev/null || echo MISSING`);
       const remoteSize = Number(remoteStat.trim());

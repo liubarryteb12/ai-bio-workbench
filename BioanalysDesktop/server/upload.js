@@ -362,6 +362,58 @@ export function uploadTtlMs(env = process.env) {
   return DEFAULT_UPLOAD_TTL_HOURS * 60 * 60 * 1000;
 }
 
+/** 上传暂存默认总量配额：20GiB。TTL 之外的第二道闸门，防多个活跃会话把磁盘撑爆 */
+export const DEFAULT_UPLOAD_QUOTA_BYTES = 20 * 1024 * 1024 * 1024;
+
+/**
+ * 总量配额字节数：BIO_UPLOAD_QUOTA_BYTES 可覆盖（字节，允许 0 表示「一个会话都不收」）。
+ * 缺省、空串、非数字、负数一律回落默认值：配额读错时按最保守的默认值跑，
+ * 而不是把配额当成 0 把用户全部挡在门外，也不是当成 Infinity 放任磁盘被写满。
+ * @returns {number} 配额字节数
+ */
+export function uploadQuotaBytes(env = process.env) {
+  const raw = env?.BIO_UPLOAD_QUOTA_BYTES;
+  if (raw === undefined || raw === null || String(raw).trim() === '') return DEFAULT_UPLOAD_QUOTA_BYTES;
+  const bytes = Number(raw);
+  if (!Number.isFinite(bytes) || bytes < 0) return DEFAULT_UPLOAD_QUOTA_BYTES;
+  return Math.round(bytes);
+}
+
+/**
+ * 单个上传会话目录当前占用的字节数（配额统计用）。
+ *
+ * 口径：累加目录下普通文件的 size，不取 statSync(dir).size。
+ * 理由：dir.size 在 Linux 常见文件系统上只是目录项自身大小（ext4 上长期是 4096，
+ * 只随目录项数量增长），跟里面装了多少数据无关，拿它当配额等于没配；
+ * 真实文件字节才是可靠口径。
+ *
+ * 只扫一层：本模块往会话目录里写的全是扁平文件（initUpload 建目录、
+ * writeChunk 写 <index>.part、assembleChunks 写合并后的原文件），不会建子目录，
+ * 所以一层扫描即覆盖全部占用。单次 readdir / stat 失败按 0 字节计并记 errors，
+ * 不让一次测量失败连累整个清理（清理是旁路动作）。
+ *
+ * @returns {number} 该会话目录的文件字节数（测量失败按 0 计）
+ */
+function sessionUsageBytes(dir, name, fsImpl, errors) {
+  let entries;
+  try {
+    entries = fsImpl.readdirSync(dir, { withFileTypes: true });
+  } catch (cause) {
+    errors.push({ name, message: messageOf(cause) });
+    return 0;
+  }
+  let total = 0;
+  for (const entry of entries) {
+    if (!entry?.isFile?.()) continue;
+    try {
+      total += Number(fsImpl.statSync(path.join(dir, String(entry.name))).size) || 0;
+    } catch (cause) {
+      errors.push({ name, message: messageOf(cause) });
+    }
+  }
+  return total;
+}
+
 function messageOf(cause) {
   return cause instanceof Error ? cause.message : String(cause);
 }
@@ -369,22 +421,52 @@ function messageOf(cause) {
 /**
  * 删除 .uploads 下陈旧的会话目录（root / now / ttl / fs 全部可注入，便于单测）。
  *
- * 判定口径：
+ * 判定口径（第一阶段：TTL，与旧版完全一致）：
  *   - 只看 UPLOAD_ROOT 的一级目录，且目录名必须过 isSafeUploadId；不是本模块建的目录一律不碰；
  *   - 目录 mtime 比 now 早超过 ttlMs 才删（age === ttlMs 保留，边界不删）；
  *   - 单个目录的 stat / rm 失败只记 errors，不抛出：清理是旁路动作，不能连累上传请求；
  *   - UPLOAD_ROOT 不存在（还没传过任何文件）按正常状态处理，不记错。
  *
- * @returns {{scanned: number, removed: string[], kept: string[], errors: Array<{name: string, message: string}>}}
+ * 判定口径（第二阶段：总量配额，本次新增）：
+ *   TTL 只保证单个会话最终会被清掉，挡不住「同时活跃的会话太多把磁盘撑爆」：
+ *   一个 20GB 的 h5ad 分片传一半，mtime 永远是新的，TTL 永远不删它。所以 TTL 之后
+ *   再加一道总量闸门：把第一阶段留下的会话按占用字节求和，超过 quotaBytes 就从
+ *   最旧（mtime 最小）的会话开始淘汰，直到降到配额内或没有可淘汰对象。
+ *   - 活跃会话（now - mtime < GC_MIN_INTERVAL_MS）一律不淘汰：它正在被写入，删掉等于
+ *     丢用户数据，宁可超配额也不能删。这类会话计入 kept，并在 report.active 里单列，
+ *     便于运维看清「为什么清了还超」；
+ *   - 配额测量失败（单次 readdir / stat 报错）按 0 字节计并记 errors：宁可低估占用，
+ *     也不能因为一次测量失败把用户正在传的会话删掉。
+ *
+ * 报告字段语义：
+ *   scanned / removed / kept / errors 沿用旧语义，removed 只装第一阶段删掉的会话；
+ *   evicted 装第二阶段淘汰掉的会话（与 removed 互斥）；
+ *   totalBytes 为第二阶段测量到、清理完成后仍然存活的会话总占用字节；
+ *   quotaBytes 为本次生效的配额；overQuota 表示「清完仍然超配额」；
+ *   active 为存活且判定为活跃的会话。
+ *
+ * @returns {{scanned: number, removed: string[], kept: string[], errors: Array<{name: string, message: string}>,
+ *            evicted: string[], totalBytes: number, quotaBytes: number, overQuota: boolean, active: string[]}}
  */
 export function gcStaleUploads({
   root = UPLOAD_ROOT,
   now = Date.now(),
   ttlMs = uploadTtlMs(),
+  quotaBytes = uploadQuotaBytes(),
   fsImpl = fs,
   logger = console,
 } = {}) {
-  const report = { scanned: 0, removed: [], kept: [], errors: [] };
+  const report = {
+    scanned: 0,
+    removed: [],
+    kept: [],
+    errors: [],
+    evicted: [],
+    totalBytes: 0,
+    quotaBytes: Number(quotaBytes),
+    overQuota: false,
+    active: [],
+  };
   let entries;
   try {
     entries = fsImpl.readdirSync(root, { withFileTypes: true });
@@ -393,6 +475,7 @@ export function gcStaleUploads({
     report.errors.push({ name: '', message: messageOf(cause) });
     return report;
   }
+  const survivors = [];
   for (const entry of entries) {
     const name = String(entry?.name ?? '');
     if (!entry?.isDirectory?.()) continue;
@@ -407,7 +490,7 @@ export function gcStaleUploads({
       continue;
     }
     if (now - mtimeMs <= ttlMs) {
-      report.kept.push(name);
+      survivors.push({ name, dir, mtimeMs });
       continue;
     }
     try {
@@ -418,6 +501,38 @@ export function gcStaleUploads({
       logger?.warn?.(`[bioanalys-desktop] 清理陈旧上传会话失败（已忽略）: ${name}: ${messageOf(cause)}`);
     }
   }
+  // 第二阶段：TTL 之后仍然存活的总量配额闸门
+  const quota = Number(quotaBytes);
+  const measured = survivors.map((item) => ({
+    ...item,
+    bytes: sessionUsageBytes(item.dir, item.name, fsImpl, report.errors),
+  }));
+  let totalBytes = measured.reduce((sum, item) => sum + item.bytes, 0);
+  report.totalBytes = totalBytes;
+  if (Number.isFinite(quota) && totalBytes > quota) {
+    // 最旧优先淘汰；mtime 相同按名字排序，保证淘汰顺序可重现
+    const evictable = measured
+      .filter((item) => now - item.mtimeMs >= GC_MIN_INTERVAL_MS)
+      .sort((a, b) => a.mtimeMs - b.mtimeMs || (a.name < b.name ? -1 : 1));
+    for (const item of evictable) {
+      if (totalBytes <= quota) break;
+      try {
+        fsImpl.rmSync(item.dir, { recursive: true, force: true });
+      } catch (cause) {
+        report.errors.push({ name: item.name, message: messageOf(cause) });
+        logger?.warn?.(`[bioanalys-desktop] 配额淘汰上传会话失败（已忽略）: ${item.name}: ${messageOf(cause)}`);
+        continue;
+      }
+      report.evicted.push(item.name);
+      totalBytes -= item.bytes;
+    }
+  }
+  report.totalBytes = totalBytes;
+  report.kept.push(...measured.filter((item) => !report.evicted.includes(item.name)).map((item) => item.name));
+  report.active = measured
+    .filter((item) => !report.evicted.includes(item.name) && now - item.mtimeMs < GC_MIN_INTERVAL_MS)
+    .map((item) => item.name);
+  report.overQuota = Number.isFinite(quota) && totalBytes > quota;
   return report;
 }
 

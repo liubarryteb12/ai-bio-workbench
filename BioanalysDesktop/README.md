@@ -55,6 +55,12 @@ npm run dev        # 后端 8787 + 前端 5173 同时起
 上传会话 GC 的保留时长：`BIO_UPLOAD_TTL_HOURS=48 npm run dev:server`（默认 24 小时，
 非正数/非法值回落默认；启动时跑一次，之后由 `POST /api/upload/init` 惰性触发，10 分钟节流）。
 
+上传暂存的总量配额：`BIO_UPLOAD_QUOTA_BYTES=10737418240 npm run dev:server`（字节，默认 20GiB，
+`0` 表示一个会话都不收；缺省/空串/非数字/负数回落默认值）。TTL 只管单个会话何时过期，
+管不住"同时活跃的会话太多把磁盘撑爆"，所以 TTL 之后还有这道总量闸门：超配额时从 mtime 最旧的
+会话开始淘汰，**活跃会话（10 分钟内被写过）一律不淘汰**；清理后仍超配额则 `POST /api/upload/init`
+回 507。
+
 ## 已有能力
 
 | 接口 | 状态 |

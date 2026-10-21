@@ -3269,7 +3269,7 @@ ssh 连接失败 → SKIP exit 0（K40 离线母版仍可跑）；
 ### 本轮改动文件清单
 
 `ops/build_client_report.py`（+94/-2）、`src/bridge_guard.sh`（新增）、
-`src/line1_bulk/scripts/ml_diagnostics`、`src/line1_b_bulk/scripts/ml_hub_analysis`、
+`src/line1_bulk/scripts/ml_diagnostics`、`src/line1_bulk/scripts/ml_hub_analysis`、
 `src/line2_scrna/scripts/gsva_pathways`（各在首个 Rscript 前插守卫，既有行未改）、
 `BioanalysDesktop/server/task.js`（GUARD_CALL_RE + guardWired）、
 `BioanalysDesktop/server/index.js`（提交层 warn）、
@@ -3285,3 +3285,72 @@ ssh 连接失败 → SKIP exit 0（K40 离线母版仍可跑）；
    本轮靠改写注释规避，未根治）；
 4. `src/bridge_guard.sh` 尚未部署到远端 `/mnt/ssd/bio_data/`（母版在远端跑时需要，但母版本身
    也还没同步远端，见 `con_hf/操作台账.md` 部署节）。
+
+## 2026-10-21（第五轮）：四项边界全部收口（task-8 合并 + 已提交 ef126b3）
+
+### 触发
+
+用户 m00939 点出四项边界并要求全部解决：
+1. 包内 `CHECKSUMS` 清单缺失（只有本地 `.sha256` 旁挂）；
+2. 桥接四项断言只在提交层执行，58 个分析母版内部 0 调用；
+3. `.uploads` GC 只管 TTL 不管总量配额；
+4. init 与 status 的 400 错误体形状不一致。
+
+### 状态：四项全绿
+
+| # | 边界 | 落点 | 状态 |
+|---|---|---|---|
+| 1 | 包内 CHECKSUMS | `ops/build_client_report.py` 的 `write_checksums` | 完成（task-9，commit ef126b3；远端 285 文件 `sha256sum -c` 全过） |
+| 2 | 桥接断言进母版 | `src/bridge_guard.sh` + 三个 bilingual 母版 | 完成（task-10，commit ef126b3；K40 真机首次抓到 FAIL） |
+| 3 | 上传总量配额 | `server/upload.js` 两段式 GC | 完成（task-8，本轮合并；真机 507 冒烟） |
+| 4 | 错误体统一 | `server/index.js` 的 `uploadError` | 完成（task-8，本轮合并；四端点统一 `{ok:false,error}`） |
+
+### task-8 合并细节（teammate `upload-quota`）
+
+- `server/upload.js`：`DEFAULT_UPLOAD_QUOTA_BYTES` = 20GiB、`uploadQuotaBytes(env)`
+  （只认 `BIO_UPLOAD_QUOTA_BYTES`，不设 GB 别名避免双真相源；缺省/空串/非数字/负数回落默认，
+  `0` 是显式配置）；`gcStaleUploads` 两段式——TTL 段语义一字未改，配额段按
+  `sessionUsageBytes` 累加目录内**普通文件字节**（不用 `dir.size`：ext4 上恒 4096，与数据量无关），
+  超配额按 mtime 最旧优先淘汰，**10 分钟内被写过的活跃会话一律不淘汰**（删正在传的等于丢用户数据），
+  报告新增 `evicted` / `totalBytes` / `quotaBytes` / `overQuota` / `active` 五键。
+- `server/index.js`：`uploadError(res, status, message)` 单一出口，四个上传端点 4xx/5xx 统一
+  `{ok:false, error}`（成功响应不动）；init 在惰性 GC 后加配额闸门，**清理后仍超配额回 507**
+  （请求合法、失败原因是服务端配额耗尽，400 会把运维问题伪装成客户端 bug），错误体带占用与配额字节数；
+  `gcReport` 做 null 真值判断（`maybeGcStaleUploads` 吞异常返回 null）。
+- 新增 `tests/upload_quota.test.js` 24 条；**新测试抓到真实缺陷**：配额淘汰路径 rm 失败的
+  `logger.warn` 用了作用域内不存在的 `name`，会抛 `ReferenceError: name is not defined`，
+  已修为 `item.name`。
+- Lead 同步跨切片断言：`tests/upload_session.test.js:277-286` 的整报告 `deepEqual` 补 5 个零值键。
+
+### 真机 507 冒烟（不止单测）
+
+真实服务（`BAD_PORT=18896 BIO_UPLOAD_QUOTA_BYTES=1`）+ 预置「活跃 100 字节」会话：
+`POST /api/upload/init` → **507**
+`{"ok":false,"error":"上传暂存空间已满：当前占用 100 字节，超过配额 1 字节；请等待进行中的上传完成或清理旧会话后重试"}`。
+另一场景「过期会话 + 配额 1 字节」→ 先淘汰旧会话再放行（200），证明两段式顺序正确。
+探针 `cn_debug/2026-10-21_verification_upload_quota_507.mjs` 已按 cn_debug 规则登记。
+
+### 验证
+
+- `npm test` **486/486 pass, fail 0**（462 + 24）
+- `npx tsc --noEmit` exit 0
+- `npm run build` 701ms / `dist/assets/index-eCgWQRjO.js` 221.62 kB
+- `node --check server/upload.js`、`node --check server/index.js` exit 0
+
+### 改动文件
+
+`BioanalysDesktop/server/upload.js`（+123）、`server/index.js`（55 行变化）、
+`tests/upload_quota.test.js`（新增 24 条）、`tests/upload_session.test.js`（Lead 同步 9 行）、
+`BioanalysDesktop/README.md`（`BIO_UPLOAD_QUOTA_BYTES` 说明）、
+`aims/aims.txt`（§三.1 模块 B 配额口径 + §八 新增「上传会话治理」行 + 测试数 486）、
+`cn_debug/README.md` + 新探针、`con_hf/dispatch/upload_quota_report.md`（新增）。
+
+### 待办（下一轮）
+
+1. **obsm 断言口径冲突需用户裁定**（A 改引擎 obsm 三者全无时 WARN / B 改母版输入挑带降维坐标的
+   `.h5ad`）——第四轮已上报，仍未决；
+2. `inspectBridgeNeed` 应跳过注释行再计数（注释里的 Rscript/python 污染 bilingual 判定，
+   本轮靠改写三个母版注释规避，未根治）；
+3. `src/bridge_guard.sh` 与三个母版尚未同步到远端 `/mnt/ssd/bio_data/`；
+4. 配额只在 init 做软闸门，已放行 chunk 仍可写超配额（等 10 分钟 mtime 老过才淘汰，有意为之）；
+5. 淘汰按 mtime 全局最旧优先，不区分归属线。

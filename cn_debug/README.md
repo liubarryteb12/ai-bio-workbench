@@ -28,7 +28,7 @@
 | `2026-10-18_verification_*` | 门户/归档包/数据文件部署/布局模板/双模式提交 | `2026-10-18_verification_archive_package.mjs`、`..._layout_autoload.py` |
 | `2026-10-19_*` | 布局映射、WGCNA v1/v10、客户端提交 E2E、S11 报告版本采集 | `2026-10-19_verification_wgcna_v1_v10.mjs` |
 | `2026-10-20_verification_*` | 出图 G1/G2 校准、S19 门户上传、S20 上传上限、S24 接单 E2E、S26 台账 E2E、S27 报告 E2E、S28 桥接 | `2026-10-20_verification_s28_bridge.mjs` |
-| `2026-10-21_verification_*` | S30 白名单三端一致性 | `2026-10-21_verification_s30_whitelist.mjs` |
+| `2026-10-21_verification_*` | S30 白名单三端一致性、上传配额 507 闸门 | `2026-10-21_verification_s30_whitelist.mjs`、`2026-10-21_verification_upload_quota_507.mjs` |
 | `_s28_*`、`_s31_probe_state_db.py` | S28 桥接取证、S31 台账归因探针（只读） | `_s28_forensic.sh` |
 
 ## 三、一次性调试探针（可删，保留仅为查史）
