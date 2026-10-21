@@ -305,3 +305,38 @@ test('真跑：只有 links 没有 info → 不回落网络，exit 1 且指名�
   assert.match(out.stderr, /protein\.info/);
   assert.equal(out.edges, null);
 });
+
+/** 下载中断场景：.gz 只写到一半（缺 end-of-stream 标记），解析必须折成可执行的修复指引。 */
+function truncatedScenario() {
+  return scenario('truncated', () => {
+    const tree = buildTree({});
+    // 先造一份足够长的边表，再截断到 55%：保证截断点落在流中间而不是尾部对齐处。
+    const rows = [LINKS_HEADER];
+    for (let i = 0; i < 4000; i += 1) {
+      const a = '9606.ENSP' + String(i % 50).padStart(11, '0');
+      const b = '9606.ENSP' + String((i + 7) % 50).padStart(11, '0');
+      rows.push(a + ' ' + b + ' ' + (500 + (i % 400)));
+    }
+    const full = zlib.gzipSync(Buffer.from(rows.join('\n') + '\n', 'utf8'));
+    fs.writeFileSync(tree.linksPath, full.subarray(0, Math.floor(full.length * 0.55)));
+    return runStep(tree, { BIO_STRING_LINKS: tree.linksPath, BIO_STRING_INFO: tree.infoPath });
+  });
+}
+
+test('静态：离线读失败必须折成修复指引，不许裸 traceback', () => {
+  assert.ok(SRC.includes('READ_ERRORS = ('), '缺 READ_ERRORS 异常白名单');
+  assert.ok(SRC.includes('def read_failure_msg('), '缺 read_failure_msg 说明生成器');
+  assert.ok(SRC.includes('fail(read_failure_msg("protein.links"'), 'protein.links 读取未包 try');
+  assert.ok(SRC.includes('fail(read_failure_msg("protein.info"'), 'protein.info 读取未包 try');
+  assert.ok(/import zlib/.test(SRC), 'zlib.error 要在白名单里，必须 import zlib');
+});
+
+test('下载中断的残片 .gz：exit 1 且给 gzip -t 指引，不冒 traceback', () => {
+  const r = truncatedScenario();
+  assert.equal(r.code, 1, '残片必须硬失败，不许静默出半套边表');
+  assert.match(r.stderr, /离线 protein\.links 读取失败/, 'stderr 要点名是哪份离线文件');
+  assert.match(r.stderr, /下载中断/, 'stderr 要指出最可能的原因');
+  assert.match(r.stderr, /gzip -t/, 'stderr 要给可执行的验证命令');
+  assert.equal(r.stderr.includes('Traceback'), false, '不许把 Python traceback 甩给运维');
+  assert.equal(r.edges, null, '失败时不许留下 ppi_edges.tsv');
+});

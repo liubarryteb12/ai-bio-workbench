@@ -73,6 +73,7 @@ import sys
 import time
 import urllib.parse
 import urllib.request
+import zlib
 
 import matplotlib
 matplotlib.use("Agg")
@@ -309,6 +310,17 @@ def print_download_guidance(reason, links_target, info_target):
     sys.stderr.flush()
 
 
+# 离线文件读到一半出错，九成是下载中断（.gz 缺结束标记）。这类异常必须折成可执行的
+# 修复指引，而不是丢一个 traceback 让人猜（P-19：K40 上 curl 被中断留下 2.4MB 残片）。
+READ_ERRORS = (OSError, EOFError, zlib.error, UnicodeDecodeError)
+
+
+def read_failure_msg(kind, path, exc):
+    return ("离线 %s 读取失败（%s: %s），文件可能是下载中断的残片：%s。"
+            "先跑 gzip -t %s 验证，不通过就删掉重下（curl -C - 可续传）"
+            % (kind, type(exc).__name__, exc, path, path))
+
+
 def norm_protein(pid):
     """STRING 蛋白 ID 归一：去掉 9606. 物种前缀，让 links 与 info 两侧能对齐。"""
     pid = pid.strip()
@@ -495,7 +507,10 @@ else:
 
 if source == "offline":
     wanted_symbols = set(genes)
-    sym2ensp, ensp2sym, n_info = load_protein_info(info_file, wanted_symbols)
+    try:
+        sym2ensp, ensp2sym, n_info = load_protein_info(info_file, wanted_symbols)
+    except READ_ERRORS as exc:
+        fail(read_failure_msg("protein.info", info_file, exc))
     wanted_ensp = set()
     for sym in genes:
         if sym in sym2ensp:
@@ -511,7 +526,10 @@ if source == "offline":
     n_sym_mapped = sum(1 for g in genes if g in sym2ensp)
     log("offline_source links=%s info=%s info_rows=%d symbol_mapped=%d/%d ensp_in_query=%d"
         % (links_file, info_file, n_info, n_sym_mapped, len(genes), len(wanted_ensp)))
-    raw_edges, stats = scan_links(links_file, wanted_ensp, MIN_SCORE)
+    try:
+        raw_edges, stats = scan_links(links_file, wanted_ensp, MIN_SCORE)
+    except READ_ERRORS as exc:
+        fail(read_failure_msg("protein.links", links_file, exc))
     log("offline_scan rows=%d low_score=%d dup=%d self=%d kept=%d"
         % (stats["rows"], stats["low"], stats["dup"], stats["self"], len(raw_edges)))
     edges_out = edges_to_table(raw_edges, ensp2sym)

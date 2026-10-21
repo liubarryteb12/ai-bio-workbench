@@ -28,7 +28,7 @@
 | 前置门禁：失败台账需人工确认 | 同上（`force: true` 对应本文的 `-Force`） | 同上，HTTP 412 拒绝并列出失败台账 |
 | 前置门禁：远端输出完整性 | 同上（缺 `END|` 标记判输出截断） | 同上，防 argv 静默截断老坑 |
 | `.sha256` 旁挂校验文件 | `writeSha256Sidecars`（`<文件>.sha256`，sha256sum 可直接 `-c`） | 同上，回搬成功后自动生成 |
-| 包内 `CHECKSUMS.sha256` | 引擎未产出，本地旁挂文件是当前口径 | 待引擎侧补齐 |
+| 包内 `CHECKSUMS.sha256` | `write_checksums`（相对路径排序，跳过自身与 `PACKAGE_META.json`，先写清单再打 tar） | `ops/build_client_report.py`；2026-10-21 远端真机 285 文件 `sha256sum -c` 全过 |
 
 **因此**：本文第二节点名的入口 `ops/09_package_delivery.ps1` **作废**，不要照它新建脚本；
 本文第三节六条门禁里第 3/5/6 条已在 8787 调用侧实现（引擎 CLI 直跑仍不检查，属于已知边界）；
