@@ -3142,3 +3142,26 @@ S19 完成后请勿重复改 index.html 的 MAX_DATA_BYTES/MAX_DATA_FILES_PER_RO
 
 **改动文件清单（第二轮）**：新增 `shared/upload_session.mjs`、`BioanalysDesktop/src/lib/uploadSession.ts`、`tests/{tumor_blacklist,tumor_blacklist_parity,upload_session}.test.js`、`_archive/README.md`、`cn_debug/README.md`；改 `server/{index,ledger,tumor_blacklist,upload}.js`、`src/App.tsx`、`vite.config.js`、`tests/ledger.test.js`、`aims/aims.txt`、`portal/index.html`、`ops/README.md`、`docs/{delivery_supervisor_prompt,geo_mining_sop_v2}.md`、`BioanalysDesktop/README.md`。
 
+## 2026-10-21（第三轮）— 把本轮完善回写进 aims 框架条款（用户指令：完善后在 aims 文件内更新对应的框架内容）
+
+**触发**：用户指令「完善后在aims文件内更新对应的框架内容」。目标不是写日记，而是把 S28-S32 / D4 / D5 / D6 与两轮七项授权的实现结果，回写进 `aims/aims.txt` 的框架条款，修掉事实性漂移并补上实现口径。
+
+**改了什么（8 处，全部在 `aims/aims.txt`）**
+1. **§一.2 铁律 1**：把「前端内置正则黑名单直接拦截」改为「建项时前后端各拦一次（前端即时提示 + 后端权威拦截）」，并点明规格正本 = §三.1 模块 A 的 8 条、权威实现 `server/tumor_blacklist.js`、`portal/index.html` 只是副本、由 `tests/tumor_blacklist_parity.test.js` 把守。
+2. **§二 目录结构（最大漂移）**：旧树是 `/mnt/ssd/bio_data/line1_bulk/` 顶层三线，与实现（`projects/<项目>/<线>/`）和 §四「独占目录」自相矛盾。现按 ssh 实测重画：`projects/<项目>/{project.json,line1_bulk,line2_scrna,line3_spatial}`，每线 `raw_data/processed/results/figures`，另 `bin/`、`envs/`、`ops/`、`public_references/`、`system_logs/`。
+3. **§二 新增「合法根与归属口径」**：单一事实源 `server/ledger.js` 的 `analyzePath` / `inspectTaskPath`；四种合法形态（`projects/<当前项目>/...`、`public_references/...` 只读仅作输入、历史三线形态仅台账兼容、裸相对文件名）；`system_logs/` 禁作输入输出；相对路径只接受裸文件名与 `projects/<项目>/...`；项目段大小写敏感；`..` 一律拒绝；提交层/台账审计/文件守卫三处共用。
+4. **§三.1 模块 B**：补「数据格式白名单与体积上限（单一事实源）」——14 类扩展名 + 5GiB 由 `shared/data_formats.mjs` 维护，8787 与 8080 共用，`PORTAL_MAX_DATA_BYTES` 可覆盖，parity 测试把守。
+5. **§三.2 客户分析输入端**：补「任务提交三道闸」（路径归属预校验 400 / 命令审计 / 桥接四项断言 400）与「断点续跑契约」（`exit 0` + 产物存在性为检查点；台账落 `system_logs/`，`status` 取 `running`/`completed`/`failed`）。
+6. **§三.3 五维自检**：补「自检实现口径」——`GET /api/selfcheck` + `server/selfcheck.js`，四档 `pass/warn/fail/unknown`，`all_pass` 仅在无 warn/fail 时为真，缺 `END` 判 unknown；第 2 维 20%（与 `MIN_FREE_PERCENT=20` 同源）、第 3 维温度 85/95°C + 内存 90%/100% + 负载核比 1.5 + 配额 7.5GB、第 4 维三线逐线 + 桥接脚本存在性。
+7. **§三.3 台账 + §三.4 交付**：台账补审计口径（`ledger.js` 与 `ops/03_check_logs_remote.sh` 同口径，字段 project_id/line_id/status/checkpoint_status/exit_code）；交付补四道闸（`runReportPreflight`，不过 409 不出包）、`writeSha256Sidecars` 旁挂、打包本体 `ops/build_client_report.py` 与 `09_package_delivery.ps1` 作废。
+8. **§六 + 新增 §八**：§六 `check_storage_and_isolation.sh` 后加「同口径要求」（8787 自检第 2/3/4 维共用阈值，避免界面绿脚本红）；文末新增 **§八 条款与实现落点对照**（15 行表格：条款 → 落点文件/接口 → 状态），并声明「改条款必须同步改落点与断言」。
+
+**新增把守**：`BioanalysDesktop/tests/aims_landing.test.js` 8 条——§八 表存在且 ≥12 行、表里点名的路径必须真实存在（唯一例外 `ops/09_package_delivery.ps1` 明知作废，列入 ALLOW_MISSING）、§二 树含 projects/三线/figures/bin/envs、§二 合法根点名 ledger.js 与 `..` 规则、§三.3 阈值与接口名、§三.4 四道闸与 sha256、§三.1 白名单指向、§六 同口径提示。防止回写型文档再次漂移。
+
+**验证**：`cd BioanalysDesktop && npm test` → **tests 453 / pass 453 / fail 0**（上一轮 445 + 本轮 8）；`npx tsc --noEmit` exit 0；`npm run build` → `✓ built in 641ms`（`dist/assets/index-eGcWQRjO.js` 221.62 kB / gzip 73.22 kB）。`grep /mnt/ssd/bio_data/line[123]_` 在 `docs/` 零命中（无残留旧树引用）。
+
+**已知边界**：aims 是规格文档，§八 只是对照表不新增约束；`tests/tumor_blacklist_parity.test.js` 与 `aims_landing.test.js` 都直接读 `aims/aims.txt` 全文，改章节标题会被测试发现（有意）。
+
+**改动文件清单（第三轮）**：`aims/aims.txt`（+62/-17）、新增 `BioanalysDesktop/tests/aims_landing.test.js`、`con_hf/handoff.md`、`con_hf/操作台账.md`。
+
+

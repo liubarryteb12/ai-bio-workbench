@@ -17,7 +17,7 @@
 
 ### 2. 三大不可逾越的执行铁律
 
-1. **非肿瘤、非免疫浸润专精原则**：全流程专精非肿瘤领域（心脑血管、神经退行、代谢、纤维化、发育等），不主动加入临床生存预后、肿瘤免疫浸润、药物敏感性预测等未要求内容；前端内置正则黑名单直接拦截肿瘤/免疫相关词汇建项。
+1. **非肿瘤、非免疫浸润专精原则**：全流程专精非肿瘤领域（心脑血管、神经退行、代谢、纤维化、发育等），不主动加入临床生存预后、肿瘤免疫浸润、药物敏感性预测等未要求内容；建项时前后端各拦一次肿瘤/免疫相关词汇（前端即时提示 + 后端权威拦截）。黑名单规格正本为 §三.1 模块 A 的 8 条（2026-10-21 裁定收敛），权威实现 `BioanalysDesktop/server/tumor_blacklist.js`，提交台 `portal/index.html` 内的正则只是副本，两侧一致性由 `BioanalysDesktop/tests/tumor_blacklist_parity.test.js` 把守。
 2. **三条平行分析线物理与逻辑硬隔离原则**：
 * **线 1**：GEO Bulk 线（`line1_bulk`）
 * **线 2**：单细胞转录组 + 虚拟敲除线（`line2_scrna`）
@@ -39,26 +39,31 @@
 │   ├── check_storage_and_isolation.sh
 │   ├── run_throttled_task.sh
 │   └── verify_bridge_checkpoint.py
-├── line1_bulk/                     # 【线1】GEO Bulk 线独占物理目录 (100% 纯 R 闭环)
-│   ├── raw_data/                   # 原始 GEO 矩阵 / 平台 GPL 注释文件
-│   ├── processed/                  # 物理拆分为 train/ 与 val/ 子目录（严防数据泄漏）
-│   ├── results/                    # DEG/WGCNA/PPI/LASSO+RF/共表达/SHAP/聚类/外部验证结果
-│   └── envs/                       # 线1专属 R 环境配置与锁文件
-├── line2_scrna/                    # 【线2】单细胞转录组+虚拟敲除线独占物理目录
-│   ├── raw_data/                   # 原始 scRNA 矩阵 (.mtx/.h5ad)
-│   ├── processed/                  # QC/Harmony/注释/亚群文件 (.h5ad/.loom/.rds)
-│   ├── results/                    # 比例/DEG/Marker/富集/轨迹/CellChat/pySCENIC/虚拟敲除 DR genes
-│   └── envs/                       # 线2专属 Python + R 环境配置与锁文件
-├── line3_spatial/                  # 【线3】单细胞空间转录组+虚拟敲除线独占物理目录
-│   ├── raw_data/                   # 原始空间表达矩阵与切片坐标
-│   ├── processed/                  # 空间域识别 / Seurat·CARD·RCTD 反卷积注释数据
-│   ├── results/                    # 空间自相关/邻域共现/NICHES/虚拟敲除 DR 空间映射结果
-│   └── envs/                       # 线3专属 Python + R 环境配置与锁文件
+├── projects/                       # 【数据面唯一入口】先按项目、再按线物理隔离
+│   └── <项目>/                      # 项目 id，如 PRJ_20261020_DKD_bulk / default
+│       ├── project.json            # 建项契约（分组/样本/数据源/交付期望）
+│       ├── line1_bulk/             # 【线1】GEO Bulk 线独占物理目录
+│       │   ├── raw_data/           # 原始 GEO 矩阵 / 平台 GPL 注释文件
+│       │   ├── processed/          # 物理拆分为 train/ 与 val/ 子目录（严防数据泄漏）
+│       │   ├── results/            # DEG/WGCNA/PPI/LASSO+RF/共表达/SHAP/聚类/外部验证结果
+│       │   └── figures/            # 300 DPI 图件（出图规范见 §五）
+│       ├── line2_scrna/            # 【线2】单细胞转录组 + 虚拟敲除线独占（同上四层）
+│       └── line3_spatial/          # 【线3】空间转录组 + 虚拟敲除线独占（同上四层）
+├── bin/                            # 各线可执行与母版脚本落点（bin/<line>/）
+├── envs/                           # 各线独立环境与锁文件（envs/<line>/）
 ├── public_references/              # 公共标准参考图谱库（如 Allen Brain Atlas 等公共单细胞参考）
 │   └── (铁律：仅供线内合规调用，严禁从 line2 提取数据放入此处供 line3 反卷积使用)
 └── system_logs/                    # 自动化 JSON 台账、任务标准输出日志与 SHA256 校验记录
 
 ```
+
+**合法根与归属口径（单一事实源：`BioanalysDesktop/server/ledger.js` 的 `analyzePath` / `inspectTaskPath`）**：
+
+* 任务输入/输出只认四种形态：① `/mnt/ssd/bio_data/projects/<当前项目>/...` 下任意子路径；② `/mnt/ssd/bio_data/public_references/...`（只读，仅可作输入）；③ 迁移前历史三线形态 `/mnt/ssd/bio_data/<line>/...`（仅台账审计兼容，提交侧不放行）；④ **裸相对文件名**（任务脚本先 `cd` 到 `<项目>/<线>/processed/`，由 shell 解析）。
+* `system_logs/` 由台账通道独占写入，禁止作为任务输入或输出；`public_references/` 禁止作为输出目录。
+* 相对路径只接受**裸文件名**与 **`projects/<项目>/...`** 两种形态；`processed/x.tsv` 这类「目录 + 文件名」在提交层直接 400（报「相对路径缺少合法根」），避免 cwd 歧义。
+* 项目段比对**大小写敏感**；任何含 `..` 的路径在归一化之前一律拒绝。
+* 提交层（`POST /api/tasks/submit`）、台账审计（`classifyPath` / `auditLedgerEntry`）、文件访问守卫三处共用同一套合法根，禁止各自维护副本。
 
 ---
 
@@ -81,6 +86,7 @@
 * **组内样本编号（GSM / Sample ID）录入与防重校验**：每个分组卡片内置样本编号多行文本域（支持逗号、空格、换行批量粘贴），前端实时统计各组样本数并执行跨组重复分配拦截。支持一键导入两列 `Sample_ID, Group_Name` 映射表。
 * **显式差异对比对（Contrasts）配置**：当分组数 $\ge 3$ 时，支持显式勾选差异分析对比组合并指定主对比对（Primary Contrast）。
 * **分片上传器**：4MB 分片断点续传（已实现：uploadId 由「项目 + 归属线 + 文件名 + 大小 + 修改时间」经 shared/upload_session.mjs 确定性派生，刷新/换浏览器/换设备都能凭 GET /api/upload/status 从 nextIndex 续传；服务端 24 小时未动的会话由 GC 自动清理，BIO_UPLOAD_TTL_HOURS 可覆盖）并自动校验 Bulk 与单细胞/空间数据格式。
+* **数据格式白名单与体积上限（单一事实源）**：14 类扩展名（`.h5ad` / `.h5` / `.loom` / `.mtx` / `.tar` / `.gz` / `.zip` / `.txt` / `.tsv` / `.csv` / `.soft` / `.xlsx` / `.rds` / `.rdata`）与单文件 `5GiB` 上限统一由 `shared/data_formats.mjs` 的 `DATA_EXT` / `MAX_DATA_BYTES` 维护，工作台 8787 与客户提交台 8080 共用同一份；提交台仍可用 `PORTAL_MAX_DATA_BYTES` 覆盖上限。改白名单只改该文件，再同步 `portal/index.html` 的字面量、`accept` 属性与提示文案（两侧一致性由 `BioanalysDesktop/tests/data_format_parity.test.js` 把守）。
 
 
 * **模块 C（级联流水线编排与全节点功能说明展示）**：
@@ -147,6 +153,9 @@
 
 供已建项目在日常运行中快速核对 GSE/GPL 分组信息、微调单步参数、触发断点续跑及查看当前流水线实时进度。
 
+* **任务提交三道闸**：① 路径归属预校验——输入/输出必须落在 §二 的合法根内且归属当前项目，越界直接 `400`；② 命令审计——脚本中出现其他分析线字符串一律拒绝（`server/audit.js`）；③ 桥接四项断言——脚本涉及 R/Python 切换时，提交层调用 `ops/verify_bridge_checkpoint.py`，断言不过即 `400` 并回传断言明细。
+* **断点续跑契约**：以 `exit 0` + 产物存在性为检查点；台账 JSON 落 `system_logs/`，`status` 取 `running` / `completed` / `failed`。
+
 ### 3. 服务端运维与审计控制台（Server Admin & Self-Check Console）
 
 * **五维环境自检界面（Pre-flight Dashboard）**：
@@ -156,13 +165,22 @@
 4. **跨线隔离与 R/Python 桥接自检灯**：静态扫描脚本无跨线路径字符串；展示 R/Python 转换四项断言校验结果。
 5. **ADB/SSH 守护链路存活灯**：展示本地 `00_link_check.ps1` 心跳状态与 `tmux` 守护会话 PID。
 
+* **自检实现口径（`GET /api/selfcheck`，纯函数集中在 `BioanalysDesktop/server/selfcheck.js`）**：每维四档 `pass` / `warn` / `fail` / `unknown`，汇总 `all_pass` 仅在既无 `warn` 也无 `fail` 时为真；远端输出缺 `END` 结束标记时判 `unknown`，不冒充通过。
+  * 第 2 维：可用 ≥ `20%` 为 pass，否则 fail，阈值与 `ops/check_storage_and_isolation.sh` 的 `MIN_FREE_PERCENT=20` 同源。
+  * 第 3 维：读 `/proc/loadavg`、`nproc`、`/sys/class/thermal`、cgroup v2 `memory.max` / `memory.current`；温度 ≥ `85°C` warn / ≥ `95°C` fail；内存 ≥ `90%` warn / ≥ `100%` fail；负载 ÷ 核数 ≥ `1.5` warn；配额按 `7.5GB` 展示。
+  * 第 4 维：三条线逐线跑 `check_storage_and_isolation.sh`（任一线非 0 即 fail，并点明是哪条线），再查 `ops/verify_bridge_checkpoint.py` 是否在位（缺则 warn）。
+
 
 * **标准化可查台账界面（Standardized Ledger Viewer）**：可视化检索 `/mnt/ssd/bio_data/system_logs/` 下的所有 JSON 台账，支持按分析线、状态、耗时、内存峰值筛选审计。
+* **台账审计口径**：`BioanalysDesktop/server/ledger.js` 的 `classifyPath` / `auditLedgerEntry` 与容器侧 `ops/03_check_logs_remote.sh` 同口径（共用 §二 的合法根判定），界面灯与脚本结论必须一致；每条台账至少含 `project_id`、`line_id`、`status`（`running` / `completed` / `failed`）、`checkpoint_status`、`exit_code`。
 
 ### 4. 分析结果预览与交付界面（Result Preview Studio）
 
 * **左侧流水线步骤树 + 右侧三栏预览**：展示 `300 DPI` PNG 图廊（Web 端 CSS 缩放显示）、Top 500 行交互式 `.tsv` 表格，以及 AI 结构化三段式解读（**结论 → 依据 → 限制**）。
 * **防混淆视觉强标签**：在结果卡片顶部醒目区分 **【DEG：差异表达基因（反映转录本丰度变化）】** 与 **【DR Genes：虚拟敲除差异调控基因（反映调控网络拓扑微扰，非直接表达量升降）】**。
+* **交付前置门禁（`POST /api/report/build` → `server/report.js` 的 `runReportPreflight`）**：四道闸——① 存储水位 ≥ `20%`；② 无 `running` 状态台账；③ 存在 `failed` 台账时必须显式 `force`（放行也如实列出，不隐藏）；④ 远端输出必须带结束标记（防 argv 静默截断）。任一不过即回 `409` 并带四道闸明细，不产出交付包。
+* **交付完整性旁挂**：交付包回搬本地后对包内文件写 `<文件>.sha256`（`sha256sum -c` 可直接复核）；包内 `CHECKSUMS` 清单仍为已知缺口。
+* **打包本体**：`ops/build_client_report.py` 产出 `<项目>_Client_Delivery.tar.gz` + `Analysis_Report.md` / `.html` + `delivery_manifest.json`；`ops/09_package_delivery.ps1` 已作废（2026-10-21 裁定）。
 
 ---
 
@@ -303,6 +321,8 @@ exit 0
 
 ```
 
+> **同口径要求（2026-10-21）**：工作台 8787 五维自检的第 2/3/4 维与本脚本共用阈值——存储水位 `20%`、温度 `85°C` 告警 / `95°C` 阻断、内存配额 `7.5GB`、三条线逐线执行本脚本。改阈值必须同时改 `BioanalysDesktop/server/selfcheck.js` 与本脚本，避免「界面绿、脚本红」。
+
 ### 3. 统一降权执行与自动化台账包装器（`ops/run_throttled_task.sh`）
 
 > **2026-10-20 契约变更（用户拍板）**：默认**不静态绑核**。实测依据
@@ -418,6 +438,31 @@ set.seed(2026)
 * **解读结果**：严格按 `核心结论 → 数据与统计依据 → 方法学与生物学限制` 输出，并严格区分 **DEG（表达丰度变化）** 与 **DR 基因（虚拟敲除网络调控变化）**。
 3.完成项目后要写完整的项目报告（html格式的）
 
-##
+---
+
+## 八、 条款与实现落点对照（2026-10-21 校准）
+
+本节只做"条款 → 落点 → 状态"的对照，**不新增约束**；条款正文仍以上述各节为准。改任何条款时必须同步改落点文件，反之亦然。
+
+| 条款 | 实现落点 | 状态 |
+| --- | --- | --- |
+| §一.2 铁律 1 黑名单拦截 | `BioanalysDesktop/server/tumor_blacklist.js`（8 条正本）+ `portal/index.html` 副本 | 已对齐（2026-10-21 由 27 条收敛，parity 测试把守） |
+| §一.2 铁律 2 三线硬隔离 | `ops/check_storage_and_isolation.sh` + `server/selfcheck.js` 第 4 维 | 已实现 |
+| §一.2 铁律 3 桥接四项断言 | `ops/verify_bridge_checkpoint.py` + `server/task.js` 提交层接线 | 已接线（S28） |
+| §二 目录结构 | 远端 `projects/<项目>/<线>/{raw_data,processed,results,figures}` | 已按实测校准 |
+| §二 合法根与归属口径 | `server/ledger.js` 的 `analyzePath` / `inspectTaskPath` | 单一事实源（提交层 / 台账 / 文件守卫共用） |
+| §三.1 模块 A 黑名单 | 同 §一.2 铁律 1 | 8 条正本 + 出处沿革 + 已知边界 |
+| §三.1 模块 B 分片上传 | `server/upload.js`（4MB 分片 / 确定性 uploadId / 24h GC）+ `shared/upload_session.mjs` + `src/lib/uploadSession.ts` | 已实现（S32 + 本轮） |
+| §三.1 模块 B 格式白名单 | `shared/data_formats.mjs`（14 类 / 5GiB） | 单一事实源，8787 与 8080 共用 |
+| §三.2 任务提交三道闸 | `POST /api/tasks/submit`：路径预校验 → 命令审计 → 桥接检查 | 已实现 |
+| §三.3 五维自检 | `GET /api/selfcheck` + `server/selfcheck.js`（pass/warn/fail/unknown） | 已实现（含 warn 档与 unknown 兜底） |
+| §三.3 台账审计口径 | `server/ledger.js` + `ops/03_check_logs_remote.sh` | 同口径 |
+| §三.4 交付前置门禁 | `POST /api/report/build` + `server/report.js` 的 `runReportPreflight` / `writeSha256Sidecars` | 已实现（包内 `CHECKSUMS` 仍缺） |
+| §三.4 打包本体 | `ops/build_client_report.py` | 已实现（`ops/09_package_delivery.ps1` 作废） |
+| §五 出图规范 v2.1 | `ops/fig_theme.py` / `ops/fig_theme.R` / `ops/audit_figure_layout.py` / `docs/figure_spec.md` | 已实现（137 张图三线全 PASS） |
+| §六 防崩执行套件 | `ops/bio_limits.sh` / `ops/check_storage_and_isolation.sh` / `ops/run_throttled_task.sh` | 已实现（默认不绑核） |
+
+上述条款的可执行断言集中在 `BioanalysDesktop/tests/`（全量 `npm test` 445 条）。**改条款必须同步改落点与断言**，断言红了优先怀疑落点漂移，不要放宽断言。
+
 ---
 
