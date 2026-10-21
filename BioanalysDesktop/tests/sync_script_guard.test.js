@@ -129,6 +129,19 @@ test('P-07 所有用 childProcess 垫片的测试文件都走默认导入', () =
   assert.ok(shimFiles >= 5, '垫片文件数异常偏少：' + shimFiles);
 });
 
+test('.gitattributes 把同步脚本钉成 LF，且规则排在 *.ps1 之后', () => {
+  // 没有这条，fresh clone 时 *.ps1 text eol=crlf 会把脚本 checkout 成 CRLF，
+  // 上一条断言在别人的机器上必红（而本机恰好是 LF，最容易漏）。
+  const attrs = fs.readFileSync(path.join(ROOT, '.gitattributes'), 'utf8').split('\n');
+  const ps1At = attrs.findIndex((line) => /^\*\.ps1\s+text\s+eol=crlf/.test(line));
+  const pinAt = attrs.findIndex((line) =>
+    /^ops\/sync_and_verify_remote\.ps1\s+text\s+eol=lf/.test(line)
+  );
+  assert.ok(ps1At >= 0, '缺 *.ps1 eol=crlf 规则');
+  assert.ok(pinAt >= 0, '缺 ops/sync_and_verify_remote.ps1 eol=lf 例外规则');
+  assert.ok(pinAt > ps1At, '例外规则必须排在 *.ps1 之后，否则被后面的规则覆盖');
+});
+
 test('同步脚本声明了三种退出码语义', () => {
   for (const code of ['exit 0', 'exit 1', 'exit 2']) {
     assert.ok(syncText.includes(code), '缺退出码约定：' + code);

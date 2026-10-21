@@ -38,3 +38,8 @@ shared/** text eol=lf
 
 # PowerShell 只在 Windows 上跑，保持 CRLF（中文 .ps1 另需 UTF-8 with BOM，见 docs/coding-standards.md）
 *.ps1     text eol=crlf
+
+# 例外：同步脚本自身必须是 LF。它负责校验别人是不是 LF（Test-LfOnly 逐字节查 CRLF），
+# 自己带 CR 就自相矛盾；且 pwsh 5.1/7 都能直接执行 LF 脚本（2026-10-21 实测）。
+# 规则必须排在 *.ps1 之后才会生效（后面覆盖前面）。
+ops/sync_and_verify_remote.ps1  text eol=lf
