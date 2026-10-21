@@ -101,6 +101,18 @@ pd.DataFrame({"gene": pool}).to_csv("_ml_pool.tsv", sep="\t", index=False)
 print("hub pool=%d (%s)" % (len(pool), source), flush=True)
 PYSCRIPT
 
+# ---------- 跨语言桥接守卫（task-10）：本母版为 Python 到 R 的跨语言步骤，断言先于首次 R 侧执行 ----------
+# 输入为 tsv 家族（无 h5ad/rds）时守卫自行 [BRIDGE SKIP] 放行，语义由守卫判定。
+ml_hub_bridge_input=""
+for _in in "${INPUTS[@]:-}"; do
+  case "$_in" in
+    *.h5ad|*.rds) ml_hub_bridge_input="$_in"; break ;;
+  esac
+done
+if [ -n "$ml_hub_bridge_input" ]; then
+  "$(dirname "$0")/../../bridge_guard.sh" --input "$ml_hub_bridge_input" --from Python --to R --script ml_hub_analysis || exit $?
+fi
+
 # ---------- 2) 第一类-LASSO（R glmnet）：系数路径 + 交叉验证 + 选中基因 ----------
 EXPR_FILE="$expr_file" GROUP_FILE="$group_file" BIOANALYS_SEED="$seed" \
 Rscript - <<'RSCRIPT'

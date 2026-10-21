@@ -448,7 +448,8 @@ set.seed(2026)
 | --- | --- | --- |
 | §一.2 铁律 1 黑名单拦截 | `BioanalysDesktop/server/tumor_blacklist.js`（8 条正本）+ `portal/index.html` 副本 | 已对齐（2026-10-21 由 27 条收敛，parity 测试把守） |
 | §一.2 铁律 2 三线硬隔离 | `ops/check_storage_and_isolation.sh` + `server/selfcheck.js` 第 4 维 | 已实现 |
-| §一.2 铁律 3 桥接四项断言 | `ops/verify_bridge_checkpoint.py` + `server/task.js` 提交层接线 | 已接线（S28） |
+| §一.2 铁律 3 桥接四项断言 | `ops/verify_bridge_checkpoint.py` + `server/task.js` 提交层接线 + `src/bridge_guard.sh` 母版内部守卫 | 已接线（S28 提交层 + task-10 母版） |
+| §一.2 铁律 3 母版内守卫 | `src/bridge_guard.sh` + 三个 bilingual 母版首个 Rscript 前调用 + `tests/bridge_guard_invariant.test.js` | 已实现（task-10，K40 真机首次抓到 FAIL） |
 | §二 目录结构 | 远端 `projects/<项目>/<线>/{raw_data,processed,results,figures}` | 已按实测校准 |
 | §二 合法根与归属口径 | `server/ledger.js` 的 `analyzePath` / `inspectTaskPath` | 单一事实源（提交层 / 台账 / 文件守卫共用） |
 | §三.1 模块 A 黑名单 | 同 §一.2 铁律 1 | 8 条正本 + 出处沿革 + 已知边界 |
@@ -457,12 +458,13 @@ set.seed(2026)
 | §三.2 任务提交三道闸 | `POST /api/tasks/submit`：路径预校验 → 命令审计 → 桥接检查 | 已实现 |
 | §三.3 五维自检 | `GET /api/selfcheck` + `server/selfcheck.js`（pass/warn/fail/unknown） | 已实现（含 warn 档与 unknown 兜底） |
 | §三.3 台账审计口径 | `server/ledger.js` + `ops/03_check_logs_remote.sh` | 同口径 |
-| §三.4 交付前置门禁 | `POST /api/report/build` + `server/report.js` 的 `runReportPreflight` / `writeSha256Sidecars` | 已实现（包内 `CHECKSUMS` 仍缺） |
-| §三.4 打包本体 | `ops/build_client_report.py` | 已实现（`ops/09_package_delivery.ps1` 作废） |
+| §三.4 交付前置门禁 | `POST /api/report/build` + `server/report.js` 的 `runReportPreflight` / `writeSha256Sidecars` | 已实现（本地旁挂 + 四道闸） |
+| §三.4 打包本体 | `ops/build_client_report.py`（含包内 `CHECKSUMS.sha256`，`sha256sum -c` 可复核） | 已实现（`ops/09_package_delivery.ps1` 作废） |
+| §三.4 包内完整性清单 | `ops/build_client_report.py` 的 `write_checksums` → `CHECKSUMS.sha256` | 已实现（task-9，285 文件 sha256sum -c 全过） |
 | §五 出图规范 v2.1 | `ops/fig_theme.py` / `ops/fig_theme.R` / `ops/audit_figure_layout.py` / `docs/figure_spec.md` | 已实现（137 张图三线全 PASS） |
 | §六 防崩执行套件 | `ops/bio_limits.sh` / `ops/check_storage_and_isolation.sh` / `ops/run_throttled_task.sh` | 已实现（默认不绑核） |
 
-上述条款的可执行断言集中在 `BioanalysDesktop/tests/`（全量 `npm test` 445 条）。**改条款必须同步改落点与断言**，断言红了优先怀疑落点漂移，不要放宽断言。
+上述条款的可执行断言集中在 `BioanalysDesktop/tests/`（全量 `npm test` 462 条）。**改条款必须同步改落点与断言**，断言红了优先怀疑落点漂移，不要放宽断言。
 
 ---
 

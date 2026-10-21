@@ -3165,3 +3165,123 @@ S19 完成后请勿重复改 index.html 的 MAX_DATA_BYTES/MAX_DATA_FILES_PER_RO
 **改动文件清单（第三轮）**：`aims/aims.txt`（+62/-17）、新增 `BioanalysDesktop/tests/aims_landing.test.js`、`con_hf/handoff.md`、`con_hf/操作台账.md`。
 
 
+---
+
+## 2026-10-21（第四轮）：解决用户点出的四项边界
+
+**触发（m00939）**：用户贴出上一轮汇报里列的 4 项边界，要求「着手去解决这些问题」：
+① 包内 CHECKSUMS 清单仍是缺口（只有本地 .sha256 旁挂）；② 桥接四项断言仍只在提交层执行，58 个分析脚本内部 0 调用；③ .uploads GC 只管 TTL 不管总量配额；④ init 与 status 的 400 错误体形状不一致。
+
+### 切片完成情况
+
+| 边界 | 任务 | 负责人 | 状态 | 报告 |
+|---|---|---|---|---|
+| ① 包内 CHECKSUMS | task-9 | lead | **已完成**（远端真机 285/285 过） | `con_hf/dispatch/CHECKSUMS_report.md` |
+| ② 桥接断言进母版 | task-10 | lead | **已完成**（462/462 + K40 首次抓到真实 FAIL） | `con_hf/dispatch/bridge_guard_report.md` |
+| ③ .uploads 总量配额 | task-8 | upload-quota | **进行中**（ teammate 收尾后 Lead 合并） | `con_hf/dispatch/upload_quota_report.md`（待） |
+| ④ init/status 错误体统一 | task-8 | upload-quota | **进行中**（同上） | 同上 |
+
+### ① 包内 CHECKSUMS（task-9，Lead 亲自执行）
+
+`ops/build_client_report.py` 新增 `write_checksums(delivery_dir, skip=())`（约 :1948-1984），
+在 `assemble()` 里写 `delivery_manifest.json` 之后、`tarfile.open` 之前调用（顺序是关键：
+写在 tar 之后会漏掉清单，写在 manifest 之前会漏掉 manifest 自身）。
+
+- 格式 `<64hex>  <POSIX 相对路径>`，sorted，与 GNU coreutils `sha256sum -c` 完全兼容；
+- 只列真实存在文件（`os.path.isfile` 兜底，OSError 被跳过的文件不会进清单）；
+- 自身与 `skip` 列表不入列，避免自指；
+- 逐 1MiB 流式更新 digest，不把 66MB 级文件整块读进内存；
+- `return` 新增 `checksums` / `checksums_count`；`main()` 打印「校验清单：CHECKSUMS.sha256（N 个文件）」。
+
+**远端真机验证（K40，全部实测）**：
+- 备份 `/mnt/ssd/bio_data/ops/_bak_20261021/build_client_report.py.bak`；
+- 踩坑：scp 直写 `ops/` 失败（exit 255 Connection closed），改走 `/tmp/` 再 `mv`，两侧 md5 一致；
+- 实跑 default 项目：**285 个文件**，`sha256sum -c` → **285/285 OK，零失败**；
+- `tar tzf` 确认包内含 `CHECKSUMS.sha256`；
+- 负向测试：篡改 `Analysis_Report.md` 后 `sha256sum -c` 正确报 `FAILED`，恢复后 285/285；
+- `/tmp/_ck_test` 已清理。
+
+`self_test()` 新增 6 条断言（格式 / 存在 / hashlib 逐文件复算 / 自身不入列 / 排序 / 非空），
+本地 41/41 PASS。
+
+### ② 桥接断言进母版（task-10，Lead 亲自执行）
+
+**事实修正**：母版共 **58 个**（派发单写 55），bilingual 的共 **3 个**（派发单写 1 个）：
+`src/line1_bulk/scripts/ml_diagnostics`、`src/line1_bulk/scripts/ml_hub_analysis`、
+`src/line2_scrna/scripts/gsva_pathways`。三个全部已接线。
+
+新增 `src/bridge_guard.sh`（LF，bash，`set -euo pipefail`，66 行）。六条契约：
+输入非 `.h5ad/.rds` → SKIP exit 0；无 ssh 客户端 → SKIP exit 0；
+ssh 连接失败 → SKIP exit 0（K40 离线母版仍可跑）；
+输出含 `BRIDGE FAIL` → 透传引擎退出码；否则 `BRIDGE OK` exit 0。
+
+关键实现：`output=$("$SSH_CMD" ... 2>&1) && ssh_rc=0 || ssh_rc=$?` 分开捕获输出与退出码，
+因为 **ssh 失败（255）与断言失败（3）语义相反**——前者是「校验没法做」，后者是「校验做了，没通过」。
+
+`server/task.js` 新增 `GUARD_CALL_RE`（:43），`inspectBridgeNeed` 返回值新增 `guardWired`；
+`server/index.js` 提交层补 `bilingual && !guardWired` 时 `console.warn`（只 warn 不阻断，
+老母版不该因新规突然提交失败）。
+
+**真机首次抓到真实断言失败**（证明守卫不是空转）：
+
+    [BRIDGE FAIL] obsm 无 X_pca / X_umap / spatial，降维/空间坐标可能丢失
+    [BRIDGE OK] gene names: 24969, numeric < 50% (0)
+    [BRIDGE OK] matrix shape: obs=4587 x var=24969, nnz=16903576, density=0.1476
+    [BRIDGE OK] obs names: 4587, numeric < 80% (0)
+    [BRIDGE FAIL] gsva_pathways 桥接四项断言未过（Python -> R）
+    exit=1
+
+新增 `tests/bridge_guard_invariant.test.js` 9 条全绿。
+
+### ⚠️ 待用户裁定：obsm 断言与中间产物的真实口径冲突
+
+上面那次 FAIL 的根因：`scrna_norm.h5ad` 是 line2 步骤 3（归一化）产物，
+**本来就不该有 X_pca/X_umap/spatial**（那是步骤 5+ 才写入），但引擎的 obsm 项无条件要求
+至少一个降维键。后果：**gsva_pathways 若真拿 scrna_norm.h5ad 作为 Rscript 输入，守卫会拦下它。**
+
+两种解法都没替用户选：
+- **A. 改引擎**：obsm 项改为「三者全无且无其它 obsm 键时 WARN 而非 FAIL」，承认中间产物合法；
+- **B. 改母版输入选择**：gsva_pathways 挑带降维坐标的 .h5ad（如步骤 5 输出）作桥接输入。
+
+选 A 会放松铁律、选 B 会改分析行为，两者都超出「把断言接进母版」的授权范围，故如实上报。
+
+### ③④ upload-quota 进行中
+
+ teammate `upload-quota` 正在跑 task-8（BIO_UPLOAD_QUOTA_BYTES 默认 20GiB 两段式 GC +
+ 单一 `uploadError(res,status,message)` 助手统一四个上传端点错误体）。收工后由 Lead 合并验证。
+
+### 本轮验证
+
+- `npm test` → **462 / pass 462 / fail 0**（453 + bridge_guard 9）；
+- `npx tsc --noEmit` exit 0；`npm run build` → 787ms / 221.62 kB；
+- `node --check server/index.js`、`server/task.js` 均 exit 0；
+- `python ops/build_client_report.py --self-test` → 41/41 PASS；
+- 远端引擎 md5 与本地一致（`316c811c348cc600ace8ea2569f5e5f7`）。
+
+### 本轮文档与清理
+
+- `aims/aims.txt` §八 新增两行（母版内守卫 / 包内完整性清单），铁律 3 与打包本体两行状态更新，
+  测试数 445→462；
+- 删除调试残留：根目录 `_bg_probe6..G.ps1` 11 个（7120 字节）+ `cn_debug/_t10_probe_*.mjs` 3 个（2188 字节）。
+  PATH 垫片方案失败的教训已写进 `bridge_guard_report.md` §8.2（改为 `BRIDGE_SSH_CMD` 覆盖）；
+- `.uploads` 已空（0 个会话目录）。
+
+### 本轮改动文件清单
+
+`ops/build_client_report.py`（+94/-2）、`src/bridge_guard.sh`（新增）、
+`src/line1_bulk/scripts/ml_diagnostics`、`src/line1_b_bulk/scripts/ml_hub_analysis`、
+`src/line2_scrna/scripts/gsva_pathways`（各在首个 Rscript 前插守卫，既有行未改）、
+`BioanalysDesktop/server/task.js`（GUARD_CALL_RE + guardWired）、
+`BioanalysDesktop/server/index.js`（提交层 warn）、
+`BioanalysDesktop/tests/bridge_guard_invariant.test.js`（新增 9 条）、
+`aims/aims.txt`、`con_hf/handoff.md`、`con_hf/操作台账.md`、
+`con_hf/dispatch/CHECKSUMS_report.md`（新增）、`con_hf/dispatch/bridge_guard_report.md`（新增）。
+
+### 待办（下一轮）
+
+1. 合并 upload-quota 的 task-8 产物，跑全量验证后提交；
+2. **obsm 断言口径冲突需用户裁定**（A 改引擎 / B 改母版输入）；
+3. `inspectBridgeNeed` 应跳过注释行再计数（当前注释里的 Rscript/python 会污染 bilingual 判定，
+   本轮靠改写注释规避，未根治）；
+4. `src/bridge_guard.sh` 尚未部署到远端 `/mnt/ssd/bio_data/`（母版在远端跑时需要，但母版本身
+   也还没同步远端，见 `con_hf/操作台账.md` 部署节）。

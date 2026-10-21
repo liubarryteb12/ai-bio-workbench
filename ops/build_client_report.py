@@ -35,6 +35,7 @@
 import argparse
 import datetime
 import fnmatch
+import hashlib
 import html
 import json
 import os
@@ -1924,6 +1925,11 @@ def assemble(ctx, out_dir, no_tar=False):
     with open(os.path.join(delivery, "delivery_manifest.json"), "w", encoding="utf-8", newline="\n") as fh:
         json.dump(manifest, fh, ensure_ascii=False, indent=2)
 
+    # 完整性清单：先写 CHECKSUMS.sha256 再打 tar，包内清单与包内文件一一对应。
+    # 只覆盖三大件与 manifest 自身落盘之后的现实，manifest 里的 counts 是
+    # 复制成功计数、这里是文件系统实测字节，两者不一致以本清单为准。
+    checksums = write_checksums(delivery)
+
     tar_path = None
     if not no_tar:
         tar_path = os.path.join(out_dir, "%s_Client_Delivery.tar.gz" % ctx["project_id"])
@@ -1935,11 +1941,53 @@ def assemble(ctx, out_dir, no_tar=False):
         "report_md": md_path,
         "report_html": html_path,
         "manifest": os.path.join(delivery, "delivery_manifest.json"),
+        "checksums": checksums["path"],
+        "checksums_count": checksums["count"],
         "tar": tar_path,
         "counts": copied,
         "chapters": len(chapters),
     }
 
+
+# 校验清单名：与本地 .sha256 旁挂同一套 sha256sum 语法，客户可直接
+# `sha256sum -c CHECKSUMS.sha256` 复核包内每个文件是否被改过。
+CHECKSUMS_NAME = "CHECKSUMS.sha256"
+
+
+def write_checksums(delivery_dir, skip=()):
+    """在 delivery_dir 下生成 CHECKSUMS.sha256。
+
+    * 只列包内真实存在的文件（相对 delivery_dir 的 POSIX 路径）；
+    * 修文件名（即自身）、skip 里的文件一律不入列；
+    * 逐行排序，便于 diff；
+    * 先写清单再打 tar，保证包内清单与包内文件一一对应。
+    """
+    delivery_dir = os.path.abspath(delivery_dir)
+    skip_set = {os.path.normpath(s) for s in skip}
+    rows = []
+    for dirpath, dirnames, filenames in os.walk(delivery_dir):
+        dirnames.sort()
+        for name in sorted(filenames):
+            full = os.path.join(dirpath, name)
+            rel = os.path.relpath(full, delivery_dir).replace(os.sep, "/")
+            if rel in skip_set or rel == CHECKSUMS_NAME:
+                continue
+            if not os.path.isfile(full):
+                continue
+            digest = hashlib.sha256()
+            with open(full, "rb") as fh:
+                while True:
+                    chunk = fh.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    digest.update(chunk)
+            rows.append((rel, digest.hexdigest()))
+    rows.sort()
+    checksums_path = os.path.join(delivery_dir, CHECKSUMS_NAME)
+    with open(checksums_path, "w", encoding="utf-8", newline="\n") as fh:
+        for rel, digest in rows:
+            fh.write("%s  %s\n" % (digest, rel))
+    return {"path": checksums_path, "files": [rel for rel, _ in rows], "count": len(rows)}
 
 # ============================================================
 # 自检与 CLI
@@ -2104,6 +2152,32 @@ def self_test():
           result["tar"] and os.path.getsize(result["tar"]) > 0,
           human_bytes(os.path.getsize(result["tar"]) if result["tar"] else 0))
 
+    # ---- 包内完整性清单（m00939 边界①）----
+    cks = result.get("checksums")
+    check("CHECKSUMS.sha256 已生成", cks and os.path.isfile(cks), str(cks))
+    if cks and os.path.isfile(cks):
+        cks_lines = [l for l in read_text(cks).split("\n") if l.strip()]
+        check("清单非空（至少三大件都在）", len(cks_lines) >= 3, "%d 行" % len(cks_lines))
+        fmt_ok = all(re.match(r"^[0-9a-f]{64}  [^\s].+$", l) for l in cks_lines)
+        check("每行形如 <64hex>+两空格+相对路径", fmt_ok)
+        check("清单自身不在列内",
+              all(l.split("  ", 1)[1] != CHECKSUMS_NAME for l in cks_lines))
+        check("清单按路径排序（便于 diff）",
+              [l.split("  ", 1)[1] for l in cks_lines]
+              == sorted(l.split("  ", 1)[1] for l in cks_lines))
+        ok = True
+        for line in cks_lines:
+            digest, rel = line.split("  ", 1)
+            full = os.path.join(result["delivery_dir"], rel)
+            if not os.path.isfile(full):
+                ok = False
+                break
+            with open(full, "rb") as _fh:
+                if hashlib.sha256(_fh.read()).hexdigest() != digest:
+                    ok = False
+                    break
+        check("hashlib 逐文件复算全部一致（sha256sum -c 同口径）", ok)
+
     # 空项目：不得崩、不得编数字
     empty = os.path.join(root, "PRJ_EMPTY")
     os.makedirs(empty)
@@ -2194,6 +2268,8 @@ def main(argv=None):
 
     print("交付目录：%s" % result["delivery_dir"])
     print("  报告：%s" % os.path.basename(result["report_md"]))
+    print("  校验清单：%s（%d 个文件，sha256sum -c 可复核）"
+          % (CHECKSUMS_NAME, result.get("checksums_count", 0)))
     print("  图件 %d / 结果表 %d / 脚本 %d"
           % (result["counts"]["figures"], result["counts"]["tables"], result["counts"]["scripts"]))
     if result["tar"]:

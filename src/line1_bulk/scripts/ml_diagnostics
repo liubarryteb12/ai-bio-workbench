@@ -519,6 +519,18 @@ with open("ml_diagnostics_report.txt", "w") as fh:
 log("report written, figures=%d, elapsed=%.1fs" % (len(made), time.time() - START))
 PYSCRIPT
 
+# ---------- 跨语言桥接守卫（task-10）：本母版为 Python 到 R 的跨语言步骤，断言先于首次 R 侧执行 ----------
+# 输入为 tsv 家族（无 h5ad/rds）时守卫自行 [BRIDGE SKIP] 放行，语义由守卫判定。
+ml_diag_bridge_input=""
+for _in in "${INPUTS[@]:-}"; do
+  case "$_in" in
+    *.h5ad|*.rds) ml_diag_bridge_input="$_in"; break ;;
+  esac
+done
+if [ -n "$ml_diag_bridge_input" ]; then
+  "$(dirname "$0")/../../bridge_guard.sh" --input "$ml_diag_bridge_input" --from Python --to R --script ml_diagnostics || exit $?
+fi
+
 # ---------- Nomogram（仅 gate=1 时执行；rms 容器已实测在装） ----------
 if [ "$(cat _ml_diag_gate.txt 2>/dev/null || echo 0)" = "1" ]; then
   BIOANALYS_SEED="$seed" Rscript - <<'RSCRIPT'

@@ -39,6 +39,8 @@ export class BridgeCheckError extends Error {
 const RSCRIPT_CALL_RE = /(^|[\s;&|"])Rscript(?=[\s"']|$)/;
 /** 命令位的 python/python3 调用（heredoc 首行 `python3 - <<'PYSCRIPT'` 即此形态） */
 const PYTHON_CALL_RE = /(^|[\s;&|])python3?(?=[\s"']|$)/;
+/** 母版内部是否调用了桥接守卫（src/bridge_guard.sh，task-10） */
+const GUARD_CALL_RE = /bridge_guard\.sh/;
 
 /**
  * 检查一个步骤是否需要过桥接四项断言，并给出可观测的判定依据。
@@ -48,10 +50,10 @@ const PYTHON_CALL_RE = /(^|[\s;&|])python3?(?=[\s"']|$)/;
  * 母版不存在时 bilingual=false，调用方必须 warn（不许静默当"不需要"，也不许阻断提交）。
  *
  * @returns {{bilingual: boolean, masterExists: boolean, masterPath: string|null,
- *            rCount: number, pCount: number, reason: string}}
+ *            rCount: number, pCount: number, guardWired: boolean, reason: string}}
  */
 export function inspectBridgeNeed(lineId, stepName) {
-  const base = { bilingual: false, masterExists: false, masterPath: null, rCount: 0, pCount: 0, reason: '' };
+  const base = { bilingual: false, masterExists: false, masterPath: null, rCount: 0, pCount: 0, guardWired: false, reason: '' };
   if (!LINES.includes(lineId) || !/^[A-Za-z0-9._-]+$/.test(String(stepName ?? ''))) {
     return { ...base, reason: 'lineId 或 stepName 非法，无法定位母版' };
   }
@@ -69,6 +71,7 @@ export function inspectBridgeNeed(lineId, stepName) {
     masterPath,
     rCount,
     pCount,
+    guardWired: GUARD_CALL_RE.test(content),
     reason: '',
   };
 }

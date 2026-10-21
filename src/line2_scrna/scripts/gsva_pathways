@@ -37,7 +37,7 @@ done
 echo "step_executed=gsva_pathways"
 echo "bioanalys_seed=${seed}"
 
-# 1) python 侧：做 pseudobulk（celltype 均值），落中间 tsv
+# 1) Python 侧：做 pseudobulk（celltype 均值），落中间 tsv
 python3 - <<'PYSCRIPT'
 import os
 import sys
@@ -94,6 +94,21 @@ pd.DataFrame({"celltype": celltypes, "n_cells": n_cells}).to_csv(
 print("pseudobulk %d genes x %d celltypes" % (out.shape[0], out.shape[1]), flush=True)
 PYSCRIPT
 
+# 2) 桥接四项断言守卫（task-10 / m00939 边界②）：本母版是跨语言步骤
+#    （Python 侧产物交给 R 侧读），断言必须在首次 R 侧执行之前过。
+#    输入 scrna_norm.h5ad 即上面 INPUTS 里第一个 h5ad；K40 离线时守卫自行
+#    打印 [BRIDGE SKIP] 并放行，母版不被网络状态绑架。
+if [ "${#INPUTS[@]}" -gt 0 ]; then
+  for _in in "${INPUTS[@]}"; do
+    case "$_in" in
+      *.h5ad|*.rds) BRIDGE_INPUT="$_in"; break ;;
+    esac
+  done
+fi
+if [ -n "${BRIDGE_INPUT:-}" ]; then
+  "$(dirname "$0")/../../bridge_guard.sh" --input "$BRIDGE_INPUT" --from Python --to R --script gsva_pathways || exit $?
+fi
+
 # 2) R 侧：GSVA 打分
 Rscript - <<'RSCRIPT'
 suppressMessages({
@@ -143,7 +158,7 @@ write.table(out, "gsva_scores.tsv", sep = "\t", quote = FALSE, row.names = FALSE
 log("wrote gsva_scores.tsv")
 RSCRIPT
 
-# 3) 出图 + 报告（python）
+# 3) 出图 + 报告（Python）
 python3 - <<'PYSCRIPT'
 import json
 import os
