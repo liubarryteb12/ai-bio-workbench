@@ -3129,6 +3129,7 @@ S19 完成后请勿重复改 index.html 的 MAX_DATA_BYTES/MAX_DATA_FILES_PER_RO
 - `cd BioanalysDesktop && npm test` → **tests 445 / pass 445 / fail 0 / exit 0**（约 3.8s；上一轮 382）
 - `npx tsc --noEmit` → exit 0；`npm run build` → `✓ built in 698ms`（`dist/assets/index-eGcWQRjO.js` 221.62 kB / gzip 73.22 kB）
 - `node --check` 改动服务端文件 + `vite.config.js` 全 exit 0；dev server `/@fs` 冒烟 200
+- **真机冒烟**（`BAD_PORT=18899 node server/index.js`，链路通）：`/api/selfcheck` 200 且 `all_pass:true`——第 3 维实测 `CPU 0.12/0.07/0.02（6 核） · 32°C · 内存 4.0/7.5GB（54%）`，第 4 维实测 `line1_bulk:ok | line2_scrna:ok | line3_spatial:ok` + 桥接脚本已部署；`POST /api/upload/init` 带同一 fingerprint 两次都回 `up-214eaeb825121358`（`deterministic:true`），`GET /api/upload/status` 回 `nextIndex:0`（冒烟会话已删）
 - 未连 K40 真机（全部 ssh 垫片），未装包，未改 `package.json`
 
 **已知边界 / 下轮候选**
