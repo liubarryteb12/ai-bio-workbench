@@ -1,0 +1,361 @@
+# AI 辅助生信分析工作台（BioanalysDesktop）工程评估与后续执行规划报告
+
+> **基线版本**：git HEAD `2fcc513`（2026-10-21 17:30 实测）
+> **评审视角**：全栈架构（Node.js / TypeScript / ESM）+ 移动端容器系统工程（ARM64 proot / UFS 3.1）+ 计算生物学（Bulk / scRNA / Spatial + 虚拟敲除）
+> 
+> 
+
+---
+
+## 一、 项目现状评估
+
+### 1.1 架构设计与技术栈
+
+本项目采用“本地零算力编排 + 移动端原生容器重度计算”的云-端解耦架构：
+
+| 层级 | 核心技术栈 | 架构职责与工程约束 |
+| --- | --- | --- |
+| **前端交互与门户层** | **8787 工作台**：React + TypeScript (`App.tsx`, `uploadSession.ts`)<br>
+
+<br>**8080 客户门户**：零依赖单文件 HTML + `portal/serve.mjs` | 四大视图展示、DAG 流水线勾选、4MB 分片断点续传、前后端同源黑名单与扩展名校验。
+
+ |
+| **本地服务端与契约层** | **Node.js (ESM)**：18 个服务端模块 (`server/*.js`) + 跨端共享契约 (`shared/*.mjs`) + 25 个 `ops/` 运维脚本 | 任务提交三道闸、五维环境自检、24h TTL + 20GiB 配额 GC、台账审计、交付四道闸与 SHA256 双凭证。
+
+ |
+| **传输与守护链路** | PowerShell (`00_link_check.ps1`) + `adb forward` + SSH (8022/10022) + `nohup`/`tmux` | 断链自动重连、`monkey` 拉起 Termux、基于 `exit 0` 与产物校验的断点续跑。
+
+ |
+| **远端计算与存储层** | **硬件**：红米 K40 (骁龙 870 / 12G LPDDR5 / 原生 UFS 3.1 `ext4`/`f2fs`)<br>
+
+<br>**环境**：Termux 无 Root 底座 + Ubuntu 24.04 ARM64 proot 容器 | 锚定 `/mnt/ssd/bio_data/`（严禁 FUSE 层）；EAS 动态调度 + `nice/ionice` 降权；锁死 3 线程与 `7.5GB` 内存软熔断。
+
+ |
+| **生信算法工具链** | **R 生态**：`GEOquery`, `limma`, `WGCNA`, `clusterProfiler`, `Seurat`, `GSVA`, `Monocle3`, `CellChat`, `scTenifoldKnk`<br>
+
+<br>**Python 生态**：`Scanpy`, `harmonypy`, `Squidpy`, `liana`, `pySCENIC`, `sklearn`, `shap`, `scipy.optimize.nnls` | 三线物理硬隔离（`line1_bulk` / `line2_scrna` / `line3_spatial`）；R↔Python 切换强制执行桥接四项断言；严格区分 **DEG** 与 **DR Genes**。
+
+ |
+
+### 1.2 已实现功能模块与整体完成度
+
+当前整体工程完成度为 **92%（加权实测）**，488 条自动化断言全绿，`tsc` 零报错：
+
+* **规范与出图（100%）**：八章架构总纲落盘，18 条核心条款与代码实现 1:1 绑定；三线 137 张发表级图件（300 DPI、无头渲染、冷暖固定配色、虚拟敲除角标）全数通过 15 条判据。
+
+
+* **生信分析母版（97%）**：55 个步骤脚本就位。针对 ARM64 容器 R 包编译痛点，已完成工具栈实战替平（Line 1 机器学习与 SHAP 切 Python；Line 3 空间域、通讯与 NNLS 无监督反卷积全 Python 化）。
+
+
+* **服务端与治理（95%）**：路径合法根（`server/ledger.js`）、格式白名单（`shared/data_formats.mjs`）、肿瘤黑名单（`server/tumor_blacklist.js` 8 条正本）三大单一事实源（SSOT）已收口。
+
+
+* **运维与客户端（90%~92%）**：交付包内 `CHECKSUMS.sha256`（285 文件复核通过）与旁挂校验就绪；仅差远端脚本同步及门户 E2E 自动化覆盖。
+
+
+
+---
+
+## 二、 框架优化方案（全栈与生信流水线）
+
+针对当前代码库在并发控制、静态解析、前端结构及生信内存安全上的架构边界，制定以下 5 项具体优化措施：
+
+### 2.1 【高优】后端：`inspectBridgeNeed` 静态扫描器剥离注释行，根治误判
+
+* **现存问题**：`BioanalysDesktop/server/task.js` 中的 `inspectBridgeNeed` 直接对脚本全文做正则匹配，若注释中出现 `Rscript` 或 `python` 字样，会被误判为 bilingual 脚本并强行触发桥接断言。
+
+
+* **修改位置**：`BioanalysDesktop/server/task.js` $\rightarrow$ `inspectBridgeNeed(scriptContent)`。
+* **可执行代码示例**：
+```javascript
+// BioanalysDesktop/server/task.js
+export function stripShellAndCodeComments(rawText) {
+  return rawText
+    .split(/\r?\n/)
+    .map(line => {
+      const trimmed = line.trim();
+      // 保留 shebang (#!)，剥离纯注释行与行尾注释（规避引号内 #）
+      if (trimmed.startsWith('#!')) return trimmed;
+      if (trimmed.startsWith('#')) return '';
+      return line.replace(/\s+#.*$/, '');
+    })
+    .join('\n');
+}
+
+export function inspectBridgeNeed(scriptContent) {
+  const cleanContent = stripShellAndCodeComments(scriptContent);
+  const hasR = /\b(Rscript|R\s+-e)\b/.test(cleanContent);
+  const hasPy = /\b(python3?|pySCENIC)\b/.test(cleanContent);
+  return { isBilingual: hasR && hasPy, hasR, hasPy };
+}
+
+```
+
+
+* **预期收益**：彻底消除因注释引发的假阳性拦截，恢复母版脚本正常注释书写自由。
+
+
+
+### 2.2 【高优】生信与桥接引擎：`verify_bridge_checkpoint.py` 引入阶段感知（Stage-Aware）模式
+
+* **现存问题**：桥接校验器无条件强制要求 `.h5ad` 具备 `obsm` 降维坐标（`X_pca`/`X_umap`/`spatial`），导致仅完成标准化但尚未降维的合法中间产物（如 `scrna_norm.h5ad`）在进入 `gsva_pathways` 时被误杀阻断。
+
+
+* **修改位置**：`ops/verify_bridge_checkpoint.py` 与 `src/bridge_guard.sh`。
+* **可执行代码示例**：
+```python
+# ops/verify_bridge_checkpoint.py (核心断言逻辑改造)
+import argparse, sys, anndata as ad
+
+parser = argparse.ArgumentParser()
+parser.add_argument("input_file")
+parser.add_argument("--stage", choices=["pre-dimred", "post-dimred"], default="post-dimred")
+args = parser.parse_args()
+
+adata = ad.read_h5ad(args.input_file, backed="r")
+dim_keys = [k for k in ("X_pca", "X_umap", "spatial") if k in adata.obsm]
+
+if not dim_keys:
+    if args.stage == "pre-dimred":
+        print(f"[BRIDGE WARN] {args.input_file} 无 obsm 降维键 (--stage=pre-dimred 阶段合法放行)")
+        sys.exit(0)
+    else:
+        print(f"[BRIDGE FAIL] {args.input_file} 缺失降维/空间坐标键 (要求 X_pca/X_umap/spatial 之一)")
+        sys.exit(1)
+
+```
+
+
+* **预期收益**：在不削弱下游步骤（如 UMAP 绘图、亚群重聚类）严格性的前提下，精准放行标准化阶段的 GSVA/富集桥接任务。
+
+
+
+### 2.3 【中优】后端：上传配额从“init 软闸门”升级为“写盘原子预留硬闸门”
+
+* **现存问题**：当前 `server/upload.js` 仅在 `POST /api/upload/init` 阶段检查 20GiB 配额，已放行的会话在 10 分钟活跃保护期内仍可持续写入 `chunk`，极端并发下可写穿磁盘水位。
+
+
+* **修改位置**：`BioanalysDesktop/server/upload.js`。
+* **优化措施与代码逻辑**：
+1. 在 `initUploadSession` 时，将客户端声明的 `fileSize` 写入会话元数据 `meta.json` 的 `reservedBytes` 字段。
+2. 维护内存态原子计数器 `activeReservedBytes`，计算可用配额时采用 `max(已落盘字节, reservedBytes)`。
+3. 在 `POST /api/upload/chunk` 接收流写入前增加越界校验：
+
+
+```javascript
+// BioanalysDesktop/server/upload.js -> handleChunkUpload
+if (session.receivedBytes + chunkBuffer.length > session.reservedBytes) {
+  return uploadError(res, 413, "分片累计体积超出 init 声明的预留配额");
+}
+
+```
+
+
+* **预期收益**：将软闸门升级为强一致硬预留，彻底杜绝并发大文件分片冲击 F2FS 20% 存储红线。
+
+
+
+### 2.4 【中优】生信流水线：Line 2 虚拟敲除与 GSVA 的内存峰值削峰
+
+* **现存问题**：K40 容器限制 `7.5GB` 内存，`line2_scrna` 下游第 6 步（`GSVA`）与第 10 步（`scTenifoldKnk` 连续 3 次独立随机种子运行）在细胞数 > 2,000 时极易触发 R 内存复制峰值导致 OOM。
+
+
+* **修改位置**：`src/line2_scrna/scripts/06_gsva_pathways.R` 与 `10_virtual_ko.R`。
+* **优化措施与工具链规范**：
+1. **GSVA 强制 Pseudo-bulk 化**：在 `06_gsva_pathways.R` 中禁止对单细胞全矩阵直接调用 `GSVA::gsva()`，先用 `Seurat::AggregateExpression(seu, group.by = c("celltype", "sample"))` 聚合为伪体块矩阵后再计算通路活性。
+
+
+2. **scTenifoldKnk 循环显式 GC 与稀疏落盘**：
+
+
+```R
+# src/line2_scrna/scripts/10_virtual_ko.R
+seeds <- c(20261013, 20261014, 20261015)
+dr_list <- list()
+for (i in seq_along(seeds)) {
+  set.seed(seeds[i])
+  res <- scTenifoldKnk::scTenifoldKnk(countMatrix = wt_mat, gKO = target_ko_gene, qc = FALSE, nc_nNet = 10, nc_nCells = 500)
+  dr_list[[i]] <- res$diffRegulation$gene[res$diffRegulation$p.adj < 0.05]
+  rm(res); gc(verbose = FALSE) # 强制释放单轮张量内存，防 3 轮叠加 OOM
+}
+robust_dr_genes <- Reduce(intersect, dr_list)
+
+```
+
+
+* **预期收益**：将 Line 2 末端模块内存峰值压降至 `4.2GB` 以内，彻底消除 7.5GB 红线下的 OOM 风险。
+
+
+
+### 2.5 【低优】前端：8080 客户门户黑名单与白名单的编译期注入
+
+* **现存问题**：`portal/index.html` 为单文件 HTML，内部维护了 `tumor_blacklist.js` 和 `data_formats.mjs` 的字面量副本，虽有 parity 测试把守，但每次改动仍需人工双改。
+
+
+* **修改位置**：`portal/serve.mjs`。
+* **优化措施**：在 `portal/serve.mjs` 读取 `index.html` 响应给浏览器时，动态 import `../shared/data_formats.mjs` 和 `../BioanalysDesktop/server/tumor_blacklist.js`，通过占位符 `__INJECT_SHARED_CONTRACTS__` 实时序列化注入前端 `<script>`，实现物理级单一事实源。
+
+
+
+---
+
+## 三、 当前已知问题与阻塞项解决方案
+
+针对项目报告第 4 章列出的核心阻塞项与遗留缺陷，给出可直接落地的工程解：
+
+### 3.1 【硬阻塞 #1】`obsm` 断言口径冲突阻塞 `gsva_pathways`
+
+* **裁定建议**：采用 **“方案 B（改母版输入）为主 + 方案 A（引擎支持 `--stage` 参数）为辅”** 的组合方案。
+
+
+* **技术理由**：
+1. 按 `aims.txt` §四 Line 2 规范，前置流程结束时已产出通过桥接检查点 #1 的 `00_sc_harmony.h5ad`（及 `sc_annotated.rds`），该对象完整包含 `X_pca`、`X_harmony`、`X_umap` 与细胞类型注释。
+
+
+2. 下游第 6 步 `gsva_pathways` 需要按亚群计算富集，理应直接消费带注释和降维坐标的 `00_sc_harmony.h5ad` / `05_subcluster.rds`，而非未降维的早期中间态 `scrna_norm.h5ad`。
+
+
+
+
+* **执行步骤**：
+1. 修改 `src/line2_scrna/scripts/` 下 `gsva_pathways` 母版脚本，将输入源从 `scrna_norm.h5ad` 切换为 `00_sc_harmony.h5ad`（或直接读取 `05_subcluster.rds`）。
+
+
+2. 同步在 `ops/verify_bridge_checkpoint.py` 中合入 2.2 节的 `--stage pre-dimred` 选项，供确需在降维前跨语言交互的特例脚本显式声明。
+
+
+
+### 3.2 【中危问题 #3】`bridge_guard.sh` 与三个母版远端版本漂移
+
+* **解决思路**：在 `ops/` 下新增幂等同步校验脚本 `ops/sync_and_verify_remote.ps1`，将“代码推送 + 权限修正 + 远端/本地 SHA256 对账”原子化。
+
+
+* **可执行脚本（`ops/sync_and_verify_remote.ps1`）**：
+```powershell
+$ErrorActionPreference = "Stop"
+$FilesToSync = @(
+  @{ Local = "src/bridge_guard.sh"; Remote = "/mnt/ssd/bio_data/bin/bridge_guard.sh" },
+  @{ Local = "ops/verify_bridge_checkpoint.py"; Remote = "/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py" }
+  # 追加三个 bilingual 母版路径
+)
+foreach ($item in $FilesToSync) {
+  $localHash = (Get-FileHash $item.Local -Algorithm SHA256).Hash.ToLower()
+  scp -P 10022 $item.Local "k40-ubuntu:$($item.Remote)"
+  $remoteHash = (ssh -p 10022 k40-ubuntu "sha256sum '$($item.Remote)' | awk '{print `$1}'").Trim()
+  if ($localHash -ne $remoteHash) {
+    throw "[SYNC FAIL] $($item.Local) 远端校验和不一致 ($localHash vs $remoteHash)"
+  }
+  Write-Host "[SYNC OK] $($item.Remote) ($localHash)"
+}
+
+```
+
+
+
+### 3.3 【中危问题 #2】Line 1 缺乏第二套独立外部验证集与离线 STRING 依赖
+
+* **解决思路**：
+1. **离线 PPI 缓存化**：针对容器无外网无法在线调取 STRING API 的问题，在本地 PC 预先下载 `Homo sapiens` (9606) 与 `Mus musculus` (10090) 的 STRING v12.0 核心互作表（`protein.links.v12.0.min700.tsv.gz` 及 `protein.info`），静态放置于远端只读公共库 `/mnt/ssd/bio_data/public_references/stringdb/`，修改 Line 1 Step 4 (`04_enrich_ppi.R`) 直接读取本地离线边表构建 `igraph` 网络计算 Degree Top Hub。
+
+
+2. **内置基准双数据集**：将轻量化标准微阵列数据集（如 `GSE16561` 训练集 + `GSE58294` 独立验证集，或巨噬细胞炎症对标集 `GSE2411` + `GSE226315`）打包入 `public_references/benchmarks/line1/`，彻底打通 Step 9 `bulk_external_val`（冻结模型系数 + `pROC` 验证）。
+
+
+
+
+
+### 3.4 【中危问题 #5 & #8】缺乏 CI 流水线与 8080 门户自动化 E2E
+
+* **技术选型**：
+* **CI 引擎**：GitHub Actions（或本地轻量 Gitea Runner），在每次 `git push` 时自动执行 `npm test`（488 条断言）、`npx tsc --noEmit` 与 `npm run build`。
+
+
+* **E2E 测试**：引入 `@playwright/test`（无头 Chromium），针对 `portal/serve.mjs` (8080) 编写 10 条核心端到端用例（肿瘤词红字拦截、跨组 GSM 样本防重、勾选虚拟敲除强制弹出 `target_ko_gene`、4MB 分片中断后基于 `nextIndex` 续传）。
+
+
+
+
+
+---
+
+## 四、 后续布局与分阶段执行规划
+
+按 **2 周内（M1 收口与硬化）**、**1 个月内（M2/M3 质量网与全线验收）**、**3 个月内（M4 商业化交付与高可用演进）** 三个阶段推进：
+
+### 第一阶段：2 周内（Day 1 ~ Day 14）—— 阻塞清零与远端一致性收口 (M1)
+
+* **核心交付目标**：消除全部高/中危工程漂移，实现三线 55 个脚本在 K40 真机 100% 闭环跑通。
+
+
+* **关键里程碑**：
+* **D1–D3**：完成 `obsm` 断言口径调整（切换 `gsva_pathways` 输入为 `00_sc_harmony.h5ad` + 引擎支持 `--stage`），真机跑通 Line 2 全流程 `exit 0`。
+
+
+* **D4–D6**：合入 `inspectBridgeNeed` 注释剥离补丁；执行 `sync_and_verify_remote.ps1` 完成 `bridge_guard.sh` 与三个母版远端同步，新增远端 MD5/SHA256 自检灯子项。
+
+
+* **D7–D10**：在 `/mnt/ssd/bio_data/public_references/` 部署离线 STRING 互作库与 Line 1 独立验证集，跑通 Line 1 Step 4 (PPI) 与 Step 9 (冻结模型外部 ROC 验证)。
+
+
+* **D11–D14**：按 `aims.txt` §七.3 规范，编写自动化渲染脚本将项目报告与审计台账导出为单文件出版级 **HTML 格式项目报告**。
+
+
+
+
+* **所需资源**：全栈/生信工程师 1 人（Lead Agent 协同 2 个专项切片 Agent），10 分钟远端部署窗口。
+
+
+
+### 第二阶段：1 个月内（Week 3 ~ Week 4）—— 自动化质量网与存储硬闸门 (M2 & M3)
+
+* **核心交付目标**：建立无人值守回归测试防线，完成上传配额硬预留与门户 E2E 覆盖。
+
+
+* **关键里程碑**：
+* **W3**：接入 CI 流水线（强制门禁：488+ 单测全绿、`tsc` 0 错误、覆盖率 $\ge 85\%$）；完成 8080 门户 12 条 Playwright E2E 自动化测试。
+
+
+* **W4**：落地 `server/upload.js` 写盘前原子配额预留（硬闸门）与按分析线淘汰策略；在 8787 控制台上线 `.uploads` 磁盘占用实时看板与压测验收。
+
+
+
+
+* **所需资源**：全栈工程师 1 人，GitHub Actions / 本地 Runner 资源。
+
+
+
+### 第三阶段：3 个月内（Month 2 ~ Month 3）—— 真实客户交付演练与算力底座高可用 (M4)
+
+* **核心交付目标**：通过真实客户数据集端到端商业交付验收，消除 K40 单点硬件故障风险。
+
+
+* **关键里程碑**：
+* **M2 上半月（真实数据端到端演练）**：引入 1 套完整客户真实非肿瘤数据（Bulk + scRNA + Spatial），走通“8080 门户建项与分片上传 $\rightarrow$ 8787 编排与 K40 计算 $\rightarrow$ 四道闸预检 $\rightarrow$ `.tar.gz` 打包与 `CHECKSUMS.sha256` 复核 $\rightarrow$ AI 三段式解读报告签收”全链路。
+
+
+* **M2 下半月（交付防伪升级）**：将包内明文 `CHECKSUMS.sha256` 升级为服务端私钥 HMAC/Ed25519 签名清单（`CHECKSUMS.sig`），解决“连包一起替换”的防伪边界问题。
+
+
+* **M3（多节点热备与算力弹性路由）**：在 `server/task.js` 抽象 SSH 计算节点池（支持主节点 K40 + 备用骁龙 870/8+ 手机容器或轻量云主机），当五维自检检测到主节点温度 $\ge 95^\circ\text{C}$ 或离线时，自动将新任务路由至备用节点，彻底解除单机硬件故障风险。
+
+
+
+
+
+---
+
+### 附：关键风险预案矩阵
+
+| 风险项 | 触发条件 | 自动化降级与应对预案 |
+| --- | --- | --- |
+| **K40 热节流 / 高温熔断** | `/sys/class/thermal` 温度 $\ge 85^\circ\text{C}$ (warn) / $\ge 95^\circ\text{C}$ (fail) | 五维自检自动阻断新任务提交；`run_throttled_task.sh` 触发休眠冷却循环，待温度回落至 $75^\circ\text{C}$ 以下自动续跑检查点。
+
+ |
+| **F2FS 存储水位告急** | `/mnt/ssd/bio_data` 剩余空间 $< 20\%$ | 立即阻断新任务与新上传；自动触发 `gcStaleUploads` 强制清理非活跃分片，并将已交付项目的中间 `.h5ad`/`.rds` 归档压缩。
+
+ |
+| **ADB / SSH 链路闪断** | 本地 `00_link_check.ps1` 心跳超时 | 自动执行 `adb forward` 重建与 `monkey` 唤醒 Termux；远端计算因运行在 `nohup`/`tmux` 守护层不受断链影响，重连后由 `ledger.js` 自动同步状态。
+
+ |
+
+---

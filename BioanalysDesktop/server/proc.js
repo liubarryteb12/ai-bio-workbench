@@ -5,7 +5,10 @@
  * 提供一个天然的审计点（本地只允许 ssh / scp / adb）。
  */
 
-import { spawn, spawnSync } from 'node:child_process';
+// 必须走默认导入 + 属性调用：具名导入在链接期就固化了绑定，
+// 测试用 mock.method(childProcess, 'spawn'|'spawnSync') 拦不住（2026-10-21 实测：
+// P4 切片因此真跑了 scp/ssh，往 K40 raw_data 写了两个探针文件）。
+import childProcess from 'node:child_process';
 import { existsSync } from 'node:fs';
 
 /** 本地允许执行的程序白名单：除此之外一律拒绝 */
@@ -64,7 +67,7 @@ export function assertAllowedProgram(argv) {
  */
 export function runSync(argv, options = {}) {
   assertAllowedProgram(argv);
-  const result = spawnSync(argv[0], argv.slice(1), {
+  const result = childProcess.spawnSync(argv[0], argv.slice(1), {
     cwd: options.cwd,
     encoding: 'utf8',
     timeout: options.timeoutMs ?? 30000,
@@ -78,6 +81,43 @@ export function runSync(argv, options = {}) {
 }
 
 /**
+ * ssh 远端执行（宽松版）：合并 stdout/stderr，滤掉 ssh 客户端噪声，返回退出码 + 文本。
+ *
+ * 为什么单独成函数：远端输出解析散落在十几个 handler 里，噪声过滤口径必须只有一份
+ * （踩坑台账 P-04 / P-10：known_hosts 提示会顶掉首行，导致哈希/探针解析失效）。
+ * @param {string} target ssh 目标（如 k40-ubuntu）
+ * @param {string} command 远端命令
+ * @param {{timeoutMs?: number}} [options]
+ * @returns {{code: number, text: string}}
+ */
+export function runSshRaw(target, command, options = {}) {
+  const result = runSync(
+    ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', target, command],
+    { timeoutMs: options.timeoutMs ?? 40000 }
+  );
+  const text = (result.stdout + '\n' + result.stderr)
+    .split(/\r?\n/)
+    .filter((line) => !line.startsWith('Warning: Permanently added'))
+    .join('\n')
+    .trim();
+  return { code: result.code, text };
+}
+
+/**
+ * ssh 远端执行（严格版）：退出码非 0 或输出为空一律抛错，供门禁类调用点使用。
+ *
+ * 存在的理由（踩坑台账 P-15）：宽松版丢弃退出码，链路断时 ssh 返回 255 且 stdout
+ * 为空，五维自检第 1 维会把空串判成"原生 ext4"、第 2 维把空串算成 100% free，
+ * 于是自检假绿灯。自检是提交门禁，假绿灯比红灯危险。
+ */
+export function runSshStrict(target, command, options = {}) {
+  const { code, text } = runSshRaw(target, command, options);
+  if (code !== 0) throw new Error(`远端命令退出码 ${code}`);
+  if (!text) throw new Error('远端命令无输出');
+  return text;
+}
+
+/**
  * 流式执行：stdout/stderr 逐块回调，用于任务下发时的实时日志。
  * @param {string[]} argv
  * @param {{cwd?: string, onStdout?: Function, onStderr?: Function, onExit?: Function}} handlers
@@ -85,7 +125,7 @@ export function runSync(argv, options = {}) {
  */
 export function runStream(argv, handlers = {}) {
   assertAllowedProgram(argv);
-  const child = spawn(argv[0], argv.slice(1), {
+  const child = childProcess.spawn(argv[0], argv.slice(1), {
     cwd: handlers.cwd,
     windowsHide: true,
   });

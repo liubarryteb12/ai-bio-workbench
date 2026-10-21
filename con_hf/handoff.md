@@ -3371,3 +3371,50 @@ ssh 连接失败 → SKIP exit 0（K40 离线母版仍可跑）；
 理由：回写型文档最大的风险是再次漂移，只靠人记会漏——这次就是用户追问才发现的。
 
 验证：`npm test` 488/488 pass（486 + 2）。
+
+
+---
+
+### 第七轮（2026-10-21，桥接守卫本机化 + 自检合并报灯 + 全量同步）
+
+**触发**：M1 DoD 最后一项「gsva 与 line1 全步骤真机 exit 0」实测。首跑就抓到守卫空转。
+
+#### 本轮做完的事
+
+1. **守卫本机优先（D-14 / P-15）**：`src/bridge_guard.sh` 新增 `BRIDGE_ENGINE_LOCAL`
+   （默认 `/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py`，置空强制 ssh），
+   MODE 判定 local → ssh → SKIP。根因：母版跑在容器里，从容器 ssh 回 `k40-ubuntu` 不可解析
+   （退出码 255），四项断言在真实主路径上**一直没生效过**。
+2. **契约 3c（D-16 / P-17）**：本机模式引擎非 0 退出即 `[BRIDGE FAIL]` 并透传退出码，
+   只有 ssh 不可达（255/超时）才降级 SKIP。真机 `/tmp/bad.h5ad` 已能拦住。
+3. **引擎失败口径**：`ops/verify_bridge_checkpoint.py` 加存在性检查 + 异常折成
+   `引擎无法校验输入（类型: 消息）`，并把 stdout/stderr 强制 UTF-8（P-18：Windows cp936 乱码）。
+4. **自检 ssh 严格化（D-15 / P-16）**：`server/proc.js` 新增 `runSshRaw` / `runSshStrict`；
+   `server/index.js` 第 1~4 维改走 strict。修掉「链路断 → 空输出 → 判 pass」的假绿灯。
+5. **第 4 维合并报灯（D-15）**：`server/selfcheck.js` 新增 `STATUS_SEVERITY` / `worstStatus` /
+   `mergeIsolationChecks`，隔离门禁与 SHA256 比对合成一盏灯，取最坏，detail 点名坏在哪。
+6. **P12 收尾**：`src/line1_bulk/scripts/ppi_string` 离线优先（`BIO_STRING_LINKS` /
+   `BIO_STRING_INFO` / `BIO_STRING_MIN_SCORE`），400 万行 gz 实测 9.69s / 407.9MB 峰值（流式）。
+   `ops/README.md` 补「离线参考数据：STRING v12.0」小节（下载命令 + 目录 + 三个变量 + 当前缺失状态）。
+7. **P10 收尾**：`virtual_knockout` 三处重内存阶段 del + gc + 峰值落盘（`memory_peak.tsv`），
+   13 条测试；顺手修掉报告段在 `del out` 之后仍引用 `out.uns` 的 NameError。
+8. **P11 收尾**：自检第 4 维 SHA256 比对（4 个核心文件 + ops 镜像），16 条测试；
+   真机 `4/4 一致`。
+
+#### 验证
+
+- `npm test`：**659/659 pass，0 fail**（约 30s）。
+- `ops/sync_and_verify_remote.ps1 -All`：76 个文件 **76/76 哈希一致**，镜像 1/1 一致，exit 0，
+  凭证已追加 `con_hf/ops_ledger.md`。
+- gsva 真机：exit 0，`[BRIDGE PASS] all 4 assertions passed` + `engine=local`，7174 条通路。
+- 守卫坏输入真机：`[BRIDGE FAIL]` + exit 1。
+
+#### 待办（第八轮）
+
+1. **line1 全链真机 exit 0**（M1 DoD 最后一项）：需要先按 `ops/README.md` 预下载 STRING v12.0
+   两份文件（K40 上 `public_references/stringdb/` 目前不存在），再逐步骤跑到交付包。
+2. `inspectBridgeNeed` 的 `guardWired` 仍按原文匹配，注释里提 `bridge_guard.sh` 会假阳性（P3 遗留）。
+3. `mergeIsolationChecks` 的 value 是字符串拼接，前端未结构化展示（够用，将来画子灯再改数组）。
+4. B 批不可逆操作仍待用户授权：B1 删 `cn_debug/scenic_db/`（689MB）+ 24 个 `subagent_*.log`（4.9MB）
+   + `ops/__pycache__`；B2 归档 2.2 节文件到 `_archive/`；B3 黑名单 provenance 29 条 vs aims 8 条口径对齐。
+5. `memory_peak.tsv` 写在进程 cwd，需确认任务引擎 cwd 是否等于输出目录。

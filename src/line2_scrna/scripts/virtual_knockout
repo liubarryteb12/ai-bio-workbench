@@ -83,6 +83,7 @@ echo "input_hvg=${hvg_file}"
 
 ANNOTATED_FILE="$annotated_file" NORM_FILE="$norm_file" HVG_FILE="$hvg_file" BIOANALYS_SEED="$seed" \
 python3 - <<'PYSCRIPT'
+import gc
 import os
 import sys
 import time
@@ -124,6 +125,36 @@ def log(message):
     print(message, flush=True)
 
 
+PEAK_FILE = "memory_peak.tsv"
+PEAK_COLUMNS = ("stage", "peak_rss_mb", "timestamp")
+
+
+def peak_rss_mb():
+    # VmHWM 是内核记录的进程峰值 RSS（KB），比轮询 VmRSS 更准：短命峰值也不会漏。
+    try:
+        with open("/proc/self/status", "r") as fh:
+            for line in fh:
+                if line.startswith("VmHWM:"):
+                    return round(int(line.split()[1]) / 1024.0, 1)
+    except OSError:
+        return None
+    return None
+
+
+def record_peak(stage):
+    # 峰值记录是观测手段不是产出契约：写失败只留 stderr，绝不让分析失败。
+    peak = peak_rss_mb()
+    try:
+        need_header = not os.path.exists(PEAK_FILE) or os.path.getsize(PEAK_FILE) == 0
+        with open(PEAK_FILE, "a") as fh:
+            if need_header:
+                fh.write("\t".join(PEAK_COLUMNS) + "\n")
+            fh.write("%s\t%s\t%s\n" % (stage, "" if peak is None else peak,
+                                         time.strftime("%Y-%m-%dT%H:%M:%S")))
+    except OSError as exc:
+        sys.stderr.write("memory_peak.tsv 写入失败（不影响分析）: %s\n" % exc)
+
+
 annotated_file = os.environ["ANNOTATED_FILE"]
 norm_file = os.environ["NORM_FILE"]
 hvg_file = os.environ["HVG_FILE"]
@@ -137,6 +168,7 @@ except ValueError:
 annot = ad.read_h5ad(annotated_file)
 norm = ad.read_h5ad(norm_file)
 log("loaded annotated=%s norm=%s" % (annot.shape, norm.shape))
+record_peak("load_inputs")
 
 if "diagnosis" not in annot.obs.columns:
     fail("annotated 产物缺少 obs['diagnosis']（群体标签来源，不是 annotate_celltypes 产物？）")
@@ -184,6 +216,19 @@ if ko_fraction <= QC_MIN_PERCENT:
     fail("敲除基因 %s 在 %s 群体表达占比 %.4f 不超过 sc_QC 基因闸 %.2f，进不了网络（换基因或放宽口径需重新定稿）"
          % (KO_GENE, POPULATION, ko_fraction, QC_MIN_PERCENT))
 
+# 装配阶段收尾：expr 已是独立稠密矩阵，pop_counts 与 norm 到此再无引用点。
+# 立即释放并回收。Python 没有 rm()，del + gc.collect() 就是等价写法；gc.collect()
+# 无 verbose 参数，回收全程静默，等价 R 侧的 gc(verbose = FALSE)。
+del pop_counts
+del norm
+gc.collect()
+record_peak("assemble_expr")
+
+# 建网前再强制回收一次，等价 R 侧循环前的 gc(reset = TRUE)：10 个 2000x2000 网络
+# 加张量是本步骤的内存墙，开跑前先把峰值水位压回基线，再分配新的大对象。
+gc.collect()
+record_peak("before_network")
+
 # --- 3. scTenifoldKnk 全流程 ---
 captured = []
 with warnings.catch_warnings(record=True) as wlist:
@@ -211,6 +256,13 @@ if not qc_kept_cells <= set(pop_cells):
     fail("QC 保留细胞越出群体集合")
 if n_cells_qc == 0 or n_genes_net == 0:
     fail("QC 后矩阵为空")
+
+# 建网产物收尾：QC 信息已全部提取成标量与小集合，scn（10 网 + 张量）与 qc_matrix
+# 是本步骤最大的常驻块，立刻归还，别让它和后面的 annot 副本同时在线。
+del scn
+del qc_matrix
+gc.collect()
+record_peak("after_network")
 
 # --- 4. 自校验 ---
 if list(dr.columns) != DR_COLUMNS:
@@ -242,6 +294,11 @@ n_sig_non_ko = int((non_ko["adjusted p-value"] < SIG_LEVEL).sum())
 ko_rank = int(dr_sorted.index[dr_sorted["Gene"] == KO_GENE][0]) + 1
 log("dr_genes=%d significant_adj<%0.2f=%d（含敲除基因）/ %d（不含）ko_rank_by_pvalue=%d"
     % (dr_sorted.shape[0], SIG_LEVEL, n_sig_all, n_sig_non_ko, ko_rank))
+
+# dr 原始表已被 dr_sorted 取代，释放它并回收；落盘阶段只留排序表，别让两份 DR 表并存。
+del dr
+gc.collect()
+record_peak("dr_ready")
 
 top_dr = non_ko.head(TOP_N)[["Gene", "Distance", "Z", "FC", "p-value", "adjusted p-value"]].reset_index(drop=True)
 for _, row in top_dr.iterrows():
@@ -300,6 +357,19 @@ out.uns["virtual_knockout"] = {
 }
 out.write_h5ad("scrna_knockout.h5ad")
 
+# 落盘收尾：out（annot 群体副本 + var 列）与 DR 表都已写盘，后面只剩文本报告。
+# 报告要用到的两个 uns 字段先取成小字符串，再释放大对象，避免报告段继续持有 out。
+sctenifold_version = out.uns["virtual_knockout"]["sctenifoldpy_version"]
+ko_gene_provenance = out.uns["virtual_knockout"]["ko_gene_provenance"]
+
+# annot 与 out 是同一批细胞的两份副本，写盘后立刻双双归还，避免叠加占用。
+del out
+del annot
+del dr_out
+del dr_indexed
+gc.collect()
+record_peak("write_h5ad")
+
 report_lines = [
     "step=virtual_knockout",
     "seed=%s" % seed,
@@ -307,13 +377,13 @@ report_lines = [
     "expression_source=%s" % norm_file,
     "gene_set_source=%s" % hvg_file,
     "method=scTenifoldpy %s scTenifoldKnk ko_method=default（与 R 包 scTenifoldKnk 默认参数等价）"
-    % out.uns["virtual_knockout"]["sctenifoldpy_version"],
+    % sctenifold_version,
     "params=n_nets=%d n_samp_cells=%d n_comp=%d q=%.2f td_rank=%d ma_dims=%d random_state=%d"
     % (N_NETS, N_SAMP_CELLS, N_COMP, Q_VALUE, TD_RANK, MA_DIMS, seed_int),
     "population=%s cells=%d（diagnosis 列；healthy 供体与 HC 共线，步骤 4 已警告，故不混群）"
     % (POPULATION, n_pop),
     "ko_gene=%s provenance=%s expression_fraction=%.4f"
-    % (KO_GENE, out.uns["virtual_knockout"]["ko_gene_provenance"], ko_fraction),
+    % (KO_GENE, ko_gene_provenance, ko_fraction),
     "qc=sc_QC 默认（lib>1000 / 1.5IQR 离群细胞 / 基因>5% 表达）+ cpm_norm：",
     "  细胞 %d -> %d（剔 %d），基因 %d -> %d（剔 %d）"
     % (n_pop, n_cells_qc, n_pop - n_cells_qc, expr.shape[0], n_genes_net, expr.shape[0] - n_genes_net),
@@ -347,6 +417,7 @@ for message in captured:
 with open("knockout_report.txt", "w") as fh:
     fh.write("\n".join(report_lines) + "\n")
 
+record_peak("done")
 log("virtual_knockout_done dr_genes=%d significant=%d elapsed=%.1fs"
     % (dr_sorted.shape[0], n_sig_non_ko, time.time() - START))
 PYSCRIPT

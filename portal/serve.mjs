@@ -27,6 +27,11 @@ import {
   DATA_ROLES, DATA_EXT, MAX_DATA_BYTES, MAX_DATA_FILES_PER_ROLE,
   sanitizeFileName, validateDataFiles, buildPackagePlan,
 } from './lib/archive.mjs';
+// P5：共享契约的唯一权威（只读引用，本进程不改写这些值）
+import {
+  DATA_EXT as SHARED_DATA_EXT, MAX_DATA_BYTES as SHARED_MAX_DATA_BYTES,
+} from '../shared/data_formats.mjs';
+import { BLACKLIST_PATTERNS } from '../BioanalysDesktop/server/tumor_blacklist.js';
 
 const PORT = Number(process.env.PORTAL_PORT || 8080);
 const HOST = process.env.PORTAL_HOST || '127.0.0.1';
@@ -43,6 +48,43 @@ const INBOX = process.env.PORTAL_INBOX
   ? path.resolve(process.env.PORTAL_INBOX)
   : fileURLToPath(new URL('./inbox/', import.meta.url));
 const SID_RE = /^[A-Za-z0-9_-]{6,64}$/;
+
+/**
+ * 编译期注入锚点（P5）：index.html 在 <script> 之前留了这一行注释。
+ * 本服务返回页面时把它替换成 window.__SHARED_CONTRACTS__，让前端用运行时校验
+ * 同一份白名单/上限/黑名单；离线双击 html 时锚点仍是注释，前端回落到字面量副本。
+ */
+const INJECT_ANCHOR = '<!-- __INJECT_SHARED_CONTRACTS__ -->';
+
+/** 把共享契约整理成可 JSON 序列化的载荷（正则转成 source + flags，顺序保持不变） */
+export function sharedContractsPayload() {
+  return {
+    DATA_EXT: [...SHARED_DATA_EXT],
+    MAX_DATA_BYTES: SHARED_MAX_DATA_BYTES,
+    BL_PATTERNS: BLACKLIST_PATTERNS.map((re) => ({ source: re.source, flags: re.flags })),
+  };
+}
+
+/**
+ * 序列化成能安全放进 <script> 的 JSON：
+ * 转义 < 防止 </script> 提前闭合，顺带转义 U+2028/U+2029（旧引擎的行终止符）。
+ */
+function scriptSafeJson(value) {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
+/**
+ * 把注入锚点替换成 window.__SHARED_CONTRACTS__ 赋值脚本。
+ * 没有锚点（例如被裁剪过的页面）时原样返回，不抛错、不改页面结构。
+ */
+export function injectSharedContracts(html) {
+  if (!html.includes(INJECT_ANCHOR)) return html;
+  const payload = scriptSafeJson(sharedContractsPayload());
+  return html.replace(INJECT_ANCHOR, '<script>window.__SHARED_CONTRACTS__ = ' + payload + ';</script>');
+}
 
 /** 单份需求 JSON 上限，防止异常大包写满磁盘 */
 const MAX_BODY = 1024 * 1024;
@@ -528,7 +570,7 @@ const server = http.createServer((req, res) => {
   if (url.pathname === '/' || url.pathname === '/index.html') {
     let html;
     try {
-      html = fs.readFileSync(INDEX);
+      html = injectSharedContracts(fs.readFileSync(INDEX, 'utf8'));
     } catch (cause) {
       res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
       return res.end(`读取 index.html 失败: ${cause instanceof Error ? cause.message : String(cause)}`);

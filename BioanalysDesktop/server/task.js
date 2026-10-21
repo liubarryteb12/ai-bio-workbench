@@ -43,6 +43,56 @@ const PYTHON_CALL_RE = /(^|[\s;&|])python3?(?=[\s"']|$)/;
 const GUARD_CALL_RE = /bridge_guard\.sh/;
 
 /**
+ * 剥掉 shell / R / Python 的注释，只留可执行代码（aims §三.2、todo 2.1）。
+ *
+ * 为什么必须剥：inspectBridgeNeed 用正则数命令位的 Rscript / python 调用数，
+ * 注释里出现 "python3" 或 "Rscript" 字样会被当成真调用，把单语言母版误判成
+ * bilingual 并强行触发桥接四项断言（ml_diagnostics 的注释踩过这个坑）。
+ *
+ * 规则（纯函数、零依赖、不改换行）：
+ *   1. 行首（可选空白）后是 # 的整行注释清空；#! shebang 行原样保留。
+ *   2. 引号外的 # 起行尾注释；引号内的 # 是字面量（'...' 与 "..." 都算引号）。
+ *   3. 反斜杠转义的 \# 不当注释；$#（位置参数数）、${var#prefix} 这类紧随非空白字符的
+ *      # 也不当注释（shell 里只有词首的 # 才起注释，这条规则让 $# 与参数展开不被误伤）。
+ *   4. 只删注释本身与注释前的空白，代码字节与换行符（含 CRLF）原样保留。
+ *
+ * @param {string} rawText 母版原文
+ * @returns {string} 剥离注释后的文本
+ */
+export function stripShellAndCodeComments(rawText) {
+  const text = String(rawText ?? '');
+  // split 捕获分隔符：偶数位是行内容，奇数位是原始换行符（\n 或 \r\n），join 回去换行不变
+  const parts = text.split(/(\r?\n)/);
+  for (let i = 0; i < parts.length; i += 2) {
+    parts[i] = stripLineComments(parts[i]);
+  }
+  return parts.join('');
+}
+
+/** 单行剥离：规则见 stripShellAndCodeComments 的注释 */
+function stripLineComments(line) {
+  if (line.trimStart().startsWith('#!')) return line; // shebang 必须保留
+  let quote = null;
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+    if (quote !== null) {
+      if (ch === '\\') { i += 1; continue; } // 引号内反斜杠转义下一字符
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '\\') { i += 1; continue; } // 转义的 \# 不当注释
+    if (ch === '"' || ch === "'") { quote = ch; continue; }
+    if (ch !== '#') continue;
+    const prev = i === 0 ? '' : line[i - 1];
+    // shell 语义：只有词首的 # 才起注释，词中的 # 是字面量（$#、${v#p}、a#b）
+    const atWordStart = prev === '' || /[\s;&|()]/.test(prev);
+    if (!atWordStart) continue;
+    return line.slice(0, i).replace(/\s+$/, '');
+  }
+  return line;
+}
+
+/**
  * 检查一个步骤是否需要过桥接四项断言，并给出可观测的判定依据。
  *
  * 判定依据只能来自仓库事实：读 src/<line>/scripts/<stepName> 本地母版，
@@ -62,7 +112,9 @@ export function inspectBridgeNeed(lineId, stepName) {
     return { ...base, masterPath, reason: `母版不存在: ${masterPath}` };
   }
   const content = fs.readFileSync(masterPath, 'utf8');
-  const lines = content.split(/\r?\n/);
+  // 计数只看可执行代码：注释里提到 python3 / Rscript 不算调用（aims §三.2）
+  const code = stripShellAndCodeComments(content);
+  const lines = code.split(/\r?\n/);
   const rCount = lines.filter((line) => RSCRIPT_CALL_RE.test(line)).length;
   const pCount = lines.filter((line) => PYTHON_CALL_RE.test(line)).length;
   return {

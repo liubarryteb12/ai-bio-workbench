@@ -1,18 +1,25 @@
 #!/usr/bin/env bash
-# ppi_string：line1_bulk 步骤 8 的 PPI / hub 基因部分（STRING API）。
+# ppi_string：line1_bulk 步骤 8 的 PPI / hub 基因部分（STRING 边表，离线优先）。
 #
 # 输入（同 cwd）：wgcna_modules.tsv（gene/module）+ wgcna_module_trait.tsv
-#   （module/significant）——取"与分组显著相关"的模块基因做 PPI。
+#   （module/significant），取"与分组显著相关"的模块基因做 PPI。
 #   DEG 0 显著（BH 后无基因通过），故 PPI 输入取 WGCNA 显著模块基因而非 DEG。
 #
-# 做法（用户 2026-10-13 拍板 PPI 在线富集可做）：
-#   1. 显著模块基因（tan + plum1）经 STRING API（species=9606）拉互作边；
+# 做法（用户 2026-10-13 拍板 PPI 在线富集可做；2026-10-21 改为离线优先）：
+#   1. 显著模块基因（tan + plum1）取互作边：先读本机 STRING v12.0 离线文件
+#      （9606.protein.links.v12.0 + 9606.protein.info.v12.0，路径见下），
+#      离线文件完全不存在时才回落 STRING 网络 API；
 #   2. 计算 degree 得 hub 基因（top 30）；
 #   3. 画 PPI 网络图（networkx spring layout，单图，只画 top 边避免糊成一团）；
 #   4. 落边表 / hub 表 / 报告。
 #
-# 自校验内建：输入存在、显著模块非空、STRING 返回边数 > 0、hub 非空、
-# degree 与边表一致。
+# 离线文件路径（环境变量可覆盖；压缩包与解压后的同名 .txt 都支持，按扩展名选读取方式）：
+#   BIO_STRING_LINKS  默认 /mnt/ssd/bio_data/public_references/stringdb/9606.protein.links.v12.0.txt.gz
+#   BIO_STRING_INFO   默认 /mnt/ssd/bio_data/public_references/stringdb/9606.protein.info.v12.0.txt.gz
+#   BIO_STRING_MIN_SCORE  默认 400（STRING combined_score 0..1000 口径）
+#
+# 自校验内建：输入存在、显著模块非空、边数 > 0、hub 非空、degree 与边表一致。
+# 两条路都拿不到边表时打印 STRING v12.0 下载指引并以 1 退出，不静默降级。
 set -euo pipefail
 
 seed="${BIOANALYS_SEED:-UNSET}"
@@ -59,8 +66,9 @@ echo "input_trait=${trait_file}"
 
 MOD_FILE="$mod_file" TRAIT_FILE="$trait_file" BIOANALYS_SEED="$seed" \
 python3 - <<'PYSCRIPT'
-import json
+import gzip
 import os
+import re
 import sys
 import time
 import urllib.parse
@@ -223,9 +231,16 @@ _install_layout_guard()
 START = time.time()
 SEED = int(os.environ["BIOANALYS_SEED"])
 SPECIES = 9606
-MIN_SCORE = 400          # STRING combined score 阈值（中等置信）
 MAX_HUB = 30
 MAX_EDGES = 100          # 网络图边数上限（规范：大网络只画 top N，默认 100 边）
+MAX_UNMAPPED_WARN = 20   # 缺基因符号的 ENSP 最多逐条提醒几个，防止大查询集刷屏
+
+# STRING v12.0 离线数据（K40 外网不稳，跑步骤时不再依赖联网）
+STRING_DIR = "/mnt/ssd/bio_data/public_references/stringdb"
+DEFAULT_LINKS = STRING_DIR + "/9606.protein.links.v12.0.txt.gz"
+DEFAULT_INFO = STRING_DIR + "/9606.protein.info.v12.0.txt.gz"
+LINKS_URL = "https://stringdb-downloads.org/download/protein.links.v12.0/9606.protein.links.v12.0.txt.gz"
+INFO_URL = "https://stringdb-downloads.org/download/protein.info.v12.0/9606.protein.info.v12.0.txt.gz"
 
 
 def fail(m):
@@ -234,8 +249,209 @@ def fail(m):
     sys.exit(1)
 
 
+def warn(m):
+    sys.stderr.write("ppi_string warn: %s\n" % m)
+    sys.stderr.flush()
+
+
 def log(m):
     print(m, flush=True)
+
+
+def env_int(name, default):
+    """整数环境变量：未设或空串取默认值；设了但不是整数就明确失败（不静默取默认）。"""
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    try:
+        return int(raw.strip())
+    except ValueError:
+        fail("%s 必须是整数（当前值 %r）" % (name, raw))
+
+
+def env_path(name, default):
+    raw = os.environ.get(name)
+    return raw.strip() if raw and raw.strip() else default
+
+
+def path_variants(p):
+    """同一份数据的压缩/未压缩两种命名：.gz 与同名 .txt 互为备选。"""
+    return [p, p[:-3]] if p.endswith(".gz") else [p, p + ".gz"]
+
+
+def resolve_offline(p):
+    """按候选顺序找离线文件，返回实际存在的路径；都不存在返回 None。"""
+    for cand in path_variants(p):
+        if os.path.isfile(cand):
+            return cand
+    return None
+
+
+def open_text(path):
+    """按扩展名选读取方式：.gz 走 gzip 流，其余按纯文本流。"""
+    if path.endswith(".gz"):
+        return gzip.open(path, "rt", encoding="utf-8", errors="replace", newline="")
+    return open(path, "r", encoding="utf-8", errors="replace", newline="")
+
+
+def print_download_guidance(reason, links_target, info_target):
+    """离线文件缺失时的可执行指引：给出下载 URL 与应放的目标路径，不让人去猜。"""
+    msg = [
+        "ppi_string 拿不到 STRING 边表：%s" % reason,
+        "请下载 STRING v12.0 离线文件后放到目标路径（压缩包与解压后的 .txt 都支持）：",
+        "  links 目标: %s" % links_target,
+        "  links 下载: %s" % LINKS_URL,
+        "  info  目标: %s" % info_target,
+        "  info  下载: %s" % INFO_URL,
+        "也可用 BIO_STRING_LINKS / BIO_STRING_INFO 指向别处（例如 /mnt/ssd/bio_data/ 下已有副本）。",
+    ]
+    sys.stderr.write("\n".join(msg) + "\n")
+    sys.stderr.flush()
+
+
+def norm_protein(pid):
+    """STRING 蛋白 ID 归一：去掉 9606. 物种前缀，让 links 与 info 两侧能对齐。"""
+    pid = pid.strip()
+    if "." in pid:
+        head, tail = pid.split(".", 1)
+        if head.isdigit():
+            return tail
+    return pid
+
+
+def looks_like_ensp(token):
+    return re.match(r"^(?:\d+\.)?ENSP\d+$", token or "") is not None
+
+
+def load_protein_info(path, wanted_symbols):
+    """流式读 protein.info，只为待查基因建双向映射（不整表读入内存）。
+    返回 (symbol -> [ensp], ensp -> symbol, 数据行数)。"""
+    sym2ensp = {}
+    ensp2sym = {}
+    n_rows = 0
+    with open_text(path) as fh:
+        for line in fh:
+            if not line.strip() or line.startswith("#"):
+                continue          # 表头 #string_protein_id 等注释行
+            parts = line.rstrip("\n").split("\t")
+            if len(parts) < 2:
+                parts = line.split()
+            if len(parts) < 2:
+                continue
+            n_rows += 1
+            ensp = norm_protein(parts[0])
+            sym = parts[1].strip()
+            if sym and sym in wanted_symbols:
+                sym2ensp.setdefault(sym, []).append(ensp)
+                ensp2sym.setdefault(ensp, sym)
+    return sym2ensp, ensp2sym, n_rows
+
+
+def scan_links(path, wanted_ensp, min_score):
+    """流式扫 protein.links（human v12.0 约 1200 万行）：每行只取前 3 列，
+    先按查询集与阈值过滤再落字典，内存里只留命中查询基因的边。
+    返回 ({(a, b): score}, 统计)。重复边（含反向重复）保留最高分。"""
+    edges = {}
+    stats = {"rows": 0, "low": 0, "dup": 0, "self": 0}
+    with open_text(path) as fh:
+        for line in fh:
+            if not line.strip() or line.startswith("#") or line.startswith("protein1"):
+                continue
+            parts = line.split(None, 3)[:3]
+            if len(parts) < 3:
+                continue
+            stats["rows"] += 1
+            a = norm_protein(parts[0])
+            b = norm_protein(parts[1])
+            if a not in wanted_ensp and b not in wanted_ensp:
+                continue
+            if a == b:
+                stats["self"] += 1
+                continue
+            try:
+                score = int(parts[2])
+            except ValueError:
+                continue
+            if score < min_score:
+                stats["low"] += 1
+                continue
+            key = (a, b) if a <= b else (b, a)
+            old = edges.get(key)
+            if old is None:
+                edges[key] = score
+            else:
+                stats["dup"] += 1
+                if score > old:
+                    edges[key] = score
+    return edges, stats
+
+
+def edges_to_table(raw_edges, ensp2sym):
+    """ENSP 边表转基因符号表：映射缺失时保留 ENSP 原名并 warn，不静默丢边。
+    combined_score 统一成 0..1 浮点（离线原始分为 0..1000 整数，除以 1000），
+    与改动前 STRING API 的 score 列同量纲，下游不用改。"""
+    warned = set()
+
+    def note_unmapped(pid):
+        """缺符号映射只逐条提醒前 MAX_UNMAPPED_WARN 个：真实查询集上千基因时
+        逐条 warn 会把 stderr 刷成几千行，反而看不见别的错误。"""
+        if pid in warned:
+            return
+        warned.add(pid)
+        if len(warned) <= MAX_UNMAPPED_WARN:
+            warn("protein.info 缺 %s 的基因符号，输出保留 ENSP 原名" % pid)
+        elif len(warned) == MAX_UNMAPPED_WARN + 1:
+            warn("protein.info 缺符号映射的 ENSP 已超过 %d 个，后续不再逐条提醒"
+                 "（这些边仍然保留 ENSP 原名，不会被丢弃）" % MAX_UNMAPPED_WARN)
+
+    best = {}
+    for (a, b), score in raw_edges.items():
+        ga = ensp2sym.get(a)
+        if ga is None:
+            ga = a
+            note_unmapped(a)
+        gb = ensp2sym.get(b)
+        if gb is None:
+            gb = b
+            note_unmapped(b)
+        if ga == gb:
+            continue          # 同一基因的两个蛋白异构体，折叠成自环无意义
+        key = (ga, gb) if ga <= gb else (gb, ga)
+        if key not in best or score > best[key]:
+            best[key] = score
+    rows = [{"gene_a": a, "gene_b": b, "combined_score": round(s / 1000.0, 3)}
+            for (a, b), s in best.items()]
+    rows.sort(key=lambda r: (-r["combined_score"], r["gene_a"], r["gene_b"]))
+    return pd.DataFrame(rows, columns=["gene_a", "gene_b", "combined_score"])
+
+
+def fetch_api_edges(genes, min_score):
+    """回落路径：STRING 网络 API（POST，避免 URL 过长）。离线文件完全不存在时才用。"""
+    url = "https://string-db.org/api/tsv/network"
+    body = urllib.parse.urlencode({
+        "identifiers": "\r".join(genes),
+        "species": SPECIES,
+        "required_score": min_score,
+    }).encode()
+    req = urllib.request.Request(url, data=body,
+                                 headers={"User-Agent": "BioanalysDesktop/0.1"})
+    try:
+        with urllib.request.urlopen(req, timeout=90) as resp:
+            raw = resp.read().decode("utf-8")
+    except Exception as e:
+        return None, "STRING API 调用失败：%s" % e
+    lines = [ln for ln in raw.splitlines() if ln.strip()]
+    if len(lines) < 2:
+        return None, "STRING API 返回 %d 行（<2），无互作边（阈值 %d 可能过高）" % (len(lines), min_score)
+    header = lines[0].split("\t")
+    rows = [dict(zip(header, ln.split("\t"))) for ln in lines[1:]]
+    out = pd.DataFrame({
+        "gene_a": [r["preferredName_A"] for r in rows],
+        "gene_b": [r["preferredName_B"] for r in rows],
+        "combined_score": [float(r["score"]) for r in rows],
+    })
+    out = out.drop_duplicates(subset=["gene_a", "gene_b"]).reset_index(drop=True)
+    return out, None
 
 
 mods = pd.read_csv(os.environ["MOD_FILE"], sep="\t")
@@ -253,41 +469,75 @@ log("significant modules=%s genes=%d" % (sig_modules, len(genes)))
 if len(genes) < 3:
     fail("显著模块基因 < 3")
 
-# --- STRING network API（POST，避免 URL 过长） ---
-url = "https://string-db.org/api/tsv/network"
-body = urllib.parse.urlencode({
-    "identifiers": "\r".join(genes),
-    "species": SPECIES,
-    "required_score": MIN_SCORE,
-}).encode()
-req = urllib.request.Request(url, data=body,
-                             headers={"User-Agent": "BioanalysDesktop/0.1"})
-try:
-    with urllib.request.urlopen(req, timeout=90) as resp:
-        raw = resp.read().decode("utf-8")
-except Exception as e:
-    fail("STRING API 调用失败：%s" % e)
+# --- 边表来源：离线文件优先，只有离线文件完全不存在才回落网络 API ---
+MIN_SCORE = env_int("BIO_STRING_MIN_SCORE", 400)   # STRING combined_score 阈值（中等置信）
+if MIN_SCORE < 0 or MIN_SCORE > 1000:
+    fail("BIO_STRING_MIN_SCORE 必须落在 0..1000（STRING combined_score 口径），当前 %d" % MIN_SCORE)
 
-lines = [ln for ln in raw.splitlines() if ln.strip()]
-if len(lines) < 2:
-    fail("STRING 返回 %d 行（<2），无互作边（阈值 %d 可能过高）" % (len(lines), MIN_SCORE))
-header = lines[0].split("\t")
-rows = [dict(zip(header, ln.split("\t"))) for ln in lines[1:]]
-edges = pd.DataFrame(rows)
-log("STRING edges=%d" % len(edges))
+links_target = env_path("BIO_STRING_LINKS", DEFAULT_LINKS)
+info_target = env_path("BIO_STRING_INFO", DEFAULT_INFO)
+links_file = resolve_offline(links_target)
+info_file = resolve_offline(info_target)
+
+if links_file and info_file:
+    source = "offline"
+    source_label = "offline:%s" % os.path.basename(links_file)
+elif links_file or info_file:
+    # 半套离线数据不回落网络：K40 外网不稳，且缺 info 表只能输出 ENSP，下游会误读
+    print_download_guidance(
+        "离线数据不完整（缺 %s）" % ("protein.info" if links_file else "protein.links"),
+        links_target, info_target)
+    sys.exit(1)
+else:
+    source = "api"
+    source_label = "api:string-db.org"
+    warn("离线文件不存在（links=%s info=%s），回落 STRING 网络 API" % (links_target, info_target))
+
+if source == "offline":
+    wanted_symbols = set(genes)
+    sym2ensp, ensp2sym, n_info = load_protein_info(info_file, wanted_symbols)
+    wanted_ensp = set()
+    for sym in genes:
+        if sym in sym2ensp:
+            wanted_ensp.update(sym2ensp[sym])
+        elif looks_like_ensp(sym):
+            # 输入直接给 ENSP（排障/测试路径）：照常参与匹配，符号缺失时保留原名
+            wanted_ensp.add(norm_protein(sym))
+    unmapped = [g for g in genes if g not in sym2ensp and not looks_like_ensp(g)]
+    for g in unmapped:
+        warn("输入基因 %s 在 protein.info 中无 ENSP 映射，无法匹配互作边" % g)
+    if not wanted_ensp:
+        fail("输入基因在 protein.info 中一个都映射不到（确认 BIO_STRING_INFO 是 9606 的 info 表）")
+    n_sym_mapped = sum(1 for g in genes if g in sym2ensp)
+    log("offline_source links=%s info=%s info_rows=%d symbol_mapped=%d/%d ensp_in_query=%d"
+        % (links_file, info_file, n_info, n_sym_mapped, len(genes), len(wanted_ensp)))
+    raw_edges, stats = scan_links(links_file, wanted_ensp, MIN_SCORE)
+    log("offline_scan rows=%d low_score=%d dup=%d self=%d kept=%d"
+        % (stats["rows"], stats["low"], stats["dup"], stats["self"], len(raw_edges)))
+    edges_out = edges_to_table(raw_edges, ensp2sym)
+    if edges_out.empty:
+        fail("离线边表在 combined_score >= %d 下没有一条落在查询基因之间"
+             "（基因数 %d，可能是阈值过高或 info/links 版本不一致）" % (MIN_SCORE, len(genes)))
+else:
+    edges_out, err = fetch_api_edges(genes, MIN_SCORE)
+    if edges_out is None:
+        print_download_guidance(err, links_target, info_target)
+        sys.exit(1)
+
+log("STRING edges=%d (source=%s, min_score=%d)" % (len(edges_out), source, MIN_SCORE))
 
 # --- degree / hub ---
 deg = {}
-for _, r in edges.iterrows():
-    a = r["preferredName_A"]
-    b = r["preferredName_B"]
+for _, r in edges_out.iterrows():
+    a = r["gene_a"]
+    b = r["gene_b"]
     deg[a] = deg.get(a, 0) + 1
     deg[b] = deg.get(b, 0) + 1
 hub = pd.DataFrame({"gene": list(deg.keys()), "degree": list(deg.values())})
-hub = hub.sort_values("degree", ascending=False).reset_index(drop=True)
+# degree 降序，同分按基因名升序：边表离线固定后，hub 顺序也必须可复现
+hub = hub.sort_values(["degree", "gene"], ascending=[False, True],
+                      kind="stable").reset_index(drop=True)
 hub.head(200).to_csv("ppi_hubs.tsv", sep="\t", index=False)
-edges_out = edges[["preferredName_A", "preferredName_B", "score"]].copy()
-edges_out.columns = ["gene_a", "gene_b", "combined_score"]
 edges_out.to_csv("ppi_edges.tsv", sep="\t", index=False)
 log("wrote ppi_edges.tsv (%d) + ppi_hubs.tsv (%d genes)" % (len(edges_out), len(hub)))
 
@@ -324,8 +574,8 @@ try:
         nx.draw_networkx_nodes(H, pos, ax=ax, node_size=sizes,
                                node_color="#4C72B0", alpha=0.85)
         nx.draw_networkx_labels(H, pos, ax=ax, font_size=8)
-        # 节点标签自动避让（规范 §三之二：图内文字不得互相重叠）。STRING API 每次重取
-        # 会给出不同的边表，spring 布局随之变化，高连接度节点偶发挤在一起压字；
+        # 节点标签自动避让（规范 §三之二：图内文字不得互相重叠）。边表来源固定后
+        # spring 布局可复现，但高连接度节点仍可能挤在一起压字；
         # 引线保住"标签属于哪个节点"，避免纯位移后标签与节点脱钩。
         from adjustText import adjust_text
         adjust_text(ax.texts, ax=ax, expand=(1.4, 1.6),
@@ -362,7 +612,8 @@ lines = [
     "step=ppi_string",
     "seed=%d" % SEED,
     "input_modules=%s genes=%d (modules=%s)" % (os.environ["MOD_FILE"], len(genes), sig_modules),
-    "method=STRING API network (species=%d, required_score=%d)" % (SPECIES, MIN_SCORE),
+    "method=STRING network (species=%d, required_score=%d, source=%s)"
+    % (SPECIES, MIN_SCORE, source_label),
     "note=DEG 0 显著，PPI 输入取 WGCNA 与分组显著相关的模块基因；hub=degree top",
     "n_edges=%d n_genes_in_network=%d" % (len(edges_out), len(hub)),
     "top_hubs:",

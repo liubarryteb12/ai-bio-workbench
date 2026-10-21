@@ -17,11 +17,12 @@ import {
   DEFAULT_SERIAL, SYSTEM_LOGS, LINES, DEFAULT_PROJECT, sanitizeProjectId, projectLineDir,
   resolveLineFromDataType, normalizeDatasets, normalizeDataSource,
 } from './domain.js';
-import { findAdb, runSync } from './proc.js';
+import { findAdb, runSync, runSshRaw, runSshStrict } from './proc.js';
 import { checkLink } from './link.js';
 import {
   buildHardwareCommand, parseHardwareOutput, evaluateHardware,
   buildIsolationCommand, parseIsolationOutput, evaluateIsolation,
+  runSha256ParityCheck, mergeIsolationChecks,
   STORAGE_MIN_FREE_PCT,
 } from './selfcheck.js';
 import { summarizeLedger, auditLedgerEntry, inspectTaskPath } from './ledger.js';
@@ -34,6 +35,7 @@ import {
   CHUNK_SIZE, initUpload, writeChunk, listChunks, assembleChunks,
   readHeader, validateUpload, remoteRawPath, cleanupUpload, sanitizeFilename,
   deployedRawName, uploadStatus, resolveUploadId, gcStaleUploads, maybeGcStaleUploads,
+  checkChunkAdmission, writeSessionMeta, clearSessionMeta, normalizeReservedBytes,
 } from './upload.js';
 import {
   buildProjectMeta, buildProjectMetaStrict, parseProjectList, buildCreateProjectCommand,
@@ -164,16 +166,24 @@ async function fetchLedgerFromServer(logsDir = SYSTEM_LOGS) {
   return { names: entries.map((entry) => entry.file), entries };
 }
 
+function runRemoteRaw(command) {
+  return runSshRaw('k40-ubuntu', command, { timeoutMs: 40000 });
+}
+
+/** 宽松版：只要文本，忽略退出码（多数调用点靠命令里的 `|| true` / MISSING 自己兜底） */
 function runRemote(command) {
-  const result = runSync(
-    ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', 'k40-ubuntu', command],
-    { timeoutMs: 40000 }
-  );
-  return (result.stdout + '\n' + result.stderr)
-    .split(/\r?\n/)
-    .filter((line) => !line.startsWith('Warning: Permanently added'))
-    .join('\n')
-    .trim();
+  return runRemoteRaw(command).text;
+}
+
+/**
+ * 严格版：ssh 退出码非 0 或输出为空一律抛错，供五维自检使用。
+ *
+ * 存在的理由（踩坑台账 P-15）：宽松版丢弃退出码，链路断时 ssh 返回 255 且
+ * stdout 为空，第 1 维会把空串判成"原生 ext4"、第 2 维会把空串算成 100% free，
+ * 自检出现假绿灯——而自检是提交门禁，假绿灯比红灯危险得多。
+ */
+function runRemoteStrict(command) {
+  return runSshStrict('k40-ubuntu', command, { timeoutMs: 40000 });
 }
 
 /**
@@ -883,7 +893,7 @@ const server = http.createServer(async (req, res) => {
     const checks = [];
     // 1. 路径与 FUSE 红线
     try {
-      const fsType = runRemote('df -T /mnt/ssd/bio_data 2>/dev/null | awk "NR==2 {print $2}"').trim();
+      const fsType = runRemoteStrict('df -T /mnt/ssd/bio_data 2>/dev/null | awk "NR==2 {print $2}"').trim();
       const isFuse = fsType.includes('fuse') || fsType.includes('sdcardfs');
       checks.push({ id: 'fs_type', label: '文件系统类型', status: isFuse ? 'fail' : 'pass', value: fsType, detail: isFuse ? 'FUSE 层违规' : '原生 ext4/f2fs' });
     } catch (e) {
@@ -891,7 +901,7 @@ const server = http.createServer(async (req, res) => {
     }
     // 2. 存储水位
     try {
-      const dfOut = runRemote('df -P /mnt/ssd/bio_data 2>/dev/null | tail -1').trim().split(/\s+/);
+      const dfOut = runRemoteStrict('df -P /mnt/ssd/bio_data 2>/dev/null | tail -1').trim().split(/\s+/);
       const usedPct = (dfOut[4] || '0').replace('%', '').replace(/[^0-9]/g, '');
       const freePct = 100 - parseInt(usedPct || '0', 10);
       checks.push({ id: 'storage', label: '存储水位', status: freePct >= STORAGE_MIN_FREE_PCT ? 'pass' : 'fail', value: `${freePct}% free`, detail: freePct >= STORAGE_MIN_FREE_PCT ? '安全' : `低于 ${STORAGE_MIN_FREE_PCT}% 门禁` });
@@ -900,17 +910,21 @@ const server = http.createServer(async (req, res) => {
     }
     // 3. SoC 算力 / 温度 / 7.5GB 内存水位（aims §3 第 3 条；判据全在 selfcheck.js）
     try {
-      const raw = runRemote(buildHardwareCommand());
+      const raw = runRemoteStrict(buildHardwareCommand());
       checks.push({ id: 'memory', label: 'SoC 算力/温度/内存', ...evaluateHardware(parseHardwareOutput(raw)) });
     } catch (e) {
       checks.push({ id: 'memory', label: 'SoC 算力/温度/内存', status: 'unknown', value: '', detail: '无法读取: ' + (e instanceof Error ? e.message : String(e)) });
     }
-    // 4. 三线隔离 + 桥接四项断言（原来只跑 line1_bulk，D6 收敛为逐线）
+    // 4. 三线隔离 + 桥接引擎 + 远端版本一致性（aims §三.3 第 4 维，一盏灯三件事）
+    //    子灯 a：逐线跑 check_storage_and_isolation.sh（原来只跑 line1_bulk，D6 收敛为逐线）
+    //    子灯 b：本地与远端核心文件 SHA256 比对（D-07 口径，防版本漂移）
+    //    两盏子灯分开算、合并报：detail 能点名到具体哪条坏，界面上仍只占一格。
     try {
-      const raw = runRemote(buildIsolationCommand());
-      checks.push({ id: 'isolation', label: '跨线隔离与桥接', ...evaluateIsolation(parseIsolationOutput(raw)) });
+      const raw = runRemoteStrict(buildIsolationCommand());
+      const isolation = evaluateIsolation(parseIsolationOutput(raw));
+      checks.push(mergeIsolationChecks(isolation, runSha256ParityCheck()));
     } catch (e) {
-      checks.push({ id: 'isolation', label: '跨线隔离与桥接', status: 'unknown', value: '', detail: '无法读取: ' + (e instanceof Error ? e.message : String(e)) });
+      checks.push({ id: 'isolation', label: '跨线隔离/桥接/版本', status: 'unknown', value: '', detail: '无法读取: ' + (e instanceof Error ? e.message : String(e)) });
     }
     // 5. ADB/SSH 链路（四段探测 + 服务状态）
     try {
@@ -1300,9 +1314,27 @@ const server = http.createServer(async (req, res) => {
       } catch (cause) {
         return uploadError(res, 500, cause.message);
       }
+      // P4：把客户端声明的大小落成会话级预留额度（原子写 session.json），
+      // chunk 端据此做 413 硬闸门，挡住「声明 10MB 却传 100GB」。
+      // fileSize 缺失或非法时 reservedBytes = null：不硬拦老客户端，只是没有预留额度。
+      // 元数据落盘失败也只降级（响应里如实回 null），不能让一次写文件失败把上传挡在门外。
+      let reservedBytes = normalizeReservedBytes(requested.fileSize);
+      try {
+        writeSessionMeta(uploadId, {
+          name: safe,
+          project: projectId,
+          lineId,
+          fileSize: reservedBytes,
+          reservedBytes,
+        });
+      } catch (cause) {
+        reservedBytes = null;
+        console.warn?.(`[bioanalys-desktop] 会话元数据写入失败（降级为无预留额度）: ${cause.message}`);
+      }
       return json(res, 200, {
         uploadId, projectId, lineId, filename: safe, chunkSize: CHUNK_SIZE,
         deterministic: resolved.deterministic,
+        reservedBytes,
         hint: '按 chunkSize 切分后依次 POST /api/upload/chunk?uploadId=&index=',
       });
     });
@@ -1321,8 +1353,16 @@ const server = http.createServer(async (req, res) => {
       chunks.push(chunk);
     });
     req.on('end', () => {
+      const buf = Buffer.concat(chunks);
+      // P4：写盘之前先过两道闸门，顺序固定：
+      //   1. 会话预留额度 reservedBytes（超了 413，一个字节都不写）；
+      //   2. .uploads 总量配额（超了 507）。
+      // 413 必须优先：客户端多报/少报文件大小时，先明确告诉它「本会话额度不够」，
+      // 而不是让它去猜是不是全局空间满了（那个它自己修不了）。
+      const admission = checkChunkAdmission({ uploadId, index, chunkLength: buf.length });
+      if (!admission.ok) return uploadError(res, admission.status, admission.error);
       try {
-        writeChunk(uploadId, index, Buffer.concat(chunks));
+        writeChunk(uploadId, index, buf);
         return json(res, 200, { ok: true, index: Number(index), received: listChunks(uploadId) });
       } catch (cause) {
         return uploadError(res, 400, cause.message);
@@ -1403,6 +1443,9 @@ const server = http.createServer(async (req, res) => {
       const remoteStat = runRemote(`stat -c %s '${remote}' 2>/dev/null || echo MISSING`);
       const remoteSize = Number(remoteStat.trim());
       const sizeMatch = Number.isFinite(remoteSize) && remoteSize === localSize;
+      // P4：上传成功后会话元数据（预留额度）随会话一起作废。显式清一次，不依赖
+      // cleanupUpload 里 rm -rf 的副作用；清理顺序变了也不会留下一个「已完成的预留额度」。
+      clearSessionMeta(uploadId);
       cleanupUpload(uploadId);
       return json(res, 200, {
         ok: sizeMatch, validation, remotePath: remote,

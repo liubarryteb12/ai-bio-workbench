@@ -148,6 +148,44 @@ ssh k40-ubuntu "chmod 755 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript"
 部署后下一次任务下发即生效（`task.js` 会在生成的脚本里注入 `PYTHONPATH`、`R_PROFILE_USER`
 和 PATH 垫片）。验证方式：任务 stderr 出现 `[layout_autoload] 已挂载出图模板: <template_id>`。
 
+## 离线参考数据：STRING v12.0（line1 步骤 8 用）
+
+`src/line1_bulk/scripts/ppi_string` 是**离线优先**的：先读本机 STRING 边表，只有离线文件
+完全不存在时才回落 `https://string-db.org/api/tsv/network`。K40 的外网不稳，生产跑批前应把
+两份文件预下载好，放在：
+
+```
+/mnt/ssd/bio_data/public_references/stringdb/
+  9606.protein.links.v12.0.txt.gz
+  9606.protein.info.v12.0.txt.gz
+```
+
+下载（在容器里跑，或在本机下好再 scp 上去）：
+
+```
+mkdir -p /mnt/ssd/bio_data/public_references/stringdb
+cd /mnt/ssd/bio_data/public_references/stringdb
+curl -fLO https://stringdb-downloads.org/download/protein.links.v12.0/9606.protein.links.v12.0.txt.gz
+curl -fLO https://stringdb-downloads.org/download/protein.info.v12.0/9606.protein.info.v12.0.txt.gz
+# 校验完整性（links 约 57.6MB / 解压后约 400 万行边）
+gzip -t 9606.protein.links.v12.0.txt.gz && zcat 9606.protein.links.v12.0.txt.gz | wc -l
+```
+
+三个环境变量可在任务下发时覆盖（`server/task.js` 透传 env）：
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `BIO_STRING_LINKS` | `<上面目录>/9606.protein.links.v12.0.txt.gz` | 边表；`.gz` 与解压后的 `.txt` 都支持 |
+| `BIO_STRING_INFO` | `<上面目录>/9606.protein.info.v12.0.txt.gz` | 蛋白 ID → 基因符号映射表 |
+| `BIO_STRING_MIN_SCORE` | `400` | `combined_score` 阈值（STRING 的 0..1000 口径，越界直接 fail） |
+
+离线文件缺失时脚本**不会静默降级**：两条路都拿不到边表就打印下载指引并以 1 退出。
+info 表缺失时保留 `9606.ENSP...` 原始 ID 并打 warning，不中断。
+
+**当前状态（2026-10-21 实测）**：K40 上 `/mnt/ssd/bio_data/public_references/stringdb/`
+目录**尚不存在**，即离线分支暂不可用。首次跑 line1 步骤 8 之前必须先按上面命令预下载，
+否则任务只能走网络 API（外网抖动时直接 exit 1）。
+
 ## 路径速查
 
 - Termux 底座别名：`k40`（8022）

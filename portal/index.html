@@ -409,7 +409,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
         <div id="upload-area" style="display:none;">
           <div class="guide" style="margin:16px 0;">
             <span class="ico" aria-hidden="true">📦</span>
-            <span><strong>上传规则（与服务端校验逐条一致）：</strong>训练集矩阵必须绑训练集 GSE，验证集矩阵必须绑验证集 GSE；样本表 / 分组表请绑训练集 GSE；平台注解与其他文件可不绑。文件名里的 GSE / GPL 编号必须与绑定编号一致。同一角色只保留一个文件（other 最多 5 个），重复上传会替换此前的文件。支持 .h5ad .h5 .loom .mtx .tar .gz .zip .txt .tsv .csv .soft .xlsx .rds .rdata，单文件上限 5 GiB。</span>
+            <span id="df-upload-guide"><strong>上传规则（与服务端校验逐条一致）：</strong>训练集矩阵必须绑训练集 GSE，验证集矩阵必须绑验证集 GSE；样本表 / 分组表请绑训练集 GSE；平台注解与其他文件可不绑。文件名里的 GSE / GPL 编号必须与绑定编号一致。同一角色只保留一个文件（other 最多 5 个），重复上传会替换此前的文件。支持 .h5ad .h5 .loom .mtx .tar .gz .zip .txt .tsv .csv .soft .xlsx .rds .rdata，单文件上限 5 GiB。</span>
           </div>
           <div class="grid-2">
             <div class="field">
@@ -608,6 +608,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
   <p style="margin-top:6px;">如需修改，可随时返回对应步骤调整后重新提交。</p>
 </footer>
 
+<!-- __INJECT_SHARED_CONTRACTS__ -->
 <script>
 (function () {
   'use strict';
@@ -1239,6 +1240,56 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
   // 与服务端 portal/lib/archive.mjs 的 MAX_DATA_FILES_PER_ROLE 保持一致（2026-10-20 起 5）；
   // 仅约束 other 角色，其余角色由绑定策略硬性每角色 1 个。
   var MAX_DATA_FILES_PER_ROLE = 5;
+
+  // #region P5 shared contracts
+  // 服务端（portal/serve.mjs）返回本页时，会把唯一权威 shared/data_formats.mjs 与
+  // BioanalysDesktop/server/tumor_blacklist.js 的内容注入成 window.__SHARED_CONTRACTS__。
+  // 命中时覆盖上面三份字面量副本，并同步 accept 属性与提示文案，让运行时校验与服务端同源；
+  // 离线双击本文件时没有注入，直接沿用字面量副本（页面照常可用）。
+  function limitTextOf(bytes) {
+    return bytes >= 1024 * 1024 * 1024
+      ? (bytes / 1024 / 1024 / 1024) + 'GiB'
+      : Math.round(bytes / 1024 / 1024) + 'MiB';
+  }
+
+  function applySharedContracts() {
+    var injected = window.__SHARED_CONTRACTS__;
+    if (!injected || !Array.isArray(injected.DATA_EXT) || !injected.DATA_EXT.length) return false;
+    DATA_EXT = injected.DATA_EXT.slice();
+    if (typeof injected.MAX_DATA_BYTES === 'number' && injected.MAX_DATA_BYTES > 0) {
+      MAX_DATA_BYTES = injected.MAX_DATA_BYTES;
+    }
+    if (Array.isArray(injected.BL_PATTERNS) && injected.BL_PATTERNS.length) {
+      BL_PATTERNS = injected.BL_PATTERNS.map(function (p) {
+        return new RegExp(p.source, p.flags || '');
+      });
+    }
+    var fileInput = document.getElementById('f-df-file');
+    if (fileInput) fileInput.setAttribute('accept', DATA_EXT.join(','));
+    var fileHint = document.getElementById('h-df-file');
+    if (fileHint) {
+      fileHint.textContent = '支持 ' + DATA_EXT.join(' ') + '；单文件上限 ' + limitTextOf(MAX_DATA_BYTES)
+        + '。上传后的文件名需与所选角色对得上。';
+    }
+    // 上传规则那段是静态 HTML（含 <strong>），只替换其中“支持 ...，单文件上限 ...。”这个文本节点
+    var guide = document.getElementById('df-upload-guide');
+    if (guide) {
+      for (var i = 0; i < guide.childNodes.length; i += 1) {
+        var child = guide.childNodes[i];
+        if (child.nodeType === 3 && child.nodeValue.indexOf('支持 ') >= 0) {
+          child.nodeValue = child.nodeValue.replace(
+            /支持 [^，]*，单文件上限 [^。]*。/,
+            '支持 ' + DATA_EXT.join(' ') + '，单文件上限 ' + limitTextOf(MAX_DATA_BYTES) + '。'
+          );
+          break;
+        }
+      }
+    }
+    return true;
+  }
+
+  applySharedContracts();
+  // #endregion P5 shared contracts
   // 绑定策略（与服务端 validateDataFiles 的 PUBLIC_DB 分支同规则）：
   //   train      必绑，且只能是训练集 GSE
   //   validation 必绑，且只能是验证集 GSE
@@ -1388,9 +1439,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       return '不支持的数据文件格式: ' + file.name + '（允许 ' + DATA_EXT.join(' / ') + '）';
     }
     if (file.size > MAX_DATA_BYTES) {
-      var limitText = MAX_DATA_BYTES >= 1024 * 1024 * 1024
-        ? (MAX_DATA_BYTES / 1024 / 1024 / 1024) + 'GiB'
-        : Math.round(MAX_DATA_BYTES / 1024 / 1024) + 'MiB';
+      var limitText = limitTextOf(MAX_DATA_BYTES);
       return '单文件超过上限 ' + limitText + ': ' + file.name;
     }
     var policy = ROLE_BIND_POLICY[role];

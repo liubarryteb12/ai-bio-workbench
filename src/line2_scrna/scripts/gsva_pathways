@@ -2,7 +2,10 @@
 # gsva_pathways：line2_scrna 通路活性打分 GSVA（aims 线2 下游第 6 项，GO/KEGG/Reactome/GSEA/GSVA 之 GSVA）。
 #
 # 输入（cwd 下）：
-#   scrna_norm.h5ad（步骤 3 产物：全基因 log 归一化表达，24969 基因）
+#   00_sc_harmony.h5ad（步骤 4 产物：含 X_pca/X_umap 的整合矩阵，首选输入源）
+#   scrna_norm.h5ad（步骤 3 产物：全基因 log 归一化表达，24969 基因；仅当
+#     00_sc_harmony.h5ad 尚未产出时回落使用，且桥接断言随之显式降级为
+#     --stage pre-dimred）
 #   scrna_deg.h5ad（步骤 15 产物：obs['celltype']，与 norm 细胞索引对齐）
 #   ../references/gmt_cache/*.gmt（Enrichr 基因集缓存，离线复用）
 # 输出（cwd 下）：
@@ -37,8 +40,24 @@ done
 echo "step_executed=gsva_pathways"
 echo "bioanalys_seed=${seed}"
 
+# 输入源规范（aims v2.5 §四 线2）：本步骤下游统一以带降维坐标的 00_sc_harmony.h5ad
+# 为输入，严禁直接消费步骤 3 的 scrna_norm.h5ad —— 后者没有 X_pca/X_umap/spatial，
+# 会让桥接第 4 项断言（Embedding 保留）必然失败。00_sc_harmony.h5ad 尚未产出时回落
+# scrna_norm.h5ad，同时把桥接断言显式降级为 --stage pre-dimred（降级要留痕，不静默）。
+NORM="00_sc_harmony.h5ad"
+BRIDGE_STAGE="post-dimred"
+if [ ! -f "$NORM" ]; then
+  NORM="scrna_norm.h5ad"
+  BRIDGE_STAGE="pre-dimred"
+  echo "[gsva_pathways] 未找到 00_sc_harmony.h5ad，回落 scrna_norm.h5ad（桥接断言 stage=pre-dimred）" >&2
+fi
+if [ ! -f "$NORM" ]; then
+  echo "[gsva_pathways] 缺少输入矩阵：00_sc_harmony.h5ad 与 scrna_norm.h5ad 均不存在" >&2
+  exit 1
+fi
+
 # 1) Python 侧：做 pseudobulk（celltype 均值），落中间 tsv
-python3 - <<'PYSCRIPT'
+BIO_GSVA_NORM="$NORM" python3 - <<'PYSCRIPT'
 import os
 import sys
 
@@ -47,7 +66,7 @@ import pandas as pd
 import anndata as ad
 
 ad.settings.allow_write_nullable_strings = False
-NORM = "scrna_norm.h5ad"
+NORM = os.environ.get("BIO_GSVA_NORM", "scrna_norm.h5ad")
 DEG = "scrna_deg.h5ad"
 
 
@@ -98,15 +117,32 @@ PYSCRIPT
 #    （Python 侧产物交给 R 侧读），断言必须在首次 R 侧执行之前过。
 #    输入 scrna_norm.h5ad 即上面 INPUTS 里第一个 h5ad；K40 离线时守卫自行
 #    打印 [BRIDGE SKIP] 并放行，母版不被网络状态绑架。
-if [ "${#INPUTS[@]}" -gt 0 ]; then
+# 优先校验本步骤真正消费的矩阵（绝对化后交给远端引擎）；它不存在时才回落到
+# 调用方声明的 --input 里的第一个 h5ad/rds。
+BRIDGE_INPUT=""
+if [ -f "$NORM" ]; then
+  BRIDGE_INPUT="$(pwd)/$NORM"
+fi
+if [ -z "$BRIDGE_INPUT" ] && [ "${#INPUTS[@]}" -gt 0 ]; then
   for _in in "${INPUTS[@]}"; do
     case "$_in" in
       *.h5ad|*.rds) BRIDGE_INPUT="$_in"; break ;;
     esac
   done
 fi
-if [ -n "${BRIDGE_INPUT:-}" ]; then
-  "$(dirname "$0")/../../bridge_guard.sh" --input "$BRIDGE_INPUT" --from Python --to R --script gsva_pathways || exit $?
+# 守卫位置解析：仓库里是 src/bridge_guard.sh（母版在 src/<线>/scripts/），
+# 部署到 K40 后母版在 /mnt/ssd/bio_data/bin/<线>/、守卫在 ops/ 下，两套布局都得认。
+# 全都找不到时打印 SKIP 放行并留痕，不让"守卫没部署"变成"母版跑不起来"。
+BRIDGE_GUARD=""
+for _cand in "$(dirname "$0")/../../bridge_guard.sh" "/mnt/ssd/bio_data/ops/bridge_guard.sh" \
+             "/mnt/ssd/bio_data/bridge_guard.sh"; do
+  if [ -f "$_cand" ]; then BRIDGE_GUARD="$_cand"; break; fi
+done
+if [ -n "${BRIDGE_INPUT:-}" ] && [ -n "$BRIDGE_GUARD" ]; then
+  "$BRIDGE_GUARD" --input "$BRIDGE_INPUT" --from Python --to R \
+    --stage "$BRIDGE_STAGE" --script gsva_pathways || exit $?
+elif [ -z "$BRIDGE_GUARD" ]; then
+  echo "[BRIDGE SKIP] gsva_pathways 未找到 bridge_guard.sh（查过 src 布局与 /mnt/ssd/bio_data/ops/）" >&2
 fi
 
 # 2) R 侧：GSVA 打分

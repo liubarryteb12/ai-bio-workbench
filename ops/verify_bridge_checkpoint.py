@@ -2,7 +2,7 @@
 """verify_bridge_checkpoint.py：跨语言转换时的四项断言校验
 
 用法:
-  python3 verify_bridge_checkpoint.py --input <h5ad_or_rds> --from <Python|R> --to <R|Python>
+  python3 verify_bridge_checkpoint.py --input <h5ad_or_rds> --from <Python|R> --to <R|Python> [--stage post-dimred|pre-dimred]
 
 四项断言：
   1. 基因名非数字索引（var_names 或 rownames 含 Symbol 字符串，不是整数索引）
@@ -10,10 +10,25 @@
   3. Barcode / 样本名对齐（obs_names 有 GSM/barcode 前缀，非 0..N 整数）
   4. Embedding 保留（obsm/reductions 含 X_pca / X_umap / spatial）
 
+阶段感知（--stage，aims v2.5 §一.2）：
+  默认 post-dimred：第 4 项按硬断言处理，缺降维/空间坐标即 FAIL。
+  pre-dimred：第 4 项降级为 [BRIDGE WARN] 并放行。用于"降维尚未发生的早期
+  标准化矩阵"（例如线2 步骤 3 的 scrna_norm.h5ad、步骤 4 的 00_sc_harmony.h5ad
+  之前的中间产物）；调用方必须显式声明，不允许静默降级。
+
 退出码 0 = 全过，非 0 = 有断言失败。
 """
 import argparse
+import os
 import sys
+
+# 输出固定 UTF-8：引擎会被 Windows 宿主（自测/垫片）和 Linux 计算节点共同调用，
+# 默认编码在 Windows 控制台是 cp936，中文结论会变成乱码，调用方 grep 不到关键字。
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except Exception:  # noqa: BLE001 - 老解释器或被重定向时忽略
+        pass
 
 
 def fail(msg):
@@ -26,7 +41,11 @@ def ok(msg):
     print("[BRIDGE OK] %s" % msg)
 
 
-def check_h5ad(path):
+def warn(msg):
+    print("[BRIDGE WARN] %s" % msg)
+
+
+def check_h5ad(path, stage="post-dimred"):
     import anndata as ad
     import numpy as np
     a = ad.read_h5ad(path)
@@ -66,8 +85,13 @@ def check_h5ad(path):
         if key in a.obsm:
             found.append(key)
     if not found:
-        fail("obsm 无 X_pca / X_umap / spatial，降维/空间坐标可能丢失")
-    ok("embeddings: %s" % ", ".join(found))
+        if stage == "pre-dimred":
+            warn("obsm 无 X_pca / X_umap / spatial（stage=pre-dimred，早期矩阵降级为告警，"
+                 "下游消费该文件时必须重新跑 post-dimred 断言）")
+        else:
+            fail("obsm 无 X_pca / X_umap / spatial，降维/空间坐标可能丢失")
+    else:
+        ok("embeddings: %s" % ", ".join(found))
     # 额外：检查 var 列（基因 Symbol 是否在 var.columns）
     if "gene_symbol" in a.var.columns:
         n_missing = int(a.var["gene_symbol"].isna().sum())
@@ -75,8 +99,9 @@ def check_h5ad(path):
     print("[BRIDGE PASS] all 4 assertions passed for %s" % path)
 
 
-def check_rds(path):
+def check_rds(path, stage="post-dimred"):
     # RDS 需 R 侧检查，这里用 Rscript 子进程
+    import os
     import subprocess
     script = '''
 suppressMessages({library(SingleCellExperiment)})
@@ -103,12 +128,21 @@ emb_found <- c()
 for (k in c("PCA", "UMAP", "spatial")) {
   if (k %in% reducedDimNames(sce)) emb_found <- c(emb_found, k)
 }
-if (length(emb_found) == 0) stop("[BRIDGE FAIL] no PCA/UMAP/spatial in reducedDims")
+stage <- Sys.getenv("BRIDGE_STAGE", "post-dimred")
+if (length(emb_found) == 0) {
+  if (identical(stage, "pre-dimred")) {
+    cat("[BRIDGE WARN] no PCA/UMAP/spatial in reducedDims (stage=pre-dimred, downgraded)\n")
+  } else {
+    stop("[BRIDGE FAIL] no PCA/UMAP/spatial in reducedDims")
+  }
+}
 cat("[BRIDGE OK] embeddings:", paste(emb_found, collapse=", "), "\\n")
 cat("[BRIDGE PASS] all 4 assertions passed\\n")
 '''
+    env = dict(os.environ)
+    env["BRIDGE_STAGE"] = stage
     result = subprocess.run(["Rscript", "-e", script, "--", path],
-                           capture_output=True, text=True, timeout=120)
+                           capture_output=True, text=True, timeout=120, env=env)
     if result.returncode != 0:
         fail(result.stderr.strip() or result.stdout.strip() or "RDS check failed")
     print(result.stdout.strip())
@@ -119,16 +153,31 @@ def main():
     parser.add_argument("--input", required=True, help="Input file path (.h5ad or .rds)")
     parser.add_argument("--from", dest="from_lang", default="Python", choices=["Python", "R"])
     parser.add_argument("--to", dest="to_lang", default="R", choices=["Python", "R"])
+    parser.add_argument("--stage", dest="stage", default="post-dimred",
+                        choices=["post-dimred", "pre-dimred"],
+                        help="post-dimred（默认）第4项为硬断言；pre-dimred 降级为告警")
     args = parser.parse_args()
 
-    print("[BRIDGE] %s -> %s, file=%s" % (args.from_lang, args.to_lang, args.input))
+    print("[BRIDGE] %s -> %s, file=%s, stage=%s"
+          % (args.from_lang, args.to_lang, args.input, args.stage))
 
-    if args.input.endswith(".h5ad"):
-        check_h5ad(args.input)
-    elif args.input.endswith(".rds"):
-        check_rds(args.input)
-    else:
-        fail("不支持的文件格式（需 .h5ad 或 .rds）: %s" % args.input)
+    # 输入必须在位且可读：文件损坏/缺失是断言失败，不是"引擎不可达"。
+    # 真机实测（2026-10-21）：损坏的 h5ad 会让 anndata 抛 OSError，若直接冒出
+    # traceback，守卫只能看到"非 0 退出码 + 无结论"，会误判成引擎不可达而放行。
+    if not os.path.exists(args.input):
+        fail("输入文件不存在: %s" % args.input)
+
+    try:
+        if args.input.endswith(".h5ad"):
+            check_h5ad(args.input, args.stage)
+        elif args.input.endswith(".rds"):
+            check_rds(args.input, args.stage)
+        else:
+            fail("不支持的文件格式（需 .h5ad 或 .rds）: %s" % args.input)
+    except SystemExit:
+        raise
+    except Exception as exc:  # noqa: BLE001 - 引擎崩溃一律折成断言失败
+        fail("引擎无法校验输入（%s: %s）" % (type(exc).__name__, exc))
 
 
 if __name__ == "__main__":

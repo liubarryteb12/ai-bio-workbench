@@ -142,9 +142,14 @@ export function validateUpload(name, headerBuf) {
  * 让一个非法 id 悄悄指向另一个会话目录；现在一律返回 null，由调用方报 400。
  */
 export function uploadDir(uploadId) {
+  return sessionDirIn(UPLOAD_ROOT, uploadId);
+}
+
+/** 会话目录（root 可注入：单测在临时目录里跑，不碰真实 .uploads） */
+function sessionDirIn(root, uploadId) {
   const raw = String(uploadId ?? '');
   if (!isSafeUploadId(raw)) return null;
-  return path.join(UPLOAD_ROOT, raw);
+  return path.join(root, raw);
 }
 
 /** 创建上传会话目录（幂等：已存在时只补建，不碰已落盘分片） */
@@ -568,4 +573,240 @@ export function maybeGcStaleUploads(options = {}) {
     return null;
   }
 }
+
+// ============================================================
+// 会话级预留额度（reservedBytes）与分片写入前的硬闸门
+//
+// 为什么需要（aims v2.5 第三节 1 模块 B）：
+//   原来只有 .uploads 总量配额（BIO_UPLOAD_QUOTA_BYTES），它是全局的，挡不住
+//   单个会话虚报体积：客户端说 10MB，实际可以一直传下去，直到把全局配额吃满
+//   才被拦；总量配额也回答不了「这个会话还能收多少字节」。所以 init 时把客户端
+//   声明的 fileSize 落成会话元数据里的 reservedBytes（原子写：先 .tmp 再 rename），
+//   chunk 写盘之前先按它做一次 413 硬闸门：已收 + 本片 > 预留，就一个字节都不写。
+//
+// 顺序与语义：
+//   413（本会话额度不够）必须优先于 507（全局空间满）。前者客户端能自己修
+//   （换文件，或重新 init 声明更大的 fileSize），后者只能等或清理；先报 413 才
+//   不会让用户误以为「服务器满了」。
+//
+// 向后兼容：
+//   init 不带 fileSize（老客户端 / 脚本）时 reservedBytes = null，预留闸门整体
+//   跳过，除多一道总量配额判断外，行为与本次改动之前一致。
+// ============================================================
+
+/** 会话元数据文件名（与分片 <index>.part 同目录，扁平，一层扫描即可覆盖） */
+export const SESSION_META_NAME = 'session.json';
+
+/** 元数据临时文件名：先写它再 rename，保证读方永远读不到半截 JSON */
+const SESSION_META_TMP = `${SESSION_META_NAME}.tmp`;
+
+/**
+ * 声明大小 -> 预留额度。只接受有限非负数字，其余（缺失 / 字符串 / 负数 / NaN /
+ * Infinity）一律 null，表示「本会话没有预留额度」，闸门跳过。
+ * 用 Math.floor 而不是 Math.round：预留额度只能小于或等于声明值，不能因为
+ * 四舍五入把额度放大一点点，否则「正好等于文件大小」的合法上传会被 413 误杀。
+ * @returns {number|null}
+ */
+export function normalizeReservedBytes(fileSize) {
+  if (typeof fileSize !== 'number' || !Number.isFinite(fileSize) || fileSize < 0) return null;
+  return Math.floor(fileSize);
+}
+
+/** 会话元数据路径；id 非法返回 null（绝不落到文件系统） */
+export function sessionMetaPath(uploadId, { root = UPLOAD_ROOT } = {}) {
+  const dir = sessionDirIn(root, uploadId);
+  return dir ? path.join(dir, SESSION_META_NAME) : null;
+}
+
+/**
+ * 原子写会话元数据：先写 session.json.tmp，再 rename 覆盖 session.json。
+ * 为什么必须原子：chunk 端每个分片都要读它，若直接覆盖写，并发或中断时可能读到
+ * 半截 JSON；rename 在同一文件系统内是原子的，读方要么读到旧版本要么读到新版本。
+ * @returns {object} 落盘的元数据对象（字段已归一）
+ */
+export function writeSessionMeta(uploadId, meta = {}, { root = UPLOAD_ROOT, fsImpl = fs } = {}) {
+  const dir = sessionDirIn(root, uploadId);
+  if (!dir) throw new Error(`uploadId 非法: ${uploadId}`);
+  fsImpl.mkdirSync(dir, { recursive: true });
+  const payload = {
+    uploadId: String(uploadId),
+    name: meta.name ?? null,
+    project: meta.project ?? null,
+    lineId: meta.lineId ?? null,
+    fileSize: meta.fileSize ?? null,
+    reservedBytes: normalizeReservedBytes(meta.reservedBytes),
+    createdAt: meta.createdAt ?? new Date().toISOString(),
+  };
+  fsImpl.writeFileSync(path.join(dir, SESSION_META_TMP), `${JSON.stringify(payload)}\n`);
+  fsImpl.renameSync(path.join(dir, SESSION_META_TMP), path.join(dir, SESSION_META_NAME));
+  return payload;
+}
+
+/**
+ * 读会话元数据（绝不抛出）。
+ * @returns {{ok: boolean, meta: object|null, reason?: string}}
+ *   reason：'invalid_id' | 'not_found' | 'corrupt'
+ *   corrupt 表示文件在但不是合法 JSON 对象（半截写入 / 人手改坏 / 非对象 JSON）：
+ *   一律降级为「没有元数据」，chunk 端按无预留额度处理。一个坏文件不能把上传打死。
+ */
+export function readSessionMeta(uploadId, { root = UPLOAD_ROOT, fsImpl = fs } = {}) {
+  const dir = sessionDirIn(root, uploadId);
+  if (!dir) return { ok: false, meta: null, reason: 'invalid_id' };
+  let text;
+  try {
+    text = fsImpl.readFileSync(path.join(dir, SESSION_META_NAME), 'utf8');
+  } catch (cause) {
+    const missing = cause && cause.code === 'ENOENT';
+    return { ok: false, meta: null, reason: missing ? 'not_found' : 'corrupt' };
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return { ok: false, meta: null, reason: 'corrupt' };
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return { ok: false, meta: null, reason: 'corrupt' };
+  }
+  return { ok: true, meta: parsed };
+}
+
+/** 清会话元数据（不存在视为已清，不抛出）。@returns {boolean} 是否删除成功 */
+export function clearSessionMeta(uploadId, { root = UPLOAD_ROOT, fsImpl = fs } = {}) {
+  const dir = sessionDirIn(root, uploadId);
+  if (!dir) return false;
+  try {
+    fsImpl.rmSync(path.join(dir, SESSION_META_NAME), { force: true });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 预留额度判定（纯函数）：已收 + 本片 > 预留 -> 413。
+ * 边界：恰好等于预留额度放行。客户端按 fileSize 精确切分时，最后一片往往正好
+ * 顶到额度，若写成 >= 会把每一次正常上传的收尾片都判成超额。
+ * @returns {{ok: true} | {ok: false, status: number, reason: string, error: string}}
+ */
+export function checkReservedBytes({ reservedBytes, receivedBytes, chunkLength } = {}) {
+  const reserved = normalizeReservedBytes(reservedBytes);
+  if (reserved === null) return { ok: true };
+  const received = Number(receivedBytes) || 0;
+  const length = Number(chunkLength) || 0;
+  if (received + length <= reserved) return { ok: true };
+  return {
+    ok: false,
+    status: 413,
+    reason: 'reserved_exceeded',
+    error: `超出本次会话预留额度：已收 ${received} 字节 + 本片 ${length} 字节 > 预留 ${reserved} 字节`,
+  };
+}
+
+/** 会话目录里除 skipIndex 之外的分片字节和（同序号重传按「替换」而非「追加」计） */
+function receivedBytesIn(dir, skipIndex, fsImpl) {
+  let entries;
+  try {
+    entries = fsImpl.readdirSync(dir);
+  } catch {
+    return 0;
+  }
+  let total = 0;
+  for (const entry of entries) {
+    const name = String(entry);
+    if (!name.endsWith('.part')) continue;
+    const idx = Number(name.slice(0, -'.part'.length));
+    if (!Number.isInteger(idx) || idx === skipIndex) continue;
+    try {
+      total += Number(fsImpl.statSync(path.join(dir, name)).size) || 0;
+    } catch {
+      // 并发删除（别的请求刚清理会话）：该片不计入字节数，不影响其余判定
+    }
+  }
+  return total;
+}
+
+/**
+ * .uploads 根下所有合法会话目录的占用字节和（总量配额判定用）。
+ * 口径与 gcStaleUploads 一致：只认一级目录 + isSafeUploadId + 一层扁平文件；
+ * 测量失败按 0 计（宁可低估占用，也不能因为一次测量失败把正常上传挡掉）。
+ */
+export function uploadRootUsageBytes({ root = UPLOAD_ROOT, fsImpl = fs } = {}) {
+  let entries;
+  try {
+    entries = fsImpl.readdirSync(root, { withFileTypes: true });
+  } catch {
+    return 0;
+  }
+  const errors = [];
+  let total = 0;
+  for (const entry of entries) {
+    const name = String(entry?.name ?? '');
+    if (!entry?.isDirectory?.() || !isSafeUploadId(name)) continue;
+    total += sessionUsageBytes(path.join(root, name), name, fsImpl, errors);
+  }
+  return total;
+}
+
+/**
+ * 分片写入前的准入判定（供 POST /api/upload/chunk 调用）。
+ *
+ * 判定顺序固定，不可调换：
+ *   1. uploadId / index / chunkLength 合法性 -> 400（与 writeChunk 的既有口径一致）；
+ *   2. 会话预留额度（有 reservedBytes 且 已收 + 本片 > 预留）-> 413，一个字节都不写；
+ *   3. .uploads 总量配额（本片写入后占用 > BIO_UPLOAD_QUOTA_BYTES）-> 507。
+ * 同序号重传（续传时前端可能重发一片）按替换计算：先从已收里扣掉该序号已占字节，
+ * 否则一次幂等重传就会被误判成超额。
+ *
+ * @returns {{ok: true, reservedBytes: number|null, receivedBytes: number, index: number, chunkLength: number}
+ *          | {ok: false, status: number, reason: string, error: string}}
+ */
+export function checkChunkAdmission({
+  uploadId, index, chunkLength,
+  root = UPLOAD_ROOT, quotaBytes = uploadQuotaBytes(), fsImpl = fs,
+} = {}) {
+  const raw = String(uploadId ?? '');
+  const dir = sessionDirIn(root, raw);
+  if (!dir) return { ok: false, status: 400, reason: 'invalid_id', error: `uploadId 非法: ${raw}` };
+  const idx = Number(index);
+  if (!Number.isInteger(idx) || idx < 0 || idx > 100000) {
+    return { ok: false, status: 400, reason: 'invalid_index', error: `分片序号非法: ${index}` };
+  }
+  const length = Number(chunkLength);
+  if (!Number.isFinite(length) || length < 0) {
+    return { ok: false, status: 400, reason: 'invalid_length', error: `分片长度非法: ${chunkLength}` };
+  }
+  let existingBytes = 0;
+  try {
+    existingBytes = Number(fsImpl.statSync(path.join(dir, `${idx}.part`)).size) || 0;
+  } catch {
+    existingBytes = 0;
+  }
+  const metaRead = readSessionMeta(raw, { root, fsImpl });
+  // 元数据缺失 / 损坏都降级为「无预留额度」：老会话与坏文件照旧能传，只少一道闸门
+  const reservedBytes = metaRead.ok ? normalizeReservedBytes(metaRead.meta.reservedBytes) : null;
+  const receivedBytes = receivedBytesIn(dir, idx, fsImpl);
+  const base = { reservedBytes, receivedBytes, index: idx, chunkLength: length };
+  if (reservedBytes !== null) {
+    const verdict = checkReservedBytes({ reservedBytes, receivedBytes, chunkLength: length });
+    if (!verdict.ok) return { ...verdict, ...base };
+  }
+  const quota = Number(quotaBytes);
+  if (Number.isFinite(quota)) {
+    const usage = uploadRootUsageBytes({ root, fsImpl });
+    const projected = usage - existingBytes + length;
+    if (projected > quota) {
+      return {
+        ok: false,
+        status: 507,
+        reason: 'quota_exceeded',
+        error: `上传暂存空间已满：本片写入后占用 ${projected} 字节，超过配额 ${quota} 字节；`
+          + '请等待进行中的上传完成或清理旧会话后重试',
+        ...base,
+      };
+    }
+  }
+  return { ok: true, ...base };
+}
+
 

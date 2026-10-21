@@ -27,6 +27,12 @@
  *     超过 1.5 倍说明有并发重型任务在跑，自检要提示而不是直接判失败。
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import childProcess from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
 import { LINES } from './domain.js';
 
 /** 容器内存配额（aims §六.4：7.5GB 软熔断）；cgroup 未给出数值上限时的兜底 */
@@ -233,3 +239,227 @@ export function evaluateIsolation(parsed) {
       : `三线隔离门禁全部通过；${bridgeText}`,
   };
 }
+
+/**
+ * 第 4 维的 SHA256 一致性比对（aims §三.3：本地与远端核心文件哈希必须一致）。
+ *
+ * 口径见 SPEC_DECISIONS D-07：
+ *   本地与远端都存在但哈希不同 -> fail（reason 带两个哈希前 12 位）
+ *   远端文件不存在             -> warn（reason 写 MISSING）
+ *   ssh 不可达 / 输出缺哨兵     -> unknown（reason 写 UNREACHABLE / NO_SENTINEL）
+ * 不可达绝不判 fail：一次网络抖动就让自检全红，值班会失去对红灯的信任。
+ *
+ * 解析纪律（踩坑台账 P-04 / P-10）：
+ *   ssh 非 tty 时会把 "Warning: Permanently added ..." 写到 stderr，调用方 2>&1
+ *   合并后顶掉首行。所以这里逐行匹配特征白名单（64 位 hex + 空白 + 路径），
+ *   先过滤 Warning 行，禁止整段锚定正则。
+ */
+
+/** 仓库根：BioanalysDesktop/server/ 上两级；用模块 URL 推导，与进程 cwd 无关 */
+export const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
+
+/** 远端 ssh 目标与部署根（与 ops/sync_and_verify_remote.ps1 的默认值一致） */
+export const SHA256_SSH_TARGET = 'k40-ubuntu';
+export const SHA256_REMOTE_ROOT = '/mnt/ssd/bio_data';
+
+/** 远端输出完整标记：缺了就是 ssh 被截断，不许当通过 */
+export const SHA256_SENTINEL = 'SHA256END|';
+
+/**
+ * 参与比对的核心里程碑文件。repo 是仓库根相对路径，remote 是远端绝对路径。
+ * 守卫有两份：仓库 src/bridge_guard.sh 同步到远端 src/，再镜像一份到远端 ops/
+ * （部署布局下母版按候选路径列表找守卫，见 SPEC_DECISIONS D-04）。
+ */
+export const CORE_SYNC_FILES = Object.freeze([
+  Object.freeze({ repo: 'src/bridge_guard.sh', remote: '/mnt/ssd/bio_data/src/bridge_guard.sh', note: '守卫母版' }),
+  Object.freeze({ repo: 'src/bridge_guard.sh', remote: '/mnt/ssd/bio_data/ops/bridge_guard.sh', note: '守卫镜像' }),
+  Object.freeze({ repo: 'ops/check_storage_and_isolation.sh', remote: '/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh', note: '跨线隔离门禁' }),
+  Object.freeze({ repo: 'ops/verify_bridge_checkpoint.py', remote: '/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py', note: '桥接四项断言' }),
+]);
+
+/** 四档状态（D-07 口径，禁止新造状态名） */
+export const SELFCHECK_STATUSES = Object.freeze(['pass', 'warn', 'fail', 'unknown']);
+
+/** 构造远端哈希探测命令：文件不存在时打印 MISSING 而不是让 sha256sum 报错 */
+export function buildSha256Command(targets = CORE_SYNC_FILES) {
+  const probes = targets.map(({ remote }) => (
+    `if [ -f '${remote}' ]; then sha256sum '${remote}'; else echo 'MISSING ${remote}'; fi`
+  ));
+  return `${probes.join('; ')}; echo '${SHA256_SENTINEL}'`;
+}
+
+/**
+ * 逐行解析远端输出。
+ * @returns {{hashes: Map<string, string>, missing: string[], sawSentinel: boolean}}
+ */
+export function parseSha256Output(text) {
+  const hashes = new Map();
+  const missing = [];
+  let sawSentinel = false;
+  for (const raw of String(text ?? '').split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    // P-04 / P-10：known_hosts 提示会混进合并输出，必须逐行剔除
+    if (line.startsWith('Warning: Permanently added')) continue;
+    if (line === SHA256_SENTINEL) { sawSentinel = true; continue; }
+    const hashMatch = /^([0-9a-fA-F]{64})\s+\*?(.+)$/.exec(line);
+    if (hashMatch) {
+      hashes.set(hashMatch[2].trim(), hashMatch[1].toLowerCase());
+      continue;
+    }
+    const missMatch = /^MISSING\s+(.+)$/.exec(line);
+    if (missMatch) missing.push(missMatch[1].trim());
+  }
+  return { hashes, missing, sawSentinel };
+}
+
+/**
+ * 计算本地核心文件 SHA256。
+ * @returns {Map<string, string|null>} key 为仓库根相对路径，null 表示本地缺失
+ */
+export function collectLocalSha256(targets = CORE_SYNC_FILES, options = {}) {
+  const repoRoot = options.repoRoot ?? REPO_ROOT;
+  const readFile = options.readFile ?? ((abs) => fs.readFileSync(abs));
+  const result = new Map();
+  for (const target of targets) {
+    try {
+      const buf = readFile(path.join(repoRoot, target.repo));
+      result.set(target.repo, crypto.createHash('sha256').update(buf).digest('hex'));
+    } catch {
+      result.set(target.repo, null);
+    }
+  }
+  return result;
+}
+
+/**
+ * 把本地哈希 + 远端解析结果折算成灯。
+ * 优先级 fail > warn > unknown > pass：已测出坏的就报坏，不因为别处没测出来而降级。
+ */
+export function evaluateSha256Parity({
+  targets = CORE_SYNC_FILES,
+  localHashes = new Map(),
+  parsed = { hashes: new Map(), missing: [], sawSentinel: false },
+  sshExitCode = 0,
+} = {}) {
+  if (sshExitCode !== 0) {
+    return {
+      status: 'unknown',
+      value: '',
+      detail: `UNREACHABLE: ssh 退出码 ${sshExitCode}（远端不可达，不能当作失败）`,
+    };
+  }
+  if (!parsed.sawSentinel) {
+    return {
+      status: 'unknown',
+      value: '',
+      detail: 'NO_SENTINEL: 远端输出缺 SHA256END 哨兵（疑似命令被截断，不能当作通过）',
+    };
+  }
+
+  const rows = targets.map((target) => {
+    const local = localHashes.get(target.repo) ?? null;
+    if (local === null) {
+      return { status: 'unknown', detail: `${target.remote} 本地文件缺失（LOCAL_MISSING）` };
+    }
+    if (parsed.missing.includes(target.remote)) {
+      return { status: 'warn', detail: `${target.remote} 远端文件不存在（MISSING）` };
+    }
+    const remote = parsed.hashes.get(target.remote) ?? null;
+    if (remote === null) {
+      return { status: 'unknown', detail: `${target.remote} 远端无回读（NO_OUTPUT）` };
+    }
+    if (remote !== local) {
+      return {
+        status: 'fail',
+        detail: `${target.remote} 哈希不一致（本地 ${local.slice(0, 12)} != 远端 ${remote.slice(0, 12)}）`,
+      };
+    }
+    return { status: 'pass', detail: `${target.remote} 一致（${local.slice(0, 12)}）` };
+  });
+
+  const matched = rows.filter((row) => row.status === 'pass').length;
+  const value = `${matched}/${targets.length} 一致`;
+  const status = rows.some((row) => row.status === 'fail')
+    ? 'fail'
+    : rows.some((row) => row.status === 'warn')
+      ? 'warn'
+      : rows.some((row) => row.status === 'unknown')
+        ? 'unknown'
+        : 'pass';
+  const detail = status === 'pass'
+    ? '本地与远端核心文件哈希一致（含 ops/ 镜像）'
+    : rows.filter((row) => row.status !== 'pass').map((row) => row.detail).join('；');
+  return { status, value, detail };
+}
+
+/**
+ * 第 4 维新增检查的入口：算本地哈希 + ssh 取远端哈希 + 判定。
+ * 返回结构与 /api/selfcheck 的 checks 元素一致（id / label / status / value / detail）。
+ * 注意：ssh 走默认导入的 childProcess.spawnSync（SPEC_DECISIONS D-08），
+ * 测试才能用 mock.method 拦住，不会真连 K40。
+ */
+/**
+ * 四档严重度排序：fail > warn > unknown > pass（D-07 口径）。
+ * 为什么 unknown 比 pass 重：自检是门禁，没测出来就不能当通过。
+ */
+const STATUS_SEVERITY = Object.freeze({ pass: 0, unknown: 1, warn: 2, fail: 3 });
+
+/** 取一组状态里最坏的那个；空数组返回 pass */
+export function worstStatus(statuses = []) {
+  let worst = 'pass';
+  for (const status of statuses) {
+    const severity = STATUS_SEVERITY[status] ?? STATUS_SEVERITY.unknown;
+    if (severity > STATUS_SEVERITY[worst]) worst = status in STATUS_SEVERITY ? status : 'unknown';
+  }
+  return worst;
+}
+
+/**
+ * 把第 4 维的两盏子灯合成一盏（aims §三.3 第 4 维：
+ * 「跨线隔离、桥接引擎与远端版本一致性灯」本来就是一条，不是两条）。
+ *
+ * 分开算、合并报的理由：两件事的失败原因完全不同（门禁脚本退出码 vs 哈希漂移），
+ * detail 必须能点名到具体哪一条，但界面上仍只占一格（前端按 checks 数组渲染灯位）。
+ */
+export function mergeIsolationChecks(isolation, sha, overrides = {}) {
+  const status = worstStatus([isolation?.status, sha?.status]);
+  const value = [isolation?.value, sha?.value].filter(Boolean).join(' | ');
+  const parts = [];
+  if (isolation?.status && isolation.status !== 'pass' && isolation.detail) parts.push(isolation.detail);
+  if (sha?.status && sha.status !== 'pass' && sha.detail) parts.push(sha.detail);
+  return {
+    id: overrides.id ?? 'isolation',
+    label: overrides.label ?? '跨线隔离/桥接/版本',
+    status,
+    value,
+    detail: parts.length > 0 ? parts.join('；') : '三线隔离门禁、桥接引擎与版本一致性均通过',
+  };
+}
+
+export function runSha256ParityCheck(options = {}) {
+  const targets = options.targets ?? CORE_SYNC_FILES;
+  const localHashes = collectLocalSha256(targets, options);
+  const command = buildSha256Command(targets);
+  let exitCode = 1;
+  let stdout = '';
+  try {
+    const result = childProcess.spawnSync(
+      'ssh',
+      ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', options.sshTarget ?? SHA256_SSH_TARGET, command],
+      { encoding: 'utf8', timeout: options.timeoutMs ?? 30000 },
+    );
+    exitCode = typeof result?.status === 'number' ? result.status : 1;
+    stdout = String(result?.stdout ?? '');
+  } catch {
+    exitCode = 1;
+  }
+  const evaluated = evaluateSha256Parity({
+    targets,
+    localHashes,
+    parsed: parseSha256Output(stdout),
+    sshExitCode: exitCode,
+  });
+  return { id: 'isolation_sha256', label: '隔离同步 SHA256', ...evaluated };
+}
+
