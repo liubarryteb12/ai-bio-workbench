@@ -77,6 +77,22 @@ ENTRIES = [
     },
 ]
 
+E2E_ENTRY = {
+    "id": "ACT-20261028-140400-a2a-e2e",
+    "kind": "a2a_e2e",
+    "step": "pc_to_pi_send_message",
+    "status": "ok",
+    "detail": {
+        "task_state": "TASK_STATE_COMPLETED",
+        "file": "/data/data/com.termux/files/home/workspace/projects/a2a_e2e/probe.txt",
+        "sha256": "25a45384e5a3fc8aa9a8360f3f0a6368f549ce8333170d7710313141801d809a",
+        "exit_code": 0,
+        "child_transcript": True,
+        "model": "deepseek-v4.1-flash",
+        "thinking": "high",
+    },
+}
+
 
 def main() -> int:
     ledger_path = Path(LEDGER)
@@ -88,16 +104,17 @@ def main() -> int:
             except json.JSONDecodeError:
                 continue
 
+    entries = ENTRIES + [E2E_ENTRY]
     stamp = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
     with io.open(LEDGER, "a", encoding="utf-8", newline="\n") as handle:
-        for entry in ENTRIES:
+        for entry in entries:
             if entry["id"] in existing_ids:
                 continue
             entry["ts"] = stamp
             entry["type"] = "action"
             entry["ticket"] = "A2A-v1"
             handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    appended = len(ENTRIES) - len(existing_ids & {e["id"] for e in ENTRIES})
+    appended = len(entries) - len(existing_ids & {e["id"] for e in entries})
     print("A2A_LEDGER_APPENDED count={0}".format(appended))
     return 0
 
