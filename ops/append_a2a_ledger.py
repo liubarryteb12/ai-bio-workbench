@@ -121,6 +121,25 @@ LIVE_ARTIFACT_ENTRY = {
     },
 }
 
+KEEPALIVE_ENTRY = {
+    "id": "ACT-20261028-142800-a2a-keepalive",
+    "kind": "a2a_keepalive",
+    "step": "screen_off_and_session_survival",
+    "status": "ok",
+    "detail": {
+        "screen_state": "mWakefulness=Asleep",
+        "wait_minutes": 3,
+        "agent_card_after_wait": "ok",
+        "task_after_wait": "TASK_STATE_COMPLETED",
+        "sha256_match": True,
+        "sha256": "2b53fdaf5efb2bd3e61232eea57bf38f0b1c9569eb49babe0007c579d1476c2a",
+        "battery_whitelist": ["com.termux", "com.termux.boot"],
+        "tmux_session": "pi-a2a",
+        "model": "deepseek-v4.1-flash",
+        "thinking": "high",
+    },
+}
+
 
 def main() -> int:
     ledger_path = Path(LEDGER)
@@ -132,7 +151,7 @@ def main() -> int:
             except json.JSONDecodeError:
                 continue
 
-    entries = ENTRIES + [E2E_ENTRY, ASYNC_ENTRY, LIVE_ARTIFACT_ENTRY]
+    entries = ENTRIES + [E2E_ENTRY, ASYNC_ENTRY, LIVE_ARTIFACT_ENTRY, KEEPALIVE_ENTRY]
     stamp = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
     with io.open(LEDGER, "a", encoding="utf-8", newline="\n") as handle:
         for entry in entries:
