@@ -77,7 +77,10 @@ try {
     }
   }
 
-  $allExpected = @($owners).Count -gt 0 -and @($owners | Where-Object { -not $_.matches_expected }).Count -eq 0
+  # System Idle Process (pid 0) shows up on TIME_WAIT sockets; it never owns
+  # a live listener, so exclude it from the foreign verdict.
+  $realOwners = @($owners | Where-Object { $_.pid -gt 0 })
+  $allExpected = @($realOwners).Count -gt 0 -and @($realOwners | Where-Object { -not $_.matches_expected }).Count -eq 0
   $status = if ($allExpected) { 'expected' } else { 'foreign' }
   [pscustomobject]@{
     port = $Port
