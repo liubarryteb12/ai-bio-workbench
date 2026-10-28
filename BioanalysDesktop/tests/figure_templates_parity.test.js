@@ -46,9 +46,9 @@ test('registry contains the exact 82 figure inventory and verification counts', 
   assert.equal(registry.schema_version, 1);
   assert.equal(registry.templates.length, 82);
   assert.equal(new Set(registry.templates.map((item) => item.id)).size, 82);
-  assert.equal(registry.templates.filter((item) => item.deps_status === 'ready').length, 6);
+  assert.equal(registry.templates.filter((item) => item.deps_status === 'ready').length, 16);
   assert.equal(registry.templates.filter((item) => item.deps_status === 'pending').length, 65);
-  assert.equal(registry.templates.filter((item) => item.deps_status === 'pending_mapping').length, 10);
+  assert.equal(registry.templates.filter((item) => item.deps_status === 'pending_mapping').length, 0);
   assert.equal(registry.templates.filter((item) => item.deps_status === 'blocked_r453').length, 1);
 
   const required = [
@@ -131,9 +131,9 @@ test('non-ready templates stay unregistered until independently verified', () =>
 test('registry validation enforces linked mods, language and line affinity', () => {
   const result = validateRegistry();
   assert.equal(result.ok, true, result.errors.join('\n'));
-  assert.equal(result.stats.ready, 6);
+  assert.equal(result.stats.ready, 16);
   assert.equal(result.stats.pending, 65);
-  assert.equal(result.stats.pending_mapping, 10);
+  assert.equal(result.stats.pending_mapping, 0);
   assert.equal(result.stats.blocked, 1);
 });
 
@@ -221,12 +221,12 @@ test('ready figure selections become executable adapted tasks', () => {
   assert.match(result.tasks[0].outputs[0], /custom_fig_l2_pca\.png$/);
 });
 
-test('pending_mapping figure selections are rejected', () => {
+test('non-ready figure selections are rejected', () => {
   const registry = reloadFigureTemplates();
   const result = buildAdaptedFigureTasks({
     projectId: 'project_alpha',
     lineId: 'line1_bulk',
-    selectedFigures: [{ template_id: 'fig_l1_boxplot', adapt_vars: {} }],
+    selectedFigures: [{ template_id: 'fig_l1_circularpacking', adapt_vars: {} }],
     templatesRegistry: registry.templates,
   });
   assert.equal(result.ok, false);

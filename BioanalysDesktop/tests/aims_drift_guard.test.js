@@ -1,7 +1,7 @@
 /**
  * v3.1 SSOT 防漂移守卫。
  *
- * 现行正本是 aims/00_20261027_1204.md 至 03_aims_20261027_1204.md 四卷。
+ * 生信 v3.1 正本是 aims/bio/00_... 至 03_... 四卷；A2A 正本由独立守卫覆盖。
  * 旧 v3.0 spec 已归档到 aims/old，仅用于保留 20 条黑名单等历史明细。
  */
 
@@ -14,10 +14,10 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, '..', '..');
 const AIMS_PATHS = [
-  path.join(ROOT, 'aims', '00_20261027_1204.md'),
-  path.join(ROOT, 'aims', '01_aims_20261027_1204.md'),
-  path.join(ROOT, 'aims', '02_aimstodolist_20261027_1204.md'),
-  path.join(ROOT, 'aims', '03_aims_20261027_1204.md'),
+  path.join(ROOT, 'aims', 'bio', '00_20261027_1204.md'),
+  path.join(ROOT, 'aims', 'bio', '01_aims_20261027_1204.md'),
+  path.join(ROOT, 'aims', 'bio', '02_aimstodolist_20261027_1204.md'),
+  path.join(ROOT, 'aims', 'bio', '03_aims_20261027_1204.md'),
 ];
 const AIMS = AIMS_PATHS.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
 

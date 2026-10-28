@@ -686,6 +686,9 @@ function figureTemplatesPayload() {
       verified: Boolean(item.verified),
       preview_state: state,
       preview_url: state === 'ok' ? `/api/figure-templates/preview?id=${encodeURIComponent(item.id)}` : '',
+      project_preview_url: state === 'ok' && item.sample_project_output
+        ? `/api/figure-templates/project-preview?id=${encodeURIComponent(item.id)}`
+        : '',
       lines: Array.isArray(item.lines) ? item.lines : [],
       analysis_step: item.analysis_step || null,
       input_tables: Array.isArray(item.input_tables) ? item.input_tables : [],
@@ -732,6 +735,53 @@ function handleFigureTemplatePreview(req, res, url) {
   }
   res.writeHead(200, {
     'Content-Type': 'image/png',
+    'Content-Length': String(bytes.length),
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+  });
+  return res.end(bytes);
+}
+
+function handleFigureProjectPreview(req, res, url) {
+  const id = url.searchParams.get('id') || '';
+  let template;
+  try {
+    const registry = JSON.parse(fs.readFileSync(
+      path.resolve(REPO_ROOT, 'src', 'figure_templates.json'), 'utf8'));
+    template = (registry.templates || []).find((item) => item.id === id);
+  } catch {
+    return sendJson(res, 500, { ok: false, error: '读取图模板注册表失败' });
+  }
+  if (!template || template.deps_status !== 'ready' || !template.verified || !template.sample_project_output) {
+    return sendJson(res, 404, { ok: false, error: '真实项目产出示例不可用' });
+  }
+  const relative = String(template.sample_project_output);
+  const ext = path.extname(relative).toLowerCase();
+  const imageTypes = {
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.svg': 'image/svg+xml',
+    '.webp': 'image/webp',
+  };
+  if (!imageTypes[ext] || relative.includes('\\') || relative.startsWith('/')
+    || /^[A-Za-z]:/.test(relative) || relative.split('/').includes('..')) {
+    return sendJson(res, 400, { ok: false, error: '真实项目产出示例路径非法' });
+  }
+  const root = path.resolve(REPO_ROOT);
+  const target = path.resolve(root, relative);
+  if (!target.startsWith(root + path.sep)) {
+    return sendJson(res, 400, { ok: false, error: '真实项目产出示例路径越界' });
+  }
+  let bytes;
+  try {
+    if (!fs.statSync(target).isFile()) throw new Error('not a file');
+    bytes = fs.readFileSync(target);
+  } catch {
+    return sendJson(res, 404, { ok: false, error: '真实项目产出示例缺失' });
+  }
+  res.writeHead(200, {
+    'Content-Type': imageTypes[ext],
     'Content-Length': String(bytes.length),
     'Cache-Control': 'no-store',
     'X-Content-Type-Options': 'nosniff',
@@ -1522,6 +1572,10 @@ const server = http.createServer((req, res) => {
 
   if (url.pathname === '/api/figure-templates/preview' && req.method === 'GET') {
     return handleFigureTemplatePreview(req, res, url);
+  }
+
+  if (url.pathname === '/api/figure-templates/project-preview' && req.method === 'GET') {
+    return handleFigureProjectPreview(req, res, url);
   }
 
   if (url.pathname === '/api/figures/catalog' && req.method === 'GET') {

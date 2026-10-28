@@ -38,7 +38,7 @@ import {
   checkChunkAdmission, writeSessionMeta, clearSessionMeta, normalizeReservedBytes,
 } from './upload.js';
 import {
-  buildProjectMeta, buildProjectMetaStrict, parseProjectList, buildCreateProjectCommand,
+  buildPipelineDag, buildProjectMeta, buildProjectMetaStrict, parseProjectList, buildCreateProjectCommand,
   buildProjectListCommand, buildReadProjectMetaCommand, parseProjectMeta,
   LINE_STEPS, PIPELINE_STEP_META,
 } from './project.js';
@@ -50,6 +50,11 @@ import {
 import {
   buildAdaptedFigureTasks, loadFigureTemplates, resolveFigure, validateRegistry as validateFigureRegistry,
 } from './figure_graph.js';
+import {
+  buildProjectExecutionPlan,
+  mergeFigureProjectTasks,
+} from './figure_execution_plan.js';
+import { prepareFigureProjectTasks } from './figure_project_plan.js';
 import {
   loadFigureCatalog, resolveCatalogFigure, searchFigureCatalog, validateFigureCatalog,
 } from './figure_catalog.js';
@@ -84,6 +89,34 @@ function remoteTaskInput(rawPath, projectId, lineId) {
     return `${projectLineDir(projectId, lineId)}/processed/${normalized}`;
   }
   return `${PROJECTS_ROOT}/${projectId}/${normalized}`;
+}
+
+function uploadPreparedFigureScripts(preparedFigures) {
+  const uploads = [];
+  for (const entry of preparedFigures.manifest_entries || []) {
+    const remoteDir = path.posix.dirname(entry.remote_path);
+    const mkdir = runRemoteRaw(`mkdir -p '${remoteDir}'`);
+    if (mkdir.code !== 0) {
+      return { ok: false, error: `图模板目录创建失败: ${mkdir.text}`, uploads };
+    }
+    const scp = runSync([
+      'scp', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10',
+      entry.local_path, `k40-ubuntu:${entry.remote_path}`,
+    ]);
+    if (scp.code !== 0) {
+      return {
+        ok: false,
+        error: `图模板脚本上传失败: ${scp.stderr || scp.stdout || 'stderr 为空'}`,
+        uploads,
+      };
+    }
+    uploads.push({
+      template_id: entry.template_id,
+      local_path: entry.local_path,
+      remote_path: entry.remote_path,
+    });
+  }
+  return { ok: true, error: '', uploads };
 }
 
 /**
@@ -766,6 +799,52 @@ const server = http.createServer(async (req, res) => {
           error: `projectId 非法（只允许字母数字 . _ -，不以 . 开头，长度 <= 64）: ${requested.projectId}`,
         });
       }
+      const figureSelections = requested.figure_templates === undefined
+        ? []
+        : requested.figure_templates;
+      if (!Array.isArray(figureSelections)) {
+        return json(res, 400, { error: 'figure_templates 必须是数组' });
+      }
+      let preparedFigures = { tasks: [], local_scripts: [], manifest_entries: [] };
+      try {
+        const preliminaryDag = buildPipelineDag({
+          pipelineDag: requested.pipelineDag,
+          seriesId: requested.seriesId,
+          modIds: requested.modIds,
+          koGene: requested.koGene,
+        });
+        let figureLineId = String(requested.lineId || requested.seriesId || '');
+        if (!figureLineId) {
+          figureLineId = lineFromPipeline(preliminaryDag)
+            || resolveLineFromDataType(requested.dataSource?.dataType)
+            || '';
+        }
+        if (figureSelections.length > 0) {
+          if (!LINES.includes(figureLineId)) {
+            return json(res, 400, { error: `图模板选择缺少合法分析线: ${figureLineId || '(空)'}` });
+          }
+          preparedFigures = prepareFigureProjectTasks({
+            projectId,
+            lineId: figureLineId,
+            // 模板只需与本线 linked_mods 对齐；全量 modIds 会把未关联该图的正常步骤误判为跨图。
+            selectedModIds: [],
+            selections: figureSelections,
+          });
+          if (!preparedFigures.ok) {
+            return json(res, 422, { ok: false, errors: preparedFigures.errors });
+          }
+          const sequence = buildProjectExecutionPlan({
+            line_id: figureLineId,
+            pipeline_dag: preliminaryDag || [],
+            figure_tasks: preparedFigures.tasks,
+          });
+          if (!sequence.ok) {
+            return json(res, 400, { ok: false, errors: sequence.errors });
+          }
+        }
+      } catch (cause) {
+        return json(res, 400, { error: cause instanceof Error ? cause.message : String(cause) });
+      }
       let meta;
       try {
         // S24：建项入口走 strict 校验（R11 六条 + R12 联动 + line_id 枚举），
@@ -794,6 +873,7 @@ const server = http.createServer(async (req, res) => {
           experimentalDesign: requested.experimentalDesign,
           validationGroupMapping: requested.validationGroupMapping,
           dataFiles: requested.dataFiles,
+          figureTasks: preparedFigures.tasks,
           // S24/R2：WGCNA 参数契约（表单选填；normalizeWgcnaConfig 逐键回落默认）
           wgcnaConfig: requested.wgcnaConfig,
           // mod 化客户端用 seriesId 表达同一件事（分析线），没有单独的 lineId 字段。
@@ -817,6 +897,15 @@ const server = http.createServer(async (req, res) => {
         return json(res, 500, { error: `建项目失败（无 CREATED 回执）: ${output}` });
       }
 
+      const figureUpload = uploadPreparedFigureScripts(preparedFigures);
+      if (!figureUpload.ok) {
+        return json(res, 503, {
+          ok: false,
+          projectId,
+          error: figureUpload.error,
+        });
+      }
+
       // 数据文件部署：客户上传的矩阵/样本表要落到本项目本线的 raw_data/，
       // 否则 project.json 里写的相对路径在服务器上是空的
       const lineId = lineFromPipeline(meta.pipeline_dag)
@@ -832,6 +921,8 @@ const server = http.createServer(async (req, res) => {
         dir: remoteDir,
         line: lineId || null,
         dataFiles: deploy.results,
+        figureTasks: preparedFigures.tasks.length,
+        figureUploads: figureUpload.uploads,
         message: (deploy.ok ? '建项完成' : '建项完成，但部分数据文件未部署成功') + deployNote,
       });
     });
@@ -911,6 +1002,155 @@ const server = http.createServer(async (req, res) => {
   }
 
   // 单个项目的关键元数据：Studio 用它显示"这批图按什么模板/阈值出的"
+  if (url.pathname === '/api/projects/figures/apply' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', () => {
+      let requested;
+      try {
+        requested = JSON.parse(body || '{}');
+      } catch (cause) {
+        return json(res, 400, { error: `请求体不是合法 JSON: ${cause.message}` });
+      }
+      const projectId = sanitizeProjectId(requested.projectId);
+      if (!projectId) return json(res, 400, { error: 'projectId 参数非法' });
+      const selections = requested.figure_templates === undefined ? [] : requested.figure_templates;
+      if (!Array.isArray(selections)) {
+        return json(res, 400, { error: 'figure_templates 必须是数组' });
+      }
+      if (requested.pipelineDag !== undefined && !Array.isArray(requested.pipelineDag)) {
+        return json(res, 400, { error: 'pipelineDag 必须是数组' });
+      }
+      let meta;
+      try {
+        const encoded = runRemote(buildReadProjectMetaCommand(projectId));
+        if (encoded.trim()) {
+          meta = parseProjectMeta(Buffer.from(encoded.trim(), 'base64').toString('utf8'));
+        }
+      } catch (cause) {
+        return json(res, 500, { error: `读取项目元数据失败: ${cause.message}` });
+      }
+      if (!meta) return json(res, 404, { error: `项目 ${projectId} 不存在或缺少 project.json` });
+      const lineId = String(requested.lineId || meta.line_id || lineFromPipeline(meta.pipeline_dag) || '');
+      if (!LINES.includes(lineId)) {
+        return json(res, 400, { error: `项目缺少合法分析线: ${lineId || '(空)'}` });
+      }
+      const prepared = prepareFigureProjectTasks({
+        projectId,
+        lineId,
+        selectedModIds: [],
+        selections,
+      });
+      if (!prepared.ok) {
+        return json(res, 422, { ok: false, errors: prepared.errors });
+      }
+      const mergedTasks = mergeFigureProjectTasks(meta.figure_tasks || [], prepared.tasks);
+      const plan = buildProjectExecutionPlan({
+        line_id: lineId,
+        pipeline_dag: Array.isArray(requested.pipelineDag)
+          ? requested.pipelineDag
+          : (meta.pipeline_dag || []),
+        figure_tasks: mergedTasks,
+      });
+      if (!plan.ok) return json(res, 400, { ok: false, errors: plan.errors });
+      const upload = uploadPreparedFigureScripts(prepared);
+      if (!upload.ok) return json(res, 503, { ok: false, error: upload.error });
+
+      const updated = { ...meta, line_id: lineId, figure_tasks: mergedTasks };
+      const metaPath = `${PROJECTS_ROOT}/${projectId}/project.json`;
+      const payload = Buffer.from(JSON.stringify(updated, null, 2)).toString('base64');
+      const write = runRemoteRaw(`echo ${payload} | base64 -d > '${metaPath}'`);
+      if (write.code !== 0) {
+        return json(res, 503, { ok: false, error: `项目元数据写回失败: ${write.text}` });
+      }
+      let readBack = null;
+      try {
+        const encoded = runRemote(buildReadProjectMetaCommand(projectId));
+        readBack = parseProjectMeta(Buffer.from(encoded.trim(), 'base64').toString('utf8'));
+      } catch {
+        readBack = null;
+      }
+      if (!readBack || !Array.isArray(readBack.figure_tasks)
+        || readBack.figure_tasks.length !== mergedTasks.length) {
+        return json(res, 503, { ok: false, error: '项目元数据回读对账失败' });
+      }
+      return json(res, 200, {
+        ok: true,
+        projectId,
+        lineId,
+        added: prepared.tasks.length,
+        total: mergedTasks.length,
+        uploads: upload.uploads,
+      });
+    });
+    return;
+  }
+
+  if (url.pathname === '/api/projects/execution-plan' && req.method === 'GET') {
+    const projectId = sanitizeProjectId(url.searchParams.get('project') || '');
+    if (!projectId) return json(res, 400, { error: 'project 参数非法' });
+    let meta = null;
+    try {
+      const encoded = runRemote(buildReadProjectMetaCommand(projectId));
+      if (encoded.trim()) {
+        meta = parseProjectMeta(Buffer.from(encoded.trim(), 'base64').toString('utf8'));
+      }
+    } catch (cause) {
+      return json(res, 500, {
+        error: `读取项目执行计划失败: ${cause instanceof Error ? cause.message : String(cause)}`,
+      });
+    }
+    if (!meta) return json(res, 404, { error: `项目 ${projectId} 不存在或缺少 project.json` });
+    const plan = buildProjectExecutionPlan(meta);
+    if (!plan.ok) return json(res, 422, { ok: false, projectId, errors: plan.errors });
+    return json(res, 200, {
+      ok: true,
+      projectId,
+      lineId: meta.line_id || lineFromPipeline(meta.pipeline_dag) || null,
+      tasks: plan.tasks,
+    });
+  }
+
+  if (url.pathname === '/api/projects/execution-plan' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', () => {
+      let requested;
+      try {
+        requested = JSON.parse(body || '{}');
+      } catch (cause) {
+        return json(res, 400, { error: `请求体不是合法 JSON: ${cause.message}` });
+      }
+      const projectId = sanitizeProjectId(requested.projectId);
+      if (!projectId) return json(res, 400, { error: 'projectId 参数非法' });
+      if (requested.pipelineDag !== undefined && !Array.isArray(requested.pipelineDag)) {
+        return json(res, 400, { error: 'pipelineDag 必须是数组' });
+      }
+      let meta = null;
+      try {
+        const encoded = runRemote(buildReadProjectMetaCommand(projectId));
+        if (encoded.trim()) {
+          meta = parseProjectMeta(Buffer.from(encoded.trim(), 'base64').toString('utf8'));
+        }
+      } catch (cause) {
+        return json(res, 500, { error: `读取项目执行计划失败: ${cause.message}` });
+      }
+      if (!meta) return json(res, 404, { error: `项目 ${projectId} 不存在或缺少 project.json` });
+      const plan = buildProjectExecutionPlan({
+        ...meta,
+        pipeline_dag: Array.isArray(requested.pipelineDag) ? requested.pipelineDag : meta.pipeline_dag,
+      });
+      if (!plan.ok) return json(res, 422, { ok: false, projectId, errors: plan.errors });
+      return json(res, 200, {
+        ok: true,
+        projectId,
+        lineId: meta.line_id || lineFromPipeline(meta.pipeline_dag) || null,
+        tasks: plan.tasks,
+      });
+    });
+    return;
+  }
+
   if (url.pathname === '/api/projects/meta') {
     const projectId = sanitizeProjectId(url.searchParams.get('project') || '');
     if (!projectId) return json(res, 400, { error: 'project 参数非法' });
@@ -1290,6 +1530,11 @@ const server = http.createServer(async (req, res) => {
       const templateId = String(requested.templateId || '');
       if (!projectId) return json(res, 400, { error: 'projectId 参数非法' });
       if (!LINES.includes(lineId)) return json(res, 400, { error: `lineId 参数非法: ${lineId}` });
+      const seed = Number(requested.seed);
+      if (requested.seed === undefined || requested.seed === null || requested.seed === ''
+        || !Number.isInteger(seed) || seed < 0) {
+        return json(res, 400, { error: 'seed 必须显式提供为非负整数' });
+      }
 
       const selectedModIds = Array.isArray(requested.selectedModIds)
         ? requested.selectedModIds.map(String) : [];
@@ -1355,14 +1600,13 @@ const server = http.createServer(async (req, res) => {
         step: adaptedTask.step,
         inputs: [remoteTaskInput(adaptVars.input_data, projectId, lineId)],
         outputs: adaptedTask.outputs,
-        seed: Number.isFinite(Number(requested.seed)) && requested.seed !== ''
-          ? Number(requested.seed)
-          : 20261013,
+        seed,
         scriptPath: adaptedTask.script_path,
         language: adaptedTask.language,
         canonicalOutput: adaptedTask.canonical_output,
         customOutput: adaptedTask.custom_output,
         adapted: true,
+        dependsOnStep: adaptedTask.depends_on_step,
       };
       return json(res, 200, {
         ok: true,
@@ -1939,6 +2183,10 @@ const server = http.createServer(async (req, res) => {
         });
       }
       const adapted = requested.adapted === true;
+      const dependsOnStep = String(requested.dependsOnStep || '').trim();
+      if (dependsOnStep && !/^[A-Za-z0-9._-]+$/.test(dependsOnStep)) {
+        return json(res, 400, { error: `dependsOnStep 非法: ${dependsOnStep}` });
+      }
       let adaptedScript = '';
       let adaptedLanguage = '';
       let canonicalOutput = '';
@@ -2016,6 +2264,34 @@ const server = http.createServer(async (req, res) => {
         return json(res, 409, { error: `该步骤正在运行: ${projectId} / ${lineId} / ${requested.step}。等它结束或先中止` });
       }
 
+      if (adapted && dependsOnStep) {
+        const dependencyScript = modToScriptMap().get(dependsOnStep) || dependsOnStep;
+        const ledgerPattern = `${SYSTEM_LOGS}/*_${projectId}_${lineId}_${dependencyScript}_*.json`;
+        const ledgerRead = runRemoteRaw(
+          `latest=$(ls -t ${ledgerPattern} 2>/dev/null | head -n 1); `
+          + 'if [ -n "$latest" ]; then cat "$latest"; fi',
+        );
+        if (ledgerRead.code !== 0) {
+          return json(res, 503, { error: `前置步骤台账读取失败: ${ledgerRead.text}` });
+        }
+        let dependencyLedger = null;
+        try {
+          dependencyLedger = ledgerRead.text.trim() ? JSON.parse(ledgerRead.text) : null;
+        } catch {
+          dependencyLedger = null;
+        }
+        if (!dependencyLedger) {
+          return json(res, 409, {
+            error: `前置分析步骤 ${dependsOnStep} 尚无完成台账，禁止提前执行定制图 ${requested.step}`,
+          });
+        }
+        if (dependencyLedger.status !== 'completed' || Number(dependencyLedger.exit_code) !== 0) {
+          return json(res, 409, {
+            error: `前置分析步骤 ${dependsOnStep} 未成功完成，禁止执行定制图 ${requested.step}`,
+          });
+        }
+      }
+
       const taskId = `${projectId}-${lineId}-${Date.now()}`;
       const taskSpec = {
         projectId,
@@ -2030,6 +2306,7 @@ const server = http.createServer(async (req, res) => {
         language: adapted ? adaptedLanguage : undefined,
         canonicalOutput: adapted ? canonicalOutput : undefined,
         adapted,
+        dependsOnStep: adapted ? (dependsOnStep || undefined) : undefined,
       };
 
       // 审计提前到提交前：越界就不给 taskId，不启动、不占任务位。

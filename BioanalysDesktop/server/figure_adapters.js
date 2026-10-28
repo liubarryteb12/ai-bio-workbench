@@ -10,6 +10,16 @@ const SUPPORTED_TEMPLATE_IDS = new Set([
   'fig_l2p_dotplot',
   'fig_l2p_volcano',
   'fig_l2p_umap',
+  'fig_l1_groupedbar',
+  'fig_l1_scatter',
+  'fig_l1_boxplot',
+  'fig_l1_density',
+  'fig_l1_histogram',
+  'fig_l1_violin',
+  'fig_l2_umap',
+  'fig_l3_multipanel',
+  'fig_l2p_violin',
+  'fig_l3_sankey',
 ]);
 
 function normalizeRelativePath(value, fieldName) {
@@ -225,6 +235,203 @@ ggsave(output_file, volcano, width = 89, height = 75, units = "mm", dpi = 300,
        device = png, type = "cairo", bg = "white")
 cat("ADAPT_REAL_INPUT_OK volcano rows=", nrow(volcano_df), "\n", sep = "")
 `,
+  fig_l1_groupedbar: `# Real-data enrichment grouped bar overlay
+suppressPackageStartupMessages({library(ggplot2)})
+enrich <- read.delim(input_data, check.names = FALSE)
+x_col <- if (is.null(adapt_vars$x_col) || !nzchar(adapt_vars$x_col)) "Description" else adapt_vars$x_col
+value_col <- if (is.null(adapt_vars$value_col) || !nzchar(adapt_vars$value_col)) "NES" else adapt_vars$value_col
+group_col <- if (is.null(adapt_vars$group_col) || !nzchar(adapt_vars$group_col)) "ont" else adapt_vars$group_col
+required <- c(x_col, value_col, group_col)
+if (!all(required %in% names(enrich))) stop(paste("groupedbar input columns missing:", paste(required, collapse = " / ")))
+enrich[[value_col]] <- as.numeric(enrich[[value_col]])
+enrich <- enrich[is.finite(enrich[[value_col]]), , drop = FALSE]
+enrich <- head(enrich[order(abs(enrich[[value_col]]), decreasing = TRUE), , drop = FALSE], 15)
+enrich$direction <- ifelse(enrich[[value_col]] >= 0, "Activated", "Suppressed")
+enrich[[x_col]] <- factor(enrich[[x_col]], levels = rev(unique(enrich[[x_col]])))
+plot <- ggplot(enrich, aes(x = .data[[x_col]], y = .data[[value_col]], fill = direction)) +
+  geom_col(width = 0.72, colour = "grey25", linewidth = 0.2) +
+  scale_fill_manual(values = c(Activated = "#D55E00", Suppressed = "#0072B2")) +
+  coord_flip() +
+  facet_wrap(stats::as.formula(paste("~", group_col)), scales = "free_y") +
+  labs(x = NULL, y = value_col, fill = NULL) +
+  theme_classic(base_size = 7) +
+  theme(legend.position = "top", strip.text = element_text(size = 6))
+ggsave(output_file, plot, width = 183, height = 120, units = "mm", dpi = 300,
+       device = png, type = "cairo", bg = "white")
+cat("ADAPT_REAL_INPUT_OK groupedbar rows=", nrow(enrich), "\n", sep = "")
+`,
+  fig_l1_scatter: `# Real-data model-importance scatter overlay
+suppressPackageStartupMessages({library(ggplot2)})
+hub <- read.delim(input_data, check.names = FALSE)
+x_col <- if (is.null(adapt_vars$x_col) || !nzchar(adapt_vars$x_col)) "rf_importance" else adapt_vars$x_col
+y_col <- if (is.null(adapt_vars$y_col) || !nzchar(adapt_vars$y_col)) "gbdt_importance" else adapt_vars$y_col
+required <- c("gene", x_col, y_col)
+if (!all(required %in% names(hub))) stop(paste("scatter input columns missing:", paste(required, collapse = " / ")))
+hub[[x_col]] <- as.numeric(hub[[x_col]])
+hub[[y_col]] <- as.numeric(hub[[y_col]])
+hub <- hub[is.finite(hub[[x_col]]) & is.finite(hub[[y_col]]), , drop = FALSE]
+hub$score <- -log10(pmax(as.numeric(hub$p_value), 1e-300))
+label_genes <- unique(c(as.character(adapt_vars$label_genes), head(hub$gene[order(hub$importance_rank)], 8)))
+labels <- hub[hub$gene %in% label_genes, , drop = FALSE]
+labels <- labels[!duplicated(labels$gene), , drop = FALSE]
+plot <- ggplot(hub, aes(x = .data[[x_col]], y = .data[[y_col]], colour = score)) +
+  geom_point(size = 1.15, alpha = 0.82) +
+  geom_text(data = labels, aes(label = gene), size = 2, check_overlap = TRUE, show.legend = FALSE) +
+  scale_colour_viridis_c(name = "-log10(P)") +
+  labs(x = x_col, y = y_col) +
+  theme_classic(base_size = 7)
+ggsave(output_file, plot, width = 89, height = 75, units = "mm", dpi = 300,
+       device = png, type = "cairo", bg = "white")
+cat("ADAPT_REAL_INPUT_OK scatter rows=", nrow(hub), "\n", sep = "")
+`,
+  fig_l1_boxplot: `# Real-data differential-effect boxplot overlay
+suppressPackageStartupMessages({library(ggplot2)})
+deg <- read.delim(input_data, check.names = FALSE)
+value_col <- if (is.null(adapt_vars$value_col) || !nzchar(adapt_vars$value_col)) "log2FC" else adapt_vars$value_col
+required <- c(value_col, "adj_P_Val")
+if (!all(required %in% names(deg))) stop(paste("boxplot input columns missing:", paste(required, collapse = " / ")))
+deg$value <- as.numeric(deg[[value_col]])
+deg$direction <- ifelse(deg$adj_P_Val < 0.05 & deg$value > 0, "Up",
+                 ifelse(deg$adj_P_Val < 0.05 & deg$value < 0, "Down", "NS"))
+deg <- deg[is.finite(deg$value), , drop = FALSE]
+plot <- ggplot(deg, aes(x = direction, y = value, fill = direction)) +
+  geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3, colour = "grey55") +
+  geom_boxplot(width = 0.55, outlier.size = 0.35, linewidth = 0.35) +
+  scale_fill_manual(values = c(Up = "#D55E00", Down = "#0072B2", NS = "grey75")) +
+  labs(x = NULL, y = value_col) +
+  theme_classic(base_size = 7) +
+  theme(legend.position = "none")
+ggsave(output_file, plot, width = 89, height = 60, units = "mm", dpi = 300,
+       device = png, type = "cairo", bg = "white")
+cat("ADAPT_REAL_INPUT_OK boxplot rows=", nrow(deg), "\n", sep = "")
+`,
+  fig_l1_density: `# Real-data expression density overlay
+suppressPackageStartupMessages({library(ggplot2)})
+expr <- read.delim(input_data, check.names = FALSE)
+if (ncol(expr) < 2 || nrow(expr) < 2) stop("density input has insufficient dimensions")
+mat <- as.matrix(expr[, -1, drop = FALSE])
+storage.mode(mat) <- "numeric"
+values <- as.vector(mat)
+sample_names <- rep(colnames(mat), each = nrow(mat))
+keep <- is.finite(values)
+values <- values[keep]
+sample_names <- sample_names[keep]
+if (length(values) > 120000) {
+  idx <- seq(1, length(values), length.out = 120000)
+  values <- values[idx]
+  sample_names <- sample_names[idx]
+}
+density_df <- data.frame(sample = sample_names, value = values)
+plot <- ggplot(density_df, aes(x = value, colour = sample)) +
+  geom_density(linewidth = 0.35) +
+  labs(x = "expression", y = "density", colour = NULL) +
+  theme_classic(base_size = 7) +
+  theme(legend.position = "right", legend.text = element_text(size = 5))
+ggsave(output_file, plot, width = 120, height = 80, units = "mm", dpi = 300,
+       device = png, type = "cairo", bg = "white")
+cat("ADAPT_REAL_INPUT_OK density values=", length(values), "\n", sep = "")
+`,
+  fig_l1_histogram: `# Real-data expression histogram overlay
+suppressPackageStartupMessages({library(ggplot2)})
+expr <- read.delim(input_data, check.names = FALSE)
+if (ncol(expr) < 2 || nrow(expr) < 2) stop("histogram input has insufficient dimensions")
+mat <- as.matrix(expr[, -1, drop = FALSE])
+storage.mode(mat) <- "numeric"
+values <- as.vector(mat)
+values <- values[is.finite(values)]
+if (length(values) > 120000) values <- values[seq(1, length(values), length.out = 120000)]
+hist_df <- data.frame(value = values)
+plot <- ggplot(hist_df, aes(x = value)) +
+  geom_histogram(bins = 60, fill = "#0072B2", colour = "white", linewidth = 0.15) +
+  labs(x = "expression", y = "count") +
+  theme_classic(base_size = 7)
+ggsave(output_file, plot, width = 89, height = 60, units = "mm", dpi = 300,
+       device = png, type = "cairo", bg = "white")
+cat("ADAPT_REAL_INPUT_OK histogram values=", length(values), "\n", sep = "")
+`,
+  fig_l1_violin: `# Real-data differential-effect violin overlay
+suppressPackageStartupMessages({library(ggplot2)})
+deg <- read.delim(input_data, check.names = FALSE)
+value_col <- if (is.null(adapt_vars$value_col) || !nzchar(adapt_vars$value_col)) "log2FC" else adapt_vars$value_col
+required <- c(value_col, "adj_P_Val")
+if (!all(required %in% names(deg))) stop(paste("violin input columns missing:", paste(required, collapse = " / ")))
+deg$value <- as.numeric(deg[[value_col]])
+deg$direction <- ifelse(deg$adj_P_Val < 0.05 & deg$value > 0, "Up",
+                 ifelse(deg$adj_P_Val < 0.05 & deg$value < 0, "Down", "NS"))
+deg <- deg[is.finite(deg$value), , drop = FALSE]
+plot <- ggplot(deg, aes(x = direction, y = value, fill = direction)) +
+  geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3, colour = "grey55") +
+  geom_violin(width = 0.75, scale = "width", linewidth = 0.3) +
+  geom_boxplot(width = 0.12, outlier.shape = NA, linewidth = 0.25, fill = "white") +
+  scale_fill_manual(values = c(Up = "#D55E00", Down = "#0072B2", NS = "grey75")) +
+  labs(x = NULL, y = value_col) +
+  theme_classic(base_size = 7) +
+  theme(legend.position = "none")
+ggsave(output_file, plot, width = 89, height = 60, units = "mm", dpi = 300,
+       device = png, type = "cairo", bg = "white")
+cat("ADAPT_REAL_INPUT_OK violin rows=", nrow(deg), "\n", sep = "")
+`,
+  fig_l3_multipanel: `# Real-data external-validation multi-panel overlay
+suppressPackageStartupMessages({library(ggplot2); library(patchwork)})
+pred <- read.delim(input_data, check.names = FALSE)
+required <- c("true", "pred", "prob_LS")
+if (!all(required %in% names(pred))) stop(paste("multipanel input columns missing:", paste(required, collapse = " / ")))
+pred$true <- factor(pred$true)
+pred$pred <- factor(pred$pred)
+pred$prob_LS <- as.numeric(pred$prob_LS)
+pred$truth_num <- as.numeric(as.character(pred$true))
+pred <- pred[is.finite(pred$prob_LS), , drop = FALSE]
+panel_a <- ggplot(pred, aes(x = true, y = prob_LS, fill = true)) +
+  geom_boxplot(width = 0.55, outlier.size = 0.4) +
+  labs(title = "A Risk by truth", x = "truth", y = "risk") +
+  theme_classic(base_size = 7) + theme(legend.position = "none")
+panel_b <- ggplot(pred, aes(x = true, y = pred)) +
+  geom_jitter(width = 0.2, height = 0.12, size = 0.8, alpha = 0.7) +
+  labs(title = "B Prediction", x = "truth", y = "pred") +
+  theme_classic(base_size = 7)
+pred$risk_bin <- cut(pred$prob_LS, breaks = seq(0, 1, by = 0.2), include.lowest = TRUE)
+cal <- aggregate(cbind(prob_LS, truth_num) ~ risk_bin, data = pred, FUN = mean)
+panel_c <- ggplot(cal, aes(x = prob_LS, y = truth_num)) +
+  geom_abline(linetype = "dashed", linewidth = 0.3, colour = "grey55") +
+  geom_point(size = 1.2, colour = "#0072B2") +
+  labs(title = "C Calibration", x = "mean risk", y = "observed") +
+  theme_classic(base_size = 7)
+pred$rank <- rank(-pred$prob_LS, ties.method = "first")
+panel_d <- ggplot(pred, aes(x = rank, y = prob_LS, colour = true)) +
+  geom_point(size = 0.9, alpha = 0.8) +
+  labs(title = "D Ranked risk", x = "sample rank", y = "risk") +
+  theme_classic(base_size = 7) + theme(legend.position = "top")
+figure <- (panel_a | panel_b) / (panel_c | panel_d)
+ggsave(output_file, figure, width = 183, height = 120, units = "mm", dpi = 300,
+       device = png, type = "cairo", bg = "white")
+cat("ADAPT_REAL_INPUT_OK multipanel rows=", nrow(pred), "\n", sep = "")
+`,
+  fig_l3_sankey: `# Real-data WGCNA module flow overlay
+modules <- read.delim(input_data, check.names = FALSE)
+module_col <- if (is.null(adapt_vars$module_col) || !nzchar(adapt_vars$module_col)) "module" else adapt_vars$module_col
+if (!all(c("gene", module_col) %in% names(modules))) stop(paste("sankey input columns missing:", module_col, "gene"))
+flow <- aggregate(list(count = rep(1, nrow(modules))), by = list(module = modules[[module_col]]), FUN = sum)
+flow <- flow[order(flow$count, decreasing = TRUE), , drop = FALSE]
+flow <- head(flow, min(10, nrow(flow)))
+flow$left_y <- rev(seq(0.12, 0.88, length.out = nrow(flow)))
+flow$right_y <- seq(0.12, 0.88, length.out = nrow(flow))
+flow$width <- flow$count / max(flow$count) * 0.08
+png(output_file, width = 183, height = 90, units = "mm", res = 300, type = "cairo", bg = "white")
+par(mar = c(1, 1, 1, 1))
+plot.new()
+plot.window(xlim = c(0, 1), ylim = c(0, 1))
+segments(0.2, flow$left_y, 0.8, flow$right_y, col = adjustcolor("#56B4E9", alpha.f = 0.35),
+         lwd = pmax(2, flow$count / max(flow$count) * 18))
+rect(0.12, flow$left_y - flow$width, 0.20, flow$left_y + flow$width,
+     col = "#0072B2", border = NA)
+rect(0.80, flow$right_y - flow$width, 0.88, flow$right_y + flow$width,
+     col = "#D55E00", border = NA)
+text(0.19, flow$left_y, flow$module, adj = c(1, 0.5), cex = 0.65)
+text(0.81, flow$right_y, paste0("genes=", flow$count), adj = c(0, 0.5), cex = 0.65)
+title(main = "WGCNA module composition", cex.main = 0.8)
+dev.off()
+cat("ADAPT_REAL_INPUT_OK sankey modules=", nrow(flow), "\n", sep = "")
+`,
 };
 
 const PYTHON_OVERLAYS = {
@@ -351,7 +558,39 @@ fig.savefig(output_file, dpi=300, bbox_inches="tight")
 plt.close(fig)
 print(f"ADAPT_REAL_INPUT_OK umap cells={adata.n_obs} groups={len(labels)}")
 `,
+  fig_l2p_violin: `# Real-data cell-composition violin overlay
+comp = pd.read_csv(input_data, sep = "\\t")
+group_col = str(ADAPT_VARS.get("group_col") or "celltype")
+value_col = str(ADAPT_VARS.get("value_col") or "prop")
+required = {group_col, value_col}
+missing = sorted(required.difference(comp.columns))
+if missing:
+    raise ValueError(f"violin input columns missing: {missing}")
+comp[value_col] = pd.to_numeric(comp[value_col], errors="coerce")
+comp = comp.dropna(subset=[group_col, value_col])
+order = comp.groupby(group_col, observed=True).size().sort_values(ascending=False).head(12).index.tolist()
+data = [comp.loc[comp[group_col] == group, value_col].to_numpy() for group in order]
+fig, ax = plt.subplots(figsize=(183 / 25.4, 85 / 25.4))
+parts = ax.violinplot(data, showmeans=False, showmedians=True, widths=0.78)
+for body in parts["bodies"]:
+    body.set_facecolor("#56B4E9")
+    body.set_edgecolor("#333333")
+    body.set_alpha(0.72)
+ax.set_xticks(np.arange(1, len(order) + 1), order, rotation=45, ha="right", fontsize=6)
+ax.set_ylabel(value_col)
+ax.set_xlabel(group_col)
+for spine in ("top", "right"):
+    ax.spines[spine].set_visible(False)
+fig.tight_layout()
+fig.savefig(output_file, dpi=300, bbox_inches="tight")
+plt.close(fig)
+print(f"ADAPT_REAL_INPUT_OK violin groups={len(order)} rows={len(comp)}")
+`,
 };
+
+// The line2 registry entry uses the verified Python UMAP source so it can stay
+// inside line2's Python module graph while keeping its original figure id.
+PYTHON_OVERLAYS.fig_l2_umap = PYTHON_OVERLAYS.fig_l2p_umap;
 
 export function buildAdaptedFigureSource({
   template,

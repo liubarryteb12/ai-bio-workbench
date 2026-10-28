@@ -175,6 +175,9 @@ input[aria-invalid="true"], textarea[aria-invalid="true"], select[aria-invalid="
 .figure-card.is-unavailable { opacity: .55; cursor: not-allowed; }
 .figure-card.is-unavailable input { pointer-events: none; }
 .figure-preview { width: 100%; aspect-ratio: 16 / 10; object-fit: contain; background: #fff; display: block; padding: 8px; }
+.figure-preview-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 0 8px 8px; background: #fff; }
+.figure-preview-switch button { min-height: 30px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface); color: var(--text-muted); font: inherit; font-size: 11.5px; cursor: pointer; }
+.figure-preview-switch button[aria-pressed="true"] { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); font-weight: 700; }
 .figure-preview-empty { height: 130px; display: grid; place-items: center; background: var(--surface); color: var(--text-faint); font-size: 12.5px; }
 .figure-map { margin-top: 7px; color: var(--text-muted); font-size: 11.5px; line-height: 1.45; overflow-wrap: anywhere; }
 .figure-body { padding: 10px 12px 12px; }
@@ -1321,10 +1324,44 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       'data-testid': 'figure-template-card',
       'data-template-id': item.id,
       'data-level': item.level,
-      'data-deps-status': item.deps_status
+      'data-deps-status': item.deps_status,
+      'data-preview-mode': 'fixture'
     });
     if (item.preview_state === 'ok' && item.preview_url) {
-      card.appendChild(el('img', { src: item.preview_url, alt: item.name, loading: 'eager', class: 'figure-preview' }));
+      const image = el('img', {
+        src: item.preview_url,
+        alt: item.name + ' 标准 Fixture 预览',
+        loading: 'eager',
+        class: 'figure-preview'
+      });
+      card.appendChild(image);
+      if (item.project_preview_url) {
+        const fixtureButton = el('button', {
+          type: 'button',
+          text: '标准 Fixture 预览',
+          'aria-pressed': 'true'
+        });
+        const projectButton = el('button', {
+          type: 'button',
+          text: '真实项目产出示例',
+          'aria-pressed': 'false'
+        });
+        const setPreviewMode = function (mode) {
+          const project = mode === 'project';
+          image.src = project ? item.project_preview_url : item.preview_url;
+          image.alt = item.name + (project ? ' 真实项目产出示例' : ' 标准 Fixture 预览');
+          card.setAttribute('data-preview-mode', project ? 'project' : 'fixture');
+          fixtureButton.setAttribute('aria-pressed', project ? 'false' : 'true');
+          projectButton.setAttribute('aria-pressed', project ? 'true' : 'false');
+        };
+        fixtureButton.addEventListener('click', function () { setPreviewMode('fixture'); });
+        projectButton.addEventListener('click', function () { setPreviewMode('project'); });
+        card.appendChild(el('div', {
+          class: 'figure-preview-switch',
+          role: 'group',
+          'aria-label': item.name + ' 预览来源'
+        }, [fixtureButton, projectButton]));
+      }
     } else {
       const placeholder = item.preview_state === 'missing'
         ? '预览图缺失'

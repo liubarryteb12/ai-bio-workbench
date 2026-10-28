@@ -80,6 +80,21 @@ class VerifyPlotMatrixTest(unittest.TestCase):
             self.assertAlmostEqual(meta["dpi"][0], 300, delta=2)
             self.assertAlmostEqual(meta["dpi"][1], 300, delta=2)
 
+    def test_low_or_missing_dpi_png_is_rejected(self):
+        with tempfile.TemporaryDirectory(dir=TEST_DIR) as tmp:
+            for filename, save_kwargs in (
+                ("low.png", {"dpi": (150.012, 150.012)}),
+                ("missing.png", {}),
+            ):
+                path = Path(tmp) / filename
+                image = Image.new("RGB", (240, 180), "white")
+                draw = ImageDraw.Draw(image)
+                draw.rectangle((20, 20, 220, 160), fill="navy")
+                image.save(path, **save_kwargs)
+                ok, meta = inspect_png(path)
+                self.assertFalse(ok, filename)
+                self.assertIn("300 dpi", meta["detail"].lower())
+
     def test_child_environment_caps_threads_at_three(self):
         env = child_environment()
         for name in (

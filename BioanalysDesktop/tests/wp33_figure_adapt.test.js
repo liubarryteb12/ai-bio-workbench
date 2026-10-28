@@ -267,6 +267,23 @@ test('18787 工作台模板、预览与真实派生接线协同通过', async (t
   assert.equal(previewRes.status, 200);
   assert.match(previewRes.headers.get('content-type') || '', /^image\//);
 
+  const missingSeedRes = await fetch(`${base}/api/figures/adapt/derive`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      projectId: 'project_http',
+      lineId: 'line1_bulk',
+      templateId: 'fig_l2_volcano',
+      adaptVars: {
+        input_data: 'data/line1_bulk/results/de_results.csv',
+        group_col: 'condition',
+        label_genes: ['TNF'],
+      },
+    }),
+  });
+  assert.equal(missingSeedRes.status, 400);
+  assert.match((await missingSeedRes.json()).error || '', /seed/i);
+
   const deriveRes = await fetch(`${base}/api/figures/adapt/derive`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -288,6 +305,15 @@ test('18787 工作台模板、预览与真实派生接线协同通过', async (t
   assert.equal(deriveBody.task.step, 'adapt_fig_l2_volcano');
   assert.equal(deriveBody.task.inputs[0], '/mnt/ssd/bio_data/projects/project_http/line1_bulk/results/de_results.csv');
   assert.equal(deriveBody.task.seed, 42);
+  assert.equal(deriveBody.task.dependsOnStep, 'l1_de_limma');
   assert.ok(fs.existsSync(deriveBody.local_path));
   assert.equal(deriveBody.master_sha256, 'd60ecbf24668aacf3498168ac4d7279bb9347f26c1e6106c548e87eba9bcc07b');
+
+  const blockedSubmit = await fetch(`${base}/api/tasks/submit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(deriveBody.task),
+  });
+  assert.equal(blockedSubmit.status, 409);
+  assert.match((await blockedSubmit.json()).error || '', /前置分析步骤/);
 });

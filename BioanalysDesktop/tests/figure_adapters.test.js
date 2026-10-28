@@ -22,6 +22,16 @@ const SUPPORTED_IDS = [
   'fig_l2p_dotplot',
   'fig_l2p_volcano',
   'fig_l2p_umap',
+  'fig_l1_groupedbar',
+  'fig_l1_scatter',
+  'fig_l1_boxplot',
+  'fig_l1_density',
+  'fig_l1_histogram',
+  'fig_l1_violin',
+  'fig_l2_umap',
+  'fig_l3_multipanel',
+  'fig_l2p_violin',
+  'fig_l3_sankey',
 ];
 
 const PROJECT_ID = 'PRJ_AIMS_V3_20261027';
@@ -83,6 +93,96 @@ const CASES = {
     inputPath: 'data/line3_spatial/processed/spatial_dimred_human.h5ad',
     truth: { extension: '.h5ad', language: 'python' },
   },
+  fig_l1_groupedbar: {
+    lineId: 'line1_bulk',
+    adaptVars: {
+      input_data: 'data/line1_bulk/processed/enrichment_gsea_go.tsv',
+      x_col: 'Description',
+      value_col: 'NES',
+      group_col: 'ont',
+    },
+    inputPath: 'data/line1_bulk/processed/enrichment_gsea_go.tsv',
+    truth: { columns: ['Description', 'NES', 'ont'], language: 'r' },
+  },
+  fig_l1_scatter: {
+    lineId: 'line1_bulk',
+    adaptVars: {
+      input_data: 'data/line1_bulk/processed/ml_core_hub_genes.tsv',
+      x_col: 'rf_importance',
+      y_col: 'gbdt_importance',
+      label_genes: ['CXCL16'],
+    },
+    inputPath: 'data/line1_bulk/processed/ml_core_hub_genes.tsv',
+    truth: { columns: ['gene', 'rf_importance', 'gbdt_importance'], language: 'r' },
+  },
+  fig_l1_boxplot: {
+    lineId: 'line1_bulk',
+    adaptVars: {
+      input_data: 'data/line1_bulk/processed/deg_all.tsv',
+      value_col: 'log2FC',
+    },
+    inputPath: 'data/line1_bulk/processed/deg_all.tsv',
+    truth: { columns: ['gene', 'log2FC', 'adj_P_Val'], language: 'r' },
+  },
+  fig_l1_density: {
+    lineId: 'line1_bulk',
+    adaptVars: { input_data: 'data/line1_bulk/processed/expr_genes.tsv' },
+    inputPath: 'data/line1_bulk/processed/expr_genes.tsv',
+    truth: { columns: ['gene'], language: 'r' },
+  },
+  fig_l1_histogram: {
+    lineId: 'line1_bulk',
+    adaptVars: { input_data: 'data/line1_bulk/processed/expr_genes.tsv' },
+    inputPath: 'data/line1_bulk/processed/expr_genes.tsv',
+    truth: { columns: ['gene'], language: 'r' },
+  },
+  fig_l1_violin: {
+    lineId: 'line1_bulk',
+    adaptVars: {
+      input_data: 'data/line1_bulk/processed/deg_all.tsv',
+      value_col: 'log2FC',
+    },
+    inputPath: 'data/line1_bulk/processed/deg_all.tsv',
+    truth: { columns: ['gene', 'log2FC', 'adj_P_Val'], language: 'r' },
+  },
+  fig_l2_umap: {
+    lineId: 'line2_scrna',
+    adaptVars: {
+      input_data: 'data/line2_scrna/processed/scrna_clustered.h5ad',
+      group_col: 'leiden',
+    },
+    inputPath: 'data/line2_scrna/processed/scrna_clustered.h5ad',
+    truth: { extension: '.h5ad', language: 'python' },
+  },
+  fig_l3_multipanel: {
+    lineId: 'line1_bulk',
+    adaptVars: {
+      input_data: 'data/line1_bulk/processed/external_validation_preds.tsv',
+      group_col: 'true',
+      value_col: 'prob_LS',
+    },
+    inputPath: 'data/line1_bulk/processed/external_validation_preds.tsv',
+    truth: { columns: ['true', 'pred', 'prob_LS'], language: 'r' },
+  },
+  fig_l2p_violin: {
+    lineId: 'line2_scrna',
+    adaptVars: {
+      input_data: 'data/line2_scrna/processed/celltype_composition.tsv',
+      group_col: 'celltype',
+      value_col: 'prop',
+    },
+    inputPath: 'data/line2_scrna/processed/celltype_composition.tsv',
+    truth: { columns: ['celltype', 'prop'], language: 'python' },
+  },
+  fig_l3_sankey: {
+    lineId: 'line1_bulk',
+    adaptVars: {
+      input_data: 'data/line1_bulk/processed/wgcna_modules.tsv',
+      module_col: 'module',
+    },
+    inputPath: 'data/line1_bulk/processed/wgcna_modules.tsv',
+    truth: { columns: ['gene', 'module'], language: 'r' },
+  },
 };
 
 function readHeader(relativePath) {
@@ -112,8 +212,8 @@ test('all ready templates have real project inputs with expected extensions', ()
     const inputPath = CASES[templateId].inputPath;
     assert.ok(template.input_tables.some((name) => inputPath.endsWith(`/${name}`)));
     const extension = path.posix.extname(inputPath);
-    if (template.language === 'python' && templateId === 'fig_l2p_umap') {
-      assert.equal(extension, CASES.fig_l2p_umap.truth.extension);
+    if (CASES[templateId].truth.extension === '.h5ad') {
+      assert.equal(extension, '.h5ad');
     } else {
       assert.equal(extension, '.tsv');
       const columns = readHeader(inputPath);
@@ -166,7 +266,7 @@ test('real-data adapter exits before the retained master source can execute', ()
 
 test('R adapted sources declare the BIOANALYS_SEED contract', () => {
   const rIds = SUPPORTED_IDS.filter((templateId) => registryById.get(templateId).language === 'r');
-  assert.equal(rIds.length, 3);
+  assert.equal(rIds.length, 11);
   for (const templateId of rIds) {
     const source = buildSource(templateId);
     assert.match(source, /BIOANALYS_SEED/);
@@ -243,4 +343,155 @@ test('artifact paths fail closed before entering generated code', () => {
     }),
     /canonical_output/,
   );
+});
+
+const CANDIDATE_ADAPTERS = {
+  fig_l1_groupedbar: {
+    source: 'reference/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R',
+    language: 'r',
+    lineId: 'line1_bulk',
+    inputPath: 'data/line1_bulk/processed/enrichment_gsea_go.tsv',
+    canonicalOutput: 'L1_groupedbar_verified.png',
+    adaptVars: {
+      input_data: 'data/line1_bulk/processed/enrichment_gsea_go.tsv',
+      x_col: 'Description',
+      value_col: 'NES',
+      group_col: 'ont',
+    },
+    marker: 'groupedbar',
+  },
+  fig_l1_scatter: {
+    source: 'reference/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R',
+    language: 'r',
+    lineId: 'line1_bulk',
+    inputPath: 'data/line1_bulk/processed/ml_core_hub_genes.tsv',
+    canonicalOutput: 'L1_scatter_verified.png',
+    adaptVars: {
+      input_data: 'data/line1_bulk/processed/ml_core_hub_genes.tsv',
+      x_col: 'rf_importance',
+      y_col: 'gbdt_importance',
+      label_genes: ['CXCL16'],
+    },
+    marker: 'scatter',
+  },
+  fig_l1_boxplot: {
+    source: 'reference/05.可参考出图代码/_meta/R453_compat/L1_boxplot_code.R',
+    language: 'r',
+    lineId: 'line1_bulk',
+    inputPath: 'data/line1_bulk/processed/deg_all.tsv',
+    canonicalOutput: 'L1_boxplot_verified.png',
+    adaptVars: {
+      input_data: 'data/line1_bulk/processed/deg_all.tsv',
+      value_col: 'log2FC',
+    },
+    marker: 'boxplot',
+  },
+  fig_l1_density: {
+    source: 'reference/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R',
+    language: 'r',
+    lineId: 'line1_bulk',
+    inputPath: 'data/line1_bulk/processed/expr_genes.tsv',
+    canonicalOutput: 'L1_density_verified.png',
+    adaptVars: { input_data: 'data/line1_bulk/processed/expr_genes.tsv' },
+    marker: 'density',
+  },
+  fig_l1_histogram: {
+    source: 'reference/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R',
+    language: 'r',
+    lineId: 'line1_bulk',
+    inputPath: 'data/line1_bulk/processed/expr_genes.tsv',
+    canonicalOutput: 'L1_histogram_verified.png',
+    adaptVars: { input_data: 'data/line1_bulk/processed/expr_genes.tsv' },
+    marker: 'histogram',
+  },
+  fig_l1_violin: {
+    source: 'reference/05.可参考出图代码/_meta/R453_compat/L1_violin_code.R',
+    language: 'r',
+    lineId: 'line1_bulk',
+    inputPath: 'data/line1_bulk/processed/deg_all.tsv',
+    canonicalOutput: 'L1_violin_verified.png',
+    adaptVars: {
+      input_data: 'data/line1_bulk/processed/deg_all.tsv',
+      value_col: 'log2FC',
+    },
+    marker: 'violin',
+  },
+  fig_l2_umap: {
+    source: 'reference/05.可参考出图代码/L2_组学常用图/L2p_umap_code.py',
+    language: 'python',
+    lineId: 'line2_scrna',
+    inputPath: 'data/line2_scrna/processed/scrna_clustered.h5ad',
+    canonicalOutput: 'umap_L2p_umap_verified.png',
+    adaptVars: {
+      input_data: 'data/line2_scrna/processed/scrna_clustered.h5ad',
+      group_col: 'leiden',
+    },
+    marker: 'umap',
+  },
+  fig_l3_multipanel: {
+    source: 'reference/05.可参考出图代码/L3_高级组合图/L3_multipanel_code.R',
+    language: 'r',
+    lineId: 'line1_bulk',
+    inputPath: 'data/line1_bulk/processed/external_validation_preds.tsv',
+    canonicalOutput: 'L3_multipanel_verified.png',
+    adaptVars: {
+      input_data: 'data/line1_bulk/processed/external_validation_preds.tsv',
+      group_col: 'true',
+      value_col: 'prob_LS',
+    },
+    marker: 'multipanel',
+  },
+  fig_l2p_violin: {
+    source: 'reference/05.可参考出图代码/L2_组学常用图/L2p_violin_code.py',
+    language: 'python',
+    lineId: 'line2_scrna',
+    inputPath: 'data/line2_scrna/processed/celltype_composition.tsv',
+    canonicalOutput: 'figures/violin_L2p_violin_verified.png',
+    adaptVars: {
+      input_data: 'data/line2_scrna/processed/celltype_composition.tsv',
+      group_col: 'celltype',
+      value_col: 'prop',
+    },
+    marker: 'violin',
+  },
+  fig_l3_sankey: {
+    source: 'reference/05.可参考出图代码/_meta/R453_compat/L3_sankey_code.R',
+    language: 'r',
+    lineId: 'line1_bulk',
+    inputPath: 'data/line1_bulk/processed/wgcna_modules.tsv',
+    canonicalOutput: 'L3_sankey_verified.png',
+    adaptVars: {
+      input_data: 'data/line1_bulk/processed/wgcna_modules.tsv',
+      module_col: 'module',
+    },
+    marker: 'sankey',
+  },
+};
+
+test('remaining figure templates build real-data adapters before promotion', () => {
+  for (const [templateId, candidate] of Object.entries(CANDIDATE_ADAPTERS)) {
+    const base = registryById.get(templateId);
+    const template = {
+      ...base,
+      source: candidate.source,
+      source_sha256: 'a'.repeat(64),
+      canonical_output: candidate.canonicalOutput,
+      language: candidate.language,
+      lines: [candidate.lineId],
+      adapt_vars: Object.fromEntries(
+        Object.keys(candidate.adaptVars).map((key) => [key, key]),
+      ),
+    };
+    const source = buildAdaptedFigureSource({
+      template,
+      masterSource: fs.readFileSync(path.join(REPO, candidate.source), 'utf8'),
+      inputPath: candidate.inputPath,
+      projectId: PROJECT_ID,
+      lineId: candidate.lineId,
+      adaptVars: candidate.adaptVars,
+    });
+    assert.match(source, new RegExp(`ADAPT_REAL_INPUT_OK ${candidate.marker}`), templateId);
+    assert.ok(source.includes(candidate.canonicalOutput), templateId);
+    assert.ok(source.includes('Retained master source'), templateId);
+  }
 });

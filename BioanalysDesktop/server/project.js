@@ -589,6 +589,11 @@ export function buildProjectMeta(params, options = {}) {
     // 服务台内部一律用 pipeline_dag，所以新形态在这里合成，下游无感。
     // 母版名由 modToScriptMap 翻出来——台账与 lineFromPipeline 都按母版名消费。
     pipeline_dag: buildPipelineDag(params),
+    // 图模板派生任务由建项入口先通过 figure_graph 校验和生成适配副本，
+    // 这里只持久化通过校验的任务描述，执行计划按 depends_on_step 插入标准步骤之后。
+    figure_tasks: Array.isArray(params.figureTasks)
+      ? params.figureTasks.map((task) => ({ ...task }))
+      : [],
     acl_and_output: params.aclAndOutput || null,
     // aims v3.0 的 intake 契约四块：生物学先验 / 统计阈值 / 排版配置 / 实验设计
     // params.koGene 是 mod 化客户端传的靶基因（顶层字段），并进 biologicalPriors，

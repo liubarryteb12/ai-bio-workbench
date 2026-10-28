@@ -1,0 +1,1888 @@
+{
+  "contact_sheet": "qa_only",
+  "entries": [
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 708,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l1_boxplot/L1_boxplot_verified.png",
+          "pixel_variance": 3646.524086,
+          "relative_path": "L1_boxplot_verified.png",
+          "sha256": "ce3d2cb08118011f727b4c901fe4921d81129433a9e0507e43edad5b22bf8a82",
+          "size_bytes": 30380,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l1_boxplot/L1_boxplot_verified.pdf",
+          "relative_path": "L1_boxplot_verified.pdf",
+          "sha256": "21ac1d6b95b67db941867a1173cb654b1e785c59e17b93034093d6bd288a7d98",
+          "size_bytes": 5477
+        }
+      ],
+      "execute_source_sha256": "dfc6a22b7585849c1c4d11bec312d654b9af63bf20dd2e42876c28834f8b0b0d",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "",
+        "stdout_tail": "RENDER_OK\npkgs: AnnotationDbi \n"
+      },
+      "figure_ids": [
+        "fig_l1_boxplot"
+      ],
+      "id": "l1_boxplot",
+      "lang": "r",
+      "outputs": [
+        "L1_boxplot_verified.png",
+        "L1_boxplot_verified.pdf"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "primary",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "L1_基础统计图/L1_boxplot_code.R",
+      "source_sha256": "dfc6a22b7585849c1c4d11bec312d654b9af63bf20dd2e42876c28834f8b0b0d",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 708,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l1_density/L1_density_verified.png",
+          "pixel_variance": 5213.941088,
+          "relative_path": "L1_density_verified.png",
+          "sha256": "075f329e6a74cdfcc63ae1f16499bc5b43acd12c8aa9ad84c68165c6886782c8",
+          "size_bytes": 51597,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l1_density/L1_density_verified.pdf",
+          "relative_path": "L1_density_verified.pdf",
+          "sha256": "889e3850cca55f1dbb12b52686dc061ca83fc7ae1b2ac2d7a9f29e1aa4d645fa",
+          "size_bytes": 11761
+        }
+      ],
+      "execute_source_sha256": "6c378e562da381ecd4bb32f575c6311025e2f344150b0c84ca38babe6e94043b",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "",
+        "stdout_tail": "RENDER_OK density\n"
+      },
+      "figure_ids": [
+        "fig_l1_density"
+      ],
+      "id": "l1_density",
+      "lang": "r",
+      "outputs": [
+        "L1_density_verified.png",
+        "L1_density_verified.pdf"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "primary",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "L1_基础统计图/L1_density_code.R",
+      "source_sha256": "6c378e562da381ecd4bb32f575c6311025e2f344150b0c84ca38babe6e94043b",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 708,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l1_groupedbar/L1_groupedbar_verified.png",
+          "pixel_variance": 8176.83805,
+          "relative_path": "L1_groupedbar_verified.png",
+          "sha256": "60e0f943829c192ff4a89dc85635e5f761a1e769f5473940cd00dbcb68de752f",
+          "size_bytes": 14702,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l1_groupedbar/L1_groupedbar_verified.pdf",
+          "relative_path": "L1_groupedbar_verified.pdf",
+          "sha256": "fee23cf8d86378d94d3883ea803660180ca8061a96abb660999340c9b6e4e74a",
+          "size_bytes": 4726
+        }
+      ],
+      "execute_source_sha256": "cdf5dff2d0b040033e428968ad3ab6f4067fdedfc276b99053dda42c864f3c10",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "",
+        "stdout_tail": "RENDER_OK groupedbar\n"
+      },
+      "figure_ids": [
+        "fig_l1_groupedbar"
+      ],
+      "id": "l1_groupedbar",
+      "lang": "r",
+      "outputs": [
+        "L1_groupedbar_verified.png",
+        "L1_groupedbar_verified.pdf"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "primary",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "L1_基础统计图/L1_groupedbar_code.R",
+      "source_sha256": "cdf5dff2d0b040033e428968ad3ab6f4067fdedfc276b99053dda42c864f3c10",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 708,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l1_histogram/L1_histogram_verified.png",
+          "pixel_variance": 4861.870149,
+          "relative_path": "L1_histogram_verified.png",
+          "sha256": "edd894c9d5e5c3c2e8544ff4f3f0a444290781ac80e32c7f56450e649a2bac04",
+          "size_bytes": 16581,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l1_histogram/L1_histogram_verified.pdf",
+          "relative_path": "L1_histogram_verified.pdf",
+          "sha256": "219db1576573b84accc627b2fb1ec69b0813aff79d082cd75f1c849664d8d5fc",
+          "size_bytes": 5015
+        }
+      ],
+      "execute_source_sha256": "ba32de5540890ed6a23b6601d3c4f32f8e027dc35b2ed05480f31e096beffa81",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "",
+        "stdout_tail": "RENDER_OK histogram\n"
+      },
+      "figure_ids": [
+        "fig_l1_histogram"
+      ],
+      "id": "l1_histogram",
+      "lang": "r",
+      "outputs": [
+        "L1_histogram_verified.png",
+        "L1_histogram_verified.pdf"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "primary",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "L1_基础统计图/L1_histogram_code.R",
+      "source_sha256": "ba32de5540890ed6a23b6601d3c4f32f8e027dc35b2ed05480f31e096beffa81",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 708,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l1_rest/L1_histogram_verified.png",
+          "pixel_variance": 4861.870149,
+          "relative_path": "L1_histogram_verified.png",
+          "sha256": "edd894c9d5e5c3c2e8544ff4f3f0a444290781ac80e32c7f56450e649a2bac04",
+          "size_bytes": 16581,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l1_rest/L1_histogram_verified.pdf",
+          "relative_path": "L1_histogram_verified.pdf",
+          "sha256": "8c560f5aa05b0f4cc056ed0bd33b85c89929b7ab8e6ae6e8f70be7d51db6169c",
+          "size_bytes": 5015
+        },
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 708,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l1_rest/L1_density_verified.png",
+          "pixel_variance": 5213.941088,
+          "relative_path": "L1_density_verified.png",
+          "sha256": "075f329e6a74cdfcc63ae1f16499bc5b43acd12c8aa9ad84c68165c6886782c8",
+          "size_bytes": 51597,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l1_rest/L1_density_verified.pdf",
+          "relative_path": "L1_density_verified.pdf",
+          "sha256": "af4cbd6b08dad0172e1c0ac211e345defc14133fc37a135f8f33e558de7e74a9",
+          "size_bytes": 11761
+        },
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 708,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l1_rest/L1_scatter_verified.png",
+          "pixel_variance": 1433.80385,
+          "relative_path": "L1_scatter_verified.png",
+          "sha256": "e8c0d1d7513e2408bac9421dbbf68b00526a3f9b91c1662dc9f37c3fea74ce06",
+          "size_bytes": 75109,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l1_rest/L1_scatter_verified.pdf",
+          "relative_path": "L1_scatter_verified.pdf",
+          "sha256": "792cca87c5d6db9240c43d5329fcb7790afd14e5ea5976c35d08e24d43e035a0",
+          "size_bytes": 13304
+        },
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 708,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l1_rest/L1_groupedbar_verified.png",
+          "pixel_variance": 8176.83805,
+          "relative_path": "L1_groupedbar_verified.png",
+          "sha256": "60e0f943829c192ff4a89dc85635e5f761a1e769f5473940cd00dbcb68de752f",
+          "size_bytes": 14702,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l1_rest/L1_groupedbar_verified.pdf",
+          "relative_path": "L1_groupedbar_verified.pdf",
+          "sha256": "727351e31030dab2133904ca02317c610182542534181a0e6eaec2ec58d7b711",
+          "size_bytes": 4726
+        }
+      ],
+      "execute_source_sha256": "da21074542cef95ffa7c033a5b6bb291b49384f034b2ef9eb79e3322d98213e8",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "`geom_smooth()` using formula = 'y ~ x'\n`geom_smooth()` using formula = 'y ~ x'\n",
+        "stdout_tail": "RENDER_OK hist\nRENDER_OK density\nRENDER_OK scatter\nRENDER_OK groupedbar\n"
+      },
+      "figure_ids": [
+        "fig_l1_histogram",
+        "fig_l1_density",
+        "fig_l1_scatter",
+        "fig_l1_groupedbar"
+      ],
+      "id": "l1_rest",
+      "lang": "r",
+      "outputs": [
+        "L1_histogram_verified.png",
+        "L1_histogram_verified.pdf",
+        "L1_density_verified.png",
+        "L1_density_verified.pdf",
+        "L1_scatter_verified.png",
+        "L1_scatter_verified.pdf",
+        "L1_groupedbar_verified.png",
+        "L1_groupedbar_verified.pdf"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "aggregate",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "L1_基础统计图/L1_rest_code.R",
+      "source_sha256": "da21074542cef95ffa7c033a5b6bb291b49384f034b2ef9eb79e3322d98213e8",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 708,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l1_scatter/L1_scatter_verified.png",
+          "pixel_variance": 1433.80385,
+          "relative_path": "L1_scatter_verified.png",
+          "sha256": "e8c0d1d7513e2408bac9421dbbf68b00526a3f9b91c1662dc9f37c3fea74ce06",
+          "size_bytes": 75109,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l1_scatter/L1_scatter_verified.pdf",
+          "relative_path": "L1_scatter_verified.pdf",
+          "sha256": "432b5ec64cb659be53df7a7f9ca3fd7ebc347b60606bdc9bedbe6e9a7eb70bc2",
+          "size_bytes": 13304
+        }
+      ],
+      "execute_source_sha256": "5929584971504681ff374b2eed708f468ea9214605360c4450c037dfb4d56419",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "`geom_smooth()` using formula = 'y ~ x'\n`geom_smooth()` using formula = 'y ~ x'\n",
+        "stdout_tail": "RENDER_OK scatter\n"
+      },
+      "figure_ids": [
+        "fig_l1_scatter"
+      ],
+      "id": "l1_scatter",
+      "lang": "r",
+      "outputs": [
+        "L1_scatter_verified.png",
+        "L1_scatter_verified.pdf"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "primary",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "L1_基础统计图/L1_scatter_code.R",
+      "source_sha256": "5929584971504681ff374b2eed708f468ea9214605360c4450c037dfb4d56419",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 708,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l1_violin/L1_violin_verified.png",
+          "pixel_variance": 4119.125354,
+          "relative_path": "L1_violin_verified.png",
+          "sha256": "d76f7b185a8b587c09af407a14d7c761381b04758e55286165e368a0fd2c04ea",
+          "size_bytes": 47857,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l1_violin/L1_violin_verified.pdf",
+          "relative_path": "L1_violin_verified.pdf",
+          "sha256": "13d972d0a078a8267669eed8931c26d7c5a05070f819b942cff32a07b22a9598",
+          "size_bytes": 15711
+        }
+      ],
+      "execute_source_sha256": "9470bc63b49396ee5fc0fe0725063254849047e37e2482799db7ba54979e259a",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "",
+        "stdout_tail": "RENDER_OK violin\n"
+      },
+      "figure_ids": [
+        "fig_l1_violin"
+      ],
+      "id": "l1_violin",
+      "lang": "r",
+      "outputs": [
+        "L1_violin_verified.png",
+        "L1_violin_verified.pdf"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "primary",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "L1_基础统计图/L1_violin_code.R",
+      "source_sha256": "9470bc63b49396ee5fc0fe0725063254849047e37e2482799db7ba54979e259a",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 885,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2_core/L2_volcano_verified.png",
+          "pixel_variance": 1407.875298,
+          "relative_path": "L2_volcano_verified.png",
+          "sha256": "c825e72c192f798a6ba6d8a2b15073c514b4e4d46fac8b7b8e2ab6b43f3b217f",
+          "size_bytes": 96571,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2_core/L2_volcano_verified.pdf",
+          "relative_path": "L2_volcano_verified.pdf",
+          "sha256": "64829f74d6bde58bcc06bfccdbb502ee6382781395a32718275fcb6c75b658ce",
+          "size_bytes": 227940
+        },
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 1003,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2_core/L2_enrichment_verified.png",
+          "pixel_variance": 2291.868611,
+          "relative_path": "L2_enrichment_verified.png",
+          "sha256": "4fd18c1917d48ea5b2a3d91d6795e2522d50fa496f0552ee954d469e0213713c",
+          "size_bytes": 88961,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2_core/L2_enrichment_verified.pdf",
+          "relative_path": "L2_enrichment_verified.pdf",
+          "sha256": "76798114a0716c2e39fe2a2828fe551931e3f3085bdfc99f5fd71827d9ed4734",
+          "size_bytes": 7651
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2_core/L2_heatmap_verified.pdf",
+          "relative_path": "L2_heatmap_verified.pdf",
+          "sha256": "8eaa165e5b10fc968c20dfac95963b57aaf40ad00732fe6ce87b5cb1fbd3b0c0",
+          "size_bytes": 9297
+        }
+      ],
+      "execute_source_sha256": "d60ecbf24668aacf3498168ac4d7279bb9347f26c1e6106c548e87eba9bcc07b",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "",
+        "stdout_tail": "RENDER_OK volcano\nRENDER_OK enrichment\nnull device \n          1 \nRENDER_OK heatmap\n"
+      },
+      "figure_ids": [
+        "fig_l2_volcano",
+        "fig_l2_heatmap"
+      ],
+      "id": "l2_core",
+      "lang": "r",
+      "outputs": [
+        "L2_volcano_verified.png",
+        "L2_volcano_verified.pdf",
+        "L2_enrichment_verified.png",
+        "L2_enrichment_verified.pdf",
+        "L2_heatmap_verified.pdf"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "aggregate",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "L2_组学常用图/L2_core_code.R",
+      "source_sha256": "d60ecbf24668aacf3498168ac4d7279bb9347f26c1e6106c548e87eba9bcc07b",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 1003,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2_enrichment/L2_enrichment_verified.png",
+          "pixel_variance": 2291.868611,
+          "relative_path": "L2_enrichment_verified.png",
+          "sha256": "4fd18c1917d48ea5b2a3d91d6795e2522d50fa496f0552ee954d469e0213713c",
+          "size_bytes": 88961,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2_enrichment/L2_enrichment_verified.pdf",
+          "relative_path": "L2_enrichment_verified.pdf",
+          "sha256": "b7a31303fd10d502fec1184328faad76c5682bae61d03bd71959177ce69af3b0",
+          "size_bytes": 7651
+        }
+      ],
+      "execute_source_sha256": "bed8048e178a6b62e6f6212dc4b9e702e9221ae6e1828d2f339bf9b0372e33f9",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "",
+        "stdout_tail": "RENDER_OK enrichment\n"
+      },
+      "figure_ids": [],
+      "id": "l2_enrichment",
+      "lang": "r",
+      "outputs": [
+        "L2_enrichment_verified.png",
+        "L2_enrichment_verified.pdf"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "primary",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "L2_组学常用图/L2_enrichment_code.R",
+      "source_sha256": "bed8048e178a6b62e6f6212dc4b9e702e9221ae6e1828d2f339bf9b0372e33f9",
+      "unmapped": true,
+      "usability": "available_unmapped_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 1417,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2_heatmap/L2_heatmap_verified.png",
+          "pixel_variance": 10732.680998,
+          "relative_path": "L2_heatmap_verified.png",
+          "sha256": "4eccf1e69606465069d2a3100f1fd0b74d8c8ad95be61a0fcd625221dd2a2229",
+          "size_bytes": 157545,
+          "width": 2161
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2_heatmap/L2_heatmap_verified.pdf",
+          "relative_path": "L2_heatmap_verified.pdf",
+          "sha256": "bf776fa97cc9b2cd6d2c88e469cdabb3d5cf6a0552b3aee1625922fafdf4ca48",
+          "size_bytes": 9297
+        }
+      ],
+      "execute_source_sha256": "3daea9a96edf5b74ff01db57149ae4b0dd535cddc18b7226af10dddab17b8409",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "",
+        "stdout_tail": "null device \n          1 \nnull device \n          1 \nRENDER_OK heatmap\n"
+      },
+      "figure_ids": [
+        "fig_l2_heatmap"
+      ],
+      "id": "l2_heatmap",
+      "lang": "r",
+      "outputs": [
+        "L2_heatmap_verified.png",
+        "L2_heatmap_verified.pdf"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "primary",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "L2_组学常用图/L2_heatmap_code.R",
+      "source_sha256": "3daea9a96edf5b74ff01db57149ae4b0dd535cddc18b7226af10dddab17b8409",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 1417,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2_more/L2_heatmap_verified.png",
+          "pixel_variance": 10700.758033,
+          "relative_path": "L2_heatmap_verified.png",
+          "sha256": "1e33aa5bff1d816da49df1f70cd9b54b1a81c33bffff466a114616451bec8ecc",
+          "size_bytes": 157525,
+          "width": 2161
+        },
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 1062,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2_more/L2_umap_verified.png",
+          "pixel_variance": 814.640631,
+          "relative_path": "L2_umap_verified.png",
+          "sha256": "ffa884e41efcfaf74b1d12c4ca9b27b4b5e0223143c308948058ff91e34b328a",
+          "size_bytes": 253615,
+          "width": 2161
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2_more/L2_umap_verified.pdf",
+          "relative_path": "L2_umap_verified.pdf",
+          "sha256": "00055f71970a335ef85d206d4c87f126ebb8b679d03c0166b9361cbed6a29147",
+          "size_bytes": 77017
+        },
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 944,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2_more/L2_pca_verified.png",
+          "pixel_variance": 1440.187183,
+          "relative_path": "L2_pca_verified.png",
+          "sha256": "a0b7d1081801088cc21c9134615d6e1bae30d5885dc0701c5f7da40e2511e549",
+          "size_bytes": 121891,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2_more/L2_pca_verified.pdf",
+          "relative_path": "L2_pca_verified.pdf",
+          "sha256": "c7094e91969b634bec5ca24a9666056a38ccb5a0d768c93f13b0c2c4141b976f",
+          "size_bytes": 15083
+        }
+      ],
+      "execute_source_sha256": "0b5342dd0cac39eb87615aa1220d44c09c440b8801e93af288d9ab778f0c6c1d",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "",
+        "stdout_tail": "null device \n          1 \nRENDER_OK heatmap_png\nRENDER_OK umap\nRENDER_OK pca\n"
+      },
+      "figure_ids": [
+        "fig_l2_heatmap",
+        "fig_l2_umap",
+        "fig_l2_pca"
+      ],
+      "id": "l2_more",
+      "lang": "r",
+      "outputs": [
+        "L2_heatmap_verified.png",
+        "L2_umap_verified.png",
+        "L2_umap_verified.pdf",
+        "L2_pca_verified.png",
+        "L2_pca_verified.pdf"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "aggregate",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "L2_组学常用图/L2_more_code.R",
+      "source_sha256": "0b5342dd0cac39eb87615aa1220d44c09c440b8801e93af288d9ab778f0c6c1d",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 944,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2_pca/L2_pca_verified.png",
+          "pixel_variance": 1440.187183,
+          "relative_path": "L2_pca_verified.png",
+          "sha256": "a0b7d1081801088cc21c9134615d6e1bae30d5885dc0701c5f7da40e2511e549",
+          "size_bytes": 121891,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2_pca/L2_pca_verified.pdf",
+          "relative_path": "L2_pca_verified.pdf",
+          "sha256": "8b909d0b7c82ae1eeb8f201e9a776507aa1ecb18de818fe307d983e163f1c476",
+          "size_bytes": 15083
+        }
+      ],
+      "execute_source_sha256": "013b73e0bdcdf98c6014c8d89709c1e4bc8753a7243f83e5902ec4d3284d2507",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "",
+        "stdout_tail": "RENDER_OK pca\n"
+      },
+      "figure_ids": [
+        "fig_l2_pca"
+      ],
+      "id": "l2_pca",
+      "lang": "r",
+      "outputs": [
+        "L2_pca_verified.png",
+        "L2_pca_verified.pdf"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "primary",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "L2_组学常用图/L2_pca_code.R",
+      "source_sha256": "013b73e0bdcdf98c6014c8d89709c1e4bc8753a7243f83e5902ec4d3284d2507",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 1062,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2_umap/L2_umap_verified.png",
+          "pixel_variance": 814.640631,
+          "relative_path": "L2_umap_verified.png",
+          "sha256": "ffa884e41efcfaf74b1d12c4ca9b27b4b5e0223143c308948058ff91e34b328a",
+          "size_bytes": 253615,
+          "width": 2161
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2_umap/L2_umap_verified.pdf",
+          "relative_path": "L2_umap_verified.pdf",
+          "sha256": "237229817c7dfe4096376e226ef6558a4ed0fc9f333f48dee9ea03ae817ca256",
+          "size_bytes": 77017
+        }
+      ],
+      "execute_source_sha256": "be72b0a34e9a7b00d995d13f998c22f3e24c594bfced6bc0e759a3c5a1cd2a07",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "",
+        "stdout_tail": "RENDER_OK umap\n"
+      },
+      "figure_ids": [
+        "fig_l2_umap"
+      ],
+      "id": "l2_umap",
+      "lang": "r",
+      "outputs": [
+        "L2_umap_verified.png",
+        "L2_umap_verified.pdf"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "primary",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "L2_组学常用图/L2_umap_code.R",
+      "source_sha256": "be72b0a34e9a7b00d995d13f998c22f3e24c594bfced6bc0e759a3c5a1cd2a07",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 885,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2_volcano/L2_volcano_verified.png",
+          "pixel_variance": 1407.875298,
+          "relative_path": "L2_volcano_verified.png",
+          "sha256": "c825e72c192f798a6ba6d8a2b15073c514b4e4d46fac8b7b8e2ab6b43f3b217f",
+          "size_bytes": 96571,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2_volcano/L2_volcano_verified.pdf",
+          "relative_path": "L2_volcano_verified.pdf",
+          "sha256": "bc4984ead0433c7e035eb944ede5e8974fd228f68ab276216d69c8f12e93ce80",
+          "size_bytes": 227940
+        }
+      ],
+      "execute_source_sha256": "8829922ca03484afccb9d5931d01691360eb39c10df6c07290f62351589990fe",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "",
+        "stdout_tail": "RENDER_OK volcano\n"
+      },
+      "figure_ids": [
+        "fig_l2_volcano"
+      ],
+      "id": "l2_volcano",
+      "lang": "r",
+      "outputs": [
+        "L2_volcano_verified.png",
+        "L2_volcano_verified.pdf"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "primary",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "L2_组学常用图/L2_volcano_code.R",
+      "source_sha256": "8829922ca03484afccb9d5931d01691360eb39c10df6c07290f62351589990fe",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 693,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2p_dotplot/figures/dotplot__L2p_dotplot_verified.png",
+          "pixel_variance": 4233.533737,
+          "relative_path": "figures/dotplot__L2p_dotplot_verified.png",
+          "sha256": "17d9b5f49fdcc9410c97e0377692f004192aff18945a28c44cb173ab4ceb666b",
+          "size_bytes": 84809,
+          "width": 1091
+        }
+      ],
+      "execute_source_sha256": "4e061d9c209724d086eec201af5c8a4d3eff8fbea94f33b0b2f4b9b321f4cc6c",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "[memory_guard] RLIMIT_AS set to 7.5 GB\n/mnt/ssd/bio_data/ops/layout_autoload/sitecustomize.py:57: FutureWarning: In the future `np.object` will be defined as the corresponding NumPy scalar.\n  if not hasattr(np, \"object\"):\n/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2p_dotplot/source.py:38: FutureWarning: Argument `save` is deprecated and will be removed in a future version. Use `sc.pl.plot(show=False).figure.savefig()` instead.\n  sc.pl.dotplot(\nWARNING: saving figure to file figures/dotplot__L2p_dotplot_verified.png\n",
+        "stdout_tail": "RENDER_OK dotplot_py\n"
+      },
+      "figure_ids": [
+        "fig_l2p_dotplot"
+      ],
+      "id": "l2p_dotplot",
+      "lang": "python",
+      "outputs": [
+        "figures/dotplot__L2p_dotplot_verified.png"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "primary",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "L2_组学常用图/L2p_dotplot_code.py",
+      "source_sha256": "4e061d9c209724d086eec201af5c8a4d3eff8fbea94f33b0b2f4b9b321f4cc6c",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 837,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2p_more/L2p_volcano_verified.png",
+          "pixel_variance": 1330.119448,
+          "relative_path": "L2p_volcano_verified.png",
+          "sha256": "2500857679cadc155853333f61563e0e76bcd0fbac52c94183030e80286a955a",
+          "size_bytes": 124618,
+          "width": 999
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2p_more/L2p_volcano_verified.pdf",
+          "relative_path": "L2p_volcano_verified.pdf",
+          "sha256": "f76dc097e54950128336c766fa5cdfdc80933d8a30313924364cf2561763b84d",
+          "size_bytes": 75125
+        },
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 693,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2p_more/figures/dotplot__L2p_dotplot_verified.png",
+          "pixel_variance": 4408.815159,
+          "relative_path": "figures/dotplot__L2p_dotplot_verified.png",
+          "sha256": "41c90f8ee7c0b601f1bc5f07334300178f9d404cb9d450388420b925f683f962",
+          "size_bytes": 84467,
+          "width": 1092
+        },
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 1084,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2p_more/figures/violin_L2p_violin_verified.png",
+          "pixel_variance": 4493.48552,
+          "relative_path": "figures/violin_L2p_violin_verified.png",
+          "sha256": "289ab60e145b9a14ee29d1977d8aa265f322c089f89e232c42bc90f2573eac94",
+          "size_bytes": 536236,
+          "width": 6499
+        }
+      ],
+      "execute_source_sha256": "79cf20cbfffbd90e016abef003845540de71948ae8e6031587c420a05038af76",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "[memory_guard] RLIMIT_AS set to 7.5 GB\n/mnt/ssd/bio_data/ops/layout_autoload/sitecustomize.py:57: FutureWarning: In the future `np.object` will be defined as the corresponding NumPy scalar.\n  if not hasattr(np, \"object\"):\n/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2p_more/source.py:49: FutureWarning: Argument `save` is deprecated and will be removed in a future version. Use `sc.pl.plot(show=False).figure.savefig()` instead.\n  sc.pl.dotplot(adata, var_names=[f\"G{i}\" for i in range(n_genes)], groupby=\"leiden\",\nWARNING: saving figure to file figures/dotplot__L2p_dotplot_verified.png\n/root/venvs/bio-py/lib/python3.12/site-packages/scanpy/plotting/_anndata.py:997: FutureWarning: \n\nPassing `palette` without assigning `hue` is deprecated and will be removed in v0.14.0. Assign the `x` variable to `hue` and set `legend=False` for the same effect.\n\n  sns.violinplot(\n/root/venvs/bio-py/lib/python3.12/site-packages/scanpy/plotting/_anndata.py:997: FutureWarning: \n\nPassing `palette` without assigning `hue` is deprecated and will be removed in v0.14.0. Assign the `x` variable to `hue` and set `legend=False` for the same effect.\n\n  sns.violinplot(\n/root/venvs/bio-py/lib/python3.12/site-packages/scanpy/plotting/_anndata.py:997: FutureWarning: \n\nPassing `palette` without assigning `hue` is deprecated and will be removed in v0.14.0. Assign the `x` variable to `hue` and set `legend=False` for the same effect.\n\n  sns.violinplot(\n/root/venvs/bio-py/lib/python3.12/site-packages/scanpy/plotting/_anndata.py:997: FutureWarning: \n\nPassing `palette` without assigning `hue` is deprecated and will be removed in v0.14.0. Assign the `x` variable to `hue` and set `legend=False` for the same effect.\n\n  sns.violinplot(\n/root/venvs/bio-py/lib/python3.12/site-packages/scanpy/plotting/_anndata.py:997: FutureWarning: \n\nPassing `palette` without assigning `hue` is deprecated and will be removed in v0.14.0. Assign the `x` variable to `hue` and set `legend=False` for the same effect.\n\n  sns.violinplot(\n/root/venvs/bio-py/lib/python3.12/site-packages/scanpy/plotting/_anndata.py:997: FutureWarning: \n\nPassing `palette` without assigning `hue` is deprecated and will be removed in v0.14.0. Assign the `x` variable to `hue` and set `legend=False` for the same effect.\n\n  sns.violinplot(\n/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2p_more/source.py:55: FutureWarning: Argument `save` is deprecated and will be removed in a future version. Use `sc.pl.plot(show=False).figure.savefig()` instead.\n  sc.pl.violin(adata, keys=[f\"G{i}\" for i in range(n_genes)], groupby=\"leiden\",\nWARNING: saving figure to file figures/violin_L2p_violin_verified.png\n",
+        "stdout_tail": "RENDER_OK volcano_py\nRENDER_OK dotplot_py\nRENDER_OK violin_py\n"
+      },
+      "figure_ids": [
+        "fig_l2p_volcano",
+        "fig_l2p_dotplot",
+        "fig_l2p_violin"
+      ],
+      "id": "l2p_more",
+      "lang": "python",
+      "outputs": [
+        "L2p_volcano_verified.png",
+        "L2p_volcano_verified.pdf",
+        "figures/dotplot__L2p_dotplot_verified.png",
+        "figures/violin_L2p_violin_verified.png"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "aggregate",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "L2_组学常用图/L2p_more_code.py",
+      "source_sha256": "79cf20cbfffbd90e016abef003845540de71948ae8e6031587c420a05038af76",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 1019,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2p_umap/umap_L2p_umap_verified.png",
+          "pixel_variance": 914.593359,
+          "relative_path": "umap_L2p_umap_verified.png",
+          "sha256": "542d153d72caa550f134fbd41c81323141f810f83837311f357c1299b7185f40",
+          "size_bytes": 109476,
+          "width": 1072
+        }
+      ],
+      "execute_source_sha256": "34b79c4febb105c93cd31d80b6d6ebdde4fc7870ad3f8a15e16ad098d8c2ee7d",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "[memory_guard] RLIMIT_AS set to 7.5 GB\n/mnt/ssd/bio_data/ops/layout_autoload/sitecustomize.py:57: FutureWarning: In the future `np.object` will be defined as the corresponding NumPy scalar.\n  if not hasattr(np, \"object\"):\n/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2p_umap/source.py:23: FutureWarning: The method set_figure_params is deprecated and will be removed in the future. Use :func:`scanpy.set_figure_params` instead\n  sc.settings.set_figure_params(dpi=300, dpi_save=300, frameon=False, fontsize=7, vector_friendly=True)\n/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2p_umap/source.py:24: FutureWarning: Argument `save` is deprecated and will be removed in a future version. Use `sc.pl.plot(show=False).figure.savefig()` instead.\n  sc.pl.umap(adata, color=\"leiden\", palette=[\"#0072B2\", \"#D55E00\", \"#009E73\", \"#CC79A7\"],\nWARNING: saving figure to file umap_L2p_umap_verified.png\n",
+        "stdout_tail": "clusters: 4 | cells: 1200\nRENDER_OK umap_scanpy\n"
+      },
+      "figure_ids": [
+        "fig_l2p_umap"
+      ],
+      "id": "l2p_umap",
+      "lang": "python",
+      "outputs": [
+        "umap_L2p_umap_verified.png"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "primary",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "L2_组学常用图/L2p_umap_code.py",
+      "source_sha256": "34b79c4febb105c93cd31d80b6d6ebdde4fc7870ad3f8a15e16ad098d8c2ee7d",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 1076,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2p_violin/figures/violin_L2p_violin_verified.png",
+          "pixel_variance": 4596.362934,
+          "relative_path": "figures/violin_L2p_violin_verified.png",
+          "sha256": "cfb47b5b1302e78cdce93f926c26bc21f3b456a409d2a05bc174fccaac07937c",
+          "size_bytes": 535373,
+          "width": 6499
+        }
+      ],
+      "execute_source_sha256": "d806a354fd7bc37092bfa503c2cb24a7935d4da77bf2b6c05d12ce72f6211b53",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "[memory_guard] RLIMIT_AS set to 7.5 GB\n/mnt/ssd/bio_data/ops/layout_autoload/sitecustomize.py:57: FutureWarning: In the future `np.object` will be defined as the corresponding NumPy scalar.\n  if not hasattr(np, \"object\"):\n/root/venvs/bio-py/lib/python3.12/site-packages/scanpy/plotting/_anndata.py:997: FutureWarning: \n\nPassing `palette` without assigning `hue` is deprecated and will be removed in v0.14.0. Assign the `x` variable to `hue` and set `legend=False` for the same effect.\n\n  sns.violinplot(\n/root/venvs/bio-py/lib/python3.12/site-packages/scanpy/plotting/_anndata.py:997: FutureWarning: \n\nPassing `palette` without assigning `hue` is deprecated and will be removed in v0.14.0. Assign the `x` variable to `hue` and set `legend=False` for the same effect.\n\n  sns.violinplot(\n/root/venvs/bio-py/lib/python3.12/site-packages/scanpy/plotting/_anndata.py:997: FutureWarning: \n\nPassing `palette` without assigning `hue` is deprecated and will be removed in v0.14.0. Assign the `x` variable to `hue` and set `legend=False` for the same effect.\n\n  sns.violinplot(\n/root/venvs/bio-py/lib/python3.12/site-packages/scanpy/plotting/_anndata.py:997: FutureWarning: \n\nPassing `palette` without assigning `hue` is deprecated and will be removed in v0.14.0. Assign the `x` variable to `hue` and set `legend=False` for the same effect.\n\n  sns.violinplot(\n/root/venvs/bio-py/lib/python3.12/site-packages/scanpy/plotting/_anndata.py:997: FutureWarning: \n\nPassing `palette` without assigning `hue` is deprecated and will be removed in v0.14.0. Assign the `x` variable to `hue` and set `legend=False` for the same effect.\n\n  sns.violinplot(\n/root/venvs/bio-py/lib/python3.12/site-packages/scanpy/plotting/_anndata.py:997: FutureWarning: \n\nPassing `palette` without assigning `hue` is deprecated and will be removed in v0.14.0. Assign the `x` variable to `hue` and set `legend=False` for the same effect.\n\n  sns.violinplot(\n/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2p_violin/source.py:37: FutureWarning: Argument `save` is deprecated and will be removed in a future version. Use `sc.pl.plot(show=False).figure.savefig()` instead.\n  sc.pl.violin(\nWARNING: saving figure to file figures/violin_L2p_violin_verified.png\n",
+        "stdout_tail": "RENDER_OK violin_py\n"
+      },
+      "figure_ids": [
+        "fig_l2p_violin"
+      ],
+      "id": "l2p_violin",
+      "lang": "python",
+      "outputs": [
+        "figures/violin_L2p_violin_verified.png"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "primary",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "L2_组学常用图/L2p_violin_code.py",
+      "source_sha256": "d806a354fd7bc37092bfa503c2cb24a7935d4da77bf2b6c05d12ce72f6211b53",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 846,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2p_volcano/L2p_volcano_verified.png",
+          "pixel_variance": 1188.064568,
+          "relative_path": "L2p_volcano_verified.png",
+          "sha256": "c1221d0e1add02a999c8ce00f39aec4c9c57baf28e00b5ca3bd6b91688858dd4",
+          "size_bytes": 123672,
+          "width": 994
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l2p_volcano/L2p_volcano_verified.pdf",
+          "relative_path": "L2p_volcano_verified.pdf",
+          "sha256": "27bc59ea542633f5839976f04d5e6f253916761ef0693b68e1c7e3bba509a7fb",
+          "size_bytes": 74995
+        }
+      ],
+      "execute_source_sha256": "ce8a09237091d8ddd0621738414995778c747ff2f1b3e28fa6a92669b00e403f",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "[memory_guard] RLIMIT_AS set to 7.5 GB\n/mnt/ssd/bio_data/ops/layout_autoload/sitecustomize.py:57: FutureWarning: In the future `np.object` will be defined as the corresponding NumPy scalar.\n  if not hasattr(np, \"object\"):\n",
+        "stdout_tail": "RENDER_OK volcano_py\n"
+      },
+      "figure_ids": [
+        "fig_l2p_volcano"
+      ],
+      "id": "l2p_volcano",
+      "lang": "python",
+      "outputs": [
+        "L2p_volcano_verified.png",
+        "L2p_volcano_verified.pdf"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "primary",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "L2_组学常用图/L2p_volcano_code.py",
+      "source_sha256": "ce8a09237091d8ddd0621738414995778c747ff2f1b3e28fa6a92669b00e403f",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 1417,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l3_multipanel/L3_multipanel_verified.png",
+          "pixel_variance": 7967.986475,
+          "relative_path": "L3_multipanel_verified.png",
+          "sha256": "54dd575fdfb8938ce4d4d53f904bce8bae292dc93e42604ee901f67c42b651d0",
+          "size_bytes": 66912,
+          "width": 2161
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l3_multipanel/L3_multipanel_verified.pdf",
+          "relative_path": "L3_multipanel_verified.pdf",
+          "sha256": "058002cc9a65e3883df4d3c877002f50234c98c50a8b5c4076e0092744da5f04",
+          "size_bytes": 7107
+        },
+        {
+          "detail": "nonempty text report",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l3_multipanel/L3_multipanel_report.txt",
+          "relative_path": "L3_multipanel_report.txt",
+          "sha256": "9748969c3aed328eee76409ad79e0c4a21baea6ebdc346f875b98fc68880172b",
+          "size_bytes": 393
+        }
+      ],
+      "execute_source_sha256": "2d57dfd823386971dfdd423af101da48a4c3db6d100729e428e4190e080213c1",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "",
+        "stdout_tail": "null device \n          1 \nNULL\nNULL\nstep_executed=L3_multipanel|report=L3_multipanel_report.txt\n"
+      },
+      "figure_ids": [
+        "fig_l3_multipanel"
+      ],
+      "id": "l3_multipanel",
+      "lang": "r",
+      "outputs": [
+        "L3_multipanel_verified.png",
+        "L3_multipanel_verified.pdf",
+        "L3_multipanel_report.txt"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "primary",
+      "run_status": "pass",
+      "seed_mode": "external",
+      "source": "L3_高级组合图/L3_multipanel_code.R",
+      "source_sha256": "2d57dfd823386971dfdd423af101da48a4c3db6d100729e428e4190e080213c1",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "not_applicable",
+      "artifacts": [],
+      "execute_source_sha256": null,
+      "figure_ids": [],
+      "id": "l3_multippanel_quarantine",
+      "lang": "r",
+      "outputs": [],
+      "payload_source_matches": true,
+      "quarantine_reason": "_QUARANTINE_NOTE.md excludes this file from entries and verification.",
+      "quarantined": true,
+      "role": "quarantined_duplicate",
+      "run_status": "not_run",
+      "source": "L3_高级组合图/L3_multippanel_code.R",
+      "source_sha256": "44bc3af31a8e77cdea7de9783dc271d7198dfbaa8034e577361ac8b2b28a68bd",
+      "usability": "excluded_by_policy"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 1181,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l3_sankey/L3_sankey_verified.png",
+          "pixel_variance": 8192.609859,
+          "relative_path": "L3_sankey_verified.png",
+          "sha256": "74b99ee08c3dd19db74d53f4b1925a92140b8a7a43dfc1ebf79e9df15d9c1ab6",
+          "size_bytes": 62213,
+          "width": 1417
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/l3_sankey/L3_sankey_verified.pdf",
+          "relative_path": "L3_sankey_verified.pdf",
+          "sha256": "a0548f70d8944e01c5bf94cf1c9211ec56df298c7d73ba9bd9e8a665b40db07e",
+          "size_bytes": 29484
+        }
+      ],
+      "execute_source_sha256": "6c94fe74a10569e0b43ea0d79047a69156411d1883920eaf285234ae548438d8",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "\nAttaching package: ‘dplyr’\n\nThe following objects are masked from ‘package:stats’:\n\n    filter, lag\n\nThe following objects are masked from ‘package:base’:\n\n    intersect, setdiff, setequal, union\n\nWarning message:\nThe `label.size` argument of `geom_label()` is deprecated as of ggplot2 3.5.0.\nℹ Please use the `linewidth` argument instead. \n",
+        "stdout_tail": "RENDER_OK sankey\n"
+      },
+      "figure_ids": [
+        "fig_l3_sankey"
+      ],
+      "id": "l3_sankey",
+      "lang": "r",
+      "outputs": [
+        "L3_sankey_verified.png",
+        "L3_sankey_verified.pdf"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "primary",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "L3_高级组合图/L3_sankey_code.R",
+      "source_sha256": "6c94fe74a10569e0b43ea0d79047a69156411d1883920eaf285234ae548438d8",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 708,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l1_boxplot/L1_boxplot_verified.png",
+          "pixel_variance": 3646.524086,
+          "relative_path": "L1_boxplot_verified.png",
+          "sha256": "ce3d2cb08118011f727b4c901fe4921d81129433a9e0507e43edad5b22bf8a82",
+          "size_bytes": 30380,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l1_boxplot/L1_boxplot_verified.pdf",
+          "relative_path": "L1_boxplot_verified.pdf",
+          "sha256": "cba5821ac5b51ec1afba9b7ea92e67b5db3c8f5268bae29babe4f04ea6c6afca",
+          "size_bytes": 5477
+        }
+      ],
+      "execute_source_sha256": "dfc6a22b7585849c1c4d11bec312d654b9af63bf20dd2e42876c28834f8b0b0d",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "",
+        "stdout_tail": "RENDER_OK\npkgs: AnnotationDbi \n"
+      },
+      "figure_ids": [
+        "fig_l1_boxplot"
+      ],
+      "id": "compat_l1_boxplot",
+      "lang": "r",
+      "outputs": [
+        "L1_boxplot_verified.png",
+        "L1_boxplot_verified.pdf"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "compat",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "_meta/R453_compat/L1_boxplot_code.R",
+      "source_sha256": "dfc6a22b7585849c1c4d11bec312d654b9af63bf20dd2e42876c28834f8b0b0d",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 708,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l1_rest/L1_histogram_verified.png",
+          "pixel_variance": 4861.870149,
+          "relative_path": "L1_histogram_verified.png",
+          "sha256": "edd894c9d5e5c3c2e8544ff4f3f0a444290781ac80e32c7f56450e649a2bac04",
+          "size_bytes": 16581,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l1_rest/L1_histogram_verified.pdf",
+          "relative_path": "L1_histogram_verified.pdf",
+          "sha256": "512781806bf37e8e732d3a7e6314f0f2826a880a2a82143c29ce623e6dac8c20",
+          "size_bytes": 5015
+        },
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 708,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l1_rest/L1_density_verified.png",
+          "pixel_variance": 5213.941088,
+          "relative_path": "L1_density_verified.png",
+          "sha256": "075f329e6a74cdfcc63ae1f16499bc5b43acd12c8aa9ad84c68165c6886782c8",
+          "size_bytes": 51597,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l1_rest/L1_density_verified.pdf",
+          "relative_path": "L1_density_verified.pdf",
+          "sha256": "cd6f6d39eb0046bd04cfa0f80e0b2c0c101584dc2d62c73f9e15990c01e21b9d",
+          "size_bytes": 11761
+        },
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 708,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l1_rest/L1_scatter_verified.png",
+          "pixel_variance": 1433.80385,
+          "relative_path": "L1_scatter_verified.png",
+          "sha256": "e8c0d1d7513e2408bac9421dbbf68b00526a3f9b91c1662dc9f37c3fea74ce06",
+          "size_bytes": 75109,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l1_rest/L1_scatter_verified.pdf",
+          "relative_path": "L1_scatter_verified.pdf",
+          "sha256": "4425c354301b6fb4e540d6cd65d4985906a23f21153d5e2da8c7a215151b9c6a",
+          "size_bytes": 13304
+        },
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 708,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l1_rest/L1_groupedbar_verified.png",
+          "pixel_variance": 8176.83805,
+          "relative_path": "L1_groupedbar_verified.png",
+          "sha256": "60e0f943829c192ff4a89dc85635e5f761a1e769f5473940cd00dbcb68de752f",
+          "size_bytes": 14702,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l1_rest/L1_groupedbar_verified.pdf",
+          "relative_path": "L1_groupedbar_verified.pdf",
+          "sha256": "4a868b1bf77f5e36fdbdb19ec934077d2028bc961446c7e9f41e8bd168190387",
+          "size_bytes": 4726
+        }
+      ],
+      "execute_source_sha256": "da21074542cef95ffa7c033a5b6bb291b49384f034b2ef9eb79e3322d98213e8",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "`geom_smooth()` using formula = 'y ~ x'\n`geom_smooth()` using formula = 'y ~ x'\n",
+        "stdout_tail": "RENDER_OK hist\nRENDER_OK density\nRENDER_OK scatter\nRENDER_OK groupedbar\n"
+      },
+      "figure_ids": [
+        "fig_l1_histogram",
+        "fig_l1_density",
+        "fig_l1_scatter",
+        "fig_l1_groupedbar"
+      ],
+      "id": "compat_l1_rest",
+      "lang": "r",
+      "outputs": [
+        "L1_histogram_verified.png",
+        "L1_histogram_verified.pdf",
+        "L1_density_verified.png",
+        "L1_density_verified.pdf",
+        "L1_scatter_verified.png",
+        "L1_scatter_verified.pdf",
+        "L1_groupedbar_verified.png",
+        "L1_groupedbar_verified.pdf"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "compat",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "_meta/R453_compat/L1_rest_code.R",
+      "source_sha256": "da21074542cef95ffa7c033a5b6bb291b49384f034b2ef9eb79e3322d98213e8",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 708,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l1_violin/L1_violin_verified.png",
+          "pixel_variance": 4119.125354,
+          "relative_path": "L1_violin_verified.png",
+          "sha256": "d76f7b185a8b587c09af407a14d7c761381b04758e55286165e368a0fd2c04ea",
+          "size_bytes": 47857,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l1_violin/L1_violin_verified.pdf",
+          "relative_path": "L1_violin_verified.pdf",
+          "sha256": "c4e2c435eb2c8d75275683f348d336bf85178f379988b643ebb55e07d58d8d9a",
+          "size_bytes": 15711
+        }
+      ],
+      "execute_source_sha256": "9470bc63b49396ee5fc0fe0725063254849047e37e2482799db7ba54979e259a",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "",
+        "stdout_tail": "RENDER_OK violin\n"
+      },
+      "figure_ids": [
+        "fig_l1_violin"
+      ],
+      "id": "compat_l1_violin",
+      "lang": "r",
+      "outputs": [
+        "L1_violin_verified.png",
+        "L1_violin_verified.pdf"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "compat",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "_meta/R453_compat/L1_violin_code.R",
+      "source_sha256": "9470bc63b49396ee5fc0fe0725063254849047e37e2482799db7ba54979e259a",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 885,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l2_core/L2_volcano_verified.png",
+          "pixel_variance": 1407.875298,
+          "relative_path": "L2_volcano_verified.png",
+          "sha256": "c825e72c192f798a6ba6d8a2b15073c514b4e4d46fac8b7b8e2ab6b43f3b217f",
+          "size_bytes": 96571,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l2_core/L2_volcano_verified.pdf",
+          "relative_path": "L2_volcano_verified.pdf",
+          "sha256": "084013e5d6f244880cb1b44efb7ee0675da72807aa607507529643ceb190d185",
+          "size_bytes": 227940
+        },
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 1003,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l2_core/L2_enrichment_verified.png",
+          "pixel_variance": 2291.868611,
+          "relative_path": "L2_enrichment_verified.png",
+          "sha256": "4fd18c1917d48ea5b2a3d91d6795e2522d50fa496f0552ee954d469e0213713c",
+          "size_bytes": 88961,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l2_core/L2_enrichment_verified.pdf",
+          "relative_path": "L2_enrichment_verified.pdf",
+          "sha256": "9eb7470d96aad570f432b40e2c752beee97a5740a389bfdc917041604bc2e4cf",
+          "size_bytes": 7651
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l2_core/L2_heatmap_verified.pdf",
+          "relative_path": "L2_heatmap_verified.pdf",
+          "sha256": "c537fb63e9fcf61d8fe32fc38aaffffe0577982fd9b6a5edee41377a008c9484",
+          "size_bytes": 9297
+        }
+      ],
+      "execute_source_sha256": "d60ecbf24668aacf3498168ac4d7279bb9347f26c1e6106c548e87eba9bcc07b",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "",
+        "stdout_tail": "RENDER_OK volcano\nRENDER_OK enrichment\nnull device \n          1 \nRENDER_OK heatmap\n"
+      },
+      "figure_ids": [
+        "fig_l2_volcano",
+        "fig_l2_heatmap"
+      ],
+      "id": "compat_l2_core",
+      "lang": "r",
+      "outputs": [
+        "L2_volcano_verified.png",
+        "L2_volcano_verified.pdf",
+        "L2_enrichment_verified.png",
+        "L2_enrichment_verified.pdf",
+        "L2_heatmap_verified.pdf"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "compat",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "_meta/R453_compat/L2_core_code.R",
+      "source_sha256": "d60ecbf24668aacf3498168ac4d7279bb9347f26c1e6106c548e87eba9bcc07b",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 1417,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l2_more/L2_heatmap_verified.png",
+          "pixel_variance": 10700.758033,
+          "relative_path": "L2_heatmap_verified.png",
+          "sha256": "1e33aa5bff1d816da49df1f70cd9b54b1a81c33bffff466a114616451bec8ecc",
+          "size_bytes": 157525,
+          "width": 2161
+        },
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 1062,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l2_more/L2_umap_verified.png",
+          "pixel_variance": 814.640631,
+          "relative_path": "L2_umap_verified.png",
+          "sha256": "ffa884e41efcfaf74b1d12c4ca9b27b4b5e0223143c308948058ff91e34b328a",
+          "size_bytes": 253615,
+          "width": 2161
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l2_more/L2_umap_verified.pdf",
+          "relative_path": "L2_umap_verified.pdf",
+          "sha256": "b8b455f3a527b83eb0af0ab0bd08ac697f9a1061bf1447ac67b235e0a7a4824e",
+          "size_bytes": 77017
+        },
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 944,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l2_more/L2_pca_verified.png",
+          "pixel_variance": 1440.187183,
+          "relative_path": "L2_pca_verified.png",
+          "sha256": "a0b7d1081801088cc21c9134615d6e1bae30d5885dc0701c5f7da40e2511e549",
+          "size_bytes": 121891,
+          "width": 1051
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l2_more/L2_pca_verified.pdf",
+          "relative_path": "L2_pca_verified.pdf",
+          "sha256": "5c2800dd0f9ac017527bd6e96085efe6948c142c65ab1c2e6ecc4cad8f83d6f1",
+          "size_bytes": 15083
+        }
+      ],
+      "execute_source_sha256": "0b5342dd0cac39eb87615aa1220d44c09c440b8801e93af288d9ab778f0c6c1d",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "",
+        "stdout_tail": "null device \n          1 \nRENDER_OK heatmap_png\nRENDER_OK umap\nRENDER_OK pca\n"
+      },
+      "figure_ids": [
+        "fig_l2_heatmap",
+        "fig_l2_umap",
+        "fig_l2_pca"
+      ],
+      "id": "compat_l2_more",
+      "lang": "r",
+      "outputs": [
+        "L2_heatmap_verified.png",
+        "L2_umap_verified.png",
+        "L2_umap_verified.pdf",
+        "L2_pca_verified.png",
+        "L2_pca_verified.pdf"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "compat",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "_meta/R453_compat/L2_more_code.R",
+      "source_sha256": "0b5342dd0cac39eb87615aa1220d44c09c440b8801e93af288d9ab778f0c6c1d",
+      "usability": "available_demo"
+    },
+    {
+      "artifact_status": "pass",
+      "artifacts": [
+        {
+          "detail": "PIL verify+load and nonblank check passed",
+          "dpi": [
+            299.999,
+            299.999
+          ],
+          "exists": true,
+          "height": 1181,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l3_sankey/L3_sankey_verified.png",
+          "pixel_variance": 8192.609859,
+          "relative_path": "L3_sankey_verified.png",
+          "sha256": "74b99ee08c3dd19db74d53f4b1925a92140b8a7a43dfc1ebf79e9df15d9c1ab6",
+          "size_bytes": 62213,
+          "width": 1417
+        },
+        {
+          "detail": "PDF header passed; full validation not performed",
+          "exists": true,
+          "ok": true,
+          "path": "/mnt/ssd/bio_data/validation/plot_matrix_v32_20261028_300dpi/result/runs/compat_l3_sankey/L3_sankey_verified.pdf",
+          "relative_path": "L3_sankey_verified.pdf",
+          "sha256": "eb488501116a1a478487aefb8138c48582ebf5f7bc180b52d277decaa091a41a",
+          "size_bytes": 29484
+        }
+      ],
+      "execute_source_sha256": "6c94fe74a10569e0b43ea0d79047a69156411d1883920eaf285234ae548438d8",
+      "execution": {
+        "exit_code": 0,
+        "marker_found": true,
+        "ok": true,
+        "stderr_tail": "\nAttaching package: ‘dplyr’\n\nThe following objects are masked from ‘package:stats’:\n\n    filter, lag\n\nThe following objects are masked from ‘package:base’:\n\n    intersect, setdiff, setequal, union\n\nWarning message:\nThe `label.size` argument of `geom_label()` is deprecated as of ggplot2 3.5.0.\nℹ Please use the `linewidth` argument instead. \n",
+        "stdout_tail": "RENDER_OK sankey\n"
+      },
+      "figure_ids": [
+        "fig_l3_sankey"
+      ],
+      "id": "compat_l3_sankey",
+      "lang": "r",
+      "outputs": [
+        "L3_sankey_verified.png",
+        "L3_sankey_verified.pdf"
+      ],
+      "payload_source_matches": true,
+      "quarantined": false,
+      "role": "compat",
+      "run_status": "pass",
+      "seed_mode": "hardcoded",
+      "source": "_meta/R453_compat/L3_sankey_code.R",
+      "source_sha256": "6c94fe74a10569e0b43ea0d79047a69156411d1883920eaf285234ae548438d8",
+      "usability": "available_demo"
+    }
+  ],
+  "environment": {
+    "backend": "Agg",
+    "python": "/root/venvs/bio-py/bin/python3",
+    "python_version": "Python 3.12.3",
+    "r_libs_user": "/opt/R/4.5.3-site-library",
+    "r_version": "Rscript (R) version 4.5.3 (2026-03-11)",
+    "rscript": "/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript",
+    "threads": 3
+  },
+  "generated_at": "2026-10-28T11:34:23+08:00",
+  "run_id": "aims_v32_plot_matrix_300dpi_20261028",
+  "schema_version": 1,
+  "seed": 20261013,
+  "summary": {
+    "artifacts": {
+      "invalid": 0,
+      "pdf": 36,
+      "png": 41,
+      "png_unique_sha256": 21,
+      "total": 78,
+      "txt": 1
+    },
+    "available": 27,
+    "executed": 27,
+    "failed": 0,
+    "overall_status": "pass",
+    "quarantined": 1,
+    "total": 28
+  },
+  "usage_unit": "single_png"
+}

@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { LINES } from './domain.js';
 import { indexMods } from './workflow_graph.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -10,8 +11,6 @@ const REPO = path.resolve(HERE, '..', '..');
 const REGISTRY = path.join(REPO, 'src', 'figure_templates.json');
 const FIGURE_ROOT = 'reference/05.可参考出图代码';
 const PROJECTS_ROOT = '/mnt/ssd/bio_data/projects';
-const LINES = ['line1_bulk', 'line2_scrna', 'line3_spatial'];
-
 let cache = null;
 
 function indexModsByBareId() {

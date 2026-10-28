@@ -6,7 +6,7 @@ import scanpy.plotting as scp
 
 rng = np.random.default_rng(42)
 plt.rcParams.update({"font.size": 7, "axes.linewidth": 0.6, "savefig.dpi": 300})
-sc.set_figure_params(dpi=300, frameon=False, fontsize=7)
+sc.set_figure_params(dpi=300, dpi_save=300, frameon=False, fontsize=7)
 
 # ---- L2-05P 火山图（matplotlib 手写，替代 Bizard R 版）----
 n = 4000

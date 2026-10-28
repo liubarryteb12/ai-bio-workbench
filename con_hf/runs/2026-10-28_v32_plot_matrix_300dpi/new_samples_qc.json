@@ -1,0 +1,142 @@
+[
+  {
+    "template_id": "fig_l1_groupedbar",
+    "path": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_groupedbar.png",
+    "bytes": 88353,
+    "width": 2161,
+    "height": 1417,
+    "dpi": [
+      299.999,
+      299.999
+    ],
+    "pixel_variance": 5247.259179,
+    "valid_dpi": true,
+    "valid": true
+  },
+  {
+    "template_id": "fig_l1_scatter",
+    "path": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_scatter.png",
+    "bytes": 37205,
+    "width": 1051,
+    "height": 885,
+    "dpi": [
+      299.999,
+      299.999
+    ],
+    "pixel_variance": 1394.076429,
+    "valid_dpi": true,
+    "valid": true
+  },
+  {
+    "template_id": "fig_l1_boxplot",
+    "path": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_boxplot.png",
+    "bytes": 8545,
+    "width": 1051,
+    "height": 708,
+    "dpi": [
+      299.999,
+      299.999
+    ],
+    "pixel_variance": 922.921737,
+    "valid_dpi": true,
+    "valid": true
+  },
+  {
+    "template_id": "fig_l1_density",
+    "path": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_density.png",
+    "bytes": 175086,
+    "width": 1417,
+    "height": 944,
+    "dpi": [
+      299.999,
+      299.999
+    ],
+    "pixel_variance": 1364.93382,
+    "valid_dpi": true,
+    "valid": true
+  },
+  {
+    "template_id": "fig_l1_histogram",
+    "path": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_histogram.png",
+    "bytes": 17627,
+    "width": 1051,
+    "height": 708,
+    "dpi": [
+      299.999,
+      299.999
+    ],
+    "pixel_variance": 11697.244985,
+    "valid_dpi": true,
+    "valid": true
+  },
+  {
+    "template_id": "fig_l1_violin",
+    "path": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_violin.png",
+    "bytes": 13220,
+    "width": 1051,
+    "height": 708,
+    "dpi": [
+      299.999,
+      299.999
+    ],
+    "pixel_variance": 849.050278,
+    "valid_dpi": true,
+    "valid": true
+  },
+  {
+    "template_id": "fig_l2_umap",
+    "path": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2_umap.png",
+    "bytes": 330485,
+    "width": 1822,
+    "height": 1475,
+    "dpi": [
+      299.999,
+      299.999
+    ],
+    "pixel_variance": 1207.088683,
+    "valid_dpi": true,
+    "valid": true
+  },
+  {
+    "template_id": "fig_l3_multipanel",
+    "path": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l3_multipanel.png",
+    "bytes": 81360,
+    "width": 2161,
+    "height": 1417,
+    "dpi": [
+      299.999,
+      299.999
+    ],
+    "pixel_variance": 883.384354,
+    "valid_dpi": true,
+    "valid": true
+  },
+  {
+    "template_id": "fig_l2p_violin",
+    "path": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_violin.png",
+    "bytes": 187898,
+    "width": 2132,
+    "height": 1350,
+    "dpi": [
+      299.999,
+      299.999
+    ],
+    "pixel_variance": 2484.393656,
+    "valid_dpi": true,
+    "valid": true
+  },
+  {
+    "template_id": "fig_l3_sankey",
+    "path": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l3_sankey.png",
+    "bytes": 142981,
+    "width": 2161,
+    "height": 1062,
+    "dpi": [
+      299.999,
+      299.999
+    ],
+    "pixel_variance": 2746.403379,
+    "valid_dpi": true,
+    "valid": true
+  }
+]
