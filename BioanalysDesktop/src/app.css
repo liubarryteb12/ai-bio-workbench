@@ -1248,3 +1248,32 @@ body {
   color: #9aa5b1;
   line-height: 1.5;
 }
+
+/* Pi Agent 监控（mod-pi-observability）*/
+.pi-status-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.pi-status-card { min-height: 120px; }
+.pi-status-grid { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; font-size: 13px; color: #3e4c59; }
+.pi-status-item { display: flex; align-items: center; gap: 6px; }
+.pi-model-list { display: flex; gap: 8px; flex-wrap: wrap; }
+.pi-switch-msg { margin: 8px 0 0; font-size: 12px; color: #52606d; }
+.pi-usage-row { margin-bottom: 16px; }
+.pi-usage-grid { display: flex; gap: 32px; font-size: 13px; color: #3e4c59; }
+.pi-main-row { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: start; }
+.pi-calls-list { display: flex; flex-direction: column; gap: 4px; max-height: 360px; overflow-y: auto; }
+.pi-call-row {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center;
+  padding: 6px 10px; border: 1px solid transparent; border-radius: 6px;
+  background: none; cursor: pointer; text-align: left; font-size: 12px; color: #3e4c59;
+}
+.pi-call-row:hover { background: #f0f2f5; }
+.pi-call-row-active { background: #e8f0fe; border-color: #1a73e8; }
+.pi-call-task { font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pi-call-model { color: #1a73e8; font-size: 11px; }
+.pi-call-tokens { font-family: monospace; color: #52606d; }
+.pi-empty { color: #9aa5b1; font-size: 12px; margin: 12px 0; }
+.pi-log-tabs { margin: 0; }
+.pi-log-terminal {
+  background: #1e2530; color: #d5dbe4; font-family: 'Cascadia Mono', 'Consolas', monospace;
+  font-size: 12px; line-height: 1.55; padding: 12px 14px; border-radius: 6px;
+  min-height: 320px; max-height: 420px; overflow: auto; white-space: pre-wrap; word-break: break-all; margin: 0;
+}

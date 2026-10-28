@@ -64,6 +64,22 @@ import {
 } from './task.js';
 import { runTask } from './run.js';
 import {
+  PI_SSH_TARGET,
+  buildOverviewCommand,
+  buildCallsCommand,
+  buildCallDetailCommand,
+  buildDaemonLogCommand,
+  buildCurrentModelCommand,
+  buildSwitchModelCommand,
+  parseOverview,
+  parseTranscript,
+  parseSessionList,
+  parseCurrentModel,
+  fetchAgentCard,
+  redact,
+  ALLOWED_MODELS,
+} from './pi_agent.js';
+import {
   buildAdaptUploadPairs, readAdaptManifest, runReportBuild, pullDeliverables, checkRemoteProjectDir,
   isAllowedDeliverableName, localDeliverDir, localDeliverFilePath,
   runReportPreflight, writeSha256Sidecars,
@@ -305,6 +321,24 @@ function json(res, status, payload) {
  */
 function uploadError(res, status, message) {
   return json(res, status, { ok: false, error: String(message ?? '') });
+}
+
+/** 从 termux-battery-status 的原始 JSON 串里挑展示字段（解析失败给 unknown） */
+function parseBattery(raw) {
+  if (typeof raw === 'string' && raw.includes('unavailable')) {
+    return { percentage: 'unavailable', status: 'unavailable', plugged: 'unavailable', temperature: 'unavailable' };
+  }
+  try {
+    const obj = JSON.parse(raw);
+    return {
+      percentage: obj.percentage ?? 'unknown',
+      status: obj.status ?? 'unknown',
+      plugged: obj.plugged ?? 'unknown',
+      temperature: obj.temperature ?? 'unknown',
+    };
+  } catch {
+    return { percentage: 'unknown', status: 'unknown', plugged: 'unknown', temperature: 'unknown' };
+  }
 }
 
 // ── 任务提交路径预校验（S29 / R9；2026-10-21 收敛到 ledger.js 单一事实源）──
@@ -1310,6 +1344,98 @@ const server = http.createServer(async (req, res) => {
     }
     const allPass = checks.every((c) => c.status === 'pass');
     return json(res, 200, { all_pass: allPass, checks });
+  }
+
+  // ============================================================
+  // Pi Agent 观测管控（mod-pi-observability）
+  // ============================================================
+
+  if (url.pathname === '/api/pi-agent/overview') {
+    // 聚合：A2A AgentCard（走 adb forward）+ 模型/tmux/内存/电池（走 ssh 只读探针）
+    try {
+      const cardPromise = fetchAgentCard();
+      const raw = runSshRaw(PI_SSH_TARGET, buildOverviewCommand(), { timeoutMs: 15000 });
+      const card = await cardPromise;
+      const overview = parseOverview(raw.text);
+      overview.a2a_card = card.status === 200 ? { name: card.data?.name, version: card.data?.version, url: card.data?.url } : null;
+      overview.battery = parseBattery(overview.battery_raw);
+      delete overview.battery_raw;
+      return json(res, 200, { ok: true, ...overview });
+    } catch (cause) {
+      return json(res, 200, { ok: false, online: false, error: cause instanceof Error ? cause.message : String(cause) });
+    }
+  }
+
+  if (url.pathname === '/api/pi-agent/calls') {
+    // 调用台账：a2a_sessions 目录的最近 N 条 + 每条的 usage 聚合
+    try {
+      const limit = Math.min(Math.max(Number(new URL(req.url, 'http://x').searchParams.get('limit')) || 20, 1), 50);
+      const list = runSshRaw(PI_SSH_TARGET, buildCallsCommand(limit), { timeoutMs: 15000 });
+      const sessions = parseSessionList(list.text).slice(0, limit);
+      const calls = sessions.map((session) => {
+        const detail = runSshRaw(PI_SSH_TARGET, buildCallDetailCommand(session.file), { timeoutMs: 15000 });
+        const parsed = parseTranscript(detail.text);
+        return { ...session, ...parsed };
+      });
+      const totals = calls.reduce((acc, c) => ({
+        input_tokens: acc.input_tokens + c.input_tokens,
+        output_tokens: acc.output_tokens + c.output_tokens,
+        cost_usd: acc.cost_usd + c.cost_usd,
+      }), { input_tokens: 0, output_tokens: 0, cost_usd: 0 });
+      return json(res, 200, { ok: true, calls, totals: { ...totals, cost_usd: Number(totals.cost_usd.toFixed(4)) } });
+    } catch (cause) {
+      return json(res, 200, { ok: false, error: cause instanceof Error ? cause.message : String(cause) });
+    }
+  }
+
+  if (url.pathname === '/api/pi-agent/logs') {
+    // 双流日志：daemon.log 或选中任务的 childTranscript；task_file 参数必须是 a2a_sessions 下的文件名
+    try {
+      const params = new URL(req.url, 'http://x').searchParams;
+      const tail = params.get('tail') || '120';
+      const taskFile = params.get('task_file') || '';
+      const command = taskFile ? buildCallDetailCommand(taskFile) : buildDaemonLogCommand(tail);
+      const raw = runSshRaw(PI_SSH_TARGET, command, { timeoutMs: 15000 });
+      return json(res, 200, {
+        ok: true,
+        source: taskFile || 'pi_a2a_daemon.log',
+        lines: redact(raw.text).split('\n').filter(Boolean),
+      });
+    } catch (cause) {
+      return json(res, 200, { ok: false, error: cause instanceof Error ? cause.message : String(cause) });
+    }
+  }
+
+  if (url.pathname === '/api/pi-agent/model' && req.method === 'GET') {
+    // 当前模型 + 白名单（前端下拉只展示白名单，不传 Key）
+    try {
+      const raw = runSshRaw(PI_SSH_TARGET, buildCurrentModelCommand(), { timeoutMs: 15000 });
+      return json(res, 200, { ok: true, current: parseCurrentModel(raw.text), allowed: ALLOWED_MODELS });
+    } catch (cause) {
+      return json(res, 200, { ok: false, error: cause instanceof Error ? cause.message : String(cause) });
+    }
+  }
+
+  if (url.pathname === '/api/pi-agent/model' && req.method === 'POST') {
+    // 切换模型：校验白名单 -> 改 pin 文件 -> 重启 tmux daemon（daemon 自己再校验一遍模型锁）
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const requested = JSON.parse(body || '{}');
+        const command = buildSwitchModelCommand(requested.provider, requested.model);
+        const raw = runSshRaw(PI_SSH_TARGET, command, { timeoutMs: 30000 });
+        if (!raw.text.includes('SWITCH_OK')) {
+          return json(res, 502, { ok: false, error: `切换失败: ${redact(raw.text).slice(0, 200)}` });
+        }
+        return json(res, 200, { ok: true, current: { provider: requested.provider, model: requested.model } });
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : String(cause);
+        const status = message.includes('ERR_MODEL_NOT_ALLOWED') ? 400 : 500;
+        return json(res, status, { ok: false, error: message });
+      }
+    });
+    return;
   }
 
   if (url.pathname === '/api/link/check') {
