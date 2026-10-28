@@ -11,6 +11,7 @@ if [ ! -f "$TOKEN_FILE" ]; then
   exit 2
 fi
 
+chmod 600 "$TOKEN_FILE"
 TOKEN="$(cat "$TOKEN_FILE")"
 if [ "${#TOKEN}" -lt 48 ]; then
   printf 'FATAL ERR_TOKEN_TOO_SHORT: %s chars\n' "${#TOKEN}" >&2
@@ -27,28 +28,39 @@ token = os.environ["A2A_PEER_TOKEN"]
 with open(settings_file, encoding="utf-8") as handle:
     config = json.load(handle)
 
-config["a2a"] = {
-    "server": {
-        "enabled": True,
-        "host": "127.0.0.1",
-        "port": 9910,
-        "portFallback": 10,
-        "agentName": "pi-termux-executor",
-        "peerTokens": {"codex": token},
-        "trustedPeers": ["codex"],
-        "allowAllUsers": False,
-        "maxConcurrent": 2,
-        "replyTimeoutSec": 300,
-        "childTranscripts": True,
-        "childTranscriptRetentionDays": 7,
-        "rateLimitPerMin": 30,
-    },
-    "timeouts": {"send": 360000, "stream": 120000},
-}
+if not isinstance(config, dict):
+    raise SystemExit("FATAL ERR_SETTINGS_NOT_OBJECT")
 
-with open(settings_file, "w", encoding="utf-8") as handle:
+# Replace only the owned server block so configured peers and discovery survive.
+a2a = config.setdefault("a2a", {})
+if not isinstance(a2a, dict):
+    raise SystemExit("FATAL ERR_A2A_BLOCK_NOT_OBJECT")
+
+a2a["server"] = {
+    "enabled": True,
+    "host": "127.0.0.1",
+    "port": 9910,
+    "portFallback": 10,
+    "agentName": "pi-termux-executor",
+    "peerTokens": {"codex": token},
+    "trustedPeers": ["codex"],
+    "allowAllUsers": False,
+    "maxConcurrent": 2,
+    "replyTimeoutSec": 300,
+    "childTranscripts": True,
+    "childTranscriptRetentionDays": 7,
+    "rateLimitPerMin": 30,
+}
+a2a["timeouts"] = {"send": 360000, "stream": 120000}
+
+temporary_file = settings_file + ".tmp"
+with open(temporary_file, "w", encoding="utf-8", newline="\n") as handle:
     json.dump(config, handle, indent=2, ensure_ascii=False)
     handle.write("\n")
+    handle.flush()
+    os.fsync(handle.fileno())
+
+os.replace(temporary_file, settings_file)
 PY
 
 jq -e '

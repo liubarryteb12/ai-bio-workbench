@@ -7,6 +7,7 @@ WORKSPACE_ROOT="$HOME/workspace/projects"
 LOG_DIR="$HOME/.pi/agent/logs"
 LOG_FILE="$LOG_DIR/pi_a2a_daemon.log"
 PROBE_URL="http://127.0.0.1:9910/.well-known/agent-card.json"
+SERVER_WAIT_SECONDS=30
 
 mkdir -p "$WORKSPACE_ROOT" "$LOG_DIR"
 
@@ -44,6 +45,17 @@ if [ "$ALLOW_ALL" = "true" ]; then
   die 2 "ERR_SECURITY_VIOLATION: allowAllUsers must remain false"
 fi
 
+if [ -n "${PI_PROVIDER_ENV:-}" ]; then
+  case "$PI_PROVIDER_ENV" in
+    *[!A-Z0-9_]* | [0-9]* | "" )
+      die 2 "ERR_PROVIDER_ENV_MALFORMED: must match [A-Z][A-Z0-9_]*"
+      ;;
+  esac
+  if [ -z "${!PI_PROVIDER_ENV:-}" ]; then
+    die 2 "ERR_PROVIDER_KEY_UNSET: $PI_PROVIDER_ENV is empty"
+  fi
+fi
+
 if [ "$HOST_VAL" = "0.0.0.0" ] && [ "${#CODEX_TOKEN}" -lt 32 ]; then
   die 2 "ERR_SECURITY_BIND: 0.0.0.0 requires high entropy codex peer token"
 fi
@@ -55,33 +67,63 @@ else
   log "WARN termux-wake-lock unavailable"
 fi
 
-start_server() {
-  tmux send-keys -t "$SESSION_NAME" "cd '$WORKSPACE_ROOT' && pi" C-m
-  sleep 4
-  tmux send-keys -t "$SESSION_NAME" "/a2a-server start" C-m
-  sleep 3
+start_pi() {
+  if [ -n "${PI_PROVIDER_ENV:-}" ]; then
+    tmux set-environment -g "$PI_PROVIDER_ENV" "${!PI_PROVIDER_ENV}"
+  fi
+  log "INFO starting_pi_auto_server mode=tui session=$SESSION_NAME"
+  if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+    tmux kill-session -t "$SESSION_NAME"
+  fi
+  if [ -n "${PI_PROVIDER_ENV:-}" ]; then
+    tmux new-session -d -s "$SESSION_NAME" -c "$WORKSPACE_ROOT" \
+      -e "$PI_PROVIDER_ENV=${!PI_PROVIDER_ENV}" \
+      "cd '$WORKSPACE_ROOT' && exec pi"
+    tmux set-environment -gu "$PI_PROVIDER_ENV"
+  else
+    tmux new-session -d -s "$SESSION_NAME" -c "$WORKSPACE_ROOT" \
+      "cd '$WORKSPACE_ROOT' && exec pi"
+  fi
 }
 
-if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
-  log "INFO tmux_session_exists"
-else
-  log "INFO creating tmux session $SESSION_NAME"
-  tmux new-session -d -s "$SESSION_NAME" -c "$WORKSPACE_ROOT"
-  start_server
-fi
+start_server() {
+  if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+    start_pi
+  else
+    log "INFO creating tmux session $SESSION_NAME"
+    tmux new-session -d -s "$SESSION_NAME" -c "$WORKSPACE_ROOT"
+    start_pi
+  fi
+}
+
+wait_for_server() {
+  local deadline=$((SECONDS + SERVER_WAIT_SECONDS))
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    if probe; then
+      return 0
+    fi
+    sleep 3
+  done
+  return 1
+}
+
+start_server
 
 probe() {
   curl --noproxy '*' -fsS --max-time 5 "$PROBE_URL" >/dev/null 2>&1
 }
 
-if probe; then
+if wait_for_server; then
   log "PASS a2a_server_ready host=$HOST_VAL port=$PORT_VAL"
 else
-  log "WARN first probe failed, retrying"
+  log "WARN first auto-start probe failed, retrying"
   start_server
-  if probe; then
+  if wait_for_server; then
     log "PASS a2a_server_ready_after_retry"
   else
+    if tmux list-panes -t "$SESSION_NAME" -F '#{pane_dead}' 2>/dev/null | command grep -q '^1$'; then
+      log "ERROR pi_process_dead session=$SESSION_NAME"
+    fi
     die 1 "ERR_SERVER_NOT_READY"
   fi
 fi
@@ -91,9 +133,9 @@ monitor_loop() {
     if probe; then
       :
     else
-      log "WARN probe failed, restarting server"
+      log "WARN probe failed, restarting pi auto-start session"
       start_server
-      if probe; then
+      if wait_for_server; then
         log "PASS server_recovered"
       else
         log "ERROR server remains unavailable"
