@@ -1,0 +1,79 @@
+Codex <-> Pi A2A 双 Agent 协作工程
+最高技术纲领
+版本：v1.0.0
+日期：2026-10-28
+协议基线：A2A Protocol v1.0, JSON-RPC 2.0 over HTTP
+
+文档地位
+本文件是 A2A 卡带体系的平台最高约束。详细设计正本为：
+aims/A2A/00_a2a_agent_20261028.md
+aims/A2A/01_aims_codex_pi_a2a_20261028.md
+aims/A2A/02_aimstodolist_codex_pi_a2a_20261028.md
+aims/A2A/03_aims_codex_pi_a2a_20261028.md
+
+一、三层单向依赖
+
+1. 业务卡带层：src/mods/mod-*
+2. 共享能力引擎层：src/engines/*
+3. 宿主微内核层：src/core/*
+
+依赖方向只能是 Mod -> Engine -> Core。
+两个 Mod 之间不得直接 import。
+Core 不得引用具体业务卡带。
+
+二、控制流
+
+1. Codex 是规划与验收方。
+2. Pi Agent 是受控执行方。
+3. Pi 不得反向调用 Codex，不得形成循环委派。
+4. 所有任务必须进入 submitted -> working -> completed / failed / canceled / input-required 状态机。
+
+三、安全边界
+
+A2A-D-01：Codex 侧使用 codex-a2a 适配器。
+A2A-D-02：Pi 侧使用 @bacnh85/pi-a2a。
+A2A-D-03：Pi 绑定 0.0.0.0 前必须存在高熵 peerTokens、trustedPeers 与 allowAllUsers=false。
+A2A-D-04：控制流保持 Codex -> Pi 单向。
+A2A-D-05：手机端必须启用 WakeLock、电池无限制、外部供电、tmux 托管与 Phantom Process 豁免。
+A2A-D-06：短任务同步等待，长任务使用 GetTask 退避轮询，超时先 CancelTask，禁止盲目重发。
+A2A-D-07：跨网只走 Tailscale 100.64.0.0/10，不暴露公网 9910，并强制 NO_PROXY。
+A2A-D-08：PC 工作区为 CODEX_WORKSPACE_ROOT，手机工作区为 $HOME/workspace，禁止 /sdcard 与 /storage/emulated。
+A2A-D-09：任务产物必须包含结构化 Artifact、退出码、文件路径与 SHA256。
+A2A-D-10：真实 Token 不入 Git，运行态写入被忽略的 .env.a2a 或环境变量；台账保持追加式 JSONL。
+
+四、固定端口与超时
+
+Pi A2A Server: 9910
+Codex A2A Server: 127.0.0.1:8000
+同步等待上限: 300s
+客户端发送超时: 360s
+异步任务上限: 86400s
+轮询退避: 5s, 10s, 20s, 30s
+
+五、绝对禁区
+
+1. 禁止无 Token 绑定 0.0.0.0。
+2. 禁止公网端口映射或 DMZ 暴露 9910。
+3. 禁止 Pi 反向调用 Codex。
+4. 禁止无保活裸跑 Termux 服务。
+5. 禁止在 /sdcard 或 /storage/emulated 下建立代码工作区。
+6. 禁止明文 Token 入库。
+7. 禁止同步超时后未核实状态就重发写任务。
+8. 禁止接受无退出码、无文件哈希的口语化完成回复。
+
+六、执行纪律
+
+1. WIP=1，同一时刻只推进一个原子任务。
+2. 阶段顺序固定：基础落地 -> 相关配套 -> 功能实现。
+3. 所有构建、测试与真实执行都在 K40 或对应移动执行面完成，本地仅编排、存储和验收。
+4. 每个任务必须有退出码、结构化证据和可复核哈希。
+
+七、账本
+
+con_hf/ledger/actions.jsonl
+con_hf/ledger/changes.jsonl
+con_hf/ledger/errors.jsonl
+con_hf/ledger/fixes.jsonl
+con_hf/ledger/pitfalls.jsonl
+
+所有时间使用 ISO 8601 带时区格式。

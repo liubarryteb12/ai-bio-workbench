@@ -21,6 +21,9 @@ _reference/
 
 # ===== 运行时产物 =====
 ops/secrets/
+.env.a2a
+*settings.local.json
+*.token
 ops/encoding_backup/
 inbox/
 portal/inbox/

@@ -383,3 +383,19 @@
 - **受影响条款**：G7 端口门禁、8080 门户单向 Sync、Final Gate 网络判据、启动与守护入口。
 - **同步修改文件清单**：`BioanalysDesktop/server/index.js`、`BioanalysDesktop/vite.config.js`、`start_workbench.bat`、`start_all.bat`、`ops/serve_guard.ps1`、`ops/sync_daemon.ps1`、`ops/README.md`、`docs/user_portal_deploy.md`、当前 aims 四卷、端口一致性测试。
 - **验证测试名**：工作台端口默认值跨文件一致性；`127.0.0.1:18787` 仅环回监听；`/api/selfcheck` 五维全绿；8080 `/health` 200；端口预检识别 18787 owner 为项目 Node。
+
+## A2A Decisions (namespace: A2A-D-01 ~ A2A-D-10)
+
+最新 `aims/A2A` 四卷沿用 D-01 ~ D-10 名称。现有生信台账已经永久占用 D-01 ~ D-28，
+按编号不回收纪律，A2A 增量统一使用 `A2A-D-*` 命名并在文档层保留与 A2A 四卷 D-* 的映射。
+
+- **A2A-D-01**：Codex 侧统一使用 `codex-a2a`，提供本地入站适配器与出站 `a2a_call` 能力。
+- **A2A-D-02**：Pi 侧统一使用 `@bacnh85/pi-a2a`，并实现 A2A v1.0 Agent Card、SendMessage、GetTask、CancelTask。
+- **A2A-D-03**：Pi 绑定 `0.0.0.0` 前必须有非空高熵 `peerTokens`、`trustedPeers` 与 `allowAllUsers=false`。
+- **A2A-D-04**：控制流只能从 Codex 到 Pi，Pi 禁止配置反向 Peer。
+- **A2A-D-05**：手机端必须满足 WakeLock、无限制电池、外部供电、tmux 托管和 Phantom Process 豁免。
+- **A2A-D-06**：短任务同步执行；长任务使用 GetTask 退避轮询，超时先 CancelTask，禁止盲目重发写操作。
+- **A2A-D-07**：跨网仅使用 Tailscale CGNAT 网段，禁止公网暴露 9910，并强制 NO_PROXY。
+- **A2A-D-08**：手机工作区仅允许 `$HOME/workspace`，拦截 `/sdcard`、`/storage/emulated` 与路径穿越。
+- **A2A-D-09**：任务产物必须提供结构化 Artifact、退出码、相对路径、SHA256 和输出摘要。
+- **A2A-D-10**：真实 Token 不入 Git，运行态只从环境变量或忽略文件读取；账本保持追加式 JSONL。
