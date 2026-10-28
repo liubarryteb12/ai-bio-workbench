@@ -73,6 +73,7 @@ import {
   buildSwitchModelCommand,
   buildPeerTokenCommand,
   postA2ARequest,
+  fetchTelemetry,
   parseOverview,
   parseTranscript,
   parseSessionList,
@@ -1375,13 +1376,23 @@ const server = http.createServer(async (req, res) => {
   // ============================================================
 
   if (url.pathname === '/api/pi-agent/overview') {
-    // 聚合：A2A AgentCard（走 adb forward）+ 模型/tmux/内存/电池（走 ssh 只读探针）
+    // 聚合：A2A AgentCard 与 9911 遥测（走 adb forward），SSH 探针兜底模型/内存
     try {
       const cardPromise = fetchAgentCard();
+      const tokenRes = runSshRaw(PI_SSH_TARGET, buildPeerTokenCommand(), { timeoutMs: 15000 });
+      const telePromise = fetchTelemetry(tokenRes.text.trim());
       const raw = runSshRaw(PI_SSH_TARGET, buildOverviewCommand(), { timeoutMs: 15000 });
       const card = await cardPromise;
+      const tele = await telePromise;
       const overview = parseOverview(raw.text);
       overview.a2a_card = card.status === 200 ? { name: card.data?.name, version: card.data?.version, url: card.data?.url } : null;
+      overview.telemetry = tele.status === 200
+        ? {
+            usage: tele.data?.usage ?? null,
+            usage_by_model: tele.data?.usage_by_model ?? [],
+            recent_calls: (tele.data?.recent_calls ?? []).slice(0, 15),
+          }
+        : null;
       overview.battery = parseBattery(overview.battery_raw);
       delete overview.battery_raw;
       return json(res, 200, { ok: true, ...overview });

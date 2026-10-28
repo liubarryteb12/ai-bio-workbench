@@ -399,3 +399,15 @@
 - **A2A-D-08**：手机工作区仅允许 `$HOME/workspace`，拦截 `/sdcard`、`/storage/emulated` 与路径穿越。
 - **A2A-D-09**：任务产物必须提供结构化 Artifact、退出码、相对路径、SHA256 和输出摘要。
 - **A2A-D-10**：真实 Token 不入 Git，运行态只从环境变量或忽略文件读取；账本保持追加式 JSONL。
+- **A2A-D-11**：传算分离与幂等防重跑（v1.1.0 名义 D-11）。大文件与预构建脚本走
+  scp/rsync 确定性通道先行落盘并 SHA256 对账；A2A 通道只传任务单与轻量 Artifact。
+  手机端耗时脚本必须经 `pi_idempotent_runner.sh` 执行：`.step_<id>.done` 命中即秒回
+  `reused_done_checkpoint`，`.step_<id>.lock` 内 PID 存活则挂载等待，严禁双进程并发；
+  预构建母版对 Pi 锁只读，禁止篡改 `seed=20261013` 等冻结内容；全量日志重定向
+  `system_logs/<step_id>.log`，仅回传 20 行以内 JSON 摘要削峰。
+- **A2A-D-12**：BioanalysDesktop 18787 观测与模型管控（v1.1.0 名义 D-12）。手机端
+  `pi_telemetry_sidecar.py` 监听 9911（仅 127.0.0.1，与 9910 共用 peerTokens 鉴权），
+  采集 a2a_sessions 调用台账、daemon 日志、模型 pin 文件与硬件工况；18787 经
+  `/api/pi-agent/*` 后端代理访问，前端零 Token 暴露；模型切换唯一真源是
+  `.provider_name/.provider_model` pin 文件，只接受 deepseek-v4.1-flash 与
+  glm-5.3-flash 白名单，切换后重启 daemon 生效；每次切换与派发写入追加式台账。

@@ -162,6 +162,14 @@ start_pi() {
   tmux new-session -d -s "$SESSION_NAME" -c "$WORKSPACE_ROOT" \
     -e "A2A_PROVIDER_KEY=$PROVIDER_VALUE" \
     "cd '$WORKSPACE_ROOT' && exec pi --model '$PROVIDER_MODEL' --thinking '$THINKING_LEVEL'"
+  # Window 1 hosts the telemetry sidecar (:9911) for the 18787 workbench.
+  if [ -x "$HOME/bin/pi_telemetry_sidecar.py" ]; then
+    tmux new-window -t "$SESSION_NAME" -n telemetry -c "$WORKSPACE_ROOT" \
+      "exec python3 '$HOME/bin/pi_telemetry_sidecar.py'"
+    log "INFO telemetry_sidecar_started port=9911"
+  else
+    log "WARN telemetry_sidecar_missing: $HOME/bin/pi_telemetry_sidecar.py"
+  fi
 }
 
 probe() {

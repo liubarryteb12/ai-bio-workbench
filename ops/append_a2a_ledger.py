@@ -140,6 +140,35 @@ KEEPALIVE_ENTRY = {
     },
 }
 
+IDEM_ENTRY = {
+    "id": "ACT-20261028-153000-a2a-idem",
+    "kind": "a2a_idempotent",
+    "step": "idempotent_runner_g8",
+    "status": "ok",
+    "detail": {
+        "fresh_run": "ok",
+        "reuse_status": "reused_done_checkpoint",
+        "reuse_latency_ms_under_500": True,
+        "lock_present_with_live_pid": True,
+        "script_readonly": True,
+        "log_redirect": "system_logs/<step>.log",
+    },
+}
+
+TELEMETRY_ENTRY = {
+    "id": "ACT-20261028-153500-a2a-telemetry",
+    "kind": "a2a_telemetry",
+    "step": "sidecar_9911_g9",
+    "status": "ok",
+    "detail": {
+        "bind": "127.0.0.1:9911",
+        "auth": "peerTokens.codex bearer",
+        "no_token_http": 401,
+        "overview": "ok, calls=11, by_model parsed",
+        "daemon_windows": ["a2a-server(:9910)", "telemetry(:9911)"],
+    },
+}
+
 
 def main() -> int:
     ledger_path = Path(LEDGER)
@@ -151,7 +180,7 @@ def main() -> int:
             except json.JSONDecodeError:
                 continue
 
-    entries = ENTRIES + [E2E_ENTRY, ASYNC_ENTRY, LIVE_ARTIFACT_ENTRY, KEEPALIVE_ENTRY]
+    entries = ENTRIES + [E2E_ENTRY, ASYNC_ENTRY, LIVE_ARTIFACT_ENTRY, KEEPALIVE_ENTRY, IDEM_ENTRY, TELEMETRY_ENTRY]
     stamp = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
     with io.open(LEDGER, "a", encoding="utf-8", newline="\n") as handle:
         for entry in entries:

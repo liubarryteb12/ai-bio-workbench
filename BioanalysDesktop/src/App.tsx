@@ -2280,6 +2280,11 @@ type PiOverview = {
   allowed_models?: Array<{ provider: string; model: string }>;
   a2a_card?: { name: string; version: string; url: string } | null;
   battery?: { percentage: string; status: string; plugged: string; temperature: string };
+  telemetry?: {
+    usage: { total_calls: number; input_tokens: number; output_tokens: number; cost_usd: number } | null;
+    usage_by_model: Array<{ provider: string; model: string; calls: number; input_tokens: number; output_tokens: number; cost_usd: number }>;
+    recent_calls: Array<{ task_id: string; model: string; input_tokens: number; output_tokens: number; duration_sec: number; last_text: string }>;
+  } | null;
 };
 type PiCall = {
   file: string; task_id: string; model: string; thinking_level: string;
@@ -2375,7 +2380,7 @@ function PiAgentMonitor() {
   };
 
   const dot = overview?.online ? 'selfcheck-dot-pass' : 'selfcheck-dot-fail';
-  const totals = calls?.totals;
+  const totals = overview?.telemetry?.usage ?? calls?.totals;
   const byModel = (calls?.calls ?? []).reduce<Record<string, PiCall>>((acc, c) => {
     const b = acc[c.model] ?? { ...c, input_tokens: 0, output_tokens: 0, cost_usd: 0 };
     b.input_tokens += c.input_tokens;
@@ -2384,6 +2389,9 @@ function PiAgentMonitor() {
     acc[c.model] = b;
     return acc;
   }, {});
+  const byModelSource = overview?.telemetry?.usage_by_model?.length
+    ? overview.telemetry.usage_by_model.map((m) => ({ model: m.model, input_tokens: m.input_tokens, output_tokens: m.output_tokens }))
+    : Object.values(byModel).map((m) => ({ model: m.model, input_tokens: m.input_tokens, output_tokens: m.output_tokens }));
 
   return (
     <div className="view-container">
@@ -2416,7 +2424,7 @@ function PiAgentMonitor() {
       </div>
       <div className="pi-usage-row">
         <div className="card pi-usage-card">
-          <div className="card-head"><h2 className="card-title">Token 用量（最近 {calls?.calls?.length ?? 0} 次）</h2></div>
+          <div className="card-head"><h2 className="card-title">Token 用量（{overview?.telemetry ? '9911 遥测' : 'SSH 探针'}，共 {overview?.telemetry?.usage?.total_calls ?? calls?.calls?.length ?? 0} 次）</h2></div>
           <div className="pi-usage-grid">
             <div>Input: <strong>{totals?.input_tokens ?? 0}</strong></div>
             <div>Output: <strong>{totals?.output_tokens ?? 0}</strong></div>
@@ -2450,9 +2458,9 @@ function PiAgentMonitor() {
             ))}
             {(calls?.calls?.length ?? 0) === 0 && <p className="pi-empty">暂无调用记录</p>}
           </div>
-          {Object.keys(byModel).length > 0 && (
+          {byModelSource.length > 0 && (
             <div className="pi-by-model">
-              <p className="pi-empty">按模型: {Object.values(byModel).map((m) => `${m.model} ${m.input_tokens}/${m.output_tokens}`).join(' | ')}</p>
+              <p className="pi-empty">按模型: {byModelSource.map((m) => `${m.model} ${m.input_tokens}/${m.output_tokens}`).join(' | ')}</p>
             </div>
           )}
         </div>
