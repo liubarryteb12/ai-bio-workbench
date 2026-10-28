@@ -1,4 +1,0 @@
-[bridge] line1_bulk/ml_hub_analysis 需要桥接校验但inputs 中没有 .h5ad/.rds（桥接引擎仅支持这两种格式），无法构造校验命令，本次未过引擎
-[bridge] line1_bulk/ml_diagnostics 需要桥接校验但inputs 中没有 .h5ad/.rds（桥接引擎仅支持这两种格式），无法构造校验命令，本次未过引擎
-[bridge] line1_bulk/ml_hub_analysis 需要桥接校验但inputs 中没有 .h5ad/.rds（桥接引擎仅支持这两种格式），无法构造校验命令，本次未过引擎
-[bridge] line1_bulk/ml_diagnostics 需要桥接校验但inputs 中没有 .h5ad/.rds（桥接引擎仅支持这两种格式），无法构造校验命令，本次未过引擎
