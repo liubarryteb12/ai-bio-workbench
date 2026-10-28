@@ -18,8 +18,16 @@ ENGINE_DIR = HERE.parent / "src" / "engines" / "security-audit-engine"
 
 
 def run_node(script: str) -> str:
+    """Run a snippet against the compiled .mjs modules through an ESM wrapper."""
+    wrapper = (
+        "import { PathGuard } from './PathGuard.mjs';"
+        "import { LedgerStore } from './LedgerStore.mjs';"
+        "import { CapabilityBus } from './CapabilityBus.mjs';"
+        "import { ModLoader } from './ModLoader.mjs';"
+        + script
+    )
     result = subprocess.run(
-        ["node", "-e", script],
+        ["node", "--input-type=module", "-e", wrapper],
         cwd=BUILD_DIR,
         check=True,
         capture_output=True,
@@ -45,7 +53,6 @@ class A2ACoreTestCase(unittest.TestCase):
     def path_guard(self, script: str) -> str:
         home = json.dumps(self.guard["home"])
         return run_node(
-            "const { PathGuard } = require('./PathGuard.js');\n"
             f"const guard = new PathGuard({home});\n"
             + script
         )
@@ -77,7 +84,6 @@ class A2ACoreTestCase(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = json.dumps(tmp)
             result = run_node(
-                "const { LedgerStore } = require('./LedgerStore.js');\n"
                 f"const store = new LedgerStore({root});\n"
                 "store.append('actions', { task: 'probe' });\n"
                 "store.append('changes', { files: ['probe.py'] });\n"
@@ -92,7 +98,6 @@ class A2ACoreTestCase(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = json.dumps(tmp)
             result = run_node(
-                "const { LedgerStore } = require('./LedgerStore.js');\n"
                 f"const store = new LedgerStore({root});\n"
                 "try { store.append('unknown', {}); console.log('ALLOWED'); }\n"
                 "catch (e) { console.log('REJECTED'); }"
@@ -101,7 +106,6 @@ class A2ACoreTestCase(unittest.TestCase):
 
     def test_capability_bus_registers_and_publishes(self) -> None:
         result = run_node(
-            "const { CapabilityBus } = require('./CapabilityBus.js');\n"
             "const bus = new CapabilityBus();\n"
             "bus.registerCapability({ id: 'cap.test', ownerModule: 'mod-test', version: '1.0.0' });\n"
             "let seen = 0;\n"
@@ -113,7 +117,6 @@ class A2ACoreTestCase(unittest.TestCase):
 
     def test_capability_bus_rejects_missing_capability(self) -> None:
         result = run_node(
-            "const { CapabilityBus } = require('./CapabilityBus.js');\n"
             "const bus = new CapabilityBus();\n"
             "try { bus.requireCapability('missing'); console.log('ALLOWED'); }\n"
             "catch (e) { console.log('REJECTED'); }"
@@ -139,7 +142,6 @@ class A2ACoreTestCase(unittest.TestCase):
             (mod_dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
             root = json.dumps(tmp)
             result = run_node(
-                "const { ModLoader } = require('./ModLoader.js');\n"
                 f"const loader = new ModLoader([{root}]);\n"
                 "console.log(JSON.stringify(loader.loadAll()));"
             )
