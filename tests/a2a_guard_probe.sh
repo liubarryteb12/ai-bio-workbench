@@ -6,6 +6,9 @@ set -uo pipefail
 DAEMON="$HOME/bin/pi_a2a_daemon.sh"
 SETTINGS_FILE="$HOME/.pi/agent/settings.json"
 PROBE_DIR="$HOME/.pi/agent/guard_probe"
+PROVIDER_KEY_FILE="$HOME/.pi/agent/.provider_key"
+PROVIDER_NAME_FILE="$HOME/.pi/agent/.provider_name"
+PROVIDER_MODEL_FILE="$HOME/.pi/agent/.provider_model"
 
 failures=0
 
@@ -31,6 +34,69 @@ restore() {
   cp "$PROBE_DIR/settings.backup.json" "$SETTINGS_FILE"
 }
 trap restore EXIT
+
+save_env() {
+  SAVED_PROVIDER_ENV="${PI_PROVIDER_ENV:-}"
+  SAVED_KEY_FILE="$PROBE_DIR/provider_key.backup"
+  SAVED_NAME_FILE="$PROBE_DIR/provider_name.backup"
+  SAVED_MODEL_FILE="$PROBE_DIR/provider_model.backup"
+  for pair in \
+    "$PROVIDER_KEY_FILE:$SAVED_KEY_FILE" \
+    "$PROVIDER_NAME_FILE:$SAVED_NAME_FILE" \
+    "$PROVIDER_MODEL_FILE:$SAVED_MODEL_FILE"; do
+    src="${pair%%:*}"
+    dst="${pair#*:}"
+    if [ -f "$src" ]; then
+      cp "$src" "$dst"
+    else
+      rm -f "$dst"
+    fi
+  done
+}
+
+restore_env() {
+  for pair in \
+    "$SAVED_KEY_FILE:$PROVIDER_KEY_FILE" \
+    "$SAVED_NAME_FILE:$PROVIDER_NAME_FILE" \
+    "$SAVED_MODEL_FILE:$PROVIDER_MODEL_FILE"; do
+    src="${pair%%:*}"
+    dst="${pair#*:}"
+    if [ -f "$src" ]; then
+      cp "$src" "$dst"
+    else
+      rm -f "$dst"
+    fi
+  done
+  if [ -n "$SAVED_PROVIDER_ENV" ]; then
+    export PI_PROVIDER_ENV="$SAVED_PROVIDER_ENV"
+  else
+    unset PI_PROVIDER_ENV
+  fi
+}
+
+save_env
+trap 'restore; restore_env' EXIT
+
+# 4. No provider key must be refused with exit 2, never a bare pi start.
+rm -f "$PROVIDER_KEY_FILE" "$PROVIDER_NAME_FILE" "$PROVIDER_MODEL_FILE"
+unset PI_PROVIDER_ENV
+A2A_DAEMON_MODE=foreground "$DAEMON" >/dev/null 2>&1
+report 'missing_provider_refused' 2 "$?"
+
+# 5. A provider outside the approved pair must be refused with exit 2.
+printf 'sk-any-value' > "$PROVIDER_KEY_FILE"
+printf 'openai' > "$PROVIDER_NAME_FILE"
+chmod 600 "$PROVIDER_KEY_FILE" "$PROVIDER_NAME_FILE"
+A2A_DAEMON_MODE=foreground "$DAEMON" >/dev/null 2>&1
+report 'unapproved_provider_refused' 2 "$?"
+
+# 6. A model outside the approved pair must be refused with exit 2.
+printf 'sk-any-value' > "$PROVIDER_KEY_FILE"
+printf 'deepseek' > "$PROVIDER_NAME_FILE"
+printf 'glm-5.2' > "$PROVIDER_MODEL_FILE"
+chmod 600 "$PROVIDER_KEY_FILE" "$PROVIDER_NAME_FILE" "$PROVIDER_MODEL_FILE"
+A2A_DAEMON_MODE=foreground "$DAEMON" >/dev/null 2>&1
+report 'unapproved_model_refused' 2 "$?"
 
 # 1. allowAllUsers true must be refused with exit 2.
 jq '.a2a.server.allowAllUsers = true' "$PROBE_DIR/settings.backup.json" > "$SETTINGS_FILE"

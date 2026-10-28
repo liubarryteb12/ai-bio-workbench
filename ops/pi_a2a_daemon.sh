@@ -125,6 +125,9 @@ else
 fi
 
 start_pi() {
+  if [ -z "$PROVIDER_ENV_NAME" ] || [ -z "$PROVIDER_MODEL" ]; then
+    die 2 "ERR_PROVIDER_REQUIRED: Pi may only start with an approved model key"
+  fi
   log "INFO starting_pi_auto_server mode=tui session=$SESSION_NAME"
   if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
     tmux kill-session -t "$SESSION_NAME"
