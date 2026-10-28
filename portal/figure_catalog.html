@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10233f">
+  <meta name="description" content="候选图库：按单图浏览生信绘图模板，查看状态、依赖与来源。">
+  <title>候选图库</title>
+  <link rel="stylesheet" href="./figure_catalog.css">
+</head>
+<body>
+  <a class="skip-link" href="#catalog-main">跳到主要内容</a>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand-lockup">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+            <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+            <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+            <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+          </svg>
+        </div>
+        <div>
+          <p class="eyebrow">BIOINFORMATICS FIGURE LIBRARY</p>
+          <h1>候选图库</h1>
+          <p class="header-copy">单图浏览，依赖与来源可追溯</p>
+        </div>
+      </div>
+      <div class="header-meta">
+        <span class="header-badge" id="header-count">读取中</span>
+        <span class="header-note">候选池状态不等于生产可用</span>
+      </div>
+    </div>
+  </header>
+
+  <main id="catalog-main" class="page-shell" tabindex="-1">
+    <section class="toolbar" aria-labelledby="filter-heading">
+      <div class="toolbar-heading">
+        <div>
+          <p class="section-kicker">CATALOG</p>
+          <h2 id="filter-heading">筛选候选图</h2>
+        </div>
+        <p class="results-summary" id="results-summary" aria-live="polite">准备读取候选图库</p>
+      </div>
+
+      <form class="filter-form" id="filter-form" role="search">
+        <div class="field field-search">
+          <label for="query">搜索</label>
+          <div class="input-wrap">
+            <span class="input-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="7"></circle>
+                <path d="m20 20-3.5-3.5"></path>
+              </svg>
+            </span>
+            <input id="query" name="q" type="search" autocomplete="off" placeholder="标题、图型、标签或依赖">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="language">语言</label>
+          <select id="language" name="language">
+            <option value="">全部语言</option>
+            <option value="Python">Python</option>
+            <option value="R">R</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="status">状态</label>
+          <select id="status" name="status">
+            <option value="">全部状态</option>
+            <option value="k40_verified">已验证</option>
+            <option value="materialized">已物化</option>
+            <option value="blocked_dependency">缺依赖</option>
+            <option value="blocked_network">外网失败</option>
+            <option value="blocked_code">代码失败</option>
+            <option value="blocked_image">图片失败</option>
+            <option value="blocked_timeout">执行超时</option>
+            <option value="split_materialized">已拆分</option>
+            <option value="split_code_ready">拆分代码就绪</option>
+            <option value="generic_candidate">通用候选</option>
+            <option value="code_ready">代码就绪</option>
+            <option value="needs_split">待拆分</option>
+            <option value="image_missing">缺图</option>
+            <option value="local_image_missing">缺本地图</option>
+            <option value="code_missing">缺代码</option>
+          </select>
+        </div>
+
+        <button class="button button-ghost reset-button" id="reset-filters" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 12a9 9 0 1 0 3-6.7"></path>
+            <path d="M3 4v5h5"></path>
+          </svg>
+          <span>重置筛选</span>
+        </button>
+      </form>
+
+      <div class="catalog-alert" id="catalog-alert" role="alert" hidden></div>
+    </section>
+
+    <div class="catalog-layout">
+      <section class="catalog-results" aria-labelledby="results-heading">
+        <div class="section-bar">
+          <div>
+            <p class="section-kicker">SINGLE FIGURE VIEW</p>
+            <h2 id="results-heading">单图候选</h2>
+          </div>
+          <p class="section-hint">每张卡片只展示一张图</p>
+        </div>
+
+        <div class="figure-grid skeleton-grid" id="loading-grid" aria-hidden="true"></div>
+        <div class="figure-grid" id="figure-grid" aria-live="polite"></div>
+
+        <div class="empty-state" id="empty-state" hidden>
+          <span class="empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+              <circle cx="8.5" cy="9.5" r="1.5"></circle>
+              <path d="m21 15-4.5-4.5L9 18"></path>
+            </svg>
+          </span>
+          <h3>没有匹配的候选图</h3>
+          <p>调整搜索词或筛选条件后重试。</p>
+        </div>
+
+        <div class="error-state" id="error-state" hidden>
+          <span class="empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3 2.8 20h18.4L12 3Z"></path>
+              <path d="M12 9v4"></path>
+              <path d="M12 17h.01"></path>
+            </svg>
+          </span>
+          <h3>候选图库读取失败</h3>
+          <p id="error-message">请检查服务是否可用。</p>
+          <button class="button button-primary" id="retry-button" type="button">重新读取</button>
+        </div>
+      </section>
+
+      <aside class="detail-panel" id="detail-panel" aria-label="候选图详情" aria-live="polite">
+        <div class="detail-empty" id="detail-empty">
+          <span class="detail-empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z"></path>
+              <path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"></path>
+            </svg>
+          </span>
+          <h2 id="detail-title">选择一个候选图</h2>
+          <p>点击左侧卡片查看单图预览、依赖、尺寸与来源。</p>
+        </div>
+
+        <div class="detail-content" id="detail-content" hidden>
+          <div class="detail-head">
+            <div>
+              <p class="section-kicker">SELECTED FIGURE</p>
+              <h2 id="detail-heading">候选图详情</h2>
+            </div>
+            <button class="icon-button detail-close" id="detail-close" type="button" aria-label="关闭详情">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
+                <path d="m6 6 12 12"></path>
+                <path d="m18 6-12 12"></path>
+              </svg>
+            </button>
+          </div>
+
+          <div class="detail-preview" id="detail-preview"></div>
+          <div class="detail-badges" id="detail-badges"></div>
+          <p class="detail-note" id="detail-note" hidden></p>
+
+          <dl class="detail-facts" id="detail-facts"></dl>
+
+          <section class="detail-section" aria-labelledby="detail-deps-heading">
+            <h3 id="detail-deps-heading">依赖</h3>
+            <div class="chip-list" id="detail-deps"></div>
+          </section>
+
+          <section class="detail-section" aria-labelledby="detail-tags-heading">
+            <h3 id="detail-tags-heading">生物标签</h3>
+            <div class="chip-list" id="detail-bio-tags"></div>
+          </section>
+
+          <section class="detail-section" aria-labelledby="detail-source-heading">
+            <h3 id="detail-source-heading">来源</h3>
+            <a class="source-link" id="detail-page-link" href="#" target="_blank" rel="noreferrer">
+              <span>打开来源页</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M14 4h6v6"></path>
+                <path d="m20 4-9 9"></path>
+                <path d="M20 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5"></path>
+              </svg>
+            </a>
+            <p class="source-host" id="detail-source-host"></p>
+          </section>
+
+          <section class="detail-section detail-code-section" aria-labelledby="detail-code-heading">
+            <h3 id="detail-code-heading">代码与模板</h3>
+            <p class="code-path" id="detail-code-path">未记录</p>
+            <p class="template-id" id="detail-template-id"></p>
+          </section>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <div class="detail-backdrop" id="detail-backdrop" hidden></div>
+
+  <footer class="site-footer">
+    <p>候选图库只提供单图预览与适配线索。正式使用前仍需完成代码验证、数据契约与许可核对。</p>
+  </footer>
+
+  <script src="./figure_catalog.js" defer></script>
+</body>
+</html>

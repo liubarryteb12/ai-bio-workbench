@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   DEFAULT_SERIAL, SYSTEM_LOGS, LINES, DEFAULT_PROJECT, sanitizeProjectId, projectLineDir,
-  resolveLineFromDataType, normalizeDatasets, normalizeDataSource,
+  PROJECTS_ROOT, resolveLineFromDataType, normalizeDatasets, normalizeDataSource,
 } from './domain.js';
 import { findAdb, runSync, runSshRaw, runSshStrict } from './proc.js';
 import { checkLink } from './link.js';
@@ -45,21 +45,50 @@ import {
 import { checkTumorBlacklist, validateProjectFields, BLACKLIST_HINT } from './tumor_blacklist.js';
 import { auditCommand } from './audit.js';
 import {
-  buildTaskScript, needsBridgeCheck, inspectBridgeNeed, buildBridgeCheckCommand,
+  describeSeries, resolvePlan, validateRegistry, loadWorkflows, modToScriptMap,
+} from './workflow_graph.js';
+import {
+  buildAdaptedFigureTasks, loadFigureTemplates, resolveFigure, validateRegistry as validateFigureRegistry,
+} from './figure_graph.js';
+import {
+  loadFigureCatalog, resolveCatalogFigure, searchFigureCatalog, validateFigureCatalog,
+} from './figure_catalog.js';
+import {
+  buildTaskScript, deriveAdaptedFigure, needsBridgeCheck, inspectBridgeNeed, buildBridgeCheckCommand,
   runBridgeCheckSync, BridgeCheckError, requiresKoGene, isValidKoGene, KNOCKOUT_STEPS,
 } from './task.js';
 import { runTask } from './run.js';
 import {
-  runReportBuild, pullDeliverables, checkRemoteProjectDir,
+  buildAdaptUploadPairs, readAdaptManifest, runReportBuild, pullDeliverables, checkRemoteProjectDir,
   isAllowedDeliverableName, localDeliverDir, localDeliverFilePath,
   runReportPreflight, writeSha256Sidecars,
 } from './report.js';
 
-const PORT = Number(process.env.BAD_PORT || 8787);
+const PORT = Number(process.env.BAD_PORT || 18787);
+const REPO_ROOT = path.resolve(fileURLToPath(new URL('../../', import.meta.url)));
+
+/** 把项目相对 adapt_vars 输入映射成远端任务可用的绝对路径 */
+function remoteTaskInput(rawPath, projectId, lineId) {
+  const normalized = String(rawPath || '').split('\\').join('/').replace(/^\.\/+/, '');
+  if (!normalized) return `${projectLineDir(projectId, lineId)}/processed/input.tsv`;
+  if (normalized.startsWith(`data/${lineId}/`)) {
+    return `${PROJECTS_ROOT}/${projectId}/${normalized.slice('data/'.length)}`;
+  }
+  if (normalized.startsWith(`figures/${lineId}/`)) {
+    return `${PROJECTS_ROOT}/${projectId}/${normalized}`;
+  }
+  if (normalized.startsWith('processed/') || normalized.startsWith('results/')) {
+    return `${projectLineDir(projectId, lineId)}/${normalized}`;
+  }
+  if (!normalized.includes('/')) {
+    return `${projectLineDir(projectId, lineId)}/processed/${normalized}`;
+  }
+  return `${PROJECTS_ROOT}/${projectId}/${normalized}`;
+}
 
 /**
  * 工作台口令（HTTP Basic）。
- * 8787 会经 frp 暴露到公网，frp 从本机 127.0.0.1 回连，服务端无法用来源地址区分内外，
+ * 18787 会经 frp 暴露到公网，frp 从本机 127.0.0.1 回连，服务端无法用来源地址区分内外，
  * 所以只能整站鉴权：环境变量给了账号口令就强制校验，没给则保持本地开发/测试的免密行为。
  * 正式常驻由 ops/serve_guard.ps1 注入口令（口令文件在用户主目录，不落源码）。
  */
@@ -170,6 +199,17 @@ function runRemoteRaw(command) {
   return runSshRaw('k40-ubuntu', command, { timeoutMs: 40000 });
 }
 
+/**
+ * 列远端该线 processed/ 下的文件名（不含路径）。
+ * 只取一层、不递归：M4 的产物核对只需要文件名集合，递归会在容器里触发 P-23。
+ * ssh 失败时返回空集合 -  - 预览端点不该因为链路抖动就 500，缺产物会显示成 missing。
+ */
+function listRemoteProcessed(projectId, lineId) {
+  const dir = `${projectLineDir(projectId, lineId)}/processed`;
+  const out = runRemote(`ls -1 ${dir} 2>/dev/null || true`);
+  return new Set(out.split('\n').map((s) => s.trim()).filter(Boolean));
+}
+
 /** 宽松版：只要文本，忽略退出码（多数调用点靠命令里的 `|| true` / MISSING 自己兜底） */
 function runRemote(command) {
   return runRemoteRaw(command).text;
@@ -180,7 +220,7 @@ function runRemote(command) {
  *
  * 存在的理由（踩坑台账 P-15）：宽松版丢弃退出码，链路断时 ssh 返回 255 且
  * stdout 为空，第 1 维会把空串判成"原生 ext4"、第 2 维会把空串算成 100% free，
- * 自检出现假绿灯——而自检是提交门禁，假绿灯比红灯危险得多。
+ * 自检出现假绿灯 -  - 而自检是提交门禁，假绿灯比红灯危险得多。
  */
 function runRemoteStrict(command) {
   return runSshStrict('k40-ubuntu', command, { timeoutMs: 40000 });
@@ -297,7 +337,7 @@ function listProjectsWithMeta() {
  * 列出一个项目某条线 figures/ 下的图件（含中文说明），供 API 与后端预览页共用。
  *
  * 优先读本地回搬副本 outputs/<项目>/<线>/figures/（规范要求图件回搬本地），
- * 本地没有时才回落远端实时读取，并用 source 字段标明来源 —— 不能让
+ * 本地没有时才回落远端实时读取，并用 source 字段标明来源  -  -  不能让
  * "本地还没回搬"被误读成"这条线没出图"。
  */
 function listFiguresForLine(projectId, lineId) {
@@ -545,7 +585,7 @@ const STATIC_MIME = {
 
 /**
  * 托管管理员工作台前端（dist/）。
- * 8787 只提供管理员工作台（/）与后端 API；客户需求提交入口是独立服务（见 portal/），不在此端口。
+ * 18787 只提供管理员工作台（/）与后端 API；客户需求提交入口是独立服务（见 portal/），不在此端口。
  * 无扩展名的路径按 SPA 回退到 index.html（React 单页，路由在客户端状态里）。
  * @param {import('node:http').ServerResponse} res
  * @param {string} pathname
@@ -588,7 +628,7 @@ function serveStatic(res, pathname) {
       '<body style="font-family:sans-serif;max-width:640px;margin:80px auto;padding:0 20px;color:#0f172a">' +
       '<h1 style="color:#0d9488">工作台前端尚未构建</h1>' +
       '<p>请在 <code>BioanalysDesktop/</code> 目录执行 <code>npm run build</code> 生成 <code>dist/</code> 后刷新本页。</p>' +
-      '<p>开发模式可改用 <code>npm run dev</code>（Vite 监听 5173，API 代理到 8787）。</p>' +
+      '<p>开发模式可改用 <code>npm run dev</code>（Vite 监听 5173，API 代理到 18787）。</p>' +
       '</body>'
     );
   }
@@ -599,8 +639,18 @@ function serveStatic(res, pathname) {
  * 从 pipelineDag 推断分析线：取命中步骤数最多的那条线。
  * 为什么不用 dataType：需求文件可能缺 dataType（旧格式），但步骤 id 是母版固定的。
  */
-function lineFromPipeline(dag) {
-  const ids = (Array.isArray(dag) ? dag : []).map((d) => d?.stepId).filter(Boolean);
+// 导出供测试：双形态（mod id / 母版名）推断分析线是 M3 的关键兼容层，
+// 没有测试钉住的话，未来改 LINE_STEPS 或映射时会静默失配。
+export function lineFromPipeline(dag) {
+  // 双形态兼容：pipelineDag 的 stepId 既可能是母版名（历史提交、runner 直跑），
+  // 也可能是 mod id（mod 化后的客户端，如 l2_tf_scenic）。LINE_STEPS 派生自注册表的
+  // script 字段即母版名，所以 mod id 要先经 modScriptIndex 翻成母版名再比对，
+  // 否则 mod 化后这里会全部失配、分析线推断为空。
+  const modToScript = modToScriptMap();
+  const ids = (Array.isArray(dag) ? dag : [])
+    .map((d) => d?.stepId)
+    .filter(Boolean)
+    .map((s) => modToScript.get(s) || s);
   if (!ids.length) return '';
   let best = '';
   let bestHits = 0;
@@ -730,6 +780,12 @@ const server = http.createServer(async (req, res) => {
           dataSource: requested.dataSource,
           groupingDesign: requested.groupingDesign,
           pipelineDag: requested.pipelineDag,
+          // mod 化客户端形态：只传 seriesId + modIds + koGene，不传 pipelineDag。
+          // buildProjectMeta 里的 buildPipelineDag 会把它合成 pipeline_dag，
+          // 这里必须透传，否则新客户端的步骤选择到服务台就丢了。
+          seriesId: requested.seriesId,
+          modIds: requested.modIds,
+          koGene: requested.koGene,
           aclAndOutput: requested.aclAndOutput,
           // aims v3.0 intake 四块
           biologicalPriors: requested.biologicalPriors,
@@ -740,7 +796,9 @@ const server = http.createServer(async (req, res) => {
           dataFiles: requested.dataFiles,
           // S24/R2：WGCNA 参数契约（表单选填；normalizeWgcnaConfig 逐键回落默认）
           wgcnaConfig: requested.wgcnaConfig,
-          lineId: requested.lineId,
+          // mod 化客户端用 seriesId 表达同一件事（分析线），没有单独的 lineId 字段。
+          // 两个名字都认，缺了就都空着让 strict 校验去拒。
+          lineId: requested.lineId || requested.seriesId,
         });
       } catch (cause) {
         return json(res, 400, { error: cause.message });
@@ -800,6 +858,56 @@ const server = http.createServer(async (req, res) => {
   // 三线可选步骤列表（前端级联勾选用）
   if (url.pathname === '/api/projects/steps') {
     return json(res, 200, { steps: LINE_STEPS, meta: PIPELINE_STEP_META });
+  }
+
+  // --- mod 注册表（单一事实源 src/workflows.json）---
+  // 与 /api/projects/steps 的区别：那个是「母版名」兼容视图（旧前端在用），
+  // 这三个是注册表本体，返回 mod id / 阶段 / 依赖 / 成本，供组合校验用。
+  if (url.pathname === '/api/workflows') {
+    const wf = loadWorkflows();
+    const check = validateRegistry();
+    return json(res, 200, {
+      // 客户端一次拿全：系列清单 + 每条线的阶段与 mod + 全局约束
+      series: wf.series.map((s) => describeSeries(s.id)),
+      constraints: wf.constraints,
+      // 注册表自洽状态一并下发：坏了客户端能看到，而不是静默拿到半份图
+      registry_ok: check.ok,
+      registry_errors: check.errors,
+    });
+  }
+
+  // 组合合法性预检：客户端勾完步骤后先问一次，别等远端跑爆才发现
+  if (url.pathname === '/api/workflows/resolve' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', () => {
+      let parsed = {};
+      try {
+        parsed = body.trim() ? JSON.parse(body) : {};
+      } catch (cause) {
+        return json(res, 400, { error: `请求体不是合法 JSON: ${cause instanceof Error ? cause.message : String(cause)}` });
+      }
+      const seriesId = String(parsed.seriesId || parsed.series || '').trim();
+      const modIds = Array.isArray(parsed.modIds) ? parsed.modIds.map((x) => String(x)) : [];
+      const koGene = String(parsed.koGene || '').trim();
+      if (!seriesId) return json(res, 400, { error: '缺少 seriesId' });
+      if (modIds.length === 0) return json(res, 400, { error: 'modIds 不能为空' });
+      const plan = resolvePlan(seriesId, modIds, { koGene });
+      // 非法组合回 422：调用方传错了，不是服务端故障
+      return json(res, plan.ok ? 200 : 422, plan);
+    });
+    return;
+  }
+
+  // 单系列详情必须放在 resolve 之后：否则前缀匹配会把 /api/workflows/resolve
+  // 吞成 seriesId=resolve，返回「未知分析系列」。
+  if (url.pathname.startsWith('/api/workflows/')) {
+    const seriesId = url.pathname.slice('/api/workflows/'.length).split('?')[0];
+    // 只认注册表里真实存在的系列 id。不加这道闸，任何 /api/workflows/<任意串>
+    // 都会走到这里，把拼错的路由名报成「未知分析系列」，排查时极易误判。
+    const detail = describeSeries(seriesId);
+    if (!detail) return json(res, 404, { error: `未知分析系列: ${seriesId}` });
+    return json(res, 200, detail);
   }
 
   // 单个项目的关键元数据：Studio 用它显示"这批图按什么模板/阈值出的"
@@ -922,7 +1030,22 @@ const server = http.createServer(async (req, res) => {
     try {
       const raw = runRemoteStrict(buildIsolationCommand());
       const isolation = evaluateIsolation(parseIsolationOutput(raw));
-      checks.push(mergeIsolationChecks(isolation, runSha256ParityCheck()));
+      const merged = mergeIsolationChecks(isolation, runSha256ParityCheck());
+      // P17：子灯结构化下发（前端 sub_checks），value 仍保持字符串兼容旧前端
+      checks.push({
+        id: merged.id,
+        label: merged.label,
+        status: merged.status,
+        value: merged.value,
+        detail: merged.detail,
+        sub_checks: (merged.subChecks ?? []).map((sub) => ({
+          id: sub.id,
+          label: sub.label,
+          status: sub.status,
+          value: sub.value,
+          detail: sub.detail,
+        })),
+      });
     } catch (e) {
       checks.push({ id: 'isolation', label: '跨线隔离/桥接/版本', status: 'unknown', value: '', detail: '无法读取: ' + (e instanceof Error ? e.message : String(e)) });
     }
@@ -1028,6 +1151,235 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { blocked: false, projectId, lineId, root: guard.normalized, tree });
   }
 
+  if (url.pathname === '/api/figures/templates') {
+    const registry = loadFigureTemplates();
+    const check = validateFigureRegistry();
+    const lineId = url.searchParams.get('line') || LINES[0];
+    const templates = registry.templates.map((item) => ({
+      id: item.id,
+      name: item.name,
+      level: item.level,
+      category: item.category,
+      language: item.language,
+      deps_status: item.deps_status,
+      verified: item.verified,
+      preview: item.preview,
+      source_sha256: item.source_sha256,
+      linked_mods: item.linked_mods,
+      adapt_vars: item.adapt_vars,
+      block_reason: item.block_reason || '',
+    }));
+    return json(res, 200, {
+      ok: check.ok,
+      registry_ok: check.ok,
+      registry_errors: check.errors,
+      stats: check.stats,
+      lineId,
+      templates,
+    });
+  }
+
+  if (url.pathname === '/api/figures/templates/preview') {
+    const templateId = url.searchParams.get('id') || '';
+    const registry = loadFigureTemplates();
+    const item = registry.templates.find((candidate) => candidate.id === templateId);
+    if (!item || item.deps_status !== 'ready' || !item.preview) {
+      return json(res, 404, { error: `模板预览不可用: ${templateId}` });
+    }
+    const file = path.resolve(REPO_ROOT, item.preview);
+    if (!file.startsWith(REPO_ROOT + path.sep)) {
+      return json(res, 400, { error: '模板预览路径越界' });
+    }
+    const lower = file.toLowerCase();
+    const mime = lower.endsWith('.png') ? 'image/png'
+      : lower.endsWith('.svg') ? 'image/svg+xml'
+      : lower.endsWith('.gif') ? 'image/gif'
+      : lower.endsWith('.webp') ? 'image/webp'
+      : lower.endsWith('.pdf') ? 'application/pdf'
+      : 'image/jpeg';
+    const stat = fs.statSync(file);
+    res.writeHead(200, {
+      'Content-Type': mime,
+      'Content-Length': stat.size,
+      'Cache-Control': 'no-store',
+    });
+    fs.createReadStream(file).pipe(res);
+    return;
+  }
+
+  if (url.pathname === '/api/figures/catalog') {
+    const check = validateFigureCatalog();
+    const entries = searchFigureCatalog({
+      query: url.searchParams.get('q') || '',
+      language: url.searchParams.get('language') || '',
+      status: url.searchParams.get('status') || '',
+      limit: url.searchParams.get('limit') || 50,
+    }).map((item) => ({
+      catalog_id: item.catalog_id,
+      page_id: item.page_id,
+      title: item.title,
+      lang: item.lang,
+      chart_type: item.chart_type,
+      family: item.family,
+      bio_level: item.bio_level,
+      bio_tags: item.bio_tags,
+      score: item.score,
+      status: item.status,
+      deps: item.deps,
+      page_url: item.page_url,
+      preview_path: item.preview_path,
+      code_path: item.code_path,
+      width: item.width,
+      height: item.height,
+      pilot: item.pilot,
+      suggested_template_id: item.suggested_template_id,
+    }));
+    return json(res, 200, {
+      ok: check.ok,
+      catalog_ok: check.ok,
+      catalog_errors: check.errors,
+      stats: check.stats,
+      entries,
+    });
+  }
+
+  if (url.pathname === '/api/figures/catalog/preview') {
+    const catalogId = url.searchParams.get('id') || '';
+    const resolved = resolveCatalogFigure(catalogId);
+    if (!resolved.ok || !resolved.preview_abs) {
+      return json(res, 404, {
+        error: `候选图预览不可用: ${catalogId}`,
+        errors: resolved.errors,
+      });
+    }
+    const stat = fs.statSync(resolved.preview_abs);
+    res.writeHead(200, {
+      'Content-Type': 'image/png',
+      'Content-Length': stat.size,
+      'Cache-Control': 'no-store',
+    });
+    fs.createReadStream(resolved.preview_abs).pipe(res);
+    return;
+  }
+
+  if (url.pathname === '/api/figures/adapt') {
+    const projectId = resolveProjectParam(url);
+    if (!projectId) {
+      return json(res, 400, { error: 'project 参数非法' });
+    }
+    try {
+      const manifest = readAdaptManifest(undefined, projectId);
+      return json(res, 200, { ok: true, projectId, items: manifest });
+    } catch (cause) {
+      return json(res, 500, { error: `读取适配清单失败: ${cause instanceof Error ? cause.message : String(cause)}` });
+    }
+  }
+
+  if (url.pathname === '/api/figures/adapt/derive' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', async () => {
+      let requested;
+      try {
+        requested = JSON.parse(body || '{}');
+      } catch (cause) {
+        return json(res, 400, { error: `请求体不是合法 JSON: ${cause.message}` });
+      }
+      const projectId = sanitizeProjectId(requested.projectId);
+      const lineId = requested.lineId;
+      const templateId = String(requested.templateId || '');
+      if (!projectId) return json(res, 400, { error: 'projectId 参数非法' });
+      if (!LINES.includes(lineId)) return json(res, 400, { error: `lineId 参数非法: ${lineId}` });
+
+      const selectedModIds = Array.isArray(requested.selectedModIds)
+        ? requested.selectedModIds.map(String) : [];
+      const adaptVars = requested.adaptVars && typeof requested.adaptVars === 'object'
+        ? requested.adaptVars : {};
+      const resolved = resolveFigure(templateId, lineId, projectId, adaptVars, selectedModIds);
+      if (!resolved.ok) {
+        return json(res, 422, { ok: false, errors: resolved.errors, template_id: templateId });
+      }
+
+      let remoteExists;
+      try {
+        remoteExists = await checkRemoteProjectDir(projectId);
+      } catch (cause) {
+        return json(res, 503, { ok: false, error: `远端链路检查失败: ${cause instanceof Error ? cause.message : String(cause)}` });
+      }
+      if (!remoteExists) {
+        return json(res, 400, { ok: false, error: `远端项目目录不存在: ${PROJECTS_ROOT}/${projectId}` });
+      }
+
+      const derivation = deriveAdaptedFigure({
+        projectId,
+        lineId,
+        templateId,
+        template: resolved.template,
+        adaptVars,
+      });
+      if (!derivation.ok) {
+        return json(res, 422, { ok: false, errors: derivation.errors, template_id: templateId });
+      }
+      const adapted = buildAdaptedFigureTasks({
+        projectId,
+        lineId,
+        selectedFigures: [{ template_id: templateId, adapt_vars: adaptVars }],
+        templatesRegistry: [resolved.template],
+      });
+      if (!adapted.ok || adapted.tasks.length !== 1) {
+        return json(res, 422, { ok: false, errors: adapted.errors, template_id: templateId });
+      }
+      const adaptedTask = adapted.tasks[0];
+
+      const remoteDir = path.posix.dirname(derivation.remote_path);
+      const mkdir = runRemoteRaw(`mkdir -p '${remoteDir}'`);
+      if (mkdir.code !== 0) {
+        return json(res, 503, {
+          ok: false,
+          error: `远端适配目录创建失败: ${mkdir.text}`,
+          local_path: derivation.local_path,
+        });
+      }
+      const scp = runSync(['scp', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', derivation.local_path, `k40-ubuntu:${derivation.remote_path}`]);
+      if (scp.code !== 0) {
+        return json(res, 503, {
+          ok: false,
+          error: `适配副本上传失败: ${scp.stderr || scp.stdout || 'stderr 为空'}`,
+          local_path: derivation.local_path,
+        });
+      }
+
+      const taskPayload = {
+        projectId,
+        lineId,
+        step: adaptedTask.step,
+        inputs: [remoteTaskInput(adaptVars.input_data, projectId, lineId)],
+        outputs: adaptedTask.outputs,
+        seed: Number.isFinite(Number(requested.seed)) && requested.seed !== ''
+          ? Number(requested.seed)
+          : 20261013,
+        scriptPath: adaptedTask.script_path,
+        language: adaptedTask.language,
+        canonicalOutput: adaptedTask.canonical_output,
+        customOutput: adaptedTask.custom_output,
+        adapted: true,
+      };
+      return json(res, 200, {
+        ok: true,
+        projectId,
+        lineId,
+        template_id: templateId,
+        selected_mods: resolved.selected_mods,
+        local_path: derivation.local_path,
+        remote_path: derivation.remote_path,
+        master_sha256: derivation.master_sha256,
+        derived_sha256: derivation.manifest_entry.derived_sha256,
+        task: taskPayload,
+      });
+    });
+    return;
+  }
+
   if (url.pathname === '/api/figures/list') {
     // 图件浏览：列出本项目该线 figures/ 下的 PNG，供可视化界面渲染
     const projectId = resolveProjectParam(url);
@@ -1053,6 +1405,64 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, {
       blocked: false, projectId, lineId, dir: guard.dir,
       source: result.source, figures: result.figures,
+    });
+  }
+
+  // M4：按 mod 分组的产物预览。
+  // 与 /api/figures/list 的区别：那个把 figures/ 全量倒出，这个按客户勾选的 mod 分组，
+  // 没勾选的 mod 不出现（客户不该看到没买的分析），且能说清"该 mod 没跑"而非"文件丢失"。
+  if (url.pathname === '/api/preview/mods') {
+    const projectId = resolveProjectParam(url);
+    if (!projectId) {
+      return json(res, 400, { error: 'project 参数非法（只允许字母数字 . _ -）' });
+    }
+    const lineId = url.searchParams.get('line') || LINES[0];
+    // modIds 由调用方给（一般是该项目 pipeline_dag 里勾选的）；不传则按该线全链
+    const modIds = (url.searchParams.get('modIds') || '').split(',').map((s) => s.trim()).filter(Boolean);
+
+    const series = loadWorkflows().series.find((s) => s.id === lineId);
+    if (!series) return json(res, 404, { error: `未知分析系列: ${lineId}` });
+
+    // 读取该线 processed/ 与 figures/ 的真实产物，用于判定每个 mod 跑没跑
+    const listed = listFiguresForLine(projectId, lineId);
+    const figureNames = new Set((listed.figures || []).map((f) => f.name));
+    const processedNames = listRemoteProcessed(projectId, lineId);
+
+    const allMods = series.stages.flatMap((st) => st.mods.map((m) => ({ ...m, stage: st })));
+    const picked = modIds.length
+      ? allMods.filter((m) => modIds.includes(m.id))
+      : allMods;
+
+    const groups = picked.map((m) => {
+      const script = m.script || m.id;
+      const products = (m.produces || []).map((name) => {
+        // 产物可能落在 processed/ 或 figures/（outputs_dir=figures 的 mod）
+        const present = figureNames.has(name) || processedNames.has(name);
+        return { name, present };
+      });
+      const presentCount = products.filter((p) => p.present).length;
+      return {
+        mod_id: m.id,
+        script,
+        name: m.name,
+        stage_id: m.stage.id,
+        stage_name: m.stage.name,
+        status: products.length === 0
+          ? 'unknown'
+          : (presentCount === products.length ? 'complete' : (presentCount > 0 ? 'partial' : 'missing')),
+        present_count: presentCount,
+        total_count: products.length,
+        products,
+      };
+    });
+
+    return json(res, 200, {
+      blocked: listed.blocked === true,
+      projectId,
+      lineId,
+      reason: listed.reason || '',
+      mod_count: groups.length,
+      groups,
     });
   }
 
@@ -1178,6 +1588,28 @@ const server = http.createServer(async (req, res) => {
       if (!remoteExists) {
         return json(res, 400, { ok: false, error: `远端项目目录不存在: /mnt/ssd/bio_data/projects/${projectId}` });
       }
+      // 适配副本按既有 build_client_report 的 scripts/ 扫描口交付，不改动引擎。
+      let adaptPairs = [];
+      try {
+        adaptPairs = buildAdaptUploadPairs(undefined, projectId);
+      } catch (cause) {
+        return json(res, 400, { ok: false, error: `适配清单无效: ${cause.message}` });
+      }
+      for (const pair of adaptPairs) {
+        const remoteScriptDir = path.posix.dirname(pair.remote);
+        const mkdir = runRemoteRaw(`mkdir -p '${remoteScriptDir}'`);
+        if (mkdir.code !== 0) {
+          return json(res, 503, { ok: false, error: `远端适配目录创建失败: ${mkdir.text}` });
+        }
+        const scp = runSync(['scp', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', pair.local, `k40-ubuntu:${pair.remote}`]);
+        if (scp.code !== 0) {
+          return json(res, 503, {
+            ok: false,
+            error: `适配副本上传失败: ${scp.stderr || scp.stdout || 'stderr 为空'}`,
+            template_id: pair.template_id,
+          });
+        }
+      }
       // 交付前置门禁（D4 / docs/delivery_package_spec.md 第三节 3/5/6 条）：
       // 打包前先查磁盘水位、运行中任务、失败台账，任一不过即 409 且原样回报，
       // 避免"打包成功但产物不可信"。force:true 仅放行失败台账，水位与运行中任务仍拦。
@@ -1201,6 +1633,8 @@ const server = http.createServer(async (req, res) => {
           files: pulled.files,
           report_md_bytes: pulled.report_md_bytes,
           report_html_bytes: pulled.report_html_bytes,
+          adapted_code_count: adaptPairs.length,
+          adapted_manifest: readAdaptManifest(undefined, projectId),
           preflight,
           sidecars,
         });
@@ -1458,7 +1892,7 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === '/api/tasks' && req.method === 'GET') {
     // 在跑任务列表：让界面知道有没有重复下发。
-    // 字段名与 /api/tasks/submit 的返回值统一为 taskId —— 两处用不同名字
+    // 字段名与 /api/tasks/submit 的返回值统一为 taskId  -  -  两处用不同名字
     // （这里曾叫 id）会让调用方按 submit 的字段去比对列表，永远匹配不上，
     // 长任务被误判成"已结束"（2026-10-19 端到端实测踩到）。
     return json(res, 200, {
@@ -1504,6 +1938,26 @@ const server = http.createServer(async (req, res) => {
           error: `step 只能包含字母数字和 . _ -（命令名）: ${requested.step}。参数请用 inputs/outputs 传递`,
         });
       }
+      const adapted = requested.adapted === true;
+      let adaptedScript = '';
+      let adaptedLanguage = '';
+      let canonicalOutput = '';
+      if (adapted) {
+        adaptedScript = String(requested.scriptPath || '');
+        adaptedLanguage = String(requested.language || '');
+        canonicalOutput = String(requested.canonicalOutput || '');
+        const scriptPrefix = `/mnt/ssd/bio_data/projects/${projectId}/${lineId}/scripts/adapt_`;
+        if (!adaptedScript.startsWith(scriptPrefix) || !/\.(R|py)$/.test(adaptedScript)) {
+          return json(res, 400, { error: `adapted scriptPath 非法: ${adaptedScript}` });
+        }
+        if (!['r', 'python'].includes(adaptedLanguage)) {
+          return json(res, 400, { error: `adapted language 非法: ${adaptedLanguage}` });
+        }
+        if (!canonicalOutput || canonicalOutput.includes('..') || canonicalOutput.startsWith('/')
+          || !/^[A-Za-z0-9._/-]+$/.test(canonicalOutput)) {
+          return json(res, 400, { error: `adapted canonicalOutput 非法: ${canonicalOutput}` });
+        }
+      }
 
       // P14 / aims:185：虚拟敲除必须由用户指定靶基因（target_ko_gene）。
       // 为什么在提交层就拦：母版里写死 KO_GENE 时，用户勾了"虚拟敲除"却敲的是别人的基因，
@@ -1533,7 +1987,7 @@ const server = http.createServer(async (req, res) => {
 
       // inputs / outputs 必须是字符串数组。调用方（含脚本化的 PowerShell / curl）
       // 很容易把单元素数组序列化成裸字符串，此时 task.js 的 inputs.map 会抛
-      // TypeError 并**直接打死整个服务**（2026-10-19 实测：8787 进程退出）。
+      // TypeError 并**直接打死整个服务**（2026-10-19 实测：18787 进程退出）。
       // 参数类型错误是调用方问题，必须 400 返回，不能让服务端崩。
       for (const field of ['inputs', 'outputs']) {
         const value = requested[field];
@@ -1544,6 +1998,14 @@ const server = http.createServer(async (req, res) => {
             });
           }
         }
+      }
+
+      // P-29：禁止并发 SSH 到 k40-ubuntu。单任务串行是 proot 不进入 abort
+      // 自我维持环的必要条件；跨项目并发同样禁止。
+      if (runningTasks.size > 0) {
+        return json(res, 409, {
+          error: `P-29 禁止并发 SSH：当前已有 ${runningTasks.size} 个任务在运行，请等待完成后再提交`,
+        });
       }
 
       // 同项目同线同步骤不允许并发第二次：生信任务重，跑重了难收拾
@@ -1564,11 +2026,15 @@ const server = http.createServer(async (req, res) => {
         seed: requested.seed,
         // 非敲除步骤这里是空串，task.js 只在 requiresKoGene(step) 时注入，语义一致
         targetKoGene: targetKoGene || undefined,
+        scriptPath: adapted ? adaptedScript : undefined,
+        language: adapted ? adaptedLanguage : undefined,
+        canonicalOutput: adapted ? canonicalOutput : undefined,
+        adapted,
       };
 
       // 审计提前到提交前：越界就不给 taskId，不启动、不占任务位。
       // 整段包 try/catch：参数形态异常（如 inputs 传了对象）不能把服务打死，
-      // 必须是 400 返回 —— 一次崩溃会让所有在跑任务与 SSE 连接一起断。
+      // 必须是 400 返回  -  -  一次崩溃会让所有在跑任务与 SSE 连接一起断。
       let script;
       try {
         script = buildTaskScript(taskSpec);
@@ -1589,21 +2055,21 @@ const server = http.createServer(async (req, res) => {
 
       // ── 桥接四项断言检查点（S28 / 架构评审 D1）──────────────────────────
       // aims §一.3：每次跨语言转换必须过 ops/verify_bridge_checkpoint.py。
-      // 58 个分析脚本 0 调用（铁律空转），接线位置定为提交层——只有这里全知
+      // 58 个分析脚本 0 调用（铁律空转），接线位置定为提交层 -  - 只有这里全知
       // "这一步是不是跨语言步骤"。母版缺失不阻断提交（保持既有行为），但必须
       // warn 可观测；K40 不可达时明确 503，绝不静默放过。
-      const bridgeNeed = inspectBridgeNeed(lineId, requested.step);
-      if (!bridgeNeed.masterExists) {
+      const bridgeNeed = adapted ? { masterExists: false, bilingual: false, guardWired: false, reason: 'adapted task' } : inspectBridgeNeed(lineId, requested.step);
+      if (!adapted && !bridgeNeed.masterExists) {
         console.warn(`[bridge] ${lineId}/${requested.step} 母版缺失，跳过桥接判定: ${bridgeNeed.reason}`);
       }
       // task-10 / m00939 边界②：母版自己也要调 src/bridge_guard.sh，否则直连 K40
       // 跑母版时断言仍空转。这里只 warn 不阻断：老母版不该因为新规突然提交失败，
       // 但不变量测试 tests/bridge_guard_invariant.test.js 会把缺口钉在 CI 上。
-      if (bridgeNeed.bilingual && !bridgeNeed.guardWired) {
+      if (!adapted && bridgeNeed.bilingual && !bridgeNeed.guardWired) {
         console.warn(`[bridge] ${lineId}/${requested.step} 是跨语言母版但未调用 src/bridge_guard.sh，`
           + `提交层仍会执行断言，直连 K40 跑母版则不会；请按 task-10 接线`);
       }
-      if (needsBridgeCheck(lineId, requested.step)) {
+      if (!adapted && needsBridgeCheck(lineId, requested.step)) {
         let bridgePlan;
         try {
           bridgePlan = buildBridgeCheckCommand(lineId, requested.step, {
@@ -1650,6 +2116,10 @@ const server = http.createServer(async (req, res) => {
             seed: requested.seed,
             // 与上面 taskSpec 同源：审计用的脚本与实际跑的脚本必须带同一个靶基因
             targetKoGene: targetKoGene || undefined,
+            scriptPath: adapted ? adaptedScript : undefined,
+            language: adapted ? adaptedLanguage : undefined,
+            canonicalOutput: adapted ? canonicalOutput : undefined,
+            adapted,
           },
           {
             onStdout: (text) => sendEvent(taskId, 'stdout', text),
@@ -1750,9 +2220,18 @@ try {
   console.warn(`[bioanalys-desktop] 启动清理上传会话异常（已忽略）: ${cause.message}`);
 }
 
-server.listen(PORT, '127.0.0.1', () => {
-  console.log(`[bioanalys-desktop] backend listening on http://127.0.0.1:${PORT}`);
-  console.log(`[bioanalys-desktop] adb = ${adb}`);
-});
+// 探针出口：LINE_INFER_PROBE=<JSON> 时只跑纯函数并打印结果，不监听端口。
+// 为什么需要它：lineFromPipeline 的失配只在"有 dataFiles 时才报错"，manifest 不带
+// dataFiles 时那条路径根本不执行，HTTP 断言抓不到，会假绿。子进程直调纯函数，失配即红。
+// 这里不 import 远端链路，所以在 listen 之前就要分流，避免探针进程白起一个服务。
+if (process.env.LINE_INFER_PROBE) {
+  const dag = JSON.parse(process.env.LINE_INFER_PROBE);
+  process.stdout.write(lineFromPipeline(dag));
+} else {
+  server.listen(PORT, '127.0.0.1', () => {
+    console.log(`[bioanalys-desktop] backend listening on http://127.0.0.1:${PORT}`);
+    console.log(`[bioanalys-desktop] adb = ${adb}`);
+  });
+}
 
 export { server };

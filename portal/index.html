@@ -158,6 +158,49 @@ input[aria-invalid="true"], textarea[aria-invalid="true"], select[aria-invalid="
 .step-item .st-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 7px; font-size: 12px; color: var(--text-faint); }
 .step-item .st-meta b { color: var(--text-muted); font-weight: 600; }
 .step-item .st-note { display: inline-block; margin-top: 7px; background: var(--warn-soft); border: 1px solid #fde68a; color: var(--warn); font-size: 12px; padding: 3px 9px; border-radius: 6px; }
+.stage-group { border: 1px solid var(--border); border-radius: 8px; padding: 13px; background: var(--surface); }
+.stage-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 9px; }
+.stage-title { margin: 0; font-size: 14px; color: var(--text); }
+.stage-badge { display: inline-block; padding: 2px 7px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.stage-badge.required { background: #ccfbf1; color: #0f766e; }
+.stage-badge.optional { background: #f1f5f9; color: #64748b; }
+.figure-selector { margin-top: 18px; }
+.figure-filter { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 4px; }
+.figure-filter .btn[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #fff; }
+.figure-level { margin-bottom: 16px; border: 1px solid var(--border); border-radius: 8px; padding: 13px; background: var(--surface); }
+.figure-level h3 { margin: 0 0 10px; font-size: 14px; }
+.figure-category { font-size: 12.5px; font-weight: 700; color: var(--text-muted); margin: 10px 0 8px; }
+.figure-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.figure-card { border: 1.5px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface-2); }
+.figure-card.is-unavailable { opacity: .55; cursor: not-allowed; }
+.figure-card.is-unavailable input { pointer-events: none; }
+.figure-preview { width: 100%; aspect-ratio: 16 / 10; object-fit: contain; background: #fff; display: block; padding: 8px; }
+.figure-preview-empty { height: 130px; display: grid; place-items: center; background: var(--surface); color: var(--text-faint); font-size: 12.5px; }
+.figure-map { margin-top: 7px; color: var(--text-muted); font-size: 11.5px; line-height: 1.45; overflow-wrap: anywhere; }
+.figure-body { padding: 10px 12px 12px; }
+.figure-title { display: flex; gap: 8px; align-items: flex-start; }
+.figure-title input { margin-top: 3px; width: 17px; height: 17px; accent-color: var(--brand); flex-shrink: 0; }
+.figure-title span { font-size: 13.5px; font-weight: 600; min-width: 0; }
+.figure-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; font-size: 11.5px; }
+.figure-meta span { padding: 2px 7px; border-radius: 5px; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); }
+.figure-meta span.ready { border-color: #a7f3d0; background: var(--success-soft); color: var(--success); }
+.figure-meta span.warn { border-color: #fde68a; background: var(--warn-soft); color: var(--warn); }
+.figure-warning { margin-top: 8px; color: var(--warn); font-size: 12px; font-weight: 600; }
+.figure-adapt { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.figure-adapt .field { margin-bottom: 10px; }
+.figure-adapt .field:last-child { margin-bottom: 0; }
+.result-figure-zone { margin-top: 16px; padding: 14px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--surface-2); }
+.result-figure-zone.builtin { border-color: var(--brand); background: var(--brand-soft); }
+.result-figure-zone.real { border-color: var(--border-strong); background: var(--surface-2); }
+.result-figure-zone h3 { font-size: 13.5px; margin: 0 0 6px; }
+.result-figure-zone p { margin: 0; color: var(--text-muted); font-size: 12.5px; }
+.result-figure-list { list-style: none; padding: 0; margin: 10px 0 0; }
+.result-figure-list li { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; margin-bottom: 7px; }
+.result-figure-list img { width: 92px; aspect-ratio: 16 / 10; object-fit: contain; background: #fff; border: 1px solid var(--border); border-radius: 6px; flex-shrink: 0; }
+.stage-notes { margin: -2px 0 10px; color: var(--text-muted); font-size: 12px; }
+.workflow-status { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 12px 0 0; padding: 11px 13px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text-muted); font-size: 13px; }
+.workflow-status.error { border-color: #fecaca; background: var(--danger-soft); color: #991b1b; }
+.workflow-summary { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 13px; font-weight: 600; }
 .lock-badge { font-size: 11px; color: var(--text-faint); background: var(--surface-2); border: 1px solid var(--border); padding: 1px 7px; border-radius: 5px; margin-left: 6px; }
 
 .line-picker { display: grid; grid-template-columns: repeat(3, 1fr); gap: 11px; margin-bottom: 18px; }
@@ -409,7 +452,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
         <div id="upload-area" style="display:none;">
           <div class="guide" style="margin:16px 0;">
             <span class="ico" aria-hidden="true">📦</span>
-            <span id="df-upload-guide"><strong>上传规则（与服务端校验逐条一致）：</strong>训练集矩阵必须绑训练集 GSE，验证集矩阵必须绑验证集 GSE；样本表 / 分组表请绑训练集 GSE；平台注解与其他文件可不绑。文件名里的 GSE / GPL 编号必须与绑定编号一致。同一角色只保留一个文件（other 最多 5 个），重复上传会替换此前的文件。支持 .h5ad .h5 .loom .mtx .tar .gz .zip .txt .tsv .csv .soft .xlsx .rds .rdata，单文件上限 5 GiB。</span>
+            <span id="df-upload-guide"><strong>上传规则（与服务端校验逐条一致）：</strong>训练集矩阵必须绑训练集 GSE，验证集矩阵必须绑验证集 GSE；样本表 / 分组表请绑训练集 GSE；平台注解与其他文件可不绑。文件名里的 GSE / GPL 编号必须与绑定编号一致。同一角色只保留一个文件（other 最多 5 个），重复上传会替换此前的文件。支持格式与单文件上限由平台共享契约加载。</span>
           </div>
           <div class="grid-2">
             <div class="field">
@@ -425,8 +468,8 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
           </div>
           <div class="field">
             <label for="f-df-file">选择文件<span class="req" aria-hidden="true">*</span></label>
-            <input type="file" id="f-df-file" accept=".h5ad,.h5,.loom,.mtx,.tar,.gz,.zip,.txt,.tsv,.csv,.soft,.xlsx,.rds,.rdata" aria-describedby="h-df-file">
-            <div class="hint" id="h-df-file">支持 .h5ad .h5 .loom .mtx .tar .gz .zip .txt .tsv .csv .soft .xlsx .rds .rdata；单文件上限 5 GiB。上传后的文件名需与所选角色对得上。</div>
+            <input type="file" id="f-df-file" aria-describedby="h-df-file">
+            <div class="hint" id="h-df-file">支持格式与单文件上限由平台共享契约加载。上传后的文件名需与所选角色对得上。</div>
           </div>
           <div class="msg warn" id="e-df-replace" aria-live="polite"></div>
           <div class="msg err" id="e-df" role="alert"></div>
@@ -474,7 +517,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
         </div>
         <div id="group-list"></div>
         <button type="button" class="btn btn-add" id="btn-add-group">＋ 新增分组 / 病情阶段</button>
-        <div class="msg err" id="e-groups" role="alert"></div>
+        <div class="msg err" id="e-groups" data-testid="group-duplicate-error" role="alert"></div>
       </div>
       <div class="card" id="contrast-card" style="display:none;">
         <div class="card-title">差异对比对（Contrasts）</div>
@@ -493,7 +536,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       </div>
       <div class="guide">
         <span class="ico" aria-hidden="true">💡</span>
-        <span><strong>填写引导：</strong>分析线由第 2 步的「数据类型」自动锁定（三条线互不交叉）：芯片 / Bulk → 线 1，单细胞 → 线 2，空间转录组 → 线 3。质控步骤已自动锁定，其余按需勾选。若勾选「虚拟敲除」，需指定目标基因。</span>
+        <span><strong>填写引导：</strong>分析线由第 2 步的「数据类型」自动锁定（三条线互不交叉）：芯片 / Bulk → 线 1，单细胞 → 线 2，空间转录组 → 线 3。必需阶段内的非可选步骤会自动锁定，其余按需勾选。若勾选虚拟敲除，需指定靶基因。</span>
       </div>
       <div class="card">
         <fieldset style="border:none;">
@@ -521,10 +564,36 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
         </fieldset>
         <div class="msg err" id="e-line" role="alert"></div>
       </div>
+      <div class="workflow-status" id="workflow-status" role="status" aria-live="polite">
+        <span id="workflow-status-text">正在加载分析流程…</span>
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-workflow-retry" style="display:none;">重试</button>
+      </div>
       <div class="card" id="step-card" style="display:none;">
         <div class="card-title" id="step-card-title">分析步骤</div>
-        <div class="card-sub">带锁图标的步骤为前置质控，不可取消。</div>
+        <div class="card-sub">必需阶段内的非可选步骤默认勾选并锁定；其余步骤按需勾选。</div>
         <div class="step-list" id="step-list"></div>
+        <div class="workflow-summary" id="workflow-summary" data-testid="workflow-summary" aria-live="polite"></div>
+      </div>
+      <div class="card figure-selector" id="figure-template-card">
+        <div class="card-title">图级模板选择器</div>
+        <div class="card-sub">按 L1 / L2 / L3 分类浏览可复用图型；依赖未就绪的模板置灰。可只选标准步骤，不选图级模板。</div>
+        <div class="workflow-status">
+          <span>需要查找更多单图来源时，可先浏览项目候选图库。</span>
+          <a class="btn btn-ghost btn-sm" href="./figure-catalog" target="_blank" rel="noopener">浏览候选图库</a>
+        </div>
+        <div class="workflow-status" id="figure-selector-status" data-testid="figure-selector-status" aria-live="polite">
+          <span id="figure-selector-text">正在加载图模板…</span>
+        </div>
+        <div class="figure-filter" role="group" aria-label="图模板显示范围">
+          <button type="button" class="btn btn-ghost btn-sm" id="figure-filter-ready" data-testid="figure-filter-ready" aria-pressed="true">
+            可用预览 <span id="figure-ready-count">0</span>
+          </button>
+          <button type="button" class="btn btn-ghost btn-sm" id="figure-filter-all" data-testid="figure-filter-all" aria-pressed="false">
+            全部模板 <span id="figure-all-count">0</span>
+          </button>
+        </div>
+        <div id="figure-template-list"></div>
+        <div class="workflow-summary" id="figure-template-summary" data-testid="selected-figure-template" aria-live="polite"></div>
       </div>
       <div class="card">
         <div class="card-title">出图版式</div>
@@ -581,6 +650,16 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
         <div class="card-title" id="result-title">需求已提交</div>
         <div class="card-sub" id="result-sub"></div>
         <div class="out-box" id="result-json"></div>
+        <section class="result-figure-zone builtin" id="result-builtin-zone" data-testid="result-builtin-zone" aria-labelledby="builtin-zone-title" style="display:none;">
+          <h3 id="builtin-zone-title">内置示例预览</h3>
+          <p>这些是模板注册表中的 _verified 参考图，不是本项目真实数据产物。</p>
+          <ul class="result-figure-list" id="result-builtin-list"></ul>
+        </section>
+        <section class="result-figure-zone real" id="result-real-zone" data-testid="result-real-zone" aria-labelledby="real-zone-title" style="display:none;">
+          <h3 id="real-zone-title">项目真实图</h3>
+          <p>这些是 Sync 回传的 local_projects/<项目>/figures/<line>/ 本项目结果图。</p>
+          <ul class="result-figure-list" id="result-real-list"></ul>
+        </section>
         <div class="deliver-actions">
           <button type="button" class="btn btn-ghost btn-sm" id="btn-download">下载需求文件</button>
           <button type="button" class="btn btn-ghost btn-sm" id="btn-copy">复制需求内容</button>
@@ -617,19 +696,8 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
   // 内置数据（与工作台解耦，本页不调用任何后端接口）
   // ============================================================
 
-  // 非肿瘤黑名单（20 条，与 aims/aims.txt §三.1 规格正本逐条一致、同序）
-  // 权威实现：BioanalysDesktop/server/tumor_blacklist.js。本页是纯前端副本（本页不调后端），
-  // 两侧一致性由 BioanalysDesktop/tests/tumor_blacklist_parity.test.js 把守；改这里必须同时改服务端。
-  // 沿革：8 条 -> 实现侧私自扩到 27 条 -> 2026-10-21 收敛回 8 条 -> 同日二次裁定吸纳 12 条可用项，定为 20 条。
-  // PD-L1 / PD-1 两条必须带左右边界，否则 GPD1、SLC40A1 这类基因符号会被误伤。
-  var BL_PATTERNS = [
-    /cancer/i, /tumor/i, /tumour/i, /carcinoma/i, /glioma/i, /sarcoma/i,
-    /lymphoma/i, /leukemia/i, /leukaemia/i, /melanoma/i,
-    /immune\s*infiltration/i, /immune\s*checkpoint/i,
-    /(?<![A-Za-z0-9])PD-?L1(?![0-9])/i, /(?<![A-Za-z0-9])PD-?1(?![0-9])/i,
-    /CTLA-?4/i, /oncogene/i,
-    /肿瘤/, /癌/, /免疫浸润/, /免疫检查点/
-  ];
+  // 黑名单权威在 BioanalysDesktop/server/tumor_blacklist.js，由服务端响应期注入。
+  var BL_PATTERNS = [];
   function checkBlacklist(text) {
     var t = String(text || '');
     if (!t.trim()) return [];
@@ -653,64 +721,6 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     bulk_rnaseq: 'Bulk RNA-seq（转录组测序）',
     scrna: '单细胞转录组（scRNA-seq）',
     spatial: '空间转录组（Visium 等）'
-  };
-
-  // 三条分析线步骤
-  var LINE_STEPS = {
-    line1_bulk: ['prep_matrix','qc_matrix','pca_matrix','deg_limma','wgcna_modules','enrichment_bulk','enrichment_figures','ppi_string','key_genes','ml_model','ml_hub_analysis','external_validation','bulk_figures'],
-    line2_scrna: ['ingest_counts','qc_cells','normalize_hvg','integrate_harmony','cluster_umap','annotate_celltypes','scrna_composition','deg_groups','subcluster','enrichment','enrichment_figures','pseudotime','cell_communication','scenic_tf','scenic_figures','tf_activity','virtual_knockout','summarize_dr','target_gene_localization','gsva_pathways','dr_post_analysis','scrna_figures'],
-    line3_spatial: ['ingest_spatial','qc_spots','normalize_hvg','dim_reduce','spatial_domains','spatial_markers','spatial_autocorr','spatial_cooccurrence','spatial_composition','spatial_communication','celltype_annotation','spatial_localization','spatial_knockout','dr_post_analysis','enrichment','enrichment_figures','spatial_figures']
-  };
-
-  // 步骤功能说明
-  var STEP_META = {
-    prep_matrix: { label: 'GEO 数据获取与探针注释', desc: '拉取 GEO 矩阵与 GPL 注释，探针转 Gene Symbol，多探针取中位数', tool: 'GEOquery, Biobase', io: 'expr_genes.tsv, group_map.tsv', note: '训练集与验证集分目录' },
-    qc_matrix: { label: '样本质控', desc: '检出基因数、组内中位相关性，标注离群样本', tool: 'limma, ggplot2', io: 'qc_report.txt, l1_05a/05b', note: '' },
-    pca_matrix: { label: 'PCA 与样本相关性', desc: 'PCA 分组验证 + 样本相关性热图', tool: 'limma, ggplot2', io: 'pca_scores.tsv, l1_01/02', note: '' },
-    deg_limma: { label: '差异表达分析 (DEG)', desc: 'limma 两组比较，火山图 + MA 图', tool: 'limma', io: 'deg_all.tsv, deg_sig.tsv, l1_03/06', note: 'DEG 0 显著时放宽到 nominal p' },
-    wgcna_modules: { label: 'WGCNA 共表达模块', desc: '方差前 5000 基因建网，模块-表型相关性', tool: 'WGCNA', io: 'wgcna_modules.tsv, module_trait.tsv', note: 'nThreads=3 防溢出' },
-    enrichment_bulk: { label: '功能富集 (GO/KEGG/GSEA)', desc: 'GO BP/CC/MF 三本体 GSEA + KEGG ORA/GSEA + 模块 ORA', tool: 'clusterProfiler', io: 'enrichment_gsea_go.tsv, enrichment_kegg.tsv', note: 'KEGG 需外网' },
-    enrichment_figures: { label: '富集出图', desc: '富集条形 top20 双标注', tool: 'matplotlib', io: 'l1_13/14/15/25', note: '' },
-    ppi_string: { label: 'PPI 网络 + Hub 初筛', desc: 'STRING 互作网络 Degree 筛 Top hub', tool: 'STRING API', io: 'ppi_edges.tsv, ppi_hubs.tsv, l1_07/08', note: '需外网 STRING' },
-    key_genes: { label: '交集关键基因', desc: 'DEG ∩ WGCNA 显著模块 ∩ PPI hub', tool: 'pandas', io: 'key_genes.tsv, l1_09', note: '' },
-    ml_model: { label: 'ML 建模 (LR+RF+LOOCV)', desc: '逻辑回归 + 随机森林 LOOCV ROC', tool: 'sklearn', io: 'ml_report.txt, l1_10/11', note: '探索性' },
-    ml_hub_analysis: { label: 'Hub 基因 ML 精筛 + 重要性评估', desc: 'LASSO+RFE+单因素筛选 → RF/GBDT/SHAP/聚类/共表达网络', tool: 'glmnet, sklearn, shap, networkx', io: 'ml_core_hub_genes.tsv, l1_16..26', note: '含 SHAP 瀑布图' },
-    external_validation: { label: '外部验证冻结评估', desc: '冻结模型在独立 GEO 验证集上 ROC', tool: 'pROC', io: 'external_validation_preds.tsv, l1_12', note: '零数据泄漏' },
-    bulk_figures: { label: 'Bulk 出图', desc: '相关性/PCA/火山/MA/topvar/QC 出图', tool: 'matplotlib', io: 'l1_01..06', note: '' },
-    ingest_counts: { label: '单细胞数据读入', desc: '读取 .mtx/.h5ad 原始矩阵', tool: 'Scanpy', io: 'scrna_raw.h5ad', note: '' },
-    qc_cells: { label: '细胞质控', desc: '过滤低质量细胞与双细胞，线粒体百分比', tool: 'Scanpy', io: 'scrna_qc.h5ad', note: '' },
-    normalize_hvg: { label: '标准化与高变基因', desc: 'normalize_total + log1p + HVG 筛选', tool: 'Scanpy', io: 'scrna_norm.h5ad', note: '' },
-    integrate_harmony: { label: '批次校正 (Harmony)', desc: '多样本 Harmony 去批次', tool: 'harmonypy', io: 'scrna_harmony.h5ad', note: '' },
-    cluster_umap: { label: '降维聚类 UMAP', desc: 'PCA → Leiden 聚类 → UMAP 可视化', tool: 'Scanpy', io: 'scrna_clustered.h5ad', note: '' },
-    annotate_celltypes: { label: '细胞类型注释', desc: '基于 marker 的细胞类型注释', tool: 'Scanpy', io: 'scrna_annotated.h5ad', note: '' },
-    scrna_composition: { label: '细胞类型比例/组成分析', desc: '量化各细胞类型丰度消长与统计显著性', tool: 'Scanpy, scipy', io: 'celltype_composition.tsv, l2_05/06', note: '' },
-    deg_groups: { label: '组间差异表达 (DEG)', desc: '固定细胞类型内 Treat vs Control 变化', tool: 'Scanpy', io: 'deg_all_by_celltype.tsv, l2_08/09', note: '' },
-    subcluster: { label: '目标细胞亚群再聚类', desc: '提取核心细胞群重跑 HVG+PCA+聚类', tool: 'Scanpy', io: 'subcluster.h5ad', note: '' },
-    enrichment: { label: '单细胞多维功能富集', desc: 'GO/KEGG/Reactome ORA + GSEA（5 库并行）', tool: 'gseapy', io: 'enrichment_ora.tsv, l2_11/12', note: 'GO BP/CC/MF + KEGG + Reactome' },
-    pseudotime: { label: '拟时序/轨迹分析', desc: '核心亚群状态转换伪时间轨迹', tool: 'Scanpy', io: 'pseudotime.h5ad', note: 'Control 组为起点' },
-    cell_communication: { label: '细胞通讯分析', desc: '配受体互作强度与信号流变化', tool: 'liana', io: 'cellchat_lr.tsv, l2_10', note: '' },
-    scenic_tf: { label: '转录因子调控分析 (SCENIC)', desc: 'GRNBoost2 → cisTarget motif → AUCell regulon 活性', tool: 'pySCENIC', io: 'scenic_regulons.csv, l2_scenic_01/02', note: '--num_workers 3' },
-    scenic_figures: { label: 'SCENIC 出图', desc: 'regulon 活性热图 + 特异性条形', tool: 'matplotlib', io: 'l2_scenic_01/02', note: '' },
-    tf_activity: { label: 'TF 活性打分 (ORA 近似)', desc: 'TF 靶基因 ORA 近似活性打分', tool: 'gseapy', io: 'tf_activity.tsv', note: 'SCENIC 的对照路线' },
-    virtual_knockout: { label: '虚拟敲除 (scTenifoldKnk)', desc: 'WT/Control 矩阵模拟敲除目标基因，输出 DR Genes', tool: 'scTenifoldKnk', io: 'ko_dr_genes.tsv', note: '【需指定目标敲除基因】' },
-    summarize_dr: { label: 'DR 基因汇总', desc: 'DR 基因多运行稳健交集 + 显著性排序', tool: 'pandas', io: 'dr_genes_summary.tsv', note: '' },
-    target_gene_localization: { label: '目标基因表达定位', desc: '敲除基因 ∪ celltype 差异 top5 的表达定位', tool: 'Scanpy', io: 'target_gene_localization.tsv, l2_13', note: '' },
-    gsva_pathways: { label: 'GSVA 通路活性打分', desc: 'pseudobulk → R GSVA → top30 变异通路热图', tool: 'GSVA', io: 'gsva_scores.tsv, l2_14', note: '' },
-    dr_post_analysis: { label: 'DR 后续分析', desc: 'DR 富集(GSEA) + 调控网络 + DR∩DEG∩marker 交集', tool: 'gseapy, networkx', io: 'dr_enrichment.tsv, l2_15/16/17', note: 'DR ≠ DEG' },
-    scrna_figures: { label: '单细胞出图', desc: 'UMAP×4/组成×14/marker/DEG 火山×7/计数/PCA', tool: 'matplotlib', io: 'l2_01..10', note: '' },
-    ingest_spatial: { label: '空间数据读入', desc: '读取空间表达矩阵与坐标', tool: 'Scanpy', io: 'spatial_raw.h5ad', note: '' },
-    qc_spots: { label: 'Spot 质控', desc: '过滤低质量 spot，线粒体百分比', tool: 'Scanpy', io: 'spatial_qc.h5ad', note: '' },
-    dim_reduce: { label: '降维 (PCA/UMAP)', desc: 'PCA → UMAP 空间可视化', tool: 'Scanpy', io: 'spatial_dimred.h5ad', note: '' },
-    spatial_domains: { label: '空间域识别', desc: '转录谱 + 空间坐标识别解剖/病理结构域', tool: 'Scanpy (Leiden)', io: 'spatial_domains.h5ad', note: '域身份样本私有' },
-    spatial_markers: { label: '空间域 Marker', desc: '各域 wilcoxon top200 marker', tool: 'Scanpy', io: 'domain_markers.tsv', note: '' },
-    spatial_autocorr: { label: '空间自相关 (Moran\'s I)', desc: '全切片基因 Moran\'s I 空间聚集梯度', tool: 'Squidpy', io: 'gene_autocorr.tsv', note: '' },
-    spatial_cooccurrence: { label: '空间邻域/共现', desc: '微米尺度物理毗邻偏好', tool: 'Squidpy', io: 'domain_cooccurrence.tsv', note: '' },
-    spatial_composition: { label: '区域组成差异', desc: '不同切片/微区域的结构组成变化', tool: 'Scanpy, scipy', io: 'sample_composition.tsv', note: '' },
-    spatial_communication: { label: '空间通讯分析', desc: 'KNN 邻域 domain 对级 LR 强度打分', tool: 'liana', io: 'sample_communication.tsv', note: '' },
-    celltype_annotation: { label: '反卷积/细胞类型注释', desc: '域 marker 签名 → NNLS 逐 spot 解卷积', tool: 'scipy.nnls, Scanpy', io: 'celltype_scores.tsv, l3_14/15', note: '轻量方案' },
-    spatial_localization: { label: '目标基因空间定位', desc: '目标基因在空间域中的表达分布', tool: 'Scanpy', io: 'gene_localization.tsv', note: '' },
-    spatial_knockout: { label: '空间虚拟敲除', desc: 'WT/Control 空间矩阵模拟敲除，输出 DR Genes', tool: 'scTenifoldKnk', io: 'ko_dr_genes.tsv', note: '【需指定目标敲除基因】' },
-    spatial_figures: { label: '空间出图', desc: '域图/目标基因/KO DR 逐样本 + 域统计', tool: 'matplotlib', io: 'l3_*_*', note: '逐样本画' }
   };
 
   var OUTPUT_DEFS = [
@@ -756,6 +766,13 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     }).catch(function () { /* /health 不可达：按未启用处理，后续请求失败会原样报错 */ });
   }
 
+  // 工作流注册表：页面初始化时从 /api/workflows 拉取，模块内只保留这一份缓存。
+  var workflowRegistry = null;
+  var figureTemplateRegistry = [];
+  var figureTemplateLoadPromise = null;
+  var selectedFigureTemplates = {};
+  var figureTemplateFilter = 'ready';
+
   // 状态
   // ============================================================
   var state = {
@@ -784,6 +801,10 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     contrasts: [],
     primary: '',
     selected: {},
+    koGene: '',
+    // 组合预检状态：true=合法 / false=非法 / null=未校验或校验不可用
+    planOk: null,
+    planOrdered: [],
     output: { web_preview: true, tsv_tables: true, pdf_vector: false, checkpoint_archive: true, audit_ledger: true }
   };
 
@@ -1072,49 +1093,487 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
   // ============================================================
   // 分析线 + 步骤
   // ============================================================
+  var workflowLoadPromise = null;
+
+  function workflowSeries(seriesId) {
+    if (!workflowRegistry || !Array.isArray(workflowRegistry.series)) return null;
+    for (var i = 0; i < workflowRegistry.series.length; i += 1) {
+      if (workflowRegistry.series[i].id === seriesId) return workflowRegistry.series[i];
+    }
+    return null;
+  }
+
+  function workflowMod(seriesId, modId) {
+    var series = workflowSeries(seriesId);
+    if (!series || !Array.isArray(series.stages)) return null;
+    for (var i = 0; i < series.stages.length; i += 1) {
+      var mods = series.stages[i].mods;
+      if (!Array.isArray(mods)) continue;
+      for (var j = 0; j < mods.length; j += 1) {
+        if (mods[j].id === modId) return mods[j];
+      }
+    }
+    return null;
+  }
+
+  function seriesModCount(series) {
+    if (!series || !Array.isArray(series.stages)) return 0;
+    return series.stages.reduce(function (sum, stage) {
+      return sum + (Array.isArray(stage.mods) ? stage.mods.length : 0);
+    }, 0);
+  }
+
+  function currentSeriesId() {
+    var checked = document.querySelector('input[name="lineId"]:checked');
+    return checked ? checked.value : '';
+  }
+
+  function selectedWorkflowMods() {
+    var series = workflowSeries(currentSeriesId());
+    if (!series || !Array.isArray(series.stages)) return [];
+    var picked = [];
+    series.stages.forEach(function (stage) {
+      (Array.isArray(stage.mods) ? stage.mods : []).forEach(function (mod) {
+        if (state.selected[mod.id]) picked.push(mod);
+      });
+    });
+    return picked;
+  }
+
+  function koGeneProblem() {
+    var needsGene = selectedWorkflowMods().some(function (mod) { return !!mod.ko_gene; });
+    return needsGene && !state.koGene.trim() ? '已勾选需要靶基因的步骤，请填写靶基因后再继续。' : '';
+  }
+
+  function setWorkflowStatus(kind, text) {
+    var box = $('workflow-status'), label = $('workflow-status-text'), retry = $('btn-workflow-retry');
+    if (!box || !label || !retry) return;
+    if (!kind) {
+      box.style.display = 'none';
+      box.className = 'workflow-status';
+      box.removeAttribute('aria-busy');
+      label.textContent = '';
+      retry.style.display = 'none';
+      return;
+    }
+    box.style.display = '';
+    box.className = 'workflow-status' + (kind === 'error' ? ' error' : '');
+    box.setAttribute('aria-busy', kind === 'loading' ? 'true' : 'false');
+    label.textContent = text;
+    retry.style.display = kind === 'error' ? '' : 'none';
+  }
+
+  function loadWorkflows(force) {
+    if (workflowRegistry && !force) {
+      setWorkflowStatus('', '');
+      renderLineCounts();
+      loadFigureTemplates(force);
+      var loadedLine = currentSeriesId();
+      if (loadedLine) renderSteps(loadedLine);
+      return Promise.resolve(workflowRegistry);
+    }
+    if (workflowLoadPromise && !force) return workflowLoadPromise;
+
+    workflowRegistry = null;
+    setWorkflowStatus('loading', '正在加载分析流程…');
+    renderLineCounts();
+    workflowLoadPromise = fetch('/api/workflows', { headers: authHeaders() })
+      .then(function (response) {
+        return response.json().catch(function () { return null; }).then(function (body) {
+          return { ok: response.ok, status: response.status, body: body };
+        });
+      })
+      .then(function (result) {
+        if (!result.ok) throw new Error((result.body && result.body.error) || ('HTTP ' + result.status));
+        var data = result.body;
+        if (!data || !Array.isArray(data.series) || !data.series.length) {
+          throw new Error('接口返回的数据格式不正确');
+        }
+        workflowRegistry = data;
+        workflowLoadPromise = null;
+        setWorkflowStatus('', '');
+        renderLineCounts();
+        state.selected = {};
+        state.koGene = '';
+        var line = currentSeriesId();
+        if (line) renderSteps(line);
+        else $('step-card').style.display = 'none';
+        renderSummary();
+        loadFigureTemplates(force);
+        return data;
+      })
+      .catch(function (error) {
+        workflowRegistry = null;
+        workflowLoadPromise = null;
+        setWorkflowStatus('error', '分析流程加载失败：' + ((error && error.message) || '网络异常') + '。请检查网络或点击「重试」。');
+        renderLineCounts();
+        $('step-card').style.display = 'none';
+        renderSummary();
+      });
+    return workflowLoadPromise;
+  }
+
+  function setFigureSelectorStatus(kind, text) {
+    var box = $('figure-selector-status'), label = $('figure-selector-text');
+    if (!box || !label) return;
+    if (!kind) { box.style.display = 'none'; label.textContent = ''; return; }
+    box.style.display = '';
+    box.className = 'workflow-status' + (kind === 'error' ? ' error' : '');
+    box.setAttribute('aria-busy', kind === 'loading' ? 'true' : 'false');
+    label.textContent = text;
+  }
+
+  function updateFigureFilterControls(readyCount, totalCount) {
+    var readyButton = $('figure-filter-ready');
+    var allButton = $('figure-filter-all');
+    var readyLabel = $('figure-ready-count');
+    var allLabel = $('figure-all-count');
+    if (readyButton) readyButton.setAttribute('aria-pressed', figureTemplateFilter === 'ready' ? 'true' : 'false');
+    if (allButton) allButton.setAttribute('aria-pressed', figureTemplateFilter === 'all' ? 'true' : 'false');
+    if (readyLabel) readyLabel.textContent = String(readyCount);
+    if (allLabel) allLabel.textContent = String(totalCount);
+  }
+
+  function setFigureTemplateFilter(nextFilter) {
+    figureTemplateFilter = nextFilter === 'all' ? 'all' : 'ready';
+    renderFigureSelector(currentSeriesId());
+  }
+
+  function loadFigureTemplates(force) {
+    if (figureTemplateRegistry.length && !force) {
+      setFigureSelectorStatus('', '');
+      return Promise.resolve(figureTemplateRegistry);
+    }
+    if (figureTemplateLoadPromise && !force) return figureTemplateLoadPromise;
+    figureTemplateRegistry = [];
+    setFigureSelectorStatus('loading', '正在加载图模板…');
+    figureTemplateLoadPromise = fetch('/api/figure-templates', { headers: authHeaders() })
+      .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+      .then(function (result) {
+        if (!result.ok) throw new Error((result.body && result.body.error) || ('HTTP ' + result.status));
+        if (!result.body || !Array.isArray(result.body.templates)) throw new Error('接口返回的数据格式不正确');
+        figureTemplateRegistry = result.body.templates;
+        figureTemplateLoadPromise = null;
+        setFigureSelectorStatus('', '');
+        renderFigureSelector(currentSeriesId());
+        return figureTemplateRegistry;
+      })
+      .catch(function (error) {
+        figureTemplateRegistry = [];
+        figureTemplateLoadPromise = null;
+        setFigureSelectorStatus('error', '图模板加载失败：' + ((error && error.message) || '网络异常') + '。请返回第 2 步重选数据类型或刷新页面。');
+      });
+    return figureTemplateLoadPromise;
+  }
+
+  function templateAvailable(item) {
+    return item.deps_status === 'ready' && item.verified && !item.deprecated && item.preview_state === 'ok';
+  }
+
+  function figureTemplateProblem() {
+    for (const id of Object.keys(selectedFigureTemplates)) {
+      const template = figureTemplateRegistry.find((item) => item.id === id);
+      if (!template) return '图模板已变化，请刷新页面后重新选择。';
+      const values = selectedFigureTemplates[id].adapt_vars || {};
+      for (const [key, description] of Object.entries(template.adapt_vars || {})) {
+        if (/可为空/.test(String(description))) continue;
+        const value = values[key];
+        if (value == null || String(value).trim() === '') return `图模板 ${template.name} 的 ${key} 必填。`;
+      }
+    }
+    return '';
+  }
+
+  function updateFigureTemplateSummary() {
+    const node = $('figure-template-summary');
+    if (!node) return;
+    const ids = Object.keys(selectedFigureTemplates);
+    node.textContent = ids.length ? `已选图模板 ${ids.join('、')}` : '未选图级模板。';
+  }
+
+  function renderAdaptVars(template, container) {
+    container.innerHTML = '';
+    const values = (selectedFigureTemplates[template.id] || {}).adapt_vars || {};
+    Object.entries(template.adapt_vars || {}).forEach(function (entry) {
+      const key = entry[0], description = entry[1];
+      const field = el('div', { class: 'field' }, [
+        el('label', { for: `${template.id}-adapt-${key}`, text: `${key}${/可为空/.test(description) ? '' : ' *'}` }),
+        el('input', { type: 'text', id: `${template.id}-adapt-${key}`, placeholder: description })
+      ]);
+      const input = field.querySelector('input');
+      input.value = values[key] == null ? '' : String(values[key]);
+      input.addEventListener('input', function () {
+        if (!selectedFigureTemplates[template.id]) selectedFigureTemplates[template.id] = { adapt_vars: {} };
+        const raw = input.value;
+        const parsed = /清单|数组|列表/.test(String(description))
+          ? raw.split(/[\s,;，；]+/).filter(Boolean)
+          : raw;
+        selectedFigureTemplates[template.id].adapt_vars[key] = parsed;
+      });
+      container.appendChild(field);
+    });
+  }
+
+  function makeFigureCard(item) {
+    const available = templateAvailable(item);
+    const card = el('article', {
+      class: 'figure-card' + (available ? '' : ' is-unavailable'),
+      'data-testid': 'figure-template-card',
+      'data-template-id': item.id,
+      'data-level': item.level,
+      'data-deps-status': item.deps_status
+    });
+    if (item.preview_state === 'ok' && item.preview_url) {
+      card.appendChild(el('img', { src: item.preview_url, alt: item.name, loading: 'eager', class: 'figure-preview' }));
+    } else {
+      const placeholder = item.preview_state === 'missing'
+        ? '预览图缺失'
+        : item.preview_state === 'hash_mismatch' ? '预览图待同步' : '模板未就绪';
+      card.appendChild(el('div', { class: 'figure-preview-empty', text: available ? '' : placeholder }));
+    }
+    const body = el('div', { class: 'figure-body' });
+    const checkbox = el('input', { type: 'checkbox', 'aria-label': item.name });
+    checkbox.checked = !!selectedFigureTemplates[item.id];
+    checkbox.disabled = !available;
+    checkbox.addEventListener('change', function () {
+      if (checkbox.checked) {
+        selectedFigureTemplates[item.id] = { adapt_vars: {} };
+        renderAdaptVars(item, adaptBox);
+      } else {
+        delete selectedFigureTemplates[item.id];
+        adaptBox.innerHTML = '';
+      }
+      updateFigureTemplateSummary();
+    });
+    const title = el('div', { class: 'figure-title' }, [checkbox, el('span', { text: item.name })]);
+    const meta = el('div', { class: 'figure-meta' });
+    meta.appendChild(el('span', { text: item.language === 'r' ? 'R' : 'Python' }));
+    meta.appendChild(el('span', {
+      class: available ? 'ready' : 'warn',
+      text: available ? 'deps ready' : `deps ${item.deps_status} · 依赖未就绪`
+    }));
+    body.appendChild(title); body.appendChild(meta);
+    if (available && item.analysis_step) {
+      const outputLabel = (item.produces || []).join(', ');
+      body.appendChild(el('div', {
+        class: 'figure-map',
+        text: `对应步骤: ${item.analysis_step}${outputLabel ? ` · 产出: ${outputLabel}` : ''}`
+      }));
+    }
+    if (!available) {
+      const reason = item.preview_state === 'hash_mismatch'
+        ? '预览图与模板不同步'
+        : item.preview_state === 'missing' ? '预览图缺失'
+        : item.deprecated ? '模板已废弃'
+        : item.block_reason || '依赖未完成验证';
+      body.appendChild(el('div', { class: 'figure-warning', text: reason }));
+    }
+    const adaptBox = el('div', { class: 'figure-adapt' });
+    body.appendChild(adaptBox);
+    card.appendChild(body);
+    return card;
+  }
+
+  function renderFigureSelector(lineId) {
+    const wrap = $('figure-template-list');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    if (!lineId) { updateFigureTemplateSummary(); return; }
+    const lineMods = [];
+    const series = workflowSeries(lineId);
+    (series ? series.stages : []).forEach((stage) => (stage.mods || []).forEach((mod) => lineMods.push(mod.id)));
+    const usable = figureTemplateRegistry.filter((item) => (
+      Array.isArray(item.lines) && item.lines.length
+        ? item.lines.includes(lineId)
+        : (item.linked_mods || []).some((id) => lineMods.includes(id))
+    ));
+    const readyItems = usable.filter(templateAvailable);
+    updateFigureFilterControls(readyItems.length, usable.length);
+    const visibleItems = figureTemplateFilter === 'all' ? usable : readyItems;
+    ['L1', 'L2', 'L3'].forEach(function (level) {
+      const items = visibleItems.filter((item) => item.level === level)
+        .sort((a, b) => String(a.category).localeCompare(String(b.category)) || String(a.name).localeCompare(String(b.name)));
+      const section = el('section', { class: 'figure-level', 'data-testid': `figure-level-${level}` });
+      const countLabel = figureTemplateFilter === 'ready' ? `${items.length} 个可用` : String(items.length);
+      section.appendChild(el('h3', { text: `${level} 图型（${countLabel}）` }));
+      if (!items.length) {
+        section.appendChild(el('div', {
+          class: 'figure-preview-empty',
+          text: figureTemplateFilter === 'ready' ? '本层级暂无可用预览' : '本线暂无该层级模板'
+        }));
+        wrap.appendChild(section);
+        return;
+      }
+      let category = '';
+      let grid = null;
+      items.forEach(function (item) {
+        if (item.category !== category) {
+          category = item.category;
+          section.appendChild(el('div', { class: 'figure-category', text: category }));
+          grid = el('div', { class: 'figure-grid' });
+          section.appendChild(grid);
+        }
+        grid.appendChild(makeFigureCard(item));
+      });
+      wrap.appendChild(section);
+    });
+    updateFigureTemplateSummary();
+  }
+
   function renderLineCounts() {
     $$('[data-count]').forEach(function (n) {
-      var cnt = (LINE_STEPS[n.dataset.count] || []).length;
-      n.textContent = cnt + ' 个可分析步骤';
+      var series = workflowSeries(n.dataset.count);
+      n.textContent = series ? (seriesModCount(series) + ' 个可分析步骤') : (workflowRegistry ? '暂无可用步骤' : '加载中…');
     });
   }
+
   function renderSteps(line) {
     var card = $('step-card'), list = $('step-list');
-    var steps = LINE_STEPS[line] || [];
-    if (!line || !steps.length) { card.style.display = 'none'; return; }
+    var series = workflowSeries(line);
+    if (!line || !series || !Array.isArray(series.stages)) { card.style.display = 'none'; return; }
     card.style.display = '';
-    $('step-card-title').textContent = '分析步骤（' + steps.length + ' 个）';
+    $('step-card-title').textContent = '分析步骤（共 ' + seriesModCount(series) + ' 个）';
     list.innerHTML = '';
-    steps.forEach(function (s) {
-      var meta = STEP_META[s] || {};
-      var isQC = s.toLowerCase().indexOf('qc') >= 0 || s.toLowerCase().indexOf('ingest') >= 0;
-      var isKO = s.toLowerCase().indexOf('knockout') >= 0;
-      if (isQC) state.selected[s] = true;
-      var cb = el('input', { type: 'checkbox', id: 'st-' + s });
-      cb.checked = !!state.selected[s]; cb.disabled = isQC;
-      cb.addEventListener('change', function () { state.selected[s] = cb.checked; if (isKO) toggleKO(s, cb.checked); });
-      var labelEl = el('span', { class: 'st-label', text: (meta.label || s) });
-      if (isQC) labelEl.appendChild(el('span', { class: 'lock-badge', text: '🔒 前置必选' }));
-      var body = el('div', { class: 'st-body' }, [labelEl]);
-      if (meta.desc) body.appendChild(el('div', { class: 'st-desc', text: meta.desc }));
-      var metaRow = el('div', { class: 'st-meta' });
-      if (meta.tool) metaRow.appendChild(el('span', {}, [el('b', { text: '工具 ' }), el('span', { text: meta.tool })]));
-      if (meta.io) metaRow.appendChild(el('span', {}, [el('b', { text: '产物 ' }), el('span', { text: meta.io })]));
-      if (metaRow.childNodes.length) body.appendChild(metaRow);
-      if (meta.note) body.appendChild(el('span', { class: 'st-note', text: meta.note }));
-      var head = el('div', { class: 'st-head' }, [cb, body]);
-      list.appendChild(el('div', { class: 'step-item' + (isQC ? ' locked' : '') }, [head]));
+    series.stages.slice().sort(function (a, b) { return Number(a.order) - Number(b.order); }).forEach(function (stage) {
+      var group = el('section', { class: 'stage-group' });
+      var badge = el('span', {
+        class: 'stage-badge ' + (stage.required ? 'required' : 'optional'),
+        text: stage.required ? '必需' : '可选'
+      });
+      group.appendChild(el('div', { class: 'stage-head' }, [
+        el('h3', { class: 'stage-title', text: stage.name || stage.id }),
+        badge
+      ]));
+      if (stage.notes) group.appendChild(el('p', { class: 'stage-notes', text: stage.notes }));
+      (Array.isArray(stage.mods) ? stage.mods : []).forEach(function (mod) {
+        var requiredMod = !!stage.required && !mod.optional;
+        if (requiredMod) state.selected[mod.id] = true;
+        var item = el('div', { class: 'step-item' + (requiredMod ? ' locked' : ''), title: mod.desc || mod.name || mod.id });
+        var cb = el('input', { type: 'checkbox', id: 'st-' + mod.id, 'aria-label': mod.name || mod.id });
+        cb.checked = !!state.selected[mod.id];
+        cb.disabled = requiredMod;
+        cb.addEventListener('change', function () {
+          state.selected[mod.id] = cb.checked;
+          if (mod.ko_gene) toggleKoInput(mod, item, cb.checked);
+          if (!selectedWorkflowMods().some(function (picked) { return !!picked.ko_gene; })) state.koGene = '';
+          renderWorkflowSummary();
+          scheduleResolveCheck();
+          renderSummary();
+        });
+        var labelEl = el('span', { class: 'st-label', text: mod.name || mod.id, title: mod.desc || mod.name || mod.id });
+        if (requiredMod) labelEl.appendChild(el('span', { class: 'lock-badge', text: '默认必选' }));
+        var body = el('div', { class: 'st-body' }, [labelEl]);
+        if (mod.desc) body.appendChild(el('div', { class: 'st-desc', text: mod.desc }));
+        var metaRow = el('div', { class: 'st-meta' });
+        if (mod.est_minutes !== undefined && mod.est_minutes !== null) {
+          metaRow.appendChild(el('span', {}, [el('b', { text: '时长 ' }), el('span', { text: '约 ' + mod.est_minutes + ' 分钟' })]));
+        }
+        if (mod.tool) metaRow.appendChild(el('span', {}, [el('b', { text: '工具 ' }), el('span', { text: mod.tool })]));
+        if (metaRow.childNodes.length) body.appendChild(metaRow);
+        item.appendChild(el('div', { class: 'st-head' }, [cb, body]));
+        group.appendChild(item);
+        if (mod.ko_gene && cb.checked) toggleKoInput(mod, item, true);
+      });
+      list.appendChild(group);
     });
+    renderWorkflowSummary();
+    scheduleResolveCheck();
   }
-  function toggleKO(step, on) {
-    var existing = document.getElementById('ko-box-' + step);
+
+  function toggleKoInput(mod, item, on) {
+    var existing = document.getElementById('ko-box-' + mod.id);
     if (!on) { if (existing) existing.remove(); return; }
     if (existing) return;
-    var box = el('div', { class: 'field', id: 'ko-box-' + step, style: 'margin:10px 0 0 27px;' }, [
-      el('label', { for: 'ko-' + step, text: '目标敲除基因（必填）' }),
-      el('input', { type: 'text', id: 'ko-' + step, placeholder: '例如：某目标基因…', spellcheck: 'false' })
-    ]);
-    document.getElementById('st-' + step).closest('.step-item').appendChild(box);
+    var input = el('input', {
+      type: 'text',
+      id: 'ko-' + mod.id,
+      class: 'ko-gene-input',
+      placeholder: '例如：TNF',
+      spellcheck: 'false',
+      autocapitalize: 'off'
+    });
+    input.value = state.koGene;
+    input.addEventListener('input', function () {
+      state.koGene = input.value;
+      $$('.ko-gene-input').forEach(function (other) { if (other !== input) other.value = state.koGene; });
+      showMsg('e-line', '', 'err');
+      renderWorkflowSummary();
+      scheduleResolveCheck();
+    });
+    item.appendChild(el('div', { class: 'field', id: 'ko-box-' + mod.id, style: 'margin:10px 0 0 27px;' }, [
+      el('label', { for: 'ko-' + mod.id, text: '靶基因（必填）' }),
+      input
+    ]));
+  }
+
+  function renderWorkflowSummary() {
+    var node = $('workflow-summary');
+    if (!node) return;
+    var mods = selectedWorkflowMods();
+    var totalMinutes = 0, peakMemMb = 0, hasPeak = false;
+    mods.forEach(function (mod) {
+      var minutes = Number(mod.est_minutes);
+      if (isFinite(minutes)) totalMinutes += minutes;
+      var peak = Number(mod.peak_mem_mb);
+      if (isFinite(peak) && peak > 0) {
+        peakMemMb = Math.max(peakMemMb, peak);
+        hasPeak = true;
+      }
+    });
+    var text = '已选 ' + mods.length + ' 步 · 预估总时长 约 ' + totalMinutes + ' 分钟';
+    if (hasPeak) text += ' · 峰值内存 ' + peakMemMb + ' MB';
+    node.textContent = text;
+  }
+
+  // ============================================================
+  // 组合预检（M2.4）：勾选变化时问一次服务台 resolve，别等提交才被拒
+  // ============================================================
+  var resolveTimer = null;
+  var resolveSeq = 0;
+
+  /**
+   * 防抖调用 /api/workflows/resolve。
+   * 为什么防抖：客户连续勾选时会连发请求，而 portal 是单线程 Node，
+   * 每次都同步等 resolve 会把勾选交互拖卡。400ms 足够覆盖连点。
+   * seq 序号保证只认最后一次响应，避免早发的慢响应覆盖晚发的快响应。
+   */
+  function scheduleResolveCheck() {
+    if (resolveTimer) clearTimeout(resolveTimer);
+    resolveTimer = setTimeout(runResolveCheck, 400);
+  }
+
+  function runResolveCheck() {
+    var seriesId = state.lineId;
+    if (!seriesId || !workflowRegistry) return;
+    var modIds = selectedWorkflowMods().map(function (m) { return m.id; });
+    if (!modIds.length) { showMsg('e-line', '请至少勾选一个分析步骤', 'err'); return; }
+
+    var seq = ++resolveSeq;
+    fetch('/api/workflows/resolve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ seriesId: seriesId, modIds: modIds, koGene: state.koGene })
+    }).then(function (r) {
+      return r.json().then(function (body) { return { status: r.status, body: body }; });
+    }).then(function (res) {
+      // 已被更新的请求抢先，丢弃这次结果
+      if (seq !== resolveSeq) return;
+      if (res.body && res.body.ok) {
+        showMsg('e-line', '', 'err');
+        state.planOk = true;
+        state.planOrdered = res.body.ordered || [];
+        renderWorkflowSummary();
+        return;
+      }
+      state.planOk = false;
+      var errs = (res.body && res.body.errors) || ['组合校验失败'];
+      // 只显示前两条：客户需要知道"哪错了"，不需要读全部内部断言
+      showMsg('e-line', '步骤组合不合法：' + errs.slice(0, 2).join('；'), 'err');
+    }).catch(function () {
+      if (seq !== resolveSeq) return;
+      // 预检是增强项，网络失败不该卡住客户填表；真正拦截在提交时做
+      state.planOk = null;
+    });
   }
 
   // ============================================================
@@ -1237,12 +1696,9 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     ['platform_annotation', '平台注解 / GPL（可不绑）'],
     ['other', '其他补充文件（可不绑，最多 5 个）']
   ];
-  // 唯一权威在 shared/data_formats.mjs，改动必须同步，有测试把守（BioanalysDesktop/tests/data_format_parity.test.js）；
-  // 本页是浏览器单文件页面、无打包步骤，无法 import，只能保留字面量副本。
-  var DATA_EXT = ['.h5ad', '.h5', '.loom', '.mtx', '.tar', '.gz', '.zip', '.txt', '.tsv', '.csv', '.soft', '.xlsx', '.rds', '.rdata'];
-  // 唯一权威在 shared/data_formats.mjs 的 MAX_DATA_BYTES（2026-10-20 起 5 GiB）；
-  // 服务端另支持 PORTAL_MAX_DATA_BYTES 环境变量覆盖，若运维改过服务端默认值，这里要同步改。
-  var MAX_DATA_BYTES = 5 * 1024 * 1024 * 1024;
+  // 数据格式与上限权威在 shared/data_formats.mjs，由服务端响应期注入。
+  var DATA_EXT = [];
+  var MAX_DATA_BYTES = 0;
   // 与服务端 portal/lib/archive.mjs 的 MAX_DATA_FILES_PER_ROLE 保持一致（2026-10-20 起 5）；
   // 仅约束 other 角色，其余角色由绑定策略硬性每角色 1 个。
   var MAX_DATA_FILES_PER_ROLE = 5;
@@ -1250,8 +1706,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
   // #region P5 shared contracts
   // 服务端（portal/serve.mjs）返回本页时，会把唯一权威 shared/data_formats.mjs 与
   // BioanalysDesktop/server/tumor_blacklist.js 的内容注入成 window.__SHARED_CONTRACTS__。
-  // 命中时覆盖上面三份字面量副本，并同步 accept 属性与提示文案，让运行时校验与服务端同源；
-  // 离线双击本文件时没有注入，直接沿用字面量副本（页面照常可用）。
+  // 本页不保存契约副本；缺少注入时初始化失败并中止后续交互，避免 fail-open。
   function limitTextOf(bytes) {
     return bytes >= 1024 * 1024 * 1024
       ? (bytes / 1024 / 1024 / 1024) + 'GiB'
@@ -1260,16 +1715,27 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
 
   function applySharedContracts() {
     var injected = window.__SHARED_CONTRACTS__;
-    if (!injected || !Array.isArray(injected.DATA_EXT) || !injected.DATA_EXT.length) return false;
-    DATA_EXT = injected.DATA_EXT.slice();
-    if (typeof injected.MAX_DATA_BYTES === 'number' && injected.MAX_DATA_BYTES > 0) {
-      MAX_DATA_BYTES = injected.MAX_DATA_BYTES;
-    }
-    if (Array.isArray(injected.BL_PATTERNS) && injected.BL_PATTERNS.length) {
-      BL_PATTERNS = injected.BL_PATTERNS.map(function (p) {
-        return new RegExp(p.source, p.flags || '');
+    var validPatterns = injected
+      && Array.isArray(injected.BL_PATTERNS)
+      && injected.BL_PATTERNS.length > 0
+      && injected.BL_PATTERNS.every(function (pattern) {
+        return pattern && typeof pattern.source === 'string' && pattern.source;
       });
+    if (
+      !injected
+      || !Array.isArray(injected.DATA_EXT)
+      || !injected.DATA_EXT.length
+      || typeof injected.MAX_DATA_BYTES !== 'number'
+      || !(injected.MAX_DATA_BYTES > 0)
+      || !validPatterns
+    ) {
+      throw new Error('共享契约未注入或格式非法，页面已停止初始化');
     }
+    DATA_EXT = injected.DATA_EXT.slice();
+    MAX_DATA_BYTES = injected.MAX_DATA_BYTES;
+    BL_PATTERNS = injected.BL_PATTERNS.map(function (p) {
+      return new RegExp(p.source, p.flags || '');
+    });
     var fileInput = document.getElementById('f-df-file');
     if (fileInput) fileInput.setAttribute('accept', DATA_EXT.join(','));
     var fileHint = document.getElementById('h-df-file');
@@ -1284,7 +1750,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
         var child = guide.childNodes[i];
         if (child.nodeType === 3 && child.nodeValue.indexOf('支持 ') >= 0) {
           child.nodeValue = child.nodeValue.replace(
-            /支持 [^，]*，单文件上限 [^。]*。/,
+            /支持[^。]*。/,
             '支持 ' + DATA_EXT.join(' ') + '，单文件上限 ' + limitTextOf(MAX_DATA_BYTES) + '。'
           );
           break;
@@ -1566,7 +2032,8 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       return gpl ? (d.gse.trim() + '↔' + gpl + '（' + role + '）') : (d.gse.trim() + '（' + role + '，未标平台）');
     });
     var lineSel = document.querySelector('input[name="lineId"]:checked');
-    var picked = Object.keys(state.selected).filter(function (k) { return state.selected[k]; });
+    var lineSeries = lineSel ? workflowSeries(lineSel.value) : null;
+    var picked = selectedWorkflowMods();
     var rows = [
       ['项目名称', val('f-name') || '—'],
       ['疾病', val('f-disease') || '—'],
@@ -1576,7 +2043,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       ['数据类型', DATA_TYPE_LABEL[val('f-datatype')] || '—'],
       ['数据集配对', dsPairs.length ? dsPairs.join('；') : '—'],
       ['分组数', String(state.groups.length)],
-      ['分析线', lineSel ? (lineName[lineSel.value] || lineSel.value) : '未选择'],
+      ['分析线', lineSel ? ((lineSeries && lineSeries.name) || lineName[lineSel.value] || lineSel.value) : '未选择'],
       ['分析步骤', picked.length ? picked.length + ' 个' : '未选择'],
       ['参考文献', state.refs.length ? state.refs.length + ' 篇' : '未上传']
     ];
@@ -1778,17 +2245,18 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     root.appendChild(s4);
 
     // 五、分析线与分析步骤
-    var dag = m.pipelineDag || [];
-    var s5 = prSection('五、分析线与分析步骤', '共勾选 ' + dag.length + ' 个步骤');
+    var modIds = Array.isArray(m.modIds) ? m.modIds : [];
+    var series = workflowSeries(m.seriesId);
+    var s5 = prSection('五、分析线与分析步骤', '共勾选 ' + modIds.length + ' 个步骤');
     s5.appendChild(prKV([
-      ['分析线', lineSel ? (LINE_LABEL[lineSel.value] || lineSel.value) : '未选择'],
-      ['目标敲除基因', ao.targetKoGene]
+      ['分析线', series ? series.name : (lineSel ? (LINE_LABEL[lineSel.value] || lineSel.value) : '未选择')],
+      ['靶基因', m.koGene || ao.targetKoGene]
     ]));
     s5.appendChild(prTable(
-      ['序号', '步骤 ID', '步骤名称', '主要工具', '产出'],
-      dag.map(function (x) {
-        var meta = STEP_META[x.stepId] || {};
-        return [x.order, x.stepId, meta.label || x.stepId, meta.tool, meta.io];
+      ['序号', 'Mod ID', '步骤名称', '主要工具'],
+      modIds.map(function (modId, i) {
+        var mod = workflowMod(m.seriesId, modId) || {};
+        return [i + 1, modId, mod.name || modId, mod.tool || ''];
       }),
       '（未勾选分析步骤）'
     ));
@@ -1854,9 +2322,12 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       if (line && r.value === line) r.checked = true;
     });
     if (line) {
-      // 换类型即换线：清空旧线勾选，按新线重渲染步骤（QC 会自动锁定）
+      // 换类型即换线：清空旧线勾选，按新线重渲染步骤（必需阶段的非可选 mod 会自动锁定）
       state.selected = {};
+      state.koGene = '';
+      selectedFigureTemplates = {};
       renderSteps(line);
+      renderFigureSelector(line);
       showMsg('e-line', '', 'err');
     }
   }
@@ -1895,7 +2366,11 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     }
     if (n === 4) {
       var lineSel = document.querySelector('input[name="lineId"]:checked');
-      if (!lineSel) { showMsg('e-line', '请选择一条分析线', 'err'); ok = false; }
+      if (!workflowRegistry) { showMsg('e-line', '分析流程尚未加载，请先点击「重试」。', 'err'); ok = false; }
+      else if (!lineSel) { showMsg('e-line', '请选择一条分析线', 'err'); ok = false; }
+      else if (!selectedWorkflowMods().length) { showMsg('e-line', '请至少勾选一个分析步骤', 'err'); ok = false; }
+      else if (koGeneProblem()) { showMsg('e-line', koGeneProblem(), 'err'); ok = false; }
+      else if (figureTemplateProblem()) { showMsg('e-line', figureTemplateProblem(), 'err'); ok = false; }
       else showMsg('e-line', '', 'err');
     }
     return ok;
@@ -1906,8 +2381,8 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
   // ============================================================
   function buildManifest() {
     var lineSel = document.querySelector('input[name="lineId"]:checked');
-    var picked = Object.keys(state.selected).filter(function (k) { return state.selected[k]; });
-    var koInput = document.querySelector('[id^="ko-"]');
+    var picked = selectedWorkflowMods().map(function (mod) { return mod.id; });
+    var koGene = state.koGene.trim();
     var formats = [];
     if (state.output.web_preview) formats.push('png_300dpi');
     if (state.output.tsv_tables) formats.push('tsv_tables');
@@ -1944,11 +2419,16 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
           return { name: c.name, case: c.case, ctrl: c.ctrl, isPrimary: c.name === state.primary };
         })
       },
-      pipelineDag: picked.map(function (s, i) { return { order: i + 1, stepId: s }; }),
+      seriesId: lineSel ? lineSel.value : '',
+      modIds: picked,
+      koGene: koGene,
+      figure_templates: Object.keys(selectedFigureTemplates).map(function (id) {
+        return { template_id: id, adapt_vars: selectedFigureTemplates[id].adapt_vars };
+      }),
       aclAndOutput: {
         collaborators: [],
         expectedFormats: formats,
-        targetKoGene: koInput ? koInput.value.trim() : ''
+        targetKoGene: koGene
       },
       // 出图版式：只保留 4:3 / 16:9 两档（2026-10-19 用户拍板）。
       // 字段名与工作台一致（plotLayoutConfig.templateId），value 直接用新 template_id。
@@ -2030,6 +2510,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     var banner = $('submit-banner');
     $('result-card').style.display = '';
     $('result-json').textContent = json;
+    renderResultFigureZones(json, ok ? extra : '');
     if (ok) {
       $('result-title').textContent = '需求已提交';
       $('result-sub').textContent = '已记录（编号 ' + (extra || '—') + '）。你仍可下载或复制一份留存。';
@@ -2044,6 +2525,63 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       banner.textContent = '⚠ 自动提交失败，请下载文件后手动发给对接人。';
     }
     $('result-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function renderResultFigureZones(json, ticket) {
+    const builtinZone = $('result-builtin-zone'), builtinList = $('result-builtin-list');
+    const realZone = $('result-real-zone'), realList = $('result-real-list');
+    if (!builtinZone || !builtinList || !realZone || !realList) return;
+    builtinZone.style.display = 'block';
+    realZone.style.display = 'block';
+    builtinList.innerHTML = '';
+    realList.innerHTML = '';
+    let manifest = {};
+    try { manifest = JSON.parse(json || '{}'); } catch { manifest = {}; }
+    const selectedIds = Array.isArray(manifest.figure_templates)
+      ? manifest.figure_templates.map((item) => item && item.template_id).filter(Boolean)
+      : [];
+    if (!selectedIds.length) {
+      builtinList.appendChild(el('li', { text: '本次需求未选择内置模板预览。' }));
+    }
+    selectedIds.forEach(function (id) {
+      const item = figureTemplateRegistry.find((row) => row.id === id);
+      const li = el('li');
+      if (item && item.preview_url) {
+        li.appendChild(el('img', { src: item.preview_url, alt: item.name, loading: 'lazy' }));
+      } else {
+        li.appendChild(el('span', { text: '预览不可用' }));
+      }
+      li.appendChild(el('span', { text: `${item ? item.name : id} · ${id}` }));
+      builtinList.appendChild(li);
+    });
+    if (!ticket) {
+      realList.appendChild(el('li', { text: '尚未提交，暂无同步回传结果图。' }));
+      return;
+    }
+    fetch(`/api/sync/status?ticket=${encodeURIComponent(ticket)}`, { headers: authHeaders() })
+      .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+      .then(function (result) {
+        if (!result.ok) throw new Error((result.body && result.body.error) || ('HTTP ' + result.status));
+        const files = result.body && Array.isArray(result.body.files) ? result.body.files : [];
+        if (!files.length) {
+          realList.appendChild(el('li', { text: '尚未回传项目真实图。' }));
+          return;
+        }
+        files.forEach(function (file) {
+          const li = el('li');
+          if (file.path) {
+            li.appendChild(el('img', {
+              src: `/api/sync/results/file?ticket=${encodeURIComponent(ticket)}&path=${encodeURIComponent(file.path)}`,
+              alt: file.path, loading: 'lazy'
+            }));
+          }
+          li.appendChild(el('span', { text: file.path || '（无路径）' }));
+          realList.appendChild(li);
+        });
+      })
+      .catch(function () {
+        realList.appendChild(el('li', { text: '同步结果读取失败。' }));
+      });
   }
 
   function download() {
@@ -2084,6 +2622,9 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     $('btn-download').addEventListener('click', download);
     $('btn-copy').addEventListener('click', copyJson);
     $('btn-print').addEventListener('click', printRequirement);
+    $('btn-workflow-retry').addEventListener('click', function () { loadWorkflows(true); });
+    $('figure-filter-ready').addEventListener('click', function () { setFigureTemplateFilter('ready'); });
+    $('figure-filter-all').addEventListener('click', function () { setFigureTemplateFilter('all'); });
     // 直接按 Ctrl+P 也要拿到完整需求单：隐藏了屏幕元素后若不重建，打印出来的会是一张白纸
     window.addEventListener('beforeprint', buildPrintReport);
     window.addEventListener('afterprint', printTitleRestore);
@@ -2141,7 +2682,15 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     $('btn-df-upload').addEventListener('click', uploadDataFile);
 
     $$('input[name="lineId"]').forEach(function (r) {
-      r.addEventListener('change', function () { state.selected = {}; renderSteps(r.value); showMsg('e-line', '', 'err'); });
+      r.addEventListener('change', function () {
+        state.selected = {};
+        state.koGene = '';
+        selectedFigureTemplates = {};
+        renderSteps(r.value);
+        renderFigureSelector(r.value);
+        renderSummary();
+        showMsg('e-line', '', 'err');
+      });
     });
 
     // 参考文献：选中后即刻上传（清空 input 以便重选同名文件）
@@ -2158,6 +2707,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     initAuth();
     renderDatasets(); renderGroups(); renderContrasts(); renderOutputs(); renderLineCounts(); renderRefs(); updateNotesCount(); updateDfUi(); bind();
     goStep(1, false);
+    loadWorkflows();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
