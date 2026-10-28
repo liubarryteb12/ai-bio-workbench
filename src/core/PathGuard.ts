@@ -28,7 +28,7 @@ export class PathGuard {
     if (typeof candidate !== 'string' || candidate.length === 0) {
       throw new Error('ERR_PATH_GUARD_EMPTY_PATH');
     }
-    if (candidate.includes('..')) {
+    if (candidate.split('/').some((segment) => segment === '..')) {
       throw new Error(`ERR_PATH_GUARD_TRAVERSAL: ${candidate}`);
     }
 

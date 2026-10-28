@@ -7,7 +7,7 @@ import json
 import re
 from typing import Any, Dict, List
 
-TOKEN_PATTERN = re.compile(r"^[0-9a-f]{48,}$")
+TOKEN_PATTERN = re.compile(r"^(a2a_sec_)?[0-9a-f]{48,}$")
 
 
 def validate_settings(settings: Dict[str, Any]) -> List[str]:

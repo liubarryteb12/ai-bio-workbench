@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import datetime
 import io
 import json
@@ -77,14 +79,26 @@ ENTRIES = [
 
 
 def main() -> int:
+    ledger_path = Path(LEDGER)
+    existing_ids = set()
+    if ledger_path.exists():
+        for line in ledger_path.read_text(encoding="utf-8").splitlines():
+            try:
+                existing_ids.add(json.loads(line).get("id"))
+            except json.JSONDecodeError:
+                continue
+
     stamp = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
     with io.open(LEDGER, "a", encoding="utf-8", newline="\n") as handle:
         for entry in ENTRIES:
+            if entry["id"] in existing_ids:
+                continue
             entry["ts"] = stamp
             entry["type"] = "action"
             entry["ticket"] = "A2A-v1"
             handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    print("A2A_LEDGER_APPENDED count={0}".format(len(ENTRIES)))
+    appended = len(ENTRIES) - len(existing_ids & {e["id"] for e in ENTRIES})
+    print("A2A_LEDGER_APPENDED count={0}".format(appended))
     return 0
 
 

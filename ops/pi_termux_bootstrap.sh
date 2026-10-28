@@ -65,6 +65,6 @@ for package in nodejs git python jq tmux termux-api procps curl; do
 done
 
 log "installing A2A extension"
-pi install npm:@bacnh85/pi-a2a
+pi install --ignore-scripts npm:@bacnh85/pi-a2a@0.8.0
 
 log "PASS bootstrap_complete workspace=$REAL_WS config=$PI_CONFIG_DIR"
