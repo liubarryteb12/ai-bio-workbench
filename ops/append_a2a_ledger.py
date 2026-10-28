@@ -169,6 +169,20 @@ TELEMETRY_ENTRY = {
     },
 }
 
+EIGHTDIM_ENTRY = {
+    "id": "ACT-20261028-160000-a2a-eightdim",
+    "kind": "a2a_regression",
+    "step": "eight_dimension_suite_v110",
+    "status": "ok",
+    "detail": {
+        "contract_mode": "4/4 pass (path_guard, bind_lock, idem_skip, readonly)",
+        "live_mode": "4/4 pass (telemetry_auth, card, auth_reject, resume)",
+        "resume_probe": "re-attached to live task, artifact text verified",
+        "reuse_latency_ms": "<500 on phone",
+        "node_suite": "985/985",
+    },
+}
+
 
 def main() -> int:
     ledger_path = Path(LEDGER)
@@ -180,7 +194,7 @@ def main() -> int:
             except json.JSONDecodeError:
                 continue
 
-    entries = ENTRIES + [E2E_ENTRY, ASYNC_ENTRY, LIVE_ARTIFACT_ENTRY, KEEPALIVE_ENTRY, IDEM_ENTRY, TELEMETRY_ENTRY]
+    entries = ENTRIES + [E2E_ENTRY, ASYNC_ENTRY, LIVE_ARTIFACT_ENTRY, KEEPALIVE_ENTRY, IDEM_ENTRY, TELEMETRY_ENTRY, EIGHTDIM_ENTRY]
     stamp = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
     with io.open(LEDGER, "a", encoding="utf-8", newline="\n") as handle:
         for entry in entries:
