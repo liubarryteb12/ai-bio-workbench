@@ -79,6 +79,7 @@ import {
   parseTranscript,
   parseSessionList,
   parseCurrentModel,
+  parseTranscriptTimeline,
   fetchAgentCard,
   redact,
   ALLOWED_MODELS,
@@ -1444,15 +1445,29 @@ const server = http.createServer(async (req, res) => {
         const qs = taskFile ? `task_file=${encodeURIComponent(taskFile)}&` : '';
         const tele = await fetchTelemetryViaPath(tokenRes.text.trim(), `/api/telemetry/logs?${qs}tail=${tail}`);
         if (tele.status === 200 && Array.isArray(tele.data?.lines)) {
-          return json(res, 200, { ok: true, source: tele.data.source, lines: tele.data.lines });
+          const raw = tele.data.lines.join('\n');
+          const taskIdMatch = taskFile.match(/_task-(.+)\.jsonl$/);
+          const timeline = parseTranscriptTimeline(raw, taskIdMatch ? taskIdMatch[1] : '');
+          const lines = timeline.map((e) => `[${e.ts}] [${e.level}] ${e.text}`);
+          return json(res, 200, { ok: true, source: taskFile, lines, timeline });
         }
       } catch { /* sidecar offline: fall through to ssh */ }
       const command = taskFile ? buildCallDetailCommand(taskFile) : buildDaemonLogCommand(tail);
       const raw = runSshRaw(PI_SSH_TARGET, command, { timeoutMs: 15000 });
+      const taskIdMatch = taskFile ? taskFile.match(/_task-(.+)\.jsonl$/) : null;
+      let lines;
+      if (taskFile) {
+        const timeline = parseTranscriptTimeline(raw.text, taskIdMatch ? taskIdMatch[1] : '');
+        lines = timeline.map((e) => `[${e.ts}] [${e.level}] ${e.text}`);
+        return json(res, 200, { ok: true, source: taskFile, lines, timeline });
+      } else {
+        lines = redact(raw.text).split('\n').filter(Boolean);
+      }
       return json(res, 200, {
         ok: true,
         source: taskFile || 'pi_a2a_daemon.log',
-        lines: redact(raw.text).split('\n').filter(Boolean),
+        lines,
+        timeline: [],
       });
     } catch (cause) {
       return json(res, 200, { ok: false, error: cause instanceof Error ? cause.message : String(cause) });

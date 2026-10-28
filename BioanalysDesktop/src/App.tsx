@@ -2294,6 +2294,7 @@ type PiCall = {
 type PiCallsResponse = { ok: boolean; error?: string; calls?: PiCall[]; totals?: { input_tokens: number; output_tokens: number; cost_usd: number } };
 type PiModelResponse = { ok: boolean; current?: { provider: string; model: string }; allowed?: Array<{ provider: string; model: string }>; error?: string };
 type PiDispatchResponse = { ok: boolean; http_status?: number; task?: { id?: string; status?: { state?: string } } | null; error?: string };
+type PiTimelineEntry = { ts: string; level: string; text: string };
 
 function PiAgentMonitor() {
   const [overview, setOverview] = useState<PiOverview | null>(null);
@@ -2301,6 +2302,8 @@ function PiAgentMonitor() {
   const [modelCfg, setModelCfg] = useState<PiModelResponse | null>(null);
   const [selected, setSelected] = useState<PiCall | null>(null);
   const [logLines, setLogLines] = useState<string[]>([]);
+  const [timeline, setTimeline] = useState<PiTimelineEntry[]>([]);
+  const [logLevel, setLogLevel] = useState('ALL');
   const [logSource, setLogSource] = useState<'daemon' | 'task'>('daemon');
   const [switching, setSwitching] = useState(false);
   const [switchMsg, setSwitchMsg] = useState('');
@@ -2333,6 +2336,7 @@ function PiAgentMonitor() {
       const res = await fetch(`/api/pi-agent/logs${qs}`);
       const payload = await res.json();
       setLogLines(payload.lines ?? []);
+      setTimeline(payload.timeline ?? []);
     } catch { setLogLines(['日志拉取失败']); }
   }, []);
 
@@ -2472,7 +2476,22 @@ function PiAgentMonitor() {
               <button className={`sub-tab${logSource === 'task' ? ' sub-tab-active' : ''}`} disabled={!selected} onClick={() => { setLogSource('task'); void loadLog('task', selected?.file); }}>任务轨迹</button>
             </div>
           </div>
-          <pre className="pi-log-terminal">{logLines.join('\n') || '暂无日志'}</pre>
+          <div className="pi-log-filter-row">
+            <select className="pi-log-level-select" value={logLevel} onChange={(e) => setLogLevel(e.target.value)}>
+              <option value="ALL">全部级别</option>
+              <option value="INFO">INFO / 状态</option>
+              <option value="TOOL">TOOL / 命令执行</option>
+              <option value="THINK">THINK / 思考</option>
+              <option value="REPLY">REPLY / 回复</option>
+              <option value="ARTIFACT">ARTIFACT / 产物</option>
+            </select>
+          </div>
+          <pre className="pi-log-terminal">
+            {(() => {
+              const text = logLevel === 'ALL' ? logLines : timeline.filter((e) => e.level === logLevel).map((e) => `[${e.ts}] [${e.level}] ${e.text}`);
+              return text.length ? text.join('\n') : '暂无日志';
+            })()}
+          </pre>
         </div>
       </div>
       {dispatchOpen && (

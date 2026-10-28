@@ -226,6 +226,61 @@ export function parseTranscript(jsonlText) {
   };
 }
 
+/** 把 transcript JSONL 解析成带级别的时间线（INFO/TOOL/ARTIFACT/THINK），对齐参考页面轨迹格式 */
+export function parseTranscriptTimeline(jsonlText, taskId) {
+  const entries = [];
+  const shortId = String(taskId || '').slice(0, 14);
+  const ts = (iso) => {
+    try { return new Date(iso).toTimeString().slice(0, 8); } catch { return ''; }
+  };
+  for (const line of String(jsonlText).split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    let evt;
+    try { evt = JSON.parse(line); } catch { continue; }
+    const t = ts(evt.timestamp);
+    if (evt.type === 'session') {
+      entries.push({ ts: t, level: 'INFO', text: `[A2A] Task ${shortId} session started (cwd=${evt.cwd || ''})` });
+      continue;
+    }
+    if (evt.type === 'custom' && evt.customType === 'a2a/dispatch') {
+      entries.push({ ts: t, level: 'INFO', text: `[A2A] Dispatched from peer="codex" (taskId=${(evt.data || {}).taskId || ''})` });
+      continue;
+    }
+    if (evt.type !== 'message') continue;
+    const msg = evt.message || {};
+    const usage = msg.usage || {};
+    const tok = usage.totalTokens ? ` tokens=${usage.totalTokens}` : '';
+    if (msg.role === 'user' && Array.isArray(msg.content)) {
+      for (const part of msg.content) {
+        if (part.type === 'text' && part.text) {
+          entries.push({ ts: t, level: 'INFO', text: `[PROMPT] ${String(part.text).slice(0, 200).replace(/\s+/g, ' ')}` });
+        }
+      }
+      continue;
+    }
+    if (msg.role !== 'assistant' || !Array.isArray(msg.content)) continue;
+    for (const part of msg.content) {
+      if (part.type === 'thinking' && part.thinking) {
+        entries.push({ ts: t, level: 'THINK', text: `[THINKING] ${String(part.thinking).slice(0, 180).replace(/\s+/g, ' ')}` });
+      } else if (part.type === 'toolCall' && part.name) {
+        const args = String(JSON.stringify(part.arguments || {})).slice(0, 200);
+        entries.push({ ts: t, level: 'TOOL', text: `[TOOL_USE: ${part.name}] ${args}` });
+      } else if (part.type === 'text' && part.text) {
+        const text = String(part.text).replace(/\s+/g, ' ').slice(0, 200);
+        entries.push({ ts: t, level: 'REPLY', text: text });
+      }
+    }
+    if (usage.totalTokens) {
+      entries.push({ ts: t, level: 'INFO', text: `[USAGE] turn done${tok}` });
+    }
+  }
+  const last = entries[entries.length - 1];
+  if (last && last.level === 'REPLY') {
+    entries.push({ ts: last.ts, level: 'ARTIFACT', text: `[ARTIFACT_RETURNED] Task ${shortId} completed -> artifact returned to peer="codex"` });
+  }
+  return entries;
+}
+
 /** 把 ls -t 输出转成台账行（文件名即含 task_id 的时间戳前缀） */
 export function parseSessionList(text) {
   return String(text)
