@@ -85,6 +85,10 @@ export function buildCurrentModelCommand() {
   ].join('\necho '));
 }
 
+export function buildPeerTokenCommand() {
+  return b64Envelope(`cat "${PI_AGENT_DIR}/.peer_token"`);
+}
+
 export function buildSwitchModelCommand(provider, model) {
   const hit = ALLOWED_MODELS.find((m) => m.provider === provider && m.model === model);
   if (!hit) throw new Error('ERR_MODEL_NOT_ALLOWED');
@@ -122,6 +126,55 @@ export function parseOverview(text) {
     current_model: { provider, model },
     allowed_models: ALLOWED_MODELS,
   };
+}
+
+/** 派发 A2A v1.0 SendMessage：PC 直连 adb forward 的 9910，token 从手机现读 */
+export function postA2ARequest(promptText, token, timeoutMs = 90000) {
+  return new Promise((resolve, reject) => {
+    const payload = Buffer.from(JSON.stringify({
+      jsonrpc: '2.0',
+      id: `rpc-18787-${Date.now()}`,
+      method: 'SendMessage',
+      params: {
+        message: {
+          messageId: `msg-18787-${Date.now()}`,
+          role: 'ROLE_USER',
+          parts: [{ text: promptText }],
+        },
+        configuration: { returnImmediately: false },
+      },
+    }), 'utf8');
+    const req = http.request(
+      {
+        hostname: '127.0.0.1',
+        port: ADB_FORWARD_PORT,
+        path: '/',
+        method: 'POST',
+        agent: false,
+        timeout: timeoutMs,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          'Content-Length': payload.length,
+        },
+      },
+      (res) => {
+        const chunks = [];
+        res.on('data', (c) => chunks.push(c));
+        res.on('end', () => {
+          try {
+            resolve({ status: res.statusCode, data: JSON.parse(Buffer.concat(chunks).toString('utf8')) });
+          } catch (cause) {
+            reject(new Error(`ERR_BAD_RESPONSE_FROM_PI: ${cause.message}`));
+          }
+        });
+      }
+    );
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('ERR_PI_TIMEOUT')); });
+    req.write(payload);
+    req.end();
+  });
 }
 
 /** 从一条 a2a_sessions JSONL 里提取 usage 聚合与最后一条助手文本 */
@@ -236,3 +289,4 @@ export function redact(text) {
     .replace(/a2a_sec_[0-9a-f]{8,}/g, '<REDACTED>')
     .replace(/Bearer [A-Za-z0-9_\-\.]{8,}/g, 'Bearer <REDACTED>');
 }
+

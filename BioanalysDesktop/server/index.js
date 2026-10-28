@@ -71,6 +71,8 @@ import {
   buildDaemonLogCommand,
   buildCurrentModelCommand,
   buildSwitchModelCommand,
+  buildPeerTokenCommand,
+  postA2ARequest,
   parseOverview,
   parseTranscript,
   parseSessionList,
@@ -338,6 +340,28 @@ function parseBattery(raw) {
     };
   } catch {
     return { percentage: 'unknown', status: 'unknown', plugged: 'unknown', temperature: 'unknown' };
+  }
+}
+
+/** 追加一条 mod-pi-observability 的台账动作（追加式，失败不影响主流程） */
+function appendPiLedger(action, details) {
+  try {
+    const dir = path.join(process.cwd(), 'con_hf', 'ledger');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.appendFileSync(
+      path.join(dir, 'actions.jsonl'),
+      JSON.stringify({
+        id: `ACT-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+        ts: new Date().toISOString(),
+        type: 'action',
+        kind: 'mod_pi_observability',
+        action,
+        detail: details,
+      }) + '\n',
+      'utf8',
+    );
+  } catch {
+    // 台账写失败只降级，不影响观测主流程
   }
 }
 
@@ -1428,12 +1452,45 @@ const server = http.createServer(async (req, res) => {
         if (!raw.text.includes('SWITCH_OK')) {
           return json(res, 502, { ok: false, error: `切换失败: ${redact(raw.text).slice(0, 200)}` });
         }
+        appendPiLedger('pi_agent_model_switch', { provider: requested.provider, model: requested.model });
         return json(res, 200, { ok: true, current: { provider: requested.provider, model: requested.model } });
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : String(cause);
         const status = message.includes('ERR_MODEL_NOT_ALLOWED') ? 400 : 500;
         return json(res, status, { ok: false, error: message });
       }
+    });
+    return;
+  }
+
+  if (url.pathname === '/api/pi-agent/dispatch' && req.method === 'POST') {
+    // 从面板直接派发 A2A 测试任务：token 服务端现读，浏览器拿不到
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', () => {
+      let promptText;
+      try {
+        promptText = String((JSON.parse(body || '{}').message) || '').trim();
+      } catch {
+        promptText = '';
+      }
+      if (!promptText) {
+        return json(res, 400, { ok: false, error: 'message 字段必填' });
+      }
+      if (promptText.length > 4000) {
+        return json(res, 400, { ok: false, error: 'message 超过 4000 字符上限' });
+      }
+      const tokenRes = runSshRaw(PI_SSH_TARGET, buildPeerTokenCommand(), { timeoutMs: 15000 });
+      const token = tokenRes.text.trim();
+      if (!token || token.length < 48) {
+        return json(res, 502, { ok: false, error: '无法从手机读取 peer token（SSH 链路或文件缺失）' });
+      }
+      postA2ARequest(promptText, token, 90000)
+        .then((out) => {
+          appendPiLedger('pi_agent_a2a_dispatch', { prompt: promptText.slice(0, 200), status: out.status });
+          return json(res, 200, { ok: out.status === 200, http_status: out.status, task: out.data?.task ?? null });
+        })
+        .catch((cause) => json(res, 502, { ok: false, error: redact(cause instanceof Error ? cause.message : String(cause)) }));
     });
     return;
   }

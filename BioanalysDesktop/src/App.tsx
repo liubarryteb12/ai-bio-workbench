@@ -2288,6 +2288,7 @@ type PiCall = {
 };
 type PiCallsResponse = { ok: boolean; error?: string; calls?: PiCall[]; totals?: { input_tokens: number; output_tokens: number; cost_usd: number } };
 type PiModelResponse = { ok: boolean; current?: { provider: string; model: string }; allowed?: Array<{ provider: string; model: string }>; error?: string };
+type PiDispatchResponse = { ok: boolean; http_status?: number; task?: { id?: string; status?: { state?: string } } | null; error?: string };
 
 function PiAgentMonitor() {
   const [overview, setOverview] = useState<PiOverview | null>(null);
@@ -2298,6 +2299,10 @@ function PiAgentMonitor() {
   const [logSource, setLogSource] = useState<'daemon' | 'task'>('daemon');
   const [switching, setSwitching] = useState(false);
   const [switchMsg, setSwitchMsg] = useState('');
+  const [dispatchOpen, setDispatchOpen] = useState(false);
+  const [dispatchMsg, setDispatchMsg] = useState('');
+  const [dispatchResult, setDispatchResult] = useState<PiDispatchResponse | null>(null);
+  const [dispatching, setDispatching] = useState(false);
 
   const loadOverview = useCallback(async () => {
     try {
@@ -2352,8 +2357,33 @@ function PiAgentMonitor() {
     finally { setSwitching(false); }
   };
 
+  const dispatchTask = async () => {
+    if (!dispatchMsg.trim()) return;
+    setDispatching(true); setDispatchResult(null);
+    try {
+      const res = await fetch('/api/pi-agent/dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: dispatchMsg }),
+      });
+      const payload = await res.json();
+      setDispatchResult(payload);
+      if (payload.ok) { void loadCalls(); void loadOverview(); }
+    } catch (e) {
+      setDispatchResult({ ok: false, error: e instanceof Error ? e.message : String(e) });
+    } finally { setDispatching(false); }
+  };
+
   const dot = overview?.online ? 'selfcheck-dot-pass' : 'selfcheck-dot-fail';
   const totals = calls?.totals;
+  const byModel = (calls?.calls ?? []).reduce<Record<string, PiCall>>((acc, c) => {
+    const b = acc[c.model] ?? { ...c, input_tokens: 0, output_tokens: 0, cost_usd: 0 };
+    b.input_tokens += c.input_tokens;
+    b.output_tokens += c.output_tokens;
+    b.cost_usd += c.cost_usd;
+    acc[c.model] = b;
+    return acc;
+  }, {});
 
   return (
     <div className="view-container">
@@ -2394,6 +2424,18 @@ function PiAgentMonitor() {
           </div>
         </div>
       </div>
+      <div className="pi-dispatch-row">
+        <button className="btn pi-dispatch-btn" onClick={() => setDispatchOpen(true)}>
+          派发 A2A 测试任务
+        </button>
+        {dispatchResult && (
+          <span className={`pi-dispatch-status${dispatchResult.ok ? ' pi-dispatch-ok' : ' pi-dispatch-fail'}`}>
+            {dispatchResult.ok
+              ? `任务 ${dispatchResult.task?.id ?? ''} 已派发 (${dispatchResult.task?.status?.state ?? ''})`
+              : `派发失败: ${dispatchResult.error}`}
+          </span>
+        )}
+      </div>
       <div className="pi-main-row">
         <div className="card pi-calls-card">
           <div className="card-head"><h2 className="card-title">调用台账</h2></div>
@@ -2408,6 +2450,11 @@ function PiAgentMonitor() {
             ))}
             {(calls?.calls?.length ?? 0) === 0 && <p className="pi-empty">暂无调用记录</p>}
           </div>
+          {Object.keys(byModel).length > 0 && (
+            <div className="pi-by-model">
+              <p className="pi-empty">按模型: {Object.values(byModel).map((m) => `${m.model} ${m.input_tokens}/${m.output_tokens}`).join(' | ')}</p>
+            </div>
+          )}
         </div>
         <div className="card pi-log-card">
           <div className="card-head">
@@ -2420,6 +2467,28 @@ function PiAgentMonitor() {
           <pre className="pi-log-terminal">{logLines.join('\n') || '暂无日志'}</pre>
         </div>
       </div>
+      {dispatchOpen && (
+        <div className="pi-modal-backdrop" onClick={() => { setDispatchOpen(false); setDispatchResult(null); }}>
+          <div className="pi-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="pi-modal-head">
+              <h3>向手机端 Pi Agent 派发 A2A 任务</h3>
+              <button className="btn" onClick={() => { setDispatchOpen(false); setDispatchResult(null); }}>关闭</button>
+            </div>
+            <textarea className="pi-dispatch-textarea" rows={5} value={dispatchMsg}
+              placeholder="输入任务指令，例如: 在 ~/workspace/projects 下创建 probe.py 并运行"
+              onChange={(e) => setDispatchMsg(e.target.value)} />
+            <div className="pi-modal-foot">
+              <span className="pi-empty">经 A2A v1.0 SendMessage 直发 :9910，token 服务端注入</span>
+              <button className="btn" disabled={dispatching || !dispatchMsg.trim()} onClick={() => void dispatchTask()}>
+                {dispatching ? '派发中...' : '立即发送'}
+              </button>
+            </div>
+            {dispatchResult && (
+              <pre className="pi-log-terminal pi-dispatch-result">{JSON.stringify(dispatchResult, null, 2)}</pre>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

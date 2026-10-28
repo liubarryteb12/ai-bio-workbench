@@ -1277,3 +1277,25 @@ body {
   font-size: 12px; line-height: 1.55; padding: 12px 14px; border-radius: 6px;
   min-height: 320px; max-height: 420px; overflow: auto; white-space: pre-wrap; word-break: break-all; margin: 0;
 }
+.pi-dispatch-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.pi-dispatch-btn { background: #0f7b3f; color: #fff; }
+.pi-dispatch-status { font-size: 12px; }
+.pi-dispatch-ok { color: #0f7b3f; }
+.pi-dispatch-fail { color: #b3261e; }
+.pi-modal-backdrop {
+  position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+}
+.pi-modal {
+  background: #fff; border-radius: 8px; padding: 20px; width: 560px; max-width: 92vw;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+}
+.pi-modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.pi-modal-head h3 { margin: 0; font-size: 14px; }
+.pi-dispatch-textarea {
+  width: 100%; box-sizing: border-box; font-family: monospace; font-size: 12px;
+  padding: 10px; border: 1px solid #d5dbe4; border-radius: 6px; resize: vertical;
+}
+.pi-modal-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+.pi-dispatch-result { max-height: 240px; margin-top: 12px; }
+.pi-by-model { margin-top: 8px; border-top: 1px solid #f0f2f5; padding-top: 6px; }
