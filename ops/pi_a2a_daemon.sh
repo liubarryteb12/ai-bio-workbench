@@ -11,9 +11,11 @@ SERVER_WAIT_SECONDS=30
 PROVIDER_KEY_FILE="$HOME/.pi/agent/.provider_key"
 PROVIDER_NAME_FILE="$HOME/.pi/agent/.provider_name"
 PROVIDER_MODEL_FILE="$HOME/.pi/agent/.provider_model"
+PROVIDER_BASE_URL_FILE="$HOME/.pi/agent/.provider_base_url"
 MODEL_A="glm-5.3-flash"
 MODEL_B="deepseek-v4.1-flash"
 THINKING_LEVEL="high"
+DEFAULT_BASE_URL="https://api.deepseek.com/v1"
 
 mkdir -p "$WORKSPACE_ROOT" "$LOG_DIR"
 
@@ -54,6 +56,7 @@ fi
 PROVIDER_ENV_NAME=""
 PROVIDER_VALUE=""
 PROVIDER_MODEL=""
+PROVIDER_BASE_URL="$DEFAULT_BASE_URL"
 if [ -n "${PI_PROVIDER_ENV:-}" ]; then
   case "$PI_PROVIDER_ENV" in
     *[!A-Z0-9_]* | [0-9]* | "" )
@@ -110,6 +113,21 @@ elif [ -s "$PROVIDER_KEY_FILE" ] && [ -s "$PROVIDER_NAME_FILE" ]; then
     fi
   fi
   chmod 600 "$PROVIDER_KEY_FILE" "$PROVIDER_NAME_FILE"
+  if [ -s "$PROVIDER_BASE_URL_FILE" ]; then
+    PROVIDER_BASE_URL="$(tr -d '[:space:]' < "$PROVIDER_BASE_URL_FILE")"
+    case "$PROVIDER_BASE_URL" in
+      https://*|http://*) ;;
+      *) die 2 "ERR_PROVIDER_BASE_URL_MALFORMED" ;;
+    esac
+  fi
+fi
+
+if [ -n "$PROVIDER_ENV_NAME" ] && [ ! -s "$HOME/.pi/agent/models.json" ]; then
+  die 2 "ERR_MODELS_JSON_MISSING: custom provider endpoint requires models.json"
+fi
+
+if [ -z "$PROVIDER_ENV_NAME" ]; then
+  die 2 "ERR_PROVIDER_REQUIRED: Pi may only start with an approved model key"
 fi
 
 TRUSTED_PEERS_COUNT="$(jq -r '.a2a.server.trustedPeers | length' "$SETTINGS_FILE" 2>/dev/null || printf 0)"
@@ -141,14 +159,9 @@ start_pi() {
   if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
     tmux kill-session -t "$SESSION_NAME"
   fi
-  if [ -n "$PROVIDER_ENV_NAME" ]; then
-    tmux new-session -d -s "$SESSION_NAME" -c "$WORKSPACE_ROOT" \
-      -e "$PROVIDER_ENV_NAME=$PROVIDER_VALUE" \
-      "cd '$WORKSPACE_ROOT' && exec pi --model '$PROVIDER_MODEL' --thinking '$THINKING_LEVEL'"
-  else
-    tmux new-session -d -s "$SESSION_NAME" -c "$WORKSPACE_ROOT" \
-      "cd '$WORKSPACE_ROOT' && exec pi --model '$PROVIDER_MODEL' --thinking '$THINKING_LEVEL'"
-  fi
+  tmux new-session -d -s "$SESSION_NAME" -c "$WORKSPACE_ROOT" \
+    -e "A2A_PROVIDER_KEY=$PROVIDER_VALUE" \
+    "cd '$WORKSPACE_ROOT' && exec pi --model '$PROVIDER_MODEL' --thinking '$THINKING_LEVEL'"
 }
 
 probe() {
