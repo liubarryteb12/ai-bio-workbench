@@ -1,4 +1,4 @@
-import * as path from 'path';
+import { posix as path } from 'path';
 
 const TERMUX_HOME = '/data/data/com.termux/files/home';
 const FORBIDDEN_PREFIXES = ['/sdcard', '/storage/emulated'];

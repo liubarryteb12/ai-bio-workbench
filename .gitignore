@@ -140,6 +140,12 @@ test_use_data/
 artifacts/
 cn_debug/
 
+# ===== 构建与临时产物 =====
+tests/.build/
+test_use_data/
+artifacts/
+cn_debug/
+
 # ===== 生信大文件格式（按扩展名兜底，防漏网）=====
 *.feather
 *.tbl

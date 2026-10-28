@@ -3,7 +3,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const ts = require('./typescript.js');
+const { stripTypeScriptTypes } = require('node:module');
 
 const ROOT = path.resolve(__dirname, '..');
 const SOURCES = [
@@ -19,16 +19,15 @@ fs.mkdirSync(OUT_DIR, { recursive: true });
 
 for (const relative of SOURCES) {
   const input = path.join(ROOT, relative);
-  const output = ts.transpileModule(fs.readFileSync(input, 'utf8'), {
-    compilerOptions: {
-      module: ts.ModuleKind.CommonJS,
-      target: ts.ScriptTarget.ES2022,
-      strict: true,
-      esModuleInterop: true,
-    },
-    fileName: input,
+  const stripped = stripTypeScriptTypes(fs.readFileSync(input, 'utf8'), {
+    mode: 'transform',
+    sourceUrl: input,
   });
-  fs.writeFileSync(path.join(OUT_DIR, path.basename(relative).replace(/\.ts$/, '.js')), output.outputText);
+  const esm = stripped.replace(
+    /^import\s+\*\s+as\s+(\w+)\s+from\s+'([^']+)';$/gm,
+    "import * as $1 from '$2';"
+  );
+  fs.writeFileSync(path.join(OUT_DIR, path.basename(relative).replace(/\.ts$/, '.mjs')), esm);
 }
 
 console.log('A2A_CORE_COMPILE_OK');
