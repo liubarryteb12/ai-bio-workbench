@@ -105,12 +105,21 @@ elif [ -s "$PROVIDER_KEY_FILE" ] && [ -s "$PROVIDER_NAME_FILE" ]; then
   esac
   if [ -s "$PROVIDER_MODEL_FILE" ]; then
     REQUESTED_MODEL="$(tr -d '[:space:]' < "$PROVIDER_MODEL_FILE")"
-    case "$REQUESTED_MODEL" in
-      "$MODEL_A"|"$MODEL_B") PROVIDER_MODEL="$REQUESTED_MODEL" ;;
-      *) die 2 "ERR_MODEL_NOT_ALLOWED: $REQUESTED_MODEL" ;;
-    esac
+    if [ "$REQUESTED_MODEL" != "$PROVIDER_MODEL" ]; then
+      die 2 "ERR_MODEL_PIN_MISMATCH: file=$REQUESTED_MODEL derived=$PROVIDER_MODEL"
+    fi
   fi
   chmod 600 "$PROVIDER_KEY_FILE" "$PROVIDER_NAME_FILE"
+fi
+
+TRUSTED_PEERS_COUNT="$(jq -r '.a2a.server.trustedPeers | length' "$SETTINGS_FILE" 2>/dev/null || printf 0)"
+if [ "$HOST_VAL" = "0.0.0.0" ]; then
+  if [ "${#CODEX_TOKEN}" -lt 48 ]; then
+    die 2 "ERR_SECURITY_BIND: 0.0.0.0 requires a 48+ char codex peer token"
+  fi
+  if [ "$TRUSTED_PEERS_COUNT" -lt 1 ]; then
+    die 2 "ERR_SECURITY_BIND: 0.0.0.0 requires at least one trustedPeer"
+  fi
 fi
 
 if [ "$HOST_VAL" = "0.0.0.0" ] && [ "${#CODEX_TOKEN}" -lt 32 ]; then
@@ -142,7 +151,15 @@ start_pi() {
   fi
 }
 
+probe() {
+  curl --noproxy '*' -fsS --max-time 5 "$PROBE_URL" >/dev/null 2>&1
+}
+
 start_server() {
+  if probe; then
+    log "INFO server already healthy, skipping restart"
+    return 0
+  fi
   if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
     start_pi
   else
@@ -165,10 +182,6 @@ wait_for_server() {
 
 start_server
 
-probe() {
-  curl --noproxy '*' -fsS --max-time 5 "$PROBE_URL" >/dev/null 2>&1
-}
-
 if wait_for_server; then
   log "PASS a2a_server_ready host=$HOST_VAL port=$PORT_VAL"
 else
@@ -185,19 +198,26 @@ else
 fi
 
 monitor_loop() {
+  local restart_delay=60
   while true; do
     if probe; then
+      restart_delay=60
       :
     else
       log "WARN probe failed, restarting pi auto-start session"
       start_server
       if wait_for_server; then
         log "PASS server_recovered"
+        restart_delay=60
       else
         log "ERROR server remains unavailable"
+        restart_delay=$((restart_delay * 2))
+        if [ "$restart_delay" -gt 600 ]; then
+          restart_delay=600
+        fi
       fi
     fi
-    sleep 60
+    sleep "$restart_delay"
   done
 }
 

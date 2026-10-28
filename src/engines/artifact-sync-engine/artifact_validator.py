@@ -115,10 +115,10 @@ def _validate_changed_files(artifact: dict, errors: list[str]) -> None:
         errors.append("ERR_ARTIFACT_FIELD_TYPE:changed_files")
         return
     for index, item in enumerate(value):
-        _validate_changed_file(index, item, errors)
+        _validate_changed_file(index, item, artifact.get("workspace_dir"), errors)
 
 
-def _validate_changed_file(index: int, item: Any, errors: list[str]) -> None:
+def _validate_changed_file(index: int, item: Any, workspace_dir: Any, errors: list[str]) -> None:
     prefix = f"ERR_ARTIFACT_CHANGED_FILE:{index}"
     if not isinstance(item, dict):
         errors.append(f"{prefix}:ERR_ARTIFACT_NOT_OBJECT")
@@ -134,6 +134,11 @@ def _validate_changed_file(index: int, item: Any, errors: list[str]) -> None:
         errors.append(f"{prefix}:ERR_ARTIFACT_CHANGED_PATH_UNSAFE")
     elif path.startswith("/sdcard") or path.startswith("/storage/emulated"):
         errors.append(f"{prefix}:ERR_ARTIFACT_CHANGED_PATH_UNSAFE")
+    elif isinstance(workspace_dir, str):
+        resolved_text = (PurePosixPath(workspace_dir) / path).as_posix()
+        normalized_root = PurePosixPath(workspace_dir).as_posix().rstrip("/")
+        if not resolved_text.startswith(normalized_root + "/"):
+            errors.append(f"{prefix}:ERR_ARTIFACT_CHANGED_PATH_OUTSIDE_WORKSPACE")
 
     if not isinstance(sha256, str) or not SHA256_PATTERN.fullmatch(sha256):
         errors.append("ERR_ARTIFACT_SHA256_MALFORMED")

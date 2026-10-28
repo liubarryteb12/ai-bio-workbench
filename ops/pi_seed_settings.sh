@@ -36,13 +36,13 @@ a2a = config.setdefault("a2a", {})
 if not isinstance(a2a, dict):
     raise SystemExit("FATAL ERR_A2A_BLOCK_NOT_OBJECT")
 
-a2a["server"] = {
+DEFAULT_SERVER = {
     "enabled": True,
     "host": "127.0.0.1",
     "port": 9910,
     "portFallback": 10,
     "agentName": "pi-termux-executor",
-    "peerTokens": {"codex": token},
+    "peerTokens": {},
     "trustedPeers": ["codex"],
     "allowAllUsers": False,
     "maxConcurrent": 2,
@@ -51,7 +51,23 @@ a2a["server"] = {
     "childTranscriptRetentionDays": 7,
     "rateLimitPerMin": 30,
 }
-a2a["timeouts"] = {"send": 360000, "stream": 120000}
+
+server = a2a.setdefault("server", {})
+if not isinstance(server, dict):
+    raise SystemExit("FATAL ERR_SERVER_BLOCK_NOT_OBJECT")
+
+# Merge: seed defaults only for keys that are absent, then force the
+# security-critical trio so drift cannot weaken the lock.
+dropped = sorted(set(server) - set(DEFAULT_SERVER))
+for key, value in DEFAULT_SERVER.items():
+    server.setdefault(key, value)
+server["peerTokens"] = {"codex": token}
+server["trustedPeers"] = ["codex"]
+server["allowAllUsers"] = False
+
+a2a["timeouts"] = dict(a2a.get("timeouts") or {})
+a2a["timeouts"].setdefault("send", 360000)
+a2a["timeouts"].setdefault("stream", 120000)
 
 temporary_file = settings_file + ".tmp"
 with open(temporary_file, "w", encoding="utf-8", newline="\n") as handle:
@@ -61,6 +77,11 @@ with open(temporary_file, "w", encoding="utf-8", newline="\n") as handle:
     os.fsync(handle.fileno())
 
 os.replace(temporary_file, settings_file)
+
+import stat
+os.chmod(settings_file, stat.S_IRUSR | stat.S_IWUSR)
+if dropped:
+    print("WARN preserved_unrecognized_server_keys", ",".join(dropped))
 PY
 
 jq -e '
