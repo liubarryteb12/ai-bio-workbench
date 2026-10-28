@@ -2342,8 +2342,8 @@ function PiAgentMonitor() {
 
   // overview/calls 每 10 秒，日志按当前 Tab 每 5 秒
   useEffect(() => {
-    const t1 = setInterval(() => { void loadOverview(); void loadCalls(); }, 10000);
-    const t2 = setInterval(() => { void loadLog(logSource, selected?.file); }, 5000);
+    const t1 = setInterval(() => { void loadOverview(); void loadCalls(); }, 3000);
+    const t2 = setInterval(() => { void loadLog(logSource, selected?.file); }, 2000);
     return () => { clearInterval(t1); clearInterval(t2); };
   }, [loadOverview, loadCalls, loadLog, logSource, selected]);
 

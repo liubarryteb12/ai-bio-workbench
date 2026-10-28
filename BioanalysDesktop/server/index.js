@@ -74,6 +74,7 @@ import {
   buildPeerTokenCommand,
   postA2ARequest,
   fetchTelemetry,
+  fetchTelemetryViaPath,
   parseOverview,
   parseTranscript,
   parseSessionList,
@@ -1402,33 +1403,50 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (url.pathname === '/api/pi-agent/calls') {
-    // 调用台账：a2a_sessions 目录的最近 N 条 + 每条的 usage 聚合
+    // 调用台账：优先走 9911 Sidecar（74ms vs SSH 逐文件 5.2s），失败才逐文件
     try {
-      const limit = Math.min(Math.max(Number(new URL(req.url, 'http://x').searchParams.get('limit')) || 20, 1), 50);
-      const list = runSshRaw(PI_SSH_TARGET, buildCallsCommand(limit), { timeoutMs: 15000 });
-      const sessions = parseSessionList(list.text).slice(0, limit);
-      const calls = sessions.map((session) => {
-        const detail = runSshRaw(PI_SSH_TARGET, buildCallDetailCommand(session.file), { timeoutMs: 15000 });
-        const parsed = parseTranscript(detail.text);
-        return { ...session, ...parsed };
-      });
-      const totals = calls.reduce((acc, c) => ({
-        input_tokens: acc.input_tokens + c.input_tokens,
-        output_tokens: acc.output_tokens + c.output_tokens,
-        cost_usd: acc.cost_usd + c.cost_usd,
-      }), { input_tokens: 0, output_tokens: 0, cost_usd: 0 });
-      return json(res, 200, { ok: true, calls, totals: { ...totals, cost_usd: Number(totals.cost_usd.toFixed(4)) } });
+      const tokenRes = runSshRaw(PI_SSH_TARGET, buildPeerTokenCommand(), { timeoutMs: 15000 });
+      const tele = await fetchTelemetry(tokenRes.text.trim(), 8000);
+      let calls;
+      let totals;
+      if (tele.status === 200 && Array.isArray(tele.data?.recent_calls)) {
+        calls = tele.data.recent_calls;
+        totals = tele.data.totals;
+      } else {
+        const limit = Math.min(Math.max(Number(new URL(req.url, 'http://x').searchParams.get('limit')) || 20, 1), 50);
+        const list = runSshRaw(PI_SSH_TARGET, buildCallsCommand(limit), { timeoutMs: 15000 });
+        const sessions = parseSessionList(list.text).slice(0, limit);
+        calls = sessions.map((session) => {
+          const detail = runSshRaw(PI_SSH_TARGET, buildCallDetailCommand(session.file), { timeoutMs: 15000 });
+          return { ...session, ...parseTranscript(detail.text) };
+        });
+        const acc = calls.reduce((a, c) => ({
+          input_tokens: a.input_tokens + c.input_tokens,
+          output_tokens: a.output_tokens + c.output_tokens,
+          cost_usd: a.cost_usd + c.cost_usd,
+        }), { input_tokens: 0, output_tokens: 0, cost_usd: 0 });
+        totals = { ...acc, cost_usd: Number(acc.cost_usd.toFixed(4)), total_calls: calls.length };
+      }
+      return json(res, 200, { ok: true, calls, totals });
     } catch (cause) {
       return json(res, 200, { ok: false, error: cause instanceof Error ? cause.message : String(cause) });
     }
   }
 
   if (url.pathname === '/api/pi-agent/logs') {
-    // 双流日志：daemon.log 或选中任务的 childTranscript；task_file 参数必须是 a2a_sessions 下的文件名
+    // 双流日志：daemon.log 或选中任务的 childTranscript；优先 9911 Sidecar
     try {
       const params = new URL(req.url, 'http://x').searchParams;
       const tail = params.get('tail') || '120';
       const taskFile = params.get('task_file') || '';
+      try {
+        const tokenRes = runSshRaw(PI_SSH_TARGET, buildPeerTokenCommand(), { timeoutMs: 15000 });
+        const qs = taskFile ? `task_file=${encodeURIComponent(taskFile)}&` : '';
+        const tele = await fetchTelemetryViaPath(tokenRes.text.trim(), `/api/telemetry/logs?${qs}tail=${tail}`);
+        if (tele.status === 200 && Array.isArray(tele.data?.lines)) {
+          return json(res, 200, { ok: true, source: tele.data.source, lines: tele.data.lines });
+        }
+      } catch { /* sidecar offline: fall through to ssh */ }
       const command = taskFile ? buildCallDetailCommand(taskFile) : buildDaemonLogCommand(tail);
       const raw = runSshRaw(PI_SSH_TARGET, command, { timeoutMs: 15000 });
       return json(res, 200, {

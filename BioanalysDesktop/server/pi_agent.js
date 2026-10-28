@@ -313,6 +313,37 @@ export function fetchTelemetry(token, timeoutMs = 6000) {
   });
 }
 
+/** 读取 9911 的任意路径（logs 等），token 由调用方传入 */
+export function fetchTelemetryViaPath(token, requestPath, timeoutMs = 6000) {
+  return new Promise((resolve) => {
+    const req = http.request(
+      {
+        hostname: '127.0.0.1',
+        port: 9911,
+        path: requestPath,
+        method: 'GET',
+        agent: false,
+        timeout: timeoutMs,
+        headers: { Authorization: `Bearer ${token}` },
+      },
+      (res) => {
+        const chunks = [];
+        res.on('data', (c) => chunks.push(c));
+        res.on('end', () => {
+          try {
+            resolve({ status: res.statusCode, data: JSON.parse(Buffer.concat(chunks).toString('utf8')) });
+          } catch {
+            resolve({ status: 0, data: null });
+          }
+        });
+      }
+    );
+    req.on('error', () => resolve({ status: 0, data: null }));
+    req.on('timeout', () => { req.destroy(); resolve({ status: 0, data: null }); });
+    req.end();
+  });
+}
+
 /** 侧卡脱敏：任何疑似 token/密钥形状的串一律替换 */
 export function redact(text) {
   return String(text)
