@@ -188,8 +188,17 @@ type IntakeExtras = {
   dataFiles?: Array<{ role?: string; bind?: string; name?: string; path?: string; size?: number; sha256?: string }>;
 };
 
-// 五维自检
-type SelfCheckItem = { id: string; label: string; status: string; value: string; detail: string };
+// 五维自检。sub_checks 是合并报灯下的结构化子灯（P17：第 4 维把隔离与 SHA256 合成一盏，
+// 但前端要点名坏在哪一盏上），旧后端不下发该字段，故可选。
+type SelfCheckSubItem = { id: string; label: string; status: string; value: string; detail: string };
+type SelfCheckItem = {
+  id: string;
+  label: string;
+  status: string;
+  value: string;
+  detail: string;
+  sub_checks?: SelfCheckSubItem[];
+};
 type SelfCheckResponse = { all_pass: boolean; checks: SelfCheckItem[] };
 
 // 图件
@@ -219,6 +228,49 @@ type FiguresResponse =
   | { blocked: true; lineId: string; reason: string; hint: string; figures: [] }
   | { blocked: false; lineId: string; dir: string; source?: 'local' | 'remote'; figures: FigureEntry[] }
   | { error: string };
+
+type FigureTemplateItem = {
+  id: string;
+  name: string;
+  level: string;
+  category: string;
+  language: string;
+  deps_status: string;
+  verified: boolean;
+  preview: string | null;
+  source_sha256: string | null;
+  linked_mods: string[];
+  adapt_vars: Record<string, string>;
+  block_reason: string;
+};
+type FigureTemplateResponse = {
+  ok?: boolean;
+  registry_ok?: boolean;
+  registry_errors?: string[];
+  stats?: { templates: number; ready: number; pending: number; blocked: number };
+  lineId?: string;
+  templates?: FigureTemplateItem[];
+  error?: string;
+};
+type FigureAdaptResponse = {
+  ok: boolean;
+  projectId: string;
+  lineId: string;
+  template_id: string;
+  selected_mods: string[];
+  local_path: string;
+  remote_path: string;
+  master_sha256: string;
+  derived_sha256: string;
+  task: {
+    projectId: string;
+    lineId: string;
+    step: string;
+    inputs: string[];
+    outputs: string[];
+    seed: number;
+  };
+};
 
 // 文件树
 type TreeNode = { name: string; path: string; type: 'd' | 'f'; size: number; mtime: number; children: TreeNode[] };
@@ -1375,7 +1427,7 @@ function OnboardingPortal({
                     <div className="inbox-item-name">{s?.name || item.file}</div>
                     <div className="hint">
                       {s
-                        ? `${dtLabel || '⚠ 未填数据类型'} · ${s.domain || '—'} / ${s.disease || '—'} / ${s.species || '—'} · ${s.groupCount} 组 · ${s.stepCount} 步 · ${s.sampleCount} 样本`
+                        ? `${dtLabel || '⚠ 未填数据类型'} · ${s.domain || ' - '} / ${s.disease || ' - '} / ${s.species || ' - '} · ${s.groupCount} 组 · ${s.stepCount} 步 · ${s.sampleCount} 样本`
                         : `解析失败：${item.parseError}`}
                     </div>
                     {s && (
@@ -2189,8 +2241,19 @@ function PreFlightDashboard() {
               <div key={item.id} className="selfcheck-light">
                 <div className={`selfcheck-dot ${dotClass(item.status)}`}>{dotText(item.status)}</div>
                 <div className="selfcheck-label">{item.label}</div>
-                <div className="selfcheck-value">{item.value || '—'}</div>
+                <div className="selfcheck-value">{item.value || ' - '}</div>
                 <div className="selfcheck-detail">{item.detail}</div>
+                {(item.sub_checks ?? []).length > 0 && (
+                  <div className="selfcheck-subs">
+                    {(item.sub_checks ?? []).map((sub) => (
+                      <div key={sub.id} className="selfcheck-sub">
+                        <span className={`selfcheck-sub-dot ${dotClass(sub.status)}`}>{dotText(sub.status)}</span>
+                        <span className="selfcheck-sub-label">{sub.label}</span>
+                        <span className="selfcheck-sub-value">{sub.value || ' - '}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -2395,6 +2458,8 @@ function ResultPreviewStudio({ project }: { project: string }) {
         )}
       </div>
 
+      <FigureAdaptCard project={project} />
+
       <DeliveryReportCard project={project} />
 
       <div className="studio-layout">
@@ -2508,7 +2573,7 @@ function ResultPreviewStudio({ project }: { project: string }) {
                 <div className="interpretation-section-title">图件元数据</div>
                 <div className="interpretation-section-body">
                   文件名：{selectedFig.name}<br />
-                  大小：{selectedFigEntry?.sizeLabel || '—'}<br />
+                  大小：{selectedFigEntry?.sizeLabel || ' - '}<br />
                   分析线：{LINE_LABELS[selectedFig.line as keyof typeof LINE_LABELS]}
                 </div>
               </div>
@@ -2529,13 +2594,219 @@ function ResultPreviewStudio({ project }: { project: string }) {
         <div className="modal-overlay" onClick={() => setZoom(null)}>
           <div className="modal-inner" onClick={(e) => e.stopPropagation()}>
             <div className="modal-bar">
-              <span>{zoom.name} — {LINE_LABELS[zoom.line as keyof typeof LINE_LABELS]}</span>
+              <span>{zoom.name}  -  {LINE_LABELS[zoom.line as keyof typeof LINE_LABELS]}</span>
               <button className="btn" onClick={() => setZoom(null)}>关闭</button>
             </div>
             <img className="modal-img" src={imgUrl(zoom.name, zoom.line)} alt={zoom.name} />
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ============================================================
+// 图模板适配卡：选择 ready 模板、生成项目私有派生副本、派发任务
+// ============================================================
+
+const TEMPLATE_LINE_PREFIX: Record<string, string> = {
+  line1_bulk: 'l1_',
+  line2_scrna: 'l2_',
+  line3_spatial: 'l3_',
+};
+
+const LIST_ADAPT_VARS = ['label_genes', 'axis_cols'];
+
+function adaptValue(key: string, value: string): string | string[] {
+  if (!LIST_ADAPT_VARS.includes(key)) return value.trim();
+  return value.split(/[,\s\n\r，；]+/).map((item) => item.trim()).filter(Boolean);
+}
+
+function FigureAdaptCard({ project }: { project: string }) {
+  const [line, setLine] = useState<string>(LINES[0]);
+  const [templates, setTemplates] = useState<FigureTemplateItem[]>([]);
+  const [registryOk, setRegistryOk] = useState(false);
+  const [registryError, setRegistryError] = useState<string[]>([]);
+  const [templateId, setTemplateId] = useState('');
+  const [adaptVars, setAdaptVars] = useState<Record<string, string>>({});
+  const [deriving, setDeriving] = useState(false);
+  const [derivation, setDerivation] = useState<FigureAdaptResponse | null>(null);
+  const [adaptError, setAdaptError] = useState('');
+  const [dispatching, setDispatching] = useState(false);
+  const [dispatchNote, setDispatchNote] = useState('');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/figures/templates');
+        const payload = await res.json() as FigureTemplateResponse;
+        setTemplates(payload.templates || []);
+        setRegistryOk(payload.registry_ok === true);
+        setRegistryError(payload.registry_errors || []);
+        if (payload.error) setAdaptError(payload.error);
+      } catch (cause) {
+        setAdaptError(cause instanceof Error ? cause.message : String(cause));
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    const selected = templates.find((item) => item.id === templateId);
+    const next: Record<string, string> = {};
+    for (const key of Object.keys(selected?.adapt_vars || {})) next[key] = '';
+    setAdaptVars(next);
+    setDerivation(null);
+    setAdaptError('');
+  }, [templateId, templates]);
+
+  const selected = templates.find((item) => item.id === templateId);
+  const lineTemplates = templates.filter((item) => (
+    item.linked_mods.some((mod) => mod.startsWith(TEMPLATE_LINE_PREFIX[line]))
+  ));
+  const hasRequiredVars = selected && Object.keys(adaptVars).length > 0
+    ? Object.values(adaptVars).every((value) => value.trim() !== '')
+    : false;
+
+  const derive = useCallback(async () => {
+    if (!selected) return;
+    setDeriving(true);
+    setAdaptError('');
+    setDerivation(null);
+    setDispatchNote('');
+    try {
+      const body = {
+        projectId: project,
+        lineId: line,
+        templateId: selected.id,
+        adaptVars: Object.fromEntries(Object.entries(adaptVars).map(([key, value]) => [key, adaptValue(key, value)])),
+        seed: 20261013,
+      };
+      const res = await fetch('/api/figures/adapt/derive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const result = await res.json() as FigureAdaptResponse & { errors?: string[] };
+      if (!res.ok || !result.ok) {
+        setAdaptError(result.errors?.join('；') || `HTTP ${res.status}`);
+        return;
+      }
+      setDerivation(result);
+    } catch (cause) {
+      setAdaptError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setDeriving(false);
+    }
+  }, [adaptVars, line, project, selected]);
+
+  const dispatchAdaptTask = useCallback(async () => {
+    if (!derivation?.task) return;
+    setDispatching(true);
+    setDispatchNote('');
+    try {
+      const res = await fetch('/api/tasks/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(derivation.task),
+      });
+      const payload = await res.json() as { taskId?: string; error?: string };
+      if (!res.ok || payload.error) {
+        setDispatchNote(payload.error || `HTTP ${res.status}`);
+        return;
+      }
+      setDispatchNote(`已派发 ${payload.taskId}`);
+    } catch (cause) {
+      setDispatchNote(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setDispatching(false);
+    }
+  }, [derivation]);
+
+  return (
+    <div className="card">
+      <div className="card-head">
+        <h2 className="card-title">图模板适配</h2>
+        <span className={`badge ${registryOk ? 'badge-pass' : 'badge-unknown'}`}>
+          {registryOk ? '模板库正常' : '模板库异常'}
+        </span>
+      </div>
+
+      {registryError.length > 0 && <p className="error-text">{registryError.join('；')}</p>}
+
+      <div className="form-grid-2">
+        <div className="form-group">
+          <label className="form-label">分析线</label>
+          <select className="form-select" value={line} onChange={(e) => {
+            setLine(e.target.value);
+            setTemplateId('');
+          }}>
+            {LINES.map((item) => (
+              <option key={item} value={item}>{LINE_LABELS[item as keyof typeof LINE_LABELS]}</option>
+            ))}
+          </select>
+        </div>
+        <div className="form-group">
+          <label className="form-label">图模板</label>
+          <select className="form-select" value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
+            <option value="">选择图模板</option>
+            {lineTemplates.map((item) => (
+              <option key={item.id} value={item.id} disabled={item.deps_status !== 'ready'}>
+                {item.name}
+                {item.deps_status !== 'ready' ? `（${item.deps_status}${item.block_reason ? `: ${item.block_reason}` : ''}）` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {selected && (
+        <div className="studio-fig-grid" style={{ gridTemplateColumns: 'auto 1fr', marginBottom: 12 }}>
+          <img
+            src={`/api/figures/templates/preview?id=${encodeURIComponent(selected.id)}`}
+            alt={selected.name}
+            loading="lazy"
+            style={{ maxHeight: 160, objectFit: 'contain', borderRadius: 6 }}
+          />
+          <div>
+            <p className="subtle">{selected.category} · {selected.language} · {selected.level}</p>
+            {selected.source_sha256 && <p className="subtle">Master-SHA256：{selected.source_sha256.slice(0, 16)}</p>}
+          </div>
+        </div>
+      )}
+
+      {selected && Object.entries(selected.adapt_vars).map(([key, description]) => (
+        <div className="form-group" key={key}>
+          <label className="form-label">{key}</label>
+          <input
+            className="form-input"
+            value={adaptVars[key] || ''}
+            placeholder={description}
+            onChange={(e) => setAdaptVars((prev) => ({ ...prev, [key]: e.target.value }))}
+          />
+        </div>
+      ))}
+
+      <div className="chip-row">
+        <button className="btn btn-primary" onClick={() => void derive()}
+          disabled={deriving || !selected || !hasRequiredVars}>
+          {deriving ? '派生中...' : '生成交付副本'}
+        </button>
+        <button className="btn" onClick={() => void dispatchAdaptTask()}
+          disabled={dispatching || !derivation?.task}>
+          {dispatching ? '派发中...' : '派发出图任务'}
+        </button>
+      </div>
+
+      {adaptError && <p className="error-text">{adaptError}</p>}
+      {derivation && (
+        <div className="block-box">
+          <strong>派生副本已生成</strong>
+          <p className="subtle">Master-SHA256：{derivation.master_sha256}</p>
+          <p className="subtle">远端：{derivation.remote_path}</p>
+          <p className="subtle">任务步骤：{derivation.task.step}</p>
+        </div>
+      )}
+      {dispatchNote && <p className={dispatchNote.startsWith('已派发') ? 'subtle' : 'error-text'}>{dispatchNote}</p>}
     </div>
   );
 }
