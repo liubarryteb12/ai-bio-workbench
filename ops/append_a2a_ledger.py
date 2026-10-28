@@ -93,6 +93,34 @@ E2E_ENTRY = {
     },
 }
 
+ASYNC_ENTRY = {
+    "id": "ACT-20261028-140700-a2a-async",
+    "kind": "a2a_async",
+    "step": "async_send_poll_cancel",
+    "status": "ok",
+    "detail": {
+        "return_immediately": True,
+        "poll_state": "TASK_STATE_WORKING->TASK_STATE_COMPLETED",
+        "cancel_state": "TASK_STATE_CANCELED",
+        "cancel_http": 200,
+        "audit_log": True,
+        "child_transcripts": 3,
+    },
+}
+
+LIVE_ARTIFACT_ENTRY = {
+    "id": "ACT-20261028-141500-a2a-live-artifact",
+    "kind": "a2a_live_test",
+    "step": "extract_and_validate_artifact",
+    "status": "ok",
+    "detail": {
+        "unit_tests": "9/9 (1 skipped by design)",
+        "live_e2e": "ok",
+        "sha256_match": True,
+        "plane": "PC -> adb forward -> Pi on K40",
+    },
+}
+
 
 def main() -> int:
     ledger_path = Path(LEDGER)
@@ -104,7 +132,7 @@ def main() -> int:
             except json.JSONDecodeError:
                 continue
 
-    entries = ENTRIES + [E2E_ENTRY]
+    entries = ENTRIES + [E2E_ENTRY, ASYNC_ENTRY, LIVE_ARTIFACT_ENTRY]
     stamp = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
     with io.open(LEDGER, "a", encoding="utf-8", newline="\n") as handle:
         for entry in entries:
