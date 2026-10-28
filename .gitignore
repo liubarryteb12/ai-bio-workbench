@@ -142,6 +142,7 @@ cn_debug/
 
 # ===== 构建与临时产物 =====
 tests/.build/
+.codex-a2a/
 test_use_data/
 artifacts/
 cn_debug/
