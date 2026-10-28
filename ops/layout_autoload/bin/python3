@@ -1,3 +1,9 @@
 #!/usr/bin/env bash
+# Rscript 垫片的 Python 对等物：把 layout_autoload 挂进 PYTHONPATH，
+# 让 site 模块启动时自动加载 sitecustomize（模板 + 内存守卫 + NumPy shim）。
+# 与 Rscript 垫片同一纪律：--vanilla 场景（env -i / 明确清 PYTHONPATH）下也能生效。
 set -euo pipefail
+
+export PYTHONPATH="/mnt/ssd/bio_data/ops/layout_autoload${PYTHONPATH:+:$PYTHONPATH}"
+
 exec /root/venvs/bio-py/bin/python3 "$@"
