@@ -38,8 +38,32 @@ def _require_text_match(text: str, pattern: str) -> str:
     return match.group(1)
 
 
+def _match_optional_text(text: str, pattern: str) -> str | None:
+    match = re.search(pattern, text)
+    if match is None:
+        return None
+    return match.group(1)
+
+
+def _common_posix_parent(file_paths: list[PurePosixPath]) -> PurePosixPath:
+    parents = [file_path.parent for file_path in file_paths]
+    if all(parent == parents[0] for parent in parents[1:]):
+        return parents[0]
+
+    common_parts: list[str] = []
+    for parts in zip(*(parent.parts for parent in parents)):
+        if any(part != parts[0] for part in parts[1:]):
+            break
+        common_parts.append(parts[0])
+    return PurePosixPath(*common_parts)
+
+
+def _relative_to_workspace(file_path: PurePosixPath, workspace_dir: PurePosixPath) -> str:
+    return file_path.relative_to(workspace_dir).as_posix()
+
+
 def extract_artifact_from_rpc(result: dict) -> dict:
-    """Convert the first text artifact in an A2A result into a validator artifact."""
+    """Convert text artifacts in an A2A result into a validator artifact."""
     task = result.get("task") if isinstance(result, dict) else None
     if not isinstance(task, dict):
         raise ValueError("ERR_NO_TASK")
@@ -57,12 +81,38 @@ def extract_artifact_from_rpc(result: dict) -> dict:
         raise ValueError("ERR_NO_TEXT_PART")
     text = "\n".join(texts)
 
-    file_path = PurePosixPath(
-        _require_text_match(text, r"^-?\s*File:\s*`?([^\n`]+?)`?\s*$")
+    file_anchors = list(re.finditer(r"^-?\s*File:", text, flags=re.MULTILINE))
+    if not file_anchors:
+        raise ValueError("ERR_ARTIFACT_TEXT_FIELD_MISSING")
+
+    records = []
+    for index, anchor in enumerate(file_anchors):
+        record_end = file_anchors[index + 1].start() if index + 1 < len(file_anchors) else len(text)
+        records.append(text[anchor.start():record_end])
+    parsed_records = []
+    for record in records:
+        file_text = _require_text_match(record, r"File:\s*`?([^,`\n]+?)`?\s*(?=$|,)")
+        content = _match_optional_text(
+            record,
+            r"Content:\s*`?([^\n`]*?)`?\s*(?:\+\s*trailing newline[^\n]*)?\s*(?=$|,)",
+        )
+        sha256 = _require_text_match(record, r"SHA256:\s*`?([0-9a-f]{64})`?")
+        exit_code_text = _match_optional_text(record, r"Exit code:\s*`?(\d+)`?")
+        parsed_records.append(
+            {
+                "file_path": PurePosixPath(file_text),
+                "content": content,
+                "sha256": sha256,
+                "exit_code": exit_code_text,
+            }
+        )
+
+    exit_code_text = next(
+        (parsed["exit_code"] for parsed in parsed_records if parsed["exit_code"] is not None),
+        None,
     )
-    content = _require_text_match(text, r"^-?\s*Content:\s*`?([^\n`]*?)`?\s*(?:\+\s*trailing newline.*)?$")
-    sha256 = _require_text_match(text, r"^-?\s*SHA256:\s*`?([0-9a-f]{64})`?")
-    exit_code_text = _require_text_match(text, r"^-?\s*Exit code:\s*`?(\d+)`?")
+    if exit_code_text is None:
+        raise ValueError("ERR_ARTIFACT_TEXT_FIELD_MISSING")
     try:
         exit_code = int(exit_code_text)
     except ValueError as exc:
@@ -72,20 +122,25 @@ def extract_artifact_from_rpc(result: dict) -> dict:
     if not isinstance(timestamp, str):
         timestamp = datetime.now(timezone.utc).isoformat()
 
+    file_paths = [parsed["file_path"] for parsed in parsed_records]
+    workspace_path = _common_posix_parent(file_paths)
+    changed_files = [
+        {
+            "path": _relative_to_workspace(parsed["file_path"], workspace_path),
+            "sha256": parsed["sha256"],
+            "action": "created" if parsed["content"] is not None else "modified",
+        }
+        for parsed in parsed_records
+    ]
+
     return {
         "task_id": task.get("id"),
         "executed_at": timestamp,
-        "workspace_dir": file_path.parent.as_posix(),
+        "workspace_dir": workspace_path.as_posix(),
         "command_or_action": "pi_task",
         "exit_code": exit_code,
         "duration_sec": 0,
-        "changed_files": [
-            {
-                "path": file_path.name,
-                "sha256": sha256,
-                "action": "created",
-            }
-        ],
+        "changed_files": changed_files,
         "stdout_summary": text,
         "stderr_summary": "",
     }
@@ -201,6 +256,153 @@ class ExtractArtifactFromRpcTestCase(unittest.TestCase):
         artifact = extract_artifact_from_rpc(result)
         errors = artifact_validator.validate_artifact(artifact)
         self.assertIn("ERR_ARTIFACT_WORKSPACE_OUTSIDE_ROOT", errors)
+
+    def test_single_line_comma_records_create_two_entries(self) -> None:
+        result = {
+            "task": {
+                "id": "task-a2a-e2e-002",
+                "artifacts": [
+                    {
+                        "parts": [
+                            {
+                                "text": "\n".join(
+                                    [
+                                        "File: /data/data/com.termux/files/home/workspace/projects/a2a_multi/one.txt, "
+                                        "Content: alpha, "
+                                        "SHA256: b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060, "
+                                        "Exit code: 0",
+                                        "File: /data/data/com.termux/files/home/workspace/projects/a2a_multi/two.txt, "
+                                        "Content: beta, "
+                                        "SHA256: f2c82decdd7181cf98945929a62598db7e6b477e11f6e0eb0ae97020eff151ad, "
+                                        "Exit code: 0",
+                                    ]
+                                )
+                            }
+                        ]
+                    }
+                ],
+            }
+        }
+        artifact = extract_artifact_from_rpc(result)
+        errors = artifact_validator.validate_artifact(artifact)
+        self.assertEqual(errors, [])
+        self.assertEqual(
+            artifact["workspace_dir"],
+            "/data/data/com.termux/files/home/workspace/projects/a2a_multi",
+        )
+        self.assertEqual(
+            [item["path"] for item in artifact["changed_files"]],
+            ["one.txt", "two.txt"],
+        )
+        self.assertEqual(
+            [item["sha256"] for item in artifact["changed_files"]],
+            [
+                "b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060",
+                "f2c82decdd7181cf98945929a62598db7e6b477e11f6e0eb0ae97020eff151ad",
+            ],
+        )
+        self.assertEqual(
+            [item["action"] for item in artifact["changed_files"]],
+            ["created", "created"],
+        )
+        self.assertEqual(artifact["exit_code"], 0)
+
+    def test_plain_multiline_records_are_split_and_hashed(self) -> None:
+        result = {
+            "task": {
+                "id": "task-a2a-e2e-003",
+                "artifacts": [
+                    {
+                        "parts": [
+                            {
+                                "text": "\n".join(
+                                    [
+                                        "File: /data/data/com.termux/files/home/workspace/projects/a2a_multi/one.txt",
+                                        "Content: alpha",
+                                        "SHA256: b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060",
+                                        "Exit code: 0",
+                                        "File: /data/data/com.termux/files/home/workspace/projects/a2a_multi/two.txt",
+                                        "Content: beta",
+                                        "SHA256: f2c82decdd7181cf98945929a62598db7e6b477e11f6e0eb0ae97020eff151ad",
+                                        "Exit code: 0",
+                                    ]
+                                )
+                            }
+                        ]
+                    }
+                ],
+            }
+        }
+        artifact = extract_artifact_from_rpc(result)
+        errors = artifact_validator.validate_artifact(artifact)
+        self.assertEqual(errors, [])
+        self.assertEqual(len(artifact["changed_files"]), 2)
+        self.assertEqual(
+            artifact["workspace_dir"],
+            "/data/data/com.termux/files/home/workspace/projects/a2a_multi",
+        )
+
+    def test_nested_paths_use_deepest_common_workspace_prefix(self) -> None:
+        result = {
+            "task": {
+                "id": "task-a2a-e2e-004",
+                "artifacts": [
+                    {
+                        "parts": [
+                            {
+                                "text": "\n".join(
+                                    [
+                                        "File: /data/data/com.termux/files/home/workspace/projects/a2a_multi/src/one.txt",
+                                        "SHA256: b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060",
+                                        "Exit code: 0",
+                                        "File: /data/data/com.termux/files/home/workspace/projects/a2a_multi/docs/two.txt",
+                                        "SHA256: f2c82decdd7181cf98945929a62598db7e6b477e11f6e0eb0ae97020eff151ad",
+                                    ]
+                                )
+                            }
+                        ]
+                    }
+                ],
+            }
+        }
+        artifact = extract_artifact_from_rpc(result)
+        self.assertEqual(
+            artifact["workspace_dir"],
+            "/data/data/com.termux/files/home/workspace/projects/a2a_multi",
+        )
+        self.assertEqual(
+            [item["path"] for item in artifact["changed_files"]],
+            ["src/one.txt", "docs/two.txt"],
+        )
+        self.assertEqual(
+            [item["action"] for item in artifact["changed_files"]],
+            ["modified", "modified"],
+        )
+        self.assertEqual(artifact["exit_code"], 0)
+
+    def test_record_missing_sha256_raises_field_missing(self) -> None:
+        result = {
+            "task": {
+                "id": "task-a2a-e2e-005",
+                "artifacts": [
+                    {
+                        "parts": [
+                            {
+                                "text": "\n".join(
+                                    [
+                                        "File: /data/data/com.termux/files/home/workspace/projects/a2a_multi/one.txt",
+                                        "Content: alpha",
+                                        "Exit code: 0",
+                                    ]
+                                )
+                            }
+                        ]
+                    }
+                ],
+            }
+        }
+        with self.assertRaisesRegex(ValueError, "ERR_ARTIFACT_TEXT_FIELD_MISSING"):
+            extract_artifact_from_rpc(result)
 
 
 @unittest.skipUnless(
