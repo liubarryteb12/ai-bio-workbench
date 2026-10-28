@@ -8,6 +8,12 @@ LOG_DIR="$HOME/.pi/agent/logs"
 LOG_FILE="$LOG_DIR/pi_a2a_daemon.log"
 PROBE_URL="http://127.0.0.1:9910/.well-known/agent-card.json"
 SERVER_WAIT_SECONDS=30
+PROVIDER_KEY_FILE="$HOME/.pi/agent/.provider_key"
+PROVIDER_NAME_FILE="$HOME/.pi/agent/.provider_name"
+PROVIDER_MODEL_FILE="$HOME/.pi/agent/.provider_model"
+MODEL_A="glm-5.3-flash"
+MODEL_B="deepseek-v4.1-flash"
+THINKING_LEVEL="high"
 
 mkdir -p "$WORKSPACE_ROOT" "$LOG_DIR"
 
@@ -45,6 +51,9 @@ if [ "$ALLOW_ALL" = "true" ]; then
   die 2 "ERR_SECURITY_VIOLATION: allowAllUsers must remain false"
 fi
 
+PROVIDER_ENV_NAME=""
+PROVIDER_VALUE=""
+PROVIDER_MODEL=""
 if [ -n "${PI_PROVIDER_ENV:-}" ]; then
   case "$PI_PROVIDER_ENV" in
     *[!A-Z0-9_]* | [0-9]* | "" )
@@ -54,6 +63,54 @@ if [ -n "${PI_PROVIDER_ENV:-}" ]; then
   if [ -z "${!PI_PROVIDER_ENV:-}" ]; then
     die 2 "ERR_PROVIDER_KEY_UNSET: $PI_PROVIDER_ENV is empty"
   fi
+  PROVIDER_ENV_NAME="$PI_PROVIDER_ENV"
+  PROVIDER_VALUE="${!PI_PROVIDER_ENV}"
+  case "$PROVIDER_ENV_NAME" in
+    ZAI_API_KEY|ZAI_CODING_CN_API_KEY)
+      PROVIDER_MODEL="$MODEL_A"
+      ;;
+    DEEPSEEK_API_KEY)
+      PROVIDER_MODEL="$MODEL_B"
+      ;;
+    *)
+      die 2 "ERR_PROVIDER_NOT_ALLOWED: only ZAI or DeepSeek keys may run Pi"
+      ;;
+  esac
+elif [ -s "$PROVIDER_KEY_FILE" ] && [ -s "$PROVIDER_NAME_FILE" ]; then
+  PROVIDER_NAME="$(tr -d '[:space:]' < "$PROVIDER_NAME_FILE")"
+  case "$PROVIDER_NAME" in
+    [a-z][a-z0-9]*)
+      PROVIDER_ENV_NAME="$(printf '%s' "$PROVIDER_NAME" | tr '[:lower:]-' '[:upper:]_')_API_KEY"
+      ;;
+    *)
+      die 2 "ERR_PROVIDER_NAME_MALFORMED: $PROVIDER_NAME"
+      ;;
+  esac
+  PROVIDER_VALUE="$(cat "$PROVIDER_KEY_FILE")"
+  case "$PROVIDER_NAME" in
+    zai)
+      PROVIDER_ENV_NAME="ZAI_API_KEY"
+      PROVIDER_MODEL="$MODEL_A"
+      ;;
+    deepseek)
+      PROVIDER_ENV_NAME="DEEPSEEK_API_KEY"
+      PROVIDER_MODEL="$MODEL_B"
+      ;;
+    openai|anthropic|openrouter)
+      die 2 "ERR_PROVIDER_NOT_ALLOWED: Pi is restricted to glm-5.3-flash and deepseek-v4.1-flash"
+      ;;
+    *)
+      die 2 "ERR_PROVIDER_NAME_MALFORMED: $PROVIDER_NAME"
+      ;;
+  esac
+  if [ -s "$PROVIDER_MODEL_FILE" ]; then
+    REQUESTED_MODEL="$(tr -d '[:space:]' < "$PROVIDER_MODEL_FILE")"
+    case "$REQUESTED_MODEL" in
+      "$MODEL_A"|"$MODEL_B") PROVIDER_MODEL="$REQUESTED_MODEL" ;;
+      *) die 2 "ERR_MODEL_NOT_ALLOWED: $REQUESTED_MODEL" ;;
+    esac
+  fi
+  chmod 600 "$PROVIDER_KEY_FILE" "$PROVIDER_NAME_FILE"
 fi
 
 if [ "$HOST_VAL" = "0.0.0.0" ] && [ "${#CODEX_TOKEN}" -lt 32 ]; then
@@ -68,21 +125,17 @@ else
 fi
 
 start_pi() {
-  if [ -n "${PI_PROVIDER_ENV:-}" ]; then
-    tmux set-environment -g "$PI_PROVIDER_ENV" "${!PI_PROVIDER_ENV}"
-  fi
   log "INFO starting_pi_auto_server mode=tui session=$SESSION_NAME"
   if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
     tmux kill-session -t "$SESSION_NAME"
   fi
-  if [ -n "${PI_PROVIDER_ENV:-}" ]; then
+  if [ -n "$PROVIDER_ENV_NAME" ]; then
     tmux new-session -d -s "$SESSION_NAME" -c "$WORKSPACE_ROOT" \
-      -e "$PI_PROVIDER_ENV=${!PI_PROVIDER_ENV}" \
-      "cd '$WORKSPACE_ROOT' && exec pi"
-    tmux set-environment -gu "$PI_PROVIDER_ENV"
+      -e "$PROVIDER_ENV_NAME=$PROVIDER_VALUE" \
+      "cd '$WORKSPACE_ROOT' && exec pi --model '$PROVIDER_MODEL' --thinking '$THINKING_LEVEL'"
   else
     tmux new-session -d -s "$SESSION_NAME" -c "$WORKSPACE_ROOT" \
-      "cd '$WORKSPACE_ROOT' && exec pi"
+      "cd '$WORKSPACE_ROOT' && exec pi --model '$PROVIDER_MODEL' --thinking '$THINKING_LEVEL'"
   fi
 }
 

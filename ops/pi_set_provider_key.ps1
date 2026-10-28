@@ -9,13 +9,20 @@
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('OPENAI_API_KEY','DEEPSEEK_API_KEY','ANTHROPIC_API_KEY','OPENROUTER_API_KEY')]
-    [string]$ProviderVariable = 'OPENAI_API_KEY',
-    [string]$ProviderName = 'openai'
+    [ValidateSet('DEEPSEEK_API_KEY','ZAI_API_KEY','ZAI_CODING_CN_API_KEY')]
+    [string]$ProviderVariable = 'DEEPSEEK_API_KEY',
+    [string]$Model = 'deepseek-v4.1-flash'
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+if ($ProviderVariable -eq 'DEEPSEEK_API_KEY' -and $Model -ne 'deepseek-v4.1-flash') {
+    throw 'DEEPSEEK_API_KEY may only run model deepseek-v4.1-flash'
+}
+if ($ProviderVariable -like 'ZAI_*' -and $Model -ne 'glm-5.3-flash') {
+    throw 'ZAI keys may only run model glm-5.3-flash'
+}
 
 $value = [Environment]::GetEnvironmentVariable($ProviderVariable)
 if ([string]::IsNullOrWhiteSpace($value)) {
@@ -23,4 +30,5 @@ if ([string]::IsNullOrWhiteSpace($value)) {
 }
 
 $escaped = $value.Replace("'", "'\\''")
-ssh k40 "umask 077; printf '%s' '$escaped' > \$HOME/.pi/agent/.provider_key; printf '%s\n' '$ProviderName' > \$HOME/.pi/agent/.provider_name; chmod 600 \$HOME/.pi/agent/.provider_key \$HOME/.pi/agent/.provider_name; test -s \$HOME/.pi/agent/.provider_key && echo PROVIDER_KEY_STORED provider=$ProviderName"
+$providerName = if ($ProviderVariable -eq 'DEEPSEEK_API_KEY') { 'deepseek' } else { 'zai' }
+ssh k40 "umask 077; printf '%s' '$escaped' > \$HOME/.pi/agent/.provider_key; printf '%s\n' '$providerName' > \$HOME/.pi/agent/.provider_name; printf '%s\n' '$Model' > \$HOME/.pi/agent/.provider_model; chmod 600 \$HOME/.pi/agent/.provider_key \$HOME/.pi/agent/.provider_name \$HOME/.pi/agent/.provider_model; test -s \$HOME/.pi/agent/.provider_key && echo PROVIDER_KEY_STORED provider=$providerName model=$Model"
