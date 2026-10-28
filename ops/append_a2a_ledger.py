@@ -59,6 +59,20 @@ ENTRIES = [
             "command": "ssh k40 'bash $HOME/bin/a2a_guard_probe.sh'",
         },
     },
+    {
+        "id": "ACT-20261028-124500-a2a-codex-serve",
+        "kind": "a2a_k40_serve",
+        "step": "codex_a2a_agent_card_and_auth",
+        "status": "ok",
+        "detail": {
+            "name": "Codex A2A",
+            "version": "1.4.0",
+            "card_http": 200,
+            "unauthorized_http": 401,
+            "wrong_token_http": 401,
+            "command": "curl http://127.0.0.1:8000/.well-known/agent-card.json; curl -X POST http://127.0.0.1:8000/",
+        },
+    },
 ]
 
 
