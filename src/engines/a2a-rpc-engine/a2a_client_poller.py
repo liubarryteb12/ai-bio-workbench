@@ -6,6 +6,7 @@ system proxies cannot intercept Tailscale traffic.
 """
 
 import json
+import os
 import secrets
 import sys
 import threading
@@ -38,6 +39,7 @@ class A2AClientPoller:
         bearer_token: str,
         blocking_timeout_sec: float = 330.0,
         backoff_schedule_sec: Sequence[float] = BACKOFF_SCHEDULE_SEC,
+        state_file: Optional[str] = None,
     ):
         if not endpoint:
             raise ValueError("endpoint must not be empty")
@@ -47,6 +49,7 @@ class A2AClientPoller:
         self.bearer_token = bearer_token
         self.blocking_timeout_sec = blocking_timeout_sec
         self.backoff_schedule_sec = tuple(backoff_schedule_sec)
+        self.state_file = state_file
         if not self.backoff_schedule_sec:
             raise ValueError("backoff_schedule_sec must not be empty")
         self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
@@ -212,6 +215,106 @@ class A2AClientPoller:
                 task_id, max_wait_sec
             )
         )
+
+    def poll_existing_task(
+        self, task_id: str, max_wait_sec: float = 3600.0, tolerate_network: bool = True
+    ) -> Dict[str, Any]:
+        """Resume polling a known task id without re-sending SendMessage.
+
+        Used after a client restart or network blip: the phone keeps running
+        the task, so the only correct action is GetTask until a terminal state.
+        With tolerate_network=True transient connection errors are absorbed and
+        polling continues, matching the D-11 resume-on-reconnect contract.
+        """
+        start = time.monotonic()
+        poll_idx = 0
+        while (time.monotonic() - start) < max_wait_sec:
+            try:
+                task = self.get_task(task_id)
+                state = self._extract_state(task)
+                if state in TERMINAL_STATES:
+                    self._clear_state_file()
+                    return task
+            except A2AProtocolError:
+                if not tolerate_network:
+                    raise
+            sleep_sec = self.backoff_schedule_sec[min(poll_idx, len(self.backoff_schedule_sec) - 1)]
+            elapsed = time.monotonic() - start
+            if elapsed + sleep_sec > max_wait_sec:
+                break
+            time.sleep(sleep_sec)
+            poll_idx += 1
+        try:
+            self.cancel_task(task_id)
+        except A2AProtocolError:
+            pass
+        raise TimeoutError(
+            "[ERR_TASK_TIMEOUT] task {0} exceeded {1}s during resume".format(task_id, max_wait_sec)
+        )
+
+    def _save_state(self, project_id: str, step_id: str, task_id: str) -> None:
+        if not self.state_file:
+            return
+        with open(self.state_file, "w", encoding="utf-8", newline="\n") as handle:
+            json.dump(
+                {"project_id": project_id, "step_id": step_id, "task_id": task_id},
+                handle,
+            )
+
+    def _load_state(self) -> Optional[Dict[str, Any]]:
+        if not self.state_file:
+            return None
+        try:
+            with open(self.state_file, encoding="utf-8") as handle:
+                return json.load(handle)
+        except (OSError, json.JSONDecodeError):
+            return None
+
+    def _clear_state_file(self) -> None:
+        if self.state_file:
+            try:
+                os.remove(self.state_file)
+            except FileNotFoundError:
+                pass
+
+    def dispatch_idempotent_step(
+        self,
+        project_id: str,
+        step_id: str,
+        script_path: str,
+        expected_outputs: str = "",
+        max_wait_sec: float = 3600.0,
+    ) -> Dict[str, Any]:
+        """Resume an in-flight task for the same step, else dispatch a new one.
+
+        The prompt tells Pi to run the pre-built script through the D-11
+        idempotent wrapper, so a repeat dispatch after reconnect can never
+        spawn a duplicate process on the phone.
+        """
+        saved = self._load_state()
+        if (
+            saved
+            and saved.get("project_id") == project_id
+            and saved.get("step_id") == step_id
+            and saved.get("task_id")
+        ):
+            return self.poll_existing_task(saved["task_id"], max_wait_sec=max_wait_sec)
+
+        prompt = (
+            "Execute pre-built step via the idempotent wrapper. Run exactly:\n"
+            "$HOME/bin/pi_idempotent_runner.sh --project {0} --step {1} "
+            "--script {2} --outputs '{3}'\n"
+            "Do NOT modify the script. Return the JSON output verbatim.".format(
+                project_id, step_id, script_path, expected_outputs
+            )
+        )
+        task = self.send_message(prompt, return_immediately=True)
+        task_id = self._extract_task_id(task)
+        state = self._extract_state(task)
+        if state in TERMINAL_STATES or task_id is None:
+            return task
+        self._save_state(project_id, step_id, task_id)
+        return self.poll_existing_task(task_id, max_wait_sec=max_wait_sec)
 
 
 def _run_self_test() -> int:
