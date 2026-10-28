@@ -1,0 +1,36 @@
+{
+  "task_id": "365e4db4-10ab-41d7-9df3-a46212f5431b",
+  "project_id": "PRJ_AIMS_V3_20261027",
+  "line_id": "line3_spatial",
+  "step_name": "ingest_spatial",
+  "mod_id": "l3_ingest_spatial",
+  "status": "completed",
+  "start_time": "2026-10-27T18:54:03.229Z",
+  "end_time": "2026-10-27T18:55:15.247Z",
+  "environment": {
+    "language": "Python",
+    "version": "3.12.3",
+    "env_name": "line3_spatial_env",
+    "container_image": "proot-ubuntu24.04-aarch64",
+    "random_seed": 20261021
+  },
+  "resource_usage": {
+    "max_cpu_percent": null,
+    "max_memory_gb": null,
+    "disk_io_peak_mb_s": null
+  },
+  "io_files": {
+    "input": [
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line3_spatial/raw_data/GSE192741_RAW.tar",
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line3_spatial/raw_data/GPL24247_family.soft.gz",
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line3_spatial/raw_data/GPL24676_family.soft.gz",
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line3_spatial/raw_data/grouping.txt"
+    ],
+    "output": []
+  },
+  "checkpoint_status": "passed",
+  "error_log": null,
+  "exit_code": 0,
+  "next_action_suggested": null,
+  "compute_node_id": "k40-ubuntu"
+}

@@ -1,0 +1,72 @@
+{
+  "request": {
+    "notes": "AIMS v3.1 current-code real portal Sync acceptance ticket.",
+    "projectId": "PRJ_AIMS_V3_20261027",
+    "seed": 20261013,
+    "pipelineDag": [
+      {
+        "stepId": "probe_env",
+        "outputs": [],
+        "inputs": [],
+        "order": 1
+      }
+    ],
+    "lineId": "line1_bulk",
+    "dataSource": {
+      "dataSourceMode": "PUBLIC_DB",
+      "datasets": [
+        {
+          "gse": "GSE16561",
+          "gpl": "GPL570",
+          "group": "all"
+        }
+      ],
+      "dataType": "microarray",
+      "sampleCount": 2
+    },
+    "biologicalPriors": {
+      "targetKoGene": "JUN"
+    },
+    "groupingDesign": {
+      "groups": [
+        {
+          "groupId": "case",
+          "sampleIds": [
+            "GSM400001"
+          ],
+          "role": "case",
+          "groupName": "case"
+        },
+        {
+          "groupId": "control",
+          "sampleIds": [
+            "GSM400002"
+          ],
+          "role": "reference",
+          "groupName": "control"
+        }
+      ],
+      "contrasts": [
+        {
+          "isPrimary": true,
+          "name": "case_vs_control",
+          "ctrl": "control",
+          "case": "case"
+        }
+      ],
+      "mode": "two_group"
+    },
+    "basicInfo": {
+      "species": "Homo sapiens",
+      "name": "PRJ_AIMS_V3_20261027",
+      "domain": "免疫",
+      "nonTumorVerified": true,
+      "disease": "Psoriasis"
+    },
+    "seriesId": "line1_bulk"
+  },
+  "response": {
+    "ok": true,
+    "savedAs": "2026-10-28_101353_requirement_PRJ_AIMS_V3_20261027.json"
+  }
+}

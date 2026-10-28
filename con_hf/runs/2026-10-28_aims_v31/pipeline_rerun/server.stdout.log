@@ -1,0 +1,6 @@
+[bioanalys-desktop] backend listening on http://127.0.0.1:8792
+[bioanalys-desktop] adb = C:/adb/platform-tools/adb.exe
+[bridge] line2_scrna/gsva_pathways 为跨语言步骤，执行四项断言: /mnt/ssd/bio_data/ops/layout_autoload/bin/python3 /mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py --input '/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line2_scrna/processed/scrna_integrated.h5ad' --from Python --to R 2>&1
+[bridge] line2_scrna/gsva_pathways 四项断言通过
+[bridge] line2_scrna/gsva_pathways 为跨语言步骤，执行四项断言: /mnt/ssd/bio_data/ops/layout_autoload/bin/python3 /mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py --input '/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line2_scrna/processed/scrna_integrated.h5ad' --from Python --to R 2>&1
+[bridge] line2_scrna/gsva_pathways 四项断言通过

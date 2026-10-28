@@ -1,0 +1,5 @@
+Write-Error: D:\00.AIagent\codespace\AI辅助生信分析流程工作台\ops\sync_and_verify_remote.ps1:128
+Line |
+ 128 |      Write-Error ('以下文件在仓库里不存在：' + ($missing -join ', '))
+     |      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | 以下文件在仓库里不存在：ops/ledger_indexer.py,ops/verify_plot_matrix.py

@@ -1,0 +1,170 @@
+PASS | 工作台在线 | port=8792
+PASS | 容器存活（proot etime） | echo ok
+
+[1/22] ingest_counts
+PASS | 1. ingest_counts 下发 | PRJ_AIMS_V3_20261027-line2_scrna-1793129415071
+PASS | 1. ingest_counts 结果 | status=completed exit=0 checkpoint=passed 2026-10-27T19:30:15.072Z→2026-10-27T19:32:57.767Z
+  产物：无新文件
+
+[2/22] qc_cells
+PASS | 2. qc_cells 下发 | PRJ_AIMS_V3_20261027-line2_scrna-1793129585080
+PASS | 2. qc_cells 结果 | status=completed exit=0 checkpoint=passed 2026-10-27T19:33:05.081Z→2026-10-27T19:33:26.226Z
+  产物：无新文件
+
+[3/22] normalize_hvg
+PASS | 3. normalize_hvg 下发 | PRJ_AIMS_V3_20261027-line2_scrna-1793129613644
+PASS | 3. normalize_hvg 结果 | status=completed exit=0 checkpoint=passed 2026-10-27T19:33:33.645Z→2026-10-27T19:34:07.707Z
+  产物：无新文件
+
+[4/22] integrate_harmony
+PASS | 4. integrate_harmony 下发 | PRJ_AIMS_V3_20261027-line2_scrna-1793129654318
+PASS | 4. integrate_harmony 结果 | status=completed exit=0 checkpoint=passed 2026-10-27T19:34:14.319Z→2026-10-27T19:34:47.511Z
+  产物：无新文件
+
+[5/22] cluster_umap
+PASS | 5. cluster_umap 下发 | PRJ_AIMS_V3_20261027-line2_scrna-1793129694925
+PASS | 5. cluster_umap 结果 | status=completed exit=0 checkpoint=passed 2026-10-27T19:34:54.926Z→2026-10-27T19:35:43.125Z
+  产物：无新文件
+
+[6/22] annotate_celltypes
+PASS | 6. annotate_celltypes 下发 | PRJ_AIMS_V3_20261027-line2_scrna-1793129750649
+PASS | 6. annotate_celltypes 结果 | status=completed exit=0 checkpoint=passed 2026-10-27T19:35:50.650Z→2026-10-27T19:36:17.288Z
+  产物：无新文件
+
+[7/22] scrna_composition
+PASS | 7. scrna_composition 下发 | PRJ_AIMS_V3_20261027-line2_scrna-1793129782382
+PASS | 7. scrna_composition 结果 | status=completed exit=0 checkpoint=passed 2026-10-27T19:36:22.383Z→2026-10-27T19:36:41.066Z
+  产物：celltype_composition.tsv(4632→4642) composition_report.txt(2387→2392)
+
+[8/22] deg_groups
+PASS | 8. deg_groups 下发 | PRJ_AIMS_V3_20261027-line2_scrna-1793129808017
+PASS | 8. deg_groups 结果 | status=completed exit=0 checkpoint=passed 2026-10-27T19:36:48.018Z→2026-10-27T19:37:15.860Z
+  产物：无新文件
+
+[9/22] subcluster
+PASS | 9. subcluster 下发 | PRJ_AIMS_V3_20261027-line2_scrna-1793129842706
+PASS | 9. subcluster 结果 | status=completed exit=0 checkpoint=passed 2026-10-27T19:37:22.707Z→2026-10-27T19:38:07.323Z
+  产物：无新文件
+
+[10/22] enrichment
+PASS | 10. enrichment 下发 | PRJ_AIMS_V3_20261027-line2_scrna-1793129892451
+PASS | 10. enrichment 结果 | status=completed exit=0 checkpoint=passed 2026-10-27T19:38:12.451Z→2026-10-27T19:40:27.545Z
+  产物：无新文件
+
+[11/22] enrichment_figures
+PASS | 11. enrichment_figures 下发 | PRJ_AIMS_V3_20261027-line2_scrna-1793130032737
+PASS | 11. enrichment_figures 结果 | status=completed exit=0 checkpoint=passed 2026-10-27T19:40:32.738Z→2026-10-27T19:40:43.747Z
+  产物：无新文件
+
+[12/22] pseudotime
+PASS | 12. pseudotime 下发 | PRJ_AIMS_V3_20261027-line2_scrna-1793130049528
+PASS | 12. pseudotime 结果 | status=completed exit=0 checkpoint=passed 2026-10-27T19:40:49.528Z→2026-10-27T19:41:12.083Z
+  产物：无新文件
+
+[13/22] cell_communication
+PASS | 13. cell_communication 下发 | PRJ_AIMS_V3_20261027-line2_scrna-1793130078070
+PASS | 13. cell_communication 结果 | status=completed exit=0 checkpoint=passed 2026-10-27T19:41:18.071Z→2026-10-27T19:42:28.611Z
+  产物：cellcomm_interactions.tsv(9223579→9235912)
+
+[14/22] scenic_tf
+PASS | 14. scenic_tf 下发 | PRJ_AIMS_V3_20261027-line2_scrna-1793130154827
+PASS | 14. scenic_tf 结果 | status=completed exit=0 checkpoint=passed 2026-10-27T19:42:34.828Z→2026-10-27T19:43:35.230Z
+  产物：无新文件
+
+[15/22] scenic_figures
+PASS | 15. scenic_figures 下发 | PRJ_AIMS_V3_20261027-line2_scrna-1793130222513
+PASS | 15. scenic_figures 结果 | status=completed exit=0 checkpoint=passed 2026-10-27T19:43:42.514Z→2026-10-27T19:43:53.443Z
+  产物：无新文件
+
+[16/22] tf_activity
+PASS | 16. tf_activity 下发 | PRJ_AIMS_V3_20261027-line2_scrna-1793130239190
+PASS | 16. tf_activity 结果 | status=completed exit=0 checkpoint=passed 2026-10-27T19:43:59.191Z→2026-10-27T19:44:26.848Z
+  产物：无新文件
+
+[17/22] virtual_knockout
+PASS | 17. virtual_knockout 下发 | PRJ_AIMS_V3_20261027-line2_scrna-1793130273789
+PASS | 17. virtual_knockout 结果 | status=completed exit=0 checkpoint=passed 2026-10-27T19:44:33.790Z→2026-10-27T19:45:34.182Z
+  产物：knockout_report.txt(3977→3979) ko_dr_genes.tsv(126818→127503) memory_peak.tsv(628→890)
+  uns[virtual_knockout]={}
+
+[18/22] summarize_dr
+PASS | 18. summarize_dr 下发 | PRJ_AIMS_V3_20261027-line2_scrna-1793130346250
+PASS | 18. summarize_dr 结果 | status=completed exit=0 checkpoint=passed 2026-10-27T19:45:46.251Z→2026-10-27T19:46:09.485Z
+  产物：dr_genes_summary.tsv(136→293) dr_summary_report.txt(2527→2640)
+
+[19/22] target_gene_localization
+PASS | 19. target_gene_localization 下发 | PRJ_AIMS_V3_20261027-line2_scrna-1793130374798
+PASS | 19. target_gene_localization 结果 | status=completed exit=0 checkpoint=passed 2026-10-27T19:46:14.799Z→2026-10-27T19:46:42.139Z
+  产物：target_gene_localization.tsv(7703→7782) target_gene_localization_wide.tsv(1378→1394)
+
+[20/22] gsva_pathways
+PASS | 20. gsva_pathways 下发 | PRJ_AIMS_V3_20261027-line2_scrna-1793130409412
+PASS | 20. gsva_pathways 结果 | status=completed exit=0 checkpoint=passed 2026-10-27T19:46:58.320Z→2026-10-27T19:48:10.671Z
+  产物：gsva_scores.tsv(3580285→3580394)
+  uns[gsva].input_matrix=undefined n_pathways=undefined
+
+[21/22] dr_post_analysis
+PASS | 21. dr_post_analysis 下发 | PRJ_AIMS_V3_20261027-line2_scrna-1793130502808
+PASS | 21. dr_post_analysis 结果 | status=completed exit=0 checkpoint=passed 2026-10-27T19:48:22.808Z→2026-10-27T19:48:58.287Z
+  产物：dr_regulatory_network.tsv(880→962)
+
+[22/22] scrna_figures
+PASS | 22. scrna_figures 下发 | PRJ_AIMS_V3_20261027-line2_scrna-1793130544114
+PASS | 22. scrna_figures 结果 | status=completed exit=0 checkpoint=passed 2026-10-27T19:49:04.116Z→2026-10-27T19:49:34.423Z
+  产物：无新文件
+
+| # | step | status | exit | 耗时(s) | checkpoint | 新增/更新产物 | 图件 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | ingest_counts | completed | 0 | 166 | passed | - | 0 |
+| 2 | qc_cells | completed | 0 | 24 | passed | - | 0 |
+| 3 | normalize_hvg | completed | 0 | 36 | passed | - | 0 |
+| 4 | integrate_harmony | completed | 0 | 36 | passed | - | 0 |
+| 5 | cluster_umap | completed | 0 | 51 | passed | - | 0 |
+| 6 | annotate_celltypes | completed | 0 | 27 | passed | - | 0 |
+| 7 | scrna_composition | completed | 0 | 21 | passed | celltype_composition.tsv 4632→4642B<br>composition_report.txt 2387→2392B | 0 |
+| 8 | deg_groups | completed | 0 | 30 | passed | - | 0 |
+| 9 | subcluster | completed | 0 | 45 | passed | - | 0 |
+| 10 | enrichment | completed | 0 | 136 | passed | - | 0 |
+| 11 | enrichment_figures | completed | 0 | 12 | passed | - | 0 |
+| 12 | pseudotime | completed | 0 | 24 | passed | - | 0 |
+| 13 | cell_communication | completed | 0 | 72 | passed | cellcomm_interactions.tsv 9223579→9235912B | 0 |
+| 14 | scenic_tf | completed | 0 | 63 | passed | - | 0 |
+| 15 | scenic_figures | completed | 0 | 12 | passed | - | 0 |
+| 16 | tf_activity | completed | 0 | 30 | passed | - | 0 |
+| 17 | virtual_knockout | completed | 0 | 63 | passed | knockout_report.txt 3977→3979B<br>ko_dr_genes.tsv 126818→127503B<br>memory_peak.tsv 628→890B | 0 |
+| 18 | summarize_dr | completed | 0 | 24 | passed | dr_genes_summary.tsv 136→293B<br>dr_summary_report.txt 2527→2640B | 0 |
+| 19 | target_gene_localization | completed | 0 | 30 | passed | target_gene_localization.tsv 7703→7782B<br>target_gene_localization_wide.tsv 1378→1394B | 0 |
+| 20 | gsva_pathways | completed | 0 | 84 | passed | gsva_scores.tsv 3580285→3580394B | 0 |
+| 21 | dr_post_analysis | completed | 0 | 37 | passed | dr_regulatory_network.tsv 880→962B | 0 |
+| 22 | scrna_figures | completed | 0 | 36 | passed | - | 0 |
+
+敲除靶基因：JUN
+
+| # | step | start_time | end_time |
+| --- | --- | --- | --- |
+| 1 | ingest_counts | 2026-10-27T19:30:15.072Z | 2026-10-27T19:32:57.767Z |
+| 2 | qc_cells | 2026-10-27T19:33:05.081Z | 2026-10-27T19:33:26.226Z |
+| 3 | normalize_hvg | 2026-10-27T19:33:33.645Z | 2026-10-27T19:34:07.707Z |
+| 4 | integrate_harmony | 2026-10-27T19:34:14.319Z | 2026-10-27T19:34:47.511Z |
+| 5 | cluster_umap | 2026-10-27T19:34:54.926Z | 2026-10-27T19:35:43.125Z |
+| 6 | annotate_celltypes | 2026-10-27T19:35:50.650Z | 2026-10-27T19:36:17.288Z |
+| 7 | scrna_composition | 2026-10-27T19:36:22.383Z | 2026-10-27T19:36:41.066Z |
+| 8 | deg_groups | 2026-10-27T19:36:48.018Z | 2026-10-27T19:37:15.860Z |
+| 9 | subcluster | 2026-10-27T19:37:22.707Z | 2026-10-27T19:38:07.323Z |
+| 10 | enrichment | 2026-10-27T19:38:12.451Z | 2026-10-27T19:40:27.545Z |
+| 11 | enrichment_figures | 2026-10-27T19:40:32.738Z | 2026-10-27T19:40:43.747Z |
+| 12 | pseudotime | 2026-10-27T19:40:49.528Z | 2026-10-27T19:41:12.083Z |
+| 13 | cell_communication | 2026-10-27T19:41:18.071Z | 2026-10-27T19:42:28.611Z |
+| 14 | scenic_tf | 2026-10-27T19:42:34.828Z | 2026-10-27T19:43:35.230Z |
+| 15 | scenic_figures | 2026-10-27T19:43:42.514Z | 2026-10-27T19:43:53.443Z |
+| 16 | tf_activity | 2026-10-27T19:43:59.191Z | 2026-10-27T19:44:26.848Z |
+| 17 | virtual_knockout | 2026-10-27T19:44:33.790Z | 2026-10-27T19:45:34.182Z |
+| 18 | summarize_dr | 2026-10-27T19:45:46.251Z | 2026-10-27T19:46:09.485Z |
+| 19 | target_gene_localization | 2026-10-27T19:46:14.799Z | 2026-10-27T19:46:42.139Z |
+| 20 | gsva_pathways | 2026-10-27T19:46:58.320Z | 2026-10-27T19:48:10.671Z |
+| 21 | dr_post_analysis | 2026-10-27T19:48:22.808Z | 2026-10-27T19:48:58.287Z |
+| 22 | scrna_figures | 2026-10-27T19:49:04.116Z | 2026-10-27T19:49:34.423Z |
+
+结果表已写 cn_debug/2026-10-21_m1_line2_chain.result.md
+
+结果：46/46 通过

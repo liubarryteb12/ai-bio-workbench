@@ -1,0 +1,35 @@
+{
+  "task_id": "21628f40-e5ed-4fad-b0c3-84e81a7e766a",
+  "project_id": "PRJ_AIMS_V3_20261027",
+  "line_id": "line3_spatial",
+  "step_name": "adapt_fig_l2p_umap",
+  "mod_id": null,
+  "status": "completed",
+  "start_time": "2026-10-27T17:45:58.572Z",
+  "end_time": "2026-10-27T17:46:18.469Z",
+  "environment": {
+    "language": "Python",
+    "version": "3.12.3",
+    "env_name": "line3_spatial_env",
+    "container_image": "proot-ubuntu24.04-aarch64",
+    "random_seed": 20261013
+  },
+  "resource_usage": {
+    "max_cpu_percent": null,
+    "max_memory_gb": null,
+    "disk_io_peak_mb_s": null
+  },
+  "io_files": {
+    "input": [
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line3_spatial/processed/spatial_dimred_human.h5ad"
+    ],
+    "output": [
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line3_spatial/figures/custom_fig_l2p_umap.png"
+    ]
+  },
+  "checkpoint_status": "passed",
+  "error_log": null,
+  "exit_code": 0,
+  "next_action_suggested": null,
+  "compute_node_id": "k40-ubuntu"
+}

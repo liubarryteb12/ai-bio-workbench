@@ -1,0 +1,31 @@
+{
+  "task_id": "e0cfc6ef-0c45-4826-beb7-ded5876f6059",
+  "project_id": "PRJ_AIMS_V3_20261027",
+  "line_id": "line1_bulk",
+  "step_name": "probe_env",
+  "mod_id": null,
+  "status": "completed",
+  "start_time": "2026-10-27T05:24:10.158Z",
+  "end_time": "2026-10-27T05:24:14.315Z",
+  "environment": {
+    "language": "R",
+    "version": "4.5.3",
+    "env_name": "line1_bulk_env",
+    "container_image": "proot-ubuntu24.04-aarch64",
+    "random_seed": 20261021
+  },
+  "resource_usage": {
+    "max_cpu_percent": null,
+    "max_memory_gb": null,
+    "disk_io_peak_mb_s": null
+  },
+  "io_files": {
+    "input": [],
+    "output": []
+  },
+  "checkpoint_status": "passed",
+  "error_log": null,
+  "exit_code": 0,
+  "next_action_suggested": null,
+  "compute_node_id": "k40-ubuntu"
+}

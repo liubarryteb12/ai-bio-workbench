@@ -1,0 +1,33 @@
+{
+  "task_id": "a5fe8fcf-ccca-4a31-b6db-a1f2b7ddc3cb",
+  "project_id": "PRJ_AIMS_V3_20261027",
+  "line_id": "line2_scrna",
+  "step_name": "subcluster",
+  "mod_id": "l2_profile_subcluster",
+  "status": "completed",
+  "start_time": "2026-10-27T18:41:25.197Z",
+  "end_time": "2026-10-27T18:42:11.592Z",
+  "environment": {
+    "language": "Python",
+    "version": "3.12.3",
+    "env_name": "line2_scrna_env",
+    "container_image": "proot-ubuntu24.04-aarch64",
+    "random_seed": 20261021
+  },
+  "resource_usage": {
+    "max_cpu_percent": null,
+    "max_memory_gb": null,
+    "disk_io_peak_mb_s": null
+  },
+  "io_files": {
+    "input": [
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line2_scrna/processed/scrna_deg.h5ad"
+    ],
+    "output": []
+  },
+  "checkpoint_status": "passed",
+  "error_log": null,
+  "exit_code": 0,
+  "next_action_suggested": null,
+  "compute_node_id": "k40-ubuntu"
+}
