@@ -53,7 +53,8 @@ ALPHA = 0.05
 MIN_ABS_LOG2FC = 1.0
 LIBS = ["GO_Biological_Process_2023", "GO_Cellular_Component_2023",
         "GO_Molecular_Function_2023", "KEGG_2021_Human", "Reactome_Pathways_2024"]
-CACHE = os.path.join("..", "references", "gmt_cache")
+# BIO_GMT_CACHE 可覆盖 gmt 缓存目录（默认 <cwd>/../references/gmt_cache，见 SPEC_DECISIONS D-22）
+CACHE = os.environ.get("BIO_GMT_CACHE", os.path.join("..", "references", "gmt_cache"))
 os.makedirs(CACHE, exist_ok=True)
 
 
@@ -190,7 +191,14 @@ if ora_rows:
                             r.get("Adjusted P-value", float("nan"))))
 lines.append("")
 lines.append("elapsed_seconds=%.1f" % (time.time() - START))
+lines.append("outputs=enrichment_ora.tsv, enrichment_gsea.tsv")
 with open("enrichment_report.txt", "w", encoding="utf-8") as fh:
     fh.write("\n".join(lines) + "\n")
 log("enrichment_done")
 PYSCRIPT
+
+# sha256 产物台账后置补登：复用独立脚本，写法与其余步骤解耦。
+if [ -x "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" ]; then
+  "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" "$PWD" "enrichment_report.txt" > /dev/null 2>>"$0.ledger.err" \
+  || echo "WARN sha256 ledger backfill failed, see $0.ledger.err" >&2
+fi

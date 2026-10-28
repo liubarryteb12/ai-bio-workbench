@@ -489,6 +489,7 @@ report_lines += [
 ]
 for message in captured:
     report_lines.append("  %s" % message[:300])
+report_lines.append("outputs=ko_dr_genes.tsv, scrna_knockout.h5ad, memory_peak.tsv, knockout_report.txt")
 with open("knockout_report.txt", "w") as fh:
     fh.write("\n".join(report_lines) + "\n")
 
@@ -496,3 +497,9 @@ record_peak("done")
 log("virtual_knockout_done dr_genes=%d significant=%d elapsed=%.1fs"
     % (dr_sorted.shape[0], n_sig_non_ko, time.time() - START))
 PYSCRIPT
+
+# sha256 产物台账后置补登：复用独立脚本，写法与其余步骤解耦。
+if [ -x "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" ]; then
+  "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" "$PWD" "knockout_report.txt" > /dev/null 2>>"$0.ledger.err" \
+  || echo "WARN sha256 ledger backfill failed, see $0.ledger.err" >&2
+fi

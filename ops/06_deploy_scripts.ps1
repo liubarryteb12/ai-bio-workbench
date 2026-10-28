@@ -1,4 +1,4 @@
-﻿<#
+<#
   ops/06_deploy_scripts.ps1  —  src/ 分析脚本部署通道（P3-S0）
 
   背景：任务引擎按命令名执行 step（buildTaskScript 拼 step + 参数并注入本线 bin 到 PATH），
@@ -79,6 +79,52 @@ foreach ($line in $lines) {
   }
   # 只收文件（README 等文档不部署；scripts/ 下每个可执行文件即一个步骤）
   $files = Get-ChildItem -Path $srcDir -File | Where-Object { $_.Name -ne 'README.md' }
+
+  # 部署闸门：scripts/ 下的文件必须已在 src/workflows.json 注册表登记。
+  #
+  # 为什么加这道闸：scripts/ 是「母版」目录，落到服务器 bin/ 后即可被 /api/tasks/submit
+  # 点名执行（提交层只校验 step 字符集，不校验是否登记）。2026-10-24 曾把 4 个 R 测试案例
+  # 落在这里，它们会被原样推上服务器变成线上可执行步骤，测试基线同时被母版枚举打破。
+  # 在这里按注册表拦一次，未登记的件根本出不了本机。
+  #
+  # 豁免名单只放「本就不属于分析步骤、但确需部署」的脚本，逐个写明理由，不批量放行。
+  $deployExempt = @{ 'probe_env' = '环境自检冒烟脚本：验证 seed 注入、PATH 注入与 manifest 在位（handoff.md 母版口径不含它）' }
+  $registryScripts = @{}
+  $workflowFile = Join-Path $repoRoot 'src/workflows.json'
+  if (Test-Path $workflowFile) {
+    try {
+      $registry = Get-Content -LiteralPath $workflowFile -Raw -Encoding UTF8 | ConvertFrom-Json
+      foreach ($series in $registry.series) {
+        foreach ($stage in $series.stages) {
+          foreach ($mod in $stage.mods) {
+            $scriptName = if ($mod.script) { [string]$mod.script } else { [string]$mod.id }
+            if ($scriptName) { $registryScripts["$line/$scriptName"] = $true }
+          }
+        }
+      }
+    } catch {
+      Write-Host "[deploy] FAIL 注册表解析失败: $workflowFile" -ForegroundColor Red
+      Write-Host "  $_" -ForegroundColor Red
+      exit 1
+    }
+  } else {
+    Write-Host "[deploy] FAIL 缺少工作流注册表: $workflowFile" -ForegroundColor Red
+    Write-Host '  新母版必须先登记进 src/workflows.json 再部署（单一事实源）。' -ForegroundColor Red
+    exit 1
+  }
+  $unregistered = @($files | Where-Object {
+    -not $registryScripts.ContainsKey("$line/$($_.Name)") -and -not $deployExempt.ContainsKey($_.Name)
+  })
+  if ($unregistered.Count -gt 0) {
+    Write-Host "[deploy] FAIL $line 有 $($unregistered.Count) 个未登记进 src/workflows.json 的件，拒绝部署：" -ForegroundColor Red
+    foreach ($f in $unregistered) {
+      Write-Host "  $($f.Name)" -ForegroundColor Red
+      Write-Host '    测试案例与一次性探针请放 cn_debug/（该目录不参与部署，见 cn_debug/README.md）；' -ForegroundColor Yellow
+      Write-Host '    正式母版请先登记进 src/workflows.json 的 stages/mods 再部署。' -ForegroundColor Yellow
+    }
+    exit 1
+  }
+
   if (-not $files -or $files.Count -eq 0) {
     Write-Host "[deploy] WARN $line 的 scripts/ 下没有可部署脚本，跳过" -ForegroundColor Yellow
   } else {

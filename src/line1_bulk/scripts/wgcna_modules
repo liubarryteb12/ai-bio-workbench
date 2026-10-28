@@ -29,6 +29,8 @@
 # 模块-性状相关在 [-1,1]、基因模块分配覆盖全部保留基因。
 set -euo pipefail
 
+RSCRIPT_BIN="${BIOANALYS_RSCRIPT:-/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript}"
+
 seed="${BIOANALYS_SEED:-UNSET}"
 if [ "$seed" = "UNSET" ]; then
   echo "BIOANALYS_SEED 未注入（引擎契约：seed 必须注入）" >&2
@@ -69,7 +71,7 @@ echo "input_expr=${expr_file}"
 echo "input_group_map=${group_file}"
 
 EXPR_FILE="$expr_file" GROUP_FILE="$group_file" BIOANALYS_SEED="$seed" \
-Rscript - <<'RSCRIPT'
+"$RSCRIPT_BIN" - <<'RSCRIPT'
 suppressMessages({
   library(WGCNA)
   library(ggplot2)
@@ -237,7 +239,7 @@ for (g in c(case_group, ctrl_group)) {
 
 # --- 性状矩阵：一个组一列指示变量（WGCNA 标准的"模块-表型"呈现）---
 # 2026-10-19 用户纠正口径：这是**原表达谱**的共表达网络分析，不是差异基因比对。
-# 性状表型按组展开，一个组一列（两组 = 两列）；不再放 "<case>_vs_<ctrl>" 对比列——
+# 性状表型按组展开，一个组一列（两组 = 两列）；不再放 "<case>_vs_<ctrl>" 对比列：
 # 那一列与 case 组指示列数值完全相同，却用组间比对的名字命名，会把"组成员关系"
 # 错呈现成"组间比对表型"。组名一律从 group_map / project.json 读，不硬编码。
 observed_groups_all <- sort(unique(as.character(sample_group)))
@@ -361,7 +363,7 @@ dev.off()
 # 建网（signed）。maxBlockSize 取"配置值与实际基因数的较大者"，保证单块建网：
 # 配置默认 5000 与入网基因数一致；若调小 top_n_genes，用实际基因数兜底仍是单块；
 # 若调大 top_n_genes 超过配置的 max_block_size，按配置分块并在报告写明分块数
-# （口径可审计，不悄悄退化成分块网络——2026-10-19 WGCNA 审计 C-01 的根因）。
+# （口径可审计，不悄悄退化成分块网络：2026-10-19 WGCNA 审计 C-01 的根因）。
 max_block <- max(wgcna_cfg$max_block_size, ncol(datExpr))
 net <- blockwiseModules(
   datExpr, power = power, networkType = "signed", TOMType = "signed",
@@ -562,7 +564,7 @@ dev.off()
 
 # 报告
 # 交付级产物清单：统计表 + 报告（图件不进来，aims §5.1 规定图只落 figures/）。
-# 必须先定义再被下面 outputs= 行引用，且 results/ 复制段也用它——定义一次，两处引用。
+# 必须先定义再被下面 outputs= 行引用，且 results/ 复制段也用它：定义一次，两处引用。
 results_artifacts <- c("wgcna_modules.tsv", "wgcna_module_trait.tsv", "wgcna_gene_traits.tsv",
                        "wgcna_hub_genes.tsv", "wgcna_module_eigengenes.tsv",
                        "wgcna_sample_outliers.txt", "wgcna_input_genes.txt", "wgcna_report.txt")

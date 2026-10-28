@@ -41,6 +41,7 @@ echo "step_executed=enrichment"
 echo "bioanalys_seed=${seed}"
 
 python3 - <<'PYSCRIPT'
+import hashlib
 import os
 import sys
 import time
@@ -60,7 +61,8 @@ ALPHA = 0.05
 FOREGROUND_MAX = 100       # ORA 前景上限（每域）
 FOREGROUND_MIN = 10        # 不足则退 top50
 FALLBACK_TOP = 50
-CACHE = os.path.join("..", "references", "gmt_cache")
+# BIO_GMT_CACHE 可覆盖 gmt 缓存目录（默认 <cwd>/../references/gmt_cache，见 SPEC_DECISIONS D-22）
+CACHE = os.environ.get("BIO_GMT_CACHE", os.path.join("..", "references", "gmt_cache"))
 os.makedirs(CACHE, exist_ok=True)
 
 # 物种 -> 库配置：pathway = 物种专属通路库；go = Enrichr GO 三本体（人库）
@@ -282,8 +284,25 @@ report_lines += [
     "  4. 域身份样本私有（<sample>_d<n>），跨样本不可比，域间结果只作本样本内解读。",
     "",
     "elapsed_seconds=%.1f" % (time.time() - START),
+    "outputs=enrichment_ora_mouse.tsv, enrichment_ora_human.tsv, enrichment_gsea_mouse.tsv, enrichment_gsea_human.tsv, enrichment_report.txt",
 ]
 with open("enrichment_report.txt", "w", encoding="utf-8") as fh:
     fh.write("\n".join(report_lines) + "\n")
+
+for _artifact in sorted(os.listdir(".")):
+    if not os.path.isfile(_artifact):
+        continue
+    if _artifact == 'enrichment_report.txt':
+        continue
+    with open(_artifact, "rb") as _fh:
+        _digest = hashlib.sha256(_fh.read()).hexdigest()
+    with open('enrichment_report.txt', "a", encoding="utf-8") as _fh:
+        _fh.write("%s_sha256=%s\n" % (_artifact, _digest))
 log("enrichment_done")
 PYSCRIPT
+
+# sha256 产物台账后置补登：复用独立脚本，写法与其余步骤解耦。
+if [ -x "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" ]; then
+  "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" "$PWD" "enrichment_report.txt" > /dev/null 2>>"$0.ledger.err" \
+  || echo "WARN sha256 ledger backfill failed, see $0.ledger.err" >&2
+fi

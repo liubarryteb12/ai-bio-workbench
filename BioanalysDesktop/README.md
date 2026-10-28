@@ -44,7 +44,7 @@ BioanalysDesktop/
 
 ```
 npm install
-npm run dev        # 后端 8787 + 前端 5173 同时起
+npm run dev        # 后端 18787 + 前端 5173 同时起
 ```
 
 单独起某一边：`npm run dev:server` / `npm run dev:web`。
@@ -81,8 +81,33 @@ npm run dev        # 后端 8787 + 前端 5173 同时起
 npm test
 ```
 
-当前 445 条全绿（2026-10-21），含一条真连服务器验证（经 ssh 接缝拿 CONTAINER_OK）。
-这条测试链路不通时会红，正是我们要的信号，不要删。
+当前基线 **848 tests / 848 pass / 0 fail / 0 skipped**（2026-10-24 提权实测，连续三次复跑稳定）。
+沙箱内跑会是 `848 / 797 / 5 / 46`：那 5 条红与 46 条 skip 全是权限假象，见下面第 3 条。
+
+跑之前先知道三件事，否则会把环境问题误读成代码回归：
+
+1. **`TEMP` / `TMP` 要指到工作区内**。`wrapper_exec_modes` / `wrapper_running_marker`
+   等 7 条会在临时目录里真跑包装器，沙箱外临时目录会让他们全红（实测：指到工作区内后
+   这 16/16 全绿）。PowerShell 里可以这样跑：
+   `$env:TEMP=$env:TMP="$PWD\.tmp"; node --test tests/*.test.js`
+2. **链路类用例「不通就红」是设计行为，不要删也不要改成跳过**：
+   `proc.test.js` 的真连服务器验证（经 ssh 接缝拿 `CONTAINER_OK`）、
+   `consistency.test.js` 的远端目录准备、`link.test.js` 的设备/forward/四段自检。
+   K40 或 adb 不在位时它们红，属于预期信号。
+
+3. **adb 与 ssh 的失败是沙箱权限假象，先提权再判定**。沙箱内 `adb.exe` 一启动就
+   `Cannot mkdir '\.android': Permission denied`（退出码 `0xC0000142`），连 `adb version`
+   都崩；ssh 则报 `Could not resolve hostname k40-ubuntu`。两者都不是代码问题，提权重跑
+   即通（2026-10-24 实测：提权后 `3a3e1f52` 在线、双 forward 在位、四段自检全 PASS，
+   848/848 全绿，46 条 skipped 也全部真跑）。
+   所以看到这 5 条红（`link.test.js` 三条 + `proc.test.js` 一条 + `consistency.test.js` 一条）
+   先提权复跑，再决定要不要查代码。环境变量绕不过去：设 `HOME` 与
+   `ANDROID_ADB_SERVER_HOME` 都无效，`adb` 仍去建盘根 `\.android`。
+
+其余环境性失败还有两类，排查时先分清：
+宿主没有 python3 时 `bridge_guard_local` 的 local 分支用例会跳过（可用
+`BRIDGE_GUARD_PYTHON3` 指定解释器让它们真跑）；宿主没有 bash + pandas/matplotlib 时
+`ppi_string_offline` 的真跑用例整体跳过（源码口径另由静态用例覆盖）。
 
 ## 三线隔离怎么落
 

@@ -1,0 +1,6 @@
+step=-
+seed=20261021
+out=/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line3_spatial/processed/../figures
+figure_count=4
+elapsed_seconds=4.1
+outputs=figures_manifest.txt, l3_mouse_12_ora_top.png, l3_mouse_13_gsea_top.png, l3_human_12_ora_top.png, l3_human_13_gsea_top.png

@@ -16,7 +16,6 @@ import test from 'node:test';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -24,6 +23,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
 const WRAPPER = path.join(REPO, 'ops', 'run_throttled_task.sh');
 const CHECKER = path.join(REPO, 'ops', '03_check_logs_remote.sh');
+const TEST_ROOT = path.join(REPO, 'artifacts', 'wrapper_running_marker_tests');
 // 定位 bash：Git for Windows 自带 D:\Git\bin\bash.exe，PATH 里通常没有 bash（与其它真跑测试同口径）。
 const BASH = [process.env.BIO_BASH, 'D:\\Git\\bin\\bash.exe', 'D:\\Git\\usr\\bin\\bash.exe', 'bash']
   .find((cand) => {
@@ -36,6 +36,7 @@ const BASH = [process.env.BIO_BASH, 'D:\\Git\\bin\\bash.exe', 'D:\\Git\\usr\\bin
     }
   });
 assert.ok(BASH, '找不到可用的 bash（可设 BIO_BASH 指向 Git 的 bash.exe）');
+test.after(() => fs.rmSync(TEST_ROOT, { recursive: true, force: true }));
 
 const src = fs.readFileSync(WRAPPER, 'utf8');
 
@@ -46,6 +47,16 @@ function markerBlock() {
   assert.ok(endMark > start, '标记段缺少落盘回显');
   const end = src.indexOf('\n', endMark);
   return src.slice(start, end);
+}
+
+function stripStaleCleanup(block) {
+  return block.replace(/\nnow_epoch=\$\(date \+%s\)\n[\s\S]*?\ndone\n/, '\n');
+}
+
+function toBashPath(value) {
+  const text = path.resolve(value).replace(/\\/g, '/');
+  const match = /^([A-Za-z]):\/(.*)$/.exec(text);
+  return match ? `/${match[1].toLowerCase()}/${match[2]}` : text;
 }
 
 test('标记落在 system_logs/_running 子目录（不污染 *.json 台账通配）', () => {
@@ -75,14 +86,17 @@ test('正常结束在写完台账之后才删标记（标记残留即中断取�
 });
 
 test('过期标记（>7 天）在启动时清理', () => {
-  assert.match(src, /find "\$RUNNING_DIR" -maxdepth 1 -name '\*\.json' -mtime \+7 -delete/);
+  assert.match(src, /for stale_marker in "\$RUNNING_DIR"\/\*\.json; do/);
+  assert.match(src, /stat -c %Y "\$stale_marker"/);
+  assert.match(src, /rm -f -- "\$stale_marker"/);
+  assert.doesNotMatch(src, /(^|\s)find\s/);
 });
 
 test('真跑标记段：JSON 可解析、字段正确、删掉后不再存在', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'running-marker-'));
-  const block = markerBlock()
-    .replace(/RUNNING_DIR="[^"]*"/, 'RUNNING_DIR="' + tmp.replace(/\\/g, '/') + '"')
-    .replace(/find "\$RUNNING_DIR"[^\n]*\n/, '');
+  fs.mkdirSync(TEST_ROOT, { recursive: true });
+  const tmp = fs.mkdtempSync(path.join(TEST_ROOT, 'running-marker-'));
+  const block = stripStaleCleanup(markerBlock())
+    .replace(/RUNNING_DIR="[^"]*"/, 'RUNNING_DIR="' + toBashPath(tmp) + '"');
   const script = 'set -e\nTASK_ID=PRJ_X-line2_scrna-123\nLINE_ID=line2_scrna\nSTEP_NAME=scenic_tf\n'
     + 'START_TIME=2026-10-21T13:00:49Z\n' + block + '\nrm -f "$RUNNING_JSON"\n';
   const scriptPath = path.join(tmp, 'block.sh');
@@ -94,10 +108,10 @@ test('真跑标记段：JSON 可解析、字段正确、删掉后不再存在', 
 });
 
 test('模拟中断（不执行删除）：标记留下且可解析出中断信息', () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'running-marker-abort-'));
-  const block = markerBlock()
-    .replace(/RUNNING_DIR="[^"]*"/, 'RUNNING_DIR="' + tmp.replace(/\\/g, '/') + '"')
-    .replace(/find "\$RUNNING_DIR"[^\n]*\n/, '');
+  fs.mkdirSync(TEST_ROOT, { recursive: true });
+  const tmp = fs.mkdtempSync(path.join(TEST_ROOT, 'running-marker-abort-'));
+  const block = stripStaleCleanup(markerBlock())
+    .replace(/RUNNING_DIR="[^"]*"/, 'RUNNING_DIR="' + toBashPath(tmp) + '"');
   const script = 'set -e\nTASK_ID=PRJ_X-line2_scrna-999\nLINE_ID=line2_scrna\nSTEP_NAME=scenic_tf\n'
     + 'START_TIME=2026-10-21T12:26:00Z\n' + block + '\nexit 137\n';
   const scriptPath = path.join(tmp, 'block_abort.sh');

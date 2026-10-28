@@ -1,23 +1,29 @@
-# 工程规范 — 目录结构
+# 工程规范: 目录结构
 
-> version 1 | 2026-10-12
+> version 3.0 | 2026-10-26
 > 本规范规定"文件放哪"。新会话接手先读本文件，不要猜。
 
 ## 一句话原则
 
-**本地只放"代码本体 + 交接台账"；数据、原始产物、环境全部在服务器侧。**
-本地目录不许当数据仓库用。
+**本地控制面保留代码、治理台账与轻量回搬的项目产物；原始大数据、运行环境和计算都在服务器侧。**
+单个项目的数据、图件、调试、交付与台账统一收口在 `local_projects/<项目>/`。
 
 ## 本地工程目录（本仓库）
 
 ```
 AI辅助生信分析流程工作台/
-├── reference/               # 只读参考资料（红米K40实测经验、已有脚本），禁止修改其中任何文件
-├── con_hf/                  # 交接上下文
+├── local_projects/          # 本地项目唯一根，结构与远端项目语义对应
+│   ├── INDEX.md             # 全项目机读摘要入口
+│   └── <项目>/              # 自包含项目目录，见下节
+├── outputs/
+│   └── system_logs/         # 仅存回搬的机器执行台账，与 JSONL 台账独立
+├── reference/               # 参考资料唯一存放地，内容只读，结构可整理（约定见下）
+├── con_hf/                  # 全局治理与同步根
 │   ├── CONTEXT.md           # 领域术语表（唯一权威，改词先改这里）
 │   ├── SPEC.md              # 阶段规格
 │   ├── handoff.md           # 跨会话交接快照（接活先读它）
-│   └── ...
+│   ├── ledger/              # 全局五类 JSONL 追加式台账
+│   └── sync/                # inbox、outbox、daemon.log
 ├── docs/                    # 工程规范与架构文档
 │   ├── directories.md       # 本文件
 │   ├── coding-standards.md  # 分析代码规范（Linux 运行面，src/ 动工前必读）
@@ -64,8 +70,48 @@ AI辅助生信分析流程工作台/
 适配副本不经工作台任务引擎（它只认全局 `bin/<line>/`），而是直跑 ops 包装器：
 `bash /mnt/ssd/bio_data/ops/run_throttled_task.sh <task_id> <line> <step> <R|Python> <项目内脚本绝对路径>`。
 
-本地回搬存档（`ops/07_pull_outputs.ps1`）按项目分：`outputs/<项目>/<line>/{processed,results,figures}`；
-任务台账统一落 `outputs/system_logs/`。
+本地回搬入口（`ops/07_pull_outputs.ps1`）按项目写入
+`local_projects/<项目>/data/<line>/{processed,results}` 与
+`local_projects/<项目>/figures/<line>/`；机器执行台账独立落 `outputs/system_logs/`。
+
+## 本地项目存档与 sync 运行态
+
+`local_projects/` 是本地项目唯一根，只接轻量回传与项目台账，不替代算力面工作目录。
+每个项目由 `ops/init_project_scaffold.py` 幂等创建：
+
+```text
+local_projects/<项目>/
+├── project.json
+├── handoff.md
+├── README.md
+├── INDEX.json
+├── data/<line>/{processed,results}
+├── figures/<line>
+├── figures/adapt
+├── deliverables/
+├── debug/
+└── ledger/{actions,changes,errors,fixes,pitfalls}.jsonl
+```
+
+建项命令：
+
+```powershell
+python ops/init_project_scaffold.py --root . --project <项目> --line <line> [--ticket <id>]
+```
+
+`figures/<line>/` 收真实结果图，`figures/adapt/` 收项目内模板派生副本，两者不得混用。
+脚手架重复运行只补缺失项，不覆盖项目元数据、README、交接文档或已有台账内容。
+
+全局 `con_hf/ledger/` 与项目级 `ledger/` 分离：前者只收跨项目结论和全局动作，
+后者只收本项目事实。`outputs/system_logs/` 或服务器侧 `system_logs/` 是独立机器台账，
+不与 JSONL 台账合并。
+
+`con_hf/sync/` 是工作区内的 sync 运行态，只放 `inbox/`、`outbox/`、`daemon.log`。
+它是 spool，不是数据仓库。
+
+存量 `default`、`PRJ_20261019_IS_lactylation` 及分散项目资产由 `WP-2.1` 执行零损迁移。
+迁移完成前，旧 `outputs/` 项目产物只作兼容存量，新任务一律按 `local_projects/<项目>/`
+落盘并单独记录迁移前后的文件数与 SHA256。
 
 ## 归档分类（写文件前先判断类别）
 
@@ -75,10 +121,45 @@ AI辅助生信分析流程工作台/
 | 工程规范、架构文档 | `docs/` |
 | 运维脚本 | `ops/` |
 | 分析代码 | `src/<line_id>/` |
-| 调试与临时日志 | `cn_debug/` |
+| 项目专属调试与日志 | `local_projects/<项目>/debug/` |
+| 跨项目临时探针 | `cn_debug/` |
 | 运行记录、验证报告 | `con_hf/runs/` |
 
 运行记录命名：`YYYY-MM-DD_[类型]_[简短说明]`，类型 ∈ `initial` 基线 / `debug` 调试 / `failed` 失败现场 / `verification` 验证 / `formal` 正式产物。
+
+参考资料是唯一例外：它按内容只读，按结构可整理。
+
+## reference/ 的读写规则
+
+`reference/` 是参考资料唯一存放地，分两层对待：
+
+内容层只读：已入库的参考文件（实测经验、规范摘录、可用文献、出图代码）正文不改写、
+不删除。要改先复制到工作副本，改完作为新文件入库，原文件留痕。
+
+结构层可整理：目录归类、可用性判定、把无用件移到待整理区，这类动作合法，
+是维护动作不是破坏。整理前先出盘点清单，整理后留台账。
+
+待整理区固定为 `reference/09.待整理/`，存放判定为无用或暂不可用的文件。
+移入时保留原始相对路径，便于回溯。待整理区内的文件不参与分析，不引用，定期清。
+
+命名沿用参考区既有风格：`NN.中文主题名`。新增顶类目时编号顺延，不重排已有编号。
+
+### reference/ 子目录编号与用途
+
+| 编号 | 中文名 | 文件数 | 用途 |
+|---|---:|---:|---|
+| `00a` | 可参考代码库 | 1711 | 待整理源代码库，可用件迁入 `05.可参考出图代码`，无用件迁入 `09.待整理` |
+| `01` | 工程规范 | 217 | 工程规范参考 |
+| `02` | 分析流水线构建参考与可用参考文献 | 49 | 分析流水线构建与文献参考 |
+| `03` | 出图规范 | 5 | 投稿图尺寸、字号与 dpi 等出图规范 |
+| `04` | RedmiK40_liunx_container | 64 | K40 Linux 容器参考 |
+| `05` | 可参考出图代码 | 103 | 已验收可参考出图代码，含 16+1 图型 demo |
+| `09` | 待整理 | 229 | 待整理区，存放无用或暂不可用文件 |
+| 无 | 分析流水线构建参考 | 0 | 空目录，待确认是否冗余 |
+
+新增顶类目编号顺延，不重排已有编号。
+
+项目分组及对应目录维护在 `reference/项目分组表.tsv`。
 
 ## 命名与写法红线
 
@@ -87,7 +168,7 @@ AI辅助生信分析流程工作台/
   用户资产（如 `test_use_data/` 下的目录与 `分组情况.txt`）推到服务器前必须换成英文名，
   映射关系集中在引用处（当前在 `ops/05_push_testdata.ps1` 的 `$RemoteNameMap`）。
 - 注释只解释"为什么"，不写"这是什么"。
-- 注释和文档不用 em dash（—），用逗号、冒号、句号替代。
+- 注释和文档不用破折号，用逗号、冒号、句号替代。
 - 变量命名不用单字母（数学符号和循环计数除外）。
 - 不自动重命名、移动或覆盖用户原有文件。
 - linux上运行的代码必须符合linux的命名规范。

@@ -2,7 +2,7 @@
  * 产物回搬通道（手机端 k40 → 本地电脑）
  *
  * 规范（aims §3.2 视图 4 / §7.3）：计算全部在手机容器内完成，但**图件必须回搬到
- * 本地** `outputs/<项目>/<线>/figures/`，工作台视图 4 优先读本地副本；没回搬时
+ * 本地** `local_projects/<项目>/figures/<线>/`，工作台视图 4 优先读本地副本；没回搬时
  * 才回落远端实时读取，并在界面标注来源，不能让"本地没图"被误读成"分析没出图"。
  *
  * 本地零算力红线不变：这里只用 ssh 列目录 + scp 传文件，不启动任何分析程序。
@@ -15,25 +15,33 @@ import { fileURLToPath } from 'node:url';
 import { LINES, projectLineDir, sanitizeProjectId } from './domain.js';
 import { runSync } from './proc.js';
 
-/** 本地存档根：仓库根 outputs/，与 ops/07_pull_outputs.ps1 同一位置 */
+/** 本地项目根：仓库根 local_projects/，与 ops/07_pull_outputs.ps1 同一位置 */
 export const LOCAL_OUTPUTS_ROOT = process.env.BIO_LOCAL_OUTPUTS
   ? path.resolve(process.env.BIO_LOCAL_OUTPUTS)
-  : fileURLToPath(new URL('../../outputs/', import.meta.url));
+  : fileURLToPath(new URL('../../local_projects/', import.meta.url));
 
 /** 默认回搬的产物子目录。processed/ 可能有 h5ad/rds 大检查点，不默认回搬 */
 export const PULL_SUBDIRS = ['figures', 'results'];
 
 export const SSH_TARGET = 'k40-ubuntu';
 
-/**
- * 本项目本线在本地存档中的目录。
- * @throws project_id / line_id 非法
- */
-export function localLineDir(projectId, lineId) {
+/** 本项目在本地自包含根。 */
+export function localProjectDir(projectId) {
   const safe = sanitizeProjectId(projectId);
   if (!safe) throw new Error(`project_id 非法: ${projectId}`);
+  return path.join(LOCAL_OUTPUTS_ROOT, safe);
+}
+
+/** 本项目本线图件目录。 */
+export function localLineDir(projectId, lineId) {
   if (!LINES.includes(lineId)) throw new Error(`line_id 非法: ${lineId}`);
-  return path.join(LOCAL_OUTPUTS_ROOT, safe, lineId);
+  return path.join(localProjectDir(projectId), 'figures', lineId);
+}
+
+/** results 等表格产物落在 data/<line>/<sub>，不进入图件目录。 */
+export function localDataDir(projectId, lineId, sub = '') {
+  if (!LINES.includes(lineId)) throw new Error(`line_id 非法: ${lineId}`);
+  return path.join(localProjectDir(projectId), 'data', lineId, sub);
 }
 
 /**
@@ -117,7 +125,9 @@ export function pullLineOutputs(projectId, lineId, options = {}) {
       continue;
     }
 
-    const localDir = path.join(localLineDir(safe, lineId), sub);
+    const localDir = sub === 'figures'
+      ? localLineDir(safe, lineId)
+      : localDataDir(safe, lineId, sub);
     fs.mkdirSync(localDir, { recursive: true });
     const { pull, skip } = planPull(localDir, remoteFiles, { force });
 
@@ -163,7 +173,7 @@ export function pullLineOutputs(projectId, lineId, options = {}) {
     failed: sum('failed'),
     files,
     dirs,
-    localDir: localLineDir(safe, lineId),
+    localDir: localProjectDir(safe),
   };
 }
 
@@ -172,7 +182,7 @@ export function pullLineOutputs(projectId, lineId, options = {}) {
  * 返回 null 表示本地目录不存在或没有图（调用方据此回落远端）。
  */
 export function readLocalFigures(projectId, lineId) {
-  const dir = path.join(localLineDir(projectId, lineId), 'figures');
+  const dir = localLineDir(projectId, lineId);
   let names;
   try {
     names = fs.readdirSync(dir);
@@ -193,7 +203,7 @@ export function readLocalFigures(projectId, lineId) {
 export function localFigurePath(projectId, lineId, name) {
   if (!/\.(png|jpg|jpeg|gif|webp|svg)$/i.test(name)) return null;
   if (name.includes('/') || name.includes('\\') || name.includes('..')) return null;
-  const file = path.join(localLineDir(projectId, lineId), 'figures', name);
+  const file = path.join(localLineDir(projectId, lineId), name);
   try {
     return fs.statSync(file).isFile() ? file : null;
   } catch {

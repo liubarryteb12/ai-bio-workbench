@@ -310,3 +310,76 @@
 - **真机验证**：`ops/run_throttled_task.sh` 已部署到 k40-ubuntu（sha256 一致）。命令串模式探针 RC=0 且产物落盘；
   `BIO_EXEC_CMD='exit 7'` 探针 RC=7 且台账 status=failed / checkpoint_status=halted。
 - **遗留**：18901 引擎服务当时仍跑旧代码（P13 起的进程无 watch），翻牌后需重启并复验一步真走命令串模式。
+
+
+### D-22 gmt 缓存目录环境变量化（BIO_GMT_CACHE）
+
+- **日期**：2026-10-21
+- **问题背景与冲突点**：6 个母版（src/line2_scrna/scripts/{enrichment,dr_post_analysis,tf_activity,gsva_pathways}、src/line3_spatial/scripts/{enrichment,dr_post_analysis}）把 gmt 缓存目录硬编码为 os.path.join("..", "references", "gmt_cache")（R 侧 list.files("../references/gmt_cache")）。母版 cwd 由 server/task.js 固定为 <项目>/<线>/processed，因此该相对路径恒等于 <项目>/<线>/references/gmt_cache，无法指向公共缓存或多个项目复用同一份下载。
+- **备选方案对比**：① 保持硬编码（零改动，但无法跨项目共享，也无法在真机取证时指向已预热的 PRJ_E2E_* 缓存）；② 全仓改默认值（破坏既有部署与 default 项目基线）；③ 增加 BIO_GMT_CACHE 覆盖、默认值保持现路径不变（向后兼容，按需覆盖）。
+- **最终拍板结论**：③ Python 侧 CACHE = os.environ.get("BIO_GMT_CACHE", os.path.join("..", "references", "gmt_cache"))、line2 dr_post_analysis 的 gmt_dir 同款、R 侧 GMT_CACHE <- Sys.getenv("BIO_GMT_CACHE", unset = "../references/gmt_cache")；失败文案带上实际目录便于定位。
+- **受影响条款**：aims §六.3 部署契约（母版路径解析）；无 aims 条目数字变化。
+- **同步修改文件清单**：src/line2_scrna/scripts/{enrichment,dr_post_analysis,tf_activity,gsva_pathways}、src/line3_spatial/scripts/{enrichment,dr_post_analysis}
+- **验证测试名**：BioanalysDesktop/tests/gmt_cache_env.test.js（新建）
+
+### D-23 箱线图统计显著性只保留纯水平横线（v3.1 对 aims 名义 D-18 的正式落号）
+
+- **日期**：2026-10-28
+- **编号冲突说明**：最新 aims v3.1 将四项新裁定名义编号为 D-18 至 D-21，但本台账已永久占用 D-18 至 D-22。按编号不回收规则，四项裁定正式落号为 D-23 至 D-26，并在条目中保留 aims 名义编号映射。
+- **问题背景与冲突点**：`reference/05.可参考出图代码/L1_基础统计图/L1_boxplot_code.R` 与 `_meta/R453_compat/L1_boxplot_code.R` 仍含 `tip.length = 0.01`，会生成端点下折竖线。D-12 已冻结出图判据，本次用户审图反馈构成例外立项条件。
+- **备选方案对比**：① 保留 `stat_pvalue_manual()` 与端点，违反用户要求；② 改为自定义 `geom_segment()`，控制力最强但与现有脚本结构差异较大；③ 保留 `stat_pvalue_manual()`，把所有比较统一锁死 `tip.length = 0`，改动最小且直接表达纯水平横线。
+- **最终拍板结论**：采用 ③。正式版与 R4.5.3 兼容版必须同批修改，所有显著性标注 `tip.length` 只能为 `0`。母版变化后必须同批重跑 K40 生成新 PNG/PDF，并更新 `source_sha256`、`preview_sha256`、验证报告与预览文件。
+- **受影响条款**：D-12 出图判据例外、v3.1 D-18 名义裁定、图模板 G4、图模板注册表防漂移条款。
+- **同步修改文件清单**：`reference/05.可参考出图代码/L1_基础统计图/L1_boxplot_code.R`、`reference/05.可参考出图代码/_meta/R453_compat/L1_boxplot_code.R`、`L1_boxplot_README.md`、`L1_boxplot_verified.png`、`L1_boxplot_verified.pdf`、相关验证报告、`BioanalysDesktop/tests/figure_templates_parity.test.js`。
+- **验证测试名**：箱线图双源 `tip.length = 0` 静态断言；K40 R4.5.3 实跑 exit 0；PNG 魔数、尺寸、非空白像素与 SHA256 校验；注册表 source/preview 双哈希一致性测试。
+
+### D-24 图模板 ready 必须有真实分析产物映射与双轨预览（v3.1 对 aims 名义 D-19 的正式落号）
+
+- **日期**：2026-10-28
+- **问题背景与冲突点**：当前 82 个模板中 `lines`、`produces`、`analysis_output` 字段均为 0，16 个 ready 只有参考示例预览，无法证明其对应真实分析步骤和项目产物。用户要求预览与实际分析出图对应。
+- **备选方案对比**：① 继续只展示 `_verified.png` 示例图；② 直接用历史项目图替换所有预览；③ 建立强映射与双轨预览：Canonical 预览由固定 fixture 在 K40 渲染，`sample_project_output` 指向真实项目产物，无映射模板降级。
+- **最终拍板结论**：采用 ③。ready 模板必须具备非空 `lines`、`analysis_step`、`produces`、`output_glob` 与 `sample_project_output`。Canonical 预览和真实项目示例都必须可机器校验。无真实映射模板不得进入门户默认可用预览，只能保留在候选图库或标为 `pending_mapping`。
+- **受影响条款**：v3.1 D-19 名义裁定、图模板 G1、候选图库与生产模板分离、预览 SHA256 防漂移。
+- **同步修改文件清单**：`ops/build_figure_templates.cjs`、`src/figure_templates.json`、`BioanalysDesktop/server/figure_graph.js`、`portal/serve.mjs`、`portal/index.html`、`BioanalysDesktop/tests/figure_templates_parity.test.js`。
+- **验证测试名**：16 个 ready 模板强映射非空率 100%；目标产物路径存在；Canonical 与 sample output 哈希一致；无映射模板不得 ready；跨线映射拒绝；门户可用预览过滤测试。
+
+### D-25 选中模板必须在标准分析步骤之后真实执行（v3.1 对 aims 名义 D-20 的正式落号）
+
+- **日期**：2026-10-28
+- **问题背景与冲突点**：当前流程只生成并上传 `figures/adapt/` 派生副本，任务仍执行固定 `step`，三线分析脚本不读取模板。用户会看到模板和预览，但实际产出不能保证按模板生成，形成假闭环。
+- **备选方案对比**：① 只允许选择固定步骤已经产出的模板；② 让每个模板成为独立前置步骤；③ 在 `analysis_step` 完成后追加真实派生图任务，执行项目私有适配脚本并读取标准中间表。
+- **最终拍板结论**：采用 ③。`resolvePlan` 必须生成 `depends_on_step = analysis_step` 的派生任务，把 `figures/adapt/<fig_id>.R/.py` 上传并真实执行，输出 `custom_<fig_id>.png` 到项目对应线图件目录。任务未执行、输出缺失或哈希不符时不得标记完成。
+- **受影响条款**：v3.1 D-20 名义裁定、图模板 G2、任务编排、四道闸与交付清单。
+- **同步修改文件清单**：`BioanalysDesktop/server/figure_graph.js`、`BioanalysDesktop/server/task.js`、`BioanalysDesktop/server/run.js`、`ops/run_adapted_figure.sh`、图模板执行测试、Playwright 映射标签测试。
+- **验证测试名**：派生任务依赖顺序测试；跨项目与跨线 adapt_vars 拒绝；K40 实跑自定义箱线图与火山图；`custom_<fig_id>.png` 回搬存在；任务失败时不产生成功台账。
+
+### D-26 v3.1 工作树收口、项目交接、双端运行与 Final Gate 重验（v3.1 对 aims 名义 D-21 的正式落号）
+
+- **日期**：2026-10-28
+- **问题背景与冲突点**：Final Gate 13:31 通过后，工作树已累积 352 个未提交条目，单测增至 949、E2E 增至 15，项目 handoff 仍为空，8787 当前停止。旧 Final Gate 已不能代表当前发布状态。
+- **备选方案对比**：① 直接 `git add .` 单次提交；② 保持未提交状态继续开发；③ 按模块边界分四批原子提交，补齐交接和双端运行，在干净工作树重跑 Final Gate v3.1。
+- **最终拍板结论**：采用 ③。四批提交边界为：图库扩展与 `/figure-catalog`；模板过滤与门户 E2E；G1 至 G6 缺口修补；Final Gate v3.1 证据。提交前必须补齐 `local_projects/PRJ_AIMS_V3_20261027/handoff.md`，启动 8080 与 8787 双端，完成同步、签名、Sync 和 24 条终验。收口后创建 `release/v3.1` 与标签 `v3.1.0-final-gate`。
+- **受影响条款**：v3.1 D-21 名义裁定、G5/G6/G7、发布冻结、双层台账与最终门禁。
+- **同步修改文件清单**：项目 `handoff.md`、`ledger/actions.jsonl`、`con_hf/ledger/*.jsonl`、`ops/serve_guard.ps1`、`con_hf/runs/2026-10-28_final_gate_v31/REPORT.md`、Git 提交与标签。
+- **验证测试名**：`git status --porcelain` 为空；8080/8787 健康；K40 链路 PASS；`npm test`、tsc、build、Playwright 全绿；`sync_and_verify_remote.ps1 -FailOnDrift` 零漂移；交付验签通过；24/24 Final Gate v3.1 判据通过。
+
+### D-27 当前 module manifest 以 workflows.json 为权威载体
+
+- **日期**：2026-10-28
+- **问题背景与冲突点**：aims 00 与 03 用 `src/mods/*/manifest.ts`、`src/core/`、`src/engines/` 描述目标微内核形态，但当前仓库运行时真源是 `src/workflows.json` 加 `server/workflow_graph.js`、`server/figure_graph.js`。仅生成空 `manifest.ts` 让 `tsc` 通过会制造假完成，且与已经通过 K40 和 964 条测试的 JSON 注册表架构重复。
+- **备选方案对比**：① 立即迁移完整 TypeScript 微内核，影响 portal、桌面端、ops 与部署链，风险过高；② 新建空 manifest 包装层，违反如实报告与 seam 纪律；③ 在当前 SSOT 上显式声明 JSON module manifest，并补齐跨注册表一致性校验，保留未来迁移空间。
+- **最终拍板结论**：采用 ③。`src/workflows.json` 顶层增加 `manifest_version=2` 与 `manifest_kind=workspace_module_registry`，`server/workflow_graph.js` 校验这两个字段。当前 module manifest 的 `pipelineSteps` 语义由三线 `series/stages/mods` 承载，标准输出由每个 mod 的非空 `produces` 声明。ready 图模板的 `input_tables` 必须是绑定 `analysis_step` 对应 mod 的 `produces` 子集。
+- **受影响条款**：T-LINES-01 的验收口径、G1 跨注册表一致性、微内核目标形态与当前 JSON 架构的映射说明。
+- **同步修改文件清单**：`src/workflows.json`、`BioanalysDesktop/server/workflow_graph.js`、`BioanalysDesktop/server/figure_graph.js`、`ops/build_figure_templates.cjs`、`src/figure_templates.json`、`.gitignore`、`BioanalysDesktop/tests/workflow_graph.test.js`、`BioanalysDesktop/tests/figure_templates_parity.test.js`。
+- **验证测试名**：JSON manifest 字段校验；三线所有 mod `produces` 非空；ready 模板 `input_tables ⊆ analysis_step.produces`；坏映射反例拒绝；6 个 ready 母版、预览、真实样例与 27 入口源文件 `git check-ignore` 证明可追踪；Node 全量回归由最终门禁刷新。
+- **不能声称完成的部分**：当前不声称 TypeScript 微内核、ModLoader、CapabilityBus、SlotManager 已完成；若未来切换 `manifest.ts`，需要独立 expand-contract 迁移票。
+
+### D-28 工作台编排端口由 8787 迁移至 18787
+
+- **日期**：2026-10-28
+- **问题背景与冲突点**：Clash Verge 的 `verge-mihomo.exe` 持有 `0.0.0.0:8787` 的 Bound 套接字，项目 Node 服务无法绑定。用户明确要求迁移到不冲突端口。
+- **备选方案对比**：① 调整或停止用户代理，影响外部网络；② 保持 8787 并继续阻塞；③ 将工作台默认端口迁移到实测空闲的 `18787`，保持 `127.0.0.1` 仅环回监听。
+- **最终拍板结论**：采用 ③。服务端默认端口、Vite 代理、启动器、守护脚本、Sync 默认地址、部署文档、当前 aims 与测试统一为 `18787`。`8787` 仅保留在历史审计与证据文件中，不再作为运行默认值。
+- **受影响条款**：G7 端口门禁、8080 门户单向 Sync、Final Gate 网络判据、启动与守护入口。
+- **同步修改文件清单**：`BioanalysDesktop/server/index.js`、`BioanalysDesktop/vite.config.js`、`start_workbench.bat`、`start_all.bat`、`ops/serve_guard.ps1`、`ops/sync_daemon.ps1`、`ops/README.md`、`docs/user_portal_deploy.md`、当前 aims 四卷、端口一致性测试。
+- **验证测试名**：工作台端口默认值跨文件一致性；`127.0.0.1:18787` 仅环回监听；`/api/selfcheck` 五维全绿；8080 `/health` 200；端口预检识别 18787 owner 为项目 Node。

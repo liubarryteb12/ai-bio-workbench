@@ -24,6 +24,8 @@
 # 让台账记 failed，不产出看似成功的半成品。
 set -euo pipefail
 
+RSCRIPT_BIN="${BIOANALYS_RSCRIPT:-/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript}"
+
 seed="${BIOANALYS_SEED:-UNSET}"
 if [ "$seed" = "UNSET" ]; then
   echo "BIOANALYS_SEED 未注入（引擎契约：seed 必须注入）" >&2
@@ -109,7 +111,7 @@ echo "input_grouping=${grouping_file:-（未提供，跳过核对）}"
 
 SM_FILE="$sm_file" GPL_FILE="$gpl_file" COUNT_FILE="$counts_file" GROUPING_FILE="$grouping_file" \
 PREP_MODE="$prep_mode" BIOANALYS_SEED="$seed" \
-Rscript --vanilla - <<'RSCRIPT'
+"$RSCRIPT_BIN" --vanilla - <<'RSCRIPT'
 suppressPackageStartupMessages(library(data.table))
 
 sm_file      <- Sys.getenv("SM_FILE")

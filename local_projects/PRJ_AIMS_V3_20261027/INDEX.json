@@ -1,0 +1,1874 @@
+{
+  "artifact_counts": {
+    "data": 195,
+    "debug": 0,
+    "deliverables": 317,
+    "figures": 166
+  },
+  "generated_at": "2026-10-28T02:26:49.954819+00:00",
+  "generated_by": "ops/ledger_indexer.py",
+  "issues": [],
+  "ledger_summary": {
+    "actions": {
+      "aggregated": [
+        {
+          "detail": "创建本地项目标准目录、治理文件与双层五类 JSONL 台账。",
+          "evidence": [
+            "local_projects/PRJ_AIMS_V3_20261027"
+          ],
+          "id": "ACT-20261027-001",
+          "kind": "init",
+          "line": "line1_bulk",
+          "project": "PRJ_AIMS_V3_20261027",
+          "refs": [],
+          "step": null,
+          "title": "初始化项目自包含目录",
+          "ts": "2026-10-27T04:23:40+08:00",
+          "type": "action"
+        },
+        {
+          "detail": "Line 1 16 个脚本与 Line 2 22 个脚本及 line3 17 个脚本均在 K40 实跑完成；按项目聚合的最新台账共 55 项，全部 status=completed、exit_code=0。",
+          "evidence": [
+            "con_hf/runs/2026-10-27_final_gate/k40_55_ledgers.tsv",
+            "cn_debug/2026-10-21_m1_line2_chain.result.md"
+          ],
+          "id": "ACT-FG-20261027-001",
+          "kind": "verify",
+          "line": "all",
+          "project": "PRJ_AIMS_V3_20261027",
+          "refs": [
+            "T-3.1.1",
+            "T-3.1.2",
+            "T-3.1.3",
+            "T-3.1.4"
+          ],
+          "step": "k40_55_steps",
+          "title": "三线 55 步真机闭环",
+          "ts": "2026-10-27T13:30:00+08:00",
+          "type": "action"
+        },
+        {
+          "detail": "项目处理产物、结果表、真实图件与派生模板收口到 local_projects；数据目录 195 个文件、图件目录 153 个文件，回搬脚本按远端列表字节数完成 444 个文件校验。",
+          "evidence": [
+            "local_projects/PRJ_AIMS_V3_20261027/INDEX.json",
+            "con_hf/runs/2026-10-27_final_gate/local_project_inventory.json"
+          ],
+          "id": "ACT-FG-20261027-002",
+          "kind": "migrate",
+          "line": "all",
+          "project": "PRJ_AIMS_V3_20261027",
+          "refs": [
+            "T-3.1.3",
+            "T-3.3.2"
+          ],
+          "step": "local_project_pull",
+          "title": "项目自包含结构落盘",
+          "ts": "2026-10-27T13:30:10+08:00",
+          "type": "action"
+        },
+        {
+          "detail": "交付包含 302 个清单文件、151 张真实图件、154 张结果表、1 个派生模板和单文件 HTML 报告；CHECKSUMS.sig 为 64 字节，客户端公钥验签 VERIFIED 302。",
+          "evidence": [
+            "local_projects/PRJ_AIMS_V3_20261027/deliverables/PRJ_AIMS_V3_20261027_Client_Delivery",
+            "con_hf/runs/2026-10-27_final_gate/delivery_verify.log"
+          ],
+          "id": "ACT-FG-20261027-003",
+          "kind": "deliver",
+          "line": "all",
+          "project": "PRJ_AIMS_V3_20261027",
+          "refs": [
+            "T-3.3.2",
+            "T-3.3.3",
+            "T-3.4.1"
+          ],
+          "step": "signed_delivery_package",
+          "title": "Ed25519 正式交付包",
+          "ts": "2026-10-27T13:30:20+08:00",
+          "type": "action"
+        },
+        {
+          "detail": "8080 门户单据完成 pending→running→done；8787 出站 Sync 完成建项复用、K40 probe_env 派发、产物回搬、报告重建与门户回传，回传 12 张真实 PNG 和 HTML/Markdown 报告。",
+          "evidence": [
+            "con_hf/runs/2026-10-27_final_gate/portal_sync_status.json",
+            "con_hf/runs/2026-10-27_final_gate/portal_image_probe.json",
+            "con_hf/runs/2026-10-27_final_gate/netstat_localhost.json"
+          ],
+          "id": "ACT-FG-20261027-004",
+          "kind": "sync",
+          "line": "line1_bulk",
+          "project": "PRJ_AIMS_V3_20261027",
+          "refs": [
+            "T-2.4.1",
+            "T-2.4.2",
+            "T-3.3.4",
+            "T-3.4.3"
+          ],
+          "step": "portal_real_sync",
+          "title": "门户真实 Sync 全链路",
+          "ts": "2026-10-27T13:30:30+08:00",
+          "type": "action"
+        },
+        {
+          "detail": "最终回归 npm test 946/946、tsc、Vite build、Playwright 12/12、交付自检、Ed25519 验签和 failover 定向测试全部通过；本地与远端 35/35 文件零漂移。",
+          "evidence": [
+            "con_hf/runs/2026-10-27_final_gate/npm_test.log",
+            "con_hf/runs/2026-10-27_final_gate/tsc.log",
+            "con_hf/runs/2026-10-27_final_gate/build.log",
+            "con_hf/runs/2026-10-27_final_gate/playwright.log",
+            "con_hf/runs/2026-10-27_final_gate/sync_verify.log"
+          ],
+          "id": "ACT-FG-20261027-005",
+          "kind": "verify",
+          "line": "all",
+          "project": "PRJ_AIMS_V3_20261027",
+          "refs": [
+            "Gate-1",
+            "Gate-2",
+            "Final-Gate"
+          ],
+          "step": "final_gate",
+          "title": "Final Gate 全量门禁",
+          "ts": "2026-10-27T13:30:40+08:00",
+          "type": "action"
+        },
+        {
+          "detail": "补齐项目背景、55 步进度、P-26/P-27/P-29 坑位、交付验签状态与 v3.1 图模板下一步；新增 ledger_indexer --check-handoff 验收入口。",
+          "evidence": [
+            "local_projects/PRJ_AIMS_V3_20261027/handoff.md",
+            "ops/ledger_indexer.py",
+            "ops/tests/test_ledger_index_and_migrate.py"
+          ],
+          "id": "ACT-20261028-001",
+          "kind": "edit",
+          "line": "all",
+          "project": "PRJ_AIMS_V3_20261027",
+          "refs": [
+            "T-CORE-02",
+            "D-26",
+            "P-26",
+            "P-27",
+            "P-29"
+          ],
+          "step": "project_handoff",
+          "title": "补齐项目级交接与 handoff 门禁",
+          "ts": "2026-10-28T00:19:55+08:00",
+          "type": "action"
+        },
+        {
+          "detail": "6 个 ready 模板使用项目真实表或 h5ad 在 K40 出图，全部 completed exit 0，random_seed=20261013；6 张 PNG 回搬并通过 Pillow 与目视检查。",
+          "evidence": [
+            "con_hf/runs/2026-10-28_aims_v31/real_input_adapters/REPORT.md",
+            "con_hf/runs/2026-10-28_aims_v31/real_input_adapters/real_input_results.csv",
+            "con_hf/runs/2026-10-28_aims_v31/real_input_adapters/artifact_validation.tsv"
+          ],
+          "id": "ACT-20261028-002",
+          "kind": "verify",
+          "line": "all",
+          "project": "PRJ_AIMS_V3_20261027",
+          "refs": [
+            "T-FT-05",
+            "G2",
+            "D-25"
+          ],
+          "step": "real_input_adapters",
+          "title": "真实输入图模板闭环",
+          "ts": "2026-10-28T01:50:10+08:00",
+          "type": "action"
+        },
+        {
+          "detail": "D-27 确认 workflows.json 为当前 JSON module manifest；ready 模板输入表必须是绑定步骤产物子集；6 个 ready 资产与 27 入口源码已加入精确 Git 白名单。",
+          "evidence": [
+            "con_hf/SPEC_DECISIONS.md",
+            "con_hf/runs/2026-10-28_aims_v31/architecture_gap_audit.md",
+            "con_hf/runs/2026-10-28_aims_v31/STATUS.md"
+          ],
+          "id": "ACT-20261028-003",
+          "kind": "verify",
+          "line": "all",
+          "project": "PRJ_AIMS_V3_20261027",
+          "refs": [
+            "T-LINES-01",
+            "D-27",
+            "G1"
+          ],
+          "step": "module_manifest_contract",
+          "title": "JSON module manifest 与输入表一致性",
+          "ts": "2026-10-28T02:12:31+08:00",
+          "type": "action"
+        },
+        {
+          "detail": "三线按 seed=20261013 重跑，Line 1 15 步、Line 2 22 步、Line 3 17 步全部完成，加 probe_env 共 55/55 台账通过；远端 101/101 与 bin 55/55 一致。",
+          "evidence": [
+            "con_hf/runs/2026-10-28_aims_v31/pipeline_rerun/SUMMARY.json",
+            "con_hf/runs/2026-10-28_aims_v31/pipeline_rerun/k40_55_ledgers.tsv",
+            "con_hf/runs/2026-10-28_aims_v31/sync_all_remote.log"
+          ],
+          "id": "ACT-20261028-004",
+          "kind": "verify",
+          "line": "all",
+          "project": "PRJ_AIMS_V3_20261027",
+          "refs": [
+            "T-SYNC-01",
+            "T-LINES-01"
+          ],
+          "step": "pipeline_rerun",
+          "title": "K40 55 步固定种子与部署一致性",
+          "ts": "2026-10-28T04:24:26+08:00",
+          "type": "action"
+        },
+        {
+          "detail": "D-28 将工作台迁移到 127.0.0.1:18787，五维自检 all_pass=true，8080 health=200；默认端口在 aims、服务端、Vite、启动器、守护、Sync 和测试中一致。",
+          "evidence": [
+            "con_hf/SPEC_DECISIONS.md",
+            "con_hf/runs/2026-10-28_aims_v31/port18787/LIVE.txt",
+            "con_hf/runs/2026-10-28_aims_v31/port18787/selfcheck.json"
+          ],
+          "id": "ACT-20261028-005",
+          "kind": "verify",
+          "line": "all",
+          "project": "PRJ_AIMS_V3_20261027",
+          "refs": [
+            "D-28",
+            "T-CORE-03",
+            "G7"
+          ],
+          "step": "workbench_port_migration",
+          "title": "工作台 18787 双端验证",
+          "ts": "2026-10-28T09:58:26+08:00",
+          "type": "action"
+        },
+        {
+          "detail": "新门户票据完成 pending→running→done，返回 17 个结果文件；当前交付包重建并通过 Ed25519 VERIFIED 329。",
+          "evidence": [
+            "con_hf/runs/2026-10-28_aims_v31/portal_sync_v31/portal_sync_status.json",
+            "con_hf/runs/2026-10-28_aims_v31/portal_sync_v31/delivery_verify_current.log"
+          ],
+          "id": "ACT-20261028-006",
+          "kind": "verify",
+          "line": "all",
+          "project": "PRJ_AIMS_V3_20261027",
+          "refs": [
+            "T-SYNC-01",
+            "G7"
+          ],
+          "step": "portal_sync_v31",
+          "title": "真实 v3.1 票据与交付签名",
+          "ts": "2026-10-28T10:26:19+08:00",
+          "type": "action"
+        }
+      ],
+      "path": "ledger/actions.jsonl",
+      "records": 12,
+      "status_policy": "none"
+    },
+    "changes": {
+      "aggregated": [],
+      "path": "ledger/changes.jsonl",
+      "records": 0,
+      "status_policy": "none"
+    },
+    "errors": {
+      "aggregated": [],
+      "path": "ledger/errors.jsonl",
+      "records": 0
+    },
+    "fixes": {
+      "aggregated": [],
+      "path": "ledger/fixes.jsonl",
+      "records": 0
+    },
+    "pitfalls": {
+      "aggregated": [],
+      "path": "ledger/pitfalls.jsonl",
+      "records": 0,
+      "status_policy": "none"
+    }
+  },
+  "machine_logs": {
+    "count": 224,
+    "entries": [
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_bulk_figures_13b71f4d.json",
+        "line_id": "line1_bulk",
+        "status": "failed",
+        "step_name": "bulk_figures",
+        "task_id": "13b71f4d-5f5f-4402-a474-ff4ed32e1415"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_bulk_figures_38be3fa4.json",
+        "line_id": "line1_bulk",
+        "status": "failed",
+        "step_name": "bulk_figures",
+        "task_id": "38be3fa4-b79a-4d22-960e-0838e566c1c2"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_bulk_figures_9bd38faf.json",
+        "line_id": "line1_bulk",
+        "status": "failed",
+        "step_name": "bulk_figures",
+        "task_id": "9bd38faf-f6aa-4c9d-94dc-e07daf5217fb"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_bulk_figures_af553935.json",
+        "line_id": "line1_bulk",
+        "status": "failed",
+        "step_name": "bulk_figures",
+        "task_id": "af553935-4038-4bbe-8ac4-83f2c7977ec9"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_bulk_figures_f5ef213a.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "bulk_figures",
+        "task_id": "f5ef213a-6923-4e49-960f-0c4f47c724cd"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_cox_analysis_dee26f2a.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "cox_analysis",
+        "task_id": "dee26f2a-447c-4088-8d0b-735ea291f683"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_deg_limma_6bf95657.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "deg_limma",
+        "task_id": "6bf95657-3c7d-4f76-8157-8085a6a5162b"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_enrichment_bulk_c0162a45.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "enrichment_bulk",
+        "task_id": "c0162a45-a5d6-4513-9281-bb5cddb8dccb"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_enrichment_figures_55708507.json",
+        "line_id": "line1_bulk",
+        "status": "failed",
+        "step_name": "enrichment_figures",
+        "task_id": "55708507-5e66-4d7d-a483-40e38fb28ca9"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_enrichment_figures_7e2c5ced.json",
+        "line_id": "line1_bulk",
+        "status": "failed",
+        "step_name": "enrichment_figures",
+        "task_id": "7e2c5ced-0b0e-4a92-b1fe-6121cfd76284"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_enrichment_figures_c76b4af4.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "enrichment_figures",
+        "task_id": "c76b4af4-0526-49db-b799-117425cef70f"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_enrichment_figures_e24e2316.json",
+        "line_id": "line1_bulk",
+        "status": "failed",
+        "step_name": "enrichment_figures",
+        "task_id": "e24e2316-c54e-4115-a200-34f91a76205b"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_enrichment_figures_f7fde81d.json",
+        "line_id": "line1_bulk",
+        "status": "failed",
+        "step_name": "enrichment_figures",
+        "task_id": "f7fde81d-5159-48a8-a68f-9f1626d010d7"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_external_validation_8d5f3ba5.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "external_validation",
+        "task_id": "8d5f3ba5-d73e-41c7-a019-e8dc019a25a0"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_key_genes_e57d4285.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "key_genes",
+        "task_id": "e57d4285-50dd-4aad-8b82-9ba269632d59"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_ml_diagnostics_413731c8.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "ml_diagnostics",
+        "task_id": "413731c8-5285-403f-baa5-b3b0fa7497a8"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_ml_hub_analysis_35494fd1.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "ml_hub_analysis",
+        "task_id": "35494fd1-a777-494d-b8c7-0490521640ca"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_ml_model_84644fe9.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "ml_model",
+        "task_id": "84644fe9-bec1-44fe-b083-9b8853053a84"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_pca_matrix_84003591.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "pca_matrix",
+        "task_id": "84003591-535f-4c3e-96e3-ff3e1225ddc2"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_ppi_string_f0234c36.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "ppi_string",
+        "task_id": "f0234c36-8595-4637-8f83-e23ea72d23d9"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_prep_matrix_c38169de.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "prep_matrix",
+        "task_id": "c38169de-292e-4792-8aa5-e54f0769aa37"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_prep_matrix_cf740e5f.json",
+        "line_id": "line1_bulk",
+        "status": "failed",
+        "step_name": "prep_matrix",
+        "task_id": "cf740e5f-7d89-47b5-bb11-4bb7ea265eb3"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_prep_matrix_d81e64af.json",
+        "line_id": "line1_bulk",
+        "status": "failed",
+        "step_name": "prep_matrix",
+        "task_id": "d81e64af-1fb0-4905-8c41-d7626b2ac319"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_probe_env_54105eba.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "probe_env",
+        "task_id": "54105eba-f5c2-4945-82fb-00d9e190a34d"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_probe_env_59d973f0.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "probe_env",
+        "task_id": "59d973f0-f968-4445-b188-54774b163454"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_probe_env_c92acfd6.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "probe_env",
+        "task_id": "c92acfd6-7325-4953-b35b-f79c994ee29b"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_probe_env_e0cfc6ef.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "probe_env",
+        "task_id": "e0cfc6ef-0c45-4826-beb7-ded5876f6059"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_qc_matrix_b1ca5db8.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "qc_matrix",
+        "task_id": "b1ca5db8-5dba-49b6-a4d3-57d6b5d4093e"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line1_bulk_wgcna_modules_6a606b7d.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "wgcna_modules",
+        "task_id": "6a606b7d-f0cb-4c01-bfc2-4d7001a643c4"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_annotate_celltypes_57eca57e.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "annotate_celltypes",
+        "task_id": "57eca57e-fda2-46b9-bc6c-f0dd4d6485e6"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_cell_communication_5a0645ee.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "cell_communication",
+        "task_id": "5a0645ee-b25a-4e06-8f75-6e5ba08f94b4"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_cell_communication_689802d2.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "cell_communication",
+        "task_id": "689802d2-cc77-480f-aaab-98d43e6b6393"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_cell_communication_99cbd793.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "cell_communication",
+        "task_id": "99cbd793-add8-47a4-b476-d1e9b6e7a17b"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_cluster_umap_2996e8ab.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "cluster_umap",
+        "task_id": "2996e8ab-8f92-4c6d-957b-e4357a79d975"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_deg_groups_427a7fa7.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "deg_groups",
+        "task_id": "427a7fa7-2cbd-475c-936f-0eb988ba5c70"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_dr_post_analysis_08c56152.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "dr_post_analysis",
+        "task_id": "08c56152-d9f3-4d65-87fb-615f1e156057"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_enrichment_7fa47edf.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "enrichment",
+        "task_id": "7fa47edf-07a4-40e0-a411-e99046545861"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_enrichment_bd9efd94.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "enrichment",
+        "task_id": "bd9efd94-20c5-4a1a-8aa7-eeeaeed5d8d3"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_enrichment_cf3f008c.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "enrichment",
+        "task_id": "cf3f008c-91c2-4f66-8f54-9a3218709261"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_enrichment_figures_d2770df7.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "enrichment_figures",
+        "task_id": "d2770df7-89b3-4867-85cb-9c5d0958653c"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_gsva_pathways_2c099c6f.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "gsva_pathways",
+        "task_id": "2c099c6f-9d23-4fc8-847b-67b743d65285"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_gsva_pathways_7ac307cf.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "gsva_pathways",
+        "task_id": "7ac307cf-050e-4635-b8c6-715876792d3b"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_gsva_pathways_81275cb6.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "gsva_pathways",
+        "task_id": "81275cb6-95b4-45e9-8cdd-3bbf722d057e"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_gsva_pathways_b463ec74.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "gsva_pathways",
+        "task_id": "b463ec74-1d4e-4a57-91fa-e640f89dd7a1"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_gsva_pathways_d6658a21.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "gsva_pathways",
+        "task_id": "d6658a21-dd7a-4f15-b81b-550b569e015d"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_ingest_counts_b5b45119.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "ingest_counts",
+        "task_id": "b5b45119-233a-4895-8fe0-be098f4cb1f8"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_integrate_harmony_b76eff37.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "integrate_harmony",
+        "task_id": "b76eff37-1458-47f6-841c-e79cfedc7d85"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_integrate_harmony_bae9a825.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "integrate_harmony",
+        "task_id": "bae9a825-a3cf-4f34-9e4d-b2945307ced8"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_integrate_harmony_da2c3ffa.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "integrate_harmony",
+        "task_id": "da2c3ffa-d2b4-4d70-80ad-f9779935f652"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_normalize_hvg_e4763cbe.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "normalize_hvg",
+        "task_id": "e4763cbe-3d30-4d59-a2d6-23bc8cc648b0"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_pseudotime_ea350695.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "pseudotime",
+        "task_id": "ea350695-8906-4c70-860e-8cdf25643779"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_qc_cells_9cadf57c.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "qc_cells",
+        "task_id": "9cadf57c-ede4-439e-b286-a2c948eead0b"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_scenic_figures_54c00353.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "scenic_figures",
+        "task_id": "54c00353-63c9-49dd-b4a6-bd653fe70f8b"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_scenic_figures_bc061709.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "scenic_figures",
+        "task_id": "bc061709-1fa4-4cd1-ab31-28e29bf403d9"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_scenic_figures_d2d65ed9.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "scenic_figures",
+        "task_id": "d2d65ed9-8b52-4ef4-b705-7df37123d25a"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_scenic_tf_05bae661.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "scenic_tf",
+        "task_id": "05bae661-1345-4ad8-b530-31d07c955323"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_scenic_tf_1dff15e3.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "scenic_tf",
+        "task_id": "1dff15e3-7bf5-404f-9885-64853dfcdd13"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_scenic_tf_28876e4b.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "scenic_tf",
+        "task_id": "28876e4b-1c1f-43df-9566-80cc599be78c"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_scenic_tf_566de9bf.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "scenic_tf",
+        "task_id": "566de9bf-a123-4c61-85b8-42bb44a6416e"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_scenic_tf_6a2a640c.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "scenic_tf",
+        "task_id": "6a2a640c-8693-43f9-bbf7-bbbf51d3e3a3"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_scenic_tf_858c97bc.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "scenic_tf",
+        "task_id": "858c97bc-5756-4d56-8e29-07e2ad311ca3"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_scenic_tf_8defa71c.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "scenic_tf",
+        "task_id": "8defa71c-2f96-4ca1-b458-7e0abf679a18"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_scenic_tf_9dc5ff4d.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "scenic_tf",
+        "task_id": "9dc5ff4d-7844-41d3-8a1d-5516775b35c6"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_scenic_tf_f4ea85ea.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "scenic_tf",
+        "task_id": "f4ea85ea-b945-4ef7-8d26-31a6f55461b5"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_scenic_tf_fad21a5c.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "scenic_tf",
+        "task_id": "fad21a5c-0173-4b88-8145-d3e943d469e3"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_scrna_composition_550f13d2.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "scrna_composition",
+        "task_id": "550f13d2-a1ef-4448-ae46-dc6bf9f18ba2"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_scrna_figures_3222269e.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "scrna_figures",
+        "task_id": "3222269e-24c3-4707-8058-0fe0ba0db319"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_subcluster_db71fe3f.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "subcluster",
+        "task_id": "db71fe3f-2ef0-4398-9eef-a3316047dffd"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_summarize_dr_1663ab49.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "summarize_dr",
+        "task_id": "1663ab49-123a-4415-8fa4-911d9a04dc3a"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_summarize_dr_65d28567.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "summarize_dr",
+        "task_id": "65d28567-2470-499b-ac1f-76c06c7a353e"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_summarize_dr_d6a1e568.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "summarize_dr",
+        "task_id": "d6a1e568-39ab-40df-92fc-711ae599b5ac"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_target_gene_localization_21f6eff3.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "target_gene_localization",
+        "task_id": "21f6eff3-c39d-4de4-aa9d-aa2d71395af7"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_tf_activity_91ee758f.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "tf_activity",
+        "task_id": "91ee758f-bc3c-46a7-9103-6a6eaadec2fe"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_virtual_knockout_5bcddee3.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "virtual_knockout",
+        "task_id": "5bcddee3-f4bc-4464-aaaa-8e8e81fe5166"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_virtual_knockout_5cb89493.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "virtual_knockout",
+        "task_id": "5cb89493-dea0-4e64-ade1-82af1ed86819"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_virtual_knockout_9c63e693.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "virtual_knockout",
+        "task_id": "9c63e693-54c3-4b7f-b0e7-20d9c4e74b70"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_virtual_knockout_adce985c.json",
+        "line_id": "line2_scrna",
+        "status": "failed",
+        "step_name": "virtual_knockout",
+        "task_id": "adce985c-67bc-4824-8343-6eb2d425355e"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line2_scrna_virtual_knockout_cac630b6.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "virtual_knockout",
+        "task_id": "cac630b6-2146-4d47-8361-f3a86a3c6cb2"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line3_spatial_celltype_annotation_d591a9fb.json",
+        "line_id": "line3_spatial",
+        "status": "failed",
+        "step_name": "celltype_annotation",
+        "task_id": "d591a9fb-7e30-40ac-a361-01c95a558138"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line3_spatial_celltype_annotation_dbaad966.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "celltype_annotation",
+        "task_id": "dbaad966-2d35-4fd8-acdb-188135db67c3"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line3_spatial_celltype_annotation_e3845c64.json",
+        "line_id": "line3_spatial",
+        "status": "failed",
+        "step_name": "celltype_annotation",
+        "task_id": "e3845c64-1bd7-40bf-8bf5-4ce3b711b69b"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line3_spatial_dim_reduce_7d04a676.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "dim_reduce",
+        "task_id": "7d04a676-3e30-4c16-a9ab-ac5107e9a71a"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line3_spatial_dr_post_analysis_52c1c8dc.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "dr_post_analysis",
+        "task_id": "52c1c8dc-698a-4deb-aaf5-088029aad511"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line3_spatial_enrichment_511f4886.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "enrichment",
+        "task_id": "511f4886-31db-4961-9053-67b2b5d0caa6"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line3_spatial_enrichment_figures_4a9d0d1d.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "enrichment_figures",
+        "task_id": "4a9d0d1d-604b-442f-9ffe-258dd73434ad"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line3_spatial_ingest_spatial_34381a7e.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "ingest_spatial",
+        "task_id": "34381a7e-5026-43ad-88e0-063c270d9293"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line3_spatial_normalize_hvg_2eab9ee5.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "normalize_hvg",
+        "task_id": "2eab9ee5-0c19-4ace-8b8d-b3b03fe1c94c"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line3_spatial_qc_spots_8a9e3c10.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "qc_spots",
+        "task_id": "8a9e3c10-f640-49e3-a0dd-bcf827a5d71e"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line3_spatial_spatial_autocorr_0541a6e6.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_autocorr",
+        "task_id": "0541a6e6-afeb-4a5b-8cc2-162363132620"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line3_spatial_spatial_communication_1782ad13.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_communication",
+        "task_id": "1782ad13-8267-469c-a604-adb600e80ce7"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line3_spatial_spatial_communication_90b6f704.json",
+        "line_id": "line3_spatial",
+        "status": "failed",
+        "step_name": "spatial_communication",
+        "task_id": "90b6f704-a8f2-446c-8024-24bc97e8ac02"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line3_spatial_spatial_communication_9d1e47b4.json",
+        "line_id": "line3_spatial",
+        "status": "failed",
+        "step_name": "spatial_communication",
+        "task_id": "9d1e47b4-c2a2-41f8-955c-53838a6ccef4"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line3_spatial_spatial_composition_83f53fba.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_composition",
+        "task_id": "83f53fba-ed5f-4d38-bb5f-c120562f2a1c"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line3_spatial_spatial_cooccurrence_43530bb9.json",
+        "line_id": "line3_spatial",
+        "status": "failed",
+        "step_name": "spatial_cooccurrence",
+        "task_id": "43530bb9-59d9-4edc-8871-3062173ac04c"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line3_spatial_spatial_cooccurrence_8f9f0ac6.json",
+        "line_id": "line3_spatial",
+        "status": "failed",
+        "step_name": "spatial_cooccurrence",
+        "task_id": "8f9f0ac6-8ea1-4f5f-8071-913f9dee6bb4"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line3_spatial_spatial_cooccurrence_f8850e14.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_cooccurrence",
+        "task_id": "f8850e14-e744-42c8-8cf5-839f27e19206"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line3_spatial_spatial_domains_9abae5fb.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_domains",
+        "task_id": "9abae5fb-3975-46ea-bf0b-de32b275608c"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line3_spatial_spatial_figures_194022c6.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_figures",
+        "task_id": "194022c6-4351-49aa-96b4-7d1468b0e4de"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line3_spatial_spatial_knockout_a723a54c.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_knockout",
+        "task_id": "a723a54c-6045-4dd9-a533-800c4738efb1"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line3_spatial_spatial_localization_68325b5f.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_localization",
+        "task_id": "68325b5f-be89-493d-b9e9-31a8fdae0921"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-27_PRJ_AIMS_V3_20261027_line3_spatial_spatial_markers_59672863.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_markers",
+        "task_id": "59672863-7d3d-4e05-bc08-882a1c81f433"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_adapt_fig_l2_heatmap_05f705f5.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "adapt_fig_l2_heatmap",
+        "task_id": "05f705f5-b867-4371-a95a-c6d8a7df9460"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_adapt_fig_l2_heatmap_c4794397.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "adapt_fig_l2_heatmap",
+        "task_id": "c4794397-0f01-4582-a8c6-464fbf10c3f9"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_adapt_fig_l2_pca_1d610790.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "adapt_fig_l2_pca",
+        "task_id": "1d610790-9f4d-49ae-b042-8c80f63e8f9c"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_adapt_fig_l2_pca_36397b6e.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "adapt_fig_l2_pca",
+        "task_id": "36397b6e-6547-4e2c-b5ee-6976529f4478"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_adapt_fig_l2_pca_7ca6b1b4.json",
+        "line_id": "line1_bulk",
+        "status": "failed",
+        "step_name": "adapt_fig_l2_pca",
+        "task_id": "7ca6b1b4-6676-4220-a3c9-33fceaf197ce"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_adapt_fig_l2_pca_e50cd8dd.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "adapt_fig_l2_pca",
+        "task_id": "e50cd8dd-9cf0-46ed-8816-a1f521c91a7f"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_adapt_fig_l2_volcano_97558737.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "adapt_fig_l2_volcano",
+        "task_id": "97558737-f8b0-4f48-9e7c-47a1802f4dc8"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_adapt_fig_l2_volcano_e168e803.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "adapt_fig_l2_volcano",
+        "task_id": "e168e803-e152-4d9a-b8eb-c2ccf9dbe0c5"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_bulk_figures_74e9a870.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "bulk_figures",
+        "task_id": "74e9a870-18a2-4f77-9a57-8e969ee8615e"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_bulk_figures_7925d154.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "bulk_figures",
+        "task_id": "7925d154-f85c-403f-a0c4-1c0d7ce61e0f"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_cox_analysis_3ef3a56a.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "cox_analysis",
+        "task_id": "3ef3a56a-e99c-42ff-adc9-7c16ad8f6311"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_cox_analysis_e5aaba81.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "cox_analysis",
+        "task_id": "e5aaba81-8179-40b6-bcae-89c55fd961e4"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_deg_limma_264c620e.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "deg_limma",
+        "task_id": "264c620e-9b05-442c-9558-2fe2e13ec720"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_deg_limma_d5fc92b1.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "deg_limma",
+        "task_id": "d5fc92b1-2cf0-42df-a04b-e149a4d9dcc9"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_enrichment_bulk_390b5e55.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "enrichment_bulk",
+        "task_id": "390b5e55-d9e4-4434-963d-3ed89bc45052"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_enrichment_bulk_e2eeeb0d.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "enrichment_bulk",
+        "task_id": "e2eeeb0d-f53a-4a4b-af78-5e72a80ad5b9"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_enrichment_figures_96342185.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "enrichment_figures",
+        "task_id": "96342185-f55a-4fb1-9532-c78eed884d3d"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_enrichment_figures_d899cb53.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "enrichment_figures",
+        "task_id": "d899cb53-8543-4ce0-84c7-335962eecb22"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_external_validation_8c1ccc5c.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "external_validation",
+        "task_id": "8c1ccc5c-f4ff-42dd-a0cb-793d64014211"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_external_validation_991eebbe.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "external_validation",
+        "task_id": "991eebbe-8297-4583-9a95-194ea385b869"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_key_genes_cd5c8df8.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "key_genes",
+        "task_id": "cd5c8df8-fda2-4b2f-8537-43332093de84"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_key_genes_d06699d2.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "key_genes",
+        "task_id": "d06699d2-b1a3-4380-ae48-4a5dd53003e5"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_ml_diagnostics_844f101e.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "ml_diagnostics",
+        "task_id": "844f101e-b882-4717-8866-c38e355f887c"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_ml_diagnostics_fbe4dfaf.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "ml_diagnostics",
+        "task_id": "fbe4dfaf-dc0a-479c-b9b7-c239f95064ca"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_ml_hub_analysis_94311d36.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "ml_hub_analysis",
+        "task_id": "94311d36-da26-44d2-9c26-c713f8fc785b"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_ml_hub_analysis_e1d2f123.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "ml_hub_analysis",
+        "task_id": "e1d2f123-2950-4752-be7c-d6de50c27d35"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_ml_model_1b387c97.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "ml_model",
+        "task_id": "1b387c97-51d7-4a1c-9a4e-82121b3055bd"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_ml_model_e8816d60.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "ml_model",
+        "task_id": "e8816d60-6e70-4bbe-ba9d-0e5e4f5c0272"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_pca_matrix_54c57064.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "pca_matrix",
+        "task_id": "54c57064-1e39-498b-b16e-2ad648a5a7ab"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_pca_matrix_b33e6d2c.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "pca_matrix",
+        "task_id": "b33e6d2c-199a-4c02-b457-f1857666b479"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_ppi_string_06933e71.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "ppi_string",
+        "task_id": "06933e71-595a-4ba1-85ec-b4a9dc033382"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_ppi_string_55a36b76.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "ppi_string",
+        "task_id": "55a36b76-48bf-4fde-8caa-37115982e4a5"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_prep_matrix_a1b61633.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "prep_matrix",
+        "task_id": "a1b61633-bb8d-4c5d-9564-cd49db172a32"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_prep_matrix_b9390b66.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "prep_matrix",
+        "task_id": "b9390b66-cec9-4f62-a800-e4bede4aeea2"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_probe_env_3449980a.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "probe_env",
+        "task_id": "3449980a-a7ef-4ed1-919e-a78c5cb6d961"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_qc_matrix_64b5620d.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "qc_matrix",
+        "task_id": "64b5620d-6caa-4073-8dba-592b131ab5ec"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_qc_matrix_85c260ca.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "qc_matrix",
+        "task_id": "85c260ca-4bb9-420d-865f-25aa32723ef8"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_wgcna_modules_55fe1b94.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "wgcna_modules",
+        "task_id": "55fe1b94-d996-41dc-8109-11f78767c922"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line1_bulk_wgcna_modules_7aceef01.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "wgcna_modules",
+        "task_id": "7aceef01-7b72-43ca-8657-ec53e715665d"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_adapt_fig_l2p_dotplot_6cbecc52.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "adapt_fig_l2p_dotplot",
+        "task_id": "6cbecc52-0441-4b3b-8186-ab08506d6fc8"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_adapt_fig_l2p_dotplot_73d813e9.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "adapt_fig_l2p_dotplot",
+        "task_id": "73d813e9-c575-4682-bf95-19be0c3b9a8a"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_adapt_fig_l2p_volcano_31590942.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "adapt_fig_l2p_volcano",
+        "task_id": "31590942-04f7-425d-84af-918c400395de"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_adapt_fig_l2p_volcano_beb26079.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "adapt_fig_l2p_volcano",
+        "task_id": "beb26079-a95d-4370-9e12-d0be803bb1df"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_annotate_celltypes_b6d97ac9.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "annotate_celltypes",
+        "task_id": "b6d97ac9-86f6-41fa-9530-493b1e5ef5c7"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_annotate_celltypes_b7af0044.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "annotate_celltypes",
+        "task_id": "b7af0044-d335-4191-8e18-c3cd3a59b2f0"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_cell_communication_03b6e30b.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "cell_communication",
+        "task_id": "03b6e30b-7909-4127-ae6b-f6b6f403b39d"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_cell_communication_d382baa5.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "cell_communication",
+        "task_id": "d382baa5-5589-458f-a74c-66d17cb62de5"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_cluster_umap_43674354.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "cluster_umap",
+        "task_id": "43674354-5c2b-4219-895e-43530807c79d"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_cluster_umap_d0a44b34.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "cluster_umap",
+        "task_id": "d0a44b34-cc2b-405e-a810-6a40f6190c30"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_deg_groups_175bb333.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "deg_groups",
+        "task_id": "175bb333-c871-47c0-bba6-c37571faf2bf"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_deg_groups_897d5f35.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "deg_groups",
+        "task_id": "897d5f35-7209-4b5f-bdec-c830c92f250a"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_dr_post_analysis_420f6173.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "dr_post_analysis",
+        "task_id": "420f6173-4ff9-4e10-94ef-330a7ca57bd7"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_dr_post_analysis_929b37ea.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "dr_post_analysis",
+        "task_id": "929b37ea-7095-43f7-b8de-0bcd44dce9b1"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_enrichment_37603e9c.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "enrichment",
+        "task_id": "37603e9c-2289-49ed-b6f1-74cd0b978395"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_enrichment_c80686ad.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "enrichment",
+        "task_id": "c80686ad-5300-4379-9796-1f66443638e9"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_enrichment_figures_64a96b34.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "enrichment_figures",
+        "task_id": "64a96b34-2785-431a-96d2-70e3b00e7210"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_enrichment_figures_b34af99c.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "enrichment_figures",
+        "task_id": "b34af99c-580c-408f-9429-f54d3c207495"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_gsva_pathways_4849bfc6.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "gsva_pathways",
+        "task_id": "4849bfc6-e8b1-499e-971d-2099876d3b4c"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_gsva_pathways_9539e468.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "gsva_pathways",
+        "task_id": "9539e468-95d8-4c66-871c-8dcaf2849cd8"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_ingest_counts_157f7f5d.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "ingest_counts",
+        "task_id": "157f7f5d-02ac-44df-8fdf-a5fbba485ceb"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_ingest_counts_53dc3df7.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "ingest_counts",
+        "task_id": "53dc3df7-260e-4e86-9c30-7642ac8aec84"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_integrate_harmony_580927b6.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "integrate_harmony",
+        "task_id": "580927b6-335b-4706-b618-5802c04d6f67"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_integrate_harmony_d1503172.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "integrate_harmony",
+        "task_id": "d1503172-a664-420e-9b10-08993291c8c3"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_normalize_hvg_3da3a0f9.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "normalize_hvg",
+        "task_id": "3da3a0f9-ecfe-4277-90cf-2b3311828f44"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_normalize_hvg_6bc486b8.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "normalize_hvg",
+        "task_id": "6bc486b8-7c54-4cb7-9e6b-b57175b16156"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_pseudotime_2651b009.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "pseudotime",
+        "task_id": "2651b009-6f63-41cd-a092-b87052d163f4"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_pseudotime_a82d88d8.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "pseudotime",
+        "task_id": "a82d88d8-3c35-4b0b-a092-91ac34cc6eac"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_qc_cells_6233b6ea.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "qc_cells",
+        "task_id": "6233b6ea-1977-45ca-95c1-615c6a0c8fa4"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_qc_cells_aa9d34ae.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "qc_cells",
+        "task_id": "aa9d34ae-35f4-488d-8d8a-0cd2dfc1d142"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_scenic_figures_be68f6ad.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "scenic_figures",
+        "task_id": "be68f6ad-bc8d-4e22-9283-26357585811d"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_scenic_figures_c184824b.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "scenic_figures",
+        "task_id": "c184824b-f1b3-4bcf-804d-8adc40a2ff4b"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_scenic_tf_669cd1f4.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "scenic_tf",
+        "task_id": "669cd1f4-d94a-4888-8279-dd7d9e46e18b"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_scenic_tf_dea2af50.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "scenic_tf",
+        "task_id": "dea2af50-5c8b-48a5-bd76-d348b575dfb8"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_scrna_composition_c83174b5.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "scrna_composition",
+        "task_id": "c83174b5-cf89-4871-be4d-12436f593d2c"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_scrna_composition_fa6a6404.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "scrna_composition",
+        "task_id": "fa6a6404-15e4-43e8-9824-4e9b51bf83cf"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_scrna_figures_e1f13629.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "scrna_figures",
+        "task_id": "e1f13629-12b7-4778-a704-2d83074dc1b2"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_scrna_figures_fc5a3540.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "scrna_figures",
+        "task_id": "fc5a3540-b82a-4ae5-8ed5-e692c9938f63"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_subcluster_3d2247f7.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "subcluster",
+        "task_id": "3d2247f7-f80d-4653-b829-6801c0cb608b"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_subcluster_a5fe8fcf.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "subcluster",
+        "task_id": "a5fe8fcf-ccca-4a31-b6db-a1f2b7ddc3cb"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_summarize_dr_5bb6b773.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "summarize_dr",
+        "task_id": "5bb6b773-856c-4224-99ab-01b59670f724"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_summarize_dr_8a22ff7f.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "summarize_dr",
+        "task_id": "8a22ff7f-0593-41b0-9e6b-2c1165279729"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_target_gene_localization_77a9ec4e.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "target_gene_localization",
+        "task_id": "77a9ec4e-147c-42b7-86c2-b0271027fabc"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_target_gene_localization_9f364ef3.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "target_gene_localization",
+        "task_id": "9f364ef3-cc71-45af-baaa-ffbaab5efcdd"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_tf_activity_28d5d13f.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "tf_activity",
+        "task_id": "28d5d13f-68cf-4385-a429-965574115bda"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_tf_activity_bb5d59c2.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "tf_activity",
+        "task_id": "bb5d59c2-7548-49f6-8a6e-46129677b637"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_virtual_knockout_846ec38e.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "virtual_knockout",
+        "task_id": "846ec38e-6492-43dd-82a7-d869fd0a688d"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line2_scrna_virtual_knockout_a1972192.json",
+        "line_id": "line2_scrna",
+        "status": "completed",
+        "step_name": "virtual_knockout",
+        "task_id": "a1972192-3692-44ec-9eb8-c6ec696c7d48"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_adapt_fig_l2p_umap_21628f40.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "adapt_fig_l2p_umap",
+        "task_id": "21628f40-e5ed-4fad-b0c3-84e81a7e766a"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_adapt_fig_l2p_umap_ab72ceea.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "adapt_fig_l2p_umap",
+        "task_id": "ab72ceea-2502-4ecb-8e57-36766b240ed1"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_celltype_annotation_dab6e578.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "celltype_annotation",
+        "task_id": "dab6e578-a28a-49a6-9780-0dc17754db7b"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_celltype_annotation_ea8591ae.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "celltype_annotation",
+        "task_id": "ea8591ae-b88b-4893-9c5a-fc35bc16493c"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_dim_reduce_84dbc892.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "dim_reduce",
+        "task_id": "84dbc892-7135-4fb4-ae27-015a9a1d7ec0"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_dim_reduce_c53d4713.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "dim_reduce",
+        "task_id": "c53d4713-3e4e-478c-a805-a73b777331e3"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_dr_post_analysis_4905aac0.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "dr_post_analysis",
+        "task_id": "4905aac0-cc30-4f78-993a-334349bef934"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_dr_post_analysis_e3290883.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "dr_post_analysis",
+        "task_id": "e3290883-966e-49ef-b85b-6c53d02ab706"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_enrichment_7a2779ee.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "enrichment",
+        "task_id": "7a2779ee-0cd4-47aa-ac55-1e35646ac1a1"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_enrichment_8660ccf9.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "enrichment",
+        "task_id": "8660ccf9-5ec6-4036-9079-3794de7ce05f"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_enrichment_figures_6d53bafe.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "enrichment_figures",
+        "task_id": "6d53bafe-9ff6-4721-9f15-63c96a45be4a"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_enrichment_figures_c0ef9c3b.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "enrichment_figures",
+        "task_id": "c0ef9c3b-fe57-47a7-b1fa-4d5193a70062"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_ingest_spatial_365e4db4.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "ingest_spatial",
+        "task_id": "365e4db4-10ab-41d7-9df3-a46212f5431b"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_ingest_spatial_fd5e20af.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "ingest_spatial",
+        "task_id": "fd5e20af-dad4-4b3d-b009-b12bd0255c7a"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_normalize_hvg_05834cd4.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "normalize_hvg",
+        "task_id": "05834cd4-6be3-47ba-95db-7b6790c443e5"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_normalize_hvg_dd9f1d4e.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "normalize_hvg",
+        "task_id": "dd9f1d4e-d9da-4fc6-857e-a5629655d58a"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_qc_spots_4a19b1f2.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "qc_spots",
+        "task_id": "4a19b1f2-433d-442b-b886-6635a5ab6dfd"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_qc_spots_af3e4ab5.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "qc_spots",
+        "task_id": "af3e4ab5-52b7-4175-8417-1930d414b8c7"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_spatial_autocorr_0006cc5f.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_autocorr",
+        "task_id": "0006cc5f-09bf-4dac-8282-77850ff929f9"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_spatial_autocorr_4e4088f5.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_autocorr",
+        "task_id": "4e4088f5-49d8-4d22-b07d-da8fb9d80499"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_spatial_communication_278f9328.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_communication",
+        "task_id": "278f9328-3ba8-4458-a2b6-ee846ce7ab1a"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_spatial_communication_c30a8ae1.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_communication",
+        "task_id": "c30a8ae1-97eb-4052-aef5-9f042eb1b1f1"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_spatial_composition_2fcae374.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_composition",
+        "task_id": "2fcae374-3119-4360-aba4-e252f2eaece9"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_spatial_composition_73fc4bc5.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_composition",
+        "task_id": "73fc4bc5-65d1-43cd-90c5-b7f0ea119877"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_spatial_cooccurrence_444711dc.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_cooccurrence",
+        "task_id": "444711dc-4e3d-4686-846e-45586e7b999c"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_spatial_cooccurrence_57b0e058.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_cooccurrence",
+        "task_id": "57b0e058-ba03-45c0-94b5-476f785cd1fb"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_spatial_domains_4a18465c.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_domains",
+        "task_id": "4a18465c-64ed-4e99-a9f6-98beac36f749"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_spatial_domains_d52598c3.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_domains",
+        "task_id": "d52598c3-0b65-43f2-867c-1d427949d6f2"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_spatial_figures_42a244ed.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_figures",
+        "task_id": "42a244ed-4d23-4894-a15e-ee77c2aa6238"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_spatial_figures_8775bc7a.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_figures",
+        "task_id": "8775bc7a-2620-43c5-94a5-0f0fded2c757"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_spatial_knockout_4be8ffa1.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_knockout",
+        "task_id": "4be8ffa1-4168-4873-a71c-2cec91594f40"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_spatial_knockout_b7dae18d.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_knockout",
+        "task_id": "b7dae18d-9c09-4d82-a9ec-4cf092dadfa3"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_spatial_localization_313c1cba.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_localization",
+        "task_id": "313c1cba-a7fb-467e-85bc-e8643434752f"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_spatial_localization_45d162a0.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_localization",
+        "task_id": "45d162a0-3d61-47df-ba0e-eab4de0fc0ec"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_spatial_markers_a4ec29ed.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_markers",
+        "task_id": "a4ec29ed-fc0c-4a1f-a1c9-7a92f6a311fc"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_AIMS_V3_20261027_line3_spatial_spatial_markers_e94cbd35.json",
+        "line_id": "line3_spatial",
+        "status": "completed",
+        "step_name": "spatial_markers",
+        "task_id": "e94cbd35-3238-400d-97a7-b63ddbc65c5c"
+      }
+    ],
+    "path": "outputs/system_logs"
+  },
+  "path_map": {
+    "data": "data",
+    "debug": "debug",
+    "deliverables": "deliverables",
+    "figures": "figures",
+    "index": "INDEX.json",
+    "ledger": "ledger",
+    "project": "local_projects/PRJ_AIMS_V3_20261027",
+    "project_json": "project.json",
+    "readme": "README.md"
+  },
+  "project_id": "PRJ_AIMS_V3_20261027",
+  "schema_version": 1
+}

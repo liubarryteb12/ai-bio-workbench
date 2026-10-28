@@ -19,7 +19,7 @@
 #   3c. 本机模式（MODE=local）下引擎非 0 退出即 [BRIDGE FAIL] 并透传退出码：
 #      本机引擎是否存在已在解析阶段确认过，非 0 只可能是输入不可读或引擎自身
 #      结论为失败。真机实测（2026-10-21，/tmp/bad.h5ad 损坏文件）早期版本把这
-#      种情况归到"不可达"而 exit 0，等于把坏输入静默放行——比不校验更危险；
+#      种情况归到"不可达"而 exit 0，等于把坏输入静默放行：比不校验更危险；
 #   3b. 引擎解析顺序是「本机优先，ssh 兜底」：母版通常就跑在计算节点上（任务引擎
 #      ssh 进 k40-ubuntu 再执行 step），此时从容器里再 ssh 到 k40-ubuntu 是反模式
 #      （容器内不解析该主机名，2026-10-21 真机实测：exit 255 + "Could not resolve
@@ -28,7 +28,8 @@
 #      [BRIDGE FAIL] 并以引擎退出码退出（断言不过，母版随之中止）；
 #   5. --stage 透传给引擎（aims v2.5 §一.2 阶段感知）：默认 post-dimred（第 4 项
 #      降维断言为硬断言）；pre-dimred 仅用于"降维尚未发生"的早期矩阵，由调用方
-#      显式声明，守卫不替调用方猜测、也不静默降级；
+#      显式声明，守卫不替调用方猜测、也不静默降级；未知 --stage 在参数校验
+#      阶段即 exit 2，与引擎对非法 --stage 的退出码保持同一契约；
 #   6. 不读 BIOANALYS_SEED、不写任何业务文件，可重复调用（幂等）。
 set -euo pipefail
 
@@ -62,7 +63,7 @@ WHERE="${SCRIPT_NAME:-$GUARD_NAME}"
 
 case "$STAGE" in
   post-dimred|pre-dimred) ;;
-  *) echo "[BRIDGE SKIP] $WHERE 未知 --stage: $STAGE（仅 post-dimred / pre-dimred）" >&2; exit 0 ;;
+  *) echo "[BRIDGE FAIL] $WHERE 未知 --stage: $STAGE（仅 post-dimred / pre-dimred）" >&2; exit 2 ;;
 esac
 
 # 契约 2：交给守卫的输入必须自己就是可校验对象

@@ -1,0 +1,10 @@
+#!/data/data/com.termux/files/usr/bin/sh
+
+export PREFIX=/data/data/com.termux/files/usr
+export HOME=/data/data/com.termux/files/home
+export PATH="$PREFIX/bin:$PREFIX/bin/applets"
+export TMPDIR="$PREFIX/tmp"
+
+exec "$PREFIX/bin/proot-distro" login ubuntu -- \
+  /mnt/ssd/bio_data/bin/dropbear-static-20261027 \
+  -F -E -p 10022 -r /etc/dropbear/dropbear_ed25519_host_key -s 2>&1

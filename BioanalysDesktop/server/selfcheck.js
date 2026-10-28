@@ -1,5 +1,5 @@
 /**
- * selfcheck.js — 五维环境自检的服务端实现（aims/aims.txt §3「五维环境自检界面」）
+ * selfcheck.js: 五维环境自检的服务端实现（aims/20261026_0749_aims_v3_0_spec.md §3「五维环境自检界面」）
  *
  * 为什么单独成模块：
  *   自检的判据（阈值、单位换算、输出协议解析）全是纯逻辑，混在 index.js 的
@@ -428,12 +428,34 @@ export function mergeIsolationChecks(isolation, sha, overrides = {}) {
   const parts = [];
   if (isolation?.status && isolation.status !== 'pass' && isolation.detail) parts.push(isolation.detail);
   if (sha?.status && sha.status !== 'pass' && sha.detail) parts.push(sha.detail);
+  // 结构化子灯（P17）：前端可逐盏渲染「坏在隔离还是版本漂移」，不再靠字符串拆 value。
+  // value 仍是 ' | ' 拼接的字符串，保持旧前端与既有断言兼容。
+  const subChecks = [];
+  if (isolation && typeof isolation === 'object') {
+    subChecks.push({
+      id: 'isolation',
+      label: '跨线隔离门禁',
+      status: isolation.status ?? 'unknown',
+      value: isolation.value ?? '',
+      detail: isolation.detail ?? '',
+    });
+  }
+  if (sha && typeof sha === 'object') {
+    subChecks.push({
+      id: 'sha256',
+      label: '远端版本一致性',
+      status: sha.status ?? 'unknown',
+      value: sha.value ?? '',
+      detail: sha.detail ?? '',
+    });
+  }
   return {
     id: overrides.id ?? 'isolation',
     label: overrides.label ?? '跨线隔离/桥接/版本',
     status,
     value,
     detail: parts.length > 0 ? parts.join('；') : '三线隔离门禁、桥接引擎与版本一致性均通过',
+    subChecks,
   };
 }
 

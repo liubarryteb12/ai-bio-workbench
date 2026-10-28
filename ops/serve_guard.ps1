@@ -1,11 +1,11 @@
 <#
-常驻守护：保持 工作台(8787) / 用户端(8080) / frpc 三个进程在跑。
+常驻守护：保持 工作台(18787) / 用户端(8080) / frpc 三个进程在跑。
 
 设计口径：
   - 只做运行时守护，不注册开机自启、不写启动项、不建计划任务。需要时手动启动本脚本。
   - 每轮按端口/进程探测：HTTP 探活失败才重启，活着的一律不碰（不打断在跑的分析任务）。
   - 工作台默认**不启用**口令（只在本机用，浏览器不该每次弹登录框）。
-    仅当用 -RequireAuth 启动、或 frpc 里把 8787 映射到公网时，才带口令运行；
+    仅当用 -RequireAuth 启动、或 frpc 里把 18787 映射到公网时，才带口令运行；
     口令来自用户主目录的 workbench_auth.json，脚本首次需要时自动生成，
     不进源码、不进仓库、不写日志。
   - 日志追加到 cn_debug/serve_guard.log。
@@ -19,6 +19,7 @@
 param(
   [switch]$Once,
   [switch]$RequireAuth,
+  [switch]$DryRun,
   [int]$IntervalSec = 30
 )
 
@@ -60,6 +61,7 @@ $workbenchDir = Join-Path $root 'BioanalysDesktop'
 $frpcDir = 'C:\Users\18765\Desktop\旅游攻略\frp_0.69.1_windows_amd64\frp_0.69.1_windows_amd64'
 $frpcExe = Join-Path $frpcDir 'frpc.exe'
 $authFile = Join-Path $env:USERPROFILE '.bioanalys\workbench_auth.json'
+$syncDaemon = Join-Path $root 'ops\sync_daemon.ps1'
 
 function Get-WorkbenchAuth {
   if (Test-Path $authFile) {
@@ -90,36 +92,74 @@ function Test-HttpOk([string]$Url) {
 # 用来识别「被人手动/别的脚本免密拉起」的工作台实例，这种实例不能留在公网端口上。
 function Test-AuthEnforced {
   try {
-    $response = Invoke-WebRequest -Uri 'http://127.0.0.1:8787/api/projects/list' -UseBasicParsing -TimeoutSec 5
+    $response = Invoke-WebRequest -Uri 'http://127.0.0.1:18787/api/projects/list' -UseBasicParsing -TimeoutSec 5
     return $response.StatusCode -eq 401
   } catch {
     return $_.Exception.Response.StatusCode.value__ -eq 401
   }
 }
 
-# 按端口占用者杀进程，比按命令行匹配可靠（命令行里正反斜杠、参数写法都可能不同）
-function Stop-PortOwner([int]$Port) {
-  $owners = Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue |
-    Select-Object -ExpandProperty OwningProcess -Unique
-  foreach ($ownerPid in $owners) {
-    if (-not $ownerPid) { continue }
-    try {
-      Stop-Process -Id $ownerPid -Force -ErrorAction Stop
-      Write-Log "清理占用端口 $Port 的进程 pid=$ownerPid"
-    } catch {
-      Write-Log "清理端口 $Port 占用进程失败 pid=$ownerPid：$($_.Exception.Message)"
+# 端口预检返回 JSON 与专用退出码。只有命令行匹配本项目 Node 服务时才允许停止占用者。
+function Get-PortPreflight([int]$Port, [string]$ExpectedPattern) {
+  $preflightScript = Join-Path $PSScriptRoot 'port_preflight.ps1'
+  $output = & pwsh -NoProfile -File $preflightScript `
+    -Port $Port `
+    -ExpectedPattern $ExpectedPattern
+  $exitCode = $LASTEXITCODE
+  $details = $null
+  try {
+    $details = ($output | ConvertFrom-Json)
+  } catch {
+    $details = [pscustomobject]@{
+      port = $Port
+      status = 'error'
+      safe_to_stop = $false
+      owners = @()
+      error = '端口预检输出不是合法 JSON'
     }
   }
-  # 等端口真正释放，避免新进程 bind EADDRINUSE
-  for ($i = 0; $i -lt 20; $i++) {
-    $still = Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue
-    if (-not $still) { return }
-    Start-Sleep -Milliseconds 250
+  return [pscustomobject]@{
+    exit_code = $exitCode
+    details = $details
   }
 }
 
+function Stop-ExpectedPortOwner([int]$Port, [string]$ExpectedPattern) {
+  $preflight = Get-PortPreflight $Port $ExpectedPattern
+  if ($preflight.details.status -eq 'free') { return $true }
+  if ($preflight.details.status -eq 'foreign' -or -not $preflight.details.safe_to_stop) {
+    $ownerText = @($preflight.details.owners | ForEach-Object {
+      "pid=$($_.pid) name=$($_.process_name) state=$($_.states -join ',')"
+    }) -join '; '
+    Write-Log "拒绝清理外部进程 port=$Port $ownerText"
+    return $false
+  }
+  foreach ($owner in @($preflight.details.owners)) {
+    if (-not $owner.pid -or -not $owner.matches_expected) { continue }
+    try {
+      Stop-Process -Id $owner.pid -Force -ErrorAction Stop
+      Write-Log "清理本项目占用端口 $Port 的进程 pid=$($owner.pid)"
+    } catch {
+      Write-Log "清理端口 $Port 占用进程失败 pid=$($owner.pid)：$($_.Exception.Message)"
+      return $false
+    }
+  }
+  # 等端口真正释放，避免新进程 bind EADDRINUSE。
+  for ($i = 0; $i -lt 20; $i++) {
+    $still = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue
+    if (-not $still) { return $true }
+    Start-Sleep -Milliseconds 250
+  }
+  Write-Log "端口 $Port 停止本项目占用者后仍未释放"
+  return $false
+}
+
 function Start-Workbench($auth) {
-  $env:BAD_PORT = '8787'
+  if ($DryRun) {
+    Write-Log '[dry-run] 将拉起工作台 (18787)'
+    return
+  }
+  $env:BAD_PORT = '18787'
   if ($auth) {
     $env:BAD_AUTH_USER = $auth.user
     $env:BAD_AUTH_PASS = $auth.pass
@@ -134,10 +174,14 @@ function Start-Workbench($auth) {
     -WindowStyle Hidden `
     -RedirectStandardOutput (Join-Path $logDir 'workbench_out.log') `
     -RedirectStandardError (Join-Path $logDir 'workbench_err.log')
-  Write-Log '已拉起工作台 (8787)'
+  Write-Log '已拉起工作台 (18787)'
 }
 
 function Start-Portal {
+  if ($DryRun) {
+    Write-Log '[dry-run] 将拉起用户端 (8080)'
+    return
+  }
   Start-Process -FilePath $nodeExe `
     -ArgumentList 'portal/serve.mjs' `
     -WorkingDirectory $root `
@@ -148,6 +192,10 @@ function Start-Portal {
 }
 
 function Start-Frpc {
+  if ($DryRun) {
+    Write-Log '[dry-run] 将拉起 frpc'
+    return
+  }
   if (!(Test-Path $frpcExe)) {
     Write-Log "找不到 frpc.exe：$frpcExe"
     return
@@ -164,31 +212,53 @@ function Start-Frpc {
 function Invoke-GuardPass {
   $auth = if ($RequireAuth) { Get-WorkbenchAuth } else { $null }
 
-  if (Test-HttpOk 'http://127.0.0.1:8787/api/health') {
+  if (Test-HttpOk 'http://127.0.0.1:18787/api/health') {
     if ($RequireAuth -and -not (Test-AuthEnforced)) {
-      Write-Log '工作台 8787 在跑但未强制口令，重启为带口令实例'
-      Stop-PortOwner 8787
-      Start-Workbench $auth
+      Write-Log '工作台 18787 在跑但未强制口令，重启为带口令实例'
+      if (Stop-ExpectedPortOwner 18787 'server[\\/]index\.js') {
+        Start-Workbench $auth
+      }
     } elseif ($RequireAuth) {
-      Write-Log '工作台 8787 正常（口令已生效）'
+      Write-Log '工作台 18787 正常（口令已生效）'
     } elseif (Test-AuthEnforced) {
       # 上一轮用 -RequireAuth 起的实例仍在跑；本机用遇到登录框就手动重启该服务即可
-      Write-Log '工作台 8787 正常（当前实例带口令，本机访问如需免密请重启工作台）'
+      Write-Log '工作台 18787 正常（当前实例带口令，本机访问如需免密请重启工作台）'
     } else {
-      Write-Log '工作台 8787 正常'
+      Write-Log '工作台 18787 正常'
     }
   } else {
-    Write-Log '工作台 8787 探活失败，准备重启'
-    Stop-PortOwner 8787
-    Start-Workbench $auth
+    Write-Log '工作台 18787 探活失败，先做端口占用预检'
+    $preflight = Get-PortPreflight 18787 'server[\\/]index\.js'
+    if ($preflight.details.status -eq 'foreign') {
+      $ownerText = @($preflight.details.owners | ForEach-Object {
+        "pid=$($_.pid) name=$($_.process_name) state=$($_.states -join ',')"
+      }) -join '; '
+      Write-Log "拒绝清理外部进程 port=18787 $ownerText"
+    } elseif (Stop-ExpectedPortOwner 18787 'server[\\/]index\.js') {
+      Start-Workbench $auth
+    }
   }
 
   if (Test-HttpOk 'http://127.0.0.1:8080/health') {
     Write-Log '用户端 8080 正常'
+    if (Test-Path $syncDaemon) {
+      if ($env:SYNC_TOKEN) {
+        & $syncDaemon -Once -PortalBase 'http://127.0.0.1:8080'
+      } else {
+        Write-Log 'sync daemon skip：SYNC_TOKEN 未配置'
+      }
+    }
   } else {
-    Write-Log '用户端 8080 探活失败，准备重启'
-    Stop-PortOwner 8080
-    Start-Portal
+    Write-Log '用户端 8080 探活失败，先做端口占用预检'
+    $preflight = Get-PortPreflight 8080 'portal[\\/]serve\.mjs'
+    if ($preflight.details.status -eq 'foreign') {
+      $ownerText = @($preflight.details.owners | ForEach-Object {
+        "pid=$($_.pid) name=$($_.process_name) state=$($_.states -join ',')"
+      }) -join '; '
+      Write-Log "拒绝清理外部进程 port=8080 $ownerText"
+    } elseif (Stop-ExpectedPortOwner 8080 'portal[\\/]serve\.mjs') {
+      Start-Portal
+    }
   }
 
   $frpc = Get-CimInstance Win32_Process -Filter "Name='frpc.exe'" -ErrorAction SilentlyContinue
@@ -200,7 +270,7 @@ function Invoke-GuardPass {
   }
 }
 
-Write-Log "守护启动 node=$nodeExe interval=${IntervalSec}s once=$Once requireAuth=$RequireAuth"
+Write-Log "守护启动 node=$nodeExe interval=${IntervalSec}s once=$Once requireAuth=$RequireAuth dryRun=$DryRun"
 do {
   try {
     Invoke-GuardPass

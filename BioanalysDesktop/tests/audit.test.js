@@ -63,6 +63,31 @@ test('非法的 line_id 直接拒绝', () => {
   assert.throws(() => auditCommand('ls', 'line4_nope'), AuditError);
 });
 
+test('P-29 门禁：find / ps / grep -r / pgrep / pkill 一律拒绝', () => {
+  const cases = [
+    'find /mnt/ssd/bio_data -name "*.h5ad"',
+    'ps -ef',
+    'grep -r marker /mnt/ssd/bio_data/system_logs',
+    'pgrep -a python3',
+    'pkill -f scenic',
+  ];
+  for (const cmd of cases) {
+    const result = auditCommand(cmd, 'line1_bulk');
+    assert.equal(result.allowed, false, cmd);
+    assert.match(result.reason, /P-29/);
+  }
+});
+
+test('P-29 门禁不误伤普通单词与已知目录 glob', () => {
+  for (const cmd of [
+    'Rscript find_models.R',
+    'ls -1 /mnt/ssd/bio_data/system_logs/*.json',
+    'echo ALIVE',
+  ]) {
+    assert.equal(auditCommand(cmd, 'line1_bulk').allowed, true, cmd);
+  }
+});
+
 test('buildRemoteCommand：计算命令走容器，底座命令走 Termux', () => {
   const viaCompute = buildRemoteCommand('Rscript x.R', 'compute');
   assert.match(viaCompute, /k40-ubuntu/);

@@ -269,6 +269,7 @@ report_lines += [
     "3. 敲除是计算模拟（tenifoldknk 网络重建），非实验验证；结论需实验确认。",
     "4. 敲除对象与全部输入来自本线产物，未引用线1 交集基因，无跨线数据。",
     "5. 汇总统计口径：显著性阈值 adj p < %.2f 固定，不随结果调整。" % SIG_LEVEL,
+    "outputs=dr_genes_summary.tsv, dr_summary_report.txt",
 ]
 with open("dr_summary_report.txt", "w") as fh:
     fh.write("\n".join(report_lines) + "\n")
@@ -276,3 +277,9 @@ with open("dr_summary_report.txt", "w") as fh:
 log("summarize_dr_done significant=%d up=%d down=%d elapsed=%.1fs"
     % (summary.shape[0], n_up, n_down, time.time() - start))
 PYSCRIPT
+
+# sha256 产物台账后置补登：复用独立脚本，写法与其余步骤解耦。
+if [ -x "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" ]; then
+  "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" "$PWD" "dr_summary_report.txt" > /dev/null 2>>"$0.ledger.err" \
+  || echo "WARN sha256 ledger backfill failed, see $0.ledger.err" >&2
+fi

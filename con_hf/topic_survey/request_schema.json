@@ -1,0 +1,63 @@
+{
+  "$schema_note": "模式 A 调研需求单。客户只填方向，要素卡由 skill 外出调研时自己填。字段从筛子 L1 要素卡里挑出'检索前必须知道'的那几项，不搬整个要素卡。",
+  "version": 1,
+  "fields": [
+    {
+      "key": "disease",
+      "label": "疾病名称",
+      "type": "text",
+      "required": true,
+      "hint": "填英文名，检索用。中文名可写在兴趣点里。",
+      "maps_to": "筛子 L0 疾病准入 + L1 疾病分类"
+    },
+    {
+      "key": "interest",
+      "label": "兴趣点",
+      "type": "textarea",
+      "required": false,
+      "hint": "想关注的机制、基因、表型，一句话即可。留空表示只按疾病检索。",
+      "maps_to": "筛子 L4 课题反推的倾向"
+    },
+    {
+      "key": "organism",
+      "label": "物种",
+      "type": "choice",
+      "options": ["any", "Homo sapiens", "Mus musculus"],
+      "default": "any",
+      "required": true,
+      "hint": "选 any 时人源优先（筛子 L3 必选件要求人源优先）。",
+      "maps_to": "筛子 L1 物种 + L2 物种组织匹配维度"
+    },
+    {
+      "key": "tissue",
+      "label": "组织",
+      "type": "text",
+      "required": false,
+      "hint": "器官名，如 lung、liver。留空表示不限组织。",
+      "maps_to": "筛子 L1 组织来源 + L2 物种组织匹配维度"
+    },
+    {
+      "key": "data_kinds",
+      "label": "想要的数据类型",
+      "type": "multichoice",
+      "options": ["bulk", "array", "scrna", "spatial"],
+      "default": ["bulk"],
+      "required": true,
+      "hint": "对应筛子四类数据。留空默认 bulk。",
+      "maps_to": "筛子 L1 数据类型 + L3 成链判定"
+    },
+    {
+      "key": "clue",
+      "label": "你手上已有的线索",
+      "type": "textarea",
+      "required": false,
+      "hint": "已知的 GSE 编号、文献、或者已经拿到的数据。留空表示从零开始。",
+      "maps_to": "筛子 L1 GSE 编号 + 下载地址（线索态，非必填）"
+    }
+  ],
+  "non_goals": [
+    "本单不让客户填要素卡。要素卡的几十个字段由 skill 调研时自己填，填不到的标缺。",
+    "本单不做 L2 评分。评分要等候选数据集检索出来才能算。",
+    "本单不裁决边缘病、BioProject 去重、批次混杂。这三项在结果页标为待人工裁定。"
+  ]
+}

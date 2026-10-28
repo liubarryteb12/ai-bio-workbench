@@ -141,7 +141,7 @@
 ### 适配 4 · 算力与包约束（工具选型的硬边界，正文 Skills 节的落地修正）
 
 - 硬件：红米 K40 proot ubuntu，5 核 11G，**单进程峰值 ≤5GB**（超限会被 RLIMIT_AS/LMK 杀，症状是 ssh 断连、台账停在旧时间戳）；长任务由本地后台 terminal 持有 ssh 连接；绑核契约已实测变更为"默认不绑核 + 3 线程甜点"（`docs/k40_cpu_affinity.md`）。
-- 环境：R 4.3.3 / Bioc 3.18 + Python 3.12.3。**torch 生态不可行** → 正文 Stage 10 的 cell2location/RCTD/scVI 类去卷积在工作台不可用（line3 已豁免）；scVI 系整合同样不可行，整合用 Harmony（已实测）。
+- 环境：R 4.5.3 + Python 3.12.3；Bioc 版本与包可用性待实测，以 `docs/software_versions.json` 的实测记录为准。**torch 生态不可行** → 正文 Stage 10 的 cell2location/RCTD/scVI 类去卷积在工作台不可用（line3 已豁免）；scVI 系整合同样不可行，整合用 Harmony（已实测）。
 - 已实测可用：scanpy 1.12.4 / anndata / liana 1.10.0 / scTenifoldpy / gseapy 1.3.1（Enrichr 五库可达）/ pyscenic 0.12.1（dask 须钉 2024.8.0）/ glmnet / shap / clusterProfiler / hgu133plus2.db。
 - **禁用/易崩清单**：zellkonverter（reticulate 易崩）、anndataR（该 Bioc 版本无）、harmonypy 参数是 ncores、singscore 无 rankScore、UCell 不认 Seurat v5、CellChat 与 SeuratObject 5.x 不兼容、monocle2 的 phenoData 须 AnnotatedDataFrame、clusterProfiler 默认按 ENTREZID（传 SYMBOL 静默返回 0 条）。踩坑全录 `con_hf/踩坑台账.md`，动工前必搜。
 - raw 处理工具（oligo/affy、sva）容器有无**未验证**——Stage 3 分层规则动工前先探针。

@@ -1,21 +1,21 @@
 @echo off
-chcp 936 >nul
+chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
 
 echo ============================================
-echo   Bioanalys Ò»¼üÆô¶¯
+echo   Bioanalys ä¸€é”®å¯åŠ¨
 echo ============================================
 echo.
-echo ¼´½«´ò¿ªÁ½¸ö´°¿Ú£º
-echo   1) ¹ÜÀíÔ±¹¤×÷Ì¨       http://127.0.0.1:8787/
-echo   2) ÓÃ»§ÐèÇóÌá½»Ì¨     http://127.0.0.1:8080/
+echo å³å°†æ‰“å¼€ä¸¤ä¸ªçª—å£ï¼š
+echo   1) ç®¡ç†å‘˜å·¥ä½œå°       http://127.0.0.1:18787/
+echo   2) ç”¨æˆ·éœ€æ±‚æäº¤å°     http://127.0.0.1:8080/
 echo.
 
 start "Bioanalys Workbench" "%~dp0start_workbench.bat"
 start "Bioanalys Portal"    "%~dp0start_portal.bat"
 
-echo ÒÑÔÚÁ½¸ö¶ÀÁ¢´°¿ÚÆô¶¯¡£¹Ø±Õ¶ÔÓ¦´°¿Ú¼´¿ÉÍ£Ö¹¸Ã·þÎñ¡£
+echo å·²åœ¨ä¸¤ä¸ªç‹¬ç«‹çª—å£å¯åŠ¨ã€‚å…³é—­å¯¹åº”çª—å£å³å¯åœæ­¢è¯¥æœåŠ¡ã€‚
 echo.
 timeout /t 3 >nul
 endlocal

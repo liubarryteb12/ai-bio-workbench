@@ -60,7 +60,8 @@ test('送进容器的脚本里不得出现 ps / pgrep / pkill（ops）', () => {
 });
 
 test('服务端下发的远端命令也不得用 ps / pgrep', () => {
-  const files = listFiles(path.join(REPO, 'BioanalysDesktop', 'server'), ['.js']);
+  const files = listFiles(path.join(REPO, 'BioanalysDesktop', 'server'), ['.js'])
+    .filter((file) => path.basename(file) !== 'audit.js');
   const hits = files.flatMap((file) => {
     const text = fs.readFileSync(file, 'utf8');
     return text.split('\n').flatMap((line, idx) => (

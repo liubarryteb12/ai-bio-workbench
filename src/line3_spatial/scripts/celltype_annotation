@@ -47,6 +47,7 @@ echo "step_executed=celltype_annotation"
 echo "bioanalys_seed=${seed}"
 
 python3 - <<'PYSCRIPT'
+import hashlib
 import os
 import sys
 import time
@@ -73,6 +74,7 @@ START = time.time()
 SEED = int(os.environ["BIOANALYS_SEED"])
 TOP_MARKERS_PER_DOMAIN = 5
 FIGDIR = os.path.join("..", "figures")
+os.makedirs(FIGDIR, exist_ok=True)
 
 
 def fail(m):
@@ -243,6 +245,7 @@ report_lines = [
     "method=NNLS deconvolution (scipy.optimize.nnls) + scanpy.tl.score_genes validation",
     "note=轻量级方案：NNLS 域 marker 签名解卷积 + score_genes 补充验证 celltype 打分",
     "note_ref=不依赖 Seurat/CARD/RCTD（虽然容器已装 Seurat，但本方案不取自 line2 参考）",
+    "signature_note=A 是域 marker 自签名，不是外部细胞类型参考表达谱；结果按无监督近似解释",
     "",
 ]
 
@@ -284,19 +287,27 @@ for species in ["mouse", "human"]:
     # 2. NNLS 解卷积：每 spot 的表达向量对签名矩阵求解
     X = a.X
     X = np.asarray(X.todense()) if hasattr(X, "todense") else np.asarray(X)
-    gene_mask = var_symbol.isin(sig_genes).to_numpy()
-    # 取签名基因在 var 中的行索引（注意 var 是基因 x spot，X 是 spot x gene）
+    # 同一 symbol 可能对应多个 var 行。A 每个 symbol 只有一行，因此只取首个表达列，
+    # 并强制列顺序与 gene_idx 一致，防止重复 symbol 让 NNLS 维度错位后静默全零。
     var_symbols = var_symbol.to_numpy()
-    sig_var_indices = np.array([i for i, s in enumerate(var_symbols) if s in gene_idx], dtype=int)
+    symbol_to_idx = {}
+    for i, symbol in enumerate(var_symbols):
+        if symbol in gene_idx and symbol not in symbol_to_idx:
+            symbol_to_idx[symbol] = i
+    missing_sig = [g for g in sig_genes if g not in symbol_to_idx]
+    if missing_sig:
+        fail("%s 签名基因缺表达列: %s" % (species, ", ".join(missing_sig[:10])))
+    sig_var_indices = np.array([symbol_to_idx[g] for g in sig_genes], dtype=int)
     X_sig = X[:, sig_var_indices]  # spot x signature_genes
-    # 按 gene_idx 顺序重排 X_sig 的列
-    sig_order = [var_symbols[i] for i in sig_var_indices]
-    reorder = [gene_idx[s] for s in sig_order]
-    X_sig = X_sig[:, np.argsort(reorder)]
+    if X_sig.shape[1] != A.shape[0]:
+        fail("%s 签名表达列 %d != 签名矩阵行 %d" % (species, X_sig.shape[1], A.shape[0]))
 
     n_spots = X_sig.shape[0]
     n_ct = len(domains)
     scores = np.zeros((n_spots, n_ct), dtype=float)
+    solved = 0
+    solve_failures = 0
+    last_solve_error = ""
     for i in range(n_spots):
         b = X_sig[i]
         if not np.any(b > 0):
@@ -304,8 +315,14 @@ for species in ["mouse", "human"]:
         try:
             x, _ = nnls(A, b)
             scores[i] = x
-        except Exception:
-            pass
+            solved += 1
+        except Exception as exc:
+            solve_failures += 1
+            last_solve_error = str(exc)
+    if solved == 0:
+        fail("%s NNLS 无任何成功求解（失败 %d；最后错误: %s）"
+             % (species, solve_failures, last_solve_error[:300]))
+    log("%s NNLS solved=%d failed=%d" % (species, solved, solve_failures))
     # 归一化为比例
     row_sums = scores.sum(axis=1, keepdims=True)
     row_sums[row_sums == 0] = 1.0
@@ -471,8 +488,25 @@ report_lines += [
     "     若需精确反卷积，需另装 R 包 + 公共参考图谱。",
     "",
     "elapsed_seconds=%.1f" % (time.time() - START),
+    "outputs=celltype_scores_mouse.tsv, celltype_scores_human.tsv, celltype_annotation_mouse.tsv, celltype_annotation_human.tsv, spatial_deconv_mouse.h5ad, spatial_deconv_human.h5ad, ../figures/l3_mouse_14_deconv_umap.png, ../figures/l3_mouse_15_deconv_composition.png, ../figures/l3_human_14_deconv_umap.png, ../figures/l3_human_15_deconv_composition.png, deconv_report.txt",
 ]
 with open("deconv_report.txt", "w", encoding="utf-8") as fh:
     fh.write("\n".join(report_lines) + "\n")
+
+for _artifact in sorted(os.listdir(".")):
+    if not os.path.isfile(_artifact):
+        continue
+    if _artifact == 'deconv_report.txt':
+        continue
+    with open(_artifact, "rb") as _fh:
+        _digest = hashlib.sha256(_fh.read()).hexdigest()
+    with open('deconv_report.txt', "a", encoding="utf-8") as _fh:
+        _fh.write("%s_sha256=%s\n" % (_artifact, _digest))
 log("celltype_annotation_done")
 PYSCRIPT
+
+# sha256 产物台账后置补登：复用独立脚本，写法与其余步骤解耦。
+if [ -x "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" ]; then
+  "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" "$PWD" "deconv_report.txt" > /dev/null 2>>"$0.ledger.err" \
+  || echo "WARN sha256 ledger backfill failed, see $0.ledger.err" >&2
+fi

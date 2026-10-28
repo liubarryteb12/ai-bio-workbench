@@ -1,0 +1,192 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-10-27T13:31:00+08:00",
+  "overall_status": "complete",
+  "current_phase": "final_gate_passed",
+  "source_of_truth": "aims/20261026_0749_aims_v3_0_spec.md v3.0",
+  "state_note": "Gate 1, Gate 2 and Final Gate passed. The K40 55-script pipeline, portal selector and 12 E2E tests, adapted figure delivery, Ed25519 signing, compute-node failover and portal-to-workbench-to-K40 Sync acceptance are complete. K40 was not rebooted or shut down.",
+  "expected_r_version": "4.5.3",
+  "actual_r_version": "4.5.3",
+  "device_serial": "3a3e1f52",
+  "phases": [
+    {
+      "id": "phase_0_device_profile",
+      "status": "complete",
+      "acceptance": "Device facts recorded from live ADB output"
+    },
+    {
+      "id": "phase_1_clean_termux_reinstall",
+      "status": "complete",
+      "completed_at": "2026-10-26T16:11:34+08:00",
+      "acceptance": "Termux and Termux:Boot reinstalled with empty app data",
+      "evidence": "APK hashes matched the recorded values. Both packages installed. PREFIX is inside the app sandbox. HOME contained only .termux/termux.properties. Termux:Boot was launched once and its stopped state cleared.",
+      "note": "Termux 0.118.0 does not implement pkg --version. Package manager availability was verified with pkg help exit code 0."
+    },
+    {
+      "id": "phase_2_base_tools",
+      "status": "complete",
+      "completed_at": "2026-10-26T16:19:00+08:00",
+      "acceptance": "OpenSSH, tmux, git and core utilities installed",
+      "evidence": "OpenSSH 10.6p1, tmux 3.8, git 2.56.0, jq 1.8.2, curl 8.23.0, procps-ng 4.0.7."
+    },
+    {
+      "id": "phase_3_remote_access",
+      "status": "complete",
+      "completed_at": "2026-10-26T16:20:00+08:00",
+      "acceptance": "SSH over ADB forwarding works with key authentication",
+      "evidence": "ADB forward tcp:8022 works. BatchMode key login as u0_a283 succeeds. A detached tmux session survived reconnect and was then removed."
+    },
+    {
+      "id": "phase_4_persistence",
+      "status": "complete",
+      "completed_at": "2026-10-26T16:28:00+08:00",
+      "acceptance": "Termux wake lock and boot scripts survive reboot tests",
+      "evidence": "Termux and Termux:Boot are enabled in MIUI autostart. Both UIDs are in the deviceidle whitelist. The boot script started sshd after one keyguard unlock. The Termux wake lock has remained held continuously.",
+      "note": "No further reboot was performed after the user requested continuous operation."
+    },
+    {
+      "id": "phase_5_python",
+      "status": "complete",
+      "completed_at": "2026-10-26T16:45:00+08:00",
+      "acceptance": "Python scientific stack imports and a sample job completes",
+      "evidence": "Ubuntu 24.04.5 container Python 3.12.3 venv at /root/venvs/bio-py. NumPy 2.5.4, pandas 3.1.0, SciPy 1.18.1, Matplotlib 3.11.2. Sample job passed with seed 20261026, 0.347 seconds elapsed, 172360 KB peak RSS, 51.7 C maximum temperature.",
+      "remote_output": "/mnt/ssd/bio_data/validation/k40_phase5_20261026_1645"
+    },
+    {
+      "id": "phase_6_r",
+      "status": "complete",
+      "completed_at": "2026-10-27T03:35:00+08:00",
+      "last_attempt_at": "2026-10-26T17:16:00+08:00",
+      "acceptance": "R base and selected Bioconductor packages pass a sample job",
+      "evidence": "/opt/R/4.5.3/bin/Rscript reports R 4.5.3 (2026-03-11). The managed Rscript shim reports /opt/R/4.5.3-site-library as .libPaths()[1]. All 22 required packages pass requireNamespace, L2 bridge checks pass 6/6, and the L3 matrix is 16 ready plus 1 explicitly blocked_r453 KEGG pathway figure.",
+      "remote_output": "/mnt/ssd/bio_data/validation/r453_figures_20261027",
+      "verification_report": "reference/05.可参考出图代码/_meta/r453_verification_report.json",
+      "exception": null
+    },
+    {
+      "id": "phase_7_capacity",
+      "status": "complete",
+      "completed_at": "2026-10-26T17:20:00+08:00",
+      "acceptance": "Thermal, memory, storage and long-running job results recorded",
+      "evidence": "A 10000x20000 CSR sparse matrix with 1989860 nonzeros and 0.9949 percent density completed normalization, log1p, mean and variance calculations plus top 1000 variable-gene selection in 0.334 seconds. Peak RSS was 163280 KB and maximum temperature was 50.5 C.",
+      "remote_output": "/mnt/ssd/bio_data/validation/k40_phase7_20261026_1720",
+      "note": "The capacity test used a sparse representation to stay inside the mobile memory envelope."
+    }
+  ],
+  "runtime": {
+    "termux_version": "0.118.0",
+    "termux_boot_version": "0.8.1",
+    "openssh_version": "10.6p1",
+    "container_manager": "proot-distro 5.10.3",
+    "container": "ubuntu",
+    "container_distro": "Ubuntu 24.04.5 LTS",
+    "container_arch": "aarch64",
+    "container_rootfs_size": "3.7G",
+    "python_venv": "/root/venvs/bio-py",
+    "r_library": "/opt/R/4.5.3-site-library"
+  },
+  "validation_records": "con_hf/runs/2026-10-27_final_gate",
+  "open_items": [
+    {
+      "item": "aims_alignment",
+      "status": "complete",
+      "detail": "WP-1.1 through WP-1.3 are aligned to the v3.0 SSOT. Historical v2.5 references remain only in old ledgers and backups."
+    },
+    {
+      "item": "R_runtime",
+      "status": "complete",
+      "expected": "4.5.3",
+      "actual": "4.5.3",
+      "detail": "Runtime version, shim-based site library, package probes and the three-layer figure verification are complete. KEGG pathway remains honestly blocked because there is no pathview source master.",
+      "required_paths": [
+        "/opt/R/4.5.3",
+        "/opt/R/4.5.3-site-library"
+      ],
+      "required_packages": [
+        "WGCNA",
+        "clusterProfiler",
+        "limma",
+        "enrichplot",
+        "fgsea",
+        "DOSE",
+        "GOSemSim",
+        "aplot",
+        "ggtree",
+        "treeio",
+        "GSVA",
+        "GSEABase",
+        "org.Hs.eg.db",
+        "org.Mm.eg.db",
+        "ComplexHeatmap",
+        "ggplot2",
+        "data.table",
+        "glmnet",
+        "survival",
+        "pROC",
+        "patchwork",
+        "igraph"
+      ]
+    },
+    {
+      "item": "Python_analysis_environment",
+      "status": "complete",
+      "detail": "The shared /root/venvs/bio-py environment passed all three analysis lines. Line 2 and Line 3 manifests now pin the actual scanpy, anndata, pandas, NumPy, SciPy, scikit-learn, matplotlib, h5py, liana, sctenifoldpy, gseapy, harmonypy, pyscenic, dask and distributed versions used on K40."
+    },
+    {
+      "item": "container_remote_access",
+      "status": "complete",
+      "detail": "Termux SSH 8022 and container SSH 10022 both work. SFTP and scp pass. A musl-static Dropbear service with re-exec disabled runs under runit at 10022 because current PRoot cannot execute OpenSSH or Dropbear fexecve re-exec paths."
+    },
+    {
+      "item": "server_data_layout",
+      "status": "complete",
+      "detail": "The projects/default three-line skeleton, bin, envs, public_references, system_logs, and ops directories exist on K40; the storage gate passed on f2fs with 87 percent free."
+    },
+    {
+      "item": "clusterProfiler",
+      "status": "complete",
+      "detail": "clusterProfiler 4.20.3 and its required dependency graph pass requireNamespace."
+    },
+    {
+      "item": "WGCNA",
+      "status": "complete",
+      "detail": "WGCNA 1.74 is installed and passes the L1 package probe."
+    },
+    {
+      "item": "offline_stringdb",
+      "status": "complete",
+      "detail": "STRING v12.0 human and mouse min700 tables are read-only and readable by R igraph.",
+      "report": "reference/05.可参考出图代码/_meta/r453_public_references_report.json"
+    },
+    {
+      "item": "line1_benchmark",
+      "status": "complete",
+      "detail": "GSE16561 and GSE58294 train/validation matrices are read-only, hash-verified and contain 13,528 common genes.",
+      "report": "reference/05.可参考出图代码/_meta/r453_public_references_report.json"
+    },
+    {
+      "item": "jsonl_ledgers_and_local_projects",
+      "status": "complete",
+      "detail": "JSONL ledgers, P-01 through P-30 preservation, local project indexes, and hash-verified asset migration are complete.",
+      "report": "con_hf/runs/2026-10-27_wp21_migrations"
+    },
+    {
+      "item": "figure_template_registry",
+      "status": "complete",
+      "detail": "82 indexed figure types are registered with 16 ready, 1 blocked_r453 and 65 pending; parity and graph guards pass.",
+      "report": "src/figure_templates.json"
+    },
+    {
+      "item": "portal_sync_and_ci",
+      "status": "complete",
+      "detail": "Six portal Sync endpoints, daemon stub mode, remote dual-target SHA256 reconciliation and CI gates are in place.",
+      "report": "con_hf/runs/2026-10-27_gate2"
+    },
+    {
+      "item": "final_gate",
+      "status": "complete",
+      "detail": "55/55 K40 scripts completed with exit 0. npm test 946/946, TypeScript, Vite build and Playwright 12/12 passed. The signed delivery package verified 302 files with Ed25519. A real portal ticket reached done with 12 real PNG files and HTML/Markdown reports. Remote drift was 0/35.",
+      "report": "con_hf/runs/2026-10-27_final_gate/REPORT.md"
+    }
+  ]
+}

@@ -34,6 +34,7 @@ echo "bioanalys_seed=${seed}"
 
 python3 - <<'PYSCRIPT'
 import os
+import sys
 import time
 
 import matplotlib
@@ -215,6 +216,28 @@ log("by_celltype=%s summary=%d" % (byct.shape, len(summary)))
 
 # --- 01 top-30 regulon x celltype 活性热图（列 z-score 便于跨 regulon 比较） ---
 top30 = summary.head(30)["regulon"].tolist()
+
+# 产物清单落盘：只打 stdout 的话，任务重跑与事后核对时清单就沦了。
+# 写一份 manifest 到 figures/，让“exit 0 但产物落别处”可核对。
+try:
+    _man = os.path.join(OUT, "figures_manifest.txt")
+    with open(_man, "w", encoding="utf-8") as _fh:
+        _fh.write("step=%s seed=%s out=%s count=%d elapsed=%.1fs%s" % (
+            os.path.basename(sys.argv[0]),
+            os.environ.get("BIOANALYS_SEED", "UNSET"),
+            OUT, len(made), time.time() - START, chr(10)))
+        for _n in made:
+            _p = os.path.join(OUT, _n)
+            _sz = os.path.getsize(_p) if os.path.exists(_p) else -1
+            _fh.write("%s%s%d%s" % (_n, chr(9), _sz, chr(10)))
+    log("wrote figures_manifest.txt (%d entries)" % len(made))
+    try:
+        with open(_man, "a", encoding="utf-8") as _fh:
+            _fh.write("outputs=%s\n" % ", ".join(["figures_manifest.txt"] + list(made)))
+    except OSError as _exc:
+        log("WARN outputs append failed: %s" % _exc)
+except OSError as _exc:
+    log("WARN 产物清单落盘失败: %s" % _exc)
 mat = byct[top30]
 z = (mat - mat.mean(axis=0)) / (mat.std(axis=0) + 1e-12)
 fig, ax = plt.subplots(figsize=(13, 10))
@@ -245,3 +268,9 @@ save(fig, "l2_scenic_02_top_regulons.png")
 
 log("scenic_figures_done count=%d elapsed=%.1fs" % (len(made), time.time() - START))
 PYSCRIPT
+
+# sha256 产物台账后置补登：复用独立脚本，写法与其余步骤解耦。
+if [ -x "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" ]; then
+  "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" "$PWD/../figures" "figures_manifest.txt" > /dev/null 2>>"$0.ledger.err" \
+  || echo "WARN sha256 ledger backfill failed, see $0.ledger.err" >&2
+fi

@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0d9488">
+<meta name="description" content="课题调研结果：候选数据集、评分、课题候选与待人工裁定项">
+<title>调研结果</title>
+<style>
+:root {
+  --brand: #0d9488; --brand-dark: #0f766e; --brand-soft: #ccfbf1;
+  --bg: #f6f8fb; --surface: #ffffff; --surface-2: #f8fafc;
+  --text: #0f172a; --text-muted: #64748b; --text-faint: #94a3b8;
+  --border: #e2e8f0; --border-strong: #cbd5e1;
+  --danger: #dc2626; --danger-soft: #fef2f2;
+  --success: #059669; --success-soft: #ecfdf5;
+  --warn: #b45309; --warn-soft: #fffbeb;
+  --radius: 10px; --radius-lg: 14px;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, .06);
+  --shadow: 0 1px 3px rgba(15, 23, 42, .08), 0 1px 2px rgba(15, 23, 42, .04);
+  color-scheme: light;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased;
+  touch-action: manipulation; padding-bottom: 80px;
+}
+:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; border-radius: 6px; }
+
+.site-header { background: linear-gradient(135deg, #0f766e, #0d9488 55%, #14b8a6); color: #fff; padding: 24px; }
+.header-inner { max-width: 960px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+.brand-mark { width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0; background: rgba(255, 255, 255, .18); display: flex; align-items: center; justify-content: center; font-size: 21px; }
+.brand h1 { font-size: 20px; font-weight: 700; }
+.brand p { font-size: 13px; opacity: .88; }
+
+main { max-width: 960px; margin: 0 auto; padding: 28px 24px 0; }
+.state { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px 22px; text-align: center; box-shadow: var(--shadow-sm); }
+.state .ico { font-size: 34px; margin-bottom: 10px; }
+.state h2 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+.state p { color: var(--text-muted); font-size: 13.5px; }
+.ticket-id { display: inline-block; margin-top: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; background: var(--brand-soft); color: var(--brand-dark); padding: 3px 10px; border-radius: 6px; }
+
+.band { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px; margin-bottom: 18px; box-shadow: var(--shadow-sm); }
+.band-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.band-sub { color: var(--text-muted); font-size: 13px; margin-bottom: 16px; }
+.band.manual { border-color: #fcd34d; background: var(--warn-soft); }
+.band.manual .band-title { color: #92400e; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { font-size: 12.5px; color: var(--text-muted); font-weight: 700; background: var(--surface-2); white-space: nowrap; }
+tr:last-child td { border-bottom: none; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+
+.grade { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.grade-a { background: var(--success-soft); color: var(--success); }
+.grade-b { background: var(--brand-soft); color: var(--brand-dark); }
+.grade-c { background: var(--danger-soft); color: var(--danger); }
+
+.pick { display: block; background: var(--surface); border: 1.5px solid var(--border-strong); border-radius: var(--radius-lg); padding: 18px; margin-bottom: 12px; cursor: pointer; transition: border-color .15s ease, background-color .15s ease; }
+.pick:hover { border-color: var(--brand); }
+.pick.on { border-color: var(--brand); background: var(--brand-soft); }
+.pick-head { display: flex; align-items: flex-start; gap: 12px; }
+.pick-head input { margin-top: 4px; width: 17px; height: 17px; accent-color: var(--brand); flex-shrink: 0; }
+.pick-body { flex: 1; min-width: 0; }
+.pick-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.pick-meta { font-size: 12.5px; color: var(--text-muted); margin-bottom: 8px; }
+.pick-fit { font-size: 13px; }
+.pick-fit b { color: var(--success); }
+.pick-fit i { font-style: normal; color: var(--danger); }
+.pick-gap { font-size: 12.5px; color: var(--text-muted); margin-top: 6px; }
+
+.manual-item { background: var(--surface); border: 1px solid #fcd34d; border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px; }
+.manual-item:last-child { margin-bottom: 0; }
+.manual-head { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 700; color: #92400e; margin-bottom: 4px; }
+.manual-body { font-size: 13px; color: var(--text-muted); }
+.manual-body code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; background: #fef3c7; padding: 1px 5px; border-radius: 4px; }
+
+.trace { font-size: 12.5px; color: var(--text-muted); }
+.trace summary { cursor: pointer; font-weight: 600; color: var(--text-muted); padding: 6px 0; }
+.trace pre { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; overflow-x: auto; font-size: 12px; line-height: 1.55; margin-top: 8px; white-space: pre-wrap; word-break: break-all; }
+
+.nav { max-width: 960px; margin: 22px auto 0; padding: 0 24px; display: flex; gap: 12px; }
+.btn { font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; border-radius: var(--radius); padding: 11px 20px; border: 1.5px solid transparent; text-decoration: none; display: inline-block; }
+.btn-primary { background: var(--brand); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--brand-dark); }
+.btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+.btn-ghost { background: var(--surface); border-color: var(--border-strong); color: var(--text-muted); }
+.btn-ghost:hover { border-color: var(--brand); color: var(--brand-dark); }
+.hint-line { font-size: 12.5px; color: var(--text-muted); margin-top: 10px; }
+.err-box { background: var(--danger-soft); border: 1px solid #fecaca; color: #991b1b; padding: 14px 16px; border-radius: var(--radius); font-size: 13.5px; }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <div class="header-inner">
+    <div class="brand-mark" aria-hidden="true">📊</div>
+    <div>
+      <h1>调研结果</h1>
+      <p>候选数据集、评分与可做课题</p>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <div id="loading" class="state">
+    <div class="ico" aria-hidden="true">⏳</div>
+    <h2>正在读取调研单</h2>
+    <p>如果长时间停在这里，说明调研还没跑完。</p>
+  </div>
+  <div id="error" class="state" style="display:none;">
+    <div class="ico" aria-hidden="true">⚠️</div>
+    <h2>读取失败</h2>
+    <p id="error-msg"></p>
+  </div>
+  <div id="body" style="display:none;"></div>
+</main>
+
+<div class="nav" id="nav" style="display:none;">
+  <a class="btn btn-ghost" href="/survey_request.html">再填一份</a>
+  <button type="button" class="btn btn-primary" id="btn-confirm">确认选择并进入下一步</button>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+
+  var ticket = new URLSearchParams(location.search).get('ticket') || '';
+  var record = null;
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function show(id) { $(id).style.display = ''; }
+  function hide(id) { $(id).style.display = 'none'; }
+
+  function renderPending(rec) {
+    hide('loading'); hide('error'); show('body'); show('nav');
+    $('btn-confirm').disabled = true;
+    $('body').innerHTML =
+      '<div class="state">' +
+      '<div class="ico" aria-hidden="true">🧭</div>' +
+      '<h2>调研进行中</h2>' +
+      '<p>需求已登记：<b>' + esc(rec.request.disease) + '</b>。' +
+      'AI 按筛子外出检索数据，完成后本页自动出现候选数据集与课题清单。</p>' +
+      '<span class="ticket-id">' + esc(rec.ticket_id) + '</span>' +
+      '</div>';
+  }
+
+  function renderResult(rec) {
+    hide('loading'); hide('error'); show('body'); show('nav');
+    var r = rec.result || {};
+    var h = '';
+
+    // L0 准入
+    if (r.l0) {
+      h += '<div class="band">' +
+        '<div class="band-title">准入结论</div>' +
+        '<div class="band-sub">筛子 L0：疾病是否落在非肿瘤、非免疫范围</div>' +
+        '<table><tr><th>判定</th><th>依据</th></tr>' +
+        '<tr><td><b>' + esc(r.l0.verdict) + '</b></td><td>' + esc(r.l0.basis || '（未记）') + '</td></tr></table>' +
+        '</div>';
+    }
+
+    // 候选数据集
+    var cards = r.datasets || [];
+    if (cards.length) {
+      h += '<div class="band">' +
+        '<div class="band-title">候选数据集</div>' +
+        '<div class="band-sub">每个数据集一张要素卡，缺口标「缺」不编造</div>' +
+        '<table><tr><th>编号</th><th>类型</th><th>样本</th><th>分组</th><th>组织</th><th>等级</th></tr>';
+      cards.forEach(function (c) {
+        var g = String(c.grade || '').toLowerCase();
+        var gcls = g === 'a' ? 'grade-a' : (g === 'b' ? 'grade-b' : 'grade-c');
+        h += '<tr>' +
+          '<td class="mono">' + esc(c.accession) + '</td>' +
+          '<td>' + esc(c.data_type) + '</td>' +
+          '<td class="num">' + esc(c.n_samples) + '</td>' +
+          '<td>' + esc(c.groups) + '</td>' +
+          '<td>' + esc(c.tissue) + '</td>' +
+          '<td><span class="grade ' + gcls + '">' + esc(c.grade || '?') + '</span></td>' +
+          '</tr>';
+      });
+      h += '</table></div>';
+    }
+
+    // 课题候选
+    var topics = r.topics || [];
+    if (topics.length) {
+      h += '<div class="band">' +
+        '<div class="band-title">可做课题</div>' +
+        '<div class="band-sub">勾选你想推进的课题。满足项与缺失项都列出来，缺失项由调研过程如实标注。</div>';
+      topics.forEach(function (t, i) {
+        var fit = (t.satisfied || []).map(function (x) { return '<b>' + esc(x) + '</b>'; }).join('、');
+        var gap = (t.missing || []).map(function (x) { return '<i>' + esc(x) + '</i>'; }).join('、');
+        h += '<label class="pick">' +
+          '<div class="pick-head">' +
+          '<input type="checkbox" name="topic" value="' + esc(t.id) + '"' + (t.recommended ? ' checked' : '') + '>' +
+          '<div class="pick-body">' +
+          '<div class="pick-name">' + esc(t.id) + ' · ' + esc(t.name) + '</div>' +
+          '<div class="pick-meta">' + esc(t.methods || '') + '</div>' +
+          (fit ? '<div class="pick-fit">满足：' + fit + '</div>' : '') +
+          (gap ? '<div class="pick-fit">缺失：' + gap + '</div>' : '') +
+          '</div></div></label>';
+      });
+      h += '</div>';
+    } else if (r.topics_status === 'insufficient_data') {
+      h += '<div class="band manual">' +
+        '<div class="band-title">课题清单暂不可用</div>' +
+        '<div class="band-sub">候选数据集下钻失败，要素卡为空，L2 与 L4 结论不成立。' +
+        '为避免给出看起来完整、实则无依据的课题清单，此处留空。详见下方待人工裁定与留痕。</div>' +
+        '</div>';
+    }
+
+    // 待人工裁定
+    var manual = r.manual || [];
+    if (manual.length) {
+      h += '<div class="band manual">' +
+        '<div class="band-title">待人工裁定</div>' +
+        '<div class="band-sub">这三类判定不由客户自行拍板，需在管理工作台裁定后回写</div>';
+      manual.forEach(function (m) {
+        h += '<div class="manual-item">' +
+          '<div class="manual-head"><span aria-hidden="true">⚖️</span>' + esc(m.kind) + '</div>' +
+          '<div class="manual-body">' + esc(m.detail || '') +
+          (m.field ? ' <code>' + esc(m.field) + '</code>' : '') +
+          '</div></div>';
+      });
+      h += '</div>';
+    }
+
+    // 留痕
+    if (r.trace) {
+      h += '<div class="band">' +
+        '<div class="band-title">留痕</div>' +
+        '<div class="band-sub">检索式、命中 GSE 与关键字段来源，供复现</div>' +
+        '<details class="trace"><summary>展开留痕</summary><pre>' + esc(r.trace) + '</pre></details>' +
+        '</div>';
+    }
+
+    if (!h) h = '<div class="state"><div class="ico" aria-hidden="true">📭</div><h2>结果为空</h2><p>调研单没有可展示的内容。</p></div>';
+
+    $('body').innerHTML = h;
+  }
+
+  function load() {
+    if (!ticket) {
+      hide('loading'); show('error');
+      $('error-msg').textContent = '地址缺少 ticket 参数。';
+      return;
+    }
+    fetch('/api/survey/result?ticket=' + encodeURIComponent(ticket))
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.body.error || '读取失败');
+        record = res.body;
+        if (record.status === 'completed' && record.result) renderResult(record);
+        else renderPending(record);
+      })
+      .catch(function (e) {
+        hide('loading'); show('error');
+        $('error-msg').textContent = e.message;
+      });
+  }
+
+  $('btn-confirm').addEventListener('click', function () {
+    var picked = Array.prototype.slice.call(document.querySelectorAll('input[name="topic"]:checked'))
+      .map(function (i) { return i.value; });
+    if (!picked.length) { alert('先勾选至少一个课题。'); return; }
+    $('btn-confirm').disabled = true;
+    $('btn-confirm').textContent = '已登记…';
+    fetch('/api/survey/select', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticket_id: ticket, topic_ids: picked }),
+    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.body.error || '登记失败');
+        $('btn-confirm').textContent = '已登记 ✓';
+        alert('已登记 ' + picked.length + ' 个课题。对接人会收到这份选择。');
+      })
+      .catch(function (e) {
+        $('btn-confirm').disabled = false;
+        $('btn-confirm').textContent = '确认选择并进入下一步';
+        alert('登记失败：' + e.message);
+      });
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>

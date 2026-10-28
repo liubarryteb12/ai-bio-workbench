@@ -5,7 +5,7 @@
 #   + wgcna_modules.tsv（gene/module）+ wgcna_module_trait.tsv（模块-性状相关）。
 #
 # 口径（2026-10-13 拍板"样本量小也能做"；2026-10-14 补齐 GO CC/MF 与 KEGG GSEA）：
-#   1. GSEA（gseGO，全基因按 limma t 统计量降序）——**不依赖显著阈值**，正好
+#   1. GSEA（gseGO，全基因按 limma t 统计量降序）：**不依赖显著阈值**，正好
 #      适配本数据集 DEG 0 显著（BH 后无基因通过，min adj p=0.45）的情况：
 #      看整体表达趋势而非硬阈值筛选。ont = BP / CC / MF 三本体。
 #   1b. GSEA KEGG（gseKEGG）：需外网 KEGG REST API，tryCatch 失败则跳过并如实记录。
@@ -20,6 +20,8 @@
 # 自校验内建：输入存在、基因映射成功数 >= 100、GSEA 结果列齐全、
 # 模块 ORA 的 p 值在 [0,1]、模块基因集合与 wgcna_modules.tsv 一致。
 set -euo pipefail
+
+RSCRIPT_BIN="${BIOANALYS_RSCRIPT:-/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript}"
 
 seed="${BIOANALYS_SEED:-UNSET}"
 if [ "$seed" = "UNSET" ]; then
@@ -64,7 +66,7 @@ echo "input_deg=${deg_file}"
 echo "input_modules=${mod_file}"
 
 DEG_FILE="$deg_file" MOD_FILE="$mod_file" BIOANALYS_SEED="$seed" \
-Rscript - <<'RSCRIPT'
+"$RSCRIPT_BIN" - <<'RSCRIPT'
 suppressMessages({
   library(clusterProfiler)
   library(org.Hs.eg.db)

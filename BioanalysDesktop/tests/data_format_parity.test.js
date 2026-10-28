@@ -1,14 +1,14 @@
 /**
  * 数据格式白名单两端一致性测试（S30 / 架构评审 2.3 A8）。
  *
- * 背景：同一份数据有两个入口，8787 工作台（BioanalysDesktop/server/upload.js 的
+ * 背景：同一份数据有两个入口，18787 工作台（BioanalysDesktop/server/upload.js 的
  * ALLOWED_EXT，14 项）与 8080 用户提交台（portal/lib/archive.mjs 的 DATA_EXT，9 项）。
  * 两边原来各持一份字面量，同一份数据走不同入口会得到不同校验结论。
  *
- * S30 把权威收敛到仓库根 shared/data_formats.mjs；portal/index.html 因浏览器
- * 单文件页面、无打包步骤，无法 import，只能保留字面量副本。本文件钉死三件事：
+ * S30 把权威收敛到仓库根 shared/data_formats.mjs。v3.0 起 portal/index.html
+ * 不再保留白名单字面量副本，由 portal/serve.mjs 在响应期注入。本文件钉死三件事：
  *   1. 权威列表本身是两端并集 14 项（顺序固定）；
- *   2. index.html 的副本不漂移（读文本、正则解析、逐项比对）；
+ *   2. index.html 不重新长出硬编码副本；
  *   3. 两端对同一批文件名给出相同判定（upload.extAllowed vs archive.validateDataFiles）。
  *
  * 改动白名单时：先改 shared/data_formats.mjs，再同步 portal/index.html 的字面量、
@@ -38,20 +38,6 @@ const EXPECTED = [
   '.h5ad', '.h5', '.loom', '.mtx', '.tar', '.gz', '.zip',
   '.txt', '.tsv', '.csv', '.soft', '.xlsx', '.rds', '.rdata',
 ];
-
-/** 从 index.html 文本里取出 `var DATA_EXT = [...];` 字面量并解析成数组 */
-function parseHtmlDataExt(text) {
-  const m = text.match(/var DATA_EXT\s*=\s*\[([^\]]*)\]\s*;/);
-  assert.ok(m, 'portal/index.html 里找不到 var DATA_EXT = [...]; 字面量');
-  return [...m[1].matchAll(/'([^']*)'/g)].map((x) => x[1]);
-}
-
-/** 从 index.html 文本里取出 `var MAX_DATA_BYTES = a * b * ...;` 并求积 */
-function parseHtmlMaxBytes(text) {
-  const m = text.match(/var MAX_DATA_BYTES\s*=\s*([0-9*\s]+);/);
-  assert.ok(m, 'portal/index.html 里找不到 var MAX_DATA_BYTES = ...; 字面量');
-  return m[1].split('*').reduce((acc, part) => acc * Number(part.trim()), 1);
-}
 
 /** 合法文件名：14 项各一个（含双扩展名与中文名） */
 const VALID_NAMES = [
@@ -117,23 +103,10 @@ test('shared：isAllowedDataFile 14 项全通过，脚本/可执行/伪装后缀
 
 // ---------- 2. index.html 副本防漂移 ----------
 
-test('index.html：DATA_EXT 字面量与权威逐项相等', () => {
-  const htmlExt = parseHtmlDataExt(HTML);
-  assert.equal(htmlExt.length, 14, 'index.html 的 DATA_EXT 副本项数不对');
-  assert.deepEqual(htmlExt, DATA_EXT);
-});
-
-test('index.html：提示文案与 accept 属性覆盖全部 14 项，无 9 项旧文案残留', () => {
-  const extText = DATA_EXT.join(' ');
-  assert.ok(HTML.includes('支持 ' + extText + '，单文件上限 5 GiB。'), '上传规则提示未同步 14 项');
-  assert.ok(HTML.includes('支持 ' + extText + '；单文件上限 5 GiB。'), '选择文件提示未同步 14 项');
-  assert.ok(HTML.includes('accept="' + DATA_EXT.join(',') + '"'), 'accept 属性未同步 14 项');
-  assert.ok(!HTML.includes('支持 .tsv .csv .txt .gz .zip .xlsx .h5ad .rds .mtx'), '仍残留 9 项旧提示文案');
-  assert.ok(!HTML.includes('accept=".tsv,.csv,.txt,.gz,.zip,.xlsx,.h5ad,.rds,.mtx"'), '仍残留 9 项旧 accept');
-});
-
-test('index.html：MAX_DATA_BYTES 副本等于权威默认值', () => {
-  assert.equal(parseHtmlMaxBytes(HTML), MAX_DATA_BYTES);
+test('index.html：不保存 DATA_EXT / MAX_DATA_BYTES 字面量副本', () => {
+  assert.doesNotMatch(HTML, /var DATA_EXT\s*=\s*\[\s*['"]\./);
+  assert.doesNotMatch(HTML, /var MAX_DATA_BYTES\s*=\s*5\s*\*\s*1024/);
+  assert.match(HTML, /__INJECT_SHARED_CONTRACTS__/);
 });
 
 // ---------- 3. 两端都引用同一权威 ----------

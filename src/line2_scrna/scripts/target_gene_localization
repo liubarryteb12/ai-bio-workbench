@@ -388,8 +388,16 @@ lines += [
     "  2. 表达为 log 归一化相对值，跨基因不可直接比大小，比较用 pct 与 specificity。",
     "",
     "elapsed_seconds=%.1f" % (time.time() - START),
+    "outputs=scrna_localization.h5ad, target_gene_localization.tsv, target_gene_localization_wide.tsv, ../figures/l2_13_target_gene_dotplot.png",
 ]
 with open(OUT_RPT, "w", encoding="utf-8") as fh:
     fh.write("\n".join(lines) + "\n")
+
 log("target_gene_localization_done")
 PYSCRIPT
+
+# sha256 产物台账后置补登：复用独立脚本，写法与其余步骤解耦。
+if [ -x "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" ]; then
+  "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" "$PWD" "localization_report.txt" > /dev/null 2>>"$0.ledger.err" \
+  || echo "WARN sha256 ledger backfill failed, see $0.ledger.err" >&2
+fi

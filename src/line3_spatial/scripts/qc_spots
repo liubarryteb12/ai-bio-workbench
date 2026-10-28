@@ -375,3 +375,9 @@ with open(os.path.join(os.environ["QC_OUTDIR"], "qc_report.txt"), "w") as f:
 PYSCRIPT
 
 echo "qc_spots_all_done"
+
+# sha256 产物台账后置补登：复用独立脚本，写法与其余步骤解耦。
+if [ -x "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" ]; then
+  "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" "${QC_OUTDIR:-$(pwd)}" "qc_report.txt" > /dev/null 2>>"$0.ledger.err" \
+  || echo "WARN sha256 ledger backfill failed, see $0.ledger.err" >&2
+fi

@@ -14,6 +14,7 @@ import {
   DATA_TYPE_IDS, SPECIES_ENUM, DOMAIN_ENUM,
 } from './domain.js';
 import { validateProjectFields } from './tumor_blacklist.js';
+import { loadWorkflows, modToScriptMap } from './workflow_graph.js';
 
 /** 项目元数据文件名（放项目根） */
 export const PROJECT_META_FILE = 'project.json';
@@ -228,88 +229,153 @@ export function normalizeDataFiles(files) {
   return out;
 }
 
-/** 三条分析线可选步骤（前端级联勾选用，与 bin/<line>/ 已部署脚本对应） */
-export const LINE_STEPS = {
-  line1_bulk: [
-    'prep_matrix', 'qc_matrix', 'pca_matrix', 'deg_limma', 'wgcna_modules',
-    'enrichment_bulk', 'enrichment_figures', 'ppi_string', 'key_genes',
-    'ml_model', 'ml_hub_analysis', 'ml_diagnostics', 'external_validation', 'bulk_figures',
-  ],
-  line2_scrna: [
-    'ingest_counts', 'qc_cells', 'normalize_hvg', 'integrate_harmony',
-    'cluster_umap', 'annotate_celltypes', 'scrna_composition', 'deg_groups',
-    'subcluster', 'enrichment', 'enrichment_figures', 'pseudotime',
-    'cell_communication', 'scenic_tf', 'scenic_figures', 'tf_activity',
-    'virtual_knockout', 'summarize_dr', 'target_gene_localization',
-    'gsva_pathways', 'dr_post_analysis', 'scrna_figures',
-  ],
-  line3_spatial: [
-    'ingest_spatial', 'qc_spots', 'normalize_hvg', 'dim_reduce',
-    'spatial_domains', 'spatial_markers', 'spatial_autocorr',
-    'spatial_cooccurrence', 'spatial_composition', 'spatial_communication',
-    'celltype_annotation', 'spatial_localization', 'spatial_knockout',
-    'dr_post_analysis', 'enrichment', 'enrichment_figures', 'spatial_figures',
-  ],
-};
+/**
+ * 三条分析线可选步骤（前端级联勾选用，与 bin/<line>/ 已部署脚本对应）。
+ *
+ * 2026-10-23 起改为**从 mod 注册表派生**，不再手写清单。
+ * 单一事实源是 `src/workflows.json`；此处只做「母版名」视图的兼容输出
+ * （旧前端与既有断言按母版名消费，故值取 mod.script 而非 mod.id）。
+ * 注册表改名不会让这里漂移——它没有自己的清单。
+ */
+export const LINE_STEPS = buildLineSteps();
+
+function buildLineSteps() {
+  const out = {};
+  for (const series of loadWorkflows().series) {
+    out[series.id] = series.stages.flatMap((st) => st.mods.map((m) => m.script || m.id));
+  }
+  return out;
+}
 
 /**
  * 步骤节点功能说明字典（前端模块 C 展示用）。
  * 每个步骤含：desc（功能简介）、tool（核心工具）、io（输入/输出产物）、note（条件/算力提示）。
+/**
+ * 步骤节点功能说明字典（前端模块 C 展示用）。
+ * 每个步骤含：label（功能名）、desc（功能简介）、tool（核心工具）、io（输入/输出产物）、note（条件/算力提示）。
+ *
+ * 2026-10-23 起改为**从 mod 注册表派生**（单一事实源 src/workflows.json），不再手写 47 条。
+ * label / desc / note 直接来自注册表的 name / notes / risk；
+ * tool 与 io 按母版名查 SCRIPT_TOOLING——这两个字段只随母版实现变化，
+ * 放注册表会让"换个工具包"也要动依赖图，故按母版名索引（母版名稳定，mod id 会演进）。
  */
-export const PIPELINE_STEP_META = {
-  // line1_bulk
-  prep_matrix: { label: 'GEO 数据获取与探针注释', desc: '拉取 GEO 矩阵与 GPL 注释，探针转 Gene Symbol，多探针取中位数', tool: 'GEOquery, Biobase', io: 'expr_genes.tsv, group_map.tsv', note: '训练集与验证集分目录' },
-  qc_matrix: { label: '样本质控', desc: '检出基因数、组内中位相关性，标注离群样本', tool: 'limma, ggplot2', io: 'qc_report.txt, l1_05a/05b', note: '' },
-  pca_matrix: { label: 'PCA 与样本相关性', desc: 'PCA 分组验证 + 样本相关性热图', tool: 'limma, ggplot2', io: 'pca_scores.tsv, l1_01/02', note: '' },
-  deg_limma: { label: '差异表达分析 (DEG)', desc: 'limma 两组比较，火山图 + MA 图', tool: 'limma', io: 'deg_all.tsv, deg_sig.tsv, l1_03/06', note: 'DEG 0 显著时放宽到 nominal p' },
-  wgcna_modules: { label: 'WGCNA 共表达模块', desc: '方差前 5000 基因建网，模块-表型相关性 + 模块内 hub（kME/GS）', tool: 'WGCNA', io: 'wgcna_modules.tsv, wgcna_module_trait.tsv, wgcna_gene_traits.tsv, wgcna_hub_genes.tsv, wgcna_module_eigengenes.tsv, l1_28/29/30/31', note: 'nThreads=3 防溢出；单块建网' },
-  enrichment_bulk: { label: '功能富集 (GO/KEGG/GSEA)', desc: 'GO BP/CC/MF 三本体 GSEA + KEGG ORA/GSEA + 模块 ORA', tool: 'clusterProfiler (gseGO/gseKEGG/enrichGO/enrichKEGG)', io: 'enrichment_gsea_go.tsv, enrichment_gsea_kegg.tsv, enrichment_kegg.tsv, enrichment_module_ora.tsv', note: 'KEGG 需外网' },
-  enrichment_figures: { label: '富集出图', desc: '富集条形 top20 双标注', tool: 'matplotlib', io: 'l1_13/14/15/25', note: '' },
-  ppi_string: { label: 'PPI 网络 + Hub 初筛', desc: 'STRING 互作网络 Degree 筛 Top hub', tool: 'STRING API', io: 'ppi_edges.tsv, ppi_hubs.tsv, l1_07/08', note: '需外网 STRING' },
-  key_genes: { label: '交集关键基因', desc: 'DEG ∩ WGCNA 显著模块 ∩ PPI hub', tool: 'pandas', io: 'key_genes.tsv, l1_09', note: 'DEG 判据放宽时如实标注' },
-  ml_model: { label: 'ML 建模 (LR+RF+LOOCV)', desc: '逻辑回归 + 随机森林 LOOCV ROC', tool: 'sklearn', io: 'ml_report.txt, l1_10/11', note: '探索性，不可当临床性能' },
-  ml_hub_analysis: { label: 'Hub 基因 ML 精筛 + 重要性评估', desc: 'LASSO+RFE+单因素筛选 → RF/GBDT/SHAP/聚类/共表达网络', tool: 'glmnet(R), sklearn, shap, networkx, scipy', io: 'ml_lasso_*, ml_core_hub_genes.tsv, ml_importance.tsv, l1_16..26', note: 'SHAP 瀑布图展示单样本贡献' },
-  external_validation: { label: '外部验证冻结评估', desc: '冻结模型在独立 GEO 验证集上 ROC', tool: 'pROC', io: 'external_validation_preds.tsv, l1_12', note: '零数据泄漏：不重新筛基因/调参' },
-  bulk_figures: { label: 'Bulk 出图', desc: '相关性/PCA/火山/MA/topvar/QC 出图', tool: 'matplotlib', io: 'l1_01..06', note: '' },
-  // line2_scrna
-  ingest_counts: { label: '单细胞数据读入', desc: '读取 .mtx/.h5ad 原始矩阵', tool: 'Scanpy', io: 'scrna_raw.h5ad', note: '' },
-  qc_cells: { label: '细胞质控', desc: '过滤低质量细胞与双细胞，线粒体百分比', tool: 'Scanpy', io: 'scrna_qc.h5ad, qc_report.txt', note: '' },
-  normalize_hvg: { label: '标准化与高变基因', desc: 'normalize_total + log1p + HVG 筛选', tool: 'Scanpy', io: 'scrna_norm.h5ad', note: 'layers["counts"] 保留原始计数' },
-  integrate_harmony: { label: '批次校正 (Harmony)', desc: '多样本 Harmony 去批次', tool: 'harmonypy', io: 'scrna_harmony.h5ad', note: '' },
-  cluster_umap: { label: '降维聚类 UMAP', desc: 'PCA → Leiden 聚类 → UMAP 可视化', tool: 'Scanpy', io: 'scrna_clustered.h5ad', note: '' },
-  annotate_celltypes: { label: '细胞类型注释', desc: '基于 marker 的细胞类型注释', tool: 'Scanpy', io: 'scrna_annotated.h5ad', note: '' },
-  scrna_composition: { label: '细胞类型比例/组成分析', desc: '量化各细胞类型丰度消长与统计显著性', tool: 'Scanpy, scipy.stats', io: 'celltype_composition.tsv, l2_05/06', note: 'KW 含 tie 校正' },
-  deg_groups: { label: '组间差异表达 (DEG)', desc: '固定细胞类型内 Treat vs Control 转录丰度变化', tool: 'Scanpy (rank_genes_groups)', io: 'deg_all_by_celltype.tsv, l2_08/09', note: '' },
-  subcluster: { label: '目标细胞亚群再聚类', desc: '提取核心细胞群重跑 HVG+PCA+聚类', tool: 'Scanpy', io: 'subcluster.h5ad, subcluster_markers.tsv', note: '' },
-  enrichment: { label: '单细胞多维功能富集', desc: 'GO/KEGG/Reactome ORA + GSEA（5 库并行）', tool: 'gseapy', io: 'enrichment_ora.tsv, enrichment_gsea.tsv, l2_11/12', note: 'GO BP/CC/MF + KEGG + Reactome' },
-  enrichment_figures: { label: '单细胞富集出图', desc: '富集条形 top20 双标注', tool: 'matplotlib', io: 'l2_11/12', note: '' },
-  pseudotime: { label: '拟时序/轨迹分析', desc: '核心亚群状态转换伪时间轨迹', tool: 'Scanpy (PAGA/DPT)', io: 'pseudotime.h5ad, track_genes.tsv', note: 'Control 组为起点' },
-  cell_communication: { label: '细胞通讯分析', desc: '配受体互作强度与信号流变化', tool: 'liana consensus LR', io: 'cellchat_lr.tsv, l2_10', note: 'workers=2' },
-  scenic_tf: { label: '转录因子调控分析 (SCENIC)', desc: 'GRNBoost2 → cisTarget motif → AUCell regulon 活性', tool: 'pySCENIC CLI', io: 'scenic_regulons.csv, tf_activity.tsv, l2_scenic_01/02', note: '--num_workers 3' },
-  scenic_figures: { label: 'SCENIC 出图', desc: 'regulon 活性热图 + 特异性条形', tool: 'matplotlib', io: 'l2_scenic_01/02', note: '' },
-  tf_activity: { label: 'TF 活性打分 (ORA 近似)', desc: 'TF 靶基因 ORA 近似活性打分', tool: 'gseapy', io: 'tf_activity.tsv, tf_report.txt', note: 'SCENIC 的对照路线' },
-  virtual_knockout: { label: '虚拟敲除 (scTenifoldKnk)', desc: 'WT/Control 矩阵模拟敲除目标基因，输出 DR Genes', tool: 'scTenifoldKnk (R)', io: 'ko_dr_genes.tsv, scrna_knockout.h5ad', note: '【需指定 target_ko_gene】仅输入 WT/Control 矩阵' },
-  summarize_dr: { label: 'DR 基因汇总', desc: 'DR 基因多运行稳健交集 + 显著性排序', tool: 'pandas', io: 'dr_genes_summary.tsv, dr_summary_report.txt', note: '建议 3 次独立运行取交集' },
-  target_gene_localization: { label: '目标基因表达定位', desc: '敲除基因 ∪ celltype 差异 top5 的表达定位', tool: 'Scanpy, matplotlib', io: 'target_gene_localization.tsv, l2_13', note: '从 layers["counts"] 重算 lognorm' },
-  gsva_pathways: { label: 'GSVA 通路活性打分', desc: 'pseudobulk → R GSVA → top30 变异通路热图', tool: 'GSVA (R), gseapy', io: 'gsva_scores.tsv, l2_14', note: '全基因输入保通路覆盖' },
-  dr_post_analysis: { label: 'DR 后续分析', desc: 'DR 富集(GSEA) + 调控网络(SCENIC regulon ∩ DR) + DR∩DEG∩marker 交集', tool: 'gseapy, networkx', io: 'dr_enrichment.tsv, dr_regulatory_network.tsv, dr_overlap.tsv, l2_15/16/17', note: 'DR ≠ DEG' },
-  scrna_figures: { label: '单细胞出图', desc: 'UMAP×4/组成×14/marker/DEG 火山×7/计数/PCA', tool: 'matplotlib', io: 'l2_01..10', note: '' },
-  // line3_spatial
-  ingest_spatial: { label: '空间数据读入', desc: '读取空间表达矩阵与坐标', tool: 'Scanpy', io: 'spatial_counts_mouse.h5ad, spatial_counts_human.h5ad, samples_meta.tsv', note: '两物种分文件落盘（原写 spatial_raw.h5ad 与母版实际产物不符）' },
-  qc_spots: { label: 'Spot 质控', desc: '过滤低质量 spot，线粒体百分比', tool: 'Scanpy', io: 'spatial_qc.h5ad, spot_qc_metrics.tsv', note: '' },
-  dim_reduce: { label: '降维 (PCA/UMAP)', desc: 'PCA → UMAP 空间可视化', tool: 'Scanpy', io: 'spatial_dimred.h5ad', note: '' },
-  spatial_domains: { label: '空间域识别', desc: '转录谱 + 空间坐标识别解剖/病理结构域', tool: 'Scanpy (Leiden)', io: 'spatial_domains.h5ad', note: '域身份样本私有' },
-  spatial_markers: { label: '空间域 Marker', desc: '各域 wilcoxon top200 marker', tool: 'Scanpy (rank_genes_groups)', io: 'domain_markers.tsv, spatial_marker.h5ad', note: '' },
-  spatial_autocorr: { label: '空间自相关 (Moran\'s I)', desc: '全切片基因 Moran\'s I 空间聚集梯度', tool: 'Squidpy', io: 'gene_autocorr.tsv', note: '' },
-  spatial_cooccurrence: { label: '空间邻域/共现', desc: '微米尺度物理毗邻偏好（共定位 vs 排斥）', tool: 'Squidpy', io: 'domain_cooccurrence.tsv', note: '' },
-  spatial_composition: { label: '区域组成差异', desc: '不同切片/微区域的结构组成变化', tool: 'Scanpy, scipy.stats', io: 'sample_composition.tsv', note: 'KW 检验' },
-  spatial_communication: { label: '空间通讯分析', desc: 'KNN 邻域 domain 对级 LR 强度打分', tool: 'liana consensus LR', io: 'sample_communication.tsv', note: '' },
-  spatial_localization: { label: '目标基因空间定位', desc: '目标基因在空间域中的表达分布', tool: 'Scanpy', io: 'gene_localization.tsv', note: '' },
-  spatial_knockout: { label: '空间虚拟敲除', desc: 'WT/Control 空间矩阵模拟敲除，输出 DR Genes', tool: 'scTenifoldKnk (R)', io: 'ko_dr_genes_mouse.tsv, ko_dr_genes_human.tsv, spatial_knockout_mouse.h5ad, spatial_knockout_human.h5ad', note: '【需指定 target_ko_gene】逐样本 spot 级运行（域聚合路线实测废弃）' },
-  celltype_annotation: { label: '反卷积/细胞类型注释', desc: '域 marker top5 签名 → NNLS 逐 spot 解卷积 → 比例归一化', tool: 'scipy.optimize.nnls, Scanpy', io: 'celltype_scores.tsv, celltype_annotation.tsv, l3_14/15', note: '轻量方案，不依赖 R Seurat/CARD/RCTD' },
-  spatial_figures: { label: '空间出图', desc: '域图/目标基因/KO DR 逐样本 + 域统计 + Moran/DR/UMAP/组成', tool: 'matplotlib', io: 'l3_*_*', note: '逐样本画，跨样本坐标不可比' },
+/** 母版名 -> 核心工具与产物（由母版头注释提取，母版改名才需同步）。 */
+const SCRIPT_TOOLING = {
+  annotate_celltypes: { tool: 'wilcoxon', io: 'scrna_annotated.h5ad, cluster_markers.tsv, annotate_report.txt' },
+  bulk_figures: { tool: '', io: 'l1_01_correlation.png, l1_02_pca.png, l1_03_volcano.png, l1_04_topvar_heatmap.png' },
+  cell_communication: { tool: 'liana', io: 'scrna_cellcomm.h5ad, cellcomm_interactions.tsv, cellcomm_report.txt' },
+  celltype_annotation: { tool: 'scipy.optimize.nnls', io: 'celltype_scores_{species}.tsv, celltype_annotation_{species}.tsv, deconv_report.txt, l3_{species}_14_deconv_umap.png' },
+  cluster_umap: { tool: 'UMAP, Leiden, igraph', io: 'scrna_clustered.h5ad, cluster_report.txt' },
+  cox_analysis: { tool: 'Cox, LASSO-Cox', io: 'cox_univariate.tsv, cox_multivariate.tsv, cox_forest.pdf, cox_report.txt' },
+  deg_groups: { tool: 'scanpy', io: 'scrna_deg.h5ad, deg_all_by_celltype.tsv, deg_significant_by_celltype.tsv, deg_report.txt' },
+  deg_limma: { tool: 'limma', io: 'deg_all.tsv, deg_sig.tsv, deg_report.txt, l1_03_volcano_limma.png' },
+  dim_reduce: { tool: 'scanpy', io: 'spatial_dimred_mouse.h5ad, spatial_dimred_human.h5ad, dimred_report.txt' },
+  dr_post_analysis: { tool: 'GSEA, SCENIC', io: 'dr_enrichment*.tsv, dr_regulatory_network.tsv, dr_overlap*.tsv, dr_post_report.txt' },
+  enrichment: { tool: 'gseapy', io: 'enrichment_ora*.tsv, enrichment_gsea*.tsv, enrichment_report.txt' },
+  enrichment_bulk: { tool: 'gseGO, gseKEGG, enrichGO, enrichKEGG', io: 'enrichment_gsea_go.tsv, enrichment_gsea_kegg.tsv, enrichment_module_ora.tsv, enrichment_kegg.tsv' },
+  enrichment_figures: { tool: '', io: 'l1_13_gsea_top.png / l2_11_ora_top.png / l3_*_12_ora_top.png, l3_*_13_gsea_top.png' },
+  external_validation: { tool: '', io: 'external_validation_preds.tsv, external_frozen_coefs.tsv, external_validation_report.txt, l1_12_external_roc.png' },
+  gsva_pathways: { tool: 'GSVA', io: 'gsva_scores.tsv, scrna_gsva.h5ad, gsva_report.txt, l2_14_gsva_heatmap.png' },
+  ingest_counts: { tool: 'AnnData', io: 'scrna_counts.h5ad, ingest_report.txt' },
+  ingest_spatial: { tool: 'AnnData, scanpy', io: 'spatial_counts_mouse.h5ad, spatial_counts_human.h5ad, samples_meta.tsv, ingest_report.txt' },
+  integrate_harmony: { tool: 'scanpy, harmonypy', io: 'scrna_integrated.h5ad, integrate_report.txt' },
+  key_genes: { tool: '', io: 'key_genes.tsv, key_genes_report.txt, l1_09_key_genes.png' },
+  ml_diagnostics: { tool: 'LogisticRegression, liblinear', io: 'ml_diag_metrics.tsv, ml_diag_dca.tsv, ml_diag_pergene_roc.tsv, ml_diagnostics_report.txt' },
+  ml_hub_analysis: { tool: 'glmnet, RFE, LASSO, random forest, gradient boosting, SHAP', io: 'ml_core_hub_genes.tsv, ml_importance.tsv, ml_shap.tsv, ml_hub_report.txt' },
+  ml_model: { tool: 'logistic regression, random forest, LOOCV', io: 'ml_feature_importance.tsv, ml_report.txt, l1_10_ml_roc.png, l1_11_ml_importance.png' },
+  normalize_hvg: { tool: 'scanpy', io: 'scrna_norm.h5ad, hvg_genes.tsv / spatial_norm_*.h5ad, hvg_genes_*.tsv' },
+  pca_matrix: { tool: 'prcomp', io: 'pca_scores.tsv, pca_report.txt, l1_02_pca_step3.png' },
+  ppi_string: { tool: 'STRING v12.0, networkx', io: 'ppi_edges.tsv, ppi_hubs.tsv, ppi_report.txt, l1_07_ppi_network.png' },
+  prep_matrix: { tool: '', io: 'expr_genes.tsv, group_map.tsv, prep_report.txt' },
+  pseudotime: { tool: 'scanpy', io: 'scrna_pseudotime.h5ad, pseudotime_report.txt' },
+  qc_cells: { tool: '', io: 'scrna_qc.h5ad, qc_cell_metrics.tsv, qc_report.txt' },
+  qc_matrix: { tool: '', io: 'qc_report.txt, sample_qc.tsv' },
+  qc_spots: { tool: '', io: 'spatial_qc_*.h5ad, spot_qc_metrics.tsv, qc_report.txt' },
+  scenic_figures: { tool: '', io: 'l2_scenic_01_regulon_heatmap.png, l2_scenic_02_top_regulons.png' },
+  scenic_tf: { tool: 'pyscenic, GRNBoost2, AUCell', io: 'scenic_adjacencies.tsv, scenic_regulons.csv, scenic_auc_mtx.tsv, scenic_report.txt' },
+  scrna_composition: { tool: 'KW, eta2', io: 'scrna_composition.h5ad, celltype_composition.tsv, composition_report.txt' },
+  scrna_figures: { tool: '', io: 'l2_01_umap_celltype.png, l2_05_composition_stack.png, l2_08_deg_volcano_*.png, l2_10_pca_diagnosis.png' },
+  spatial_autocorr: { tool: 'esda, squidpy, scanpy', io: 'spatial_autocorr_mouse.h5ad, spatial_autocorr_human.h5ad, gene_autocorr_mouse.tsv, gene_autocorr_human.tsv' },
+  spatial_communication: { tool: 'liana', io: 'spatial_communication_mouse.h5ad, spatial_communication_human.h5ad, sample_communication_mouse.tsv, sample_communication_human.tsv' },
+  spatial_composition: { tool: 'KW, Wilcoxon, eta2', io: 'spatial_composition_mouse.h5ad, spatial_composition_human.h5ad, sample_composition_mouse.tsv, sample_composition_human.tsv' },
+  spatial_cooccurrence: { tool: 'squidpy', io: 'spatial_cooccurrence_mouse.h5ad, spatial_cooccurrence_human.h5ad, domain_cooccurrence_mouse.tsv, domain_cooccurrence_human.tsv' },
+  spatial_domains: { tool: 'scanpy', io: 'spatial_domains_mouse.h5ad, spatial_domains_human.h5ad, domains_report.txt' },
+  spatial_figures: { tool: '', io: 'l3_{sp}_01_domains.png, l3_{sp}_02_target_gene.png, l3_{sp}_03_ko_dr.png, l3_{sp}_07_domain_composition.png' },
+  spatial_knockout: { tool: 'scTenifoldpy, scTenifold', io: 'spatial_knockout_mouse.h5ad, spatial_knockout_human.h5ad, ko_dr_genes_mouse.tsv, ko_dr_genes_human.tsv' },
+  spatial_localization: { tool: 'wilcoxon', io: 'gene_localization_{species}.tsv, spatial_localization_{species}.h5ad, localization_report.txt' },
+  spatial_markers: { tool: 'scanpy', io: 'spatial_marker_mouse.h5ad, spatial_marker_human.h5ad, domain_markers_mouse.tsv, domain_markers_human.tsv' },
+  subcluster: { tool: 'HVG, PCA, Leiden, UMAP, wilcoxon', io: 'scrna_subcluster.h5ad, scrna_deg_subclustered.h5ad, subcluster_markers.tsv, subcluster_report.txt' },
+  summarize_dr: { tool: '', io: 'dr_genes_summary.tsv, dr_summary_report.txt' },
+  target_gene_localization: { tool: 'normalize_total, log1p', io: 'target_gene_localization.tsv, target_gene_localization_wide.tsv, scrna_localization.h5ad, localization_report.txt' },
+  tf_activity: { tool: 'gseapy, pySCENIC', io: 'tf_activity.tsv, tf_report.txt' },
+  virtual_knockout: { tool: 'scTenifoldpy, scTenifoldKnk', io: 'scrna_knockout.h5ad, ko_dr_genes.tsv, knockout_report.txt' },
+  wgcna_modules: { tool: 'WGCNA', io: 'wgcna_modules.tsv, wgcna_module_trait.tsv, wgcna_hub_genes.tsv, wgcna_report.txt' },
 };
 
+function buildStepMeta() {
+  const out = {};
+  for (const series of loadWorkflows().series) {
+    for (const stage of series.stages) {
+      for (const mod of stage.mods) {
+        const script = mod.script || mod.id;
+        const tooling = SCRIPT_TOOLING[script] || { tool: '', io: '' };
+        out[script] = {
+          label: mod.name,
+          desc: mod.notes || mod.name,
+          tool: tooling.tool,
+          io: tooling.io,
+          note: mod.risk || '',
+          mod_id: mod.id,
+          stage: stage.id,
+          est_minutes: mod.est_minutes,
+          optional: !!mod.optional,
+          ko_gene: !!mod.ko_gene,
+        };
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * 把建项请求里的步骤信息统一成 pipeline_dag。
+ *
+ * 三种入参形态都要认：
+ *   ① pipelineDag 已给（旧客户端 / runner 直跑）→ 原样返回；
+ *   ② seriesId + modIds（mod 化后的客户端）→ 按注册表合成，
+ *      stepId 用母版名（下游台账与 lineFromPipeline 都按母版名消费）；
+ *   ③ 都没给 → null。
+ * 顺带把 koGene 并入 biologicalPriors.target_ko_gene，让 R12 的敲除校验能拦住。
+ */
+export function buildPipelineDag(params) {
+  if (Array.isArray(params.pipelineDag) && params.pipelineDag.length) {
+    return params.pipelineDag;
+  }
+  const modIds = Array.isArray(params.modIds) ? params.modIds.filter(Boolean) : [];
+  if (!modIds.length) return params.pipelineDag || null;
+
+  const modToScript = modToScriptMap();
+  const seriesId = String(params.seriesId || '').trim();
+  const series = loadWorkflows().series.find((s) => s.id === seriesId);
+  if (!series) {
+    throw new Error(`seriesId 未知: "${seriesId || '(空)'}"，无法解析 modIds`);
+  }
+  // 按阶段 order 排序，同阶段内保持客户端勾选顺序——执行序必须稳定可复现
+  const rank = new Map();
+  for (const st of series.stages) for (const m of st.mods) rank.set(m.id, st.order);
+  const ordered = modIds
+    .map((id, i) => ({ id, i, order: rank.get(id) ?? 999 }))
+    .sort((a, b) => (a.order - b.order) || (a.i - b.i))
+    .map((x) => x.id);
+
+  return ordered.map((id, i) => ({
+    order: i + 1,
+    stepId: modToScript.get(id) || id,
+    mod_id: id,
+  }));
+}
+
+export const PIPELINE_STEP_META = buildStepMeta();
 /**
  * S24/R11+R12 建项契约校验（只对新建项目入口生效，见 buildProjectMetaStrict）。
  *
@@ -359,8 +425,16 @@ function validateCreateContract(params) {
     }
   }
   // R12 联动：DAG 含虚拟敲除步骤而靶基因为空 → 拒（否则要跑到 virtual_knockout 步才失败）
-  const dag = Array.isArray(params.pipelineDag) ? params.pipelineDag : [];
-  const hasKnockout = dag.some((d) => String(d?.stepId ?? '').toLowerCase().includes('knockout'));
+  // 用 buildPipelineDag 而不是裸 params.pipelineDag：mod 化后的客户端只传
+  // seriesId + modIds，不传 pipelineDag，裸读会漏掉整条敲除校验。
+  const dag = buildPipelineDag(params) || [];
+  // 敲除识别双形态：母版名含 knockout（virtual_knockout / spatial_knockout），
+  // mod id 是 l2_ko_virtual / l3_ko_spatial（不含 knockout 字样），两套都要认。
+  const hasKnockout = dag.some((d) => {
+    const id = String(d?.stepId ?? '').toLowerCase();
+    const modId = String(d?.mod_id ?? '').toLowerCase();
+    return id.includes('knockout') || /^l\d_ko_/.test(modId) || modId.includes('_ko_');
+  });
   const koTarget = normalizeBiologicalPriors(params.biologicalPriors).target_ko_gene;
   if (hasKnockout && !koTarget) {
     throw new Error('含虚拟敲除步骤必须提供靶基因（biologicalPriors.targetKoGene / target_ko_gene）');
@@ -509,10 +583,21 @@ export function buildProjectMeta(params, options = {}) {
         }
         : null),
     grouping_design: params.groupingDesign || null,
-    pipeline_dag: params.pipelineDag || null,
+    // 兼容两种客户端形态：
+    //   旧：直接给 pipelineDag [{order, stepId, ...}]（母版名）
+    //   新：给 seriesId + modIds（mod id，如 l2_tf_scenic）+ koGene
+    // 服务台内部一律用 pipeline_dag，所以新形态在这里合成，下游无感。
+    // 母版名由 modToScriptMap 翻出来——台账与 lineFromPipeline 都按母版名消费。
+    pipeline_dag: buildPipelineDag(params),
     acl_and_output: params.aclAndOutput || null,
     // aims v3.0 的 intake 契约四块：生物学先验 / 统计阈值 / 排版配置 / 实验设计
-    biological_priors: normalizeBiologicalPriors(params.biologicalPriors),
+    // params.koGene 是 mod 化客户端传的靶基因（顶层字段），并进 biologicalPriors，
+    // 让既有下游（R12 校验 / project.json / 任务下发）无感拿到。
+    biological_priors: normalizeBiologicalPriors({
+      ...(params.biologicalPriors && typeof params.biologicalPriors === 'object' ? params.biologicalPriors : {}),
+      target_ko_gene: String(params.koGene || '').trim()
+        || normalizeBiologicalPriors(params.biologicalPriors).target_ko_gene,
+    }),
     analysis_cutoffs: normalizeAnalysisCutoffs(params.analysisCutoffs),
     // WGCNA 参数契约（aims Step 3）：母版脚本读不到时用同名默认值，来源写进报告
     wgcna_config: normalizeWgcnaConfig(params.wgcnaConfig),

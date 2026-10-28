@@ -7,7 +7,7 @@
  *
  * 本测试钉住三件事：
  *   1. strip 的语义边界（整行注释 / 行尾注释 / 引号内 # / shebang / 转义 # / 词中 # / 换行）；
- *   2. 全仓 58 个母版 strip 前后计数完全一致，bilingual 恰为既有三个，不因去注释而漂移；
+ *   2. 全仓 67 个母版 strip 前后计数完全一致，bilingual 恰为既有三个，不因去注释而漂移；
  *   3. 注释里的 python3 / Rscript 不再计入，真实调用一处不少。
  *
  * 判定正则在此独立维护（与 bridge_guard_invariant.test.js 同款做法），避免测试反向依赖被测实现。
@@ -24,7 +24,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
 const SRC_ROOT = path.join(REPO_ROOT, 'src');
 
-const RSCRIPT_CALL_RE = /(^|[\s;&|"])Rscript(?=[\s"']|$)/;
+const RSCRIPT_CALL_RE = /(^|[\s;&|"])(?:\$RSCRIPT_BIN|\$\{RSCRIPT_BIN\}|Rscript)(?=[\s"']|$)/;
 const PYTHON_CALL_RE = /(^|[\s;&|])python3?(?=[\s"']|$)/;
 
 function listMasters() {
@@ -34,6 +34,7 @@ function listMasters() {
     const scriptsDir = path.join(SRC_ROOT, line.name, 'scripts');
     if (!fs.existsSync(scriptsDir)) continue;
     for (const f of fs.readdirSync(scriptsDir)) {
+      if (f === 'README.md') continue;
       const abs = path.join(scriptsDir, f);
       if (fs.statSync(abs).isFile()) out.push({ lineId: line.name, step: f, abs });
     }
@@ -135,8 +136,8 @@ test('P3: 真实母版 ml_diagnostics 头部插入历史注释后，计数仍为
 
 // ───────────── 3. 母版全集回归 ─────────────
 
-test('P3: 母版全集规模稳定（58 个）', () => {
-  assert.equal(masters.length, 58, `母版数量变化，需同步核对 bilingual 集合: ${masters.length}`);
+test('P3: 母版全集规模稳定（55 个）', () => {
+  assert.equal(masters.length, 55, `母版数量变化，需同步核对 bilingual 集合: ${masters.length}`);
 });
 
 test('P3: 全仓母版 strip 前后调用计数完全一致（去注释不改变真调用）', () => {

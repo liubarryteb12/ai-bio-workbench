@@ -171,54 +171,64 @@ if len(tf_names) < 10:
     fail("基因空间内 TF 数 < 10（%d），无法推断 GRN" % len(tf_names))
 log("annotated TFs in space: %d" % len(tf_names))
 
-# --- 3. GRN 推断（GRNBoost2，dask 线程模式） ---
-from distributed import Client, LocalCluster
-from arboreto.algo import grnboost2
+# --- 3. GRN 推断（复用有效 checkpoint，否则运行 GRNBoost2） ---
+if os.path.isfile(OUT_ADJ) and os.path.getsize(OUT_ADJ) > 1024:
+    adj = pd.read_csv(OUT_ADJ, sep="\t")
+    if list(adj.columns) != ["TF", "target", "importance"] or adj.empty:
+        fail("已有 %s 结构不合口径" % OUT_ADJ)
+    log("GRN checkpoint reused: %d edges, %d TFs"
+        % (len(adj), adj["TF"].nunique()))
+else:
+    from distributed import Client, LocalCluster
+    from arboreto.algo import grnboost2
 
-cluster = LocalCluster(n_workers=1, threads_per_worker=N_WORKERS,
-                       processes=False, dashboard_address=None)
-client = Client(cluster)
-log("dask threads=%s processes=%s" % (client.nthreads(), cluster.processes))
-try:
-    adj = grnboost2(expression_data=expr, tf_names=tf_names, seed=SEED,
-                    client_or_address=client, verbose=False)
-finally:
-    client.close()
-    cluster.close()
-if adj is None or not len(adj):
-    fail("GRNBoost2 返回空邻接表")
-adj = adj.copy()
-adj.columns = ["TF", "target", "importance"]
-adj = adj.sort_values(["TF", "importance"], ascending=[True, False])
-adj.to_csv(OUT_ADJ, sep="\t", index=False)
-log("GRN done: %d edges, %d TFs -> %s"
-    % (len(adj), adj["TF"].nunique(), OUT_ADJ))
+    cluster = LocalCluster(n_workers=1, threads_per_worker=N_WORKERS,
+                           processes=False, dashboard_address=None)
+    client = Client(cluster)
+    log("dask threads=%s processes=%s" % (client.nthreads(), cluster.processes))
+    try:
+        adj = grnboost2(expression_data=expr, tf_names=tf_names, seed=SEED,
+                        client_or_address=client, verbose=False)
+    finally:
+        client.close()
+        cluster.close()
+    if adj is None or not len(adj):
+        fail("GRNBoost2 返回空邻接表")
+    adj = adj.copy()
+    adj.columns = ["TF", "target", "importance"]
+    adj = adj.sort_values(["TF", "importance"], ascending=[True, False])
+    adj.to_csv(OUT_ADJ, sep="\t", index=False)
+    log("GRN done: %d edges, %d TFs -> %s"
+        % (len(adj), adj["TF"].nunique(), OUT_ADJ))
 
-# --- 4. cisTarget motif 富集（pyscenic ctx，同进程 CLI 入口） ---
-# CLI 需要表达矩阵文件；写临时 csv（细胞 x 基因），跑完删除。
+# --- 4. cisTarget motif 富集（复用有效 checkpoint，否则运行 pyscenic ctx） ---
 TMP_EXPR = "_scenic_expr_tmp.csv"
-expr.to_csv(TMP_EXPR)
-log("wrote %s (%.1f MB)" % (TMP_EXPR, os.path.getsize(TMP_EXPR) / 1e6))
+if os.path.isfile(OUT_REG) and os.path.getsize(OUT_REG) > 1024:
+    log("ctx checkpoint reused: %s" % OUT_REG)
+else:
+    # CLI 需要表达矩阵文件；写临时 csv（细胞 x 基因），跑完删除。
+    expr.to_csv(TMP_EXPR)
+    log("wrote %s (%.1f MB)" % (TMP_EXPR, os.path.getsize(TMP_EXPR) / 1e6))
 
-from pyscenic.cli.pyscenic import main as pyscenic_main
+    from pyscenic.cli.pyscenic import main as pyscenic_main
 
-argv_backup = list(sys.argv)
-sys.argv = ["pyscenic", "ctx", OUT_ADJ, R10, R500,
-            "--annotations_fname", TBL,
-            "--expression_mtx_fname", TMP_EXPR,
-            "--output", OUT_REG,
-            "--num_workers", str(N_WORKERS)]
-try:
-    pyscenic_main()
-except SystemExit as e:
-    if e.code not in (0, None):
-        raise
-finally:
-    sys.argv = argv_backup
-if not os.path.exists(OUT_REG):
-    fail("ctx 未产出 %s" % OUT_REG)
-log("ctx done -> %s (%.1f MB)"
-    % (OUT_REG, os.path.getsize(OUT_REG) / 1e6))
+    argv_backup = list(sys.argv)
+    sys.argv = ["pyscenic", "ctx", OUT_ADJ, R10, R500,
+                "--annotations_fname", TBL,
+                "--expression_mtx_fname", TMP_EXPR,
+                "--output", OUT_REG,
+                "--num_workers", str(N_WORKERS)]
+    try:
+        pyscenic_main()
+    except SystemExit as e:
+        if e.code not in (0, None):
+            raise
+    finally:
+        sys.argv = argv_backup
+    if not os.path.exists(OUT_REG):
+        fail("ctx 未产出 %s" % OUT_REG)
+    log("ctx done -> %s (%.1f MB)"
+        % (OUT_REG, os.path.getsize(OUT_REG) / 1e6))
 
 # --- 5. AUCell 活性 ---
 from pyscenic.utils import load_motifs
@@ -299,9 +309,11 @@ lines += [
     "  4. 本步骤取代步骤 18 tf_activity 的 ORA 近似路线；tf_activity 产物保留为对照。",
     "",
     "elapsed_seconds=%.1f" % (time.time() - START),
+    "outputs=scenic_adjacencies.tsv, scenic_regulons.csv, scenic_auc_mtx.tsv, scenic_regulon_by_celltype.tsv, scenic_tf_summary.tsv",
 ]
 with open(OUT_RPT, "w", encoding="utf-8") as fh:
     fh.write("\n".join(lines) + "\n")
+
 
 # 清理临时表达矩阵（可从 h5ad 重建）
 try:
@@ -311,3 +323,9 @@ except OSError:
 
 log("scenic_tf_done regulons=%d elapsed=%.1fs" % (len(regulons), time.time() - START))
 PYSCRIPT
+
+# sha256 产物台账后置补登：复用独立脚本，写法与其余步骤解耦。
+if [ -x "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" ]; then
+  "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" "$PWD" "scenic_report.txt" > /dev/null 2>>"$0.ledger.err" \
+  || echo "WARN sha256 ledger backfill failed, see $0.ledger.err" >&2
+fi

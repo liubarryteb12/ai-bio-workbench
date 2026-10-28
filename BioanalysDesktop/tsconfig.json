@@ -12,7 +12,8 @@
     "checkJs": false,
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "types": ["node"]
   },
   "include": ["src", "server", "tests"]
 }

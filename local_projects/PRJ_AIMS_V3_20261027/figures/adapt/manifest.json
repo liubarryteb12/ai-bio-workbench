@@ -1,0 +1,112 @@
+[
+  {
+    "template_id": "fig_l1_groupedbar",
+    "project_id": "PRJ_AIMS_V3_20261027",
+    "line_id": "line1_bulk",
+    "master_source": "reference/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R",
+    "master_sha256": "da21074542cef95ffa7c033a5b6bb291b49384f034b2ef9eb79e3322d98213e8",
+    "derived_sha256": "8822ddde6a385e37000e220cec80e66bbcd14fa9fecd93af03a27147b8d45b30",
+    "adapt_vars": {
+      "value_col": "logFC",
+      "group_col": "gene",
+      "error_col": "",
+      "x_col": "gene",
+      "input_data": "data/line1_bulk/processed/deg_sig.tsv"
+    },
+    "local_path": "D:\\00.AIagent\\codespace\\AI辅助生信分析流程工作台\\local_projects\\PRJ_AIMS_V3_20261027\\figures\\adapt\\fig_l1_groupedbar.R",
+    "remote_path": "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line1_bulk/scripts/fig_l1_groupedbar.R"
+  },
+  {
+    "template_id": "fig_l2_pca",
+    "project_id": "PRJ_AIMS_V3_20261027",
+    "line_id": "line1_bulk",
+    "master_source": "reference/05.可参考出图代码/_meta/R453_compat/L2_more_code.R",
+    "master_sha256": "0b5342dd0cac39eb87615aa1220d44c09c440b8801e93af288d9ab778f0c6c1d",
+    "derived_sha256": "ee7203e8089e89ab19cccd7ea2bc899d20fcea1957ff669440bb72aaba355f3a",
+    "adapt_vars": {
+      "input_data": "data/line1_bulk/processed/pca_scores.tsv",
+      "group_col": "group"
+    },
+    "local_path": "D:\\00.AIagent\\codespace\\AI辅助生信分析流程工作台\\local_projects\\PRJ_AIMS_V3_20261027\\figures\\adapt\\adapt_fig_l2_pca.R",
+    "remote_path": "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line1_bulk/scripts/adapt_fig_l2_pca.R"
+  },
+  {
+    "template_id": "fig_l2_heatmap",
+    "project_id": "PRJ_AIMS_V3_20261027",
+    "line_id": "line1_bulk",
+    "master_source": "reference/05.可参考出图代码/_meta/R453_compat/L2_more_code.R",
+    "master_sha256": "0b5342dd0cac39eb87615aa1220d44c09c440b8801e93af288d9ab778f0c6c1d",
+    "derived_sha256": "81125e25a4d7cca060165f0e7d223fcc638343bf93447cf7dfcfa94caffc665f",
+    "adapt_vars": {
+      "input_data": "data/line1_bulk/processed/expr_genes.tsv",
+      "row_col": "gene",
+      "column_col": "sample",
+      "value_col": "expr",
+      "group_col": "group"
+    },
+    "local_path": "D:\\00.AIagent\\codespace\\AI辅助生信分析流程工作台\\local_projects\\PRJ_AIMS_V3_20261027\\figures\\adapt\\adapt_fig_l2_heatmap.R",
+    "remote_path": "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line1_bulk/scripts/adapt_fig_l2_heatmap.R"
+  },
+  {
+    "template_id": "fig_l2_volcano",
+    "project_id": "PRJ_AIMS_V3_20261027",
+    "line_id": "line1_bulk",
+    "master_source": "reference/05.可参考出图代码/_meta/R453_compat/L2_core_code.R",
+    "master_sha256": "d60ecbf24668aacf3498168ac4d7279bb9347f26c1e6106c548e87eba9bcc07b",
+    "derived_sha256": "64bed78550c39e1ca0eaa394f072c1a22e58ea8a18ab9ed6926d9cc4290e7dff",
+    "adapt_vars": {
+      "input_data": "data/line1_bulk/processed/deg_all.tsv",
+      "group_col": "group",
+      "label_genes": [
+        "ELOVL2"
+      ]
+    },
+    "local_path": "D:\\00.AIagent\\codespace\\AI辅助生信分析流程工作台\\local_projects\\PRJ_AIMS_V3_20261027\\figures\\adapt\\adapt_fig_l2_volcano.R",
+    "remote_path": "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line1_bulk/scripts/adapt_fig_l2_volcano.R"
+  },
+  {
+    "template_id": "fig_l2p_dotplot",
+    "project_id": "PRJ_AIMS_V3_20261027",
+    "line_id": "line2_scrna",
+    "master_source": "reference/05.可参考出图代码/L2_组学常用图/L2p_more_code.py",
+    "master_sha256": "01d5bd21b306677947aa771ccc8f70b97d225919470d5f95536442c4ff8472e6",
+    "derived_sha256": "47da06a96266c895eac8a7eb1909edec5b3409ec05bf37f400afe8dd3b9fa879",
+    "adapt_vars": {
+      "input_data": "data/line2_scrna/processed/target_gene_localization.tsv",
+      "group_col": "celltype"
+    },
+    "local_path": "D:\\00.AIagent\\codespace\\AI辅助生信分析流程工作台\\local_projects\\PRJ_AIMS_V3_20261027\\figures\\adapt\\adapt_fig_l2p_dotplot.py",
+    "remote_path": "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line2_scrna/scripts/adapt_fig_l2p_dotplot.py"
+  },
+  {
+    "template_id": "fig_l2p_volcano",
+    "project_id": "PRJ_AIMS_V3_20261027",
+    "line_id": "line2_scrna",
+    "master_source": "reference/05.可参考出图代码/L2_组学常用图/L2p_more_code.py",
+    "master_sha256": "01d5bd21b306677947aa771ccc8f70b97d225919470d5f95536442c4ff8472e6",
+    "derived_sha256": "82f53b599bd88fff3c0c4a3d6f15d6b99646362e391574a4f0c41214cb26eeda",
+    "adapt_vars": {
+      "input_data": "data/line2_scrna/processed/deg_all_by_celltype.tsv",
+      "group_col": "celltype",
+      "label_genes": [
+        "S100A8"
+      ]
+    },
+    "local_path": "D:\\00.AIagent\\codespace\\AI辅助生信分析流程工作台\\local_projects\\PRJ_AIMS_V3_20261027\\figures\\adapt\\adapt_fig_l2p_volcano.py",
+    "remote_path": "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line2_scrna/scripts/adapt_fig_l2p_volcano.py"
+  },
+  {
+    "template_id": "fig_l2p_umap",
+    "project_id": "PRJ_AIMS_V3_20261027",
+    "line_id": "line3_spatial",
+    "master_source": "reference/05.可参考出图代码/L2_组学常用图/L2p_umap_code.py",
+    "master_sha256": "64d5a860832237813e556edb7eb1b3de2edf386367d41dd69482ef38add72002",
+    "derived_sha256": "9cafbe6791ac9adedbfdc60c9cc3665d847ea9155827c628917907749c973216",
+    "adapt_vars": {
+      "input_data": "data/line3_spatial/processed/spatial_dimred_human.h5ad",
+      "group_col": "group"
+    },
+    "local_path": "D:\\00.AIagent\\codespace\\AI辅助生信分析流程工作台\\local_projects\\PRJ_AIMS_V3_20261027\\figures\\adapt\\adapt_fig_l2p_umap.py",
+    "remote_path": "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line3_spatial/scripts/adapt_fig_l2p_umap.py"
+  }
+]

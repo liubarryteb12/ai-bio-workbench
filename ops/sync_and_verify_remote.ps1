@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     ops/sync_and_verify_remote.ps1：把仓库内的运维/母版脚本同步到 K40 并做 SHA256 对账。
 
@@ -57,7 +57,7 @@ function Get-DefaultFiles {
     $list = New-Object System.Collections.Generic.List[string]
     $list.Add('src/bridge_guard.sh')
     foreach ($f in (Get-ChildItem -Path 'ops' -File | Sort-Object Name)) {
-        if ($f.Extension -in @('.sh', '.py', '.R')) { $list.Add(('ops/' + $f.Name)) }
+        if ($f.Extension -in @('.sh', '.py', '.R', '.mjs')) { $list.Add(('ops/' + $f.Name)) }
     }
     if ($All) {
         foreach ($line in (Get-ChildItem -Path 'src' -Directory)) {
@@ -149,14 +149,34 @@ foreach ($rel in $Files) { $local[$rel] = Get-LocalHash -RelPath $rel }
 Write-Host '[ OK ] 本地 SHA256 已计算'
 
 # 第 3 步：远端预检（漂移检测）。必须"先比后传"，否则永远相等。
-$preCmd = (($Files | ForEach-Object {
-    $abs = ($RemoteRoot + '/' + $_).Replace([char]92, [char]47)
-    "if [ -f '" + $abs + "' ]; then sha256sum '" + $abs + "'; else echo 'MISSING " + $abs + "'; fi"
-}) -join '; ')
+# 101 个文件拼成一条 ssh 命令会被远端提前关闭；按 20 个一批聚合结果。
+$preflightBatchSize = 20
+$preflightOutputs = New-Object System.Collections.Generic.List[string]
+$preflightFailure = $null
+for ($offset = 0; $offset -lt $Files.Count; $offset += $preflightBatchSize) {
+    $end = [Math]::Min($offset + $preflightBatchSize - 1, $Files.Count - 1)
+    $batch = @($Files[$offset..$end])
+    $preCmd = (($batch | ForEach-Object {
+        $abs = ($RemoteRoot + '/' + $_).Replace([char]92, [char]47)
+        "if [ -f '" + $abs + "' ]; then sha256sum '" + $abs + "'; else echo 'MISSING " + $abs + "'; fi"
+    }) -join '; ')
+    $batchResult = Invoke-Remote -Command $preCmd
+    if ($batchResult.Code -ne 0) {
+        $preflightFailure = $batchResult
+        break
+    }
+    $preflightOutputs.Add($batchResult.Output)
+}
 $drift = @()
 $absent = @()
-$pre = Invoke-Remote -Command $preCmd
+$remoteKnown = $false
+$pre = if ($preflightFailure) {
+    $preflightFailure
+} else {
+    @{ Code = 0; Output = ($preflightOutputs -join $NL) }
+}
 if ($pre.Code -eq 0) {
+    $remoteKnown = $true
     $parsed = Read-RemoteHashes -Text $pre.Output
     $absent = @($parsed.Absent)
     foreach ($rel in $Files) {
@@ -174,12 +194,16 @@ if ($pre.Code -eq 0) {
     }
 } else {
     Write-Host ('[WARN] 远端预检失败（ssh 退出码 {0}），跳过漂移检测：{1}' -f $pre.Code, $pre.Output) -ForegroundColor Yellow
+    if ($FailOnDrift) {
+        Write-Host '[FAIL] 远端预检失败，-FailOnDrift 不允许继续（未知不等于无漂移）' -ForegroundColor Red
+        exit 1
+    }
 }
 
 if ($DryRun) {
     Write-Host '[DRY ] -DryRun：不传输、不写台账、不碰远端'
     foreach ($rel in $Files) {
-        $mark = if ($drift -contains $rel) { 'DRIFT' } elseif ($absent -contains $rel) { 'NEW  ' } else { 'SAME ' }
+        $mark = if (-not $remoteKnown) { 'UNKNOWN' } elseif ($drift -contains $rel) { 'DRIFT' } elseif ($absent -contains $rel) { 'NEW  ' } else { 'SAME ' }
         Write-Host ('       {0} {1}  {2}' -f $mark, $local[$rel].Substring(0, 16), $rel)
     }
     exit 0

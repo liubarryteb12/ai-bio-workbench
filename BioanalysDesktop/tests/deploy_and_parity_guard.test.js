@@ -16,10 +16,8 @@ const syncText = fs.readFileSync(syncPath, 'utf8');
 const deployBytes = fs.readFileSync(deployPath);
 const syncBytes = fs.readFileSync(syncPath);
 
-test('06_deploy_scripts.ps1 是 UTF-8 with BOM（中文 .ps1 硬性规范）', () => {
-  assert.equal(deployBytes[0], 0xef);
-  assert.equal(deployBytes[1], 0xbb);
-  assert.equal(deployBytes[2], 0xbf);
+test('06_deploy_scripts.ps1 是 UTF-8 无 BOM（当前仓库硬性规范）', () => {
+  assert.notDeepEqual(Array.from(deployBytes.subarray(0, 3)), [0xef, 0xbb, 0xbf]);
 });
 
 test('06_deploy_scripts.ps1 校验阶段必须是单次 ssh 批量（禁止逐文件 ssh stat）', () => {
@@ -73,4 +71,53 @@ test('sync_and_verify_remote.ps1 保持 LF-only（gitattributes 钉 eol=lf）', 
   for (let i = 0; i < syncBytes.length - 1; i += 1) {
     assert.ok(!(syncBytes[i] === 13 && syncBytes[i + 1] === 10), `第 ${i} 字节处出现 CRLF`);
   }
+});
+
+test('sync 远端预检失败不得伪装成 SAME 或放行 FailOnDrift', () => {
+  assert.ok(syncText.includes('$remoteKnown = $false'), '缺少远端预检-known 状态');
+  assert.ok(syncText.includes("'UNKNOWN'"), 'DryRun 缺少 UNKNOWN 标记');
+  assert.ok(
+    syncText.includes('远端预检失败，-FailOnDrift 不允许继续'),
+    'FailOnDrift 缺少预检失败硬退出',
+  );
+});
+
+test('sync 远端哈希预检必须分批，避免一次 ssh 命令过长被远端关闭', () => {
+  assert.ok(syncText.includes('$preflightBatchSize = 20'), '缺少远端预检批大小');
+  assert.ok(syncText.includes('$preflightOutputs'), '缺少预检输出聚合');
+  assert.match(syncText, /for\s*\(\s*\$offset\s*=\s*0;/, '缺少预检分批循环');
+});
+
+// 2026-10-24 部署闸门：scripts/ 是母版目录，落到 bin/ 后即可被 /api/tasks/submit 点名执行，
+// 而提交层只校验 step 字符集、不校验是否登记。曾把 4 个 R 测试案例落在这里，会被原样推上
+// 服务器变成线上可执行步骤。注册表 src/workflows.json 是单一事实源，闸门据此在收集文件时拦截。
+test('06_deploy_scripts.ps1 收集文件后必须按注册表闸门校验', () => {
+  assert.ok(deployText.includes('src/workflows.json'), '闸门未引用注册表');
+  assert.ok(deployText.includes('$registryScripts'), '缺少注册表索引');
+  assert.ok(deployText.includes('$unregistered'), '缺少未登记集合');
+  assert.ok(deployText.includes('未登记进 src/workflows.json 的件，拒绝部署'), '缺少拒绝文案');
+  assert.ok(deployText.includes('exit 1'), '未登记时必须中止部署');
+});
+
+test('闸门必须排在文件收集之后、部署之前（拦在 scp 前才有意义）', () => {
+  const collectAt = deployText.indexOf("Where-Object { $_.Name -ne 'README.md' }");
+  const gateAt = deployText.indexOf('部署闸门：scripts/ 下的文件必须已在');
+  const scpAt = deployText.indexOf('scp 直送');
+  assert.notEqual(collectAt, -1, '未找到文件收集行');
+  assert.notEqual(gateAt, -1, '未找到闸门');
+  assert.ok(collectAt < gateAt, '闸门必须能看见收集结果');
+  assert.ok(gateAt < scpAt, '闸门必须排在 scp 之前，否则件已经上服务器了');
+});
+
+test('豁免名单只放已知的非步骤脚本，且逐个写明理由', () => {
+  assert.ok(deployText.includes("$deployExempt = @{ 'probe_env'"), '缺少 probe_env 豁免');
+  assert.ok(
+    deployText.includes('环境自检冒烟脚本'),
+    '豁免必须写明理由，否则后来人不知道该不该继续放行',
+  );
+});
+
+test('闸门把测试案例指到 cn_debug/，把新母版指到注册表', () => {
+  assert.ok(deployText.includes('测试案例与一次性探针请放 cn_debug/'), '缺少测试案例的引导');
+  assert.ok(deployText.includes('正式母版请先登记进 src/workflows.json'), '缺少新母版的引导');
 });

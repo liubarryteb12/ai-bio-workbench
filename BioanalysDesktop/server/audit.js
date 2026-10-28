@@ -27,6 +27,15 @@ function normalize(text) {
   return text.replace(/\\/g, '/').toLowerCase();
 }
 
+function unsafeScanToken(line) {
+  const checks = [
+    { pattern: /(^|[\s;&|()])(find|pgrep|pkill)(?=\s|$)/i, label: 'find/pgrep/pkill' },
+    { pattern: /(^|[\s;&|()])ps\s+-(?:eo|ef|aux|e|f)(?=\s|$)/i, label: 'ps' },
+    { pattern: /(^|[\s;&|()])grep\s+-[a-z]*r[a-z]*(?=\s|$)/i, label: 'grep -r' },
+  ];
+  return checks.find((check) => check.pattern.test(line)) || null;
+}
+
 /**
  * 审计一条（可能多行的）命令是否越界。
  *
@@ -42,16 +51,28 @@ export function auditCommand(command, lineId) {
 
   const others = LINES.filter((line) => line !== lineId);
   const hits = [];
+  const unsafe = [];
 
   const lines = String(command).split(/\r?\n/);
   lines.forEach((raw, index) => {
     const normalized = normalize(raw);
+    const scan = unsafeScanToken(normalized);
+    if (scan) unsafe.push({ line: index + 1, token: scan.label });
     for (const other of others) {
       if (normalized.includes(normalize(other))) {
         hits.push({ line: index + 1, token: other });
       }
     }
   });
+
+  if (unsafe.length > 0) {
+    const where = unsafe.map((hit) => `第 ${hit.line} 行含 ${hit.token}`).join('；');
+    return {
+      allowed: false,
+      reason: `P-29 禁止容器内递归/进程扫描：${where}。改用已知目录 glob、echo ALIVE 或单次台账探针`,
+      hits: unsafe,
+    };
+  }
 
   if (hits.length > 0) {
     const where = hits.map((hit) => `第 ${hit.line} 行含 ${hit.token}`).join('；');

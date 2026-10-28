@@ -72,11 +72,13 @@ test('S28: 不存在的 step 判 false 且带母版缺失原因（可观测，�
 
 // ───────────── B. buildBridgeCheckCommand ─────────────
 
-test('S28: 命令含引擎绝对路径、--input 与 --from/--to（h5ad → Python→R）', () => {
+test('S28: 命令使用分析 venv 垫片、引擎绝对路径、--input 与 --from/--to（h5ad → Python→R）', () => {
   const plan = buildBridgeCheckCommand('line2_scrna', 'gsva_pathways', {
     inputs: ['/mnt/ssd/bio_data/projects/default/line2_scrna/processed/scrna_annotated.h5ad'],
   });
-  assert.ok(plan.command.startsWith('python3 /mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py'));
+  assert.ok(plan.command.startsWith(
+    '/mnt/ssd/bio_data/ops/layout_autoload/bin/python3 /mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py',
+  ));
   assert.match(plan.command, /--input '\/mnt\/ssd\/bio_data\/projects\/default\/line2_scrna\/processed\/scrna_annotated\.h5ad'/);
   assert.equal(plan.fromLang, 'Python');
   assert.equal(plan.toLang, 'R');

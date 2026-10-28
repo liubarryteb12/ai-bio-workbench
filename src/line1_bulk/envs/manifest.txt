@@ -5,6 +5,6 @@ ops/06_deploy_scripts.ps1 部署到 /mnt/ssd/bio_data/envs/line1_bulk/（全局�
 步骤脚本在服务器上读到的就是这份声明。改版本号 = 新分析项目，不做热切换。
 
 language=R
-version=4.3.3
+version=4.5.3
 env_name=line1_bulk_env
 container_image=proot-ubuntu24.04-aarch64

@@ -10,13 +10,13 @@ process.env.BIO_LOCAL_OUTPUTS = TMP_ROOT;
 
 const {
   parseRemoteFileList, planPull, localLineDir, pullLineOutputs,
-  readLocalFigures, localFigurePath, LOCAL_OUTPUTS_ROOT, PULL_SUBDIRS,
+  readLocalFigures, localFigurePath, localDataDir, LOCAL_OUTPUTS_ROOT, PULL_SUBDIRS,
 } = await import('../server/pull.js');
 const { LINES, projectLineDir } = await import('../server/domain.js');
 
 test.after(() => fs.rmSync(TMP_ROOT, { recursive: true, force: true }));
 
-test('本地存档根可被 BIO_LOCAL_OUTPUTS 覆盖（测试不污染真实 outputs）', () => {
+test('本地项目根可被 BIO_LOCAL_OUTPUTS 覆盖（测试不污染真实 local_projects）', () => {
   assert.equal(LOCAL_OUTPUTS_ROOT, path.resolve(TMP_ROOT));
 });
 
@@ -54,9 +54,11 @@ test('planPull：force=true 时全部重拉', () => {
   assert.equal(pull.length, 1);
 });
 
-test('localLineDir：落点固定在 outputs/<项目>/<线>', () => {
+test('localLineDir：图件落点固定在 local_projects/<项目>/figures/<线>', () => {
   for (const line of LINES) {
-    assert.equal(localLineDir('PRJ_X', line), path.join(TMP_ROOT, 'PRJ_X', line));
+    assert.equal(localLineDir('PRJ_X', line), path.join(TMP_ROOT, 'PRJ_X', 'figures', line));
+    assert.equal(localDataDir('PRJ_X', line, 'results'),
+      path.join(TMP_ROOT, 'PRJ_X', 'data', line, 'results'));
   }
 });
 
@@ -93,7 +95,7 @@ test('pullLineOutputs：ssh 列文件 + scp 落本地并校验字节数', () => 
   const sshCmd = calls.find((argv) => argv[0] === 'ssh').join(' ');
   assert.ok(sshCmd.includes(projectLineDir('PRJ_PULL', 'line1_bulk')));
   const scp = calls.find((argv) => argv[0] === 'scp');
-  assert.equal(scp[scp.length - 1], path.join(TMP_ROOT, 'PRJ_PULL', 'line1_bulk', 'figures'));
+  assert.equal(scp[scp.length - 1], path.join(TMP_ROOT, 'PRJ_PULL', 'figures', 'line1_bulk'));
 });
 
 test('pullLineOutputs：scp 成功但本地字节数不符时计失败', () => {
@@ -116,7 +118,7 @@ test('readLocalFigures：无本地副本返回 null（调用方回落远端）',
 });
 
 test('readLocalFigures：读到本地图件并过滤非图像', () => {
-  const dir = path.join(localLineDir('PRJ_LOCAL', 'line1_bulk'), 'figures');
+  const dir = localLineDir('PRJ_LOCAL', 'line1_bulk');
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'l1_01.png'), 'png');
   fs.writeFileSync(path.join(dir, 'notes.txt'), 'x');

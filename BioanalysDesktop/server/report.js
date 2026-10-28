@@ -7,10 +7,10 @@
  *
  * 引擎（ops/build_client_report.py，另一会话域，只调用不修改）设计红线：
  *   不编造数字 / 不重写母版 / 交付包脱敏真实路径（{{DATA_ROOT}} 占位）。
- *   退出码 0=成功 1=参数或数据错误 2=环境错误——非 0 一律如实 reject，不吞。
+ *   退出码 0=成功 1=参数或数据错误 2=环境错误 -  - 非 0 一律如实 reject，不吞。
  *
  * 执行接缝说明：run.js（本仓既定范式）执行远端命令用的是 childProcess 默认导入
- * 的 spawn('ssh', [...argv])，而不是把 buildRemoteCommand 的整串命令交给 shell——
+ * 的 spawn('ssh', [...argv])，而不是把 buildRemoteCommand 的整串命令交给 shell -  -
  * Windows 本地 shell 是 cmd.exe，单引号不是引用字符，远端命令里的 && 会被 cmd
  * 当成本地命令分隔符拆开。所以这里照 run.js 的 spawn 用法走 argv 数组；scp 拉取
  * 照 pull.js 的 argv 范式。childProcess 用默认导入是为了 node:test 的
@@ -23,17 +23,21 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import childProcess from 'node:child_process';
 
-import { HOSTS, SSD_ROOT, PROJECTS_ROOT, SYSTEM_LOGS, sanitizeProjectId } from './domain.js';
+import { HOSTS, SSD_ROOT, PROJECTS_ROOT, SYSTEM_LOGS, LINES, sanitizeProjectId } from './domain.js';
 import { assertAllowedProgram } from './proc.js';
 import { stripSshNoise } from './run.js';
 
+const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
+
 /**
- * 本地交付缓存根：环境变量 BIO_LOCAL_DELIVERABLES 优先，默认仓库根 deliverables/。
- * 只读 env 或取默认，不硬编码其他路径。
+ * 本地交付缓存根：显式环境变量优先；默认收敛到本地项目根 local_projects/。
+ * localDeliverDir 再按项目落到 <project>/deliverables，避免回搬结果散到仓库根。
  */
 export const LOCAL_DELIVER_ROOT = process.env.BIO_LOCAL_DELIVERABLES
   ? path.resolve(process.env.BIO_LOCAL_DELIVERABLES)
-  : fileURLToPath(new URL('../../deliverables/', import.meta.url));
+  : process.env.BIO_LOCAL_PROJECTS
+    ? path.resolve(process.env.BIO_LOCAL_PROJECTS)
+    : path.join(REPO_ROOT, 'local_projects');
 
 /**
  * 本项目在本地交付缓存里的目录。
@@ -42,7 +46,7 @@ export const LOCAL_DELIVER_ROOT = process.env.BIO_LOCAL_DELIVERABLES
 export function localDeliverDir(projectId) {
   const safe = sanitizeProjectId(projectId);
   if (!safe) throw new Error(`projectId 非法: ${projectId}`);
-  return path.join(LOCAL_DELIVER_ROOT, safe);
+  return path.join(LOCAL_DELIVER_ROOT, safe, 'deliverables');
 }
 
 /**
@@ -60,17 +64,24 @@ export function buildReportCommand(projectId) {
   const safe = sanitizeProjectId(projectId);
   if (!safe) throw new Error(`projectId 非法: ${projectId}`);
   const remoteProjectDir = `${PROJECTS_ROOT}/${safe}`;
-  const command = `cd ${SSD_ROOT} && python3 ops/build_client_report.py --project '${remoteProjectDir}'`;
+  const keyDir = `${SSD_ROOT}/ops/secrets`;
+  const command = `cd ${SSD_ROOT}`
+    + ` && BIO_ED25519_PRIVATE_KEY_PATH='${keyDir}/ed25519_private.pem'`
+    + ` BIO_ED25519_PUBLIC_KEY_PATH='${keyDir}/ed25519_public.pem'`
+    + ` python3 ops/build_client_report.py --project '${remoteProjectDir}'`;
   return { command, remoteProjectDir };
 }
 
 /**
  * 引擎交付件允许集合（下载白名单，与 build 拉取集合同一份）：
- *   Analysis_Report.md / Analysis_Report.html / <project>_Client_Delivery.tar.gz
+ *   完整性清单、Ed25519 签名、公钥、Analysis_Report.{md,html} 与交付 tar.gz。
  * 引擎理论上不改名，但 tar 前缀跟随项目 id，按后缀匹配更稳；
  * 纯文本文件名严格全等。任何路径分隔符与 .. 直接拒绝。
  */
 const DELIVERABLE_NAME_PATTERNS = [
+  /^CHECKSUMS\.sha256$/,
+  /^CHECKSUMS\.sig$/,
+  /^ED25519_PUBLIC_KEY\.pem$/,
   /^Analysis_Report\.md$/,
   /^Analysis_Report\.html$/,
   /^[A-Za-z0-9._-]+_Client_Delivery\.tar\.gz$/,
@@ -80,6 +91,73 @@ export function isAllowedDeliverableName(name) {
   const raw = String(name ?? '');
   if (!raw || raw.includes('/') || raw.includes('\\') || raw.includes('..')) return false;
   return DELIVERABLE_NAME_PATTERNS.some((pattern) => pattern.test(raw));
+}
+
+/** 读取项目派生副本清单；目录不存在是空清单，不是故障 */
+export function readAdaptManifest(root, projectId) {
+  const safe = sanitizeProjectId(projectId);
+  if (!safe) throw new Error(`projectId 非法: ${projectId}`);
+  const base = path.resolve(String(root ?? REPO_ROOT), 'local_projects', safe);
+  const file = path.join(base, 'figures', 'adapt', 'manifest.json');
+  try {
+    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 把本地 figures/adapt/ 清单映射成远端 per-line scripts 上传对。
+ *
+ * 这里不改 build_client_report.py：上传后它会按既有 scripts/ 扫描逻辑把适配副本
+ * 收进 01_Adapted_Code/。所有路径都先钉在项目内 adapt/，再映射到本项目本线。
+ */
+export function buildAdaptUploadPairs(root, projectId) {
+  const safe = sanitizeProjectId(projectId);
+  if (!safe) throw new Error(`projectId 非法: ${projectId}`);
+  const adaptDir = path.resolve(String(root ?? REPO_ROOT), 'local_projects', safe, 'figures', 'adapt');
+  const manifest = readAdaptManifest(root, safe);
+  const errors = [];
+  const pairs = [];
+  for (const entry of manifest) {
+    const lineId = String(entry.line_id || '');
+    const extension = entry.local_path && /\.py$/i.test(entry.local_path) ? '.py' : '.R';
+    const remoteName = path.posix.basename(String(entry.remote_path || ''));
+    const filename = /^adapt_[A-Za-z0-9._-]+\.(R|py)$/.test(remoteName)
+      ? remoteName
+      : `adapt_${String(entry.template_id || '').replace(/\.(py|R)$/i, '')}${extension}`;
+    if (!/^[A-Za-z0-9._-]+$/.test(filename)) {
+      errors.push(`template_id 非法: ${filename}`);
+      continue;
+    }
+    if (!LINES.includes(lineId)) {
+      errors.push(`line_id 非法: ${lineId}`);
+      continue;
+    }
+    const local = path.resolve(String(entry.local_path || ''));
+    if (!local.startsWith(adaptDir + path.sep)) {
+      errors.push(`local_path 越界: ${entry.local_path}`);
+      continue;
+    }
+    try {
+      if (!fs.statSync(local).isFile()) errors.push(`local_path 不是文件: ${entry.local_path}`);
+    } catch {
+      errors.push(`local_path 不存在: ${entry.local_path}`);
+    }
+    pairs.push({
+      template_id: entry.template_id,
+      line_id: lineId,
+      local,
+      remote: `/mnt/ssd/bio_data/projects/${safe}/${lineId}/scripts/${filename}`,
+      sha256: entry.derived_sha256 || null,
+      master_sha256: entry.master_sha256 || null,
+    });
+  }
+  if (errors.length > 0) {
+    throw new Error(`适配清单非法（合法线 ${LINES.join(', ')}）: ${errors.join('; ')}`);
+  }
+  return pairs;
 }
 
 /**
@@ -187,7 +265,7 @@ function scpFetch(remotePath, localPath) {
 }
 
 /**
- * build 成功后把远端 <project>/deliverables/ 三大件拉回 localDeliverDir。
+ * build 成功后把远端 <project>/deliverables/ 交付件拉回 localDeliverDir。
  *
  * 以远端 find 实际清单为准（引擎可能改名），不在允许集合的文件跳过不拉；
  * 三大类任一缺失或任一文件字节数为 0 都明确报错，不许假装成功。
@@ -268,7 +346,7 @@ export async function pullDeliverables(projectId) {
 // 交付前置门禁（docs/delivery_package_spec.md 第三节第 3/5/6 条）
 //
 // 规范里这三道闸原本属于「尚未实现的 ops/09_package_delivery.ps1」，但打包能力
-// 实际由 ops/build_client_report.py 承担、入口在 8787（server/report.js），
+// 实际由 ops/build_client_report.py 承担、入口在 18787（server/report.js），
 // 引擎本身不含水位/台账/校验和检查（已 grep 确认）。所以把三道闸补在调用侧：
 // 引擎跑之前先问远端三件事，任一不过就不许生成交付包，避免「包出来了但项目里
 // 还有失败步骤」这种最难解释的假交付。
@@ -400,7 +478,7 @@ export async function runReportPreflight(projectId, { force = false } = {}) {
 /**
  * 给本地已回搬的交付件补 .sha256 旁挂文件（spec §一「生成校验清单，客户可自行核验」）。
  *
- * 引擎不打 CHECKSUMS.sha256（已 grep 确认），这里在本地缓存目录补一份
+ * 包内完整性由 CHECKSUMS.sha256 负责，这里在本地缓存目录补一份
  * `<文件名>.sha256`，格式是 sha256sum 的 `<hex>  <name>`，客户侧可直接
  * `sha256sum -c <name>.sha256` 复核。
  *

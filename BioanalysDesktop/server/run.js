@@ -13,10 +13,17 @@ import childProcess from 'node:child_process';
 
 import { auditCommand } from './audit.js';
 import { auditLedgerEntry } from './ledger.js';
-import { buildLedgerEntry, buildTaskScript } from './task.js';
+import { buildLedgerEntry, buildTaskScript, isLongRunningStep, routeTask } from './task.js';
 import { readEnvironmentManifest } from './manifest.js';
 import { SYSTEM_LOGS } from './domain.js';
 import { assertAllowedProgram } from './proc.js';
+import { probeRemoteState, reconcileTask } from './reconcile.js';
+
+const DETACHED_POLL_INTERVAL_MS = Math.max(
+  60000,
+  Number(process.env.BIO_TASK_POLL_INTERVAL_MS || 60000),
+);
+const DETACHED_TIMEOUT_MS = Number(process.env.BIO_TASK_TIMEOUT_MS || 40 * 60 * 1000);
 
 /**
  * 启动一个任务。
@@ -32,11 +39,19 @@ import { assertAllowedProgram } from './proc.js';
  */
 export function runTask(task, handlers = {}) {
   const startedAt = new Date().toISOString();
+  const taskId = randomUUID();
+  const detached = isLongRunningStep(task.step);
+  const wrapperTaskId = `task_${Date.now()}_${taskId.slice(0, 8)}`;
   // 远端执行与审计用同一份脚本，避免"审的是一套、跑的是另一套"
   // throttled: true —— 工作台任务必须经 ops/run_throttled_task.sh（nice/ionice 降权 + 存储水位与
   // 跨线门禁 + 线程封顶，aims §六.3）。2026-10-21 之前这里是默认 false，等于整条契约对引擎任务
   // 全部失效（D-21）；包装器缺 BIO_EXEC_CMD 支持时传命令串会 ENOENT，现已由命令串模式解决。
-  const script = buildTaskScript({ ...task, throttled: true });
+  const script = buildTaskScript({
+    ...task,
+    throttled: true,
+    detached,
+    wrapperTaskId,
+  });
   const audit = auditCommand(script, task.lineId);
   if (!audit.allowed) {
     // 审计不过就不启动，直接把拒绝原因当 stderr 抛给调用方
@@ -45,30 +60,24 @@ export function runTask(task, handlers = {}) {
     return { id: null, kill: () => {} };
   }
 
-  const taskId = randomUUID();
-  const child = childProcess.spawn('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', 'k40-ubuntu', script], {
-    cwd: handlers.cwd,
-    windowsHide: true,
-  });
-
   // 只保留 stderr 尾部用于 error_log；全量日志由调用方自己收集，不在这里存两份
   let stderrTail = '';
+  let settled = false;
+  let stopped = false;
+  let child = null;
+  let selectedNode = null;
+  let pollTimer = null;
+  let probeFailures = 0;
+  const wrapperLedgerPath = `/tmp/${wrapperTaskId}_ledger.json`;
+  const wrapperMarkerPath = `${SYSTEM_LOGS}/_running/${wrapperTaskId}.json`;
+  const wrapperLogPath = `${SYSTEM_LOGS}/${wrapperTaskId}.wrapper.log`;
 
-  child.stdout.on('data', (chunk) => {
-    handlers.onStdout?.(chunk.toString());
-  });
-
-  child.stderr.on('data', (chunk) => {
-    const text = chunk.toString();
-    stderrTail = (stderrTail + text).slice(-2000);
-    handlers.onStderr?.(text);
-  });
-
-  child.on('exit', (code) => {
+  const finishTask = (code, options = {}) => {
+    if (settled) return;
+    settled = true;
+    if (pollTimer) clearTimeout(pollTimer);
     const endedAt = new Date().toISOString();
     const success = code === 0;
-    // environment 从本线 envs/manifest.txt 读（正本在 src/，服务器副本由部署通道同步），
-    // 读不到就退化到默认值并明确提示，不让台账缺失这一栏
     const env = readEnvironmentManifest(task.lineId);
     if (!env) {
       handlers.onStderr?.(`[ledger] 未找到 ${task.lineId} 的 envs/manifest.txt，environment 用默认值\n`);
@@ -81,9 +90,9 @@ export function runTask(task, handlers = {}) {
       inputs: task.inputs,
       outputs: task.outputs,
       status: success ? 'completed' : 'failed',
-      checkpointStatus: success ? 'passed' : 'failed',
+      checkpointStatus: options.checkpointStatus || (success ? 'passed' : 'failed'),
       exitCode: code,
-      errorLog: success ? null : (stripSshNoise(stderrTail).trim() || 'stderr 为空，退出码非零'),
+      errorLog: success ? null : (options.errorLog || stripSshNoise(stderrTail).trim() || 'stderr 为空，退出码非零'),
       startedAt,
       endedAt,
       language: env?.language,
@@ -92,24 +101,177 @@ export function runTask(task, handlers = {}) {
       containerImage: env?.container_image,
     });
     entry.task_id = taskId;
+    entry.compute_node_id = selectedNode?.id || null;
 
-    // 自己写的账先过自己的审计，不合法就不落盘（并回报到 stderr，问题不藏）
+    // reconcile.js 的既有探针接口固定读 K40。备用节点任务跳过该探针，避免把 K40 的状态误套到备用节点。
+    if (!options.skipReconcile && selectedNode?.id === 'k40-ubuntu') {
+      const reconciliation = reconcileTask(
+        entry,
+        probeRemoteState(taskId, Array.isArray(task.outputs) ? task.outputs : [])
+      );
+      if (reconciliation) {
+        entry.status = reconciliation.status;
+        entry.checkpoint_status = reconciliation.checkpoint_status;
+        entry.reconcile_note = reconciliation.reconcile_note;
+      }
+    }
+
     const selfAudit = auditLedgerEntry(entry);
     if (!selfAudit.legal) {
       handlers.onStderr?.(`[ledger] 拒绝落盘：台账自身不合规: ${selfAudit.problems.join('; ')}\n`);
     } else {
-      // 落盘失败绝不能变成 unhandled rejection：Node 24 默认 unhandled rejection
-      // 直接杀进程（2026-10-13 事故：一次写台账失败把整个服务打死）。
-      // 失败要显式回报到 stderr 让人看见，不静默吞。
-      persistEntry(entry, task.lineId).catch((cause) => {
+      persistEntry(entry, task.lineId, { sshTarget: selectedNode?.host || 'k40-ubuntu' }).catch((cause) => {
         handlers.onStderr?.(`[ledger] 台账落盘失败: ${cause.message}\n`);
       });
     }
 
     handlers.onExit?.(code, entry);
+  };
+
+  const scheduleDetachedProbe = () => {
+    if (settled) return;
+    pollTimer = setTimeout(probeDetachedTask, DETACHED_POLL_INTERVAL_MS);
+    pollTimer.unref?.();
+  };
+
+  const probeDetachedTask = () => {
+    if (settled) return;
+    if (Date.now() - Date.parse(startedAt) >= DETACHED_TIMEOUT_MS) {
+      finishTask(-1, {
+        skipReconcile: true,
+        errorLog: `detached 长任务超过 ${Math.round(DETACHED_TIMEOUT_MS / 60000)} 分钟仍未落台账`,
+      });
+      return;
+    }
+    const probe = [
+      `if [ -f '${wrapperLedgerPath}' ]; then`,
+      '  echo __LEDGER__',
+      `  cat '${wrapperLedgerPath}'`,
+      `elif [ -f '${wrapperMarkerPath}' ]; then`,
+      '  echo __PENDING__',
+      'else',
+      '  echo __WAITING__',
+      `  tail -c 400 '${wrapperLogPath}' 2>/dev/null || true`,
+      'fi',
+    ].join('\n');
+    childProcess.execFile(
+      'ssh',
+      ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', selectedNode?.host || 'k40-ubuntu', probe],
+      { encoding: 'utf8', timeout: 30000, maxBuffer: 2 * 1024 * 1024 },
+      (error, stdout, stderr) => {
+        if (settled) return;
+        if (error) {
+          probeFailures += 1;
+          handlers.onStderr?.(`[detached] 状态探针失败 ${probeFailures}/2: ${String(stderr || error.message).slice(-300)}\n`);
+          if (probeFailures >= 2) {
+            finishTask(-1, { skipReconcile: true, errorLog: stderr || error.message });
+            return;
+          }
+          scheduleDetachedProbe();
+          return;
+        }
+        probeFailures = 0;
+        const text = String(stdout || '').trim();
+        if (text.startsWith('__LEDGER__')) {
+          try {
+            const wrapperLedger = JSON.parse(text.slice('__LEDGER__'.length).trim());
+            const code = wrapperLedger.status === 'completed' ? 0 : 1;
+            const wrappedError = wrapperLedger.error_log && wrapperLedger.error_log !== 'null'
+              ? wrapperLedger.error_log
+              : null;
+            finishTask(code, {
+              skipReconcile: true,
+              checkpointStatus: code === 0 ? 'passed' : 'failed',
+              errorLog: wrappedError,
+            });
+            childProcess.execFile('ssh', [
+              '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', selectedNode?.host || 'k40-ubuntu',
+              `rm -f '${wrapperLedgerPath}'`,
+            ], { timeout: 10000 }, () => {});
+          } catch (cause) {
+            finishTask(-1, {
+              skipReconcile: true,
+              errorLog: `detached 台账 JSON 无法解析: ${cause.message}`,
+            });
+          }
+          return;
+        }
+        handlers.onStdout?.(`[detached] ${text.replace('__PENDING__', '任务运行中').replace('__WAITING__', '等待包装器就绪')}\n`);
+        scheduleDetachedProbe();
+      },
+    );
+  };
+
+  const launchOnNode = (_routedTask, node) => {
+    selectedNode = node;
+    if (stopped) return { id: taskId, launched: false };
+    child = childProcess.spawn(
+      'ssh',
+      ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', node.host, script],
+      {
+        cwd: handlers.cwd,
+        windowsHide: true,
+      },
+    );
+
+    child.stdout.on('data', (chunk) => {
+      handlers.onStdout?.(chunk.toString());
+    });
+
+    child.stderr.on('data', (chunk) => {
+      const text = chunk.toString();
+      stderrTail = (stderrTail + text).slice(-2000);
+      handlers.onStderr?.(text);
+    });
+
+    child.on('exit', (code) => {
+      if (detached && code === 0) {
+        handlers.onStdout?.(`[detached] 已脱离本机进程树，wrapper=${wrapperTaskId}，node=${node.id}\n`);
+        scheduleDetachedProbe();
+        return;
+      }
+      finishTask(code, { skipReconcile: detached || node.id !== 'k40-ubuntu' });
+    });
+
+    child.on('error', (cause) => {
+      finishTask(-1, {
+        skipReconcile: detached || node.id !== 'k40-ubuntu',
+        errorLog: cause.message,
+      });
+    });
+
+    return { id: taskId, launched: true };
+  };
+
+  routeTask({ ...task, taskId }, { executor: launchOnNode }).catch((cause) => {
+    handlers.onStderr?.(`[failover] 新任务无法路由: ${cause.message}\n`);
+    handlers.onExit?.(-1);
   });
 
-  return { id: taskId, kill: () => child.kill() };
+  const stopTask = () => {
+    if (settled || stopped) return;
+    stopped = true;
+    if (!child) return;
+    if (!detached) {
+      child.kill();
+      return;
+    }
+    const stop = [
+      `marker='${wrapperMarkerPath}'`,
+      'pid=$(sed -n \'s/.*"wrapper_pid": \\([0-9][0-9]*\\).*/\\1/p\' "$marker" 2>/dev/null)',
+      'if [ -n "$pid" ]; then kill -TERM -- "-$pid" 2>/dev/null || true; fi',
+      'rm -f "$marker"',
+      'echo STOPPED',
+    ].join('\n');
+    childProcess.execFile(
+      'ssh',
+      ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', selectedNode?.host || 'k40-ubuntu', stop],
+      { timeout: 20000 },
+      () => finishTask(143, { skipReconcile: true, errorLog: '用户中止 detached 长任务' }),
+    );
+  };
+
+  return { id: taskId, kill: stopTask };
 }
 
 /**
@@ -191,10 +353,10 @@ export function buildLedgerWriteCommand(entry) {
  * 导出是为了测试可用假 ssh 垫片验证 stdin 传输与校验行为。
  * @throws 落盘失败 / 无 WROTE 标记 / 字节数不符
  */
-export async function persistEntry(entry, lineId) {
+export async function persistEntry(entry, lineId, options = {}) {
   const { command, remotePath } = buildLedgerWriteCommand(entry);
   const payload = Buffer.from(JSON.stringify(entry, null, 2), 'utf8');
-  const result = await runSsh(command, payload.toString('base64'));
+  const result = await runSsh(command, payload.toString('base64'), options.sshTarget || 'k40-ubuntu');
   const marker = result
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -212,10 +374,10 @@ export async function persistEntry(entry, lineId) {
 /**
  * ssh 执行远端命令；stdinPayload 非 null 时经 stdin 传给远端命令（base64 台账 payload）。
  */
-function runSsh(command, stdinPayload = null) {
+function runSsh(command, stdinPayload = null, sshTarget = 'k40-ubuntu') {
   assertAllowedProgram(['ssh']);
   return new Promise((resolve, reject) => {
-    const child = childProcess.spawn('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', 'k40-ubuntu', command], {
+    const child = childProcess.spawn('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', sshTarget, command], {
       windowsHide: true,
     });
     if (stdinPayload !== null) {

@@ -48,6 +48,12 @@ test('readEnvironmentManifest 读本地正本，返回台账 environment 需要�
   }
 });
 
+test('line1_bulk 环境声明版本为 4.5.3', () => {
+  const env = readEnvironmentManifest('line1_bulk');
+  assert.ok(env, 'line1_bulk 的 envs/manifest.txt 缺失或必填字段不全');
+  assert.equal(env.version, '4.5.3');
+});
+
 test('manifest 缺失时返回 null 而不是抛（exit handler 里抛错会杀进程）', () => {
   assert.equal(readEnvironmentManifest('line9_not_exist'), null);
 });

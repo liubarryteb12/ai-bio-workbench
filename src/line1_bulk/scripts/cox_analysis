@@ -17,6 +17,8 @@
 # 口径：docs/figure_spec.md（Agg/150dpi/英文标签；图注置坐标轴框外）。
 set -euo pipefail
 
+RSCRIPT_BIN="${BIOANALYS_RSCRIPT:-/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript}"
+
 seed="${BIOANALYS_SEED:-UNSET}"
 if [ "$seed" = "UNSET" ]; then
   echo "BIOANALYS_SEED 未注入（引擎契约：seed 必须注入）" >&2
@@ -43,7 +45,7 @@ SURV_FILE="${SURV_FILE:-survival_meta.tsv}"
 
 BIOANALYS_SEED="$seed" EXPR_FILE="$EXPR_FILE" GROUP_FILE="$GROUP_FILE" \
 KEY_FILE="$KEY_FILE" SURV_FILE="$SURV_FILE" \
-Rscript - <<'RSCRIPT'
+"$RSCRIPT_BIN" - <<'RSCRIPT'
 suppressMessages({
   library(survival)
   library(glmnet)

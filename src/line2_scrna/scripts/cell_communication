@@ -258,6 +258,7 @@ report_lines += [
     % int(celltype_counts.get("unknown", 0)),
     "3. 全量结果见 cellcomm_interactions.tsv（%d 行，含自分泌 source==target 对）。" % res.shape[0],
     "4. liana 结果为统计评分不是实验验证；供假设生成，供人工复核。",
+    "outputs=scrna_cellcomm.h5ad, cellcomm_interactions.tsv",
 ]
 with open("cellcomm_report.txt", "w") as fh:
     fh.write("\n".join(report_lines) + "\n")
@@ -265,3 +266,9 @@ with open("cellcomm_report.txt", "w") as fh:
 log("cell_communication_done rows=%d coverage=%.4f elapsed=%.1fs"
     % (res.shape[0], coverage, time.time() - START))
 PYSCRIPT
+
+# sha256 产物台账后置补登：复用独立脚本，写法与其余步骤解耦。
+if [ -x "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" ]; then
+  "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" "$PWD" "cellcomm_report.txt" > /dev/null 2>>"$0.ledger.err" \
+  || echo "WARN sha256 ledger backfill failed, see $0.ledger.err" >&2
+fi

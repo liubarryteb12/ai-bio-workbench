@@ -30,6 +30,12 @@
 #   自动降级为不绑核，不让任务因绑核失败而夭折；降级事件打 stdout 供 SSE 日志流可见。
 set -e
 
+RSCRIPT_BIN="${BIOANALYS_RSCRIPT:-/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript}"
+THERMAL_ROOT="${BIO_THERMAL_ROOT:-/sys/class/thermal}"
+THERMAL_HOT_C="${BIO_THERMAL_HOT_C:-90}"
+THERMAL_COOL_C="${BIO_THERMAL_COOL_C:-78}"
+THERMAL_POLL_SECONDS="${BIO_THERMAL_POLL_SECONDS:-30}"
+
 TASK_ID="$1"
 LINE_ID="$2"
 STEP_NAME="$3"
@@ -39,16 +45,59 @@ shift 5
 SCRIPT_ARGS="$*"
 
 # 前置门禁
-bash /mnt/ssd/bio_data/ops/check_storage_and_isolation.sh "$LINE_ID" "$SCRIPT_PATH"
+bash "${BIO_STORAGE_GUARD:-/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh}" "$LINE_ID" "$SCRIPT_PATH"
 
 # source 全局线程封顶（proot 下 profile.d 可能不存在，容错）
 if [ -f /etc/profile.d/bio_limits.sh ]; then
     source /etc/profile.d/bio_limits.sh || true
 fi
 
+# --- 启动前热节流门禁（WP-1.3）---
+# 读取所有可用 thermal_zone，取最高温度。原始值通常为毫摄氏度，也兼容摄氏度。
+thermal_max_c() {
+    local sensor raw value temperature max_value=""
+    for sensor in "$THERMAL_ROOT"/thermal_zone*/temp; do
+        [ -r "$sensor" ] || continue
+        raw=$(tr -d '[:space:]' < "$sensor" 2>/dev/null || true)
+        case "$raw" in
+            ""|*[!0-9.-]*) continue ;;
+        esac
+        value=$(awk -v raw="$raw" 'BEGIN {
+            value = raw + 0
+            if (value >= 1000) value = value / 1000
+            if (value > 0 && value < 150) printf "%.1f", value
+        }')
+        [ -n "$value" ] || continue
+        if [ -z "$max_value" ] || awk -v current="$value" -v max="$max_value" 'BEGIN { exit !(current > max) }'; then
+            max_value="$value"
+        fi
+    done
+    printf '%s\n' "$max_value"
+}
+
+INITIAL_TEMP_C=$(thermal_max_c)
+POST_COOLDOWN_TEMP_C="$INITIAL_TEMP_C"
+THERMAL_WAIT_SECONDS=0
+if [ -z "$INITIAL_TEMP_C" ]; then
+    echo "[wrapper] $(date -u +%Y-%m-%dT%H:%M:%SZ) THERMAL_UNKNOWN root=$THERMAL_ROOT 温度不可读，跳过冷却门禁"
+elif awk -v current="$INITIAL_TEMP_C" -v hot="$THERMAL_HOT_C" 'BEGIN { exit !(current >= hot) }'; then
+    echo "[wrapper] $(date -u +%Y-%m-%dT%H:%M:%SZ) THERMAL_COOLDOWN start=${INITIAL_TEMP_C}C hot=${THERMAL_HOT_C}C target_below=${THERMAL_COOL_C}C poll=${THERMAL_POLL_SECONDS}s"
+    while [ -n "$POST_COOLDOWN_TEMP_C" ] && awk -v current="$POST_COOLDOWN_TEMP_C" -v cool="$THERMAL_COOL_C" 'BEGIN { exit !(current >= cool) }'; do
+        sleep "$THERMAL_POLL_SECONDS"
+        THERMAL_WAIT_SECONDS=$((THERMAL_WAIT_SECONDS + THERMAL_POLL_SECONDS))
+        POST_COOLDOWN_TEMP_C=$(thermal_max_c)
+        if [ -z "$POST_COOLDOWN_TEMP_C" ]; then
+            echo "[wrapper] $(date -u +%Y-%m-%dT%H:%M:%SZ) THERMAL_SENSOR_LOST 冷却期间温度不可读，拒绝启动任务"
+            exit 1
+        fi
+        echo "[wrapper] $(date -u +%Y-%m-%dT%H:%M:%SZ) THERMAL_COOLDOWN current=${POST_COOLDOWN_TEMP_C}C waited=${THERMAL_WAIT_SECONDS}s"
+    done
+    echo "[wrapper] $(date -u +%Y-%m-%dT%H:%M:%SZ) THERMAL_READY current=${POST_COOLDOWN_TEMP_C}C waited=${THERMAL_WAIT_SECONDS}s"
+fi
+
 START_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 LOG_FILE="/mnt/ssd/bio_data/system_logs/${TASK_ID}.log"
-LEDGER_JSON="/mnt/ssd/bio_data/system_logs/${TASK_ID}_ledger.json"
+LEDGER_JSON="${BIO_WRAPPER_LEDGER_PATH:-/mnt/ssd/bio_data/system_logs/${TASK_ID}_ledger.json}"
 
 # --- 运行中标记（可观测性）：任务被容器 abort / 被 kill 时不会留下台账，只留这个标记 ---
 # 为什么放在子目录：台账校验脚本按 system_logs/*.json 通配，标记不能混进去当台账（会被判 VIOLATION）。
@@ -56,7 +105,14 @@ LEDGER_JSON="/mnt/ssd/bio_data/system_logs/${TASK_ID}_ledger.json"
 RUNNING_DIR="/mnt/ssd/bio_data/system_logs/_running"
 RUNNING_JSON="$RUNNING_DIR/${TASK_ID}.json"
 mkdir -p "$RUNNING_DIR"
-find "$RUNNING_DIR" -maxdepth 1 -name '*.json' -mtime +7 -delete 2>/dev/null || true
+now_epoch=$(date +%s)
+for stale_marker in "$RUNNING_DIR"/*.json; do
+    [ -f "$stale_marker" ] || continue
+    marker_mtime=$(stat -c %Y "$stale_marker" 2>/dev/null || echo "$now_epoch")
+    if [ $((now_epoch - marker_mtime)) -gt 604800 ]; then
+        rm -f -- "$stale_marker"
+    fi
+done
 cat <<RUNEOF > "$RUNNING_JSON"
 {
   "task_id": "$TASK_ID",
@@ -72,7 +128,7 @@ echo "[wrapper] 运行中标记已落盘: $RUNNING_JSON"
 
 # 选解释器：如果传了 R/Python/bash 就用对应解释器，否则靠脚本自身 shebang
 case "$LANG_SPEC" in
-    R|Rscript) EXEC_CMD="Rscript" ;;
+    R|Rscript) EXEC_CMD="$RSCRIPT_BIN" ;;
     Python|python|python3) EXEC_CMD="python3" ;;
     bash|sh) EXEC_CMD="bash" ;;
     auto|self|"") EXEC_CMD="" ;;
@@ -131,7 +187,14 @@ cat <<EOF > "$LEDGER_JSON"
   "environment": {
     "language": "$LANG_SPEC",
     "wrapper": "$AFFINITY_DESC nice -n 10 ionice -c 2 -n 4",
-    "memory_limit_gb": 7.5
+    "memory_limit_gb": 7.5,
+    "thermal": {
+      "initial_temp_c": ${INITIAL_TEMP_C:-null},
+      "post_cooldown_temp_c": ${POST_COOLDOWN_TEMP_C:-null},
+      "cooldown_seconds": $THERMAL_WAIT_SECONDS,
+      "hot_threshold_c": "$THERMAL_HOT_C",
+      "cool_threshold_c": "$THERMAL_COOL_C"
+    }
   },
   "checkpoint_status": "$([ $EXIT_CODE -eq 0 ] && echo "passed" || echo "halted")",
   "error_log": "$([ $EXIT_CODE -eq 0 ] && echo "null" || echo "$LOG_FILE")"
