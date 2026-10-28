@@ -5,7 +5,7 @@
     "deliverables": 317,
     "figures": 166
   },
-  "generated_at": "2026-10-28T02:26:49.954819+00:00",
+  "generated_at": "2026-10-28T02:49:55.754595+00:00",
   "generated_by": "ops/ledger_indexer.py",
   "issues": [],
   "ledger_summary": {
@@ -255,10 +255,40 @@
           "title": "真实 v3.1 票据与交付签名",
           "ts": "2026-10-28T10:26:19+08:00",
           "type": "action"
+        },
+        {
+          "detail": "Final Gate v3.1 完成 24/24 PASS；Node 974/974、Playwright 15/15、TypeScript、build、K40 55/55、远端 101/101 与部署 55/55 全绿；18787 与 8080 双活，交付包 VERIFIED 329。",
+          "evidence": [
+            "con_hf/runs/2026-10-28_final_gate_v31/REPORT.md",
+            "con_hf/runs/2026-10-28_final_gate_v31/SUMMARY.json",
+            "con_hf/runs/2026-10-28_final_gate_v31/sync_all_remote.log",
+            "con_hf/runs/2026-10-28_final_gate_v31/delivery_verify.json",
+            "con_hf/runs/2026-10-28_final_gate_v31/port_migration.json"
+          ],
+          "id": "ACT-20261028-007",
+          "kind": "verify",
+          "line": "all",
+          "project": "PRJ_AIMS_V3_20261027",
+          "refs": [
+            "G1",
+            "G2",
+            "G3",
+            "G4",
+            "G5",
+            "G6",
+            "G7",
+            "T-CORE-04",
+            "T-SYNC-01",
+            "D-28"
+          ],
+          "step": "final_gate_v31",
+          "title": "Final Gate v3.1 全绿与发布冻结",
+          "ts": "2026-10-28T10:49:36+08:00",
+          "type": "action"
         }
       ],
       "path": "ledger/actions.jsonl",
-      "records": 12,
+      "records": 13,
       "status_policy": "none"
     },
     "changes": {

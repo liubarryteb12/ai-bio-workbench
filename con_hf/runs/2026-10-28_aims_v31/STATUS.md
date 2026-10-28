@@ -1,7 +1,7 @@
 # Aims v3.1 执行状态
 
 日期：2026-10-28  
-状态：阶段Ⅰ、阶段Ⅱ与端口迁移已完成；剩余提交收口、当前票据 Sync 与最终交付包重建
+状态：Final Gate v3.1 PASS，可以冻结 `release/v3.1`
 
 ## 已完成
 
@@ -101,19 +101,21 @@
 - `serve_guard.ps1` 已改为只停止白名单命中的本项目 Node 进程，新增 `-DryRun`。
 - 证据：`con_hf/runs/2026-10-28_aims_v31/port18787/`
 
-## 阻塞与未完成
+## 最终收口
 
 ### T-CORE-04 与 T-SYNC-01
 
-- 当前工作树快照为 2056 个条目，其中 tracked 201、untracked 1855。新增差异主要来自精确白名单纳入的图模板母版、预览和真实样例。
-- 子代理分类报告显示四组之外还有 722 个无法归类条目。
-- 未执行 `git add`、commit、branch、tag，避免把无关用户改动混入提交。
-- Final Gate v3.1 尚未在干净工作树重跑。
+- v3.1 改动已按模块边界完成原子提交，Final Gate 开始时工作树为空。
 - 当前版本真实门户票据已完成：`2026-10-28_101353_requirement_PRJ_AIMS_V3_20261027`，返回 17 个结果文件，状态 done。
-- 当前交付包已重建并通过 Ed25519 `VERIFIED 329`。
-- 24 项 Final Gate 预检全部通过，剩余治理工作只有工作树原子提交、干净工作树 Final Gate 与 release 冻结。
-- 证据：`con_hf/runs/2026-10-28_aims_v31/FINAL_GATE_PRECHECK.md`
+- 当前交付包已重建，归档 SHA256 与旁挂清单一致，解包后 Ed25519 `VERIFIED 329`。
+- Node 974/974、Playwright 15/15、TypeScript、Vite build 全部通过。
+- K40 55/55 台账通过，101/101 远端文件与 55/55 部署落点零漂移。
+- 18787 与 8080 双活，活动代码中的 8787 精确命中为 0，Clash Verge 无端口冲突。
+- 24 项 Final Gate 全部 PASS，0 PENDING，0 FAIL。
+- 正式证据：`con_hf/runs/2026-10-28_final_gate_v31/REPORT.md` 与 `SUMMARY.json`。
 
 ## 当前结论
 
-G1、G2、G3、G4、G6、G7 已完成，T-LINES-01 已按 D-27 的 JSON module manifest 口径完成，端口冲突已按 D-28 迁移到 18787，T-SYNC-01 的当前真实票据与交付包重建也已通过。剩余阻塞只有 G5 工作树原子收口和干净工作树 Final Gate 冻结，项目应继续保持 active，不应标记完成。
+G1、G2、G3、G4、G5、G6、G7 已全部完成。T-LINES-01 按 D-27 的 JSON module manifest 口径完成，
+端口冲突按 D-28 迁移到 18787，T-SYNC-01 的真实票据、当前交付包与零漂移同步均已通过。
+AIMS v3.1 达到冻结条件，正式分支为 `release/v3.1`，冻结标签为 `v3.1.0-final-gate`。

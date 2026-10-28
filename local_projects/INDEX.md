@@ -5,7 +5,7 @@
 | project_id | data | figures | deliverables | debug | ledger records | machine logs |
 |---|---:|---:|---:|---:|---:|---:|
 | PRJ_20261019_IS_lactylation | 58 | 56 | 0 | 0 | 0 | 26 |
-| PRJ_AIMS_V3_20261027 | 195 | 166 | 317 | 0 | 12 | 224 |
+| PRJ_AIMS_V3_20261027 | 195 | 166 | 317 | 0 | 13 | 224 |
 | default | 0 | 108 | 0 | 0 | 1 | 68 |
 
 ## 机读视图
@@ -33,7 +33,7 @@
         "deliverables": 317,
         "debug": 0
       },
-      "ledger_records": 12,
+      "ledger_records": 13,
       "machine_log_count": 224
     },
     {

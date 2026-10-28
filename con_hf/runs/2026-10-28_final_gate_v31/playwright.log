@@ -1,0 +1,35 @@
+
+> bioanalys-desktop@0.1.0 test:e2e
+> node node_modules/@playwright/test/cli.js test --config playwright.config.ts
+
+
+[WebServer] (node:42340) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:33784) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+
+Running 15 tests using 1 worker
+
+(node:22792) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[1/15] [chromium] › tests\e2e\portal.spec.ts:170:1 › injected contracts contain exactly 20 tumor patterns and every sample matches
+[2/15] [chromium] › tests\e2e\portal.spec.ts:190:1 › tumor input blocks with a visible red warning while PD-1 boundary genes stay open
+[3/15] [chromium] › tests\e2e\portal.spec.ts:210:1 › cross-group GSM duplicate is highlighted and clears after the sample is fixed
+[4/15] [chromium] › tests\e2e\portal.spec.ts:224:1 › virtual knockout exposes target_ko_gene and blocks progression until it is filled
+[5/15] [chromium] › tests\e2e\portal.spec.ts:241:1 › figure selector groups cards by L1, L2 and L3 with language and preview labels
+[6/15] [chromium] › tests\e2e\portal.spec.ts:263:1 › candidate catalog link opens a working single-figure catalog
+[7/15] [chromium] › tests\e2e\portal.spec.ts:277:1 › figure selector defaults to ready previews and keeps pending cards behind all templates
+[8/15] [chromium] › tests\e2e\portal.spec.ts:297:1 › ready preview count follows the selected analysis line
+[9/15] [chromium] › tests\e2e\portal.spec.ts:313:1 › non-ready figure cards are disabled and show the dependency reason
+[10/15] [chromium] › tests\e2e\portal.spec.ts:324:1 › preview fingerprint mismatch removes the image and shows the out-of-sync warning
+[11/15] [chromium] › tests\e2e\portal.spec.ts:347:1 › adapt_vars values and the selected template enter the submitted manifest
+[12/15] [chromium] › tests\e2e\portal.spec.ts:366:1 › result view physically separates built-in previews from project result figures
+[WebServer] [user-portal] 客户 sync 鉴权失败: GET /api/sync/results/file
+
+[13/15] [chromium] › tests\e2e\portal.spec.ts:390:1 › server accepts a valid figure selection and rejects a cross-line adapt path
+[14/15] [chromium] › tests\e2e\portal.spec.ts:444:1 › 4 MiB chunk upload resumes from the next missing index after interruption
+[15/15] [chromium] › tests\e2e\portal.spec.ts:496:1 › client sync trigger enforces the 60 second per-ticket cooldown
+  15 passed (25.4s)

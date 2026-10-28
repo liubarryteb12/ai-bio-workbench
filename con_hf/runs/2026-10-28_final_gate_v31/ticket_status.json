@@ -1,0 +1,14 @@
+{
+  "ticket": "2026-10-28_101353_requirement_PRJ_AIMS_V3_20261027",
+  "ok": true,
+  "sync_status": "done",
+  "sync_urgent": false,
+  "result_file_count": 17,
+  "returned_files": 17,
+  "result_at": "2026-10-28T02:24:04.635Z",
+  "mode": "real",
+  "packed": true,
+  "dispatched": true,
+  "pulled": true,
+  "imported": true
+}
