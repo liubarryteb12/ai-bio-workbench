@@ -35,6 +35,7 @@ def run_cli(args, root, script=SCRIPT):
         stderr=subprocess.PIPE,
         text=True,
         encoding="utf-8",
+        errors="replace",
     )
     return proc
 
@@ -65,6 +66,7 @@ def init_scaffold(root, project_id="demo_project", line="line1_bulk"):
         stderr=subprocess.PIPE,
         text=True,
         encoding="utf-8",
+        errors="replace",
     )
 
 

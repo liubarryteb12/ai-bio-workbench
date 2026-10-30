@@ -450,6 +450,7 @@ before(async () => {
     if (Date.now() > deadline) throw new Error('服务 10s 内没就绪（端口 ' + PORT + '）');
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
+  childCalls.length = 0;
 });
 
 after(async () => {
@@ -480,6 +481,7 @@ function initBody(extra) {
 }
 
 test('D: init 带同一 fingerprint 两次 -> 同一 uploadId，deterministic=true，status 可查到', async () => {
+  childCalls.length = 0;
   const body = initBody({ size: 1024, lastModified: 1700000000000 });
   const fingerprint = uploadFingerprint({
     project: body.projectId, lineId: body.lineId, name: body.filename, size: body.size, lastModified: body.lastModified,

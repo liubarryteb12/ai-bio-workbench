@@ -61,6 +61,7 @@ export function classifyFile(filePath) {
     || normalized.startsWith('reference/05.')
     || normalized === 'README.md'
     || normalized === '项目情况汇总2026-10-30.md'
+    || normalized.endsWith('.bat')
   ) {
     return 'docs-release';
   }

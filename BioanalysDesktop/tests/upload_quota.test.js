@@ -455,6 +455,7 @@ before(async () => {
     if (Date.now() > deadline) throw new Error('服务 10s 内没就绪（端口 ' + PORT + '）');
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
+  childCalls.length = 0;
 });
 
 after(async () => {
@@ -481,6 +482,7 @@ async function postJson(pathname, body) {
 test('D: init 配额超限（活跃会话占满）=> 507 + {ok:false,error}，错误体含占用与配额字节数', async () => {
   const previous = process.env.BIO_UPLOAD_QUOTA_BYTES;
   process.env.BIO_UPLOAD_QUOTA_BYTES = '32';
+  childCalls.length = 0;
   try {
     plantSession(64);
     resetUploadGcThrottle();
@@ -532,6 +534,7 @@ test('D: init 配额正常时可以创建会话（不误伤）', async () => {
 test('D: 四端点错误体统一为 {ok:false,error}（init / chunk / status / complete 各至少一条）', async () => {
   const previous = process.env.BIO_UPLOAD_QUOTA_BYTES;
   process.env.BIO_UPLOAD_QUOTA_BYTES = String(DEFAULT_UPLOAD_QUOTA_BYTES);
+  childCalls.length = 0;
   try {
     resetUploadGcThrottle();
 

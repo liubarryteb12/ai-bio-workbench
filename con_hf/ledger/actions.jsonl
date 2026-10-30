@@ -486,3 +486,7 @@
 {"id":"ACT-1793322859654-d1b19f","ts":"2026-10-30T01:14:19.654Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_a2a_task_cancel","detail":{"task_id":"task-789","status":200}}
 {"id":"ACT-1793330058485-2132e1","ts":"2026-10-30T03:14:18.485Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_a2a_task_poll","detail":{"task_id":"task-456","status":200}}
 {"id":"ACT-1793330058486-d4cdd1","ts":"2026-10-30T03:14:18.486Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_a2a_task_cancel","detail":{"task_id":"task-789","status":200}}
+{"id":"ACT-1793346300107-9ea0b8","ts":"2026-10-30T07:45:00.107Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_a2a_task_poll","detail":{"task_id":"task-456","status":200}}
+{"id":"ACT-1793346300108-6b5cb3","ts":"2026-10-30T07:45:00.108Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_a2a_task_cancel","detail":{"task_id":"task-789","status":200}}
+{"id":"ACT-1793349768299-ec0d07","ts":"2026-10-30T08:42:48.299Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_a2a_task_poll","detail":{"task_id":"task-456","status":200}}
+{"id":"ACT-1793349768300-5ba21f","ts":"2026-10-30T08:42:48.300Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_a2a_task_cancel","detail":{"task_id":"task-789","status":200}}
