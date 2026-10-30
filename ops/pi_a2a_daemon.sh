@@ -9,9 +9,11 @@ LOG_FILE="$LOG_DIR/pi_a2a_daemon.log"
 PROBE_URL="http://127.0.0.1:9910/.well-known/agent-card.json"
 SERVER_WAIT_SECONDS=30
 PROVIDER_KEY_FILE="$HOME/.pi/agent/.provider_key"
+PROVIDER_KEYS_DIR="$HOME/.pi/agent/.provider_keys"
 PROVIDER_NAME_FILE="$HOME/.pi/agent/.provider_name"
 PROVIDER_MODEL_FILE="$HOME/.pi/agent/.provider_model"
 PROVIDER_BASE_URL_FILE="$HOME/.pi/agent/.provider_base_url"
+PROVIDER_LAUNCHER="$HOME/bin/pi_a2a_launch.sh"
 MODEL_A="glm-5.3-flash"
 MODEL_B="deepseek-v4.1-flash"
 THINKING_LEVEL="high"
@@ -70,16 +72,31 @@ if [ -n "${PI_PROVIDER_ENV:-}" ]; then
   PROVIDER_VALUE="${!PI_PROVIDER_ENV}"
   case "$PROVIDER_ENV_NAME" in
     ZAI_API_KEY|ZAI_CODING_CN_API_KEY)
+      PROVIDER_NAME="zai"
       PROVIDER_MODEL="$MODEL_A"
       ;;
     DEEPSEEK_API_KEY)
+      PROVIDER_NAME="deepseek"
       PROVIDER_MODEL="$MODEL_B"
       ;;
     *)
       die 2 "ERR_PROVIDER_NOT_ALLOWED: only ZAI or DeepSeek keys may run Pi"
       ;;
   esac
-elif [ -s "$PROVIDER_KEY_FILE" ] && [ -s "$PROVIDER_NAME_FILE" ]; then
+  umask 077
+  mkdir -p "$PROVIDER_KEYS_DIR"
+  chmod 700 "$PROVIDER_KEYS_DIR"
+  PROVIDER_KEY_PATH="$PROVIDER_KEYS_DIR/$PROVIDER_NAME"
+  printf '%s' "$PROVIDER_VALUE" > "$PROVIDER_KEY_PATH"
+  chmod 600 "$PROVIDER_KEY_PATH"
+  if [ "$PROVIDER_NAME" = "zai" ]; then
+    printf '%s' "$PROVIDER_VALUE" > "$PROVIDER_KEY_FILE"
+    chmod 600 "$PROVIDER_KEY_FILE"
+  fi
+  printf '%s\n' "$PROVIDER_NAME" > "$PROVIDER_NAME_FILE"
+  printf '%s\n' "$PROVIDER_MODEL" > "$PROVIDER_MODEL_FILE"
+  chmod 600 "$PROVIDER_NAME_FILE" "$PROVIDER_MODEL_FILE"
+elif [ -s "$PROVIDER_NAME_FILE" ] && [ -s "$PROVIDER_MODEL_FILE" ]; then
   PROVIDER_NAME="$(tr -d '[:space:]' < "$PROVIDER_NAME_FILE")"
   case "$PROVIDER_NAME" in
     [a-z][a-z0-9]*)
@@ -89,7 +106,14 @@ elif [ -s "$PROVIDER_KEY_FILE" ] && [ -s "$PROVIDER_NAME_FILE" ]; then
       die 2 "ERR_PROVIDER_NAME_MALFORMED: $PROVIDER_NAME"
       ;;
   esac
-  PROVIDER_VALUE="$(cat "$PROVIDER_KEY_FILE")"
+  PROVIDER_KEY_PATH="$PROVIDER_KEYS_DIR/$PROVIDER_NAME"
+  if [ ! -s "$PROVIDER_KEY_PATH" ] && [ "$PROVIDER_NAME" = "zai" ] && [ -s "$PROVIDER_KEY_FILE" ]; then
+    PROVIDER_KEY_PATH="$PROVIDER_KEY_FILE"
+  fi
+  if [ ! -s "$PROVIDER_KEY_PATH" ]; then
+    die 2 "ERR_PROVIDER_KEY_MISSING: provider=$PROVIDER_NAME"
+  fi
+  PROVIDER_VALUE="$(cat "$PROVIDER_KEY_PATH")"
   case "$PROVIDER_NAME" in
     zai)
       PROVIDER_ENV_NAME="ZAI_API_KEY"
@@ -112,7 +136,7 @@ elif [ -s "$PROVIDER_KEY_FILE" ] && [ -s "$PROVIDER_NAME_FILE" ]; then
       die 2 "ERR_MODEL_PIN_MISMATCH: file=$REQUESTED_MODEL derived=$PROVIDER_MODEL"
     fi
   fi
-  chmod 600 "$PROVIDER_KEY_FILE" "$PROVIDER_NAME_FILE"
+  chmod 600 "$PROVIDER_KEY_PATH" "$PROVIDER_NAME_FILE" "$PROVIDER_MODEL_FILE"
   if [ -s "$PROVIDER_BASE_URL_FILE" ]; then
     PROVIDER_BASE_URL="$(tr -d '[:space:]' < "$PROVIDER_BASE_URL_FILE")"
     case "$PROVIDER_BASE_URL" in
@@ -120,6 +144,14 @@ elif [ -s "$PROVIDER_KEY_FILE" ] && [ -s "$PROVIDER_NAME_FILE" ]; then
       *) die 2 "ERR_PROVIDER_BASE_URL_MALFORMED" ;;
     esac
   fi
+fi
+
+if [ -n "$PROVIDER_NAME" ] && [ -n "$PROVIDER_MODEL" ]; then
+  mkdir -p "$PROVIDER_KEYS_DIR"
+  chmod 700 "$PROVIDER_KEYS_DIR"
+  printf '%s\n' "$PROVIDER_NAME" > "$PROVIDER_NAME_FILE"
+  printf '%s\n' "$PROVIDER_MODEL" > "$PROVIDER_MODEL_FILE"
+  chmod 600 "$PROVIDER_NAME_FILE" "$PROVIDER_MODEL_FILE"
 fi
 
 if [ -n "$PROVIDER_ENV_NAME" ] && [ ! -s "$HOME/.pi/agent/models.json" ]; then
@@ -155,13 +187,15 @@ start_pi() {
   if [ -z "$PROVIDER_ENV_NAME" ] || [ -z "$PROVIDER_MODEL" ]; then
     die 2 "ERR_PROVIDER_REQUIRED: Pi may only start with an approved model key"
   fi
+  if [ ! -x "$PROVIDER_LAUNCHER" ]; then
+    die 1 "ERR_PROVIDER_LAUNCHER_MISSING: $PROVIDER_LAUNCHER"
+  fi
   log "INFO starting_pi_auto_server mode=tui session=$SESSION_NAME"
   if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
     tmux kill-session -t "$SESSION_NAME"
   fi
-  tmux new-session -d -s "$SESSION_NAME" -c "$WORKSPACE_ROOT" \
-    -e "A2A_PROVIDER_KEY=$PROVIDER_VALUE" \
-    "cd '$WORKSPACE_ROOT' && exec pi --model '$PROVIDER_MODEL' --thinking '$THINKING_LEVEL'"
+  tmux new-session -d -s "$SESSION_NAME" -n a2a-server -c "$WORKSPACE_ROOT" \
+    "cd '$WORKSPACE_ROOT' && exec bash '$PROVIDER_LAUNCHER' '$PROVIDER_MODEL' '$THINKING_LEVEL'"
   # Window 1 hosts the telemetry sidecar (:9911) for the 18787 workbench.
   if [ -x "$HOME/bin/pi_telemetry_sidecar.py" ]; then
     tmux new-window -t "$SESSION_NAME" -n telemetry -c "$WORKSPACE_ROOT" \
@@ -242,8 +276,8 @@ monitor_loop() {
   done
 }
 
-if [ "${A2A_DAEMON_MODE:-foreground}" = "monitor" ] ; then
+if [ "${A2A_DAEMON_MODE:-monitor}" = "monitor" ] ; then
   monitor_loop
 else
-  log "INFO monitor_mode=A2A_DAEMON_MODE=monitor enables 60s self-heal loop"
+  log "INFO monitor_mode=disabled (set A2A_DAEMON_MODE=monitor to enable the 60s self-heal loop)"
 fi

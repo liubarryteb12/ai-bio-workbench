@@ -42,10 +42,18 @@ case "$NO_PROXY" in
   *) printf 'FATAL ERR_NO_PROXY: Tailscale CIDR missing\n' >&2; exit 2 ;;
 esac
 
-if [ -z "${A2A_BEARER_TOKEN:-}" ]; then
-  A2A_BEARER_TOKEN="$(python3 -c 'import secrets; print(secrets.token_hex(24))')"
-  export A2A_BEARER_TOKEN
-fi
+export A2A_STATIC_AUTH_CREDENTIALS="$(python3 - <<'PY'
+import json
+import secrets
+
+print(json.dumps([{
+    "id": "local-bearer",
+    "scheme": "bearer",
+    "token": "a2a_sec_" + secrets.token_hex(24),
+    "principal": "automation",
+}]))
+PY
+)"
 
 echo "[+] probing Pi Agent Card at $PI_A2A_ENDPOINT"
 curl --noproxy '*' -fsS --max-time 5 "$PI_A2A_ENDPOINT/.well-known/agent-card.json" | jq -e '.name' >/dev/null

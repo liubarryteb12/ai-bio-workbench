@@ -7,7 +7,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  figureCatalogPaths,
   loadFigureCatalog,
+  reloadFigureCatalog,
   resolveCatalogFigure,
   searchFigureCatalog,
   validateFigureCatalog,
@@ -21,6 +23,10 @@ function sha256(file) {
 }
 
 test('catalog searches and resolves the Manhattan single-figure pilot', () => {
+  if (!fs.existsSync(figureCatalogPaths.catalog)) {
+    console.warn(`SKIP fixture: missing ${figureCatalogPaths.catalog}`);
+    return;
+  }
   const catalog = loadFigureCatalog();
   assert.equal(catalog.schema_version, 1);
   assert.equal(catalog.entries.length, 772);
@@ -57,6 +63,10 @@ test('catalog searches and resolves the Manhattan single-figure pilot', () => {
 });
 
 test('catalog API exposes search and single-image preview', async (t) => {
+  if (!fs.existsSync(figureCatalogPaths.catalog)) {
+    console.warn(`SKIP fixture: missing ${figureCatalogPaths.catalog}`);
+    return;
+  }
   const port = await new Promise((resolve, reject) => {
     const probe = net.createServer();
     probe.on('error', reject);
@@ -67,6 +77,12 @@ test('catalog API exposes search and single-image preview', async (t) => {
   });
   process.env.BAD_PORT = String(port);
   const { server } = await import('../server/index.js');
+  if (!server.listening) {
+    await new Promise((resolve, reject) => {
+      server.once('listening', resolve);
+      server.once('error', reject);
+    });
+  }
   const base = `http://127.0.0.1:${port}`;
   t.after(() => {
     server.closeAllConnections();
@@ -83,4 +99,70 @@ test('catalog API exposes search and single-image preview', async (t) => {
   const preview = await fetch(`${base}/api/figures/catalog/preview?id=pgg_0619`);
   assert.equal(preview.status, 200);
   assert.match(preview.headers.get('content-type') || '', /^image\/png/);
+});
+
+test('missing catalog fails closed with an observable empty state', async (t) => {
+  const missing = !fs.existsSync(figureCatalogPaths.catalog);
+  if (!missing) {
+    console.warn('SKIP missing-state fixture: catalog is currently available');
+    return;
+  }
+
+  const loaded = reloadFigureCatalog();
+  assert.equal(loaded.schema_version, 1);
+  assert.deepEqual(loaded.entries, []);
+
+  const validation = validateFigureCatalog();
+  assert.equal(validation.ok, false);
+  assert.equal(validation.available, false);
+  assert.equal(validation.reason, 'catalog_read_failed');
+  assert.match(validation.errors.join('\n'), /catalog 不可用/);
+  assert.equal(validation.stats.entries, 0);
+
+  assert.deepEqual(searchFigureCatalog({ query: 'anything' }), []);
+
+  const resolved = resolveCatalogFigure('pgg_0619');
+  assert.equal(resolved.ok, false);
+  assert.equal(resolved.available, false);
+  assert.equal(resolved.reason, 'catalog_read_failed');
+  assert.deepEqual(resolved.errors, ['catalog 不可用（catalog_read_failed）']);
+  assert.equal(resolved.entry, null);
+
+  const port = await new Promise((resolve, reject) => {
+    const probe = net.createServer();
+    probe.on('error', reject);
+    probe.listen(0, '127.0.0.1', () => {
+      const address = probe.address();
+      probe.close(() => resolve(address.port));
+    });
+  });
+  process.env.BAD_PORT = String(port);
+  const { server } = await import('../server/index.js');
+  if (!server.listening) {
+    await new Promise((resolve, reject) => {
+      server.once('listening', resolve);
+      server.once('error', reject);
+    });
+  }
+  const base = `http://127.0.0.1:${port}`;
+  t.after(() => {
+    server.closeAllConnections();
+    server.close();
+  });
+
+  const list = await fetch(`${base}/api/figures/catalog?q=manhattan`);
+  assert.equal(list.status, 200);
+  const listBody = await list.json();
+  assert.equal(listBody.ok, false);
+  assert.equal(listBody.catalog_ok, false);
+  assert.equal(listBody.available, false);
+  assert.equal(listBody.reason, 'catalog_read_failed');
+  assert.deepEqual(listBody.entries, []);
+  assert.match(listBody.catalog_errors.join('\n'), /catalog 不可用/);
+
+  const preview = await fetch(`${base}/api/figures/catalog/preview?id=pgg_0619`);
+  assert.equal(preview.status, 404);
+  const previewBody = await preview.json();
+  assert.equal(previewBody.available, false);
+  assert.equal(previewBody.reason, 'catalog_read_failed');
 });

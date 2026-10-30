@@ -1,8 +1,97 @@
-import test from 'node:test';
+import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
+import childProcess from 'node:child_process';
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
-import { assertAllowedProgram, runSync } from '../server/proc.js';
+import { assertAllowedProgram, findAdb, runSync } from '../server/proc.js';
 import { buildRemoteCommand } from '../server/ssh.js';
+
+function makeAdbCandidate(directory, name = process.platform === 'win32' ? 'adb.exe' : 'adb') {
+  const candidate = path.join(directory, name);
+  writeFileSync(candidate, '');
+  if (process.platform !== 'win32') chmodSync(candidate, 0o755);
+  return candidate;
+}
+
+function withEnvironment(testContext, overrides) {
+  const previous = {};
+  for (const [name, value] of Object.entries(overrides)) {
+    previous[name] = process.env[name];
+    if (value === undefined) delete process.env[name];
+    else process.env[name] = value;
+  }
+  testContext.after(() => {
+    for (const [name, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  });
+}
+
+test('findAdb：BIO_ADB_PATH 优先于 ADB_PATH 和 PATH', (t) => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'proc-adb-priority-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const bioAdb = makeAdbCandidate(root, process.platform === 'win32' ? 'bio-adb.exe' : 'bio-adb');
+  const adbPath = makeAdbCandidate(root, process.platform === 'win32' ? 'adb-path.exe' : 'adb-path');
+  withEnvironment(t, {
+    BIO_ADB_PATH: bioAdb,
+    ADB_PATH: adbPath,
+    PATH: root,
+  });
+  assert.equal(findAdb(), bioAdb);
+});
+
+test('findAdb：没有 BIO_ADB_PATH 时使用 ADB_PATH', (t) => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'proc-adb-env-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const adbPath = makeAdbCandidate(root, process.platform === 'win32' ? 'adb-path.exe' : 'adb-path');
+  withEnvironment(t, {
+    BIO_ADB_PATH: undefined,
+    ADB_PATH: adbPath,
+  });
+  assert.equal(findAdb(), adbPath);
+});
+
+test('findAdb：环境变量为空时通过系统 PATH 查询 adb', (t) => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'proc-adb-path-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const pathAdb = makeAdbCandidate(root);
+  const lookup = mock.method(childProcess, 'spawnSync', (command, args) => {
+    assert.equal(command, process.platform === 'win32' ? 'where.exe' : 'which');
+    assert.deepEqual(args, ['adb']);
+    return { status: 0, stdout: `${pathAdb}\r\n`, stderr: '' };
+  });
+  t.after(() => lookup.mock.restore());
+  withEnvironment(t, {
+    BIO_ADB_PATH: undefined,
+    ADB_PATH: undefined,
+    LOCALAPPDATA: undefined,
+    USERPROFILE: undefined,
+    PATH: root,
+  });
+  assert.equal(findAdb(), pathAdb);
+});
+
+test('findAdb：所有来源都不存在时回落 adb', (t) => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'proc-adb-empty-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const lookup = mock.method(childProcess, 'spawnSync', () => ({
+    status: 1,
+    stdout: '',
+    stderr: '',
+  }));
+  t.after(() => lookup.mock.restore());
+  withEnvironment(t, {
+    BIO_ADB_PATH: undefined,
+    ADB_PATH: undefined,
+    LOCALAPPDATA: undefined,
+    USERPROFILE: undefined,
+    PATH: root,
+  });
+  assert.equal(findAdb(), 'adb');
+});
 
 test('白名单：ssh / scp / adb 放行', () => {
   assert.doesNotThrow(() => assertAllowedProgram(['ssh', 'k40', 'echo hi']));

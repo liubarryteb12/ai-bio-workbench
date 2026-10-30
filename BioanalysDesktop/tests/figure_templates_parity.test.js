@@ -21,11 +21,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
 const GENERATOR = path.join(REPO, 'ops', 'build_figure_templates.cjs');
 const REGISTRY = path.join(REPO, 'src', 'figure_templates.json');
-const BOXPLOT_MASTERS = [
-  path.join(REPO, 'reference', '05.可参考出图代码', 'L1_基础统计图', 'L1_boxplot_code.R'),
-  path.join(REPO, 'reference', '05.可参考出图代码', '_meta', 'R453_compat', 'L1_boxplot_code.R'),
-];
-const PLOT_MATRIX = path.join(REPO, 'reference', '05.可参考出图代码', '_meta', 'script_plot_matrix.json');
+const SOURCE_MANIFEST = path.join(REPO, 'src', 'figure_sources', 'manifest.json');
 
 function sha256(file) {
   return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
@@ -46,8 +42,8 @@ test('registry contains the exact 82 figure inventory and verification counts', 
   assert.equal(registry.schema_version, 1);
   assert.equal(registry.templates.length, 82);
   assert.equal(new Set(registry.templates.map((item) => item.id)).size, 82);
-  assert.equal(registry.templates.filter((item) => item.deps_status === 'ready').length, 16);
-  assert.equal(registry.templates.filter((item) => item.deps_status === 'pending').length, 65);
+  assert.equal(registry.templates.filter((item) => item.deps_status === 'ready').length, 15);
+  assert.equal(registry.templates.filter((item) => item.deps_status === 'pending').length, 66);
   assert.equal(registry.templates.filter((item) => item.deps_status === 'pending_mapping').length, 0);
   assert.equal(registry.templates.filter((item) => item.deps_status === 'blocked_r453').length, 1);
 
@@ -77,6 +73,77 @@ test('registry contains the exact 82 figure inventory and verification counts', 
   }
 });
 
+test('ready template adapt vars expose contract defaults, types and options', () => {
+  const registry = reloadFigureTemplates();
+  const ready = registry.templates.filter((item) => item.deps_status === 'ready');
+  assert.equal(ready.length, 15);
+  for (const template of ready) {
+    for (const [key, declaration] of Object.entries(template.adapt_vars)) {
+      assert.ok(declaration && typeof declaration === 'object' && !Array.isArray(declaration));
+      assert.equal(typeof declaration.description, 'string');
+      assert.ok(declaration.description.length > 0);
+      assert.ok(['string', 'string_list'].includes(declaration.type));
+      assert.ok('default' in declaration, `${template.id}.${key}: default missing`);
+      assert.equal(declaration.required, key !== 'label_genes');
+      if (Array.isArray(declaration.options)) {
+        assert.ok(declaration.options.length > 0);
+      }
+    }
+  }
+  const pca = registry.templates.find((item) => item.id === 'fig_l2_pca');
+  assert.deepEqual(pca.adapt_vars.group_col, {
+    description: 'Sample group column',
+    type: 'string',
+    required: true,
+    default: 'group',
+  });
+  const volcano = registry.templates.find((item) => item.id === 'fig_l2_volcano');
+  assert.deepEqual(volcano.adapt_vars.label_genes, {
+    description: 'Genes to label; may be empty',
+    type: 'string_list',
+    required: false,
+    default: [],
+  });
+  const umap = registry.templates.find((item) => item.id === 'fig_l2_umap');
+  assert.deepEqual(umap.adapt_vars.group_col, {
+    description: 'Cell group or cluster column',
+    type: 'string',
+    required: true,
+    default: 'group',
+  });
+});
+
+test('ready templates declare physical layout and export metadata', () => {
+  const registry = reloadFigureTemplates();
+  const expected = {
+    fig_l2_pca: { width_mm: 88, height_mm: 80, column: 'single' },
+    fig_l2_heatmap: { width_mm: 180, height_mm: 120, column: 'wide' },
+    fig_l2_volcano: { width_mm: 88, height_mm: 80, column: 'single' },
+    fig_l2p_dotplot: { width_mm: 88, height_mm: 60, column: 'single' },
+    fig_l2p_volcano: { width_mm: 88, height_mm: 80, column: 'single' },
+    fig_l2p_umap: { width_mm: 88, height_mm: 80, column: 'single' },
+    fig_l1_groupedbar: { width_mm: 88, height_mm: 60, column: 'single' },
+    fig_l1_scatter: { width_mm: 88, height_mm: 75, column: 'single' },
+    fig_l1_boxplot: { width_mm: 88, height_mm: 60, column: 'single' },
+    fig_l1_density: { width_mm: 88, height_mm: 60, column: 'single' },
+    fig_l1_histogram: { width_mm: 88, height_mm: 60, column: 'single' },
+    fig_l1_violin: { width_mm: 88, height_mm: 60, column: 'single' },
+    fig_l2_umap: { width_mm: 180, height_mm: 90, column: 'wide' },
+    fig_l2p_violin: { width_mm: 180, height_mm: 85, column: 'wide' },
+    fig_l3_sankey: { width_mm: 130, height_mm: 100, column: 'medium' },
+  };
+  for (const template of registry.templates.filter((item) => item.deps_status === 'ready')) {
+    const layout = template.figure_layout;
+    assert.deepEqual(
+      { width_mm: layout.width_mm, height_mm: layout.height_mm, column: layout.column },
+      expected[template.id],
+    );
+    assert.equal(typeof layout.min_width_mm, 'number');
+    assert.equal(typeof layout.min_height_mm, 'number');
+    assert.equal(typeof layout.dpi, 'number');
+  }
+});
+
 test('ready templates point to verified source and preview bytes', () => {
   const registry = reloadFigureTemplates();
   const ready = registry.templates.filter((item) => item.deps_status === 'ready');
@@ -99,6 +166,23 @@ test('ready templates point to verified source and preview bytes', () => {
     assert.ok(typeof item.sample_project_output === 'string' && item.sample_project_output.length > 0);
     assert.ok(fs.existsSync(resolveRepoFile(item.sample_project_output)), `${item.id}: sample output missing`);
   }
+});
+
+test('ready templates use unique canonical output names', () => {
+  const registry = reloadFigureTemplates();
+  const ready = registry.templates.filter((item) => item.deps_status === 'ready');
+  const outputs = new Map();
+  for (const item of ready) {
+    const prior = outputs.get(item.canonical_output);
+    assert.equal(
+      prior,
+      undefined,
+      `${item.id}: canonical_output collides with ${prior}`,
+    );
+    outputs.set(item.canonical_output, item.id);
+  }
+  assert.equal(outputs.get('umap_L2p_umap_verified.png'), 'fig_l2p_umap');
+  assert.equal(outputs.get('umap_L2_umap_verified.png'), 'fig_l2_umap');
 });
 
 test('ready template source, preview and sample files are git-trackable', () => {
@@ -131,8 +215,8 @@ test('non-ready templates stay unregistered until independently verified', () =>
 test('registry validation enforces linked mods, language and line affinity', () => {
   const result = validateRegistry();
   assert.equal(result.ok, true, result.errors.join('\n'));
-  assert.equal(result.stats.ready, 16);
-  assert.equal(result.stats.pending, 65);
+  assert.equal(result.stats.ready, 15);
+  assert.equal(result.stats.pending, 66);
   assert.equal(result.stats.pending_mapping, 0);
   assert.equal(result.stats.blocked, 1);
 });
@@ -150,45 +234,42 @@ test('ready template input tables must be declared outputs of the bound step', (
   assert.match(errors.join('\n'), /not_a_step_output\.tsv/);
 });
 
-test('boxplot masters use only horizontal significance lines', () => {
-  for (const file of BOXPLOT_MASTERS) {
-    const text = fs.readFileSync(file, 'utf8');
-    assert.doesNotMatch(text, /tip(?:\.|_)length\s*=\s*0\.01/, `${file}: endpoint tip found`);
-    assert.ok(
-      (text.match(/tip(?:\.|_)length\s*=\s*0\b/g) || []).length >= 2,
-      `${file}: horizontal significance lines missing`,
-    );
-  }
-});
-
-test('formal script plot matrix contains 27 passing exact-source entries', () => {
-  const matrix = JSON.parse(fs.readFileSync(PLOT_MATRIX, 'utf8'));
-  assert.equal(matrix.schema_version, '1.0.0');
-  assert.equal(matrix.entries.length, 27);
-  for (const entry of matrix.entries) {
-    assert.equal(entry.status, 'pass', `${entry.entry_id}: status`);
-    assert.equal(entry.k40_exit_code, 0, `${entry.entry_id}: exit code`);
-    assert.equal(entry.marker_found, true, `${entry.entry_id}: marker`);
-    assert.ok(entry.artifacts.length > 0, `${entry.entry_id}: artifacts`);
-    assert.ok(entry.artifacts.every((item) => item.ok), `${entry.entry_id}: invalid artifact`);
+test('source manifest carries verified catalog provenance for all ready figures', () => {
+  const registry = reloadFigureTemplates();
+  const manifest = JSON.parse(fs.readFileSync(SOURCE_MANIFEST, 'utf8'));
+  const ready = registry.templates.filter((item) => item.deps_status === 'ready');
+  assert.equal(manifest.schema_version, 1);
+  assert.equal(manifest.sources.length, ready.length);
+  assert.deepEqual(
+    manifest.sources.map((item) => item.template_id).sort(),
+    ready.map((item) => item.id).sort(),
+  );
+  for (const entry of manifest.sources) {
+    assert.ok(Number.isInteger(entry.catalog_id) && entry.catalog_id > 0);
+    assert.match(entry.catalog_page_url, /^https?:\/\//);
+    assert.ok(['exact', 'analogous'].includes(entry.source_match));
     assert.match(entry.source_sha256, /^[0-9a-f]{64}$/);
-    const source = path.join(REPO, 'reference', '05.可参考出图代码', entry.script_path);
-    assert.ok(fs.existsSync(source), `${entry.entry_id}: source missing`);
-    assert.equal(sha256(source), entry.source_sha256);
-    const relative = path.relative(REPO, source).split(path.sep).join('/');
-    const ignored = spawnSync('git', ['check-ignore', '-q', relative], {
-      cwd: REPO,
-      windowsHide: true,
-    });
-    assert.equal(ignored.status, 1, `${entry.entry_id}: source is still ignored`);
+    assert.match(entry.preview_sha256, /^[0-9a-f]{64}$/);
+    assert.equal(sha256(resolveRepoFile(entry.source)), entry.source_sha256);
+    assert.equal(sha256(resolveRepoFile(entry.preview)), entry.preview_sha256);
   }
 });
 
-test('figure registry inputs and boxplot masters are git-trackable', () => {
+test('multi-panel template is explicitly retired by the single-plot standard', () => {
+  const registry = reloadFigureTemplates();
+  const multipanel = registry.templates.find((item) => item.id === 'fig_l3_multipanel');
+  assert.ok(multipanel);
+  assert.equal(multipanel.deps_status, 'pending');
+  assert.equal(multipanel.verified, false);
+  assert.equal(multipanel.deprecated, true);
+  assert.match(multipanel.pending_reason, /single-plot|multi-panel|v3\.0/i);
+});
+
+test('figure source manifest, sources and previews are git-trackable', () => {
+  const manifest = JSON.parse(fs.readFileSync(SOURCE_MANIFEST, 'utf8'));
   const paths = [
-    'reference/05.可参考出图代码/_meta/bizard_index.csv',
-    'reference/05.可参考出图代码/_meta/r453_verification_report.json',
-    ...BOXPLOT_MASTERS.map((file) => path.relative(REPO, file).split(path.sep).join('/')),
+    'src/figure_sources/manifest.json',
+    ...manifest.sources.flatMap((item) => [item.source, item.preview]),
   ];
   for (const relative of paths) {
     const result = spawnSync('git', ['check-ignore', '-q', relative], {
@@ -221,6 +302,30 @@ test('ready figure selections become executable adapted tasks', () => {
   assert.match(result.tasks[0].outputs[0], /custom_fig_l2_pca\.png$/);
 });
 
+test('ready figure tasks carry actual submitted adapt values', () => {
+  const registry = reloadFigureTemplates();
+  const result = buildAdaptedFigureTasks({
+    projectId: 'project_alpha',
+    lineId: 'line1_bulk',
+    selectedFigures: [{
+      template_id: 'fig_l2_volcano',
+      adapt_vars: {
+        input_data: 'figures/line1_bulk/de_results.csv',
+        group_col: 'condition_x',
+        label_genes: ['TNF'],
+      },
+    }],
+    templatesRegistry: registry.templates,
+  });
+  assert.equal(result.ok, true, result.errors.join('\n'));
+  const env = result.tasks[0].env_vars.BIO_ADAPT_VARS;
+  assert.deepEqual(JSON.parse(env), {
+    input_data: 'figures/line1_bulk/de_results.csv',
+    group_col: 'condition_x',
+    label_genes: ['TNF'],
+  });
+});
+
 test('non-ready figure selections are rejected', () => {
   const registry = reloadFigureTemplates();
   const result = buildAdaptedFigureTasks({
@@ -248,7 +353,7 @@ test('figure resolution accepts a same-line linked mod and complete adapt vars',
   assert.equal(request.ok, true, request.errors.join('\n'));
   assert.equal(request.template.id, 'fig_l2_volcano');
   assert.deepEqual(request.selected_mods, ['l1_figures_bulk']);
-  assert.match(request.master_path, /figure_templates|L2_core_code\.R|reference/);
+  assert.match(request.master_path, /src[\\/]figure_sources[\\/]fig_l2_volcano\.R$/);
 });
 
 test('figure resolution rejects missing adapt vars and non-linked mods', () => {

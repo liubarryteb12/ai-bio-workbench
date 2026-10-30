@@ -112,3 +112,19 @@ test('JSONL ledger index covers append overwrite, refs, artifacts, and machine l
   const globalIndex = fs.readFileSync(path.join(root, 'local_projects', 'INDEX.md'), 'utf8');
   assert.match(globalIndex, /\| PRJ_JS_LEDGER \| 0 \| 2 \| 0 \| 0 \| 5 \| 2 \|/);
 });
+
+test('ledger_indexer --verify 只读校验并通过 LEDGER_VERIFY_OK', { skip: PYTHON_SKIP }, () => {
+  const root = makeRoot();
+  const scaffold = scaffoldProject(root, 'PRJ_JS_VERIFY');
+  assert.equal(scaffold.status, 0, scaffold.stderr);
+  const ledger = path.join(root, 'local_projects', 'PRJ_JS_VERIFY', 'ledger');
+  writeJsonl(path.join(ledger, 'actions.jsonl'), [{ id: 'ACT-1', title: 'ok' }]);
+  writeJsonl(path.join(ledger, 'errors.jsonl'), [{ id: 'ERR-1', status: 'open', refs: ['FIX-1'] }]);
+  writeJsonl(path.join(ledger, 'fixes.jsonl'), [{ id: 'FIX-1', status: 'resolved', refs: ['ERR-1'] }]);
+
+  const verified = runIndexer(root, ['--verify']);
+  assert.equal(verified.status, 0, verified.stderr);
+  assert.equal(verified.payload.status, 'LEDGER_VERIFY_OK');
+  assert.deepEqual(verified.payload.projects, ['PRJ_JS_VERIFY']);
+  assert.equal(verified.payload.ledgers_checked, 5);
+});

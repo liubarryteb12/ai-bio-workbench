@@ -49,7 +49,9 @@ test('线程与内存防崩头由解释器启动钩子统一接线，母版不�
   const rHook = fs.readFileSync(path.join(REPO, 'ops', 'layout_autoload', 'Rprofile'), 'utf8');
   assert.match(pythonHook, /enable_memory_guard\(7\.5\)/);
   assert.match(rHook, /setDTthreads\(3\)/);
-  assert.match(rHook, /workers\s*=\s*2/);
+  assert.match(rHook, /BIOANALYS_FUTURE_WORKERS/);
+  assert.match(rHook, /parallelly\.parent=/);
+  assert.match(rHook, /future::plan\("sequential"\)/);
   assert.match(rHook, /future\.globals\.maxSize\s*=\s*6\.0\s*\*\s*1024\^3/);
   assert.doesNotMatch(
     fs.readFileSync(path.join(REPO, 'ops', 'bio_r_header.R'), 'utf8'),

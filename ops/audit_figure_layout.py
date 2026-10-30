@@ -19,8 +19,8 @@
     B 图例必须落在坐标轴框外                          —— 对应"图例看图框外"
     C 图注（fig.texts）必须落在坐标轴框外且不与框相交  —— 对应"图注看图框外"
     D 轴内标注之间、图例条目之间不得互相重叠
-    E tick 标签超出画布边界 —— 仅提示（INFO，不判 FAIL）：脚本统一 savefig.bbox="tight"，
-      超出画布的部分会被裁切边扩进来，不会真的截断；真正会截断的只有落到图框内的标注（A）。
+    E tick 标签超出画布边界 —— FAIL：固定画布不会用 tight bbox 扩边，
+      超出边界的刻度文字会被真实裁切。
 
 退出码：0 = 全部 PASS；1 = 存在 FAIL；2 = 调用/环境错误。
 """
@@ -89,14 +89,18 @@ def audit_fig(fig, name):
                                 % (ai, texts[i].get_text()[:16],
                                    texts[j].get_text()[:16], ov))
 
-        # E. tick 标签越出画布边界：仅提示，savefig.bbox="tight" 会把裁切边扩进来
+        # E. tick 标签越出画布边界：固定画布不会自动扩边
         for t in list(ax.get_xticklabels()) + list(ax.get_yticklabels()):
             if not t.get_text().strip():
                 continue
             bb = t.get_window_extent(renderer=rend)
             if not _outside(bb, figbb, TOL * 2):
-                info.append("INFO tick 标签越出画布 axes%d %r（tight 裁切可容纳）"
-                            % (ai, t.get_text()[:24]))
+                viol.append(
+                    "E tick 标签越出画布 axes%d %r "
+                    "(bbox %.0f,%.0f-%.0f,%.0f vs 画布 %.0f,%.0f-%.0f,%.0f)"
+                    % (ai, t.get_text()[:24], bb.x0, bb.y0, bb.x1, bb.y1,
+                       figbb.x0, figbb.y0, figbb.x1, figbb.y1)
+                )
 
         # B/D2. 图例必须在轴框外、条目互不重叠
         leg = ax.get_legend()
@@ -189,7 +193,8 @@ def extract_heredoc(script_path):
     多数脚本只有一块；ml_hub_analysis / gsva_pathways 有两块（前一块是中间计算，
     后一块才是出图）。判据是 `def caption(` —— 17 个出图脚本的图注函数只有出图块有。
     """
-    text = io.open(script_path, encoding="utf-8", errors="replace").read()
+    with io.open(script_path, encoding="utf-8", errors="replace") as fh:
+        text = fh.read()
     blocks = HEREDOC.findall(text)
     if not blocks:
         raise RuntimeError("未在 %s 找到 PYSCRIPT heredoc" % script_path)
@@ -206,7 +211,8 @@ def emulate_env(script_path, cwd):
     这些值由 bash 段解析 --input 后 export。审计只跑 python 块，必须补上这层，
     否则 KeyError 把审计打断（不是图的问题却报错）。
     """
-    text = io.open(script_path, encoding="utf-8", errors="replace").read()
+    with io.open(script_path, encoding="utf-8", errors="replace") as fh:
+        text = fh.read()
     lower = {}
     for pat, var in CASE_PAT.findall(text):
         if var in lower:
@@ -239,7 +245,8 @@ def derive_inputs(script_path, cwd):
     会盖成错的那个（spatial_figures 的 *mouse*.h5ad 一旦命中 qc 版就没有 obs['domain']）。
     候选多时优先取脚本注释里点名过的那个文件名（脚本的 docstring 就是它期望的输入）。
     """
-    text = io.open(script_path, encoding="utf-8", errors="replace").read()
+    with io.open(script_path, encoding="utf-8", errors="replace") as fh:
+        text = fh.read()
     base = os.path.abspath(cwd)
     out, seen_var = [], set()
     for pat, var in CASE_PAT.findall(text):
@@ -357,14 +364,39 @@ def run_bash(script_path, cwd, write=False, seed="20261018"):
                          % (proc.returncode, (proc.stderr or "")[-2000:]))
     aud = _Auditor(write)
     if os.path.exists(out_jsonl):
-        for line in io.open(out_jsonl, encoding="utf-8"):
-            if not line.strip():
-                continue
-            rec = json.loads(line)
-            aud.figs += 1
-            if rec["viol"]:
-                aud.fail += 1
-            aud.report.append((rec["name"], rec["viol"], rec["info"]))
+        with io.open(out_jsonl, encoding="utf-8") as fh:
+            for line in fh:
+                if not line.strip():
+                    continue
+                rec = json.loads(line)
+                aud.figs += 1
+                if rec["viol"]:
+                    aud.fail += 1
+                aud.report.append((rec["name"], rec["viol"], rec["info"]))
+    return aud
+
+
+def run_raw_python(script_path, cwd, write=False, seed="20261018"):
+    """Run an adapted standalone Python figure script under the audit hook."""
+    import matplotlib
+    matplotlib.use("Agg")
+
+    aud = _Auditor(write)
+    aud.install()
+    os.environ["BIOANALYS_SEED"] = seed
+    prev = os.getcwd()
+    try:
+        os.chdir(cwd)
+        with io.open(script_path, encoding="utf-8", errors="replace") as fh:
+            code = fh.read()
+        ns = {"__name__": "__main__", "__file__": script_path}
+        try:
+            exec(compile(code, script_path, "exec"), ns)
+        except SystemExit as exc:
+            if exc.code not in (None, 0):
+                raise
+    finally:
+        os.chdir(prev)
     return aud
 
 
@@ -372,9 +404,14 @@ def run_one(script_path, cwd, write=False, seed="20261018", runner="auto"):
     import shutil
 
     if runner == "auto":
-        runner = "bash" if shutil.which("bash") else "exec"
+        if script_path.endswith(".py"):
+            runner = "python"
+        else:
+            runner = "bash" if shutil.which("bash") else "exec"
     if runner == "bash":
         return run_bash(script_path, cwd, write=write, seed=seed)
+    if runner == "python":
+        return run_raw_python(script_path, cwd, write=write, seed=seed)
 
     import matplotlib
     matplotlib.use("Agg")
@@ -407,9 +444,9 @@ def main(argv=None):
     ap.add_argument("--write", action="store_true",
                     help="同时落盘（默认只判定不写盘）")
     ap.add_argument("--json", action="store_true", help="输出 JSON 结论")
-    ap.add_argument("--runner", choices=["auto", "bash", "exec"], default="auto",
-                    help="auto：有 bash 就跑真脚本（推荐，多块脚本/环境变量都对得上）；"
-                         "exec：只跑出图 heredoc（无 bash 环境用）")
+    ap.add_argument("--runner", choices=["auto", "bash", "python", "exec"], default="auto",
+                    help="auto：.py 走裸脚本审计，其他有 bash 就跑真脚本；"
+                         "python：直接执行适配后的 .py；exec：只跑出图 heredoc")
     ap.add_argument("--csv", default="",
                     help="逐图判决写出 CSV（figure,verdict,violations），供打分系统导入（FE-012）")
     ap.add_argument("--seed", default="20261018",

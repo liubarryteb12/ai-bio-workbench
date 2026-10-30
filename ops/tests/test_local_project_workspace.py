@@ -5,6 +5,7 @@ These run only on the K40 compute plane. They cover the minimal workspace
 contract without touching production data.
 """
 
+import errno
 import json
 import os
 import shutil
@@ -74,6 +75,25 @@ def make_fixture_repo(base, name="fixture_repo"):
     fixture_script = fixture_ops / SCRIPT.name
     shutil.copy2(SCRIPT, fixture_script)
     return fixture_repo, fixture_script
+
+
+def create_symlink_or_skip(
+    test_case,
+    link_path,
+    target_path,
+    *,
+    target_is_directory=False,
+):
+    try:
+        link_path.symlink_to(target_path, target_is_directory=target_is_directory)
+    except OSError as exc:
+        if os.name == "nt" and (
+            getattr(exc, "winerror", None) == 1314 or exc.errno == errno.EPERM
+        ):
+            test_case.skipTest(
+                "symlink creation unavailable for this Windows account: %s" % exc
+            )
+        raise
 
 
 class LocalProjectWorkspaceTest(unittest.TestCase):
@@ -179,7 +199,12 @@ class LocalProjectWorkspaceTest(unittest.TestCase):
         outside.mkdir()
         local_projects.mkdir()
         target = local_projects / "demo_project"
-        target.symlink_to(outside, target_is_directory=True)
+        create_symlink_or_skip(
+            self,
+            target,
+            outside,
+            target_is_directory=True,
+        )
         proc = scaffold(self.root)
         self.assertEqual(proc.returncode, 2)
         self.assertFalse(parse_json(proc)["ok"])
@@ -221,7 +246,12 @@ class LocalProjectWorkspaceTest(unittest.TestCase):
         outside = self.root / "outside"
         outside.mkdir()
         local_projects.mkdir()
-        (local_projects / "demo_project").symlink_to(outside, target_is_directory=True)
+        create_symlink_or_skip(
+            self,
+            local_projects / "demo_project",
+            outside,
+            target_is_directory=True,
+        )
         proc = run_cli(["index"], self.root)
         self.assertEqual(proc.returncode, 2)
         payload = parse_json(proc)
@@ -254,7 +284,12 @@ class LocalProjectWorkspaceTest(unittest.TestCase):
         sentinel.write_text("OUTSIDE\n", encoding="utf-8", newline="\n")
         project_root = local_projects / "demo_project"
         tmp_path = project_root / "INDEX.json.tmp"
-        tmp_path.symlink_to(sentinel, target_is_directory=False)
+        create_symlink_or_skip(
+            self,
+            tmp_path,
+            sentinel,
+            target_is_directory=False,
+        )
         proc = run_cli(["index"], self.root)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertTrue(tmp_path.is_symlink())
@@ -289,6 +324,20 @@ class LocalProjectWorkspaceTest(unittest.TestCase):
 
     def test_validate_accepts_valid_workspace(self):
         self.assertEqual(scaffold(self.root).returncode, 0)
+        proc = run_cli(["validate"], self.root)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertTrue(parse_json(proc)["ok"])
+
+    def test_validate_accepts_desktop_project_schema_3(self):
+        self.assertEqual(scaffold(self.root).returncode, 0)
+        project_json = self.root / "local_projects" / "demo_project" / "project.json"
+        payload = json.loads(project_json.read_text(encoding="utf-8"))
+        payload["schema_version"] = 3
+        project_json.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+            newline="\n",
+        )
         proc = run_cli(["validate"], self.root)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertTrue(parse_json(proc)["ok"])
@@ -384,7 +433,11 @@ class LocalProjectWorkspaceTest(unittest.TestCase):
                 original = path.read_bytes()
                 try:
                     path.unlink()
-                    path.symlink_to(project_root / "project.json")
+                    create_symlink_or_skip(
+                        self,
+                        path,
+                        project_root / "project.json",
+                    )
                     proc = run_cli(["validate"], self.root)
                     self.assertEqual(proc.returncode, 2)
                     payload = parse_json(proc)

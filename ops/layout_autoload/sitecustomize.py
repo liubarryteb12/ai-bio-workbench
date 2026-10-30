@@ -26,12 +26,18 @@ import sys
 
 _ENV_PROJECT = "BIOANALYS_PROJECT_JSON"
 _ENV_DISABLE = "BIOANALYS_LAYOUT_DISABLE"
+_ENV_PRESERVE_FIGSIZE = "BIOANALYS_LAYOUT_PRESERVE_FIGSIZE"
+_ENV_FIXED_CANVAS = "BIOANALYS_LAYOUT_FIXED_CANVAS"
 _MARK = "_bioanalys_layout_patched"
 
 
 def _warn(message):
     # 出图是长任务，日志会被 tail 看；用一行前缀便于 grep
     sys.stderr.write("[layout_autoload] %s\n" % message)
+
+
+def _env_enabled(name):
+    return os.environ.get(name, "").strip().lower() in ("1", "true", "yes")
 
 
 def _install_memory_guard():
@@ -108,6 +114,8 @@ def _patch(spec):
     original = Figure.savefig
 
     def savefig(self_fig, *args, **kwargs):
+        preserve_figsize = _env_enabled(_ENV_PRESERVE_FIGSIZE)
+        fixed_canvas = _env_enabled(_ENV_FIXED_CANVAS)
         try:
             axes = [a for a in self_fig.get_axes()]
             # 只处理单坐标轴图：分面图的图例属于各分面，统一搬移会互相挤扁
@@ -117,13 +125,18 @@ def _patch(spec):
             else:
                 # 多子图也要按模板定画幅，否则客户选的 16:9 不生效；
                 # 图例不搬（分面图各有图例，统一搬移会互相挤扁）。
-                # 同样只能放大不能缩小：压扁多子图会直接压掉分面标签。
-                tpl_w, tpl_h = figsize_for(normalized["theme_rules"].get("aspect_ratio"))
-                cur_w, cur_h = (float(v) for v in self_fig.get_size_inches())
-                self_fig.set_size_inches(max(cur_w, tpl_w), max(cur_h, tpl_h))
+                # 参考图契约优先：preserve=1 时保持脚本声明的物理尺寸。
+                if not preserve_figsize:
+                    tpl_w, tpl_h = figsize_for(normalized["theme_rules"].get("aspect_ratio"))
+                    self_fig.set_size_inches(tpl_w, tpl_h)
                 self_fig.set_dpi(normalized["dpi"])
         except Exception as cause:  # noqa: BLE001 - 模板失败绝不能中断出图
             _warn("应用模板失败（继续按原样落盘）: %s" % cause)
+
+        if fixed_canvas:
+            # 固定画布是参考图的物理尺寸契约。调用方遗留的 tight bbox
+            # 会二次裁切或扩边，使 88 mm 单栏图无法按声明像素落盘。
+            kwargs["bbox_inches"] = None
 
         # dpi 必须显式传：matplotlib 的 savefig.dpi="figure" 解析的是
         # rcParams["figure.dpi"]（默认 100），不是实例的 fig.set_dpi()。

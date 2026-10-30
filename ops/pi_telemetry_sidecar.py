@@ -28,8 +28,8 @@ PROVIDER_MODEL_FILE = os.path.join(AGENT_DIR, ".provider_model")
 SIDE_PORT = int(os.environ.get("PI_TELEMETRY_PORT", "9911"))
 
 ALLOWED_MODELS = [
-    {"provider": "deepseek", "model": "deepseek-v4.1-flash"},
     {"provider": "zai", "model": "glm-5.3-flash"},
+    {"provider": "deepseek", "model": "deepseek-v4.1-flash"},
 ]
 MODEL_PROVIDER = {m["model"]: m["provider"] for m in ALLOWED_MODELS}
 
@@ -42,10 +42,14 @@ def _read_pin(path: str) -> str:
         return "unknown"
 
 
+def load_settings() -> dict:
+    with open(SETTINGS_PATH, encoding="utf-8") as handle:
+        return json.load(handle)
+
+
 def verify_token(headers) -> bool:
     try:
-        with open(SETTINGS_PATH, encoding="utf-8") as handle:
-            config = json.load(handle)
+        config = load_settings()
     except (OSError, json.JSONDecodeError):
         return False
     expected = (
@@ -167,6 +171,36 @@ def current_model() -> dict:
     return {"provider": provider, "model": model, "thinking_level": "high"}
 
 
+def _atomic_write_text(path: str, text: str) -> None:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp_path = path + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(text)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.chmod(tmp_path, 0o600)
+    os.replace(tmp_path, path)
+
+
+def persist_model_switch(provider: str, model: str) -> None:
+    try:
+        config = load_settings()
+    except (OSError, json.JSONDecodeError):
+        config = {}
+    config["defaultProvider"] = provider
+    config["defaultModel"] = model
+    if config.get("thinkingLevel") not in {"low", "medium", "high"}:
+        config["thinkingLevel"] = "high"
+    if not isinstance(config.get("temperature"), (int, float)):
+        config["temperature"] = 0.2
+    _atomic_write_text(
+        SETTINGS_PATH,
+        json.dumps(config, indent=2, ensure_ascii=False) + "\n",
+    )
+    _atomic_write_text(PROVIDER_NAME_FILE, provider + "\n")
+    _atomic_write_text(PROVIDER_MODEL_FILE, model + "\n")
+
+
 def hardware_health() -> dict:
     mem = "unknown"
     try:
@@ -253,17 +287,15 @@ class Handler(BaseHTTPRequestHandler):
         if not any(m["provider"] == provider and m["model"] == model for m in ALLOWED_MODELS):
             return self._json(400, {"ok": False, "error": "ERR_MODEL_NOT_IN_WHITELIST"})
         # Model SSOT is the daemon pin files; restart the daemon to apply.
-        with open(PROVIDER_NAME_FILE, "w", encoding="utf-8", newline="\n") as handle:
-            handle.write(provider + "\n")
-        with open(PROVIDER_MODEL_FILE, "w", encoding="utf-8", newline="\n") as handle:
-            handle.write(model + "\n")
-        os.chmod(PROVIDER_NAME_FILE, 0o600)
-        os.chmod(PROVIDER_MODEL_FILE, 0o600)
+        persist_model_switch(provider, model)
+        daemon_env = os.environ.copy()
+        daemon_env["A2A_DAEMON_MODE"] = "monitor"
         subprocess.Popen(
             ["bash", os.path.join(HOME, "bin", "pi_a2a_daemon.sh")],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             start_new_session=True,
+            env=daemon_env,
         )
         return self._json(200, {"ok": True, "current_model": current_model()})
 

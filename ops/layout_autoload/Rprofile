@@ -17,7 +17,25 @@ if (requireNamespace("data.table", quietly = TRUE)) {
   data.table::setDTthreads(3)
 }
 if (requireNamespace("future", quietly = TRUE)) {
-  future::plan("multisession", workers = 2)
+  # future 的 Rscript worker 会再次读取本文件。默认顺序执行，只有任务显式
+  # 请求并行时才启用多进程；worker 通过 parallelly 的父进程标记跳过初始化，
+  # 防止 Rprofile 递归创建 worker。
+  is_parallelly_worker <- any(grepl(
+    "parallelly.parent=",
+    commandArgs(trailingOnly = FALSE),
+    fixed = TRUE
+  ))
+  future_workers <- suppressWarnings(as.integer(
+    Sys.getenv("BIOANALYS_FUTURE_WORKERS", unset = "1")
+  ))
+  if (is.na(future_workers) || future_workers < 1L) future_workers <- 1L
+  if (!is_parallelly_worker) {
+    if (future_workers > 1L) {
+      future::plan("multisession", workers = future_workers)
+    } else {
+      future::plan("sequential")
+    }
+  }
   options(future.globals.maxSize = 6.0 * 1024^3)
 }
 
@@ -107,11 +125,9 @@ local({
     tryCatch({
       if (inherits(plot, "ggplot")) {
         plot <- apply_layout_safely(plot, spec)
-        # 模板只能放大、不能缩小：母版脚本的 width/height 是按内容量定的
-        # （如 50 基因热图要更高才放得下标签），压到 16:9 会把标签挤重叠。
-        # 母版脚本普遍显式传 width/height（如 pca_matrix: ggsave(..., width=6, height=5)）。
-        # 若原样塞进 ... 再补模板 width，R 会报 "formal argument matched by multiple
-        # actual arguments"，被下面的 tryCatch 吞掉后模板就静默失效。必须先摘掉。
+        # 参考图契约优先：preserve=1 时脚本声明的 width/height 是唯一真源。
+        # ggsave 的 width/height 单位可能是 mm、cm、in 或 px，必须先归一成英寸，
+        # 否则 88 mm 会被当成 88 英寸，单图物理尺寸直接失真。
         override <- dots
         as_optional_number <- function(value) {
           if (length(value) == 0L) return(NA_real_)
@@ -119,13 +135,29 @@ local({
         }
         cur_w <- as_optional_number(override$width)
         cur_h <- as_optional_number(override$height)
+        cur_units <- if (length(override$units)) as.character(override$units[1]) else "in"
+        cur_dpi <- as_optional_number(override$dpi)
+        if (is.na(cur_dpi)) cur_dpi <- normalize_layout_spec_r(spec)$dpi
+        to_inches <- function(value, units, dpi) {
+          if (is.na(value)) return(NA_real_)
+          switch(
+            units,
+            mm = value / 25.4,
+            cm = value / 2.54,
+            px = value / dpi,
+            value
+          )
+        }
+        cur_w <- to_inches(cur_w, cur_units, cur_dpi)
+        cur_h <- to_inches(cur_h, cur_units, cur_dpi)
         override$width <- NULL
         override$height <- NULL
         override$units <- NULL
         override$dpi <- NULL
         tpl <- layout_figsize_r(spec)
-        final_w <- if (is.na(cur_w)) tpl[1] else max(cur_w, tpl[1])
-        final_h <- if (is.na(cur_h)) tpl[2] else max(cur_h, tpl[2])
+        preserve_figsize <- Sys.getenv("BIOANALYS_LAYOUT_PRESERVE_FIGSIZE", "") %in% c("1", "true", "yes")
+        final_w <- if (preserve_figsize && !is.na(cur_w)) cur_w else tpl[1]
+        final_h <- if (preserve_figsize && !is.na(cur_h)) cur_h else tpl[2]
         return(do.call(original, c(
           list(filename = filename, plot = plot,
                width = final_w, height = final_h, units = "in",
@@ -142,5 +174,5 @@ local({
   utils::assignInNamespace("ggsave", wrapped, ns = "ggplot2")
   assign(".bioanalys_ggsave_patched", TRUE, envir = globalenv())
   message(sprintf("[layout_autoload] 已挂载出图模板：%s",
-                  if (is.null(spec$template_id)) "template_1_nature_side" else spec$template_id))
+                  if (is.null(spec$template_id)) "template_4x3" else spec$template_id))
 })

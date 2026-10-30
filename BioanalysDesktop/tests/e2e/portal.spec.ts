@@ -249,7 +249,7 @@ test('figure selector groups cards by L1, L2 and L3 with language and preview la
   expect(response.status()).toBe(200);
   const body = await response.json();
   expect(body.templates).toHaveLength(82);
-  expect(body.templates.filter((item: { deps_status: string }) => item.deps_status === 'ready')).toHaveLength(16);
+  expect(body.templates.filter((item: { deps_status: string }) => item.deps_status === 'ready')).toHaveLength(15);
 
   const readyCard = page.locator('[data-template-id="fig_l2_pca"]');
   await expect(readyCard).toContainText('R');
@@ -260,12 +260,34 @@ test('figure selector groups cards by L1, L2 and L3 with language and preview la
     .toBeGreaterThan(0);
 });
 
+test('portal fixture previews fail closed and stay inside src/figure_previews', async ({ request }) => {
+  const registryResponse = await request.get(`${PORTAL_BASE}/api/figure-templates`, {
+    headers: clientHeaders(),
+  });
+  expect(registryResponse.status()).toBe(200);
+  const registry = await registryResponse.json();
+  const ready = registry.templates.find((item: { id: string }) => item.id === 'fig_l2_pca');
+  expect(ready).toBeTruthy();
+  expect(ready.preview_state).toBe('ok');
+
+  const fixture = await request.get(`${PORTAL_BASE}/api/figure-templates/preview?id=fig_l2_pca`);
+  expect(fixture.status()).toBe(200);
+  expect(fixture.headers()['content-type']).toBe('image/png');
+
+  const missing = await request.get(`${PORTAL_BASE}/api/figure-templates/preview?id=fig_l1_circularpacking`);
+  expect(missing.status()).toBe(404);
+
+  const badPath = await request.get(`${PORTAL_BASE}/api/figure-templates/preview?id=fig_l2_pca&path=../outside.png`);
+  expect(badPath.status()).toBe(200);
+  expect(badPath.headers()['content-type']).toBe('image/png');
+});
+
 test('every ready figure card switches between fixture and real project previews', async ({ page }) => {
   const readyByLine = [
     ['line1_bulk', [
       'fig_l1_boxplot', 'fig_l1_density', 'fig_l1_groupedbar', 'fig_l1_histogram',
       'fig_l1_scatter', 'fig_l1_violin', 'fig_l2_heatmap', 'fig_l2_pca',
-      'fig_l2_volcano', 'fig_l3_multipanel', 'fig_l3_sankey',
+      'fig_l2_volcano', 'fig_l3_sankey',
     ]],
     ['line2_scrna', [
       'fig_l2_umap', 'fig_l2p_dotplot', 'fig_l2p_violin', 'fig_l2p_volcano',
@@ -332,12 +354,12 @@ test('figure selector defaults to ready previews and keeps pending cards behind 
 
   await expect(page.getByTestId('figure-filter-ready')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('figure-filter-all')).toHaveAttribute('aria-pressed', 'false');
-  await expect(page.locator('[data-testid="figure-template-card"]')).toHaveCount(11);
+  await expect(page.locator('[data-testid="figure-template-card"]')).toHaveCount(10);
   await expect(page.locator('.figure-card .figure-preview-empty')).toHaveCount(0);
-  await expect(page.locator('.figure-preview')).toHaveCount(11);
+  await expect(page.locator('.figure-preview')).toHaveCount(10);
   await expect.poll(async () => page.locator('.figure-preview').evaluateAll(
     (images: HTMLImageElement[]) => images.filter((image) => image.complete && image.naturalWidth > 0).length,
-  )).toBe(11);
+  )).toBe(10);
 
   await page.getByTestId('figure-filter-all').click();
   await expect(page.getByTestId('figure-filter-ready')).toHaveAttribute('aria-pressed', 'false');
@@ -348,7 +370,7 @@ test('figure selector defaults to ready previews and keeps pending cards behind 
 
 test('ready preview count follows the selected analysis line', async ({ page }) => {
   for (const [lineId, expectedCount] of [
-    ['line1_bulk', 11],
+    ['line1_bulk', 10],
     ['line2_scrna', 4],
     ['line3_spatial', 1],
   ] as const) {
@@ -493,6 +515,170 @@ test('server accepts a valid figure selection and rejects a cross-line adapt pat
   expect(invalidBody.error).toContain('跨线');
 });
 
+test('figure adapt card exposes template layout and typed adapt variables', async ({ page }) => {
+  await page.goto(ADMIN_BASE);
+  await page.locator('.tab-nav-item', { hasText: '结果预览 Studio' }).click();
+  await expect(page.getByTestId('figure-adapt-card')).toBeVisible();
+
+  const lineSelect = page.getByTestId('figure-adapt-line');
+  const templateSelect = page.getByTestId('figure-adapt-template');
+  await expect(lineSelect).toBeVisible();
+  await expect(templateSelect).toBeEnabled();
+  await expect(templateSelect.locator('option')).not.toHaveCount(1);
+
+  await lineSelect.selectOption('line2_scrna');
+  await templateSelect.selectOption('fig_l2p_dotplot');
+
+  const layout = page.getByTestId('figure-adapt-layout');
+  await expect(layout).toBeVisible();
+  await expect(layout).toContainText('88 x 60 mm');
+  await expect(layout).toContainText('最小 66 x 45 mm');
+  await expect(layout).toContainText('DPI 300');
+  await expect(layout).toContainText('固定物理画布');
+  await expect(layout).toContainText('栏位 single');
+  await expect(layout).toContainText('模板图例 right');
+
+  const legendOverride = page.getByTestId('figure-adapt-legend-position');
+  await expect(legendOverride.getByRole('radio', { name: 'none' })).toBeVisible();
+  await expect(legendOverride.getByRole('radio', { name: 'right' })).toBeChecked();
+  await expect(legendOverride.getByRole('radio', { name: 'top' })).toBeVisible();
+  await expect(legendOverride.getByRole('radio', { name: 'inside' })).toBeVisible();
+
+
+  await expect(page.locator('.studio-fig-grid img').first()).toBeVisible();
+  const dotplot = page.getByTestId('figure-adapt-vars');
+  await expect(dotplot.getByLabel(/input_data/)).toBeVisible();
+  await expect(dotplot).toContainText('类型 string');
+  await expect(dotplot).toContainText('必填');
+
+  await page.screenshot({
+    path: 'artifacts/agent_tasks/figure_params_playwright/figure-adapt-dotplot.png',
+    fullPage: true,
+  });
+});
+
+test('figure adapt params stay visible without overflow at 390 by 844', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(ADMIN_BASE);
+  await page.locator('.tab-nav-item', { hasText: '结果预览 Studio' }).click();
+  await page.getByTestId('figure-adapt-line').selectOption('line1_bulk');
+  await page.getByTestId('figure-adapt-template').selectOption('fig_l2_volcano');
+
+  const card = page.getByTestId('figure-adapt-card');
+  await expect(page.getByTestId('figure-adapt-legend-position')).toBeVisible();
+  await expect(page.getByTestId('figure-adapt-vars').getByLabel(/input_data/)).toBeVisible();
+  await expect(page.getByTestId('figure-adapt-derive')).toBeVisible();
+
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(2);
+
+  for (const control of [
+    page.getByTestId('figure-adapt-line'),
+    page.getByTestId('figure-adapt-template'),
+    page.getByTestId('figure-adapt-legend-position'),
+    page.getByTestId('figure-adapt-vars'),
+  ]) {
+    const box = await control.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+  }
+
+  await page.screenshot({
+    path: 'artifacts/agent_tasks/figure_params_playwright/figure-adapt-mobile.png',
+    fullPage: true,
+  });
+});
+
+test('figure adapt layout keeps desktop columns and controls visible', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(ADMIN_BASE);
+  await page.locator('.tab-nav-item', { hasText: '结果预览 Studio' }).click();
+  await page.getByTestId('figure-adapt-line').selectOption('line2_scrna');
+  await page.getByTestId('figure-adapt-template').selectOption('fig_l2p_dotplot');
+
+  await expect(page.getByTestId('figure-adapt-card')).toBeVisible();
+  await expect(page.getByTestId('figure-adapt-legend-position')).toBeVisible();
+  await expect(page.getByTestId('figure-adapt-vars')).toBeVisible();
+  await expect(page.getByTestId('figure-adapt-derive')).toBeVisible();
+
+  const desktopColumns = await page.evaluate(() => {
+    const layout = getComputedStyle(document.querySelector<HTMLElement>('.studio-layout')!);
+    const preview = document.querySelector<HTMLElement>('.figure-adapt-preview')!;
+    const computed = getComputedStyle(preview);
+    const boxes = Array.from(preview.children).map((child) => child.getBoundingClientRect());
+    return {
+      layoutColumns: layout.gridTemplateColumns,
+      computedPreviewColumns: computed.gridTemplateColumns,
+      twoColumn: computed.gridTemplateColumns.split(' ').length === 2,
+      sideBySide: boxes.length === 2 && boxes[0].right <= boxes[1].left,
+    };
+  });
+  expect(desktopColumns.layoutColumns.split(' ').length).toBe(3);
+  expect(desktopColumns.computedPreviewColumns).not.toBe('minmax(0, 1fr)');
+  expect(desktopColumns.twoColumn).toBe(true);
+  expect(desktopColumns.sideBySide).toBe(true);
+});
+
+test('adapt card converts comma lists and preserves empty optional string lists', async ({ page }) => {
+  await page.goto(ADMIN_BASE);
+  await page.locator('.tab-nav-item', { hasText: '结果预览 Studio' }).click();
+  const adaptCard = page.getByTestId('figure-adapt-card');
+  await expect(adaptCard).toBeVisible();
+
+  await page.getByTestId('figure-adapt-line').selectOption('line1_bulk');
+  await page.getByTestId('figure-adapt-template').selectOption('fig_l2_volcano');
+
+  const vars = page.getByTestId('figure-adapt-vars');
+  await expect(vars.getByLabel(/input_data/)).toBeVisible();
+  await vars.getByLabel(/input_data/).fill('data/line1_bulk/de_results.tsv');
+  await expect(vars.getByLabel(/group_col/)).toHaveValue('group');
+  await expect(page.getByTestId('figure-adapt-derive')).toBeEnabled();
+
+  await page.screenshot({
+    path: 'artifacts/agent_tasks/figure_params_playwright/figure-adapt-required-only.png',
+    fullPage: true,
+  });
+
+  await expect(vars.getByLabel(/label_genes/)).toBeVisible();
+  await vars.getByLabel(/label_genes/).fill('GPD1, TNF');
+  await page.route('**/api/figures/adapt/derive', async (route) => {
+    expect(route.request().postDataJSON()).toMatchObject({
+      legendPositionOverride: 'right',
+      adaptVars: {
+        input_data: 'data/line1_bulk/de_results.tsv',
+        group_col: 'group',
+        label_genes: ['GPD1', 'TNF'],
+      },
+    });
+    await route.fulfill({ json: { ok: false, errors: ['mock derivation rejected'] } });
+  });
+  await page.getByTestId('figure-adapt-derive').click();
+  await expect(page.getByText('mock derivation rejected')).toBeVisible();
+});
+
+test('adapt card shows an explicit empty state for a template without variables', async ({ page }) => {
+  await page.goto(ADMIN_BASE);
+  await page.route('**/api/figures/templates', async (route) => {
+    const upstream = await route.fetch();
+    const body = await upstream.json();
+    const target = body.templates.find((item: { id: string }) => item.id === 'fig_l1_boxplot');
+    if (!target) throw new Error('fig_l1_boxplot is missing from the registry payload');
+    target.adapt_vars = {};
+    await route.fulfill({ response: upstream, json: body });
+  });
+  await page.locator('.tab-nav-item', { hasText: '结果预览 Studio' }).click();
+  await page.getByTestId('figure-adapt-line').selectOption('line1_bulk');
+  await page.getByTestId('figure-adapt-template').selectOption('fig_l1_boxplot');
+
+  const vars = page.getByTestId('figure-adapt-vars');
+  await expect(vars).toContainText('该模板没有可修改的 adapt_vars 参数');
+  await expect(page.getByTestId('figure-adapt-layout')).toContainText('固定物理画布');
+  await page.screenshot({
+    path: 'artifacts/agent_tasks/figure_params_playwright/figure-adapt-empty-state.png',
+  });
+});
+
 test('4 MiB chunk upload resumes from the next missing index after interruption', async ({ request }) => {
   const initResponse = await request.post(`${ADMIN_BASE}/api/upload/init`, {
     data: {
@@ -605,4 +791,112 @@ test('client sync trigger enforces the 60 second per-ticket cooldown', async ({ 
   expect(body.retry_after).toBeGreaterThan(0);
   expect(body.retry_after).toBeLessThanOrEqual(60);
   expect(body.error).toContain('稍后重试');
+});
+
+test('pi agent chat dispatches, polls, shows the real reply and clears history', async ({ page }) => {
+  let dispatchBody: Record<string, unknown> | null = null;
+  await page.route('**/api/pi-agent/overview', async (route) => {
+    await route.fulfill({
+      json: {
+        ok: true,
+        online: true,
+        current_model: { provider: 'zai', model: 'glm-5.3-flash' },
+        a2a_card: { name: 'pi-termux-executor', version: '1.0.0', url: 'http://127.0.0.1:9910' },
+      },
+    });
+  });
+  await page.route('**/api/pi-agent/dispatch', async (route) => {
+    dispatchBody = route.request().postDataJSON() as Record<string, unknown>;
+    await route.fulfill({
+      json: {
+        ok: true,
+        task: { id: 'task-e2e-chat', status: { state: 'TASK_STATE_WORKING' } },
+        poll_url: '/api/pi-agent/task?id=task-e2e-chat',
+      },
+    });
+  });
+  let pollCount = 0;
+  await page.route(/\/api\/pi-agent\/task\?id=task-e2e-chat$/, async (route) => {
+    pollCount += 1;
+    await route.fulfill({
+      json: {
+        ok: true,
+        task: {
+          id: 'task-e2e-chat',
+          status: { state: pollCount >= 2 ? 'TASK_STATE_COMPLETED' : 'TASK_STATE_WORKING' },
+          artifacts: pollCount >= 2
+            ? [{ artifactId: 'reply', parts: [{ text: 'Pi 已收到 GPD1 调研任务', mediaType: 'text/plain' }] }]
+            : undefined,
+        },
+      },
+    });
+  });
+  await page.route(/\/api\/pi-agent\/calls\?limit=50$/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await route.fulfill({
+      json: {
+        ok: true,
+        calls: [
+          { task_id: 'task-other', last_text: 'wrong call' },
+          { task_id: 'e2e-chat', last_text: 'Pi 已收到 GPD1 调研任务' },
+        ],
+      },
+    });
+  });
+
+  await page.addInitScript(() => localStorage.clear());
+  await page.goto(ADMIN_BASE);
+  await page.locator('.tab-nav-item', { hasText: 'Pi Agent 对话' }).click();
+  await expect(page.getByTestId('pi-chat-status')).toContainText('在线');
+  await expect(page.getByTestId('pi-chat-status')).toContainText('glm-5.3-flash');
+
+  await page.getByTestId('pi-chat-input').fill('请总结 GPD1 相关证据');
+  await page.getByTestId('pi-chat-input').press('Enter');
+  await expect(page.getByTestId('pi-chat-message-user')).toHaveCount(1);
+  await expect(page.getByTestId('pi-chat-message-assistant')).toHaveCount(0);
+  expect(dispatchBody).toMatchObject({
+    message: '请总结 GPD1 相关证据',
+    returnImmediately: true,
+  });
+
+  await expect(page.getByTestId('pi-chat-message-assistant')).toHaveCount(1);
+  await expect(page.getByTestId('pi-chat-message-assistant')).toContainText('Pi 已收到 GPD1 调研任务');
+  await expect(page.getByTestId('pi-chat-status')).toContainText('completed');
+
+  await page.locator('button[title="清空本地对话历史"]').click();
+  await expect(page.getByTestId('pi-chat-empty')).toBeVisible();
+  await expect(page.getByTestId('pi-chat-message-user')).toHaveCount(0);
+});
+
+test('pi agent chat survives reload without duplicating terminal messages and cancel retries after failure', async ({ page }) => {
+  await page.route('**/api/pi-agent/overview', async (route) => {
+    await route.fulfill({
+      json: {
+        ok: true,
+        online: true,
+        current_model: { provider: 'zai', model: 'glm-5.3-flash' },
+        a2a_card: { name: 'pi-termux-executor', version: '1.0.0', url: 'http://127.0.0.1:9910' },
+      },
+    });
+  });
+  await page.addInitScript(() => {
+    localStorage.setItem('bioanalys-desktop:pi-agent-chat-history', JSON.stringify([
+      { id: 'user-1', role: 'user', text: '取消重试任务', ts: 1, taskId: 'task-e2e-cancel', status: 'working' },
+      { id: 'user-2', role: 'user', text: '刷新去重任务', ts: 2, taskId: 'task-e2e-dup', status: 'completed' },
+      { id: 'as-1', role: 'assistant', text: '已有回复', ts: 3, taskId: 'task-e2e-dup', status: 'completed' },
+      { id: 'sys-1', role: 'system', text: '任务 completed。', ts: 4, taskId: 'task-e2e-dup', status: 'completed' },
+    ]));
+  });
+  await page.goto(ADMIN_BASE);
+  await page.locator('.tab-nav-item', { hasText: 'Pi Agent 对话' }).click();
+
+  await expect(page.getByTestId('pi-chat-message-system')).toHaveCount(1);
+  await expect(page.getByTestId('pi-chat-message-assistant')).toHaveCount(1);
+  await expect(page.getByTestId('pi-chat-message-user')).toHaveCount(2);
+
+  await page.reload();
+  await page.locator('.tab-nav-item', { hasText: 'Pi Agent 对话' }).click();
+  await expect(page.getByTestId('pi-chat-message-system')).toHaveCount(1);
+  await expect(page.getByTestId('pi-chat-message-assistant')).toHaveCount(1);
+  await expect(page.getByTestId('pi-chat-message-user')).toHaveCount(2);
 });

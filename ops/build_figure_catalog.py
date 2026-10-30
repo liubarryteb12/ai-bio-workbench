@@ -138,7 +138,7 @@ def python_materialized_code(entry):
         "_output = _os.environ.get('BIO_FIGURE_OUTPUT')\n"
         "if not _output:\n"
         "    raise SystemExit(2)\n"
-        "_plt.savefig(_output, dpi=300, bbox_inches='tight')\n"
+        "_plt.savefig(_output, dpi=300, bbox_inches=None)\n"
         "_plt.close('all')\n"
     )
     return header + entry["code"].rstrip() + footer

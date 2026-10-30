@@ -78,11 +78,11 @@ test('derived adapt copy carries a verifiable master header and adapt values', (
 
   const text = fs.readFileSync(result.local_path, 'utf8');
   assert.equal(text.includes('\r\n'), false, 'derived copy must use LF');
-  assert.match(text, /^# Master-Source: reference\/05\..*\| Master-SHA256: [0-9a-f]{64}$/m);
+  assert.match(text, /^# Master-Source: src\/figure_sources\/.*\| Master-SHA256: [0-9a-f]{64}$/m);
   const header = text.match(/^# Master-Source: (.*) \| Master-SHA256: ([0-9a-f]{64})$/m);
   assert.equal(header[1], template.source);
   assert.equal(header[2], template.source_sha256);
-  assert.match(text, new RegExp(`# Adapt-Variable input_data: ${template.adapt_vars.input_data.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\\$&`)}`));
+  assert.match(text, /# Adapt-Variable input_data: /);
   assert.match(text, /input_data = 'data\/line1_bulk\/results\/de_results\.csv'/);
   assert.match(text, /group_col = 'condition'/);
   assert.match(text, /label_genes = c\(['"]TNF['"]\)/);
@@ -120,10 +120,70 @@ test('figure resolution rejects cross-line templates and adapt values', () => {
   assert.match(foreignValue.errors.join('; '), /跨线取值/);
 });
 
+test('derive pipeline forwards legend position override into the generated script', () => {
+  const registry = JSON.parse(fs.readFileSync(path.join(REPO, 'src', 'figure_templates.json'), 'utf8'));
+  const template = registry.templates.find((item) => item.id === 'fig_l2_volcano');
+  const localRoot = makeLocalRoot('legend-override-');
+
+  const overridden = deriveAdaptedFigure({
+    root: localRoot,
+    projectId: 'project_alpha',
+    lineId: 'line1_bulk',
+    templateId: template.id,
+    template,
+    adaptVars: {
+      input_data: 'data/line1_bulk/results/de_results.csv',
+      group_col: 'condition',
+      label_genes: ['TNF'],
+    },
+    legendPositionOverride: 'top',
+  });
+  assert.equal(overridden.ok, true, overridden.errors?.join('; ') || '');
+  const overriddenText = fs.readFileSync(overridden.local_path, 'utf8');
+  assert.match(overriddenText, /^legend_position\s*<-\s*"top"$/m);
+  assert.match(overriddenText, /paste0\("legend_position=", legend_position\)/);
+
+  const defaulted = deriveAdaptedFigure({
+    root: localRoot,
+    projectId: 'project_alpha',
+    lineId: 'line1_bulk',
+    templateId: template.id,
+    template,
+    adaptVars: {
+      input_data: 'data/line1_bulk/results/de_results.csv',
+      group_col: 'condition',
+      label_genes: ['TNF'],
+    },
+  });
+  assert.equal(defaulted.ok, true, defaulted.errors?.join('; ') || '');
+  const defaultedText = fs.readFileSync(defaulted.local_path, 'utf8');
+  assert.match(
+    defaultedText,
+    new RegExp(`^legend_position\\s*<-\\s*"${template.figure_layout.legend_position}"$`, 'm'),
+  );
+
+  const rejected = deriveAdaptedFigure({
+    root: localRoot,
+    projectId: 'project_alpha',
+    lineId: 'line1_bulk',
+    templateId: template.id,
+    template,
+    adaptVars: {
+      input_data: 'data/line1_bulk/results/de_results.csv',
+      group_col: 'condition',
+      label_genes: ['TNF'],
+    },
+    legendPositionOverride: 'outside',
+  });
+  assert.equal(rejected.ok, false);
+  assert.match(rejected.errors.join('; '), /legend_position/);
+});
+
 test('adapt manifest maps project-local copies to per-line delivery paths', () => {
   const localRoot = makeLocalRoot('manifest-');
   const projectId = 'project_alpha';
   const templateId = 'fig_l2_volcano';
+  const source = 'src/figure_sources/fig_l2_volcano.R';
   const result = deriveAdaptedFigure({
     root: localRoot,
     projectId,
@@ -132,12 +192,21 @@ test('adapt manifest maps project-local copies to per-line delivery paths', () =
     template: {
       id: templateId,
       language: 'r',
-      source: 'reference/05.可参考出图代码/_meta/R453_compat/L2_core_code.R',
-      source_sha256: sha256(path.join(REPO, 'reference/05.可参考出图代码/_meta/R453_compat/L2_core_code.R')),
+      source,
+      source_sha256: sha256(path.join(REPO, source)),
       canonical_output: 'L2_volcano_verified.png',
       deps_status: 'ready',
       verified: true,
       lines: ['line1_bulk'],
+      figure_layout: {
+        width_mm: 88,
+        height_mm: 80,
+        min_width_mm: 66,
+        min_height_mm: 60,
+        dpi: 300,
+        column: 'single',
+        legend_position: 'right',
+      },
       adapt_vars: { input_data: '', group_col: '', label_genes: '' },
     },
     adaptVars: {
@@ -181,7 +250,7 @@ test('adapt manifest rejects corrupted paths and foreign lines', () => {
   assert.equal(readAdaptManifest(localRoot, projectId).length, 3);
 });
 
-test('derived adapt copy rejects a master outside reference/05.', () => {
+test('derived adapt copy rejects a master outside src/figure_sources.', () => {
   const localRoot = makeLocalRoot('foreign-master-');
   const result = deriveAdaptedFigure({
     root: localRoot,
@@ -205,10 +274,14 @@ test('derived adapt copy rejects a master outside reference/05.', () => {
     },
   });
   assert.equal(result.ok, false);
-  assert.match(result.errors.join('; '), /reference\/05/);
+  assert.match(result.errors.join('; '), /src\/figure_sources/);
 });
 
 test('18787 工作台模板、预览与真实派生接线协同通过', async (t) => {
+  const registry = JSON.parse(
+    fs.readFileSync(path.join(REPO, 'src', 'figure_templates.json'), 'utf8'),
+  );
+  const volcanoTemplate = registry.templates.find((item) => item.id === 'fig_l2_volcano');
   function freePort() {
     return new Promise((resolve, reject) => {
       const probe = net.createServer();
@@ -249,6 +322,12 @@ test('18787 工作台模板、预览与真实派生接线协同通过', async (t
   });
 
   const { server } = await import('../server/index.js');
+  if (!server.listening) {
+    await new Promise((resolve, reject) => {
+      server.once('listening', resolve);
+      server.once('error', reject);
+    });
+  }
   const base = `http://127.0.0.1:${port}`;
 
   t.after(() => {
@@ -262,6 +341,16 @@ test('18787 工作台模板、预览与真实派生接线协同通过', async (t
   const templateBody = await templateRes.json();
   assert.equal(templateBody.ok, true);
   assert.ok(templateBody.templates.some((item) => item.deps_status === 'ready'));
+  const pcaTemplate = templateBody.templates.find((item) => item.id === 'fig_l2_pca');
+  assert.deepEqual(pcaTemplate.adapt_vars.group_col, {
+    description: 'Sample group column',
+    type: 'string',
+    required: true,
+    default: 'group',
+  });
+  assert.equal(pcaTemplate.figure_layout.width_mm, 88);
+  assert.equal(pcaTemplate.figure_layout.height_mm, 80);
+  assert.equal(pcaTemplate.figure_layout.dpi, 300);
 
   const previewRes = await fetch(`${base}/api/figures/templates/preview?id=fig_l2_volcano`);
   assert.equal(previewRes.status, 200);
@@ -307,7 +396,7 @@ test('18787 工作台模板、预览与真实派生接线协同通过', async (t
   assert.equal(deriveBody.task.seed, 42);
   assert.equal(deriveBody.task.dependsOnStep, 'l1_de_limma');
   assert.ok(fs.existsSync(deriveBody.local_path));
-  assert.equal(deriveBody.master_sha256, 'd60ecbf24668aacf3498168ac4d7279bb9347f26c1e6106c548e87eba9bcc07b');
+  assert.equal(deriveBody.master_sha256, volcanoTemplate.source_sha256);
 
   const blockedSubmit = await fetch(`${base}/api/tasks/submit`, {
     method: 'POST',
@@ -316,4 +405,22 @@ test('18787 工作台模板、预览与真实派生接线协同通过', async (t
   });
   assert.equal(blockedSubmit.status, 409);
   assert.match((await blockedSubmit.json()).error || '', /前置分析步骤/);
+  const typeMismatchRes = await fetch(`${base}/api/figures/adapt/derive`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      projectId: 'project_http',
+      lineId: 'line1_bulk',
+      templateId: 'fig_l2_volcano',
+      adaptVars: {
+        input_data: 'data/line1_bulk/results/de_results.csv',
+        group_col: 'condition',
+        label_genes: 'TNF',
+      },
+      seed: 42,
+    }),
+  });
+  assert.equal(typeMismatchRes.status, 422);
+  const typeMismatch = await typeMismatchRes.json();
+  assert.match(typeMismatch.errors.join('; '), /label_genes/);
 });

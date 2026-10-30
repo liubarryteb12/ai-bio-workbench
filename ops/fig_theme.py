@@ -19,11 +19,11 @@ ops/layout_autoload/sitecustomize.py + ops/layout_helper.py 的 SCI 模板实现
 FIG_THEME = {
     # 字体族：锁定首选序列，避免跨机器静默 fallback 成不同字形
     "font.family": "sans-serif",
-    "font.sans-serif": ["DejaVu Sans", "Liberation Sans", "Arial", "Helvetica"],
-    # 线宽/点大小：默认 1.5pt 线 + 6pt 点在密集散点里会糊；SCI 常用细线小点
-    "lines.linewidth": 0.8,
+    "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans"],
+    # 线宽/点大小：主数据线 0.75 pt，辅助边框 0.5 pt
+    "lines.linewidth": 0.75,
     "lines.markersize": 4,
-    "patch.linewidth": 0.8,
+    "patch.linewidth": 0.5,
     "errorbar.capsize": 3,
 }
 

@@ -31,6 +31,16 @@ with open(settings_file, encoding="utf-8") as handle:
 if not isinstance(config, dict):
     raise SystemExit("FATAL ERR_SETTINGS_NOT_OBJECT")
 
+# Model identity is pinned by the operator; the seed never revives a stale default.
+EXPECTED_DEFAULT_PROVIDER = "zai"
+EXPECTED_DEFAULT_MODEL = "glm-5.3-flash"
+if config.get("defaultProvider") != EXPECTED_DEFAULT_PROVIDER or config.get("defaultModel") != EXPECTED_DEFAULT_MODEL:
+    raise SystemExit("FATAL ERR_UNEXPECTED_DEFAULT_MODEL")
+if config.get("thinkingLevel") not in {"low", "medium", "high"}:
+    config["thinkingLevel"] = "high"
+if not isinstance(config.get("temperature"), (int, float)):
+    config["temperature"] = 0.2
+
 # Replace only the owned server block so configured peers and discovery survive.
 a2a = config.setdefault("a2a", {})
 if not isinstance(a2a, dict):
@@ -85,7 +95,10 @@ if dropped:
 PY
 
 jq -e '
-  .a2a.server.enabled == true
+  .defaultProvider == "zai"
+  and .defaultModel == "glm-5.3-flash"
+  and .thinkingLevel == "high"
+  and .a2a.server.enabled == true
   and .a2a.server.host == "127.0.0.1"
   and .a2a.server.allowAllUsers == false
   and .a2a.server.maxConcurrent == 2

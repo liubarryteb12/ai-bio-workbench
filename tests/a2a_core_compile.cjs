@@ -22,10 +22,13 @@ function stripTypes(source, sourceUrl) {
 
 const ROOT = path.resolve(__dirname, '..');
 const SOURCES = [
+  'src/core/types.ts',
   'src/core/PathGuard.ts',
   'src/core/LedgerStore.ts',
   'src/core/CapabilityBus.ts',
   'src/core/ModLoader.ts',
+  'src/core/SlotManager.ts',
+  'src/core/DeliverableCollector.ts',
 ];
 const OUT_DIR = path.join(__dirname, '.build');
 
@@ -38,6 +41,11 @@ for (const relative of SOURCES) {
   const esm = stripped.replace(
     /^import\s+\*\s+as\s+(\w+)\s+from\s+'([^']+)';$/gm,
     "import * as $1 from '$2';"
+  ).replace(
+    /from\s+'(\.\/[^']+)';/g,
+    (match, specifier) => specifier.endsWith('.mjs')
+      ? match
+      : "from '" + specifier + ".mjs';"
   );
   fs.writeFileSync(path.join(OUT_DIR, path.basename(relative).replace(/\.ts$/, '.mjs')), esm);
 }

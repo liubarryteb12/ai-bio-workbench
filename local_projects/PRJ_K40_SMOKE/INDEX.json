@@ -1,0 +1,59 @@
+{
+  "artifact_counts": {
+    "data": 5,
+    "debug": 0,
+    "deliverables": 0,
+    "figures": 0
+  },
+  "generated_at": "2026-10-29T13:32:19.433023+00:00",
+  "generated_by": "ops/ledger_indexer.py",
+  "issues": [],
+  "ledger_summary": {
+    "actions": {
+      "aggregated": [],
+      "path": "ledger/actions.jsonl",
+      "records": 0,
+      "status_policy": "none"
+    },
+    "changes": {
+      "aggregated": [],
+      "path": "ledger/changes.jsonl",
+      "records": 0,
+      "status_policy": "none"
+    },
+    "errors": {
+      "aggregated": [],
+      "path": "ledger/errors.jsonl",
+      "records": 0
+    },
+    "fixes": {
+      "aggregated": [],
+      "path": "ledger/fixes.jsonl",
+      "records": 0
+    },
+    "pitfalls": {
+      "aggregated": [],
+      "path": "ledger/pitfalls.jsonl",
+      "records": 0,
+      "status_policy": "none"
+    }
+  },
+  "machine_logs": {
+    "count": 0,
+    "entries": [],
+    "path": "outputs/system_logs"
+  },
+  "path_map": {
+    "data": "data",
+    "debug": "debug",
+    "deliverables": "deliverables",
+    "figures": "figures",
+    "index": "INDEX.json",
+    "ledger": "ledger",
+    "project": "local_projects/PRJ_K40_SMOKE",
+    "project_json": "project.json",
+    "readme": "README.md"
+  },
+  "project_id": "PRJ_K40_SMOKE",
+  "schema_version": 1
+}

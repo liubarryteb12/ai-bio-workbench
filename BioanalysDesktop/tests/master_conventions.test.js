@@ -251,3 +251,119 @@ test('出图步骤必须落产物清单 figures_manifest.txt（本轮新增）',
   }
   assert.deepEqual(problems, [], '出图步骤必须落一份可核对的产物清单');
 });
+
+test('line1 富集出图必须把空 TSV 当作可选输入跳过', () => {
+  const file = path.join(
+    REPO,
+    'src/line1_bulk/scripts/enrichment_figures',
+  );
+  const text = fs.readFileSync(file, 'utf8');
+  const match = text.match(/def rd\(name\):\n([\s\S]*?)(?=\n\ndef )/);
+  assert.ok(match, 'enrichment_figures 必须保留 rd(name) 读取入口');
+  const body = match[1];
+  assert.match(
+    body,
+    /pd\.errors\.EmptyDataError/,
+    '空 TSV 会触发 EmptyDataError，rd() 必须显式接住并跳过',
+  );
+  assert.match(
+    body,
+    /log\(/,
+    '跳过空 TSV 时必须在 stdout 留下可审计记录',
+  );
+});
+
+test('qc_matrix 离群样本必须标记复核，不删除样本且不阻断下游', () => {
+  const file = path.join(REPO, 'src/line1_bulk/scripts/qc_matrix');
+  const text = fs.readFileSync(file, 'utf8');
+  assert.match(
+    text,
+    /qc_gate=%s/,
+    'qc_report.txt 必须写出动态 qc_gate',
+  );
+  assert.match(
+    text,
+    /review_required/,
+    '检出离群样本时 qc_gate 必须为 review_required',
+  );
+  assert.match(
+    text,
+    /outlier_policy=mark_only_not_removed/,
+    'qc_report.txt 必须明确记录离群样本只标记不删除',
+  );
+  assert.doesNotMatch(
+    text,
+    /if\s*\(length\(outliers\)\s*>\s*0\)\s*\{\s*fail\(/s,
+    '检出离群样本不能直接 fail，必须保留样本并交给人工复核',
+  );
+});
+
+test('ml_hub_analysis 必须从项目主对照解析阳性组，不写死 LS/NLS', () => {
+  const file = path.join(REPO, 'src/line1_bulk/scripts/ml_hub_analysis');
+  const text = fs.readFileSync(file, 'utf8');
+  assert.doesNotMatch(
+    text,
+    /grp\s*==\s*["']LS["']/,
+    'R 侧不得把阳性组写死为 LS',
+  );
+  assert.doesNotMatch(
+    text,
+    /g\s*==\s*["']LS["']/,
+    'Python 侧不得把阳性组写死为 LS',
+  );
+  assert.match(
+    text,
+    /_ml_groups\.tsv/,
+    'R 与 Python 必须共享项目主对照解析结果',
+  );
+  assert.match(
+    text,
+    /contrasts/,
+    '分组解析必须读取 project.json 的 contrasts',
+  );
+});
+
+test('prep_matrix 必须兼容 GSM<TAB>group 两列分组表', () => {
+  const file = path.join(REPO, 'src/line1_bulk/scripts/prep_matrix');
+  const text = fs.readFileSync(file, 'utf8');
+  assert.match(
+    text,
+    /grepl\("\^GSM\[0-9\]",\s*trimws\(fields\[1\]\)\)/,
+    '首列是 GSM 的两列分组表必须走 sample/group 分支',
+  );
+  assert.match(
+    text,
+    /grouping_map\[\[grouping_tag\]\]\s*<-\s*c\(/,
+    '两列格式必须把同组样本累积到同一个分组键',
+  );
+});
+
+test('prep_matrix 在 GEO tissue 无分组时必须回退用户分组表并留痕', () => {
+  const file = path.join(REPO, 'src/line1_bulk/scripts/prep_matrix');
+  const text = fs.readFileSync(file, 'utf8');
+  assert.match(
+    text,
+    /grouping_group_values/,
+    'GEO 元数据无法派生分组时必须构造 grouping_group_values',
+  );
+  assert.match(
+    text,
+    /group_source/,
+    '报告必须记录分组来源，避免把用户分组伪装成 GEO 元数据',
+  );
+});
+
+test('prep_matrix 芯片路径必须用 GSM 作为稳定样本键', () => {
+  const file = path.join(REPO, 'src/line1_bulk/scripts/prep_matrix');
+  const text = fs.readFileSync(file, 'utf8');
+  assert.match(
+    text,
+    /sample_labels\s*<-\s*if\s*\(identical\(prep_mode,\s*"counts_rnaseq"\)\)\s*sample_names\s+else\s+gsm_cols/,
+    '芯片路径必须使用 series matrix 的 GSM 列名，不能使用可重复的 GEO title',
+  );
+  assert.doesNotMatch(
+    text,
+    /sample_labels\s*<-\s*if\s*\(identical\(prep_mode,\s*"counts_rnaseq"\)\)\s*sample_names\s+else\s+title_values/,
+    'title 只用于展示，不能作为项目样本主键',
+  );
+});

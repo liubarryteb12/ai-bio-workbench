@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""单图 SCI 排版外挂装饰器（aims v3.0 §5.3）。
+"""单图 SCI 排版外挂装饰器（reference/03出图规范 v3.0）。
 
 零重写原则：母版出图脚本的绘图主干不动，画完 `fig, ax` 后调用本函数做后处理，
 再交给 `fig.savefig(...)`。两档画幅的差异全部收敛在这里：
 
     template_4x3     4:3 竖版（图例右侧竖排，默认）
-    template_16x9    16:9 横版（图例底部横排，带脚注栏）
+    template_16x9    16:9 横版（图例底部横排）
 
 2026-10-19 用户拍板：客户端只保留 4:3 / 16:9 两档，原三套模板
 （nature_side / cell_wide / clinical_note）收敛为按画幅比驱动的两档；
@@ -18,13 +18,14 @@ project.json 不改也能拿到逐字段相同的规则。
 
     spec = load_layout_spec(os.environ.get("PROJECT_JSON"))   # 读 project.json
     apply_sci_plot_layout(fig, ax, spec, footnote_text="Wilcoxon test; adj p<0.05; n=16")
-    fig.savefig(out_png, dpi=spec.get("dpi", 300), bbox_inches="tight")
+    fig.savefig(out_png, dpi=spec.get("dpi", 300), bbox_inches=None)
 
 为什么必须外挂而不是改母版：53 个出图脚本各自维护标题/图例/轴标签写法，
 逐脚本改会引入 53 处回归面；外挂只改"保存前那一刻"的版式，绘图逻辑零接触。
 
-与 `docs/figure_spec.md` 的关系：spec 管"最低合规线"（图例在轴外、图注不压轴框），
-本模块管"三套成品风格"。落盘后仍应跑 `ops/audit_figure_layout.py` 复核几何关系。
+与 `docs/figure_spec.md` 的关系：spec 管单图物理画布、字号、线宽和单图边界；
+本模块只保留图例外置与固定画布兜底。落盘后仍应跑
+`ops/audit_figure_layout.py` 复核几何关系。
 """
 
 import json
@@ -39,16 +40,16 @@ TEMPLATES = {
         "legend_position": "outside_right",
         "legend_direction": "vertical",
         "axis_style": "classic_L",
-        "x_label_rotation": "auto_45",
+        "x_label_rotation": "horizontal",
         "show_footnote_panel": False,
     },
     "template_16x9": {
         "aspect_ratio": "16:9",
         "legend_position": "bottom_center",
         "legend_direction": "horizontal",
-        "axis_style": "boxed",
-        "x_label_rotation": "auto_45",
-        "show_footnote_panel": True,
+        "axis_style": "classic_L",
+        "x_label_rotation": "horizontal",
+        "show_footnote_panel": False,
     },
 }
 
@@ -67,14 +68,20 @@ LEGACY_TEMPLATE_IDS = {
     "template_3_clinical_note": "template_4x3",
 }
 
-# 画幅基准：宽度固定 7.2in，高度按比例推。4:3 与 16:9 是最常用的两种投稿尺寸，
-# 300 DPI 下分别是 2160x1620 与 2880x1620 像素。
-_BASE_WIDTH_IN = 7.2
+# 画幅基准：默认单栏 88 mm，高度按比例推。项目显式选择双栏时由参考图
+# 或调用方用 BIOANALYS_LAYOUT_PRESERVE_FIGSIZE=1 锁定 180/183 mm。
+_BASE_WIDTH_IN = 88 / 25.4
 _ASPECT = {"4:3": (4, 3), "16:9": (16, 9), "3:2": (3, 2), "1:1": (1, 1)}
 
-# X 轴标签触发 45° 避让的条件（aims v3.0 §5.2 模板 1 明确写了这两个阈值）
-_LONG_LABEL_CHARS = 8
-_MANY_LABELS = 5
+_ENV_PRESERVE_FIGSIZE = "BIOANALYS_LAYOUT_PRESERVE_FIGSIZE"
+_ENV_FIXED_CANVAS = "BIOANALYS_LAYOUT_FIXED_CANVAS"
+
+_BASE_PT = 7
+_LEGEND_PT = 6.5
+
+
+def _env_enabled(name):
+    return os.environ.get(name, "").strip().lower() in ("1", "true", "yes")
 
 
 def load_layout_spec(project_json_path=None):
@@ -204,29 +211,18 @@ def _place_legend(ax, fig, rules, legend):
                 pass
 
     legend.set_frame_on(False)
+    legend.get_title().set_fontsize(_LEGEND_PT)
+    for text in legend.get_texts():
+        text.set_fontsize(_LEGEND_PT)
     return legend
 
 
 def _rotate_xticks(ax, rules):
-    """X 轴标签避让：auto_45 只在"标签长且项多"时触发，避免无谓倾斜。"""
-    mode = rules.get("x_label_rotation")
-    labels = [t.get_text() for t in ax.get_xticklabels() if t.get_text()]
-    if not labels:
-        return
-    if mode == "horizontal":
-        return
-    longest = max(len(s) for s in labels)
-    if mode == "auto_45":
-        if len(labels) > _MANY_LABELS and longest > _LONG_LABEL_CHARS:
-            for tick in ax.get_xticklabels():
-                tick.set_rotation(45)
-                tick.set_ha("right")
-        return
-    # 显式 45（模板预设，不看标签长度）
-    if mode == "45":
+    """单图规范禁止 45 度刻度标签；长名称交给换行或横向条形图。"""
+    if rules.get("x_label_rotation") in ("45", "auto_45"):
         for tick in ax.get_xticklabels():
-            tick.set_rotation(45)
-            tick.set_ha("right")
+            tick.set_rotation(0)
+            tick.set_ha("center")
 
 
 def _apply_axis_style(ax, rules):
@@ -240,35 +236,14 @@ def _apply_axis_style(ax, rules):
             ax.spines[side].set_visible(True)
 
 
-def _move_title(fig, ax, rules):
-    """标题落位：4:3 顶部左对齐加粗，16:9 顶部居中。
-
-    标题从 ax 搬到 fig 层：轴标题会占绘图区高度，且与"图注在轴框外"的规则冲突。
-    """
-    title = ax.get_title()
-    if not title:
-        return
+def _clear_title(ax):
+    """单图只保留图表主体，标题和图注写入 06_report 元数据。"""
     ax.set_title("")
-    if rules.get("legend_position") == "bottom_center":
-        fig.text(0.5, 1.01, title, ha="center", va="bottom",
-                 fontsize=10, fontweight="bold")
-    else:
-        fig.text(0.01, 1.01, title, ha="left", va="bottom",
-                 fontsize=10, fontweight="bold")
 
 
 def _draw_footnote(fig, rules, footnote_text):
-    """带脚注栏的模板（16:9）在轴框下方画浅灰脚注。
-
-    位置固定在轴框下方（y<0），满足 audit 的"C 图注不得与轴框相交"。
-    """
-    if not footnote_text:
-        return
-    if not rules.get("show_footnote_panel"):
-        return
-    fig.text(0.01, -0.06, str(footnote_text), ha="left", va="top", fontsize=8,
-             linespacing=1.4,
-             bbox=dict(facecolor="#F2F2F2", edgecolor="none", pad=5.0))
+    """兼容旧调用，单图不把图注画进画布。"""
+    del fig, rules, footnote_text
 
 
 def apply_sci_plot_layout(fig, ax, layout_spec=None, footnote_text=None, badge_text=None):
@@ -286,16 +261,22 @@ def apply_sci_plot_layout(fig, ax, layout_spec=None, footnote_text=None, badge_t
     spec = normalize_layout_spec(layout_spec)
     rules = spec["theme_rules"]
 
-    # 模板只能放大、不能缩小。
-    # 脚本按内容量设的 figsize 是有意义的：50 基因热图要 14in 高才能放下 8pt 基因名，
-    # 无条件套 16:9 会压成 4.05in，标签必然重叠（2026-10-19 实测 l1_04/l1_13/l1_15/l1_26
-    # 文字压字与出框，根因就在这里）。模板负责"风格"，不负责"压扁内容"。
-    cur_w, cur_h = (float(v) for v in fig.get_size_inches())
-    tpl_w, tpl_h = _figsize_for(rules.get("aspect_ratio"))
-    fig.set_size_inches(max(cur_w, tpl_w), max(cur_h, tpl_h))
+    # 参考图契约优先。适配器显式声明 preserve 时，脚本里的
+    # 89/183 mm 物理尺寸就是唯一真源，模板不得把它放大回 7.2 in。
+    if not _env_enabled(_ENV_PRESERVE_FIGSIZE):
+        tpl_w, tpl_h = _figsize_for(rules.get("aspect_ratio"))
+        fig.set_size_inches(tpl_w, tpl_h)
     fig.set_dpi(spec["dpi"])
 
-    _move_title(fig, ax, rules)
+    # 固定画布图的标题、图例和边距由出图代码显式控制。
+    # 自动搬图例会把已经排好的外置图例再次挤出画布，但标题和刻度策略仍需兜底。
+    if _env_enabled(_ENV_FIXED_CANVAS):
+        _clear_title(ax)
+        _apply_axis_style(ax, rules)
+        _rotate_xticks(ax, rules)
+        return fig, ax, spec["dpi"]
+
+    _clear_title(ax)
     _apply_axis_style(ax, rules)
     _rotate_xticks(ax, rules)
 
@@ -305,7 +286,7 @@ def apply_sci_plot_layout(fig, ax, layout_spec=None, footnote_text=None, badge_t
     if badge_text:
         # 角标贴右上角、轴框之外：与标题同一水平带，避免压图
         fig.text(0.99, 1.01, str(badge_text), ha="right", va="bottom",
-                 fontsize=9, fontweight="bold", color="#B22222")
+                 fontsize=_BASE_PT, fontweight="bold", color="#B22222")
 
     _draw_footnote(fig, rules, footnote_text)
     return fig, ax, spec["dpi"]
@@ -337,6 +318,6 @@ if __name__ == "__main__":
         apply_sci_plot_layout(f, a, {"template_id": tid},
                               footnote_text="Wilcoxon test; adj p<0.05; n=16")
         path = os.path.join(out_dir, f"smoke_{tid}.png")
-        f.savefig(path, dpi=300, bbox_inches="tight")
+        f.savefig(path, dpi=300, bbox_inches=None)
         plt.close(f)
         print("ok", path)

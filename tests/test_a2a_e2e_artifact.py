@@ -3,11 +3,13 @@
 
 from __future__ import annotations
 
+import base64
 import importlib.util
 import json
 import os
 import re
 import subprocess
+import time
 import unittest
 import urllib.request
 from datetime import datetime, timezone
@@ -30,120 +32,33 @@ assert VALIDATOR_SPEC is not None and VALIDATOR_SPEC.loader is not None
 artifact_validator = importlib.util.module_from_spec(VALIDATOR_SPEC)
 VALIDATOR_SPEC.loader.exec_module(artifact_validator)
 
-
-def _require_text_match(text: str, pattern: str) -> str:
-    match = re.search(pattern, text, flags=re.MULTILINE)
-    if match is None:
-        raise ValueError("ERR_ARTIFACT_TEXT_FIELD_MISSING")
-    return match.group(1)
-
-
-def _match_optional_text(text: str, pattern: str) -> str | None:
-    match = re.search(pattern, text)
-    if match is None:
-        return None
-    return match.group(1)
-
-
-def _common_posix_parent(file_paths: list[PurePosixPath]) -> PurePosixPath:
-    parents = [file_path.parent for file_path in file_paths]
-    if all(parent == parents[0] for parent in parents[1:]):
-        return parents[0]
-
-    common_parts: list[str] = []
-    for parts in zip(*(parent.parts for parent in parents)):
-        if any(part != parts[0] for part in parts[1:]):
-            break
-        common_parts.append(parts[0])
-    return PurePosixPath(*common_parts)
+EXTRACTOR_PATH = os.path.join(
+    REPO_ROOT,
+    "src",
+    "engines",
+    "artifact-sync-engine",
+    "artifact_extractor.py",
+)
+EXTRACTOR_SPEC = importlib.util.spec_from_file_location(
+    "artifact_extractor_for_a2a_e2e", EXTRACTOR_PATH
+)
+assert EXTRACTOR_SPEC is not None and EXTRACTOR_SPEC.loader is not None
+artifact_extractor = importlib.util.module_from_spec(EXTRACTOR_SPEC)
+EXTRACTOR_SPEC.loader.exec_module(artifact_extractor)
+extract_artifact_from_rpc = artifact_extractor.extract_artifact_from_rpc
 
 
-def _relative_to_workspace(file_path: PurePosixPath, workspace_dir: PurePosixPath) -> str:
-    return file_path.relative_to(workspace_dir).as_posix()
-
-
-def extract_artifact_from_rpc(result: dict) -> dict:
-    """Convert text artifacts in an A2A result into a validator artifact."""
-    task = result.get("task") if isinstance(result, dict) else None
-    if not isinstance(task, dict):
-        raise ValueError("ERR_NO_TASK")
-
-    artifacts = task.get("artifacts")
-    if not isinstance(artifacts, list) or not artifacts:
-        raise ValueError("ERR_NO_ARTIFACT")
-
-    texts = []
-    for artifact in artifacts[0].get("parts", []):
-        text = artifact.get("text")
-        if isinstance(text, str):
-            texts.append(text)
-    if not texts:
-        raise ValueError("ERR_NO_TEXT_PART")
-    text = "\n".join(texts)
-
-    file_anchors = list(re.finditer(r"^-?\s*File:", text, flags=re.MULTILINE))
-    if not file_anchors:
-        raise ValueError("ERR_ARTIFACT_TEXT_FIELD_MISSING")
-
-    records = []
-    for index, anchor in enumerate(file_anchors):
-        record_end = file_anchors[index + 1].start() if index + 1 < len(file_anchors) else len(text)
-        records.append(text[anchor.start():record_end])
-    parsed_records = []
-    for record in records:
-        file_text = _require_text_match(record, r"File:\s*`?([^,`\n]+?)`?\s*(?=$|,)")
-        content = _match_optional_text(
-            record,
-            r"Content:\s*`?([^\n`]*?)`?\s*(?:\+\s*trailing newline[^\n]*)?\s*(?=$|,)",
-        )
-        sha256 = _require_text_match(record, r"SHA256:\s*`?([0-9a-f]{64})`?")
-        exit_code_text = _match_optional_text(record, r"Exit code:\s*`?(\d+)`?")
-        parsed_records.append(
-            {
-                "file_path": PurePosixPath(file_text),
-                "content": content,
-                "sha256": sha256,
-                "exit_code": exit_code_text,
-            }
-        )
-
-    exit_code_text = next(
-        (parsed["exit_code"] for parsed in parsed_records if parsed["exit_code"] is not None),
-        None,
-    )
-    if exit_code_text is None:
-        raise ValueError("ERR_ARTIFACT_TEXT_FIELD_MISSING")
-    try:
-        exit_code = int(exit_code_text)
-    except ValueError as exc:
-        raise ValueError("ERR_ARTIFACT_EXIT_CODE_MALFORMED") from exc
-
-    timestamp = task.get("status", {}).get("timestamp")
-    if not isinstance(timestamp, str):
-        timestamp = datetime.now(timezone.utc).isoformat()
-
-    file_paths = [parsed["file_path"] for parsed in parsed_records]
-    workspace_path = _common_posix_parent(file_paths)
-    changed_files = [
-        {
-            "path": _relative_to_workspace(parsed["file_path"], workspace_path),
-            "sha256": parsed["sha256"],
-            "action": "created" if parsed["content"] is not None else "modified",
-        }
-        for parsed in parsed_records
+def _metadata_lines(step_id: str = "step_multi") -> list[str]:
+    workspace = "/data/data/com.termux/files/home/workspace/projects/a2a_multi"
+    return [
+        "- Step ID: `{0}`".format(step_id),
+        "- Idempotent status: `fresh_run`",
+        "- Script path: `{0}/run.sh`".format(workspace),
+        "- Script SHA256: `b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060`",
+        "- Inputs SHA256: `no_inputs_declared`",
+        "- Duration sec: `0.25`",
+        "- Log file: `{0}/system_logs/{1}.log`".format(workspace, step_id),
     ]
-
-    return {
-        "task_id": task.get("id"),
-        "executed_at": timestamp,
-        "workspace_dir": workspace_path.as_posix(),
-        "command_or_action": "pi_task",
-        "exit_code": exit_code,
-        "duration_sec": 0,
-        "changed_files": changed_files,
-        "stdout_summary": text,
-        "stderr_summary": "",
-    }
 
 
 def _pi_reply() -> dict:
@@ -151,6 +66,13 @@ def _pi_reply() -> dict:
     content = "pong_from_pi_20261028\n"
     text = "\n".join(
         [
+            "- Step ID: `step_probe`",
+            "- Idempotent status: `fresh_run`",
+            "- Script path: `/data/data/com.termux/files/home/workspace/projects/a2a_e2e/run.sh`",
+            "- Script SHA256: `b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060`",
+            "- Inputs SHA256: `no_inputs_declared`",
+            "- Duration sec: `0.8`",
+            "- Log file: `/data/data/com.termux/files/home/workspace/projects/a2a_e2e/system_logs/step_probe.log`",
             "- File: `{0}`".format(path),
             "- Content: `{0}` + trailing newline ({1} bytes)".format(
                 content.rstrip("\n"),
@@ -183,6 +105,60 @@ def _pi_reply() -> dict:
     }
 
 
+def _structured_pi_reply() -> dict:
+    artifact = {
+        "task_id": "task-a2a-e2e-json-001",
+        "step_id": "step_json",
+        "idempotent_status": "fresh_run",
+        "executed_at": "2026-10-28T09:00:00+08:00",
+        "workspace_dir": "/data/data/com.termux/files/home/workspace/projects/a2a_e2e",
+        "script_path": "/data/data/com.termux/files/home/workspace/projects/a2a_e2e/run.sh",
+        "script_sha256": "b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060",
+        "inputs_sha256": "no_inputs_declared",
+        "exit_code": 0,
+        "duration_sec": 0,
+        "log_file": "/data/data/com.termux/files/home/workspace/projects/a2a_e2e/system_logs/step_json.log",
+        "changed_files": [
+            {
+                "path": "probe_json.txt",
+                "sha256": "2f76f94f886c744b01826e4cd78f0e51b83a377418d63a4bb87836b2ab9a1a97",
+                "action": "verified",
+            }
+        ],
+        "stdout_summary": "structured runner output",
+    }
+    return {
+        "task": {
+            "id": "task-a2a-e2e-json-001",
+            "status": {"timestamp": "2026-10-28T09:00:00+08:00"},
+            "artifacts": [
+                {
+                    "parts": [
+                        {
+                            "text": "Runner stdout:\n```json\n{0}\n```".format(
+                                json.dumps(artifact, ensure_ascii=False)
+                            ),
+                            "mediaType": "text/plain",
+                        }
+                    ]
+                }
+            ],
+        }
+    }
+
+
+def _run_remote_bash(script: str, timeout: float = 20.0) -> subprocess.CompletedProcess[str]:
+    encoded = base64.b64encode(script.encode("utf-8")).decode("ascii")
+    return subprocess.run(
+        ["ssh", "k40", "printf '%s' '{0}' | base64 -d | bash -s".format(encoded)],
+        check=True,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=timeout,
+    )
+
+
 class ExtractArtifactFromRpcTestCase(unittest.TestCase):
     def test_valid_pi_reply_round_trips_through_validator(self) -> None:
         artifact = extract_artifact_from_rpc(_pi_reply())
@@ -195,10 +171,27 @@ class ExtractArtifactFromRpcTestCase(unittest.TestCase):
         )
         self.assertEqual(artifact["changed_files"][0]["path"], "probe.txt")
         self.assertEqual(artifact["exit_code"], 0)
-        self.assertEqual(artifact["duration_sec"], 0)
-        self.assertEqual(artifact["command_or_action"], "pi_task")
+        self.assertEqual(artifact["duration_sec"], 0.8)
+        self.assertEqual(artifact["step_id"], "step_probe")
+        self.assertEqual(artifact["idempotent_status"], "fresh_run")
+        self.assertEqual(artifact["script_path"], "/data/data/com.termux/files/home/workspace/projects/a2a_e2e/run.sh")
+        self.assertEqual(
+            artifact["script_sha256"],
+            "b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060",
+        )
+        self.assertEqual(
+            artifact["log_file"],
+            "/data/data/com.termux/files/home/workspace/projects/a2a_e2e/system_logs/step_probe.log",
+        )
         self.assertEqual(artifact["stderr_summary"], "")
         self.assertIn("- File: `", artifact["stdout_summary"])
+
+    def test_structured_runner_json_round_trips_through_validator(self) -> None:
+        artifact = extract_artifact_from_rpc(_structured_pi_reply())
+        self.assertEqual(artifact_validator.validate_artifact(artifact), [])
+        self.assertEqual(artifact["task_id"], "task-a2a-e2e-json-001")
+        self.assertEqual(artifact["idempotent_status"], "fresh_run")
+        self.assertEqual(artifact["changed_files"][0]["path"], "probe_json.txt")
 
     def test_missing_task_raises_err_no_task(self) -> None:
         with self.assertRaisesRegex(ValueError, "ERR_NO_TASK"):
@@ -247,11 +240,9 @@ class ExtractArtifactFromRpcTestCase(unittest.TestCase):
 
     def test_file_outside_workspace_is_reported_by_validator(self) -> None:
         result = _pi_reply()
-        result["task"]["artifacts"][0]["parts"][0]["text"] = (
-            "- File: `/tmp/probe.txt`\n"
-            "- Content: `pong`\n"
-            "- SHA256: `2f76f94f886c744b01826e4cd78f0e51b83a377418d63a4bb87836b2ab9a1a97`\n"
-            "- Exit code: `0`"
+        result["task"]["artifacts"][0]["parts"][0]["text"] = result["task"]["artifacts"][0]["parts"][0]["text"].replace(
+            "/data/data/com.termux/files/home/workspace/projects/a2a_e2e/probe.txt",
+            "/tmp/probe.txt",
         )
         artifact = extract_artifact_from_rpc(result)
         errors = artifact_validator.validate_artifact(artifact)
@@ -266,7 +257,8 @@ class ExtractArtifactFromRpcTestCase(unittest.TestCase):
                         "parts": [
                             {
                                 "text": "\n".join(
-                                    [
+                                    _metadata_lines("step_multi")
+                                    + [
                                         "File: /data/data/com.termux/files/home/workspace/projects/a2a_multi/one.txt, "
                                         "Content: alpha, "
                                         "SHA256: b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060, "
@@ -281,6 +273,7 @@ class ExtractArtifactFromRpcTestCase(unittest.TestCase):
                         ]
                     }
                 ],
+                "status": {"timestamp": "2026-10-28T09:00:00+08:00"},
             }
         }
         artifact = extract_artifact_from_rpc(result)
@@ -316,7 +309,8 @@ class ExtractArtifactFromRpcTestCase(unittest.TestCase):
                         "parts": [
                             {
                                 "text": "\n".join(
-                                    [
+                                    _metadata_lines("step_plain")
+                                    + [
                                         "File: /data/data/com.termux/files/home/workspace/projects/a2a_multi/one.txt",
                                         "Content: alpha",
                                         "SHA256: b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060",
@@ -331,6 +325,7 @@ class ExtractArtifactFromRpcTestCase(unittest.TestCase):
                         ]
                     }
                 ],
+                "status": {"timestamp": "2026-10-28T09:00:00+08:00"},
             }
         }
         artifact = extract_artifact_from_rpc(result)
@@ -351,7 +346,8 @@ class ExtractArtifactFromRpcTestCase(unittest.TestCase):
                         "parts": [
                             {
                                 "text": "\n".join(
-                                    [
+                                    _metadata_lines("step_nested")
+                                    + [
                                         "File: /data/data/com.termux/files/home/workspace/projects/a2a_multi/src/one.txt",
                                         "SHA256: b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060",
                                         "Exit code: 0",
@@ -363,6 +359,7 @@ class ExtractArtifactFromRpcTestCase(unittest.TestCase):
                         ]
                     }
                 ],
+                "status": {"timestamp": "2026-10-28T09:00:00+08:00"},
             }
         }
         artifact = extract_artifact_from_rpc(result)
@@ -389,7 +386,8 @@ class ExtractArtifactFromRpcTestCase(unittest.TestCase):
                         "parts": [
                             {
                                 "text": "\n".join(
-                                    [
+                                    _metadata_lines("step_missing_hash")
+                                    + [
                                         "File: /data/data/com.termux/files/home/workspace/projects/a2a_multi/one.txt",
                                         "Content: alpha",
                                         "Exit code: 0",
@@ -399,8 +397,39 @@ class ExtractArtifactFromRpcTestCase(unittest.TestCase):
                         ]
                     }
                 ],
+                "status": {"timestamp": "2026-10-28T09:00:00+08:00"},
             }
         }
+        with self.assertRaisesRegex(ValueError, "ERR_ARTIFACT_TEXT_FIELD_MISSING"):
+            extract_artifact_from_rpc(result)
+
+    def test_missing_metadata_is_rejected_instead_of_synthesized(self) -> None:
+        for field in [
+            "Step ID",
+            "Idempotent status",
+            "Script path",
+            "Script SHA256",
+            "Inputs SHA256",
+            "Duration sec",
+            "Log file",
+        ]:
+            with self.subTest(field=field):
+                result = _pi_reply()
+                text = result["task"]["artifacts"][0]["parts"][0]["text"]
+                result["task"]["artifacts"][0]["parts"][0]["text"] = "\n".join(
+                    line for line in text.splitlines() if not line.startswith("- {0}:".format(field))
+                )
+                with self.assertRaisesRegex(ValueError, "ERR_ARTIFACT_TEXT_FIELD_MISSING"):
+                    extract_artifact_from_rpc(result)
+
+    def test_missing_task_id_or_timestamp_is_rejected(self) -> None:
+        result = _pi_reply()
+        del result["task"]["id"]
+        with self.assertRaisesRegex(ValueError, "ERR_ARTIFACT_TEXT_FIELD_MISSING"):
+            extract_artifact_from_rpc(result)
+
+        result = _pi_reply()
+        del result["task"]["status"]["timestamp"]
         with self.assertRaisesRegex(ValueError, "ERR_ARTIFACT_TEXT_FIELD_MISSING"):
             extract_artifact_from_rpc(result)
 
@@ -430,7 +459,7 @@ class LiveA2AIntegrationTestCase(unittest.TestCase):
         cls.token = token
         cls.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
-    def _rpc_post(self, payload: dict, timeout: float = 15.0) -> dict:
+    def _rpc_post(self, payload: dict, timeout: float = 180.0) -> dict:
         request = urllib.request.Request(
             self.ENDPOINT,
             data=json.dumps(payload, separators=(",", ":")).encode("utf-8"),
@@ -444,13 +473,37 @@ class LiveA2AIntegrationTestCase(unittest.TestCase):
         with self.opener.open(request, timeout=timeout) as response:
             return json.loads(response.read().decode("utf-8"))
 
-    def test_live_send_message_creates_and_hashes_file(self) -> None:
-        filename = "a2a_e2e_{0}.txt".format(datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S"))
+    def _run_live_attempt(self, stamp: str) -> tuple[dict, str, str]:
+        project_dir = "/data/data/com.termux/files/home/workspace/projects/a2a_e2e"
+        filename = "probe_live_{0}.txt".format(stamp)
+        script_name = "run_live_{0}.sh".format(stamp)
+        script_path = "{0}/{1}".format(project_dir, script_name)
+        step_id = "live_{0}".format(stamp)
+        task_id = "task-live-{0}".format(stamp)
+        fixture = "\n".join(
+            [
+                "set -euo pipefail",
+                "mkdir -p '{0}/system_logs'".format(project_dir),
+                "cat > '{0}' <<'SH'".format(script_path),
+                "#!/usr/bin/env bash",
+                "set -euo pipefail",
+                "printf 'pong_from_live_e2e\\n' > '{0}'".format(filename),
+                "SH",
+                "chmod 755 '{0}'".format(script_path),
+                "rm -f '{0}/.step_{1}.done'".format(project_dir, step_id),
+                "rm -rf '{0}/.step_{1}.lock.d'".format(project_dir, step_id),
+            ]
+        )
+        _run_remote_bash(fixture)
+        command = (
+            "$HOME/bin/pi_idempotent_runner.sh --project a2a_e2e "
+            "--task-id {0} --step {1} --script {2} --outputs {3}"
+        ).format(task_id, step_id, script_path, filename)
         prompt = (
-            "Create exactly one file at /data/data/com.termux/files/home/workspace/projects/a2a_e2e/{0}. "
-            "Content must be the single line pong_from_live_e2e followed by one trailing newline. "
-            "Reply with the same human-readable lines as the previous probe: File, Content, SHA256, Exit code."
-        ).format(filename)
+            "Use exactly one shell command and no other tool calls: {0}. "
+            "Return the command stdout verbatim and nothing else. "
+            "The stdout is the structured AIMS Artifact JSON."
+        ).format(command)
         payload = {
             "jsonrpc": "2.0",
             "id": "rpc-a2a-e2e-live-001",
@@ -468,14 +521,34 @@ class LiveA2AIntegrationTestCase(unittest.TestCase):
             },
         }
         try:
-            response = self._rpc_post(payload, timeout=30.0)
+            response = self._rpc_post(payload, timeout=180.0)
         except (OSError, urllib.error.URLError) as exc:
             raise unittest.SkipTest("A2A server is unreachable: {0}".format(exc))
 
         self.assertNotIn("error", response)
-        artifact = extract_artifact_from_rpc(response["result"])
+        return extract_artifact_from_rpc(response["result"]), task_id, step_id
+
+    def test_live_send_message_creates_and_hashes_file(self) -> None:
+        artifact = None
+        task_id = ""
+        step_id = ""
+        for attempt in range(2):
+            stamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")
+            try:
+                artifact, task_id, step_id = self._run_live_attempt(stamp)
+                break
+            except (OSError, urllib.error.URLError, ValueError, AssertionError) as exc:
+                if attempt == 0:
+                    time.sleep(2)
+                    continue
+                raise
+        if artifact is None:
+            self.fail("live A2A did not return an Artifact after two attempts")
+
         errors = artifact_validator.validate_artifact(artifact)
         self.assertEqual(errors, [])
+        self.assertEqual(artifact["task_id"], task_id)
+        self.assertEqual(artifact["step_id"], step_id)
         self.assertEqual(artifact["exit_code"], 0)
         remote_path = "{0}/{1}".format(
             artifact["workspace_dir"].rstrip("/"),

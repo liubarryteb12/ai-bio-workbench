@@ -1,0 +1,60 @@
+{
+  "schema_version": 3,
+  "project_id": "PRJ_K40_SMOKE",
+  "line_id": "line1_bulk",
+  "basic_info": {
+    "name": "K40 Alioth Smoke Fixture",
+    "description": "Deterministic fixture project for ArtifactQuadruple and business adapter verification.",
+    "domain": "其他非肿瘤",
+    "disease": "",
+    "species": "Homo sapiens",
+    "non_tumor_verified": true
+  },
+  "data_source": {
+    "source": "IN_HOUSE_UPLOAD",
+    "dataType": "microarray",
+    "sampleCount": 12,
+    "tissue": "fixture",
+    "datasets": []
+  },
+  "grouping_design": null,
+  "pipeline_dag": [],
+  "figure_tasks": [],
+  "acl_and_output": {
+    "collaborators": [],
+    "expectedFormats": [
+      "png_300dpi",
+      "tsv_tables"
+    ],
+    "targetKoGene": ""
+  },
+  "biological_priors": {
+    "focus_genes": [],
+    "target_ko_gene": "",
+    "ko_fallback_policy": "strict_abort"
+  },
+  "analysis_cutoffs": {},
+  "plot_layout_config": {},
+  "experimental_design": {
+    "is_paired": false,
+    "pair_map": {},
+    "cov": {
+      "batch_col": "",
+      "adjusted_variables": []
+    }
+  },
+  "validation_group_mapping": {
+    "val_control_samples": [],
+    "val_treat_samples": [],
+    "invalid": false
+  },
+  "notes": "Smoke fixture only.",
+  "references": [],
+  "data_files": [],
+  "created_at": "2026-10-29T01:10:00+08:00",
+  "lines": [
+    "line1_bulk",
+    "line2_scrna",
+    "line3_spatial"
+  ]
+}

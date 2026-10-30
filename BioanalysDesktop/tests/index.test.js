@@ -13,6 +13,8 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import net from 'node:net';
 import { spawn } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { resolveLineFromDataType, normalizeDatasets } from '../server/domain.js';
 
@@ -34,6 +36,7 @@ function freePort() {
 
 const PORT = await freePort();
 const BASE = `http://127.0.0.1:${PORT}`;
+const DESKTOP_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 let child;
 /** 子进程退出记录：null 表示还活着。崩没崩是核心回归点，不能抛在事件回调里 */
@@ -42,6 +45,7 @@ let childExit = null;
 before(async () => {
   child = spawn(process.execPath, ['server/index.js'], {
     env: { ...process.env, BAD_PORT: String(PORT) },
+    cwd: DESKTOP_ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let stderrText = '';

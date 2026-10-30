@@ -10,9 +10,24 @@ if (requireNamespace("data.table", quietly = TRUE)) {
     data.table::setDTthreads(3)
 }
 
-# future 并行计划（限 2 worker，防容器 OOM）
+# future 并行计划（默认顺序，任务显式请求时再限流并行）
 if (requireNamespace("future", quietly = TRUE)) {
-    future::plan("multisession", workers = 2)
+    is_parallelly_worker <- any(grepl(
+        "parallelly.parent=",
+        commandArgs(trailingOnly = FALSE),
+        fixed = TRUE
+    ))
+    future_workers <- suppressWarnings(as.integer(
+        Sys.getenv("BIOANALYS_FUTURE_WORKERS", unset = "1")
+    ))
+    if (is.na(future_workers) || future_workers < 1L) future_workers <- 1L
+    if (!is_parallelly_worker) {
+        if (future_workers > 1L) {
+            future::plan("multisession", workers = future_workers)
+        } else {
+            future::plan("sequential")
+        }
+    }
     options(future.globals.maxSize = 6.0 * 1024^3)
 }
 

@@ -15,6 +15,8 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import net from 'node:net';
 import { spawn } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /**
  * 端口动态化（S26 顺带修，主 Agent 追加授权）：曾硬编码 PORT = 18788，与本机
@@ -36,6 +38,7 @@ const PORT = await freePort();
 const BASE = `http://127.0.0.1:${PORT}`;
 const USER = 'admin';
 const PASS = 'test-pass-123';
+const DESKTOP_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 let child;
 let childExit = null;
@@ -47,6 +50,7 @@ function basic(user, pass) {
 before(async () => {
   child = spawn(process.execPath, ['server/index.js'], {
     env: { ...process.env, BAD_PORT: String(PORT), BAD_AUTH_USER: USER, BAD_AUTH_PASS: PASS },
+    cwd: DESKTOP_ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let stderrText = '';

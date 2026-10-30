@@ -302,6 +302,32 @@ def index_workspace(root, requested_project_id=None):
     }
 
 
+def verify_workspace(root):
+    projects = []
+    ledger_count = 0
+    for project_id, project_root in [(path.name, path) for path in project_roots(root)]:
+        ledger_dir = project_path(project_root, "ledger")
+        for name in LEDGER_NAMES:
+            read_ledger(project_path(ledger_dir, name))
+            ledger_count += 1
+        projects.append(project_id)
+    machine_log_dir = safe_path(root, SYSTEM_LOGS_DIR)
+    machine_count = 0
+    if machine_log_dir.exists():
+        for path in sorted(machine_log_dir.glob("*.json")):
+            if path.is_file() and not path.is_symlink():
+                system_log_payload(path)
+                machine_count += 1
+    return {
+        "ok": True,
+        "command": "verify",
+        "status": "LEDGER_VERIFY_OK",
+        "projects": projects,
+        "ledgers_checked": ledger_count,
+        "machine_logs_checked": machine_count,
+    }
+
+
 def check_handoff(root, project_id):
     """Validate the project handoff has four non-empty core sections."""
     project_root = project_root_for(root, project_id)
@@ -342,6 +368,7 @@ def check_handoff(root, project_id):
 def build_parser():
     parser = argparse.ArgumentParser(description="Index self-contained local project ledgers.")
     parser.add_argument("--root", default=".")
+    parser.add_argument("--verify", action="store_true")
     parser.add_argument("--check-handoff", action="store_true")
     parser.add_argument("--project")
     subparsers = parser.add_subparsers(dest="command")
@@ -359,6 +386,10 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         root = workspace_root(args.root)
+        if args.verify:
+            payload = verify_workspace(root)
+            print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+            return 0
         if args.check_handoff:
             if not args.project:
                 raise WorkspaceError("--check-handoff requires --project")

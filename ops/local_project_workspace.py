@@ -19,6 +19,7 @@ LINES = ("line1_bulk", "line2_scrna", "line3_spatial")
 LEDGER_NAMES = ("actions", "changes", "errors", "fixes", "pitfalls")
 STATUS_LEDGERS = {"errors", "fixes"}
 SCHEMA_VERSION = 1
+COMPATIBLE_PROJECT_SCHEMA_VERSIONS = frozenset((1, 3))
 REPO_ROOT = Path(__file__).resolve().parents[1]
 QA_ROOT = REPO_ROOT / "artifacts" / "local_project_workspace_tests"
 
@@ -487,7 +488,7 @@ def validate_project(root, project_id):
     disk_id = existing_project_id(meta)
     if disk_id != project_id:
         raise WorkspaceError("project_id mismatch: existing=%s requested=%s" % (disk_id, project_id))
-    if meta.get("schema_version") != SCHEMA_VERSION:
+    if meta.get("schema_version") not in COMPATIBLE_PROJECT_SCHEMA_VERSIONS:
         raise WorkspaceError("project schema_version mismatch for %s" % project_id)
     if meta.get("lines") != list(LINES):
         raise WorkspaceError("project lines mismatch for %s" % project_id)

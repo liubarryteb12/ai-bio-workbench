@@ -79,14 +79,14 @@ test('两档模板的图例/画幅/脚注配置符合 2026-10-19 拍板的映射
   assert.equal(t4x3.legend_direction, 'vertical');
   assert.equal(t4x3.axis_style, 'classic_L');
   assert.equal(t4x3.aspect_ratio, '4:3');
-  assert.equal(t4x3.x_label_rotation, 'auto_45');
+  assert.equal(t4x3.x_label_rotation, 'horizontal');
   assert.equal(t4x3.show_footnote_panel, false);
   assert.equal(t16x9.legend_position, 'bottom_center');
   assert.equal(t16x9.legend_direction, 'horizontal');
-  assert.equal(t16x9.axis_style, 'boxed');
+  assert.equal(t16x9.axis_style, 'classic_L');
   assert.equal(t16x9.aspect_ratio, '16:9');
-  assert.equal(t16x9.x_label_rotation, 'auto_45');
-  assert.equal(t16x9.show_footnote_panel, true);
+  assert.equal(t16x9.x_label_rotation, 'horizontal');
+  assert.equal(t16x9.show_footnote_panel, false);
   // 模板 id 恰好是新两档
   assert.deepEqual(Object.keys(PLOT_LAYOUT_TEMPLATES).sort(), [
     'template_16x9', 'template_4x3',
