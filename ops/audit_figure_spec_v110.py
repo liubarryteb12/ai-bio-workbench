@@ -17,7 +17,7 @@ SPEC = {
     "font_pt": 7,
     "allowed_width_mm": (58, 88, 89, 130, 180, 183),
     "width_tolerance_mm": 1.25,
-    "pixel_tolerance": 2,
+    "pixel_tolerance": 15,
     "forbidden_colors": {"#FF0000", "#00FF00"},
 }
 

@@ -36,6 +36,8 @@ export function classifyFile(filePath) {
     || normalized.startsWith('src/config/')
     || normalized.startsWith('src/mods/')
     || normalized.startsWith('src/line1_bulk/')
+    || normalized.startsWith('src/line2_scrna/')
+    || normalized.startsWith('src/line3_spatial/')
   ) {
     return 'mods';
   }
