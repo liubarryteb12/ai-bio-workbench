@@ -1,0 +1,12 @@
+category,group_name,hex_color
+discrete,control,#0072B2
+discrete,case,#D55E00
+discrete,group1,#009E73
+discrete,group2,#E69F00
+discrete,group3,#56B4E9
+discrete,group4,#CC79A7
+discrete,group5,#F0E442
+discrete,group6,#999999
+deg,Down,#0072B2
+deg,ns,#BFBFBF
+deg,Up,#D55E00
