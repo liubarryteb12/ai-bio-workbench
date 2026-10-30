@@ -50,6 +50,15 @@ if not exist "BioanalysDesktop\dist\index.html" (
   echo.
 )
 
+where adb >nul 2>nul
+if not errorlevel 1 (
+  pwsh -NoProfile -File "%~dp0ops\k40_adb_forward.ps1" >nul 2>nul
+  if not errorlevel 1 (
+    echo [完成] K40 算力底座端口映射已就绪（10022/8000/9910/8022）。
+    echo.
+  )
+)
+
 echo 工作台地址: http://127.0.0.1:18787/
 echo 按 Ctrl+C 可停止服务。
 echo.
