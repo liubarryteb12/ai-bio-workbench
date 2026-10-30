@@ -7,10 +7,10 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const COMMIT_MESSAGES = {
-  'core-engines': 'feat(core-engines): land microkernel 7-piece core and 8 shared engines with path/thread guards',
-  'mods': 'feat(mods): add 10 pluggable mods, K40 figure sources v1.0, and A2A runtime routes',
-  'tests-ledger': 'test(tests-ledger): add 100 workbench test files, A2A contract tests, and execution ledgers',
-  'docs-release': 'docs(release): unify aims SSOT navigation, add root README, and finalize v3.2 release plan',
+  'core-engines': process.env.MSG_CORE || 'feat(core-engines): land microkernel 7-piece core and 8 shared engines with path/thread guards',
+  'mods': process.env.MSG_MODS || 'feat(mods): add SCI single-plot style config (paper_style.py, theme_paper.R)',
+  'tests-ledger': process.env.MSG_TESTS || 'test(tests-ledger): add pipeline figure standardizer and release plan mapping',
+  'docs-release': process.env.MSG_DOCS || 'docs(release): standardize 48 Line 1 bulk figures and deploy 00_config',
 };
 
 async function main() {

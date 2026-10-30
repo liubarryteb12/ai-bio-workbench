@@ -33,6 +33,7 @@ export function classifyFile(filePath) {
     || normalized.startsWith('BioanalysDesktop/server/')
     || normalized.startsWith('BioanalysDesktop/src/')
     || normalized.startsWith('configs/a2a/')
+    || normalized.startsWith('src/config/')
     || normalized.startsWith('src/mods/')
     || normalized.startsWith('src/line1_bulk/')
   ) {
