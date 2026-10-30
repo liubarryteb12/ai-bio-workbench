@@ -18,10 +18,13 @@ _reference/
 *.jpg
 *.h5ad
 *.rds
+!src/figure_previews/
+!src/figure_previews/*.png
 
 # ===== 运行时产物 =====
 ops/secrets/
 .env.a2a
+BioanalysDesktop/tests/.tmp-tests/
 *settings.local.json
 *.token
 ops/encoding_backup/
@@ -142,6 +145,8 @@ cn_debug/
 
 # ===== 构建与临时产物 =====
 tests/.build/
+tests/.*_build/
+BioanalysDesktop/tests/.build/
 .codex-a2a/
 test_use_data/
 artifacts/
@@ -160,7 +165,9 @@ cn_debug/
 node_modules/
 BioanalysDesktop/dist/
 BioanalysDesktop/test-results/
+BioanalysDesktop/console/
 BioanalysDesktop/.tmp/
+BioanalysDesktop/server/runtime/.generated/
 
 # ===== 临时与调试残留 =====
 *.log
@@ -177,6 +184,8 @@ $null
 .tmp_probe.sh
 summary.md
 split_plan.json
+/pass
 
 # ===== 工作区快照（ops/09_snapshot.ps1 产物，可重新生成，且单个 75MB 级）=====
 snapshots/
+tmp_recheck_scripts/

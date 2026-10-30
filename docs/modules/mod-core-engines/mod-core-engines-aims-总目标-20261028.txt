@@ -1,0 +1,37 @@
+文件落盘路径：docs/modules/mod-core-engines/mod-core-engines-aims-总目标-20261028.txt
+
+```
+
+```text
+一、 模块定位（What & Why）
+mod-core-engines 是全平台的微内核宿主底座（src/core/）与四大共享能力引擎（src/engines/）集合。其核心职责是建立完全业务无知的微内核插座机制（ModLoader、SlotManager、CapabilityBus、DeliverableCollector）、四类根路径安全沙盒（PathGuard）、双轨追加式机器台账（LedgerStore），以及面向红米 K40（骁龙 870）8 核满载调度的算力引擎（compute-engine）、Win11 与 Termux 异构桥接及 AST 守卫引擎（bridge-engine）、300 DPI 矩阵渲染引擎（plot-engine）、Ed25519 签名分片引擎（sync-engine）四大深模块（Deep Modules），为上层所有业务卡带提供高杠杆率（leverage）与强局部性（locality）的运行底座。
+
+二、 负面清单（Anti-Goals）
+1. 严禁在 src/core/ 或 src/engines/ 中出现任何具体业务卡带（如 mod-biz-alpha、mod-biz-beta）的硬编码名称、表结构或业务规则。
+2. 严禁开辟只有 1 个实现的假想 seam；每个引擎接口必须同时提供真实环境执行 adapter 与本地确定性 Mock adapter（门禁 G7）。
+3. 严禁绕过 PathGuard 直接调用底层文件读写 API，严禁允许访问移动设备 /sdcard 慢速共享分区（坑位 P-22）。
+4. 严禁在桥接指令中放行 find、ps、grep -r 命令（坑位 P-29），或针对常亮插电 K40 编写多余的 Doze 休眠唤醒锁脚本。
+
+三、 三阶段业务目标与边界规格（Specs & Edge Cases）
+1. 【阶段Ⅰ：基础落地 (Foundation Landing)】
+   - 锁定裁定 D-01 至 D-06，落地 src/core/types.ts 强类型契约与四级退出码定义。
+   - 实现 PathGuard 四类根路径（ROOT、MODS、DATA、CACHE）解析，遇到相对路径越界（..）、空字节注入或 /sdcard 非法路径时，100% 抛出退出码 2。
+   - 实现 LedgerStore 双轨追加写入（actions、changes、errors、fixes、pitfalls 五类 jsonl）与 INDEX.json 全量 SHA256 树同步更新。
+2. 【阶段Ⅱ：相关配套 (Supporting Facilities)】
+   - 实现 bridge-engine 的 AST 静态语法守卫，扫描下发至 K40 Termux（SSH 端口 8022）的脚本，命中 find、ps、grep -r 立即阻断并返回退出码 2；实现 src/ 与 bin/ 双落点 SHA256 对齐核验。
+   - 实现 compute-engine 的外部种子强制检查（无 SEED 立即返退出码 3）、8 核并发参数（workers=8）绑定、setsid nohup 后台会话生成、5m/40m 双档超时熔断与大于等于 60 秒轮询控制。
+   - 实现 plot-engine 的 300ms 防抖保存与输出图像像素方差 $\sigma > 0$ 自校验（全白或全黑图立即物理删除并返退出码 1）。
+   - 实现 sync-engine 的 512KB 分片切割与 Ed25519 签名验签闭环（篡改任意 1 比特立即返退出码 1）。
+3. 【阶段Ⅲ：功能实现 (Feature Implementation)】
+   - 实现 ModLoader 自动扫描、四元组完备性核验与无真实产物卡带自动降级（退出 ready 态）。
+   - 实现 SlotManager 插槽注册与空插槽零报错优雅折叠。
+   - 实现 CapabilityBus 只读路由与返回对象深冻结（Object.freeze）。
+   - 实现 DeliverableCollector 全域产物扫描与 G1 至 G7 门禁扫描脚本（ops/check-gates.mjs）。
+
+四、 完成定义（DoD）与量化验收台账
+| 验收项编号 | 验收判据描述 | 期望退出码 | 一键验证命令 |
+| :--- | :--- | :--- | :--- |
+| DOD-CORE-01 | PathGuard 阻断 `../../etc/passwd` 与 `/sdcard/DCIM` 越界访问并返回退出码 2 | 0 (测试全绿) | `pnpm vitest run test/core/path-guard.spec.ts` |
+| DOD-CORE-02 | compute-engine 在缺失 SEED 时精确返回退出码 3，传入 SEED 时强制绑定 8 核并发 | 0 (测试全绿) | `pnpm vitest run test/engines/compute-engine.spec.ts` |
+| DOD-CORE-03 | bridge-engine 拦截含 `grep -r`、`ps` 或 `find` 的脚本并返回退出码 2 | 0 (测试全绿) | `pnpm vitest run test/engines/bridge-engine.spec.ts` |
+| DOD-CORE-04 | 物理拔除 `src/mods/*` 后宿主与引擎独立编译与单测 100% 通过 | 0 (全绿) | `pnpm tsc --noEmit && pnpm vitest run test/core test/engines` |

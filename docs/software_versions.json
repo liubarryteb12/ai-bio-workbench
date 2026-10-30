@@ -1,14 +1,17 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-25",
-  "scope": "本项目三条分析线实际在用的解释器与包（版本号由远端容器实采，不抄文档）",
+  "generated_at": "2026-10-30",
+  "scope": "本项目三条分析线实际在用的解释器与包（Python 包版本以 src/line2_scrna/envs/manifest.txt 为锁定正本）",
   "probe": {
     "script": "2026-10-25 remote read-only R and Python version probe",
     "raw_output": "reference/09.待整理/ledger-rscript-path-unification.md",
     "host": "localhost",
     "probe_python": "3.12.3",
     "channel": "ssh k40-ubuntu",
-    "policy": "只读探测：不安装、不升级、不改容器环境"
+    "policy": "只读探测：不安装、不升级、不改容器环境",
+    "manifest": "src/line2_scrna/envs/manifest.txt",
+    "manifest_sync_at": "2026-10-30",
+    "manifest_sync_reason": "K40 host k40-ubuntu was unreachable from the control plane; the manifest is the locked source of truth"
   },
   "seed": {
     "value": 20261013,
@@ -258,7 +261,7 @@
     },
     {
       "name": "numpy",
-      "version": "2.5.3",
+      "version": "2.5.4",
       "installed": true,
       "language": "Python",
       "role": "数值计算与稀疏矩阵",
@@ -349,7 +352,7 @@
     },
     {
       "name": "harmonypy",
-      "version": "2.0.2",
+      "version": "2.1.0",
       "installed": true,
       "language": "Python",
       "role": "批次整合 Harmony（integrate_harmony）",
@@ -449,7 +452,7 @@
     },
     {
       "name": "Pillow",
-      "version": "12.3.0",
+      "version": "13.0.0",
       "installed": true,
       "language": "Python",
       "role": "空间图件/图像读取",

@@ -384,6 +384,16 @@
 - **同步修改文件清单**：`BioanalysDesktop/server/index.js`、`BioanalysDesktop/vite.config.js`、`start_workbench.bat`、`start_all.bat`、`ops/serve_guard.ps1`、`ops/sync_daemon.ps1`、`ops/README.md`、`docs/user_portal_deploy.md`、当前 aims 四卷、端口一致性测试。
 - **验证测试名**：工作台端口默认值跨文件一致性；`127.0.0.1:18787` 仅环回监听；`/api/selfcheck` 五维全绿；8080 `/health` 200；端口预检识别 18787 owner 为项目 Node。
 
+### D-29 Portal Sync 分片上限与旧包重放防护
+
+- **日期**：2026-10-29
+- **问题背景与冲突点**：Portal Sync 目标要求覆盖单分片超过 512KB 与旧时间戳重放两类异常，但原同步引擎只校验分片哈希和签名，没有限制 `chunkSize`，Portal 导入端也没有校验清单时间。恶意包可以通过放大分片或重放已签名旧包绕过当前执行矩阵。
+- **备选方案对比**：① 只补测试并接受运行时缺口；② 把分片上限和包时效全部下沉到 Portal 业务层；③ 分片硬上限放在 `sync-engine`，包时效放在 `mod-portal-sync`，两层分别守护各自接口。
+- **最终拍板结论**：采用 ③。`sync-engine` 的最大分片固定为 512KB，超过上限返回 `ERR_SYNC_CHUNK_SIZE_TOO_LARGE`，实际解码后的单分片超过声明 `chunkSize` 返回 `ERR_SYNC_CHUNK_TOO_LARGE`。Portal 导入默认拒绝生成时间超过 24 小时的包，返回 `ERR_PORTAL_SYNC_BUNDLE_STALE`；生成时间领先当前时间超过 5 分钟时返回 `ERR_PORTAL_SYNC_BUNDLE_FROM_FUTURE`。调用方可以显式注入 `now` 与 `maxAgeMs` 做确定性测试。
+- **受影响条款**：`mod-portal-sync` Execution Matrix 5 类异常、`sync-engine` 分片契约、G2 产物源哈希。
+- **同步修改文件清单**：`src/engines/sync-engine/implementation.ts`、`src/mods/mod-portal-sync/implementation.ts`、`src/mods/mod-portal-sync/manifest.ts`、`tests/test_portal_sync.py`。
+- **验证测试名**：`python tests/test_portal_sync.py -v`，覆盖空包、超大分片、分片断号、签名篡改和旧包重放；`python tests/test_sync_engine.py -v` 覆盖正常分片、根哈希、篡改与错误密钥。
+
 ## A2A Decisions (namespace: A2A-D-01 ~ A2A-D-10)
 
 最新 `aims/A2A` 四卷沿用 D-01 ~ D-10 名称。现有生信台账已经永久占用 D-01 ~ D-28，
@@ -401,10 +411,14 @@
 - **A2A-D-10**：真实 Token 不入 Git，运行态只从环境变量或忽略文件读取；账本保持追加式 JSONL。
 - **A2A-D-11**：传算分离与幂等防重跑（v1.1.0 名义 D-11）。大文件与预构建脚本走
   scp/rsync 确定性通道先行落盘并 SHA256 对账；A2A 通道只传任务单与轻量 Artifact。
-  手机端耗时脚本必须经 `pi_idempotent_runner.sh` 执行：`.step_<id>.done` 命中即秒回
-  `reused_done_checkpoint`，`.step_<id>.lock` 内 PID 存活则挂载等待，严禁双进程并发；
-  预构建母版对 Pi 锁只读，禁止篡改 `seed=20261013` 等冻结内容；全量日志重定向
-  `system_logs/<step_id>.log`，仅回传 20 行以内 JSON 摘要削峰。
+  手机端耗时脚本必须经 `pi_idempotent_runner.sh` 执行：`.step_<id>.done` 同时校验
+  `script_sha256`、`inputs_sha256` 和产物 SHA256，有效命中时在 `0.5s` 门槛内返回
+  `reused_done_checkpoint`。`.step_<id>.lock.d/owner.json` 记录 runner PID、
+  `child_pid`、`child_pgid`、任务 ID、脚本哈希、输入哈希和启动时间；`mkdir` 提供原子锁，
+  `setsid` 建立 child 进程组，TERM、INT、HUP 整组回收，runner 被 SIGKILL 后新调用接管
+  仍存活 child。预构建母版对 Pi 锁只读，禁止篡改 `seed=20261013` 等冻结内容；全量日志
+  重定向 `system_logs/<step_id>.log`，仅回传最后 12 行压平后的 320 字符 UTF-8 JSON 摘要。
+  PNG 产物必须同时具备合法魔数头和 IEND 尾。
 - **A2A-D-12**：BioanalysDesktop 18787 观测与模型管控（v1.1.0 名义 D-12）。手机端
   `pi_telemetry_sidecar.py` 监听 9911（仅 127.0.0.1，与 9910 共用 peerTokens 鉴权），
   采集 a2a_sessions 调用台账、daemon 日志、模型 pin 文件与硬件工况；18787 经

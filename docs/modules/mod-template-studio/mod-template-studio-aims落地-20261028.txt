@@ -1,0 +1,117 @@
+文件落盘路径：docs/modules/mod-template-studio/mod-template-studio-aims落地-20261028.txt
+
+```
+
+```text
+一、 模块物理目录与微内核插座映射
+- `src/mods/mod-template-studio/templates/` ──► 全局只读母版物理落点
+- `src/mods/mod-template-studio/adapt/` ──► 项目级派生脚本落点（强制带 `# Master-SHA256` 对账头）
+- `src/mods/mod-template-studio/manifest.ts` ──► 接入 `ModLoader`、`SlotManager`（`workspace.main`）与 `DeliverableCollector`
+- `src/mods/mod-template-studio/implementation.ts` ──► 对接 `plot-engine` 与 `CapabilityBus` 实现派生 + 真实渲染闭环
+
+二、 数据库/状态表 Schema 与 1:1 真实产物映射表
+1. 私有存储表 `studio_derivatives` Schema：
+   - `derivative_id` (TEXT PRIMARY KEY)
+   - `master_template_name` (TEXT NOT NULL)
+   - `master_sha256` (TEXT NOT NULL, 64 位 hex)
+   - `adapt_script_rel_path` (TEXT NOT NULL)
+   - `rendered_output_rel_path` (TEXT NOT NULL)
+   - `rendered_sha256` (TEXT NOT NULL, 64 位 hex)
+   - `dpi` (INTEGER NOT NULL, 恒等于 `300`)
+   - `pixel_variance` (REAL NOT NULL, $> 0$)
+2. 四元组真实产物映射：
+   - `lines`: `["src/mods/mod-template-studio/adapt/proj-baseline-sci-horizontal-plot.tpl:1-80"]`
+   - `analysis_step`: `"template_studio.derive_and_render_300dpi"`
+   - `produces`: `"PUBLICATION_300DPI_PLOT_PNG"`
+   - `output_glob`: `"studio-outputs/plot-300dpi-*.png"`
+   - `sample_project_output`: `"data/studio-outputs/plot-300dpi-baseline-20261028.png"`
+
+三、 核心防崩算法、数学守恒公式与生产级架构骨架
+
+1. 纯水平显著性连线与母版对账守恒公式：
+   - 母版哈希对账不变量：设母版文件字节流为 $M$，派生脚本首行提取出的哈希字符串为 $h_{\text{header}}$，在执行渲染前必须满足：
+     $$h_{\text{header}} \equiv \text{SHA256}(M)$$
+     若不相等，说明母版发生漂移或派生头伪造，立即返回退出码 `2`。
+   - 显著性标注纯水平几何约束：对于图表中任意一条显著性比较连线 $L_k = ((x_{k,1}, y_{k,1}), (x_{k,2}, y_{k,2}))$，必须严格满足：
+     $$|y_{k,1} - y_{k,2}| = 0 \quad \text{且} \quad x_{k,2} > x_{k,1}$$
+     任何非水平斜线或退化零长度连线立即触发自校验失败，清理残缺图像并返回退出码 `1`。
+
+2. 架构契约与占位骨架代码：
+
+```typescript
+// 文件路径：src/mods/mod-template-studio/schema.ts
+export interface SignificanceBarSpec {
+  readonly groupA: string;
+  readonly groupB: string;
+  readonly x1: number;
+  readonly y1: number;
+  readonly x2: number;
+  readonly y2: number; // 必须严格等于 y1（纯水平显著性连线）
+  readonly pValueFormatted17g: string;
+}
+
+export interface StudioRenderParams {
+  readonly projectId: string;
+  readonly masterTemplateName: string;
+  readonly dpi: 300;
+  readonly significanceBars: readonly SignificanceBarSpec[];
+}
+
+export interface StudioDerivativeOutcome {
+  readonly derivativeId: string;
+  readonly adaptScriptRelPath: string;
+  readonly masterSha256: string;
+  readonly outputImageRelPath: string;
+  readonly outputImageSha256: string;
+  readonly pixelVariance: number;
+}
+
+```
+
+```typescript
+// 文件路径：src/mods/mod-template-studio/implementation.ts
+import type { ExitCode } from "../../core/types.js";
+import type { StudioRenderParams, StudioDerivativeOutcome } from "./schema.js";
+
+export interface TemplateStudioSeam {
+  deriveAndRender(params: Readonly<StudioRenderParams>): Promise<{ exitCode: ExitCode; outcome?: StudioDerivativeOutcome }>;
+}
+
+export class TemplateStudioAdapter implements TemplateStudioSeam {
+  public async deriveAndRender(
+    params: Readonly<StudioRenderParams>
+  ): Promise<{ exitCode: ExitCode; outcome?: StudioDerivativeOutcome }> {
+    // 1. 校验 params.dpi === 300，且所有 significanceBars 满足 bar.y1 === bar.y2 && bar.x2 > bar.x1（违背返退出码 1 或 2）
+    // 2. 只读读取 templates/${masterTemplateName}，计算真实 SHA256，在 adapt/ 下生成带 # Master-SHA256 头的派生脚本
+    // 3. 后置挂载 plot-engine 真实执行派生脚本（严禁只派生不执行，防门禁 G2）
+    // 4. 检验输出图像像素方差 > 0（若 <= 0 立即删除残卷并返退出码 1），落盘至 data/studio-outputs/
+    // [AGENT_CODE_FILL_TARGET: 由专职编码 Agent 补齐母版派生、水平连线校验与后置真实渲染落盘实现]
+    throw new Error("TODO_BY_CODING_AGENT: TemplateStudioAdapter.deriveAndRender");
+  }
+}
+
+```
+
+四、 跨模块 `CapabilityBus` 只读联动接口契约
+
+* 提供能力（`capabilitiesProvided`）：
+* `capabilityId`: `"templateStudio.listVerifiedOutputs"`
+* 请求参数：`Readonly<{ projectId: string }>`
+* 返回结构：`Readonly<readonly StudioDerivativeOutcome[]>`
+
+
+* 消费能力（`capabilitiesConsumed`）：
+* `"bizAlpha.getConsumptionSummary"`
+* `"bizBeta.getAnalysisDigest"`
+
+
+
+五、 专属自动化回归测试矩阵
+
+| 测试文件落点 | 守护 `seam` | 防 G1 至 G7 复发硬断言 |
+| --- | --- | --- |
+| `test/mods/template-studio/master-readonly.spec.ts` | `TemplateStudioSeam.deriveAndRender` | 断言 `templates/` 原文件哈希不变，`adapt/` 副本首行含精确 `# Master-SHA256`（防禁区二） |
+| `test/mods/template-studio/plot-validator.spec.ts` | `TemplateStudioSeam.deriveAndRender` | 断言 $y_1 \neq y_2$ 非水平连线或空白图像 100% 物理删除残卷并返回 `exitCode === 1` |
+| `test/mods/template-studio/plot-matrix.spec.ts` | `PlotEngineSeam` 全入口矩阵 | 断言全参数矩阵 100% 真实产出 `.png` 物理文件且修改时间晚于派生脚本（防 G2、G3） |
+
+```

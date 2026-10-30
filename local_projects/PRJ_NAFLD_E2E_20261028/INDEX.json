@@ -1,0 +1,1895 @@
+{
+  "artifact_counts": {
+    "data": 72,
+    "debug": 1,
+    "deliverables": 1,
+    "figures": 38
+  },
+  "generated_at": "2026-10-29T13:32:19.506696+00:00",
+  "generated_by": "ops/ledger_indexer.py",
+  "issues": [
+    {
+      "id": "ERR-20261029-001",
+      "refs": [
+        "FIX-20261029-001",
+        "CHG-20261029-001"
+      ],
+      "related_fixes": [
+        {
+          "detail": "prep_matrix 增加每样本一行与每组一行两种 grouping 解析路径，按 GSM 匹配样本，并统一把 GSM 写入 expr_genes 列名与 group_map.sample；修复后输出 73 样本、19767 基因，exit 0。",
+          "evidence": [
+            "src/line1_bulk/scripts/prep_matrix",
+            "local_projects/PRJ_NAFLD_E2E_20261028/data/line1_bulk/processed/prep_report.txt",
+            "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_prep_matrix_8251d040.json"
+          ],
+          "id": "FIX-20261029-001",
+          "kind": "pipeline-contract",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-001",
+            "CHG-20261029-001"
+          ],
+          "status": "resolved",
+          "step": "prep_matrix",
+          "title": "修复 grouping 解析与 GSM 样本键",
+          "ts": "2026-10-29T08:30:00+08:00",
+          "type": "fix"
+        }
+      ],
+      "status": "resolved"
+    },
+    {
+      "id": "ERR-20261029-002",
+      "refs": [
+        "FIX-20261029-002"
+      ],
+      "related_fixes": [
+        {
+          "detail": "qc_matrix 改为数据契约错误才失败；相关性离群只写 sample_qc.tsv 与报告，输出 qc_gate=review_required、outlier_policy=mark_only_not_removed。GSM1179010 保留，下游继续运行。",
+          "evidence": [
+            "src/line1_bulk/scripts/qc_matrix",
+            "local_projects/PRJ_NAFLD_E2E_20261028/data/line1_bulk/processed/qc_report.txt",
+            "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_qc_matrix_2fb0b4d3.json"
+          ],
+          "id": "FIX-20261029-002",
+          "kind": "qc-policy",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-002"
+          ],
+          "status": "resolved",
+          "step": "qc_matrix",
+          "title": "QC 离群改为标记保留",
+          "ts": "2026-10-29T08:30:00+08:00",
+          "type": "fix"
+        }
+      ],
+      "status": "resolved"
+    },
+    {
+      "id": "ERR-20261029-003",
+      "refs": [
+        "FIX-20261029-003"
+      ],
+      "related_fixes": [
+        {
+          "detail": "enrichment_figures 的读取器捕获 EmptyDataError，把零字节空结果记录为 skip 并继续生成可用的 GSEA/ORA 图件；修复后 exit 0 并产出 l1_13 至 l1_15、l1_25。",
+          "evidence": [
+            "src/line1_bulk/scripts/enrichment_figures",
+            "local_projects/PRJ_NAFLD_E2E_20261028/figures/line1_bulk/l1_13_gsea_top.png",
+            "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_enrichment_figures_17fca706.json"
+          ],
+          "id": "FIX-20261029-003",
+          "kind": "empty-result",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-003"
+          ],
+          "status": "resolved",
+          "step": "enrichment_figures",
+          "title": "空富集表改为可跳过",
+          "ts": "2026-10-29T08:30:00+08:00",
+          "type": "fix"
+        }
+      ],
+      "status": "resolved"
+    },
+    {
+      "id": "ERR-20261029-004",
+      "refs": [
+        "FIX-20261029-004",
+        "ACT-20261029-007"
+      ],
+      "related_fixes": [
+        {
+          "detail": "审计请求明确要求 Pi 使用 proot-distro login ubuntu 进入 K40 容器后再读取 /mnt/ssd，重试任务 task-8142b9861fac4279 成功完成并输出 5 PASS、1 WARN。",
+          "evidence": [
+            "cn_debug/2026-10-29_pi_nafld_audit_request.json",
+            "local_projects/PRJ_NAFLD_E2E_20261028/debug/pi_agent_nafld_readonly_audit_20261029.md"
+          ],
+          "id": "FIX-20261029-004",
+          "kind": "pi-agent-execution-plane",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-004",
+            "ACT-20261029-007"
+          ],
+          "status": "resolved",
+          "step": "pi_agent_readonly_audit",
+          "title": "通过 proot-distro 进入 K40 后重试审计",
+          "ts": "2026-10-29T08:42:00+08:00",
+          "type": "fix"
+        }
+      ],
+      "status": "resolved"
+    },
+    {
+      "id": "ERR-20261029-005",
+      "refs": [
+        "FIX-20261029-005",
+        "ACT-20261029-008",
+        "CHG-20261029-006"
+      ],
+      "related_fixes": [
+        {
+          "detail": "dispatch 路由与 postA2ARequest 默认超时均提高到 240 秒。回归测试确认旧值 90000 为红，修改后 pi_agent 与 pi_agent_routes 共 16/16 PASS，重启后快速派发成功。",
+          "evidence": [
+            "BioanalysDesktop/server/pi_agent_routes.js",
+            "BioanalysDesktop/server/pi_agent.js",
+            "BioanalysDesktop/tests/pi_agent_routes.test.js"
+          ],
+          "id": "FIX-20261029-005",
+          "kind": "dispatch-timeout",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-005",
+            "ACT-20261029-008",
+            "CHG-20261029-006"
+          ],
+          "status": "resolved",
+          "step": "pi_agent_dispatch",
+          "title": "同步等待上限调整为 240 秒",
+          "ts": "2026-10-29T08:43:00+08:00",
+          "type": "fix"
+        }
+      ],
+      "status": "resolved"
+    },
+    {
+      "id": "ERR-20261029-006",
+      "refs": [
+        "FIX-20261029-006",
+        "CHG-20261029-007",
+        "ACT-20261029-009"
+      ],
+      "related_fixes": [
+        {
+          "detail": "auth.test.js 与 index.test.js 通过 import.meta.url 计算 BioanalysDesktop 根目录，并在 spawn 时显式设置 cwd；从仓库根目录运行也稳定找到 server/index.js。",
+          "evidence": [
+            "BioanalysDesktop/tests/auth.test.js",
+            "BioanalysDesktop/tests/index.test.js"
+          ],
+          "id": "FIX-20261029-006",
+          "kind": "test-cwd",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-006",
+            "CHG-20261029-007",
+            "ACT-20261029-009"
+          ],
+          "status": "resolved",
+          "step": "desktop_full_test",
+          "title": "固定子进程测试工作目录",
+          "ts": "2026-10-29T09:00:00+08:00",
+          "type": "fix"
+        }
+      ],
+      "status": "resolved"
+    },
+    {
+      "id": "ERR-20261029-007",
+      "refs": [
+        "FIX-20261029-007",
+        "CHG-20261029-008",
+        "ACT-20261029-010"
+      ],
+      "related_fixes": [
+        {
+          "detail": "portal resolveLocally 的 rawInputs 补齐 val_expr_genes.tsv 与 val_group_map.tsv，与工作台 workflow_graph 的原始输入契约一致。",
+          "evidence": [
+            "portal/serve.mjs",
+            "BioanalysDesktop/server/workflow_graph.js",
+            "BioanalysDesktop/tests/portal_resolve_parity.test.js"
+          ],
+          "id": "FIX-20261029-007",
+          "kind": "resolve-parity",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-007",
+            "CHG-20261029-008",
+            "ACT-20261029-010"
+          ],
+          "status": "resolved",
+          "step": "portal_resolve",
+          "title": "补齐 portal 外部验证原始输入",
+          "ts": "2026-10-29T09:00:00+08:00",
+          "type": "fix"
+        }
+      ],
+      "status": "resolved"
+    },
+    {
+      "id": "ERR-20261029-008",
+      "refs": [
+        "FIX-20261029-008",
+        "CHG-20261029-009",
+        "ACT-20261029-011"
+      ],
+      "related_fixes": [
+        {
+          "detail": "发布计划把 src/line1_*、src/line2_*、src/line3_* 与 src/workflows.json 归入 mods，并新增分类回归测试；发布计划现为 total=199、assigned=199、unassigned=0。",
+          "evidence": [
+            "ops/release-plan.mjs",
+            "tests/test_release_plan.py"
+          ],
+          "id": "FIX-20261029-008",
+          "kind": "release-plan",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-008",
+            "CHG-20261029-009",
+            "ACT-20261029-011"
+          ],
+          "status": "resolved",
+          "step": "release_plan",
+          "title": "补齐母版与工作流注册表分类",
+          "ts": "2026-10-29T09:00:00+08:00",
+          "type": "fix"
+        }
+      ],
+      "status": "resolved"
+    },
+    {
+      "id": "ERR-20261029-009",
+      "refs": [
+        "FIX-20261029-009",
+        "CHG-20261029-010",
+        "ACT-20261029-011"
+      ],
+      "related_fixes": [
+        {
+          "detail": "test_check_gates.py 读取夹具时显式使用 UTF-8，消除 Windows 区域编码对测试结果的影响；Python 全量测试 139 项通过、4 项跳过。",
+          "evidence": [
+            "tests/test_check_gates.py",
+            "tests/test_release_plan.py"
+          ],
+          "id": "FIX-20261029-009",
+          "kind": "windows-encoding",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-009",
+            "CHG-20261029-010",
+            "ACT-20261029-011"
+          ],
+          "status": "resolved",
+          "step": "python_tests",
+          "title": "固定测试夹具 UTF-8 编码",
+          "ts": "2026-10-29T09:00:00+08:00",
+          "type": "fix"
+        }
+      ],
+      "status": "resolved"
+    },
+    {
+      "id": "ERR-20261029-010",
+      "refs": [
+        "FIX-20261029-010",
+        "CHG-20261029-011",
+        "ACT-20261029-012"
+      ],
+      "related_fixes": [
+        {
+          "detail": "发布计划把 portal/ 下运行时代码归入 mods，并新增 portal/serve.mjs 分类回归测试；当前发布计划为 total=202、assigned=202、unassigned=0。",
+          "evidence": [
+            "ops/release-plan.mjs",
+            "tests/test_release_plan.py"
+          ],
+          "id": "FIX-20261029-010",
+          "kind": "release-plan",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-010",
+            "CHG-20261029-011",
+            "ACT-20261029-012"
+          ],
+          "status": "resolved",
+          "step": "release_plan",
+          "title": "补齐 portal 运行时分类",
+          "ts": "2026-10-29T09:05:00+08:00",
+          "type": "fix"
+        }
+      ],
+      "status": "resolved"
+    },
+    {
+      "id": "FIX-20261029-001",
+      "refs": [
+        "ERR-20261029-001",
+        "CHG-20261029-001"
+      ],
+      "related_errors": [
+        {
+          "detail": "prep_matrix 首次运行以 exit 1 结束。旧解析器只覆盖历史 grouping 形状，且芯片样本键使用 GEO title；本项目的 grouping 需要按 GSM 与分组映射，导致矩阵和 group_map 的稳定主键契约不成立。",
+          "evidence": [
+            "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_prep_matrix_39cbcbfb.json",
+            "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_prep_matrix_9de19ab6.json"
+          ],
+          "id": "ERR-20261029-001",
+          "kind": "pipeline-contract",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "FIX-20261029-001",
+            "CHG-20261029-001"
+          ],
+          "status": "resolved",
+          "step": "prep_matrix",
+          "title": "分组文件形状与样本主键不兼容",
+          "ts": "2026-10-29T08:30:00+08:00",
+          "type": "error"
+        }
+      ],
+      "status": "resolved"
+    },
+    {
+      "id": "FIX-20261029-002",
+      "refs": [
+        "ERR-20261029-002"
+      ],
+      "related_errors": [
+        {
+          "detail": "qc_matrix 首次运行以 exit 1 结束。旧门禁把 GSM1179010 的相关性离群直接作为致命错误，阻止后续分析；项目需要保留样本并标记人工复核。",
+          "evidence": [
+            "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_qc_matrix_aaf9a21f.json",
+            "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_qc_matrix_7f74c12c.json"
+          ],
+          "id": "ERR-20261029-002",
+          "kind": "qc-policy",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "FIX-20261029-002"
+          ],
+          "status": "resolved",
+          "step": "qc_matrix",
+          "title": "QC 离群样本被误作致命失败",
+          "ts": "2026-10-29T08:30:00+08:00",
+          "type": "error"
+        }
+      ],
+      "status": "resolved"
+    },
+    {
+      "id": "FIX-20261029-003",
+      "refs": [
+        "ERR-20261029-003"
+      ],
+      "related_errors": [
+        {
+          "detail": "enrichment_figures 首次运行以 exit 1 结束。KEGG 结果为空时生成零字节 TSV，旧读取逻辑直接调用 pandas.read_csv 触发 EmptyDataError。",
+          "evidence": [
+            "outputs/system_logs/2026-10-28_PRJ_NAFLD_E2E_20261028_line1_bulk_enrichment_figures_3efe9068.json",
+            "local_projects/PRJ_NAFLD_E2E_20261028/data/line1_bulk/processed/enrichment_kegg.tsv"
+          ],
+          "id": "ERR-20261029-003",
+          "kind": "empty-result",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "FIX-20261029-003"
+          ],
+          "status": "resolved",
+          "step": "enrichment_figures",
+          "title": "空 KEGG 表导致绘图步骤失败",
+          "ts": "2026-10-29T08:30:00+08:00",
+          "type": "error"
+        }
+      ],
+      "status": "resolved"
+    },
+    {
+      "id": "FIX-20261029-004",
+      "refs": [
+        "ERR-20261029-004",
+        "ACT-20261029-007"
+      ],
+      "related_errors": [
+        {
+          "detail": "首次 Pi Agent 专项审计任务 task-4c55a5565e764041 直接访问 /mnt/ssd，但 Pi 运行在 Termux 侧，K40 路径不可见；随后模型通道连接错误，任务以 TASK_STATE_FAILED 结束且无可用审计结论。",
+          "evidence": [
+            "/data/data/com.termux/files/home/.pi/agent/a2a_sessions/2026-10-29T00-35-29-590Z_task-4c55a5565e764041.jsonl",
+            "con_hf/ledger/actions.jsonl"
+          ],
+          "id": "ERR-20261029-004",
+          "kind": "pi-agent-execution-plane",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "FIX-20261029-004",
+            "ACT-20261029-007"
+          ],
+          "status": "resolved",
+          "step": "pi_agent_readonly_audit",
+          "title": "Pi Agent 审计提示词使用了错误执行面路径",
+          "ts": "2026-10-29T08:40:00+08:00",
+          "type": "error"
+        }
+      ],
+      "status": "resolved"
+    },
+    {
+      "id": "FIX-20261029-005",
+      "refs": [
+        "ERR-20261029-005",
+        "ACT-20261029-008",
+        "CHG-20261029-006"
+      ],
+      "related_errors": [
+        {
+          "detail": "修正执行面后的专项审计 task-8142b9861fac4279 实际耗时约 132 秒，dispatch 固定 90 秒超时先返回 HTTP 502，但远端任务随后正常完成，形成前端失败与远端成功不一致。",
+          "evidence": [
+            "cn_debug/2026-10-29_pi_nafld_audit_request.json",
+            "/data/data/com.termux/files/home/.pi/agent/a2a_sessions/2026-10-29T00-39-31-835Z_task-8142b9861fac4279.jsonl",
+            "BioanalysDesktop/server/pi_agent_routes.js"
+          ],
+          "id": "ERR-20261029-005",
+          "kind": "dispatch-timeout",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "FIX-20261029-005",
+            "ACT-20261029-008",
+            "CHG-20261029-006"
+          ],
+          "status": "resolved",
+          "step": "pi_agent_dispatch",
+          "title": "慢任务被 90 秒同步等待上限误判为失败",
+          "ts": "2026-10-29T08:43:00+08:00",
+          "type": "error"
+        }
+      ],
+      "status": "resolved"
+    },
+    {
+      "id": "FIX-20261029-006",
+      "refs": [
+        "ERR-20261029-006",
+        "CHG-20261029-007",
+        "ACT-20261029-009"
+      ],
+      "related_errors": [
+        {
+          "detail": "从工作区根目录运行桌面端全量测试时，auth.test.js 与 index.test.js 以相对路径 server/index.js 启动子进程，实际解析成工作区根目录的 server/index.js，导致 15 条测试因 MODULE_NOT_FOUND 失败。",
+          "evidence": [
+            "BioanalysDesktop/tests/auth.test.js",
+            "BioanalysDesktop/tests/index.test.js"
+          ],
+          "id": "ERR-20261029-006",
+          "kind": "test-cwd",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "FIX-20261029-006",
+            "CHG-20261029-007",
+            "ACT-20261029-009"
+          ],
+          "status": "resolved",
+          "step": "desktop_full_test",
+          "title": "子进程测试依赖调用方工作目录",
+          "ts": "2026-10-29T09:00:00+08:00",
+          "type": "error"
+        }
+      ],
+      "status": "resolved"
+    },
+    {
+      "id": "FIX-20261029-007",
+      "refs": [
+        "ERR-20261029-007",
+        "CHG-20261029-008",
+        "ACT-20261029-010"
+      ],
+      "related_errors": [
+        {
+          "detail": "portal 的 resolveLocally 原始输入白名单未包含 l1_ml_external 新增的 val_expr_genes.tsv 与 val_group_map.tsv，line1 全链在 portal 返回 422、工作台返回 200，双端预检结论分叉。",
+          "evidence": [
+            "portal/serve.mjs",
+            "BioanalysDesktop/tests/portal_resolve_parity.test.js"
+          ],
+          "id": "ERR-20261029-007",
+          "kind": "resolve-parity",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "FIX-20261029-007",
+            "CHG-20261029-008",
+            "ACT-20261029-010"
+          ],
+          "status": "resolved",
+          "step": "portal_resolve",
+          "title": "portal 原始输入白名单遗漏外部验证文件",
+          "ts": "2026-10-29T09:00:00+08:00",
+          "type": "error"
+        }
+      ],
+      "status": "resolved"
+    },
+    {
+      "id": "FIX-20261029-008",
+      "refs": [
+        "ERR-20261029-008",
+        "CHG-20261029-009",
+        "ACT-20261029-011"
+      ],
+      "related_errors": [
+        {
+          "detail": "release plan 门禁把 src/line1_bulk/scripts 等 7 个母版和 src/workflows.json 共 8 个文件判为未归类，导致全量门禁失败。",
+          "evidence": [
+            "ops/release-plan.mjs",
+            "tests/test_release_plan.py"
+          ],
+          "id": "ERR-20261029-008",
+          "kind": "release-plan",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "FIX-20261029-008",
+            "CHG-20261029-009",
+            "ACT-20261029-011"
+          ],
+          "status": "resolved",
+          "step": "release_plan",
+          "title": "新分析母版未纳入发布计划分类",
+          "ts": "2026-10-29T09:00:00+08:00",
+          "type": "error"
+        }
+      ],
+      "status": "resolved"
+    },
+    {
+      "id": "FIX-20261029-009",
+      "refs": [
+        "ERR-20261029-009",
+        "CHG-20261029-010",
+        "ACT-20261029-011"
+      ],
+      "related_errors": [
+        {
+          "detail": "Windows cp936 环境下 test_check_gates.py 读取 UTF-8 JSON 测试夹具时未显式指定编码，出现 UnicodeDecodeError。",
+          "evidence": [
+            "tests/test_check_gates.py"
+          ],
+          "id": "ERR-20261029-009",
+          "kind": "windows-encoding",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "FIX-20261029-009",
+            "CHG-20261029-010",
+            "ACT-20261029-011"
+          ],
+          "status": "resolved",
+          "step": "python_tests",
+          "title": "门禁测试依赖系统默认编码",
+          "ts": "2026-10-29T09:00:00+08:00",
+          "type": "error"
+        }
+      ],
+      "status": "resolved"
+    },
+    {
+      "id": "FIX-20261029-010",
+      "refs": [
+        "ERR-20261029-010",
+        "CHG-20261029-011",
+        "ACT-20261029-012"
+      ],
+      "related_errors": [
+        {
+          "detail": "补齐双端 resolve 契约后 portal/serve.mjs 进入工作树，发布计划尚未覆盖 portal 运行时代码，release plan 再次报告 1 个未归类文件。",
+          "evidence": [
+            "ops/release-plan.mjs",
+            "portal/serve.mjs"
+          ],
+          "id": "ERR-20261029-010",
+          "kind": "release-plan",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "FIX-20261029-010",
+            "CHG-20261029-011",
+            "ACT-20261029-012"
+          ],
+          "status": "resolved",
+          "step": "release_plan",
+          "title": "portal 运行时未纳入发布计划",
+          "ts": "2026-10-29T09:05:00+08:00",
+          "type": "error"
+        }
+      ],
+      "status": "resolved"
+    }
+  ],
+  "ledger_summary": {
+    "actions": {
+      "aggregated": [
+        {
+          "detail": "创建本地项目标准目录、治理文件与双层五类 JSONL 台账。",
+          "evidence": [
+            "local_projects/PRJ_NAFLD_E2E_20261028"
+          ],
+          "id": "ACT-20261029-001",
+          "kind": "init",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [],
+          "step": null,
+          "title": "初始化项目自包含目录",
+          "ts": "2026-10-29T08:17:56+08:00",
+          "type": "action"
+        },
+        {
+          "detail": "从 GEO 准备 GSE48452/GPL11532 训练矩阵，固定 seed=20261013；最终矩阵包含 19767 个基因和 73 个样本，Disease 32、Normal 41。",
+          "evidence": [
+            "local_projects/PRJ_NAFLD_E2E_20261028/data/line1_bulk/processed/prep_report.txt",
+            "local_projects/PRJ_NAFLD_E2E_20261028/data/line1_bulk/processed/expr_genes.tsv",
+            "local_projects/PRJ_NAFLD_E2E_20261028/data/line1_bulk/processed/group_map.tsv"
+          ],
+          "id": "ACT-20261029-002",
+          "kind": "run",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-001",
+            "FIX-20261029-001"
+          ],
+          "step": "prep_matrix",
+          "title": "准备训练表达矩阵与分组",
+          "ts": "2026-10-29T08:30:00+08:00",
+          "type": "action"
+        },
+        {
+          "detail": "probe_env 与 15 个分析步骤在 K40 串行完成，16/16 个入口为 completed/exit 0；分析包含 QC、PCA、limma、WGCNA、GO/KEGG/GSEA、STRING PPI、机器学习、诊断、独立验证、Cox 契约与批量出图。",
+          "evidence": [
+            "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_probe_env_103d287b.json",
+            "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_bulk_figures_60968928.json",
+            "cn_debug/2026-10-29_verification_nafld_steps.ps1"
+          ],
+          "id": "ACT-20261029-003",
+          "kind": "verify",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-002",
+            "ERR-20261029-003",
+            "FIX-20261029-002",
+            "FIX-20261029-003"
+          ],
+          "step": "line1_bulk_full_pipeline",
+          "title": "K40 line1 全流程 16 入口验证",
+          "ts": "2026-10-29T08:30:00+08:00",
+          "type": "action"
+        },
+        {
+          "detail": "GSE89632/GPL14951 作为独立外部数据集完成冻结模型评估；9 个冻结特征中 8 个可用，CDC45 按训练集均值补缺，真实 AUC=0.659、Balanced Accuracy=0.500。",
+          "evidence": [
+            "local_projects/PRJ_NAFLD_E2E_20261028/data/line1_bulk/processed/external_validation_report.txt",
+            "local_projects/PRJ_NAFLD_E2E_20261028/data/line1_bulk/processed/external_validation_metrics.tsv",
+            "local_projects/PRJ_NAFLD_E2E_20261028/figures/line1_bulk/l1_12_external_roc.png"
+          ],
+          "id": "ACT-20261029-004",
+          "kind": "verify",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "CHG-20261029-002"
+          ],
+          "step": "external_validation",
+          "title": "独立外部数据集冻结验证",
+          "ts": "2026-10-29T08:30:00+08:00",
+          "type": "action"
+        },
+        {
+          "detail": "142 个远端文件回搬至项目自包含目录并通过字节校验，包含 72 个数据产物、38 个图件与机器台账；项目治理文件与五类 JSONL 台账随后补齐。",
+          "evidence": [
+            "local_projects/PRJ_NAFLD_E2E_20261028/data",
+            "local_projects/PRJ_NAFLD_E2E_20261028/figures",
+            "local_projects/PRJ_NAFLD_E2E_20261028/ledger"
+          ],
+          "id": "ACT-20261029-005",
+          "kind": "sync",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [],
+          "step": "pull_outputs",
+          "title": "回搬产物与机器台账",
+          "ts": "2026-10-29T08:31:00+08:00",
+          "type": "action"
+        },
+        {
+          "detail": "Pi Agent 默认模型从原配置切换为 zai/glm-5.3-flash；模型接口返回 current=zai/glm-5.3-flash，允许列表为 glm-5.3-flash 与 deepseek-v4.1-flash。",
+          "evidence": [
+            "BioanalysDesktop/server/pi_agent.js",
+            "BioanalysDesktop/tests/pi_agent.test.js",
+            "http://127.0.0.1:18787/api/pi-agent/model"
+          ],
+          "id": "ACT-20261029-006",
+          "kind": "config",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "CHG-20261029-005"
+          ],
+          "step": "pi_agent_default_model",
+          "title": "Pi Agent 默认模型切换",
+          "ts": "2026-10-29T08:31:00+08:00",
+          "type": "action"
+        },
+        {
+          "detail": "Pi Agent 使用 zai/glm-5.3-flash 完成 NAFLD 项目只读专项审计，任务 task-8142b9861fac4279 为 TASK_STATE_COMPLETED；5 个审计项全部 PASS，并识别外部验证性能偏弱、诊断 AUC 口径差异等 WARN。",
+          "evidence": [
+            "local_projects/PRJ_NAFLD_E2E_20261028/debug/pi_agent_nafld_readonly_audit_20261029.md",
+            "cn_debug/2026-10-29_pi_nafld_audit_request.json",
+            "/data/data/com.termux/files/home/.pi/agent/a2a_sessions/2026-10-29T00-39-31-835Z_task-8142b9861fac4279.jsonl"
+          ],
+          "id": "ACT-20261029-007",
+          "kind": "verify",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-004",
+            "FIX-20261029-004",
+            "ERR-20261029-005",
+            "FIX-20261029-005"
+          ],
+          "step": "pi_agent_readonly_audit",
+          "title": "Pi Agent NAFLD 只读专项审计",
+          "ts": "2026-10-29T08:42:00+08:00",
+          "type": "action"
+        },
+        {
+          "detail": "Pi Agent dispatch 同步等待上限从 90 秒提高到 240 秒；回归测试先红后绿，pi_agent 与 pi_agent_routes 共 16/16 PASS，18787 重启后快速派发任务 task-4d2a5df8806d46d3 返回 PI_AGENT_DISPATCH_OK。",
+          "evidence": [
+            "BioanalysDesktop/server/pi_agent.js",
+            "BioanalysDesktop/server/pi_agent_routes.js",
+            "BioanalysDesktop/tests/pi_agent_routes.test.js"
+          ],
+          "id": "ACT-20261029-008",
+          "kind": "fix",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-005",
+            "FIX-20261029-005",
+            "CHG-20261029-006"
+          ],
+          "step": "pi_agent_dispatch_timeout",
+          "title": "修复慢任务被 90 秒 dispatch 超时误判",
+          "ts": "2026-10-29T08:43:00+08:00",
+          "type": "action"
+        },
+        {
+          "detail": "修复桌面端子进程测试工作目录后，auth.test.js 7/7 与 index.test.js 8/8 通过。",
+          "evidence": [
+            "BioanalysDesktop/tests/auth.test.js",
+            "BioanalysDesktop/tests/index.test.js"
+          ],
+          "id": "ACT-20261029-009",
+          "kind": "verify",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-006",
+            "FIX-20261029-006",
+            "CHG-20261029-007"
+          ],
+          "step": "desktop_entry_tests",
+          "title": "验证桌面端入口子进程测试",
+          "ts": "2026-10-29T09:00:00+08:00",
+          "type": "action"
+        },
+        {
+          "detail": "补齐 portal 原始输入白名单后，portal 与工作台 resolve 对账测试 2/2 通过，line1 全链双端均返回 200。",
+          "evidence": [
+            "BioanalysDesktop/tests/portal_resolve_parity.test.js",
+            "portal/serve.mjs"
+          ],
+          "id": "ACT-20261029-010",
+          "kind": "verify",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-007",
+            "FIX-20261029-007",
+            "CHG-20261029-008"
+          ],
+          "step": "portal_resolve_parity",
+          "title": "验证双端组合预检一致性",
+          "ts": "2026-10-29T09:00:00+08:00",
+          "type": "action"
+        },
+        {
+          "detail": "发布计划分类与 Windows UTF-8 测试修复后，release plan 为 total=199、assigned=199、unassigned=0；Python 全量测试 139 项通过、4 项跳过。",
+          "evidence": [
+            "ops/release-plan.mjs",
+            "tests/test_release_plan.py",
+            "tests/test_check_gates.py"
+          ],
+          "id": "ACT-20261029-011",
+          "kind": "verify",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-008",
+            "ERR-20261029-009",
+            "FIX-20261029-008",
+            "FIX-20261029-009",
+            "CHG-20261029-009",
+            "CHG-20261029-010"
+          ],
+          "step": "python_gate_tests",
+          "title": "验证发布计划与 Python 全量测试",
+          "ts": "2026-10-29T09:00:00+08:00",
+          "type": "action"
+        },
+        {
+          "detail": "portal 运行时分类补齐后，release plan 为 total=202、assigned=202、unassigned=0；tests.test_release_plan 6/6 通过。",
+          "evidence": [
+            "ops/release-plan.mjs",
+            "tests/test_release_plan.py"
+          ],
+          "id": "ACT-20261029-012",
+          "kind": "verify",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-010",
+            "FIX-20261029-010",
+            "CHG-20261029-011"
+          ],
+          "step": "release_plan",
+          "title": "验证 portal 运行时分类",
+          "ts": "2026-10-29T09:05:00+08:00",
+          "type": "action"
+        },
+        {
+          "detail": "对 37 张 PNG 执行 figure_spec_v110 参数级审计（DPI、物理宽、视觉规则），重新拉取 K40 raw_data SHA256 与任务台账哈希，归档到 con_hf/runs/2026-10-29_nafld_final_closeout，并产出 deliverables/final_report.md 关闭 P2/P3/P4。审计结果：1 PASS、33 WARN（物理宽超出标准白名单，属于探索性全流程验证图件的可接受偏差）、3 FAIL（l1_12_external_roc 与 l1_29_diag_dca 像素宽与毫米换算差 11px 超出 2px 容差、l1_29_wgcna_module_trait 可见墨迹触边）。",
+          "evidence": [
+            "con_hf/runs/2026-10-29_nafld_final_closeout/figure_spec_audit.json",
+            "con_hf/runs/2026-10-29_nafld_final_closeout/figure_spec_audit.txt",
+            "con_hf/runs/2026-10-29_nafld_final_closeout/raw_data_sha256.txt",
+            "con_hf/runs/2026-10-29_nafld_final_closeout/task_log_sha256.txt",
+            "local_projects/PRJ_NAFLD_E2E_20261028/deliverables/final_report.md"
+          ],
+          "id": "ACT-20261029-013",
+          "kind": "audit",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "FIX-20261029-001",
+            "FIX-20261029-002",
+            "FIX-20261029-003"
+          ],
+          "step": "final_closeout_audit",
+          "title": "最终图件参数审计与 raw 哈希归档",
+          "ts": "2026-10-29T21:40:00+08:00",
+          "type": "action"
+        }
+      ],
+      "path": "ledger/actions.jsonl",
+      "records": 13,
+      "status_policy": "none"
+    },
+    "changes": {
+      "aggregated": [
+        {
+          "detail": "prep_matrix 同时兼容每组一行和每样本一行的 grouping 文件，并统一使用 GSM 作为表达矩阵与 group_map 的样本键；报告新增 group_source 字段。",
+          "evidence": [
+            "src/line1_bulk/scripts/prep_matrix"
+          ],
+          "id": "CHG-20261029-001",
+          "kind": "pipeline-contract",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-001",
+            "FIX-20261029-001"
+          ],
+          "step": "prep_matrix",
+          "title": "统一芯片分组解析与 GSM 样本键",
+          "ts": "2026-10-29T08:30:00+08:00",
+          "type": "change"
+        },
+        {
+          "detail": "external_validation 改为独立外部数据集冻结评估接口，只消费 external_frozen_model.tsv、val_expr_genes.tsv、val_group_map.tsv，并明确记录 merged_expression=false、cross_platform_combat=false、feature_reselection=false、model_refit=false。",
+          "evidence": [
+            "src/line1_bulk/scripts/external_validation",
+            "BioanalysDesktop/tests/external_validation_contract.test.js"
+          ],
+          "id": "CHG-20261029-002",
+          "kind": "validation-contract",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ACT-20261029-004"
+          ],
+          "step": "external_validation",
+          "title": "独立外部冻结验证契约",
+          "ts": "2026-10-29T08:30:00+08:00",
+          "type": "change"
+        },
+        {
+          "detail": "cox_analysis 不再硬编码旧项目 GSE277173 和银屑病文案，改为从 BIOANALYS_PROJECT_JSON 读取 project_id 与训练数据集，并使用注入的 BIOANALYS_SEED。",
+          "evidence": [
+            "src/line1_bulk/scripts/cox_analysis",
+            "BioanalysDesktop/tests/cox_analysis_contract.test.js",
+            "local_projects/PRJ_NAFLD_E2E_20261028/data/line1_bulk/processed/cox_report.txt"
+          ],
+          "id": "CHG-20261029-003",
+          "kind": "project-binding",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [],
+          "step": "cox_analysis",
+          "title": "Cox 报告绑定当前项目元数据",
+          "ts": "2026-10-29T08:30:00+08:00",
+          "type": "change"
+        },
+        {
+          "detail": "NAFLD 验证 wrapper 新增 probe_env 输入映射，并把 probe_env 加入默认入口序列；probe_env 实跑完成，补齐 line1 的 16/16 验证面。",
+          "evidence": [
+            "cn_debug/2026-10-29_verification_nafld_steps.ps1",
+            "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_probe_env_103d287b.json"
+          ],
+          "id": "CHG-20261029-004",
+          "kind": "verification-harness",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ACT-20261029-003"
+          ],
+          "step": "probe_env",
+          "title": "补齐 probe_env 验证入口",
+          "ts": "2026-10-29T08:30:00+08:00",
+          "type": "change"
+        },
+        {
+          "detail": "Pi Agent 默认模型切换为 zai/glm-5.3-flash，同时保留 deepseek/deepseek-v4.1-flash 为白名单备选。",
+          "evidence": [
+            "BioanalysDesktop/server/pi_agent.js",
+            "BioanalysDesktop/tests/pi_agent.test.js"
+          ],
+          "id": "CHG-20261029-005",
+          "kind": "model-config",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ACT-20261029-006"
+          ],
+          "step": "pi_agent_default_model",
+          "title": "设置 Pi Agent 默认模型",
+          "ts": "2026-10-29T08:31:00+08:00",
+          "type": "change"
+        },
+        {
+          "detail": "Pi Agent dispatch 同步等待上限从 90 秒调整为 240 秒，路由和底层 postA2ARequest 默认值同步修改；新增回归断言要求等待上限不低于 180 秒。",
+          "evidence": [
+            "BioanalysDesktop/server/pi_agent_routes.js",
+            "BioanalysDesktop/server/pi_agent.js",
+            "BioanalysDesktop/tests/pi_agent_routes.test.js"
+          ],
+          "id": "CHG-20261029-006",
+          "kind": "dispatch-timeout",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-005",
+            "FIX-20261029-005",
+            "ACT-20261029-008"
+          ],
+          "step": "pi_agent_dispatch",
+          "title": "提高 Pi Agent 慢任务等待上限",
+          "ts": "2026-10-29T08:43:00+08:00",
+          "type": "change"
+        },
+        {
+          "detail": "桌面端子进程测试改为从测试文件位置解析 BioanalysDesktop 根目录，并通过 spawn cwd 固定服务入口解析，不依赖调用方当前目录。",
+          "evidence": [
+            "BioanalysDesktop/tests/auth.test.js",
+            "BioanalysDesktop/tests/index.test.js"
+          ],
+          "id": "CHG-20261029-007",
+          "kind": "test-harness",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-006",
+            "FIX-20261029-006",
+            "ACT-20261029-009"
+          ],
+          "step": "desktop_full_test",
+          "title": "桌面端子进程测试改为目录无关",
+          "ts": "2026-10-29T09:00:00+08:00",
+          "type": "change"
+        },
+        {
+          "detail": "portal 的原始输入白名单与工作台同步纳入外部验证表达矩阵和分组文件，双端 resolve 对账恢复逐条一致。",
+          "evidence": [
+            "portal/serve.mjs",
+            "BioanalysDesktop/server/workflow_graph.js",
+            "BioanalysDesktop/tests/portal_resolve_parity.test.js"
+          ],
+          "id": "CHG-20261029-008",
+          "kind": "resolve-parity",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-007",
+            "FIX-20261029-007",
+            "ACT-20261029-010"
+          ],
+          "step": "portal_resolve",
+          "title": "同步双端原始输入契约",
+          "ts": "2026-10-29T09:00:00+08:00",
+          "type": "change"
+        },
+        {
+          "detail": "发布计划将三条线的分析母版与 src/workflows.json 统一归类为 mods，新增覆盖 line1、line2、line3 和注册表的回归测试。",
+          "evidence": [
+            "ops/release-plan.mjs",
+            "tests/test_release_plan.py"
+          ],
+          "id": "CHG-20261029-009",
+          "kind": "release-plan",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-008",
+            "FIX-20261029-008",
+            "ACT-20261029-011"
+          ],
+          "step": "release_plan",
+          "title": "扩展发布计划 mods 分类",
+          "ts": "2026-10-29T09:00:00+08:00",
+          "type": "change"
+        },
+        {
+          "detail": "check-gates 测试的 JSON 夹具读取显式声明 UTF-8，保证 Windows 中文区域环境下结果稳定。",
+          "evidence": [
+            "tests/test_check_gates.py"
+          ],
+          "id": "CHG-20261029-010",
+          "kind": "test-encoding",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-009",
+            "FIX-20261029-009",
+            "ACT-20261029-011"
+          ],
+          "step": "python_tests",
+          "title": "固定门禁测试夹具编码",
+          "ts": "2026-10-29T09:00:00+08:00",
+          "type": "change"
+        },
+        {
+          "detail": "发布计划将 portal/ 目录归入 mods 实现批次，并增加 portal/serve.mjs 的显式分类测试，防止运行时文件再次漏归。",
+          "evidence": [
+            "ops/release-plan.mjs",
+            "tests/test_release_plan.py"
+          ],
+          "id": "CHG-20261029-011",
+          "kind": "release-plan",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-010",
+            "FIX-20261029-010",
+            "ACT-20261029-012"
+          ],
+          "step": "release_plan",
+          "title": "纳入 portal 运行时代码",
+          "ts": "2026-10-29T09:05:00+08:00",
+          "type": "change"
+        }
+      ],
+      "path": "ledger/changes.jsonl",
+      "records": 11,
+      "status_policy": "none"
+    },
+    "errors": {
+      "aggregated": [
+        {
+          "detail": "prep_matrix 首次运行以 exit 1 结束。旧解析器只覆盖历史 grouping 形状，且芯片样本键使用 GEO title；本项目的 grouping 需要按 GSM 与分组映射，导致矩阵和 group_map 的稳定主键契约不成立。",
+          "evidence": [
+            "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_prep_matrix_39cbcbfb.json",
+            "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_prep_matrix_9de19ab6.json"
+          ],
+          "id": "ERR-20261029-001",
+          "kind": "pipeline-contract",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "FIX-20261029-001",
+            "CHG-20261029-001"
+          ],
+          "status": "resolved",
+          "step": "prep_matrix",
+          "title": "分组文件形状与样本主键不兼容",
+          "ts": "2026-10-29T08:30:00+08:00",
+          "type": "error"
+        },
+        {
+          "detail": "qc_matrix 首次运行以 exit 1 结束。旧门禁把 GSM1179010 的相关性离群直接作为致命错误，阻止后续分析；项目需要保留样本并标记人工复核。",
+          "evidence": [
+            "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_qc_matrix_aaf9a21f.json",
+            "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_qc_matrix_7f74c12c.json"
+          ],
+          "id": "ERR-20261029-002",
+          "kind": "qc-policy",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "FIX-20261029-002"
+          ],
+          "status": "resolved",
+          "step": "qc_matrix",
+          "title": "QC 离群样本被误作致命失败",
+          "ts": "2026-10-29T08:30:00+08:00",
+          "type": "error"
+        },
+        {
+          "detail": "enrichment_figures 首次运行以 exit 1 结束。KEGG 结果为空时生成零字节 TSV，旧读取逻辑直接调用 pandas.read_csv 触发 EmptyDataError。",
+          "evidence": [
+            "outputs/system_logs/2026-10-28_PRJ_NAFLD_E2E_20261028_line1_bulk_enrichment_figures_3efe9068.json",
+            "local_projects/PRJ_NAFLD_E2E_20261028/data/line1_bulk/processed/enrichment_kegg.tsv"
+          ],
+          "id": "ERR-20261029-003",
+          "kind": "empty-result",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "FIX-20261029-003"
+          ],
+          "status": "resolved",
+          "step": "enrichment_figures",
+          "title": "空 KEGG 表导致绘图步骤失败",
+          "ts": "2026-10-29T08:30:00+08:00",
+          "type": "error"
+        },
+        {
+          "detail": "首次 Pi Agent 专项审计任务 task-4c55a5565e764041 直接访问 /mnt/ssd，但 Pi 运行在 Termux 侧，K40 路径不可见；随后模型通道连接错误，任务以 TASK_STATE_FAILED 结束且无可用审计结论。",
+          "evidence": [
+            "/data/data/com.termux/files/home/.pi/agent/a2a_sessions/2026-10-29T00-35-29-590Z_task-4c55a5565e764041.jsonl",
+            "con_hf/ledger/actions.jsonl"
+          ],
+          "id": "ERR-20261029-004",
+          "kind": "pi-agent-execution-plane",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "FIX-20261029-004",
+            "ACT-20261029-007"
+          ],
+          "status": "resolved",
+          "step": "pi_agent_readonly_audit",
+          "title": "Pi Agent 审计提示词使用了错误执行面路径",
+          "ts": "2026-10-29T08:40:00+08:00",
+          "type": "error"
+        },
+        {
+          "detail": "修正执行面后的专项审计 task-8142b9861fac4279 实际耗时约 132 秒，dispatch 固定 90 秒超时先返回 HTTP 502，但远端任务随后正常完成，形成前端失败与远端成功不一致。",
+          "evidence": [
+            "cn_debug/2026-10-29_pi_nafld_audit_request.json",
+            "/data/data/com.termux/files/home/.pi/agent/a2a_sessions/2026-10-29T00-39-31-835Z_task-8142b9861fac4279.jsonl",
+            "BioanalysDesktop/server/pi_agent_routes.js"
+          ],
+          "id": "ERR-20261029-005",
+          "kind": "dispatch-timeout",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "FIX-20261029-005",
+            "ACT-20261029-008",
+            "CHG-20261029-006"
+          ],
+          "status": "resolved",
+          "step": "pi_agent_dispatch",
+          "title": "慢任务被 90 秒同步等待上限误判为失败",
+          "ts": "2026-10-29T08:43:00+08:00",
+          "type": "error"
+        },
+        {
+          "detail": "从工作区根目录运行桌面端全量测试时，auth.test.js 与 index.test.js 以相对路径 server/index.js 启动子进程，实际解析成工作区根目录的 server/index.js，导致 15 条测试因 MODULE_NOT_FOUND 失败。",
+          "evidence": [
+            "BioanalysDesktop/tests/auth.test.js",
+            "BioanalysDesktop/tests/index.test.js"
+          ],
+          "id": "ERR-20261029-006",
+          "kind": "test-cwd",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "FIX-20261029-006",
+            "CHG-20261029-007",
+            "ACT-20261029-009"
+          ],
+          "status": "resolved",
+          "step": "desktop_full_test",
+          "title": "子进程测试依赖调用方工作目录",
+          "ts": "2026-10-29T09:00:00+08:00",
+          "type": "error"
+        },
+        {
+          "detail": "portal 的 resolveLocally 原始输入白名单未包含 l1_ml_external 新增的 val_expr_genes.tsv 与 val_group_map.tsv，line1 全链在 portal 返回 422、工作台返回 200，双端预检结论分叉。",
+          "evidence": [
+            "portal/serve.mjs",
+            "BioanalysDesktop/tests/portal_resolve_parity.test.js"
+          ],
+          "id": "ERR-20261029-007",
+          "kind": "resolve-parity",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "FIX-20261029-007",
+            "CHG-20261029-008",
+            "ACT-20261029-010"
+          ],
+          "status": "resolved",
+          "step": "portal_resolve",
+          "title": "portal 原始输入白名单遗漏外部验证文件",
+          "ts": "2026-10-29T09:00:00+08:00",
+          "type": "error"
+        },
+        {
+          "detail": "release plan 门禁把 src/line1_bulk/scripts 等 7 个母版和 src/workflows.json 共 8 个文件判为未归类，导致全量门禁失败。",
+          "evidence": [
+            "ops/release-plan.mjs",
+            "tests/test_release_plan.py"
+          ],
+          "id": "ERR-20261029-008",
+          "kind": "release-plan",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "FIX-20261029-008",
+            "CHG-20261029-009",
+            "ACT-20261029-011"
+          ],
+          "status": "resolved",
+          "step": "release_plan",
+          "title": "新分析母版未纳入发布计划分类",
+          "ts": "2026-10-29T09:00:00+08:00",
+          "type": "error"
+        },
+        {
+          "detail": "Windows cp936 环境下 test_check_gates.py 读取 UTF-8 JSON 测试夹具时未显式指定编码，出现 UnicodeDecodeError。",
+          "evidence": [
+            "tests/test_check_gates.py"
+          ],
+          "id": "ERR-20261029-009",
+          "kind": "windows-encoding",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "FIX-20261029-009",
+            "CHG-20261029-010",
+            "ACT-20261029-011"
+          ],
+          "status": "resolved",
+          "step": "python_tests",
+          "title": "门禁测试依赖系统默认编码",
+          "ts": "2026-10-29T09:00:00+08:00",
+          "type": "error"
+        },
+        {
+          "detail": "补齐双端 resolve 契约后 portal/serve.mjs 进入工作树，发布计划尚未覆盖 portal 运行时代码，release plan 再次报告 1 个未归类文件。",
+          "evidence": [
+            "ops/release-plan.mjs",
+            "portal/serve.mjs"
+          ],
+          "id": "ERR-20261029-010",
+          "kind": "release-plan",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "FIX-20261029-010",
+            "CHG-20261029-011",
+            "ACT-20261029-012"
+          ],
+          "status": "resolved",
+          "step": "release_plan",
+          "title": "portal 运行时未纳入发布计划",
+          "ts": "2026-10-29T09:05:00+08:00",
+          "type": "error"
+        }
+      ],
+      "path": "ledger/errors.jsonl",
+      "records": 10
+    },
+    "fixes": {
+      "aggregated": [
+        {
+          "detail": "prep_matrix 增加每样本一行与每组一行两种 grouping 解析路径，按 GSM 匹配样本，并统一把 GSM 写入 expr_genes 列名与 group_map.sample；修复后输出 73 样本、19767 基因，exit 0。",
+          "evidence": [
+            "src/line1_bulk/scripts/prep_matrix",
+            "local_projects/PRJ_NAFLD_E2E_20261028/data/line1_bulk/processed/prep_report.txt",
+            "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_prep_matrix_8251d040.json"
+          ],
+          "id": "FIX-20261029-001",
+          "kind": "pipeline-contract",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-001",
+            "CHG-20261029-001"
+          ],
+          "status": "resolved",
+          "step": "prep_matrix",
+          "title": "修复 grouping 解析与 GSM 样本键",
+          "ts": "2026-10-29T08:30:00+08:00",
+          "type": "fix"
+        },
+        {
+          "detail": "qc_matrix 改为数据契约错误才失败；相关性离群只写 sample_qc.tsv 与报告，输出 qc_gate=review_required、outlier_policy=mark_only_not_removed。GSM1179010 保留，下游继续运行。",
+          "evidence": [
+            "src/line1_bulk/scripts/qc_matrix",
+            "local_projects/PRJ_NAFLD_E2E_20261028/data/line1_bulk/processed/qc_report.txt",
+            "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_qc_matrix_2fb0b4d3.json"
+          ],
+          "id": "FIX-20261029-002",
+          "kind": "qc-policy",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-002"
+          ],
+          "status": "resolved",
+          "step": "qc_matrix",
+          "title": "QC 离群改为标记保留",
+          "ts": "2026-10-29T08:30:00+08:00",
+          "type": "fix"
+        },
+        {
+          "detail": "enrichment_figures 的读取器捕获 EmptyDataError，把零字节空结果记录为 skip 并继续生成可用的 GSEA/ORA 图件；修复后 exit 0 并产出 l1_13 至 l1_15、l1_25。",
+          "evidence": [
+            "src/line1_bulk/scripts/enrichment_figures",
+            "local_projects/PRJ_NAFLD_E2E_20261028/figures/line1_bulk/l1_13_gsea_top.png",
+            "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_enrichment_figures_17fca706.json"
+          ],
+          "id": "FIX-20261029-003",
+          "kind": "empty-result",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-003"
+          ],
+          "status": "resolved",
+          "step": "enrichment_figures",
+          "title": "空富集表改为可跳过",
+          "ts": "2026-10-29T08:30:00+08:00",
+          "type": "fix"
+        },
+        {
+          "detail": "审计请求明确要求 Pi 使用 proot-distro login ubuntu 进入 K40 容器后再读取 /mnt/ssd，重试任务 task-8142b9861fac4279 成功完成并输出 5 PASS、1 WARN。",
+          "evidence": [
+            "cn_debug/2026-10-29_pi_nafld_audit_request.json",
+            "local_projects/PRJ_NAFLD_E2E_20261028/debug/pi_agent_nafld_readonly_audit_20261029.md"
+          ],
+          "id": "FIX-20261029-004",
+          "kind": "pi-agent-execution-plane",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-004",
+            "ACT-20261029-007"
+          ],
+          "status": "resolved",
+          "step": "pi_agent_readonly_audit",
+          "title": "通过 proot-distro 进入 K40 后重试审计",
+          "ts": "2026-10-29T08:42:00+08:00",
+          "type": "fix"
+        },
+        {
+          "detail": "dispatch 路由与 postA2ARequest 默认超时均提高到 240 秒。回归测试确认旧值 90000 为红，修改后 pi_agent 与 pi_agent_routes 共 16/16 PASS，重启后快速派发成功。",
+          "evidence": [
+            "BioanalysDesktop/server/pi_agent_routes.js",
+            "BioanalysDesktop/server/pi_agent.js",
+            "BioanalysDesktop/tests/pi_agent_routes.test.js"
+          ],
+          "id": "FIX-20261029-005",
+          "kind": "dispatch-timeout",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-005",
+            "ACT-20261029-008",
+            "CHG-20261029-006"
+          ],
+          "status": "resolved",
+          "step": "pi_agent_dispatch",
+          "title": "同步等待上限调整为 240 秒",
+          "ts": "2026-10-29T08:43:00+08:00",
+          "type": "fix"
+        },
+        {
+          "detail": "auth.test.js 与 index.test.js 通过 import.meta.url 计算 BioanalysDesktop 根目录，并在 spawn 时显式设置 cwd；从仓库根目录运行也稳定找到 server/index.js。",
+          "evidence": [
+            "BioanalysDesktop/tests/auth.test.js",
+            "BioanalysDesktop/tests/index.test.js"
+          ],
+          "id": "FIX-20261029-006",
+          "kind": "test-cwd",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-006",
+            "CHG-20261029-007",
+            "ACT-20261029-009"
+          ],
+          "status": "resolved",
+          "step": "desktop_full_test",
+          "title": "固定子进程测试工作目录",
+          "ts": "2026-10-29T09:00:00+08:00",
+          "type": "fix"
+        },
+        {
+          "detail": "portal resolveLocally 的 rawInputs 补齐 val_expr_genes.tsv 与 val_group_map.tsv，与工作台 workflow_graph 的原始输入契约一致。",
+          "evidence": [
+            "portal/serve.mjs",
+            "BioanalysDesktop/server/workflow_graph.js",
+            "BioanalysDesktop/tests/portal_resolve_parity.test.js"
+          ],
+          "id": "FIX-20261029-007",
+          "kind": "resolve-parity",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-007",
+            "CHG-20261029-008",
+            "ACT-20261029-010"
+          ],
+          "status": "resolved",
+          "step": "portal_resolve",
+          "title": "补齐 portal 外部验证原始输入",
+          "ts": "2026-10-29T09:00:00+08:00",
+          "type": "fix"
+        },
+        {
+          "detail": "发布计划把 src/line1_*、src/line2_*、src/line3_* 与 src/workflows.json 归入 mods，并新增分类回归测试；发布计划现为 total=199、assigned=199、unassigned=0。",
+          "evidence": [
+            "ops/release-plan.mjs",
+            "tests/test_release_plan.py"
+          ],
+          "id": "FIX-20261029-008",
+          "kind": "release-plan",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-008",
+            "CHG-20261029-009",
+            "ACT-20261029-011"
+          ],
+          "status": "resolved",
+          "step": "release_plan",
+          "title": "补齐母版与工作流注册表分类",
+          "ts": "2026-10-29T09:00:00+08:00",
+          "type": "fix"
+        },
+        {
+          "detail": "test_check_gates.py 读取夹具时显式使用 UTF-8，消除 Windows 区域编码对测试结果的影响；Python 全量测试 139 项通过、4 项跳过。",
+          "evidence": [
+            "tests/test_check_gates.py",
+            "tests/test_release_plan.py"
+          ],
+          "id": "FIX-20261029-009",
+          "kind": "windows-encoding",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-009",
+            "CHG-20261029-010",
+            "ACT-20261029-011"
+          ],
+          "status": "resolved",
+          "step": "python_tests",
+          "title": "固定测试夹具 UTF-8 编码",
+          "ts": "2026-10-29T09:00:00+08:00",
+          "type": "fix"
+        },
+        {
+          "detail": "发布计划把 portal/ 下运行时代码归入 mods，并新增 portal/serve.mjs 分类回归测试；当前发布计划为 total=202、assigned=202、unassigned=0。",
+          "evidence": [
+            "ops/release-plan.mjs",
+            "tests/test_release_plan.py"
+          ],
+          "id": "FIX-20261029-010",
+          "kind": "release-plan",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-010",
+            "CHG-20261029-011",
+            "ACT-20261029-012"
+          ],
+          "status": "resolved",
+          "step": "release_plan",
+          "title": "补齐 portal 运行时分类",
+          "ts": "2026-10-29T09:05:00+08:00",
+          "type": "fix"
+        }
+      ],
+      "path": "ledger/fixes.jsonl",
+      "records": 10
+    },
+    "pitfalls": {
+      "aggregated": [
+        {
+          "detail": "芯片数据中的 GEO title 可用于展示，但不适合作为跨步骤连接主键。表达矩阵列名、group_map.sample 与验证样本表应统一使用 GSM，避免标题重复或改名造成静默错配。",
+          "evidence": [
+            "local_projects/PRJ_NAFLD_E2E_20261028/data/line1_bulk/processed/prep_report.txt",
+            "local_projects/PRJ_NAFLD_E2E_20261028/data/line1_bulk/processed/group_map.tsv"
+          ],
+          "id": "P-NAFLD-001",
+          "kind": "sample-key",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-001",
+            "FIX-20261029-001"
+          ],
+          "status": "resolved",
+          "step": "prep_matrix",
+          "title": "GEO title 不能作为稳定样本主键",
+          "ts": "2026-10-29T08:30:00+08:00",
+          "type": "pitfall"
+        },
+        {
+          "detail": "相关性离群样本是否剔除属于研究决策。默认直接删除会改变后续所有统计结果，默认直接失败又会阻断可复核流程；本项目选择保留并显式标记 review_required。",
+          "evidence": [
+            "local_projects/PRJ_NAFLD_E2E_20261028/data/line1_bulk/processed/qc_report.txt",
+            "local_projects/PRJ_NAFLD_E2E_20261028/data/line1_bulk/processed/sample_qc.tsv"
+          ],
+          "id": "P-NAFLD-002",
+          "kind": "qc-policy",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-002",
+            "FIX-20261029-002"
+          ],
+          "status": "resolved",
+          "step": "qc_matrix",
+          "title": "离群样本标记不能等同于自动删除",
+          "ts": "2026-10-29T08:30:00+08:00",
+          "type": "pitfall"
+        },
+        {
+          "detail": "跨平台外部验证不能把 GSE48452 与 GSE89632 的表达矩阵合并后做 ComBat，也不能在验证集重新选特征或调阈值。正确做法是冻结训练参数直接预测，并保留较差的真实指标。",
+          "evidence": [
+            "local_projects/PRJ_NAFLD_E2E_20261028/data/line1_bulk/processed/external_validation_report.txt",
+            "src/line1_bulk/scripts/external_validation"
+          ],
+          "id": "P-NAFLD-003",
+          "kind": "external-validation",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "CHG-20261029-002",
+            "ACT-20261029-004"
+          ],
+          "status": "active",
+          "step": "external_validation",
+          "title": "外部验证禁止跨平台合并与反向调参",
+          "ts": "2026-10-29T08:30:00+08:00",
+          "type": "pitfall"
+        },
+        {
+          "detail": "BH 校正后 0 个差异基因是当前样本量与效应量的真实结果。主分析继续使用全基因排序 GSEA，阈值不得根据结果回调，也不应把未校正 nominal p 值包装为显著差异基因。",
+          "evidence": [
+            "local_projects/PRJ_NAFLD_E2E_20261028/data/line1_bulk/processed/deg_report.txt",
+            "local_projects/PRJ_NAFLD_E2E_20261028/data/line1_bulk/processed/enrichment_report.txt"
+          ],
+          "id": "P-NAFLD-004",
+          "kind": "statistical-integrity",
+          "line": "line1_bulk",
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ACT-20261029-003"
+          ],
+          "status": "active",
+          "step": "deg_limma",
+          "title": "零显著 DEG 不应触发阈值回调",
+          "ts": "2026-10-29T08:30:00+08:00",
+          "type": "pitfall"
+        },
+        {
+          "detail": "Pi Agent 运行在 Termux 侧，不能直接看到 K40 容器的 /mnt/ssd。跨执行面审计必须在命令中显式使用 proot-distro login ubuntu，否则模型会在错误文件系统中搜索并耗尽轮次。",
+          "evidence": [
+            "cn_debug/2026-10-29_pi_nafld_audit_request.json",
+            "local_projects/PRJ_NAFLD_E2E_20261028/debug/pi_agent_nafld_readonly_audit_20261029.md"
+          ],
+          "id": "P-NAFLD-005",
+          "kind": "pi-agent-execution-plane",
+          "line": null,
+          "project": "PRJ_NAFLD_E2E_20261028",
+          "refs": [
+            "ERR-20261029-004",
+            "FIX-20261029-004"
+          ],
+          "status": "resolved",
+          "step": "pi_agent_readonly_audit",
+          "title": "Pi Agent 与 K40 容器的文件系统边界",
+          "ts": "2026-10-29T08:42:00+08:00",
+          "type": "pitfall"
+        }
+      ],
+      "path": "ledger/pitfalls.jsonl",
+      "records": 5,
+      "status_policy": "none"
+    }
+  },
+  "machine_logs": {
+    "count": 32,
+    "entries": [
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_NAFLD_E2E_20261028_line1_bulk_bulk_figures_e241b570.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "bulk_figures",
+        "task_id": "e241b570-0422-4a78-892a-729542307666"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_NAFLD_E2E_20261028_line1_bulk_cox_analysis_17c3fa7f.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "cox_analysis",
+        "task_id": "17c3fa7f-4457-49c6-bfc4-aa16f452117f"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_NAFLD_E2E_20261028_line1_bulk_deg_limma_fef0de29.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "deg_limma",
+        "task_id": "fef0de29-efcf-4f7f-b03d-b3e3fb394cd2"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_NAFLD_E2E_20261028_line1_bulk_enrichment_bulk_30022590.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "enrichment_bulk",
+        "task_id": "30022590-e3a8-4662-8da5-69eb7192433e"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_NAFLD_E2E_20261028_line1_bulk_enrichment_figures_3efe9068.json",
+        "line_id": "line1_bulk",
+        "status": "failed",
+        "step_name": "enrichment_figures",
+        "task_id": "3efe9068-48b2-42a6-89b4-87087b0f5a47"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_NAFLD_E2E_20261028_line1_bulk_key_genes_38717e4b.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "key_genes",
+        "task_id": "38717e4b-0e53-45d3-9b7f-64b272c5a3fd"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_NAFLD_E2E_20261028_line1_bulk_ml_diagnostics_505ab3ca.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "ml_diagnostics",
+        "task_id": "505ab3ca-24a3-4a99-b2ec-3a63c506400e"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_NAFLD_E2E_20261028_line1_bulk_pca_matrix_ca8a2be1.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "pca_matrix",
+        "task_id": "ca8a2be1-3c7e-44db-96c6-52f5e6e9d69c"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_NAFLD_E2E_20261028_line1_bulk_ppi_string_b9375ce6.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "ppi_string",
+        "task_id": "b9375ce6-635a-42eb-85f7-6238dacf30f5"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_NAFLD_E2E_20261028_line1_bulk_qc_matrix_b573bd3f.json",
+        "line_id": "line1_bulk",
+        "status": "failed",
+        "step_name": "qc_matrix",
+        "task_id": "b573bd3f-2659-4964-b1c3-06cd2d436f9f"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-28_PRJ_NAFLD_E2E_20261028_line1_bulk_wgcna_modules_fc15c48b.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "wgcna_modules",
+        "task_id": "fc15c48b-46ec-4183-aa05-92f5d5bc6be3"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_bulk_figures_60968928.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "bulk_figures",
+        "task_id": "60968928-ec9a-4239-9591-54eaebd64e0c"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_cox_analysis_abd21545.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "cox_analysis",
+        "task_id": "abd21545-9fea-406b-b586-9acaf1778954"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_deg_limma_7acd3650.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "deg_limma",
+        "task_id": "7acd3650-8d9e-465a-a363-e837f1c17f1b"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_enrichment_bulk_afff7bfb.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "enrichment_bulk",
+        "task_id": "afff7bfb-d27d-4cd8-859e-4e79d4fb1e42"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_enrichment_figures_17fca706.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "enrichment_figures",
+        "task_id": "17fca706-f152-4854-86d6-cad5ac440047"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_external_validation_8085089f.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "external_validation",
+        "task_id": "8085089f-b930-4b6c-b879-c618f14c71c7"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_key_genes_8cbfea4b.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "key_genes",
+        "task_id": "8cbfea4b-f4d5-4530-9d79-e6c1f988fbab"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_ml_diagnostics_07664d6a.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "ml_diagnostics",
+        "task_id": "07664d6a-787a-4933-b6ad-8e570f3d6ab7"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_ml_hub_analysis_a6bcf6f1.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "ml_hub_analysis",
+        "task_id": "a6bcf6f1-378c-43a9-9ce2-7c3b91dd39bd"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_ml_model_b75538d5.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "ml_model",
+        "task_id": "b75538d5-cd57-4c37-84f2-2cca4940d365"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_pca_matrix_ba71a5b9.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "pca_matrix",
+        "task_id": "ba71a5b9-bf0a-47e7-9080-13f9c8bb22e4"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_ppi_string_d26bc6e9.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "ppi_string",
+        "task_id": "d26bc6e9-aee6-421a-8b4f-a09b9c0d9146"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_prep_matrix_2317a42a.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "prep_matrix",
+        "task_id": "2317a42a-64d1-44d2-a142-e5e156e52317"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_prep_matrix_39cbcbfb.json",
+        "line_id": "line1_bulk",
+        "status": "failed",
+        "step_name": "prep_matrix",
+        "task_id": "39cbcbfb-73d8-42c5-be90-fb180791ef41"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_prep_matrix_8251d040.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "prep_matrix",
+        "task_id": "8251d040-8dfd-4022-ae21-4ae128e13c77"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_prep_matrix_9de19ab6.json",
+        "line_id": "line1_bulk",
+        "status": "failed",
+        "step_name": "prep_matrix",
+        "task_id": "9de19ab6-e8b6-41c1-a199-43bca69c58cb"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_probe_env_103d287b.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "probe_env",
+        "task_id": "103d287b-bf7d-456c-9082-b8104a983289"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_qc_matrix_2fb0b4d3.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "qc_matrix",
+        "task_id": "2fb0b4d3-911e-4fa4-98b1-009fb57ece82"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_qc_matrix_7f74c12c.json",
+        "line_id": "line1_bulk",
+        "status": "failed",
+        "step_name": "qc_matrix",
+        "task_id": "7f74c12c-f7d6-4c39-aa22-3edc4bf029f8"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_qc_matrix_aaf9a21f.json",
+        "line_id": "line1_bulk",
+        "status": "failed",
+        "step_name": "qc_matrix",
+        "task_id": "aaf9a21f-d762-49cb-98cc-6a236a03f50a"
+      },
+      {
+        "file": "outputs/system_logs/2026-10-29_PRJ_NAFLD_E2E_20261028_line1_bulk_wgcna_modules_9a1a9f4b.json",
+        "line_id": "line1_bulk",
+        "status": "completed",
+        "step_name": "wgcna_modules",
+        "task_id": "9a1a9f4b-ad40-435a-a8ad-0fcd55576885"
+      }
+    ],
+    "path": "outputs/system_logs"
+  },
+  "path_map": {
+    "data": "data",
+    "debug": "debug",
+    "deliverables": "deliverables",
+    "figures": "figures",
+    "index": "INDEX.json",
+    "ledger": "ledger",
+    "project": "local_projects/PRJ_NAFLD_E2E_20261028",
+    "project_json": "project.json",
+    "readme": "README.md"
+  },
+  "project_id": "PRJ_NAFLD_E2E_20261028",
+  "schema_version": 1
+}

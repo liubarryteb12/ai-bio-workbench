@@ -3988,3 +3988,109 @@ load 0.17）；Termux 四服务全 RUN 且 `sshd -D`（pid 12206）自 10:45 稳
 4. ssh 恢复后复跑全量测试确认 5 条红转绿；
 5. git 提交本轮全部改动；
 6. 向用户汇报 M1 DoD 四项达成 + 本轮成果 + B 批已完结（B1/B2/B3 均已执行）。
+
+## 项目背景
+
+K40 Alioth 平台宪法已更新为 `aims/K40/aims.txt`。当前 WIP 为微内核底座与 A2A 观测链路。已完成 A2A v1.2 幂等执行器、Pi 观测路由、`SlotManager`、`DeliverableCollector` 与 `src/core/types.ts` 单一定义收口。
+
+## 当前进度
+
+`WIP=1`：release 收口阶段。微内核七件套、AIMS 四大共享引擎、四个业务卡带、15 份模块三件套文档、G1-G7 与 A2A-ENGINES 门禁、src/bin 对齐与 K40 部署门禁均已落地。`transport-keepalive-engine` 已补齐接口、实现、真实与 Mock adapter、Windows PowerShell 本机执行路径、Node HTTP 探针和可执行预检入口。9 个 manifest 已收口到 canonical 契约。`ops/a2a_preflight.ps1` 当前为 `116 PASS / 2 WARN / 3 FAIL`，退出码 1；3 个 FAIL 与真实业务态一致（`G3 script_plot_matrix.json missing`、release-plan 测试链路和 check-gates 测试链路），不是门禁假绿。`/api/runtime/slots` 返回 10 个 `ready` 模块，两个 Pi workbench 插槽均非空。真实 K40 SSH 已分别通过 bridge 与 setsid compute 探针，`codex-a2a 1.4.0` 已通过回环兼容代理返回退出码 0。release-plan 当前为 347 个文件、assigned 347、unassigned 0、4 batches，G5 处于 awaiting authorized commits，等待提交授权。
+
+基线命令与报告：
+
+```bash
+python3 tests/test_a2a_core.py
+python3 -m unittest discover -s tests -p "test_*.py"
+pwsh -File ops/a2a_preflight.ps1
+python3 ops/ledger_indexer.py --verify
+python3 src/engines/security-audit-engine/security_audit.py --scan-root .
+```
+
+报告：`con_hf/runs/2026-10-28_a2a_v1_2/PREFLIGHT.md`
+
+## 已知坑
+
+- 裸调 `codex-a2a 1.4.0` 仍会因 `TaskStatusUpdateEvent.final` 退出码 1。统一使用 `ops/codex_a2a_compat.ps1`，兼容代理会移除未知字段并重写 Agent Card URL；项目内 `A2AClientPoller` 与 18787 直连保持可用。
+- 双端均未安装 Tailscale，当前 A2A 路径依赖 adb forward；`ops/check_transport_keepalive.mjs` 在缺少真实 Tailscale IP 时返回红灯，不能把 ADB forward 证据登记为 `DOD-NET-01` PASS。
+- `node ops/check-gates.mjs` 当前为 `11 PASS / 1 WARN / 1 FAIL`，G3 仍是 `script_plot_matrix.json missing`；`reference/05` 旧目录已在新布局下删除，禁止通过恢复旧目录或伪造矩阵刷绿。G5 仍等待授权提交，strict 模式按契约返回非零。
+- `ops/release-plan.mjs` 只做只读归类，不执行 `git add`、commit 或分支操作。
+- Tailscale 专网仍未闭环；`codex-a2a 1.4.0` 兼容已通过回环代理闭环。
+- `T-CDX-04` 已有一次 CLI 加 compat proxy 的真实会话级替代证据，但当前会话未暴露原生 `a2a_call` MCP 工具，该证据不能替代原验收口径，任务保持 PENDING。
+
+## 2026-10-29 Pi Agent 默认模型
+
+Pi Agent 默认模型已统一为 `zai/glm-5.3-flash`。手机端 `settings.json` 的 `defaultProvider/defaultModel` 与 `.provider_name/.provider_model` 已实测一致，18787 的 `/api/pi-agent/model` 返回 `current=zai/glm-5.3-flash`，白名单保留 `deepseek/deepseek-v4.1-flash` 作为显式切换项。Pi Agent 服务与路由测试 `16/16 PASS`。
+
+## 2026-10-29 A2A Gate Closure
+
+- `a2a-e2e-contract-tests` 的预检阈值已修正为契约模式 7 条测试、允许 1 个 live 类 skip，避免把正常的 live skip 误判为失败。
+- `ops/codex_a2a_launcher.sh` 已生成 `A2A_STATIC_AUTH_CREDENTIALS`，`python tests/test_pi_a2a_launcher.py -v` 为 `6/6 PASS`，凭证不回显。
+- `A2AClientPoller` 已使用 per-project `debug/active_a2a_task.json` 持久化任务，客户端重启后可凭 task id 续领。
+- `mod-pi-observability` 运行态为 `ready`，`/api/runtime/slots` 的两个 Pi 插槽均有贡献。
+- `T-CDX-04` 仍缺会话级真实 `a2a_call` 工具调用证据，CLI 与 18787 派发不能替代该验收项。
+
+## 2026-10-29 Transport Keepalive
+
+`transport-keepalive-engine` 已从 AIMS 声明缺口补齐为可执行 module。新增 `interface.ts`、`implementation.ts`、`adapters.ts`，本机探测在 Windows 使用 `powershell.exe`，HTTP 端口探针由 Node 直接发起，不依赖 `bash` 或 `curl`。契约测试覆盖 Tailscale 缺失红灯、NO_PROXY、10 次双端口采样、平均 RTT、tmux 双窗口与 Windows 本机调用。`python tests/test_transport_keepalive.py -v` 为 `6/6 PASS`，TypeScript strict 编译 exit 0，`node ops/check-gates.mjs` 新增 `A2A-ENGINES` PASS。
+
+真实预检使用 `node ops/check_transport_keepalive.mjs --phone-host <PI_TAILSCALE_IP>`。当前没有真实 Tailscale IP，使用占位 CGNAT 地址实测得到 `tailscale` 与 `tailscale-phone` 双红灯，端口探针失败，因此 `DOD-NET-01` 保持 BLOCKED。ADB forward 路径的 15 分钟息屏与断链 soak 已通过，证据为 `con_hf/runs/2026-10-28_a2a_v1_2/LIVE_SOAK_15M.json`，但该证据不替代 Tailscale 验收。
+
+## 2026-10-29 A2A Path Guard Closure
+
+- `PathGuard` 已支持容器算力根 `/mnt/ssd/bio_data`，同时拒绝 `/mnt/ssd/bio_data_evil`；`tests/test_a2a_core.py` 为 `25/25 PASS`。
+- `ops/pi_idempotent_runner.sh` 新增 project、step、script、input、output 五类路径守卫，并补齐 TERM 进程组回收、SIGKILL 后 child 接管、PNG IEND 和 UTF-8 摘要校验；手机生产 runner 探针 `24/24 PASS`。
+- `ops/deploy-k40-termux.sh` 修复隐藏父目录导致 `copied=0` 的静默空部署、尾部 NUL 二进制误判和错误可执行位；部署器测试 `12/12 PASS`。
+- Runner 的 `changed_files[].path` 已改为相对 `workspace_dir`，与 `artifact_validator.py` 契约一致。
+- 手机端 runner 本地与远端 SHA256 均为 `1c280a0c399df9daf48c4479c45b54d931054c4facb21f9b57e5893054a3fe26`，旧版备份为 `pi_idempotent_runner.sh.pre_reviewfix_20261029`，本轮部署前备份为 `pi_idempotent_runner.sh.pre_docsync_20261029_060531`。
+- Artifact 校验器已拒绝 `workspace_dir` 中的 `..`，并按 ASCII 线缆形态执行 4 MB 门禁；Artifact 校验 `15/15 PASS`，RPC 提取器 live 为 `16/16 PASS`。
+- 两份 A2A Master Harness 已在 Termux 独立实跑，均为 `7/7 PASS`。
+- `python tests/test_e2e_a2a_pipeline.py --mode contract -v`：`Ran 8 tests`，`OK (skipped=1)`；`--mode live -v`：`Ran 12 tests`，`OK`。
+- 运行报告：`con_hf/runs/2026-10-29_a2a_path_guard/REPORT.md`、`con_hf/runs/2026-10-29_a2a_artifact_deploy_hardening/REPORT.md`。
+
+## 2026-10-29 AIMS Contract Sync
+
+- `aims/A2A/00` 的 D-09 Artifact 字段已对齐当前校验器，移除 `idempotent_hit`、`sha256_map` 和未实现的 `stderr_tail`，补入 `task_id`、`idempotent_status` 与 `inputs_sha256`。
+- `aims/A2A/00/01/02/03` 与 `con_hf/SPEC_DECISIONS.md` 已统一为 `.step_<id>.lock.d/owner.json`、`child_pid/child_pgid`、`setsid`、TERM/INT/HUP 整组回收、SIGKILL 后 child 接管、`0.5s` 复用门槛、320 字符 UTF-8 摘要和 PNG IEND 校验。
+- `aims/A2A/03` 已删除旧版 runner 代码正文，改为接口契约，并明确 `ops/pi_idempotent_runner.sh` 为唯一真源。
+- `aims/A2A/pi_idempotent_runner.bash` 已同步为 `ops/pi_idempotent_runner.sh` 的字节一致镜像；`ops/a2a_preflight.ps1` 新增 FIX-06/FIX-07、关键契约标记和镜像 SHA256 检查。
+- 本轮文档同步后的生产 runner 探针为 `24/24 PASS`，复用延迟 `433ms`；K40 两份 Master Harness 均为 `7/7 PASS`。
+
+## 2026-10-29 Tailscale Bootstrap Staging
+
+- 官方 Windows MSI 与 Android 通用 APK 已下载到 `.tmp/`，两份 SHA256 均与官方校验值一致。
+- Android APK 已推送到 `/sdcard/Download/tailscale-android-universal-1.104.4.apk`，并打开系统安装页。
+- PC 安装仍等待 Windows UAC 提权；手机安装因锁屏和 MIUI USB 安装限制返回 `INSTALL_FAILED_USER_RESTRICTED`。
+- 当前状态为 `BLOCKED_USER_ACTION`，未把 Tailscale 安装或登录登记为 PASS。
+- 证据：`con_hf/runs/2026-10-29_tailscale_bootstrap/REPORT.md`。
+
+## 2026-10-29 T-ART-04 双层验收
+
+- `A2AClientPoller.evaluate_task()` 已修复本地验收镜像覆盖远端状态的问题：优先读取 `status.remote_state`，第二次终验不再把 `awaiting_final_acceptance` 当成手机端终态。
+- `tests/test_a2a_poller_state.py` 为 `7/7 PASS`，`tests/test_a2a_artifact.py` 为 `24/24 PASS`，`tests/test_a2a_e2e_artifact.py` 执行 16 条且允许 1 个 live skip。
+- `A2A_LIVE_E2E=1 python -m unittest tests.test_a2a_acceptance_live -v` 为 `1/1 PASS`，真实任务完成 `awaiting_final_acceptance -> completed`，Codex 终验记录 `verifier=codex`。
+- `aims/A2A/01` 的 `DOD-ART-04`、`aims/A2A/02` 的 `T-ART-04`、`aims/A2A/03` 的双层验收 Schema 与 `aims/A2A/04` 的核对项 23/24 已同步。
+
+## 2026-10-29 D-06 异步状态机
+
+- `SendMessage` 默认立即返回，`GetTask` 与 `CancelTask` 已接入 `18787` Pi Agent 路由。
+- 新增 `a2a_state.js`，统一处理 Pi 的大写 `TASK_STATE_*` 枚举，并保留 `status.remote_state` 供审计。
+- 真实 completed 任务 `task-29397fdbcca0471c` 返回 `state=completed`、`remote_state=TASK_STATE_COMPLETED`。
+- 真实 canceled 任务 `task-a48fe1e057bb4885` 返回 `state=canceled`、`remote_state=TASK_STATE_CANCELED`。
+- Node 定向测试 `19/19 PASS`，TypeScript 类型检查与前端构建已通过。
+- AIMS 已新增 `DOD-ART-05`、`T-ART-05` 与审查项 25，D-06 不再列为下一项。
+
+## 2026-10-29 T-CDX-04 CLI 兼容通道验收
+
+- 已通过 `codex-a2a` CLI 加 `ops/codex_a2a_compat_proxy.py` 兼容通道完成真实会话级双层验收，task 为 `task-764ae4e85edd47e6`；Pi `preliminary_acceptance.passed=true`，Codex `final_acceptance.passed=true`，GetTask 读回 `TASK_STATE_COMPLETED`。
+- 证据目录为 `con_hf/runs/2026-10-29_t_cdx_04/`，关键文件是 `REPORT.md` 与 `evidence.json`；其中记录了两次 CRLF 失败和第三次成功，不粉饰负面证据。
+- 本会话没有原生 `a2a_call` MCP 工具，按 AIMS 原验收口径，CLI 兼容通道只算替代证据，`T-CDX-04` 保持 PENDING，不能勾选。
+- Pi 对话页实现由另一代理并行进行，本节不登记其进度。
+
+## 下一步
+
+1. 完成 Tailscale 网络路径与 15 分钟断网重连压测；当前 `DOD-NET-01` 仍为 `BLOCKED_USER_ACTION`。
+2. 等待原生 `a2a_call` MCP 工具可用后补一次真实调用，再评估 `T-CDX-04` 能否从 PENDING 转为 PASS。
+3. 处理 G3 的旧矩阵契约缺口：先基于 `src/figure_sources/manifest.json` 与真实执行记录核对新布局证据，再决定 `script_plot_matrix.json` 的合法载体，禁止恢复旧目录或伪造矩阵刷绿。
+4. 经用户授权后执行 G5 的原子提交与 release 分支。
+5. 在提交与 release 分支封板后复跑 strict 门禁与 A2A 预检，形成最终 release 证据。

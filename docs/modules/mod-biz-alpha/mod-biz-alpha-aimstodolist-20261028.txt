@@ -1,0 +1,37 @@
+文件落盘路径：docs/modules/mod-biz-alpha/mod-biz-alpha-aimstodolist-20261028.txt
+
+```
+
+```text
+一、 当前模块工序锁状态
+当前工序锁：`[WIP=0]`
+
+二、 已封板基线凭证区
+- 基线时间戳：`2026-10-28T10:14:00+08:00`
+- 基线验证命令：`pnpm tsc --noEmit`
+- 退出码：`0`
+- 断言通过数：`0 / 0`（初始待建基线）
+- 关键基线产物 SHA256：待阶段Ⅰ封板后回填
+
+三、 三阶段垂直切片原子任务单（每个切片 < 30m）
+
+【阶段Ⅰ：基础落地 (Foundation Landing)】
+- [ ] `T-ALPHA-01` [WIP=0]：落地 `mod-biz-alpha/manifest.ts` 与整数分 `schema.ts`
+  - 目标 `seam`：`ModManifest` 与 `AlphaConsumptionBatch` 契约
+  - 修改文件：`src/mods/mod-biz-alpha/manifest.ts`, `src/mods/mod-biz-alpha/schema.ts`, `test/mods/biz-alpha/manifest.spec.ts`
+  - 具体正面动作：定义每日规划、每日复盘与整数分账目 Schema、四元组映射及 `bizAlpha.getConsumptionSummary` 接口声明。
+  - 一键验收命令：`pnpm vitest run test/mods/biz-alpha/manifest.spec.ts`
+
+【阶段Ⅱ：相关配套 (Supporting Facilities)】
+- [ ] `T-ALPHA-02` [WIP=0]：实现整数分守恒核算器与 5 类边界测试矩阵
+  - 目标 `seam`：`BizAlphaSeam.reconcileAndAllocate(batch)`
+  - 修改文件：`src/mods/mod-biz-alpha/implementation.ts`, `test/mods/biz-alpha/conservation.spec.ts`
+  - 具体正面动作：实现借贷守恒断言（不平返退出码 `1`）、基点权重和等于 10000 校验与最大余额法整数分无损拆分。
+  - 一键验收命令：`pnpm vitest run test/mods/biz-alpha/conservation.spec.ts`
+
+【阶段Ⅲ：功能实现 (Feature Implementation)】
+- [ ] `T-ALPHA-03` [WIP=0]：打通消费结构复盘产物落盘、只读总线响应与 UI 插槽挂载
+  - 目标 `seam`：`CapabilityBus` 挂载与 `DATA/alpha-reports/*.json` 真实产物生成
+  - 修改文件：`src/mods/mod-biz-alpha/implementation.ts`, `src/mods/mod-biz-alpha/slots/AlphaWorkspace.ts`, `test/mods/biz-alpha/e2e.spec.ts`
+  - 具体正面动作：将通过守恒检验的核算批次写入受控 `DATA` 区，更新 `ledger/changes.jsonl` 并通过 G1 至 G7 核验。
+  - 一键验收命令：`pnpm vitest run test/mods/biz-alpha/e2e.spec.ts`

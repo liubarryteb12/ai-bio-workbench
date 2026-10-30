@@ -1,0 +1,31 @@
+文件落盘路径：docs/modules/mod-portal-sync/mod-portal-sync-aims-总目标-20261028.txt
+
+```
+
+```text
+一、 模块定位（What & Why）
+mod-portal-sync 是挂载在微内核插座上的团队分享协同与签名交付打包业务卡带（Adapter）。它负责通过 DeliverableCollector 与 CapabilityBus 只读收集各业务模块的已验证产物与结构化状态（如行囊团队旅游行程、账单分摊或分析交付包），调用 sync-engine 执行 512KB 定额分片、Ed25519 数字签名封包，并支持基于智能手机局域网的点对点分享或出站单向（Outbound-Only，零入站端口暴露）同步收发。
+
+二、 负面清单（Anti-Goals）
+1. 严禁把手机放在家里当暴露公网端口的远程算力主机进行外网直连控制，严禁宣称或实现无签名裸文件的断网传文件兜底功能。
+2. 严禁在导出的交付包中夹带 Ed25519 私钥明文。
+3. 严禁跳过 DeliverableCollector 的四元组 SHA256 核验而直接打包未验证的半成品文件（防 G2）。
+4. 严禁直接 import `mod-biz-alpha`、`mod-biz-beta` 或 `mod-template-studio` 的内部源码文件。
+
+三、 三阶段业务目标与边界规格（Specs & Edge Cases）
+1. 【阶段Ⅰ：基础落地 (Foundation Landing)】
+   - 落地 `src/mods/mod-portal-sync/manifest.ts` 与私有存储表 `sync_manifests`、`sync_chunks`（支持本地 IndexedDB/SQLite 原子事务）。
+   - 定义分片封包契约：单分片严格小于等于 524,288 字节（512KB），每个分片独立计算 SHA256，全包生成根默克尔树摘要并附加 Ed25519 64 字节签名。
+2. 【阶段Ⅱ：相关配套 (Supporting Facilities)】
+   - 挂载 `PathGuard`，所有导入导出暂存文件强制限定在 `CACHE/portal-sync/` 与 `DATA/deliverables/` 目录内。
+   - 建立全入口异常测试矩阵（Execution Matrix）：覆盖空包输入、单分片超 512KB、分片序号断裂、签名被篡改 1 比特、重放旧时间戳包 5 类异常边界，确保 100% 触发预期退出码（`1` 或 `2`）并清理残卷。
+3. 【阶段Ⅲ：功能实现 (Feature Implementation)】
+   - 挂载 `topbar.action` 插槽，提供一键组建旅游团/协同组分享包导出与导入验签交互入口。
+   - 通过 `CapabilityBus` 只读拉取已激活卡带的摘要元数据，完成端到端 `.packlet.json` 签名交付包落盘，并通过 G1 至 G7 终验。
+
+四、 完成定义（DoD）与量化验收台账
+| 验收项编号 | 验收判据描述 | 期望退出码 | 一键验证命令 |
+| :--- | :--- | :--- | :--- |
+| DOD-SYNC-01 | 物理拔除 `src/mods/mod-portal-sync` 后宿主编译与运行 100% 正常 | 0 | `pnpm vitest run test/mods/portal-sync/zero-touch.spec.ts` |
+| DOD-SYNC-02 | 导出大于 2MB 产物时自动切分为大于等于 4 个 512KB 分片且 Ed25519 验签通过 | 0 | `pnpm vitest run test/mods/portal-sync/packlet.spec.ts` |
+| DOD-SYNC-03 | 篡改任意分片 1 字节后导入，立即返回退出码 1 并清空临时解压目录 | 0 | `pnpm vitest run test/mods/portal-sync/tamper-reject.spec.ts` |

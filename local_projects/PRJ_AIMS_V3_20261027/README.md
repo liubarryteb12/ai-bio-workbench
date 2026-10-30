@@ -7,7 +7,7 @@
 | 类别 | 文件数 |
 |---|---:|
 | data | 195 |
-| figures | 166 |
+| figures | 186 |
 | deliverables | 317 |
 | debug | 0 |
 

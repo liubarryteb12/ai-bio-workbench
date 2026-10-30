@@ -1,0 +1,30 @@
+文件落盘路径：docs/modules/mod-template-studio/mod-template-studio-aims-总目标-20261028.txt
+
+```
+
+```text
+一、 模块定位（What & Why）
+mod-template-studio 是负责 SCI 出版级生信图表（火山图、WGCNA 模块相关性热图、Lasso 系数路径图、单细胞 UMAP 图）与个人消费结构可视化母版管理、参数定制派生及真实渲染驱动的可视化画布卡带 C（Adapter）。它严格执行全局母版（`templates/`）物理只读保护，任何项目级参数定制一律在 `adapt/` 目录下生成带 `# Master-SHA256` 对账头的派生副本，并后置挂载 `plot-engine` 真实执行渲染，强制输出 300 DPI、纯水平显著性连线且像素方差 $\sigma > 0$ 的高质量图像产物。
+
+二、 负面清单（Anti-Goals）
+1. 严禁直接修改或覆盖 `src/mods/mod-template-studio/templates/` 下的任何原始母版文件（禁区二）。
+2. 严禁只生成 `adapt/` 派生脚本却不调用 `plot-engine` 产出真实图像文件的假闭环行为（门禁 G2）。
+3. 严禁生成带斜线或折线显著性标注、分辨率低于 300 DPI、或全白/全黑（像素方差 $\sigma \le 0$）的图表产物。
+4. 严禁横向直接 import 其他 `mod-*` 的源码文件。
+
+三、 三阶段业务目标与边界规格（Specs & Edge Cases）
+1. 【阶段Ⅰ：基础落地 (Foundation Landing)】
+   - 落地 `src/mods/mod-template-studio/manifest.ts`、只读母版 `templates/sci-horizontal-plot.tpl` 与私有表 `studio_templates`、`studio_derivatives`。
+   - 实现母版 SHA256 计算与派生副本首行 `# Master-SHA256: <64-hex>` 强制注入与反向验真器。
+2. 【阶段Ⅱ：相关配套 (Supporting Facilities)】
+   - 挂载 `plot-engine` 的 300ms 防抖自动保存与全入口渲染验证矩阵（Plot Matrix）：遍历全部配色方案、字体字号、显著性连线高度参数组合（拒绝抽样，100% 全矩阵执行，防 G3）。
+   - 实现几何与像素双重自校验：显著性连线两端纵坐标必须严格相等（$y_1 \equiv y_2$，纯水平连线），输出图像 DPI 元数据必须等于 300，像素方差 $\sigma > 0$；任一不满足立即物理删除残缺图像并返回退出码 `1`。
+3. 【阶段Ⅲ：功能实现 (Feature Implementation)】
+   - 挂载 `workspace.main` 与 `inspector.panel` 插槽，通过 `CapabilityBus` 只读消费 `bizAlpha.getConsumptionSummary` 与 `bizBeta.getAnalysisDigest` 数据，真实驱动渲染落盘并通过 G1 至 G7 终验。
+
+四、 完成定义（DoD）与量化验收台账
+| 验收项编号 | 验收判据描述 | 期望退出码 | 一键验证命令 |
+| :--- | :--- | :--- | :--- |
+| DOD-TPL-01 | 派生脚本首行精确包含母版真实 `# Master-SHA256`，且原始母版 SHA256 零变化 | 0 | `pnpm vitest run test/mods/template-studio/master-readonly.spec.ts` |
+| DOD-TPL-02 | 传入非水平显著性连线（$y_1 \neq y_2$）或空白图像字节流时，100% 删除残卷并返回退出码 1 | 0 | `pnpm vitest run test/mods/template-studio/plot-validator.spec.ts` |
+| DOD-TPL-03 | 全入口 Plot Matrix 所有参数组合 100% 真实派生并产出 300 DPI 图像文件（防 G2、G3） | 0 | `pnpm vitest run test/mods/template-studio/plot-matrix.spec.ts` |

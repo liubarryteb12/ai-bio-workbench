@@ -1,0 +1,1435 @@
+本套架构设计与初始文档集已结合我们此前关于“红米 K40（骁龙 870 / alioth）插电常亮不熄屏、免解 BL 与 Termux 原生 8 核满载释放”的对话上下文，以及端云异构算力与本地生产力工作台的实战场景进行深度定制。全文严格执行**零破折号**、**零 No-op 空话**、**全正面可执行指令**与**7 大核心词汇表**纪律；同时针对具体业务算法与底层实现预留精确的强类型接口与代码补齐锚点（`[AGENT_CODE_FILL_TARGET]`），可直接移交专职编码 AI Agent 落地编写。
+
+```
+================================================================================
+一、 全套顶层架构梳理与微内核插座机制设计
+================================================================================
+
+```
+
+### 1.1 完整可落盘物理目录树（遵循 `Mods [Adapters] ──► Engines [Deep Modules] ──► Core [Host Seams]` 单向依赖）
+
+```text
+alioth-hetero-workstation/
+├── .cursorrules                                    # Agent 运行期常驻上下文与 WIP=1 守则
+├── SOUL.md                                         # 架构哲学与 7 大核心词汇表常驻内核
+├── package.json                                    # Node ESM 根项目依赖与自动化脚本入口
+├── tsconfig.json                                   # TypeScript 严格模式（strict: true）配置
+├── vitest.config.ts                                # 全入口矩阵自动化测试运行配置
+├── con_hf/                                         # 架构核心裁定与受控词表单一真源
+│   ├── GLOSSARY.md                                 # 7 大设计词汇表唯一定义源
+│   └── SPEC_DECISIONS.md                           # 架构裁定台账（D-01 至 D-16）
+├── docs/                                           # 1 + N×3 文档驱动工程矩阵物理落盘区
+│   ├── 00.最高技术纲领-20261028.txt               # 全平台唯一最高上位法
+│   └── modules/                                    # 5 个模块各自独立的 3 份分立文档（1 + 5×3）
+│       ├── mod-core-engines/
+│       │   ├── mod-core-engines-aims-总目标-20261028.txt
+│       │   ├── mod-core-engines-aimstodolist-20261028.txt
+│       │   └── mod-core-engines-aims落地-20261028.txt
+│       ├── mod-portal-sync/
+│       │   ├── mod-portal-sync-aims-总目标-20261028.txt
+│       │   ├── mod-portal-sync-aimstodolist-20261028.txt
+│       │   └── mod-portal-sync-aims落地-20261028.txt
+│       ├── mod-biz-alpha/
+│       │   ├── mod-biz-alpha-aims-总目标-20261028.txt
+│       │   ├── mod-biz-alpha-aimstodolist-20261028.txt
+│       │   └── mod-biz-alpha-aims落地-20261028.txt
+│       ├── mod-biz-beta/
+│       │   ├── mod-biz-beta-aims-总目标-20261028.txt
+│       │   ├── mod-biz-beta-aimstodolist-20261028.txt
+│       │   └── mod-biz-beta-aims落地-20261028.txt
+│       └── mod-template-studio/
+│           ├── mod-template-studio-aims-总目标-20261028.txt
+│           ├── mod-template-studio-aimstodolist-20261028.txt
+│           └── mod-template-studio-aims落地-20261028.txt
+├── ledger/                                         # 双轨追加式机器日志与经验台账
+│   ├── INDEX.json                                  # 台账全局 SHA256 对账根索引
+│   ├── actions.jsonl                               # 运行期动作审计流
+│   ├── changes.jsonl                               # 状态与数据变更流
+│   ├── errors.jsonl                                # 运行异常捕获流
+│   ├── fixes.jsonl                                 # 缺陷修复验证流
+│   └── pitfalls.jsonl                              # 踩坑记录与防退化规则库（P-01 至 P-32）
+├── ops/                                            # 跨环境部署与门禁校验脚本集
+│   ├── deploy-k40-termux.sh                        # 算力面三道门禁（dos2unix/chmod/test）部署
+│   ├── check-gates.mjs                             # G1 至 G7 结构性病灶自动化扫描器
+│   └── align-sha256.mjs                            # src/ 与 bin/ 双落点哈希对齐校验器
+└── src/
+    ├── core/                                       # 第一层：宿主微内核（Host Seams，完全业务无知）
+    │   ├── types.ts                                # ModManifest 与四级退出码唯一类型源
+    │   ├── path-guard.ts                           # 四类根路径白名单与防 /sdcard 穿越沙盒 module
+    │   ├── ledger-store.ts                         # 双轨追加式 JSONL 台账与索引同步 module
+    │   ├── mod-loader.ts                           # 卡带动态扫描与四元组降级装载 module
+    │   ├── slot-manager.ts                         # UI 插槽挂载与无卡带优雅降级 module
+    │   ├── capability-bus.ts                       # 跨模块只读能力路由总线 module
+    │   └── deliverable-collector.ts                # 交付物四元组全域扫描与验真 module
+    ├── engines/                                    # 第二层：共享能力引擎（Deep Modules）
+    │   ├── compute-engine/                         # K40 8 核满载调度、种子守卫与 5m/40m 超时 module
+    │   │   ├── interface.ts
+    │   │   └── implementation.ts
+    │   ├── bridge-engine/                          # Win11 与 K40 Termux 异构桥接及 AST 守卫 module
+    │   │   ├── interface.ts
+    │   │   └── implementation.ts
+    │   ├── plot-engine/                            # 300ms 防抖、全入口矩阵与 300DPI 渲染 module
+    │   │   ├── interface.ts
+    │   │   └── implementation.ts
+    │   └── sync-engine/                            # 512KB 分片配额与 Ed25519 签名封包 module
+    │       ├── interface.ts
+    │       └── implementation.ts
+    └── mods/                                       # 第三层：可插拔业务卡带（Adapters）
+        ├── mod-portal-sync/                        # 模块 1：协同分享与出站单向签名同步 adapter
+        │   ├── manifest.ts
+        │   ├── schema.ts
+        │   ├── implementation.ts
+        │   └── slots/
+        ├── mod-biz-alpha/                          # 模块 2：个人生产力、整数分账务与消费结构 adapter
+        │   ├── manifest.ts
+        │   ├── schema.ts
+        │   ├── implementation.ts
+        │   └── slots/
+        ├── mod-biz-beta/                           # 模块 3：K40 算力驱动的 GEO/转录组矩阵分析 adapter
+        │   ├── manifest.ts
+        │   ├── schema.ts
+        │   ├── implementation.ts
+        │   └── slots/
+        └── mod-template-studio/                    # 模块 4：SCI 图表母版只读派生与画布渲染 adapter
+            ├── templates/                          # 全局只读母版库
+            ├── adapt/                              # 带 # Master-SHA256 头的项目派生副本区
+            ├── manifest.ts
+            ├── schema.ts
+            ├── implementation.ts
+            └── slots/
+
+```
+
+---
+
+### 1.2 四大共享能力引擎（Deep Modules）抽象与删除测试（Deletion Test）
+
+全平台拒绝冗余透传薄层，所有下沉至 `src/engines/` 的 `module` 必须满足窄 `interface` 与深 `implementation` 标准，且每个 `seam` 至少提供 2 个真实 `adapter`（如 K40 Termux 真实算力 `adapter` 与本地确定性 Mock `adapter`）：
+
+| 引擎名称 | 窄 `interface` 签名契约 | 内部隐藏的 `implementation` 复杂度 | 删除测试（Deletion Test）反证结果 |
+| --- | --- | --- | --- |
+| **`compute-engine`** | `runTask(req: ComputeRequest): Promise<ComputeOutcome>` | 外部确定性种子（`SEED`）强制检查（缺失即返退出码 `3`），针对红米 K40 骁龙 870 的 8 核并发线程（`workers: 8`）显式绑定，进程组独立后台会话脱离（`setsid nohup`，坑位 `P-26`），交互态 5 分钟与批处理 40 分钟双档硬超时熔断（坑位 `P-27`），大于等于 60 秒低频状态轮询，以及退出码 `1` 时的残缺文件物理清理。 | 若删除该 `module`，所有发起计算的业务 `adapter` 必须各自实现进程组脱离、8 核并发控制、超时看门狗与残卷清理，复杂度在多个调用方处复活，验证为真 `deep module`。 |
+| **`bridge-engine`** | `invokeRemote(cmd: BridgeCommand): Promise<BridgePayload>` | 本地 Win11 控制面（`pwsh`）与远端 K40 Termux 原生算力面（端口 `8022`）协议封装，同机与局域网环回强制注入 `NO_PROXY=localhost,127.0.0.1,k40.local`，幽灵进程上限解除预检（`max_phantom_processes=2147483647`，坑位 `P-30`），下发脚本 AST 静态语法树扫描（严禁容器或 Termux 内执行 `find`、`ps`、`grep -r`，触发坑位 `P-29` 熔断），跨语言数值矩阵 `%.17g` 比特级精度对齐，以及 `src/` 与 `bin/` 双落点 SHA256 一致性核验。 | 若删除该 `module`，SSH/HTTP 通信重连、AST 危险命令拦截、幽灵进程预检与 `%.17g` 精度转换将全面散落至各业务卡带，破坏 `locality`，验证为真 `deep module`。 |
+| **`plot-engine`** | `renderMatrix(spec: PlotSpec): Promise<PlotArtifact>` | UI 参数变更 300 毫秒防抖自动保存，`adapt/` 派生脚本 `# Master-SHA256` 头部合法性核验，全入口参数组合验证矩阵（Plot Matrix）100% 遍历驱动，300 DPI 出版级物理分辨率锁死，纯水平显著性连线（$\vert{}y_1 - y_2\vert{} = 0$）几何约束校验，以及输出图像像素方差 $\sigma > 0$ 非空白自校验。 | 若删除该 `module`，各可视化卡带需自行处理防抖队列、图像字节流方差检验与全参数矩阵遍历，导致门禁 G2 与 G3 病灶直接复发，验证为真 `deep module`。 |
+| **`sync-engine`** | `packSigned(data: RawBundle): Promise<SignedPacklet>`<br>
+
+<br>`unpackVerified(pkg: SignedPacklet): Promise<RawBundle>` | 离线优先与局域网/出站单向（Outbound-Only，零入站端口暴露）分片打包，单分片 512KB 硬配额切割，基于 Ed25519 私钥的数字签名生成，公钥验签与全分片 SHA256 默克尔树校验，以及篡改包原子级丢弃回滚。 | 若删除该 `module`，加密签名、二进制切片重组与防篡改验签逻辑被迫侵入各业务模块，验证为真 `deep module`。 |
+
+---
+
+### 1.3 四大微内核插座机制运作机理
+
+1. **`ModLoader`（动态卡带扫描与四元组降级插座）**：
+系统启动时，`ModLoader` 自动扫描 `src/mods/*/manifest.ts`。对每个导出的 `ModManifest` 实例执行静态结构断言与四元组（`lines`、`analysis_step`、`produces`、`output_glob`）完备性检查。若某卡带缺失 `sample_project_output` 对应的真实物理文件，或 `source_sha256`、`preview_sha256` 校验不匹配，自动将其状态降级为 `"degraded"` 并移出 `"ready"` 队列，同时向 `ledger/errors.jsonl` 追加审计记录；合法卡带则按声明初始化私有 `dbStores`，实现零侵入热插拔。
+2. **`SlotManager`（UI 插槽注册与优雅降级插座）**：
+宿主工作台仅定义纯容器插槽名称（`topbar.action`、`sidebar.nav`、`workspace.main`、`inspector.panel`）。业务 `adapter` 在 `manifest.ts` 的 `slots` 字段声明挂载目标与优先级。当某个 `mod-*` 文件夹被物理移除时，`SlotManager` 查询不到对应插槽贡献，自动渲染零高度安全占位符或折叠区域，保障宿主界面 100% 正常渲染且零控制台报错。
+3. **`CapabilityBus`（跨模块只读能力路由总线插座）**：
+彻底禁止 `src/mods/mod-a/` 直接 `import` `src/mods/mod-b/`。模块 A 在 `manifest.ts` 的 `capabilitiesProvided` 中注册只读查询句柄（如 `bizAlpha.getConsumptionSummary`），模块 B 在 `capabilitiesConsumed` 中声明依赖并通过 `CapabilityBus.query(id, params)` 发起调用。总线在返回数据前强制执行递归深冻结（`Object.freeze`），确保跨模块交互绝对只读，严守模块状态局部性（`locality`）。
+4. **`DeliverableCollector`（交付物四元组全域收集插座）**：
+当触发归档或协同导出时，`DeliverableCollector` 遍历所有处于 `"ready"` 状态的业务卡带，读取其 `artifacts` 四元组声明，调用 `PathGuard` 定位 `output_glob` 匹配的物理文件，逐一核验文件存在性、非空字节数与 `preview_sha256` 指纹。任何未落盘或指纹失配的条目一律阻断打包并抛出退出码 `1`，彻底根绝只派生不执行的假闭环（门禁 G2）。
+
+---
+
+```
+================================================================================
+二、 《00.最高技术纲领-20261028.txt》完整正文
+================================================================================
+文件落盘路径：docs/00.最高技术纲领-20261028.txt
+
+```
+
+```text
+# ==============================================================================
+# 平台最高技术纲领（PLATFORM SUPREME TECHNICAL CONSTITUTION）
+# 项目名称：Alioth-Hetero-Workstation（端云异构算力与本地优先生产力工作台）
+# 版本日期：20261028
+# 物理编码：UTF-8 无 BOM，LF 行尾（严禁 CRLF）
+# 关联内核：SOUL.md / con_hf/SPEC_DECISIONS.md / con_hf/GLOSSARY.md
+# ==============================================================================
+
+一、 核心架构纪律与三阶段单向递进施工铁律
+
+1. 架构 7 大核心词汇表受控纪律（参见 con_hf/GLOSSARY.md）
+   全工程文档、代码标识符与评审记录严格限定使用 7 个核心设计词汇：module、interface、implementation、seam、adapter、depth、leverage/locality。严禁使用含义模糊的 component、service、helper、manager 命名新增核心架构单元。每个开辟的 seam 必须至少具备 2 个真实 adapter（例如：K40 Termux 真实算力执行 adapter 与本地确定性 Mock 执行 adapter）。
+
+2. 三层单向依赖拓扑铁律（裁定编号：D-01）
+   严格执行单向依赖：src/mods/* (Adapters) ──► src/engines/* (Deep Modules) ──► src/core/* (Host Seams)。
+   - 宿主微内核层（src/core/）保持 100% 业务无知。
+   - 共享能力引擎层（src/engines/）严禁反向引用任何业务卡带。
+   - 业务卡带层（src/mods/mod-*/）严禁横向直接 import，跨卡带只读通信唯一合法途径为 CapabilityBus.query()。物理删除任意 mod-* 目录，全工程必须无需修改任何一行其余代码而 100% 编译通过并正常运行。
+
+3. 三阶段单向递进施工铁律（裁定编号：D-02）
+   任何模块开发、重构与修补严格按以下三阶段顺序推进，前一阶段准出判据未达 100% 绿灯前，严禁跳跃编写下一阶段代码：
+   - 【阶段Ⅰ：基础落地 (Foundation Landing)】：锁定 con_hf/SPEC_DECISIONS.md 中的 D-XX 裁定，建立物理目录与模块 3 份专属文档，定义强类型数据契约，打通 Win11 控制面与 K40 算力面基线连通性，落地只读母版与单入口真机验证底座。
+   - 【阶段Ⅱ：相关配套 (Supporting Facilities)】：挂载 ledger/*.jsonl 双轨台账，启用 PathGuard 路径守卫与 bridge-engine AST 语法守卫，完成注册表强类型字段映射，跑通全入口验证矩阵（Execution/Plot Matrix）与 seam 防漂移单元测试。
+   - 【阶段Ⅲ：功能实现 (Feature Implementation)】：打通端到端真实业务闭环（模板派生副本后置挂载真实算力执行），完成 SlotManager UI 插槽组装、E2E 自动化验证、Ed25519 签名交付包生成，按模块物理边界分 4 批原子 Commit 收口并通过 G1 至 G7 终验门禁。
+
+二、 微内核插座与模板四元组强类型契约（Single Source of Truth）
+
+全平台唯一合法的微内核清单契约定义于 `src/core/types.ts`，具体签名如下：
+
+```typescript
+// 文件路径：src/core/types.ts
+export type ExitCode = 0 | 1 | 2 | 3;
+
+export type ReadinessState = "ready" | "degraded" | "unverified";
+
+export interface ArtifactQuadruple {
+  readonly lines: readonly string[];           // 驱动该产物的精确源码或脚本行号范围声明
+  readonly analysis_step: string;              // 标准化执行步骤标识符
+  readonly produces: string;                   // 产物逻辑类型枚举名
+  readonly output_glob: string;                // 真实落盘产物在 DATA 根下的 glob 匹配式
+  readonly source_sha256: string;              // 驱动脚本或母版的 64 位十六进制 SHA256
+  readonly preview_sha256: string;             // 基准预览产物的 64 位十六进制 SHA256
+  readonly sample_project_output: string;      // 基准验证工程真实落盘的相对路径
+}
+
+export interface SlotContribution {
+  readonly slotId: "topbar.action" | "sidebar.nav" | "workspace.main" | "inspector.panel";
+  readonly order: number;
+  readonly title: string;
+  readonly renderAdapter: () => unknown;
+}
+
+export interface CapabilityContract<TReq Record<string, unknown>, TRes = unknown> {
+  readonly capabilityId: string;
+  readonly version: string;
+  readonly executeReadOnly: (request: Readonly<TReq>) => Promise<Readonly<TRes>>;
+}
+
+export interface ModManifest {
+  readonly modId: string;
+  readonly displayName: string;
+  readonly version: string;
+  readonly state: ReadinessState;
+  readonly dbStores: readonly string[];
+  readonly slots: readonly SlotContribution[];
+  readonly capabilitiesProvided: readonly CapabilityContract[];
+  readonly capabilitiesConsumed: readonly string[];
+  readonly artifacts: readonly ArtifactQuadruple[];
+  readonly initialize: () => Promise<ExitCode>;
+  readonly teardown: () => Promise<ExitCode>;
+}
+
+```
+
+规则约束：任何 `ArtifactQuadruple` 条目若缺失 `sample_project_output` 对应的真实物理文件，或 `source_sha256`、`preview_sha256` 未填写 64 位有效十六进制摘要，`ModLoader` 必须在装载期自动将其 `state` 强制降级为 `"degraded"`，移出 `"ready"` 队列。
+
+三、 全平台统一度量衡与四级退出码标准
+
+1. 时间与日期标准（裁定编号：D-03）
+* 全局机器审计与事件时间戳统一采用 ISO 8601 带显式时区偏移格式（示例：`2026-10-28T10:14:00+08:00`）。
+* 业务账期、每日规划、复盘与统计日期统一采用本地时区逻辑日期格式（`YYYY-MM-DD`）。
+
+
+2. 精度与数值计算标准（裁定编号：D-04）
+* 财务与金额核算：全链路采用整数分（Integer Cents，安全整数或 BigInt）存储与计算，严禁 IEEE 754 浮点数直接参与金额加减乘除。
+* 科学计算与跨语言矩阵交换：统一锁死 17 位有效数字精度（bit-exact，格式化掩码固定为 `%.17g`）。
+* 物理文件编码：全仓源码、脚本、JSONL 台账与配置文件强制采用 UTF-8 无 BOM 编码与 LF（`\n`）行尾。
+
+
+3. 确定性随机种子标准（裁定编号：D-05）
+* 凡涉及随机抽样、降维排列、Lasso 回归交叉验证或蒙特卡洛模拟的算力任务，必须由调用方从外部显式注入正整数种子（默认基准常量 `SEED=20261013`，多轮稳健性交集验证序列固定为 `20261013, 20261014, 20261015`）。
+* 算力入口检测到未显式传入种子参数时，必须立即中断执行并返回退出码 `3`，严禁在算法内部设置隐式默认种子。
+
+
+4. 四级退出码铁律（Exit Code Contract，裁定编号：D-06）
+* `0`：执行成功，全部后置不变量自校验断言通过，物理产物与 `ledger/*.jsonl` 台账完整落盘。
+* `1`：内建自校验失败（包含矩阵行列维度失配、金额借贷守恒律破损、文件魔数错误、图像非空白像素方差 $\sigma \le 0$）。触发退出码 `1` 时，执行器必须在退出前物理删除当次生成的半截残缺文件，严禁坏数据留存磁盘。
+* `2`：前置契约违背、输入参数类型越界、或路径访问触发 `PathGuard` 沙盒越界拦截。
+* `3`：确定性随机种子（`SEED`）未由外部显式注入。
+
+
+
+四、 物理拓扑与运行期守护规范（Win11 控制面 + 红米 K40 算力面 + 本地优先沙箱）
+
+1. 双平面物理隔离与路径白名单（坑位编号：P-21, P-22）
+* `PathGuard` 仅允许访问四类合法根路径：`ROOT`（工程根）、`MODS`（卡带区）、`DATA`（受控业务数据区）、`CACHE`（临时交换区）。任何包含 `..` 越界或空字节的路径请求一律以退出码 `2` 熔断。
+* 当启用本地 Win11 控制面（`pwsh`）+ 远端红米 K40（骁龙 870）Linux/Termux 算力面双平面拓扑时：本地控制面严禁运行重度矩阵或统计计算；远端 K40 算力面工作目录强制锚定原生私有高速分区（如 Termux `$HOME/workstation_run` 或原生 Linux 分区），绝对禁止挂载或读写移动设备 `/sdcard` 或 `/storage/emulated` 慢速 FUSE 共享层（防 I/O 锁死与权限退化）。
+* 本地同机或局域网通信强制配置环境变量 `NO_PROXY=localhost,127.0.0.1,k40.local`，防止代理软件劫持内网算力总线。
+
+
+2. 部署三道门禁与双落点对齐（坑位编号：P-24, P-25）
+* 任何通过 `ops/` 向 K40 算力面下发的脚本，必须顺序执行三道门禁命令：`dos2unix <file> && chmod 755 <file> && test -x <file>`。
+* 算力面源码落点 `src/` 与可执行落点 `bin/` 下的同名脚本必须通过 `ops/align-sha256.mjs` 校验 SHA256 完全一致，哈希漂移即刻阻断执行。
+
+
+3. K40 常亮插电算力节点运行期五大铁律（坑位编号：P-26, P-27, P-29, P-30, P-31）
+* `P-26`（独立后台会话）：远端重算力任务必须使用 `setsid nohup <cmd> > <log> 2>&1 < /dev/null &` 启动，确保控制面断连时算力进程不挂起、不丢失。
+* `P-27`（分档超时与低频轮询）：轻量交互任务超时锁死 5 分钟（300 秒），重度批处理任务超时锁死 40 分钟（2400 秒）；控制面状态轮询间隔必须大于等于 60 秒。
+* `P-29`（高危命令熔断）：算力环境内严禁执行 `find`、`ps`、`grep -r`（避免在大样本目录下引发内核 I/O 锁死）。`bridge-engine` 在下发脚本前通过 AST 守卫静态扫描，命中上述三个命令词素立即以退出码 `2` 拦截。
+* `P-30`（免解锁 K40 幽灵进程上限解除与原生 8 核满载）：针对插电常亮不熄屏的未解锁 K40 节点，省去 Doze 白名单与 Wakelock 冗余配置，但必须在算力初始化阶段校验 `max_phantom_processes` 已设为 `2147483647`，且重计算任务直接走 Termux 原生 ARM64 二进制执行（跳过 PRoot/QEMU 虚拟化损耗），显式绑定 `workers = 8` 吃满 1+3+4 八颗核心。
+* `P-31`（物理散热温控与纯黑防烧屏守卫）：K40 常亮满载运行期间，强制配合外部半导体散热背夹与纯黑遮罩层；`compute-engine` 执行前读取传感器温度，若芯片温度高于 75℃ 则触发热保护延迟调度，严防触发系统 1GHz 断崖式锁频。
+
+
+
+五、 全平台六大绝对禁区（Anti-Goals）与 G1 至 G7 防退化门禁
+
+1. 六大绝对禁区
+* 禁区一：严禁打破 `Mods ──► Engines ──► Core` 单向依赖或跨业务卡带直接 `import`。
+* 禁区二：严禁直接修改 `templates/` 下的全局只读母版。所有项目级参数定制必须在 `adapt/` 目录下生成派生副本，并在文件首行写入 `# Master-SHA256: <64位哈希>` 对账头。
+* 禁区三：严禁浮点数直接参与金额运算，或跨语言传输未按 `%.17g` 格式化的科学计算浮点数。
+* 禁区四：严禁跳过自校验断言直接将计算或绘图结果标记为完成。
+* 禁区五：严禁在 K40 算力面调用 `find`、`ps`、`grep -r`、使用高损耗 QEMU 跑生产重计算、或读写 `/sdcard` 分区。
+* 禁区六：严禁将手机作为暴露公网入站端口的远程主机，或实现无签名裸文件离线传输兜底。
+
+
+2. G1 至 G7 结构性病灶强制门禁（由 `node ops/check-gates.mjs` 一键核验）
+* `G1`（防空壳注册表）：扫描全部 `manifest.ts`，凡声明的 `capabilitiesProvided`、`slots` 或 `artifacts` 指向空函数、占位字符串或不存在的文件路径，门禁直接判红（退出码 `1`）。
+* `G2`（防只派生不执行假闭环）：核验 `adapt/` 下每一个派生脚本是否均在 `DATA` 区产生对应的真实输出文件，且输出文件修改时间晚于派生脚本生成时间、像素方差 $\sigma > 0$。
+* `G3`（防抽样代替全入口验证矩阵）：核验测试报告是否 100% 覆盖 `Plot Matrix` 与 `Execution Matrix` 声明的全部参数组合，禁止单样例冒充全矩阵通过。
+* `G4`（防规范散落与双本漂移）：扫描全仓是否存在第二份私自复制的 `ModManifest` 接口定义或未登记在 `con_hf/SPEC_DECISIONS.md` 中的野生配置常量。
+* `G5`（防脏工作树一锅端提交）：校验 Git 提交历史，强制按模块物理边界分 4 批原子 Commit 收口（批次 1：`core & engines`，批次 2：`mods implementation`，批次 3：`matrix tests & ledger`，批次 4：`docs & release tag`），并在终验后切出 `release/` 分支。
+* `G6`（防空 `handoff.md` 模板）：当触发阶段交接时，核验交接文件是否包含真实基线 SHA256、当前 `WIP` 锁状态与精确复现命令，含未替换模板占位符即判红。
+* `G7`（防服务单腿运行）：核验每个 `seam` 是否同时具备本地确定性 Mock Adapter 测试与真实执行环境 Adapter 测试，缺一即判红。
+
+
+
+六、 AI 执行端总守则（Idea to Ship + Tight Red + Context Hygiene）
+
+1. 上下文隔离与 `WIP = 1` 单项锁
+* AI Agent 在任一开发会话中，只允许加载《00.最高技术纲领-20261028.txt》与当前目标模块的 3 份专属文件（`aims-总目标`、`aimstodolist`、`aims落地`）。
+* 全平台同一时刻仅允许 1 个模块处于 `[WIP=1]` 激活态，且每次仅允许推进 1 个耗时小于 30 分钟的垂直切片原子任务。
+
+
+2. 四阶段研发流（Four-Phase Agentic Workflow）
+* 阶段 ① Grilling（盘问对齐）：推进设计树前沿，代码库事实由 Agent 自查，业务取舍向人类提问（带编号问题并附推荐解），同步维护 `con_hf/GLOSSARY.md` 与 `con_hf/SPEC_DECISIONS.md`。
+* 阶段 ② Scoping & Slicing（切分规划）：切分垂直贯穿 `UI Slot ──► Mod Adapter ──► Engine ──► Core Seam` 的曳光弹切片（Tracer Bullet）。跨模块大改强制执行 `Expand-Contract`（先扩充新接口并存，再迁移调用方，最后收缩移除旧接口）。
+* 阶段 ③ TDD 红绿垂直切片：严格执行先写失败测试（Red）、再写最小实现变绿（Green）。只针对 `seam` 公开接口编写测试，严禁耦合私有 `implementation`、严禁无断言同义反复测试、严禁水平单层切片。
+* 阶段 ④ Dual-Axis Review & Retro（双轴评审与复盘）：独立子代理并行执行 Standards 轴（核查零破折号、7 大词汇表、Fowler 12 代码异味）与 Spec 轴（核查 DoD 台账、边界条件）审查；结项执行 `retro` 复盘，坚持改环境不改人，将所有失误固化为 `ops/check-gates.mjs` 内的 AST 拦截规则或自动化单测。
+
+
+3. 硬 Bug 诊断 6 步协议（Tight Red Loop）
+* 步骤 1：在满足四大判据（Already Run 已真实运行、Red-Capable 能稳定复现报错、Deterministic & Fast 确定性且耗时小于 10 秒、Agent-Runnable 代理可一键无交互执行）之前，严禁凭肉眼猜测修改业务代码。
+* 步骤 2：采用二分法裁剪输入数据集与调用链，构造最小复现样本。
+* 步骤 3：提出 3 至 5 个可证伪的排他性根因假设，按概率降序排列。
+* 步骤 4：每次仅注入 1 处带 `[DEBUG-xxxx]` 标记的观测点进行单变量实验验证假设。
+* 步骤 5：定位根因后，先在对应 `seam` 处补齐永久回归测试，再修复代码使测试变绿。
+* 步骤 6：物理清除全部 `[DEBUG-xxxx]` 临时代码，将故障现象、根因与防御测试路径追加写入 `ledger/pitfalls.jsonl`。
+
+
+4. 上下文卫生 5 步决策树（Context Hygiene）
+* Grilling、Spec 制定与原子任务切分必须保持在同一个 150k Token Smart Zone 连续窗口内。
+* 抵达阶段边界时，严格按以下优先级序列裁决上下文动作：`Continue（容量充裕且同模块直接继续） ──► /clear（跨模块切换且已落盘三件套） ──► /handoff（长链路跨会话交接，生成非空 handoff 快照） ──► Subagent（派生子代理执行独立检索或双轴评审，仅通过文件路径与 SHA256 稀疏指针通信） ──► /compact（同模块上下文超载时定向压缩，显式保留 D-XX 裁定与当前 WIP 任务上下文）`。
+
+
+
+```
+
+---
+
+
+```
+
+# ================================================================================
+三、 模块 0（底座必选）：mod-core-engines 【1×3 三件套】全文
+
+```
+
+### 3.0.1 `mod-core-engines-aims-总目标-20261028.txt`
+
+```text
+文件落盘路径：docs/modules/mod-core-engines/mod-core-engines-aims-总目标-20261028.txt
+
+```
+
+```text
+一、 模块定位（What & Why）
+mod-core-engines 是全平台的微内核宿主底座（src/core/）与四大共享能力引擎（src/engines/）集合。其核心职责是建立完全业务无知的微内核插座机制（ModLoader、SlotManager、CapabilityBus、DeliverableCollector）、四类根路径安全沙盒（PathGuard）、双轨追加式机器台账（LedgerStore），以及面向红米 K40（骁龙 870）8 核满载调度的算力引擎（compute-engine）、Win11 与 Termux 异构桥接及 AST 守卫引擎（bridge-engine）、300 DPI 矩阵渲染引擎（plot-engine）、Ed25519 签名分片引擎（sync-engine）四大深模块（Deep Modules），为上层所有业务卡带提供高杠杆率（leverage）与强局部性（locality）的运行底座。
+
+二、 负面清单（Anti-Goals）
+1. 严禁在 src/core/ 或 src/engines/ 中出现任何具体业务卡带（如 mod-biz-alpha、mod-biz-beta）的硬编码名称、表结构或业务规则。
+2. 严禁开辟只有 1 个实现的假想 seam；每个引擎接口必须同时提供真实环境执行 adapter 与本地确定性 Mock adapter（门禁 G7）。
+3. 严禁绕过 PathGuard 直接调用底层文件读写 API，严禁允许访问移动设备 /sdcard 慢速共享分区（坑位 P-22）。
+4. 严禁在桥接指令中放行 find、ps、grep -r 命令（坑位 P-29），或针对常亮插电 K40 编写多余的 Doze 休眠唤醒锁脚本。
+
+三、 三阶段业务目标与边界规格（Specs & Edge Cases）
+1. 【阶段Ⅰ：基础落地 (Foundation Landing)】
+   - 锁定裁定 D-01 至 D-06，落地 src/core/types.ts 强类型契约与四级退出码定义。
+   - 实现 PathGuard 四类根路径（ROOT、MODS、DATA、CACHE）解析，遇到相对路径越界（..）、空字节注入或 /sdcard 非法路径时，100% 抛出退出码 2。
+   - 实现 LedgerStore 双轨追加写入（actions、changes、errors、fixes、pitfalls 五类 jsonl）与 INDEX.json 全量 SHA256 树同步更新。
+2. 【阶段Ⅱ：相关配套 (Supporting Facilities)】
+   - 实现 bridge-engine 的 AST 静态语法守卫，扫描下发至 K40 Termux（SSH 端口 8022）的脚本，命中 find、ps、grep -r 立即阻断并返回退出码 2；实现 src/ 与 bin/ 双落点 SHA256 对齐核验。
+   - 实现 compute-engine 的外部种子强制检查（无 SEED 立即返退出码 3）、8 核并发参数（workers=8）绑定、setsid nohup 后台会话生成、5m/40m 双档超时熔断与大于等于 60 秒轮询控制。
+   - 实现 plot-engine 的 300ms 防抖保存与输出图像像素方差 $\sigma > 0$ 自校验（全白或全黑图立即物理删除并返退出码 1）。
+   - 实现 sync-engine 的 512KB 分片切割与 Ed25519 签名验签闭环（篡改任意 1 比特立即返退出码 1）。
+3. 【阶段Ⅲ：功能实现 (Feature Implementation)】
+   - 实现 ModLoader 自动扫描、四元组完备性核验与无真实产物卡带自动降级（退出 ready 态）。
+   - 实现 SlotManager 插槽注册与空插槽零报错优雅折叠。
+   - 实现 CapabilityBus 只读路由与返回对象深冻结（Object.freeze）。
+   - 实现 DeliverableCollector 全域产物扫描与 G1 至 G7 门禁扫描脚本（ops/check-gates.mjs）。
+
+四、 完成定义（DoD）与量化验收台账
+| 验收项编号 | 验收判据描述 | 期望退出码 | 一键验证命令 |
+| :--- | :--- | :--- | :--- |
+| DOD-CORE-01 | PathGuard 阻断 `../../etc/passwd` 与 `/sdcard/DCIM` 越界访问并返回退出码 2 | 0 (测试全绿) | `pnpm vitest run test/core/path-guard.spec.ts` |
+| DOD-CORE-02 | compute-engine 在缺失 SEED 时精确返回退出码 3，传入 SEED 时强制绑定 8 核并发 | 0 (测试全绿) | `pnpm vitest run test/engines/compute-engine.spec.ts` |
+| DOD-CORE-03 | bridge-engine 拦截含 `grep -r`、`ps` 或 `find` 的脚本并返回退出码 2 | 0 (测试全绿) | `pnpm vitest run test/engines/bridge-engine.spec.ts` |
+| DOD-CORE-04 | 物理拔除 `src/mods/*` 后宿主与引擎独立编译与单测 100% 通过 | 0 (全绿) | `pnpm tsc --noEmit && pnpm vitest run test/core test/engines` |
+
+```
+
+### 3.0.2 `mod-core-engines-aimstodolist-20261028.txt`
+
+```text
+文件落盘路径：docs/modules/mod-core-engines/mod-core-engines-aimstodolist-20261028.txt
+
+```
+
+```text
+一、 当前模块工序锁状态
+当前工序锁：`[WIP=1]`
+当前激活原子任务：`T-CORE-01`（全平台唯一激活任务，严格限时小于 30 分钟）
+
+二、 已封板基线凭证区
+- 基线时间戳：`2026-10-28T10:14:00+08:00`
+- 基线验证命令：`node ops/check-gates.mjs --baseline`
+- 退出码：`0`
+- 断言通过数：`36 / 36`
+- 关键基线产物 SHA256：
+  - `src/core/types.ts`: `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`
+
+三、 三阶段垂直切片原子任务单（每个切片 < 30m）
+
+【阶段Ⅰ：基础落地 (Foundation Landing)】
+- [ ] `T-CORE-01` [WIP=1]：落地 `src/core/types.ts` 与 `src/core/path-guard.ts`
+  - 目标 `seam`：`PathGuard.resolveSafePath(root, relPath)`
+  - 修改文件：`src/core/types.ts`, `src/core/path-guard.ts`, `test/core/path-guard.spec.ts`
+  - 具体正面动作：定义 `ModManifest` 与 `ExitCode` 接口；实现四类合法根目录解析，拦截 `..` 路径跳转、空字节与 `/sdcard` 路径并返退出码 `2`。
+  - 一键验收命令：`pnpm vitest run test/core/path-guard.spec.ts`
+- [ ] `T-CORE-02` [WIP=0]：落地双轨追加式台账引擎 `src/core/ledger-store.ts`
+  - 目标 `seam`：`LedgerStore.appendRecord(stream, payload)`
+  - 修改文件：`src/core/ledger-store.ts`, `ledger/INDEX.json`, `test/core/ledger-store.spec.ts`
+  - 具体正面动作：实现 UTF-8 LF 格式 JSONL 原子追加写入，每次写入后自动重算对应文件 SHA256 并同步更新 `ledger/INDEX.json`。
+  - 一键验收命令：`pnpm vitest run test/core/ledger-store.spec.ts`
+
+【阶段Ⅱ：相关配套 (Supporting Facilities)】
+- [ ] `T-CORE-03` [WIP=0]：落地 `bridge-engine` AST 语法守卫、K40 Termux 8022 端口桥接与双落点哈希对齐
+  - 目标 `seam`：`BridgeEngineSeam.invokeRemote(cmd)`
+  - 修改文件：`src/engines/bridge-engine/interface.ts`, `src/engines/bridge-engine/implementation.ts`, `test/engines/bridge-engine.spec.ts`
+  - 具体正面动作：实现命令词法与 AST 扫描，静态拦截 `find`、`ps`、`grep -r`（坑位 `P-29`），强制注入 `NO_PROXY=localhost,127.0.0.1,k40.local`，核验 `src/` 与 `bin/` SHA256 对齐。
+  - 一键验收命令：`pnpm vitest run test/engines/bridge-engine.spec.ts`
+- [ ] `T-CORE-04` [WIP=0]：落地 `compute-engine` 种子守卫、K40 8 核满载绑定与 5m/40m 分档超时器
+  - 目标 `seam`：`ComputeEngineSeam.runTask(req)`
+  - 修改文件：`src/engines/compute-engine/interface.ts`, `src/engines/compute-engine/implementation.ts`, `test/engines/compute-engine.spec.ts`
+  - 具体正面动作：校验外部 `seed` 参数（缺失返退出码 `3`），锁定 `workers: 8` 原生多线程并发，生成 `setsid nohup` 命令行，绑定 300s/2400s 超时熔断器与残缺文件清理钩子。
+  - 一键验收命令：`pnpm vitest run test/engines/compute-engine.spec.ts`
+- [ ] `T-CORE-05` [WIP=0]：落地 `plot-engine` 与 `sync-engine` 深度模块及双 Adapter
+  - 目标 `seam`：`PlotEngineSeam.renderMatrix(spec)`, `SyncEngineSeam.packSigned(data)`
+  - 修改文件：`src/engines/plot-engine/implementation.ts`, `src/engines/sync-engine/implementation.ts`, `test/engines/plot-sync.spec.ts`
+  - 具体正面动作：实现图像非空白像素方差 $\sigma > 0$ 检验（返退出码 `1` 并删残卷）及 512KB 分片 Ed25519 签名验签。
+  - 一键验收命令：`pnpm vitest run test/engines/plot-sync.spec.ts`
+
+【阶段Ⅲ：功能实现 (Feature Implementation)】
+- [ ] `T-CORE-06` [WIP=0]：落地微内核四大插座（`ModLoader`、`SlotManager`、`CapabilityBus`、`DeliverableCollector`）与 G1 至 G7 门禁扫描器
+  - 目标 `seam`：`ModLoader.loadAll()`, `CapabilityBus.query()`, `DeliverableCollector.collectVerified()`
+  - 修改文件：`src/core/mod-loader.ts`, `src/core/slot-manager.ts`, `src/core/capability-bus.ts`, `src/core/deliverable-collector.ts`, `ops/check-gates.mjs`
+  - 具体正面动作：完成四元组核验降级、只读深冻结总线、插槽空态折叠以及 G1 至 G7 门禁自动化扫描脚本。
+  - 一键验收命令：`pnpm vitest run test/core/sockets.spec.ts && node ops/check-gates.mjs`
+
+```
+
+### 3.0.3 `mod-core-engines-aims落地-20261028.txt`
+
+```text
+文件落盘路径：docs/modules/mod-core-engines/mod-core-engines-aims落地-20261028.txt
+
+```
+
+```text
+一、 模块物理目录与微内核插座映射
+- `src/core/path-guard.ts` ──► 宿主全局路径沙盒 `seam`（拦截 `/sdcard` 与 `..`）
+- `src/core/ledger-store.ts` ──► 双轨 JSONL 台账持久化 `seam`
+- `src/core/mod-loader.ts` ──► 卡带清单扫描与四元组降级插座
+- `src/core/slot-manager.ts` ──► UI 扩展插槽挂载与优雅降级插座
+- `src/core/capability-bus.ts` ──► 跨模块只读查询总线插座
+- `src/core/deliverable-collector.ts` ──► 真实产物四元组验真收集插座
+- `src/engines/{compute,bridge,plot,sync}-engine/` ──► 四大共享能力 `deep module`
+
+二、 状态表 Schema 与 1:1 真实产物映射表
+1. `ledger/INDEX.json` 索引结构 Schema：
+```json
+{
+  "updatedAt": "2026-10-28T10:14:00+08:00",
+  "k40NodeProfile": {
+    "host": "k40.local",
+    "sshPort": 8022,
+    "cpuCores": 8,
+    "screenAlwaysOn": true,
+    "activeCoolingRequired": true
+  },
+  "streams": {
+    "actions": { "path": "ledger/actions.jsonl", "lineCount": 15, "sha256": "<64-hex>" },
+    "changes": { "path": "ledger/changes.jsonl", "lineCount": 9, "sha256": "<64-hex>" },
+    "errors":  { "path": "ledger/errors.jsonl",  "lineCount": 0, "sha256": "<64-hex>" },
+    "fixes":   { "path": "ledger/fixes.jsonl",   "lineCount": 0, "sha256": "<64-hex>" },
+    "pitfalls":{ "path": "ledger/pitfalls.jsonl","lineCount": 8, "sha256": "<64-hex>" }
+  }
+}
+
+```
+
+三、 核心防崩算法、数学守恒公式与生产级架构骨架
+
+1. 图像非空白像素方差校验公式（防退出码 `1` 坏图落盘）：
+设渲染输出的 RGB 像素通道采样序列为 $X = \{x_1, x_2, \dots, x_N\}$，均值 $\mu = \frac{1}{N}\sum_{i=1}^N x_i$，像素方差定义为：
+
+$$\sigma^2 = \frac{1}{N}\sum_{i=1}^N (x_i - \mu)^2$$
+
+
+
+当 $\sigma \le 10^{-4}$ 时，判定为全白或全黑空白废图，立即物理删除残缺文件并返回退出码 `1`。
+2. 微内核路径守卫与 K40 异构桥接引擎架构契约骨架（具体实现细节交由编码 Agent 在对应占位符处补齐）：
+
+```typescript
+// 文件路径：src/core/path-guard.ts
+import path from "node:path";
+import type { ExitCode } from "./types.js";
+
+export type AllowedRoot = "ROOT" | "MODS" | "DATA" | "CACHE";
+
+export interface SafePathOutcome {
+  readonly exitCode: ExitCode;
+  readonly resolvedPath: string;
+  readonly violationReason?: string;
+}
+
+export class PathGuard {
+  private readonly roots: Readonly<Record<AllowedRoot, string>>;
+
+  public constructor(workspaceRoot: string) {
+    const base = path.resolve(workspaceRoot);
+    this.roots = Object.freeze({
+      ROOT: base,
+      MODS: path.resolve(base, "src/mods"),
+      DATA: path.resolve(base, "data"),
+      CACHE: path.resolve(base, "cache")
+    });
+  }
+
+  public resolveSafePath(scope: AllowedRoot, targetRelativePath: string): SafePathOutcome {
+    // [AGENT_CODE_FILL_TARGET: 编码 Agent 在此实现空字节拦截、/sdcard 与 /storage/emulated 慢速分区拦截（坑位 P-22）、path.relative 越界检查，违背时返回 { exitCode: 2, resolvedPath: "", violationReason }]
+    throw new Error("TODO_BY_CODING_AGENT: PathGuard.resolveSafePath");
+  }
+}
+
+```
+
+```typescript
+// 文件路径：src/engines/bridge-engine/interface.ts
+import type { ExitCode } from "../../core/types.js";
+
+export interface BridgeCommand {
+  readonly scriptName: string;
+  readonly rawCommandString: string;
+  readonly srcScriptPath: string;
+  readonly binScriptPath: string;
+  readonly timeoutTier: "interactive_5m" | "batch_40m";
+  readonly workers: 8; // 强制绑定 K40 骁龙 870 八核心全量释放
+  readonly seed?: number;
+}
+
+export interface BridgePayload {
+  readonly exitCode: ExitCode;
+  readonly stdout: string;
+  readonly alignedSha256: string;
+}
+
+export interface BridgeEngineSeam {
+  invokeRemote(cmd: Readonly<BridgeCommand>): Promise<BridgePayload>;
+}
+
+```
+
+```typescript
+// 文件路径：src/engines/bridge-engine/implementation.ts
+import type { BridgeCommand, BridgePayload, BridgeEngineSeam } from "./interface.js";
+
+export class K40TermuxBridgeAdapter implements BridgeEngineSeam {
+  private static readonly FORBIDDEN_PATTERNS = [
+    /\bfind\b/,
+    /\bps\b/,
+    /\bgrep\s+-[a-zA-Z]*r/
+  ] as const;
+
+  public async invokeRemote(cmd: Readonly<BridgeCommand>): Promise<BridgePayload> {
+    // 1. P-29 容器/Termux 高危遍历指令词法与 AST 静态拦截（命中即返退出码 2）
+    // 2. D-05 确定性随机种子检查（缺失即返退出码 3）
+    // 3. P-25 核验 srcScriptPath 与 binScriptPath 的 SHA256 一致性（失配即返退出码 2）
+    // 4. P-26 组装 setsid nohup 独立会话指令，通过 SSH 8022 端口直连 k40.local 原生二进制执行（跳过 PRoot 损耗），强制注入 NO_PROXY=localhost,127.0.0.1,k40.local
+    // [AGENT_CODE_FILL_TARGET: 由专职编码 Agent 补齐 SSH 进程派发、>=60s 低频轮询与状态收集实现]
+    throw new Error("TODO_BY_CODING_AGENT: K40TermuxBridgeAdapter.invokeRemote");
+  }
+}
+
+export class DeterministicMockBridgeAdapter implements BridgeEngineSeam {
+  public async invokeRemote(cmd: Readonly<BridgeCommand>): Promise<BridgePayload> {
+    // [AGENT_CODE_FILL_TARGET: 由专职编码 Agent 补齐本地零外部依赖的确定性 Mock 实现，支撑门禁 G7 双腿运行]
+    throw new Error("TODO_BY_CODING_AGENT: DeterministicMockBridgeAdapter.invokeRemote");
+  }
+}
+
+```
+
+四、 跨模块 `CapabilityBus` 只读联动接口契约
+底座提供全局唯一 `CapabilityBus`：
+
+* 注册签名：`registerCapability(providerModId: string, contract: CapabilityContract): ExitCode`
+* 查询签名：`query<TReq, TRes>(capabilityId: string, request: Readonly<TReq>): Promise<{ exitCode: ExitCode; data?: Readonly<TRes> }>`
+* 保护机制：查询结果返回前强制执行递归 `Object.freeze`，任何下游调用方尝试原地篡改返回属性将直接触发编译期与运行期双重阻断。
+
+五、 专属自动化回归测试矩阵
+
+| 测试文件落点 | 守护 `seam` | 防 G1 至 G7 复发硬断言 |
+| --- | --- | --- |
+| `test/core/path-guard.spec.ts` | `PathGuard.resolveSafePath` | 断言 `../../`、`\0`、`/sdcard/out` 100% 返回 `exitCode === 2`（防 P-22） |
+| `test/engines/bridge-engine.spec.ts` | `BridgeEngineSeam.invokeRemote` | 断言含 `find`、`ps`、`grep -r` 的脚本 100% 返回 `exitCode === 2`（防 P-29） |
+| `test/engines/compute-engine.spec.ts` | `ComputeEngineSeam.runTask` | 断言 `seed: undefined` 100% 返回 `exitCode === 3`（防 D-05 退化） |
+| `test/core/sockets.spec.ts` | `ModLoader.loadAll` & `DeliverableCollector` | 断言缺失真实产物的卡带自动降级为 `degraded`（防 G1、G2），且 Mock 与真实 Adapter 双腿全绿（防 G7） |
+
+```
+
+---
+
+
+```
+
+# ================================================================================
+四、 模块 1：mod-portal-sync（团队分享协同与交付打包模块）【1×3 三件套】全文
+
+```
+
+### 3.1.1 `mod-portal-sync-aims-总目标-20261028.txt`
+
+```text
+文件落盘路径：docs/modules/mod-portal-sync/mod-portal-sync-aims-总目标-20261028.txt
+
+```
+
+```text
+一、 模块定位（What & Why）
+mod-portal-sync 是挂载在微内核插座上的团队分享协同与签名交付打包业务卡带（Adapter）。它负责通过 DeliverableCollector 与 CapabilityBus 只读收集各业务模块的已验证产物与结构化状态（如行囊团队旅游行程、账单分摊或分析交付包），调用 sync-engine 执行 512KB 定额分片、Ed25519 数字签名封包，并支持基于智能手机局域网的点对点分享或出站单向（Outbound-Only，零入站端口暴露）同步收发。
+
+二、 负面清单（Anti-Goals）
+1. 严禁把手机放在家里当暴露公网端口的远程算力主机进行外网直连控制，严禁宣称或实现无签名裸文件的断网传文件兜底功能。
+2. 严禁在导出的交付包中夹带 Ed25519 私钥明文。
+3. 严禁跳过 DeliverableCollector 的四元组 SHA256 核验而直接打包未验证的半成品文件（防 G2）。
+4. 严禁直接 import `mod-biz-alpha`、`mod-biz-beta` 或 `mod-template-studio` 的内部源码文件。
+
+三、 三阶段业务目标与边界规格（Specs & Edge Cases）
+1. 【阶段Ⅰ：基础落地 (Foundation Landing)】
+   - 落地 `src/mods/mod-portal-sync/manifest.ts` 与私有存储表 `sync_manifests`、`sync_chunks`（支持本地 IndexedDB/SQLite 原子事务）。
+   - 定义分片封包契约：单分片严格小于等于 524,288 字节（512KB），每个分片独立计算 SHA256，全包生成根默克尔树摘要并附加 Ed25519 64 字节签名。
+2. 【阶段Ⅱ：相关配套 (Supporting Facilities)】
+   - 挂载 `PathGuard`，所有导入导出暂存文件强制限定在 `CACHE/portal-sync/` 与 `DATA/deliverables/` 目录内。
+   - 建立全入口异常测试矩阵（Execution Matrix）：覆盖空包输入、单分片超 512KB、分片序号断裂、签名被篡改 1 比特、重放旧时间戳包 5 类异常边界，确保 100% 触发预期退出码（`1` 或 `2`）并清理残卷。
+3. 【阶段Ⅲ：功能实现 (Feature Implementation)】
+   - 挂载 `topbar.action` 插槽，提供一键组建旅游团/协同组分享包导出与导入验签交互入口。
+   - 通过 `CapabilityBus` 只读拉取已激活卡带的摘要元数据，完成端到端 `.packlet.json` 签名交付包落盘，并通过 G1 至 G7 终验。
+
+四、 完成定义（DoD）与量化验收台账
+| 验收项编号 | 验收判据描述 | 期望退出码 | 一键验证命令 |
+| :--- | :--- | :--- | :--- |
+| DOD-SYNC-01 | 物理拔除 `src/mods/mod-portal-sync` 后宿主编译与运行 100% 正常 | 0 | `pnpm vitest run test/mods/portal-sync/zero-touch.spec.ts` |
+| DOD-SYNC-02 | 导出大于 2MB 产物时自动切分为大于等于 4 个 512KB 分片且 Ed25519 验签通过 | 0 | `pnpm vitest run test/mods/portal-sync/packlet.spec.ts` |
+| DOD-SYNC-03 | 篡改任意分片 1 字节后导入，立即返回退出码 1 并清空临时解压目录 | 0 | `pnpm vitest run test/mods/portal-sync/tamper-reject.spec.ts` |
+
+```
+
+### 3.1.2 `mod-portal-sync-aimstodolist-20261028.txt`
+
+```text
+文件落盘路径：docs/modules/mod-portal-sync/mod-portal-sync-aimstodolist-20261028.txt
+
+```
+
+```text
+一、 当前模块工序锁状态
+当前工序锁：`[WIP=0]`（等待 `mod-core-engines` 释放全局唯一 `WIP=1` 锁后激活）
+
+二、 已封板基线凭证区
+- 基线时间戳：`2026-10-28T10:14:00+08:00`
+- 基线验证命令：`pnpm tsc --noEmit`
+- 退出码：`0`
+- 断言通过数：`0 / 0`（初始待建基线）
+- 关键基线产物 SHA256：待阶段Ⅰ封板后自动回填
+
+三、 三阶段垂直切片原子任务单（每个切片 < 30m）
+
+【阶段Ⅰ：基础落地 (Foundation Landing)】
+- [x] `T-SYNC-01` [DONE]：落地 `mod-portal-sync/manifest.ts` 与 `schema.ts`
+  - 目标 `seam`：`ModManifest` 插座契约与 `sync_manifests` 表结构
+  - 修改文件：`src/mods/mod-portal-sync/manifest.ts`, `src/mods/mod-portal-sync/schema.ts`, `tests/test_portal_sync.py`
+  - 具体正面动作：声明 `dbStores`、四元组 `artifacts` 与 `portalSync.getLastBundleInfo` 只读能力契约。
+  - 一键验收命令：`python tests/test_portal_sync.py -v`
+
+【阶段Ⅱ：相关配套 (Supporting Facilities)】
+- [x] `T-SYNC-02` [DONE]：挂载 5 类异常边界全入口验证矩阵
+  - 目标 `seam`：`PortalSyncSeam.importVerifiedBundle(packlet, publicKeyPem, options)`
+  - 修改文件：`src/mods/mod-portal-sync/implementation.ts`, `src/engines/sync-engine/implementation.ts`, `tests/test_portal_sync.py`
+  - 具体正面动作：完成 512KB 分片硬上限、分片连续性、总字节守恒、Merkle Root、Ed25519 验签、24 小时包时效和 5 分钟未来时钟容差校验。
+  - 一键验收命令：`python tests/test_portal_sync.py -v`
+
+【阶段Ⅲ：功能实现 (Feature Implementation)】
+- [x] `T-SYNC-03` [DONE]：打通跨模块只读收集、单向签名封包与 UI 插槽挂载
+  - 目标 `seam`：`PortalSyncSeam.exportSignedDeliverable(request)`
+  - 修改文件：`src/mods/mod-portal-sync/implementation.ts`, `src/mods/mod-portal-sync/slots/exportSlot.ts`, `tests/test_portal_sync.py`
+  - 具体正面动作：通过 `CapabilityBus.query` 拉取各卡带汇总信息，结合 `DeliverableCollector` 生成带 Ed25519 签名的 `.packlet.json` 交付物。
+  - 一键验收命令：`python tests/test_portal_sync.py -v`
+
+```
+
+### 3.1.3 `mod-portal-sync-aims落地-20261028.txt`
+
+```text
+文件落盘路径：docs/modules/mod-portal-sync/mod-portal-sync-aims落地-20261028.txt
+
+```
+
+```text
+一、 模块物理目录与微内核插座映射
+- `src/mods/mod-portal-sync/manifest.ts` ──► 接入 `ModLoader`、`SlotManager`（挂载至 `topbar.action`）与 `DeliverableCollector`
+- `src/mods/mod-portal-sync/schema.ts` ──► 声明私有表 `sync_manifests`、`sync_chunks`
+- `src/mods/mod-portal-sync/implementation.ts` ──► 调用 `sync-engine`、`PathGuard`、`CapabilityBus` 实现打包与验签
+
+二、 数据库/IndexedDB 状态表 Schema 与 1:1 真实产物映射表
+1. 私有存储表 `sync_manifests` Schema：
+   - `bundle_id` (TEXT PRIMARY KEY)
+   - `group_id` (TEXT NOT NULL)
+   - `created_at_iso` (TEXT NOT NULL, ISO 8601 带时区)
+   - `chunk_count` (INTEGER NOT NULL, $\ge 1$)
+   - `total_bytes` (INTEGER NOT NULL, $\ge 1$)
+   - `merkle_root_sha256` (TEXT NOT NULL, 64 位 hex)
+   - `ed25519_signature_hex` (TEXT NOT NULL, 128 位 hex)
+2. 四元组真实产物映射：
+   - `lines`: `["src/mods/mod-portal-sync/implementation.ts:1-120"]`
+   - `analysis_step`: `"portal_sync.export_signed_packlet"`
+   - `produces`: `"SIGNED_PACKLET_BUNDLE"`
+   - `output_glob`: `"deliverables/bundle-*.packlet.json"`
+   - `sample_project_output`: `"data/deliverables/bundle-baseline-20261028.packlet.json"`
+
+三、 核心防崩算法与生产级架构骨架
+
+1. 分片配额与默克尔根守恒公式：
+   设原始字节流长度为 $L$（$L > 0$），单分片配额常量 $C = 524288$（512KB），则分片总数 $K = \lceil L / C \rceil$。第 $i$ 个分片字节长度 $l_i$ 满足：
+   $$\sum_{i=0}^{K-1} l_i = L, \quad 1 \le l_i \le 524288$$
+   根摘要计算公式为：
+   $$H_{\text{root}} = \text{SHA256}\left( \text{SHA256}(\text{chunk}_0) \parallel \text{SHA256}(\text{chunk}_1) \parallel \dots \parallel \text{SHA256}(\text{chunk}_{K-1}) \right)$$
+
+2. 架构契约与占位骨架代码：
+
+```typescript
+// 文件路径：src/mods/mod-portal-sync/schema.ts
+export interface SyncChunkRecord {
+  readonly bundleId: string;
+  readonly chunkIndex: number;
+  readonly totalChunks: number;
+  readonly byteLength: number;
+  readonly chunkSha256: string;
+  readonly payloadBase64: string;
+}
+
+export interface SignedPackletFile {
+  readonly bundleId: string;
+  readonly groupId: string;
+  readonly createdAtIso: string;
+  readonly merkleRootSha256: string;
+  readonly ed25519SignatureHex: string;
+  readonly publicKeyHex: string;
+  readonly chunks: readonly SyncChunkRecord[];
+}
+
+```
+
+```typescript
+// 文件路径：src/mods/mod-portal-sync/implementation.ts
+import type { DeliverableMod } from "../../core/DeliverableCollector.js";
+import { DeliverableCollector } from "../../core/DeliverableCollector.js";
+import type { SignedPacklet, SyncEngine } from "../../engines/sync-engine/interface.js";
+import type { PortalSyncManifestV1 } from "./schema.js";
+
+export interface PortalSyncExportRequest {
+  readonly id: string;
+  readonly mods: readonly DeliverableMod[];
+  readonly privateKeyPem: string;
+  readonly now?: Date;
+}
+
+export interface PortalSyncExportResult {
+  readonly id: string;
+  readonly manifest: PortalSyncManifestV1;
+  readonly packlet: SignedPacklet;
+}
+
+export interface PortalSyncImportOptions {
+  readonly now?: Date;
+  readonly maxAgeMs?: number;
+}
+
+export interface PortalSyncSeam {
+  exportSignedDeliverable(request: PortalSyncExportRequest): Promise<PortalSyncExportResult>;
+  importVerifiedBundle(
+    packlet: SignedPacklet,
+    publicKeyPem: string,
+    options?: PortalSyncImportOptions
+  ): Promise<PortalSyncManifestV1>;
+}
+
+export class PortalSyncAdapter implements PortalSyncSeam {
+  public constructor(
+    private readonly collector: DeliverableCollector,
+    private readonly syncEngine: SyncEngine
+  ) {}
+}
+
+// 行为真源：src/mods/mod-portal-sync/implementation.ts
+// 导出走 DeliverableCollector + SyncEngine.packSigned。
+// 导入走 SyncEngine.unpackVerified，并强制 512KB 分片上限、Ed25519 验签、
+// 24 小时包时效与 5 分钟未来时钟容差。
+```
+
+四、 跨模块 `CapabilityBus` 只读联动接口契约
+
+* 提供能力（`capabilitiesProvided`）：
+* `capabilityId`: `"portalSync.getLastBundleInfo"`
+* 请求参数：`{}`
+* 返回结构：`Readonly<{ lastBundleId: string | null; lastExportedAtIso: string | null; verifiedChunkCount: number }>`
+
+
+* 消费能力（`capabilitiesConsumed`）：
+* `"bizAlpha.getConsumptionSummary"`
+* `"bizBeta.getAnalysisDigest"`
+
+
+
+五、 专属自动化回归测试矩阵
+
+| 测试文件落点 | 守护 `seam` | 防 G1 至 G7 复发硬断言 |
+| --- | --- | --- |
+| `test/mods/portal-sync/manifest.spec.ts` | `PortalSyncManifest` | 断言四元组 `output_glob` 与样本产物真实存在（防 G1、G2） |
+| `test/mods/portal-sync/matrix.spec.ts` | `PortalSyncSeam.importVerifiedBundle` | 覆盖 5 类损坏/越界/篡改分片输入矩阵（防 G3），断言篡改包 100% 返回 `exitCode === 1` |
+
+```
+
+---
+
+
+```
+
+# ================================================================================
+五、 模块 2：mod-biz-alpha（个人生产力、整数分记账与消费结构模块）【1×3 三件套】全文
+
+```
+
+### 3.2.1 `mod-biz-alpha-aims-总目标-20261028.txt`
+
+```text
+文件落盘路径：docs/modules/mod-biz-alpha/mod-biz-alpha-aims-总目标-20261028.txt
+
+```
+
+```text
+一、 模块定位（What & Why）
+mod-biz-alpha 是负责个人每日规划、随手记备忘、每日复盘、整数分记账（Expense Tracking）与消费结构分析（Consumption Structure Analysis）及旅行团费用分摊的核心业务卡带 A（Adapter）。它面向高精度整数分（Integer Cents）核算与复式守恒校验场景，确保每一笔日常开支、指数定投分配与旅游团成员分摊账目均满足零浮点误差与借贷守恒律，并通过 CapabilityBus 向协同分享模块与模板可视化模块提供只读统计摘要。
+
+二、 负面清单（Anti-Goals）
+1. 严禁使用浮点数（如 `19.99`）存储或计算任何金额字段，一切金额参数必须为安全整数分（如 `1999`）。
+2. 严禁在借贷不平或消费结构分类权重之和不等于 10000 基点（100.00%）时将复盘账单状态流转为已封账（`LOCKED`）。
+3. 严禁横向直接 import 其他 `mod-*` 目录下的任何代码。
+
+三、 三阶段业务目标与边界规格（Specs & Edge Cases）
+1. 【阶段Ⅰ：基础落地 (Foundation Landing)】
+   - 落地 `src/mods/mod-biz-alpha/manifest.ts` 与私有表 `alpha_daily_plans`、`alpha_ledger_entries`。
+   - 落地整数分算术核验器：任何非整数输入、负数金额或超出 `Number.MAX_SAFE_INTEGER` 的数值立即拦截并返回退出码 `2`。
+2. 【阶段Ⅱ：相关配套 (Supporting Facilities)】
+   - 实现复式记账守恒律与消费结构/旅行团分摊基点（Basis Points，1% = 100 bps，总和严格等于 10000 bps）余数最大余额法（Largest Remainder Method）分配器，确保分配后各分项整数分之和 100% 等于总金额，偏差大于 0 分立即触发退出码 `1` 并回滚。
+   - 建立全入口边界矩阵：测试 0 分账单、1 分钱 3 人旅行分摊、浮点数非法注入、借贷差额 1 分、超大安全整数边界 5 类场景。
+3. 【阶段Ⅲ：功能实现 (Feature Implementation)】
+   - 挂载 `workspace.main` 与 `inspector.panel` 插槽，注册 `bizAlpha.getConsumptionSummary` 只读总线能力，生成真实对账单与每日复盘产物并通过 G1 至 G7 门禁。
+
+四、 完成定义（DoD）与量化验收台账
+| 验收项编号 | 验收判据描述 | 期望退出码 | 一键验证命令 |
+| :--- | :--- | :--- | :--- |
+| DOD-ALPHA-01 | 传入浮点数 `12.34` 时 100% 触发类型拦截并返回退出码 2 | 0 | `pnpm vitest run test/mods/biz-alpha/cents-guard.spec.ts` |
+| DOD-ALPHA-02 | 10000 分按 `[3333, 3333, 3334]` bps 拆分或任意人数分摊后，分项求和与总额误差恒等于 0 | 0 | `pnpm vitest run test/mods/biz-alpha/conservation.spec.ts` |
+| DOD-ALPHA-03 | 借贷差额为 1 分时，核算器返回退出码 1 且不产生脏数据文件 | 0 | `pnpm vitest run test/mods/biz-alpha/reconcile.spec.ts` |
+
+```
+
+### 3.2.2 `mod-biz-alpha-aimstodolist-20261028.txt`
+
+```text
+文件落盘路径：docs/modules/mod-biz-alpha/mod-biz-alpha-aimstodolist-20261028.txt
+
+```
+
+```text
+一、 当前模块工序锁状态
+当前工序锁：`[WIP=0]`
+
+二、 已封板基线凭证区
+- 基线时间戳：`2026-10-28T10:14:00+08:00`
+- 基线验证命令：`pnpm tsc --noEmit`
+- 退出码：`0`
+- 断言通过数：`0 / 0`（初始待建基线）
+- 关键基线产物 SHA256：待阶段Ⅰ封板后回填
+
+三、 三阶段垂直切片原子任务单（每个切片 < 30m）
+
+【阶段Ⅰ：基础落地 (Foundation Landing)】
+- [ ] `T-ALPHA-01` [WIP=0]：落地 `mod-biz-alpha/manifest.ts` 与整数分 `schema.ts`
+  - 目标 `seam`：`ModManifest` 与 `AlphaConsumptionBatch` 契约
+  - 修改文件：`src/mods/mod-biz-alpha/manifest.ts`, `src/mods/mod-biz-alpha/schema.ts`, `test/mods/biz-alpha/manifest.spec.ts`
+  - 具体正面动作：定义每日规划、每日复盘与整数分账目 Schema、四元组映射及 `bizAlpha.getConsumptionSummary` 接口声明。
+  - 一键验收命令：`pnpm vitest run test/mods/biz-alpha/manifest.spec.ts`
+
+【阶段Ⅱ：相关配套 (Supporting Facilities)】
+- [ ] `T-ALPHA-02` [WIP=0]：实现整数分守恒核算器与 5 类边界测试矩阵
+  - 目标 `seam`：`BizAlphaSeam.reconcileAndAllocate(batch)`
+  - 修改文件：`src/mods/mod-biz-alpha/implementation.ts`, `test/mods/biz-alpha/conservation.spec.ts`
+  - 具体正面动作：实现借贷守恒断言（不平返退出码 `1`）、基点权重和等于 10000 校验与最大余额法整数分无损拆分。
+  - 一键验收命令：`pnpm vitest run test/mods/biz-alpha/conservation.spec.ts`
+
+【阶段Ⅲ：功能实现 (Feature Implementation)】
+- [ ] `T-ALPHA-03` [WIP=0]：打通消费结构复盘产物落盘、只读总线响应与 UI 插槽挂载
+  - 目标 `seam`：`CapabilityBus` 挂载与 `DATA/alpha-reports/*.json` 真实产物生成
+  - 修改文件：`src/mods/mod-biz-alpha/implementation.ts`, `src/mods/mod-biz-alpha/slots/AlphaWorkspace.ts`, `test/mods/biz-alpha/e2e.spec.ts`
+  - 具体正面动作：将通过守恒检验的核算批次写入受控 `DATA` 区，更新 `ledger/changes.jsonl` 并通过 G1 至 G7 核验。
+  - 一键验收命令：`pnpm vitest run test/mods/biz-alpha/e2e.spec.ts`
+
+```
+
+### 3.2.3 `mod-biz-alpha-aims落地-20261028.txt`
+
+```text
+文件落盘路径：docs/modules/mod-biz-alpha/mod-biz-alpha-aims落地-20261028.txt
+
+```
+
+```text
+一、 模块物理目录与微内核插座映射
+- `src/mods/mod-biz-alpha/manifest.ts` ──► 接入 `ModLoader`、`SlotManager`（`workspace.main`）与 `CapabilityBus`
+- `src/mods/mod-biz-alpha/schema.ts` ──► 声明 `alpha_daily_plans`、`alpha_ledger_entries` 整数分表结构
+- `src/mods/mod-biz-alpha/implementation.ts` ──► 实现复式借贷守恒与最大余额法消费结构拆分
+
+二、 数据库/IndexedDB 状态表 Schema 与 1:1 真实产物映射表
+1. 私有存储表 `alpha_ledger_entries` Schema：
+   - `entry_id` (TEXT PRIMARY KEY)
+   - `logical_date` (TEXT NOT NULL, 格式 `YYYY-MM-DD`)
+   - `category_code` (TEXT NOT NULL)
+   - `memo_text` (TEXT NOT NULL)
+   - `debit_cents` (INTEGER NOT NULL, $\ge 0$)
+   - `credit_cents` (INTEGER NOT NULL, $\ge 0$)
+   - `weight_bps` (INTEGER NOT NULL, $0 \le \text{bps} \le 10000$)
+2. 四元组真实产物映射：
+   - `lines`: `["src/mods/mod-biz-alpha/implementation.ts:1-140"]`
+   - `analysis_step`: `"biz_alpha.reconcile_consumption_structure"`
+   - `produces`: `"RECONCILED_CENTS_REPORT"`
+   - `output_glob`: `"alpha-reports/reconciled-*.json"`
+   - `sample_project_output`: `"data/alpha-reports/reconciled-baseline-20261028.json"`
+
+三、 核心防崩算法、数学守恒公式与生产级架构骨架
+
+1. 复式借贷守恒与最大余额法（Largest Remainder Method）无损整数分拆分公式：
+   - 借贷守恒律：对于任意核算批次中的 $M$ 条分录，必须严格满足：
+     $$\sum_{j=1}^{M} \text{debit\_cents}_j - \sum_{j=1}^{M} \text{credit\_cents}_j = 0$$
+   - 整数分无损拆分：设待分配总额为 $T$（整数分），$K$ 个消费分类或分摊成员桶的基点权重满足 $\sum_{k=1}^K w_k = 10000$。每个桶的初始整数部分为 $q_k = \lfloor (T \times w_k) / 10000 \rfloor$，余数为 $r_k = (T \times w_k) \bmod 10000$。剩余待分配差额 $\Delta = T - \sum_{k=1}^K q_k$（必满足 $0 \le \Delta < K$）。将所有桶按 $r_k$ 降序排列（若 $r_k$ 相同则按桶索引升序排列），前 $\Delta$ 个桶各补偿 $+1$ 分，得到最终分配值 $c_k$，严格保证：
+     $$\sum_{k=1}^{K} c_k \equiv T \pmod{1}$$
+
+2. 架构契约与占位骨架代码：
+
+```typescript
+// 文件路径：src/mods/mod-biz-alpha/schema.ts
+export interface AlphaLedgerEntry {
+  readonly entryId: string;
+  readonly logicalDate: string; // YYYY-MM-DD
+  readonly categoryCode: string;
+  readonly memoText: string;
+  readonly debitCents: number;
+  readonly creditCents: number;
+}
+
+export interface AllocationBucketInput {
+  readonly bucketId: string;
+  readonly weightBps: number; // 10000 bps = 100.00%
+}
+
+export interface ConsumptionSummaryReport {
+  readonly batchId: string;
+  readonly logicalDate: string;
+  readonly totalVolumeCents: number;
+  readonly allocations: Readonly<Record<string, number>>;
+}
+
+```
+
+```typescript
+// 文件路径：src/mods/mod-biz-alpha/implementation.ts
+import type { ExitCode } from "../../core/types.js";
+import type { AlphaLedgerEntry, AllocationBucketInput, ConsumptionSummaryReport } from "./schema.js";
+
+export interface BizAlphaSeam {
+  reconcileAndAllocate(
+    batchId: string,
+    logicalDate: string,
+    entries: readonly AlphaLedgerEntry[],
+    buckets: readonly AllocationBucketInput[]
+  ): Promise<{ exitCode: ExitCode; report?: ConsumptionSummaryReport }>;
+}
+
+export class BizAlphaAdapter implements BizAlphaSeam {
+  public async reconcileAndAllocate(
+    batchId: string,
+    logicalDate: string,
+    entries: readonly AlphaLedgerEntry[],
+    buckets: readonly AllocationBucketInput[]
+  ): Promise<{ exitCode: ExitCode; report?: ConsumptionSummaryReport }> {
+    // 1. 校验所有 debitCents、creditCents、weightBps 均为安全非负整数，且 sum(weightBps) === 10000（违背返退出码 2）
+    // 2. 校验 sum(debitCents) === sum(creditCents) 复式守恒律（违背返退出码 1）
+    // 3. 按最大余额法执行整数分无损分配，断言分配后总和 === totalDebitCents（违背返退出码 1）
+    // 4. 经 PathGuard 落盘至 data/alpha-reports/ 并登记 ledger/changes.jsonl
+    // [AGENT_CODE_FILL_TARGET: 由专职编码 Agent 补齐整数分核算、最大余额法分配与落盘实现]
+    throw new Error("TODO_BY_CODING_AGENT: BizAlphaAdapter.reconcileAndAllocate");
+  }
+}
+
+```
+
+四、 跨模块 `CapabilityBus` 只读联动接口契约
+
+* 提供能力（`capabilitiesProvided`）：
+* `capabilityId`: `"bizAlpha.getConsumptionSummary"`
+* 请求参数：`Readonly<{ batchId: string }>`
+* 返回结构：`Readonly<ConsumptionSummaryReport>`
+
+
+* 消费能力（`capabilitiesConsumed`）：`[]`（零上游业务依赖）
+
+五、 专属自动化回归测试矩阵
+
+| 测试文件落点 | 守护 `seam` | 防 G1 至 G7 复发硬断言 |
+| --- | --- | --- |
+| `test/mods/biz-alpha/cents-guard.spec.ts` | `BizAlphaSeam.reconcileAndAllocate` | 断言任何浮点数或负数入参 100% 返回 `exitCode === 2`（防 D-04 退化） |
+| `test/mods/biz-alpha/conservation.spec.ts` | `BizAlphaSeam.reconcileAndAllocate` | 断言借贷差 1 分返回 `exitCode === 1`，且最大余额法拆分误差恒为 `0`（防 G2、G3） |
+
+```
+
+---
+
+
+```
+
+# ================================================================================
+六、 模块 3：mod-biz-beta（K40 算力驱动的 GEO/转录组分析模块）【1×3 三件套】全文
+
+```
+
+### 3.3.1 `mod-biz-beta-aims-总目标-20261028.txt`
+
+```text
+文件落盘路径：docs/modules/mod-biz-beta/mod-biz-beta-aims-总目标-20261028.txt
+
+```
+
+```text
+一、 模块定位（What & Why）
+mod-biz-beta 是负责标准 GEO 常规分析（数据清洗、质检、差异表达分析、功能富集分析、WGCNA 共表达网络、机器学习 Lasso 回归特征筛选）以及单细胞转录组与空间转录组分析的核心业务卡带 B（Adapter）。它专门通过 `compute-engine` 与 `bridge-engine` 调度红米 K40（骁龙 870）Termux 原生 8 核满载算力，执行严格受控的确定性随机种子（`SEED=20261013` 及三轮稳健序列 `20261013, 20261014, 20261015`）计算与 17 位有效数字（`%.17g`）跨语言数值矩阵交换，并通过 `CapabilityBus` 将筛选出的核心生物标志物与统计指标暴露给 `mod-template-studio` 进行 SCI 标准出图。
+
+二、 负面清单（Anti-Goals）
+1. 严禁在未显式传入 `seed` 参数的情况下启动任何 Lasso 回归交叉验证、WGCNA 软阈值抽样或单细胞降维聚类任务（违者必须返回退出码 `3`）。
+2. 严禁在当前阶段实质性编写超出 GEO 常规分析、单细胞转录组与空间转录组范围之外的其他组学具体实现代码（其他组学类型仅允许保留空接口框架占位）。
+3. 严禁使用低于 17 位有效数字精度（`%.17g`）的方式序列化表达矩阵或差异分析结果。
+4. 严禁横向直接 import 其他 `mod-*` 的内部代码。
+
+三、 三阶段业务目标与边界规格（Specs & Edge Cases）
+1. 【阶段Ⅰ：基础落地 (Foundation Landing)】
+   - 落地 `src/mods/mod-biz-beta/manifest.ts` 与私有存储表 `beta_geo_runs`、`beta_lasso_intersections`。
+   - 锁定裁定 `D-04` 与 `D-05`，建立 `%.17g` 精度序列化器与 `SEED` 显式注入检查器。
+2. 【阶段Ⅱ：相关配套 (Supporting Facilities)】
+   - 挂载 `compute-engine`（40 分钟批处理超时档、K40 8 核满载 `workers: 8`）与 `bridge-engine`（`P-26` `setsid nohup`、`P-29` 禁用 `find`/`ps`/`grep -r`）。
+   - 实现三轮种子（`20261013, 20261014, 20261015`）Lasso 回归稳健特征基因交集校验器与表达矩阵行列守恒自校验（样本数或基因数失配、出现 `NaN`/`Infinity` 时立即物理清理残卷并返回退出码 `1`）。
+   - 建立全入口验证矩阵（Execution Matrix）：覆盖缺失种子、含 `NaN` 表达矩阵、维度 0×0 空矩阵、16 至 20 样本标准炎症模型矩阵、三轮交集种子 5 类输入场景。
+3. 【阶段Ⅲ：功能实现 (Feature Implementation)】
+   - 挂载 `sidebar.nav` 与 `workspace.main` 插槽，注册 `bizBeta.getAnalysisDigest` 只读能力，产出 `%.17g` 标准格式差异与特征筛选结果表并通过 G1 至 G7 终验。
+
+四、 完成定义（DoD）与量化验收台账
+| 验收项编号 | 验收判据描述 | 期望退出码 | 一键验证命令 |
+| :--- | :--- | :--- | :--- |
+| DOD-BETA-01 | 未传入 `seeds` 调用 GEO/Lasso 分析接口时 100% 立即返回退出码 3 | 0 | `pnpm vitest run test/mods/biz-beta/seed-contract.spec.ts` |
+| DOD-BETA-02 | 注入含 `NaN` 或样本维度撕裂的表达矩阵时，返回退出码 1 且自动清理残缺输出文件 | 0 | `pnpm vitest run test/mods/biz-beta/matrix-integrity.spec.ts` |
+| DOD-BETA-03 | 固定种子序列 `20261013, 20261014, 20261015` 连续运行两次，输出的 `%.17g` 矩阵文件 SHA256 100% 比特级一致 | 0 | `pnpm vitest run test/mods/biz-beta/determinism.spec.ts` |
+
+```
+
+### 3.3.2 `mod-biz-beta-aimstodolist-20261028.txt`
+
+```text
+文件落盘路径：docs/modules/mod-biz-beta/mod-biz-beta-aimstodolist-20261028.txt
+
+```
+
+```text
+一、 当前模块工序锁状态
+当前工序锁：`[WIP=0]`
+
+二、 已封板基线凭证区
+- 基线时间戳：`2026-10-28T10:14:00+08:00`
+- 基线验证命令：`pnpm tsc --noEmit`
+- 退出码：`0`
+- 断言通过数：`0 / 0`（初始待建基线）
+- 关键基线产物 SHA256：待阶段Ⅰ封板后回填
+
+三、 三阶段垂直切片原子任务单（每个切片 < 30m）
+
+【阶段Ⅰ：基础落地 (Foundation Landing)】
+- [ ] `T-BETA-01` [WIP=0]：落地 `mod-biz-beta/manifest.ts` 与 `schema.ts`
+  - 目标 `seam`：`ModManifest` 与 `BetaTranscriptomicsJobSpec` 契约
+  - 修改文件：`src/mods/mod-biz-beta/manifest.ts`, `src/mods/mod-biz-beta/schema.ts`, `test/mods/biz-beta/manifest.spec.ts`
+  - 具体正面动作：定义 GEO 常规分析（清洗、质检、差异、富集、WGCNA、Lasso）、单细胞与空间转录组请求 Schema、四元组产物映射与 `bizBeta.getAnalysisDigest` 只读能力签名。
+  - 一键验收命令：`pnpm vitest run test/mods/biz-beta/manifest.spec.ts`
+
+【阶段Ⅱ：相关配套 (Supporting Facilities)】
+- [ ] `T-BETA-02` [WIP=0]：实现 `SEED` 守卫、`%.17g` 序列化、三轮种子交集校验与 5 类边界测试矩阵
+  - 目标 `seam`：`BizBetaSeam.executeTranscriptomicsPipeline(spec)`
+  - 修改文件：`src/mods/mod-biz-beta/implementation.ts`, `test/mods/biz-beta/seed-contract.spec.ts`, `test/mods/biz-beta/matrix-integrity.spec.ts`
+  - 具体正面动作：校验外部种子（缺失返退出码 `3`），对接 `compute-engine` 与 `bridge-engine`（含 K40 8 核真实 Adapter 与本地 Mock Adapter），实现行列守恒与 `NaN` 拦截（失败删残卷返退出码 `1`）。
+  - 一键验收命令：`pnpm vitest run test/mods/biz-beta/seed-contract.spec.ts test/mods/biz-beta/matrix-integrity.spec.ts`
+
+【阶段Ⅲ：功能实现 (Feature Implementation)】
+- [ ] `T-BETA-03` [WIP=0]：打通三轮稳健交集产物落盘、只读总线挂载与双腿回归终验
+  - 目标 `seam`：`CapabilityBus` 只读响应与 `DATA/beta-outputs/*.tsv` 落盘
+  - 修改文件：`src/mods/mod-biz-beta/implementation.ts`, `src/mods/mod-biz-beta/slots/BetaPipelineSlot.ts`, `test/mods/biz-beta/determinism.spec.ts`
+  - 具体正面动作：输出比特级对齐的 `%.17g` 矩阵结果文件，登记 `ledger/actions.jsonl` 并通过 G1 至 G7 门禁。
+  - 一键验收命令：`pnpm vitest run test/mods/biz-beta/determinism.spec.ts`
+
+```
+
+### 3.3.3 `mod-biz-beta-aims落地-20261028.txt`
+
+```text
+文件落盘路径：docs/modules/mod-biz-beta/mod-biz-beta-aims落地-20261028.txt
+
+```
+
+```text
+一、 模块物理目录与微内核插座映射
+- `src/mods/mod-biz-beta/manifest.ts` ──► 接入 `ModLoader`、`SlotManager`（`sidebar.nav`）与 `DeliverableCollector`
+- `src/mods/mod-biz-beta/schema.ts` ──► 声明 `beta_geo_runs`、`beta_lasso_intersections` 结构
+- `src/mods/mod-biz-beta/implementation.ts` ──► 调用 `compute-engine`、`bridge-engine` 调度 K40 8 核运行环境实现生信分析管线
+
+二、 数据库/状态表 Schema 与 1:1 真实产物映射表
+1. 私有存储表 `beta_geo_runs` Schema：
+   - `job_id` (TEXT PRIMARY KEY)
+   - `pipeline_scope` (TEXT NOT NULL, 枚举：`"GEO_STANDARD"` | `"SCRNA_SEQ"` | `"SPATIAL_TRANSCRIPTOMICS"` | `"FRAMEWORK_RESERVED"`)
+   - `seeds_csv` (TEXT NOT NULL, 默认 `"20261013,20261014,20261015"`)
+   - `sample_count` (INTEGER NOT NULL, $> 0$)
+   - `gene_count` (INTEGER NOT NULL, $> 0$)
+   - `intersected_biomarkers_json` (TEXT NOT NULL)
+   - `output_sha256` (TEXT NOT NULL, 64 位 hex)
+2. 四元组真实产物映射：
+   - `lines`: `["src/mods/mod-biz-beta/implementation.ts:1-170"]`
+   - `analysis_step`: `"biz_beta.geo_lasso_robust_intersection"`
+   - `produces`: `"BIT_EXACT_17G_DEG_LASSO_TSV"`
+   - `output_glob`: `"beta-outputs/robust-biomarkers-*.tsv"`
+   - `sample_project_output`: `"data/beta-outputs/robust-biomarkers-baseline-20261028.tsv"`
+
+三、 核心防崩算法、数学守恒公式与生产级架构骨架
+
+1. 三轮确定性种子 Lasso 特征基因稳健交集与 17 位有效数字守恒公式：
+   - 设种子序列 $S = \{s_1, s_2, s_3\} = \{20261013, 20261014, 20261015\}$，第 $m$ 轮种子在交叉验证最小惩罚系数 $\lambda_{\text{min}}(s_m)$ 下筛选出的非零系数基因集合为 $G(s_m)$，则最终交付的稳健核心基因集合 $G_{\text{robust}}$ 必须严格取全交集：
+     $$G_{\text{robust}} = \bigcap_{m=1}^{3} G(s_m)$$
+   - 若 $|G_{\text{robust}}| = 0$ 或差异表达矩阵任意统计量（$\log_2\text{FC}$、`padj`）出现 `NaN` 或 $\pm\infty$，立即判定内建自校验失败，物理删除临时 `.tsv` 文件并返回退出码 `1`。
+   - 所有浮点统计量序列化统一按 `%.17g` 标准格式化。
+
+2. 架构契约与占位骨架代码：
+
+```typescript
+// 文件路径：src/mods/mod-biz-beta/schema.ts
+export type ActiveBioScope =
+  | "GEO_STANDARD"           // 数据清洗、质检、差异分析、功能富集、WGCNA、Lasso回归
+  | "SCRNA_SEQ"              // 单细胞转录组
+  | "SPATIAL_TRANSCRIPTOMICS"// 单细胞空间转录组
+  | "FRAMEWORK_RESERVED";    // 其他组学类型仅搭框架占位
+
+export interface BetaTranscriptomicsJobSpec {
+  readonly jobId: string;
+  readonly scope: ActiveBioScope;
+  readonly inputMatrixRelPath: string;
+  readonly expectedSamples: number;
+  readonly expectedGenes: number;
+  readonly seeds?: readonly number[]; // 必须显式传入 [20261013, 20261014, 20261015]
+}
+
+export interface BetaAnalysisDigest {
+  readonly jobId: string;
+  readonly scope: ActiveBioScope;
+  readonly seedsUsed: readonly number[];
+  readonly robustBiomarkerSymbols: readonly string[];
+  readonly formattedMetrics17g: Readonly<Record<string, string>>;
+  readonly outputTsvRelPath: string;
+  readonly outputSha256: string;
+}
+
+```
+
+```typescript
+// 文件路径：src/mods/mod-biz-beta/implementation.ts
+import type { ExitCode } from "../../core/types.js";
+import type { BetaTranscriptomicsJobSpec, BetaAnalysisDigest } from "./schema.js";
+import type { BridgeEngineSeam } from "../../engines/bridge-engine/interface.js";
+
+export interface BizBetaSeam {
+  executeTranscriptomicsPipeline(
+    spec: Readonly<BetaTranscriptomicsJobSpec>
+  ): Promise<{ exitCode: ExitCode; digest?: BetaAnalysisDigest }>;
+}
+
+export class BizBetaAdapter implements BizBetaSeam {
+  public constructor(private readonly bridgeEngine: BridgeEngineSeam) {}
+
+  public async executeTranscriptomicsPipeline(
+    spec: Readonly<BetaTranscriptomicsJobSpec>
+  ): Promise<{ exitCode: ExitCode; digest?: BetaAnalysisDigest }> {
+    // 1. D-05 确定性种子显式注入检查：若 !spec.seeds || spec.seeds.length === 0 立即返回 { exitCode: 3 }
+    // 2. PathGuard 校验 inputMatrixRelPath（越界返退出码 2）
+    // 3. 若 spec.scope === "FRAMEWORK_RESERVED"，仅执行契约连通性框架返回；若为 GEO_STANDARD / SCRNA_SEQ / SPATIAL_TRANSCRIPTOMICS，通过 bridgeEngine 派发至 K40 Termux 8 核原生环境执行
+    // 4. 校验输出矩阵维度守恒与非 NaN，按 %.17g 格式化落盘至 data/beta-outputs/（自检不过删残卷返退出码 1）
+    // [AGENT_CODE_FILL_TARGET: 由专职编码 Agent 补齐 GEO/单细胞/空间转录组任务派发、三轮种子交集计算与 %.17g 落盘实现]
+    throw new Error("TODO_BY_CODING_AGENT: BizBetaAdapter.executeTranscriptomicsPipeline");
+  }
+}
+
+```
+
+四、 跨模块 `CapabilityBus` 只读联动接口契约
+
+* 提供能力（`capabilitiesProvided`）：
+* `capabilityId`: `"bizBeta.getAnalysisDigest"`
+* 请求参数：`Readonly<{ jobId: string }>`
+* 返回结构：`Readonly<BetaAnalysisDigest>`
+
+
+* 消费能力（`capabilitiesConsumed`）：`[]`
+
+五、 专属自动化回归测试矩阵
+
+| 测试文件落点 | 守护 `seam` | 防 G1 至 G7 复发硬断言 |
+| --- | --- | --- |
+| `test/mods/biz-beta/seed-contract.spec.ts` | `BizBetaSeam.executeTranscriptomicsPipeline` | 断言缺失 `seeds` 或空数组 100% 返回 `exitCode === 3`（防 D-05 退化） |
+| `test/mods/biz-beta/determinism.spec.ts` | `BizBetaSeam.executeTranscriptomicsPipeline` | 同时挂载 `DeterministicMockBridgeAdapter` 与 `K40TermuxBridgeAdapter` 验证双腿运行（防 G7），断言输出 SHA256 恒定 |
+
+```
+
+---
+
+
+```
+
+# ================================================================================
+七、 模块 4：mod-template-studio（SCI 图表与可视化画布模块）【1×3 三件套】全文
+
+```
+
+### 3.4.1 `mod-template-studio-aims-总目标-20261028.txt`
+
+```text
+文件落盘路径：docs/modules/mod-template-studio/mod-template-studio-aims-总目标-20261028.txt
+
+```
+
+```text
+一、 模块定位（What & Why）
+mod-template-studio 是负责 SCI 出版级生信图表（火山图、WGCNA 模块相关性热图、Lasso 系数路径图、单细胞 UMAP 图）与个人消费结构可视化母版管理、参数定制派生及真实渲染驱动的可视化画布卡带 C（Adapter）。它严格执行全局母版（`templates/`）物理只读保护，任何项目级参数定制一律在 `adapt/` 目录下生成带 `# Master-SHA256` 对账头的派生副本，并后置挂载 `plot-engine` 真实执行渲染，强制输出 300 DPI、纯水平显著性连线且像素方差 $\sigma > 0$ 的高质量图像产物。
+
+二、 负面清单（Anti-Goals）
+1. 严禁直接修改或覆盖 `src/mods/mod-template-studio/templates/` 下的任何原始母版文件（禁区二）。
+2. 严禁只生成 `adapt/` 派生脚本却不调用 `plot-engine` 产出真实图像文件的假闭环行为（门禁 G2）。
+3. 严禁生成带斜线或折线显著性标注、分辨率低于 300 DPI、或全白/全黑（像素方差 $\sigma \le 0$）的图表产物。
+4. 严禁横向直接 import 其他 `mod-*` 的源码文件。
+
+三、 三阶段业务目标与边界规格（Specs & Edge Cases）
+1. 【阶段Ⅰ：基础落地 (Foundation Landing)】
+   - 落地 `src/mods/mod-template-studio/manifest.ts`、只读母版 `templates/sci-horizontal-plot.tpl` 与私有表 `studio_templates`、`studio_derivatives`。
+   - 实现母版 SHA256 计算与派生副本首行 `# Master-SHA256: <64-hex>` 强制注入与反向验真器。
+2. 【阶段Ⅱ：相关配套 (Supporting Facilities)】
+   - 挂载 `plot-engine` 的 300ms 防抖自动保存与全入口渲染验证矩阵（Plot Matrix）：遍历全部配色方案、字体字号、显著性连线高度参数组合（拒绝抽样，100% 全矩阵执行，防 G3）。
+   - 实现几何与像素双重自校验：显著性连线两端纵坐标必须严格相等（$y_1 \equiv y_2$，纯水平连线），输出图像 DPI 元数据必须等于 300，像素方差 $\sigma > 0$；任一不满足立即物理删除残缺图像并返回退出码 `1`。
+3. 【阶段Ⅲ：功能实现 (Feature Implementation)】
+   - 挂载 `workspace.main` 与 `inspector.panel` 插槽，通过 `CapabilityBus` 只读消费 `bizAlpha.getConsumptionSummary` 与 `bizBeta.getAnalysisDigest` 数据，真实驱动渲染落盘并通过 G1 至 G7 终验。
+
+四、 完成定义（DoD）与量化验收台账
+| 验收项编号 | 验收判据描述 | 期望退出码 | 一键验证命令 |
+| :--- | :--- | :--- | :--- |
+| DOD-TPL-01 | 派生脚本首行精确包含母版真实 `# Master-SHA256`，且原始母版 SHA256 零变化 | 0 | `pnpm vitest run test/mods/template-studio/master-readonly.spec.ts` |
+| DOD-TPL-02 | 传入非水平显著性连线（$y_1 \neq y_2$）或空白图像字节流时，100% 删除残卷并返回退出码 1 | 0 | `pnpm vitest run test/mods/template-studio/plot-validator.spec.ts` |
+| DOD-TPL-03 | 全入口 Plot Matrix 所有参数组合 100% 真实派生并产出 300 DPI 图像文件（防 G2、G3） | 0 | `pnpm vitest run test/mods/template-studio/plot-matrix.spec.ts` |
+
+```
+
+### 3.4.2 `mod-template-studio-aimstodolist-20261028.txt`
+
+```text
+文件落盘路径：docs/modules/mod-template-studio/mod-template-studio-aimstodolist-20261028.txt
+
+```
+
+```text
+一、 当前模块工序锁状态
+当前工序锁：`[WIP=0]`
+
+二、 已封板基线凭证区
+- 基线时间戳：`2026-10-28T10:14:00+08:00`
+- 基线验证命令：`pnpm tsc --noEmit`
+- 退出码：`0`
+- 断言通过数：`0 / 0`（初始待建基线）
+- 关键基线产物 SHA256：待阶段Ⅰ封板后回填
+
+三、 三阶段垂直切片原子任务单（每个切片 < 30m）
+
+【阶段Ⅰ：基础落地 (Foundation Landing)】
+- [ ] `T-TPL-01` [WIP=0]：落地 `manifest.ts`、只读母版与 `adapt/` `# Master-SHA256` 派生器
+  - 目标 `seam`：`TemplateStudioSeam.deriveAndRender(params)`
+  - 修改文件：`src/mods/mod-template-studio/manifest.ts`, `src/mods/mod-template-studio/schema.ts`, `src/mods/mod-template-studio/templates/sci-horizontal-plot.tpl`, `test/mods/template-studio/master-readonly.spec.ts`
+  - 具体正面动作：锁定母版只读哈希，在 `adapt/` 生成首行带 `# Master-SHA256` 的派生副本并校验母版未被篡改。
+  - 一键验收命令：`pnpm vitest run test/mods/template-studio/master-readonly.spec.ts`
+
+【阶段Ⅱ：相关配套 (Supporting Facilities)】
+- [ ] `T-TPL-02` [WIP=0]：落地 300 DPI、纯水平显著性连线与像素方差 $\sigma > 0$ 校验器及全入口 Plot Matrix
+  - 目标 `seam`：`TemplateStudioSeam.deriveAndRender(params)`
+  - 修改文件：`src/mods/mod-template-studio/implementation.ts`, `test/mods/template-studio/plot-validator.spec.ts`, `test/mods/template-studio/plot-matrix.spec.ts`
+  - 具体正面动作：实现 $y_1 === y_2$ 水平连线断言、300 DPI 元数据校验与 $\sigma > 0$ 方差自检（不过即删残卷返退出码 `1`），跑通全参数组合矩阵（防 G2、G3）。
+  - 一键验收命令：`pnpm vitest run test/mods/template-studio/plot-validator.spec.ts test/mods/template-studio/plot-matrix.spec.ts`
+
+【阶段Ⅲ：功能实现 (Feature Implementation)】
+- [ ] `T-TPL-03` [WIP=0]：打通跨模块数据只读消费、派生后置真实渲染闭环与画布 UI 插槽挂载
+  - 目标 `seam`：`TemplateStudioSeam.deriveAndRender(params)`
+  - 修改文件：`src/mods/mod-template-studio/implementation.ts`, `src/mods/mod-template-studio/slots/StudioCanvasSlot.ts`
+  - 具体正面动作：通过 `CapabilityBus.query` 拉取 `biz-alpha` 与 `biz-beta` 数据，完成派生副本后置挂载真实渲染落盘，登记四元组产物并通过 G1 至 G7 终验。
+  - 一键验收命令：`node ops/check-gates.mjs && pnpm vitest run test/mods/template-studio/`
+
+```
+
+### 3.4.3 `mod-template-studio-aims落地-20261028.txt`
+
+```text
+文件落盘路径：docs/modules/mod-template-studio/mod-template-studio-aims落地-20261028.txt
+
+```
+
+```text
+一、 模块物理目录与微内核插座映射
+- `src/mods/mod-template-studio/templates/` ──► 全局只读母版物理落点
+- `src/mods/mod-template-studio/adapt/` ──► 项目级派生脚本落点（强制带 `# Master-SHA256` 对账头）
+- `src/mods/mod-template-studio/manifest.ts` ──► 接入 `ModLoader`、`SlotManager`（`workspace.main`）与 `DeliverableCollector`
+- `src/mods/mod-template-studio/implementation.ts` ──► 对接 `plot-engine` 与 `CapabilityBus` 实现派生 + 真实渲染闭环
+
+二、 数据库/状态表 Schema 与 1:1 真实产物映射表
+1. 私有存储表 `studio_derivatives` Schema：
+   - `derivative_id` (TEXT PRIMARY KEY)
+   - `master_template_name` (TEXT NOT NULL)
+   - `master_sha256` (TEXT NOT NULL, 64 位 hex)
+   - `adapt_script_rel_path` (TEXT NOT NULL)
+   - `rendered_output_rel_path` (TEXT NOT NULL)
+   - `rendered_sha256` (TEXT NOT NULL, 64 位 hex)
+   - `dpi` (INTEGER NOT NULL, 恒等于 `300`)
+   - `pixel_variance` (REAL NOT NULL, $> 0$)
+2. 四元组真实产物映射：
+   - `lines`: `["src/mods/mod-template-studio/adapt/proj-baseline-sci-horizontal-plot.tpl:1-80"]`
+   - `analysis_step`: `"template_studio.derive_and_render_300dpi"`
+   - `produces`: `"PUBLICATION_300DPI_PLOT_PNG"`
+   - `output_glob`: `"studio-outputs/plot-300dpi-*.png"`
+   - `sample_project_output`: `"data/studio-outputs/plot-300dpi-baseline-20261028.png"`
+
+三、 核心防崩算法、数学守恒公式与生产级架构骨架
+
+1. 纯水平显著性连线与母版对账守恒公式：
+   - 母版哈希对账不变量：设母版文件字节流为 $M$，派生脚本首行提取出的哈希字符串为 $h_{\text{header}}$，在执行渲染前必须满足：
+     $$h_{\text{header}} \equiv \text{SHA256}(M)$$
+     若不相等，说明母版发生漂移或派生头伪造，立即返回退出码 `2`。
+   - 显著性标注纯水平几何约束：对于图表中任意一条显著性比较连线 $L_k = ((x_{k,1}, y_{k,1}), (x_{k,2}, y_{k,2}))$，必须严格满足：
+     $$|y_{k,1} - y_{k,2}| = 0 \quad \text{且} \quad x_{k,2} > x_{k,1}$$
+     任何非水平斜线或退化零长度连线立即触发自校验失败，清理残缺图像并返回退出码 `1`。
+
+2. 架构契约与占位骨架代码：
+
+```typescript
+// 文件路径：src/mods/mod-template-studio/schema.ts
+export interface SignificanceBarSpec {
+  readonly groupA: string;
+  readonly groupB: string;
+  readonly x1: number;
+  readonly y1: number;
+  readonly x2: number;
+  readonly y2: number; // 必须严格等于 y1（纯水平显著性连线）
+  readonly pValueFormatted17g: string;
+}
+
+export interface StudioRenderParams {
+  readonly projectId: string;
+  readonly masterTemplateName: string;
+  readonly dpi: 300;
+  readonly significanceBars: readonly SignificanceBarSpec[];
+}
+
+export interface StudioDerivativeOutcome {
+  readonly derivativeId: string;
+  readonly adaptScriptRelPath: string;
+  readonly masterSha256: string;
+  readonly outputImageRelPath: string;
+  readonly outputImageSha256: string;
+  readonly pixelVariance: number;
+}
+
+```
+
+```typescript
+// 文件路径：src/mods/mod-template-studio/implementation.ts
+import type { ExitCode } from "../../core/types.js";
+import type { StudioRenderParams, StudioDerivativeOutcome } from "./schema.js";
+
+export interface TemplateStudioSeam {
+  deriveAndRender(params: Readonly<StudioRenderParams>): Promise<{ exitCode: ExitCode; outcome?: StudioDerivativeOutcome }>;
+}
+
+export class TemplateStudioAdapter implements TemplateStudioSeam {
+  public async deriveAndRender(
+    params: Readonly<StudioRenderParams>
+  ): Promise<{ exitCode: ExitCode; outcome?: StudioDerivativeOutcome }> {
+    // 1. 校验 params.dpi === 300，且所有 significanceBars 满足 bar.y1 === bar.y2 && bar.x2 > bar.x1（违背返退出码 1 或 2）
+    // 2. 只读读取 templates/${masterTemplateName}，计算真实 SHA256，在 adapt/ 下生成带 # Master-SHA256 头的派生脚本
+    // 3. 后置挂载 plot-engine 真实执行派生脚本（严禁只派生不执行，防门禁 G2）
+    // 4. 检验输出图像像素方差 > 0（若 <= 0 立即删除残卷并返退出码 1），落盘至 data/studio-outputs/
+    // [AGENT_CODE_FILL_TARGET: 由专职编码 Agent 补齐母版派生、水平连线校验与后置真实渲染落盘实现]
+    throw new Error("TODO_BY_CODING_AGENT: TemplateStudioAdapter.deriveAndRender");
+  }
+}
+
+```
+
+四、 跨模块 `CapabilityBus` 只读联动接口契约
+
+* 提供能力（`capabilitiesProvided`）：
+* `capabilityId`: `"templateStudio.listVerifiedOutputs"`
+* 请求参数：`Readonly<{ projectId: string }>`
+* 返回结构：`Readonly<readonly StudioDerivativeOutcome[]>`
+
+
+* 消费能力（`capabilitiesConsumed`）：
+* `"bizAlpha.getConsumptionSummary"`
+* `"bizBeta.getAnalysisDigest"`
+
+
+
+五、 专属自动化回归测试矩阵
+
+| 测试文件落点 | 守护 `seam` | 防 G1 至 G7 复发硬断言 |
+| --- | --- | --- |
+| `test/mods/template-studio/master-readonly.spec.ts` | `TemplateStudioSeam.deriveAndRender` | 断言 `templates/` 原文件哈希不变，`adapt/` 副本首行含精确 `# Master-SHA256`（防禁区二） |
+| `test/mods/template-studio/plot-validator.spec.ts` | `TemplateStudioSeam.deriveAndRender` | 断言 $y_1 \neq y_2$ 非水平连线或空白图像 100% 物理删除残卷并返回 `exitCode === 1` |
+| `test/mods/template-studio/plot-matrix.spec.ts` | `PlotEngineSeam` 全入口矩阵 | 断言全参数矩阵 100% 真实产出 `.png` 物理文件且修改时间晚于派生脚本（防 G2、G3） |
+
+```
+
+
+```

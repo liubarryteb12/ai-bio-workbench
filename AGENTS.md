@@ -30,6 +30,7 @@
   短字符串默认单引号，只有确定要展开变量时才用双引号。
 - 动词不用否定式禁令（"不要 X"），写正面目标行为。
 - 每句话都当 no-op 审一遍：相对默认行为改变了什么？没变就删。
+- 算力面默认线程数为 3，与 `ops/bio_limits.sh` 一致，`BIO_MAX_THREADS` 可显式覆盖。
 
 ## 做事方式
 
@@ -40,3 +41,17 @@
 - 有测试可跑就 test-first，一个垂直切块一个切块地推，先红后绿。
 - 卡住时先造一条对**这个**问题会变红的反馈环，再造理论。没有环之前别靠读代码建假设。
 - 做完自己 review 一遍再交付。
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues at `liubarryteb12/ai-bio-workbench`, accessed via `gh`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Uses the default five canonical triage labels. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout. See `docs/agents/domain.md`.

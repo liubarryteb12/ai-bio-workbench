@@ -1,0 +1,37 @@
+文件落盘路径：docs/modules/mod-portal-sync/mod-portal-sync-aimstodolist-20261028.txt
+
+```
+
+```text
+一、 当前模块工序锁状态
+当前工序锁：`[WIP=0]`（等待 `mod-core-engines` 释放全局唯一 `WIP=1` 锁后激活）
+
+二、 已封板基线凭证区
+- 基线时间戳：`2026-10-28T10:14:00+08:00`
+- 基线验证命令：`pnpm tsc --noEmit`
+- 退出码：`0`
+- 断言通过数：`0 / 0`（初始待建基线）
+- 关键基线产物 SHA256：待阶段Ⅰ封板后自动回填
+
+三、 三阶段垂直切片原子任务单（每个切片 < 30m）
+
+【阶段Ⅰ：基础落地 (Foundation Landing)】
+- [x] `T-SYNC-01` [DONE]：落地 `mod-portal-sync/manifest.ts` 与 `schema.ts`
+  - 目标 `seam`：`ModManifest` 插座契约与 `sync_manifests` 表结构
+  - 修改文件：`src/mods/mod-portal-sync/manifest.ts`, `src/mods/mod-portal-sync/schema.ts`, `tests/test_portal_sync.py`
+  - 具体正面动作：声明 `dbStores`、四元组 `artifacts` 与 `portalSync.getLastBundleInfo` 只读能力契约。
+  - 一键验收命令：`python tests/test_portal_sync.py -v`
+
+【阶段Ⅱ：相关配套 (Supporting Facilities)】
+- [x] `T-SYNC-02` [DONE]：挂载 5 类异常边界全入口验证矩阵
+  - 目标 `seam`：`PortalSyncSeam.importVerifiedBundle(packlet, publicKeyPem, options)`
+  - 修改文件：`src/mods/mod-portal-sync/implementation.ts`, `src/engines/sync-engine/implementation.ts`, `tests/test_portal_sync.py`
+  - 具体正面动作：完成 512KB 分片硬上限、分片连续性、总字节守恒、Merkle Root、Ed25519 验签、24 小时包时效和 5 分钟未来时钟容差校验。
+  - 一键验收命令：`python tests/test_portal_sync.py -v`
+
+【阶段Ⅲ：功能实现 (Feature Implementation)】
+- [x] `T-SYNC-03` [DONE]：打通跨模块只读收集、单向签名封包与 UI 插槽挂载
+  - 目标 `seam`：`PortalSyncSeam.exportSignedDeliverable(request)`
+  - 修改文件：`src/mods/mod-portal-sync/implementation.ts`, `src/mods/mod-portal-sync/slots/exportSlot.ts`, `tests/test_portal_sync.py`
+  - 具体正面动作：通过 `CapabilityBus.query` 拉取各卡带汇总信息，结合 `DeliverableCollector` 生成带 Ed25519 签名的 `.packlet.json` 交付物。
+  - 一键验收命令：`python tests/test_portal_sync.py -v`

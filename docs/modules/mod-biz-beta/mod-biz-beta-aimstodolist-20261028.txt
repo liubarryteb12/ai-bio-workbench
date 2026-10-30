@@ -1,0 +1,37 @@
+文件落盘路径：docs/modules/mod-biz-beta/mod-biz-beta-aimstodolist-20261028.txt
+
+```
+
+```text
+一、 当前模块工序锁状态
+当前工序锁：`[WIP=0]`
+
+二、 已封板基线凭证区
+- 基线时间戳：`2026-10-28T10:14:00+08:00`
+- 基线验证命令：`pnpm tsc --noEmit`
+- 退出码：`0`
+- 断言通过数：`0 / 0`（初始待建基线）
+- 关键基线产物 SHA256：待阶段Ⅰ封板后回填
+
+三、 三阶段垂直切片原子任务单（每个切片 < 30m）
+
+【阶段Ⅰ：基础落地 (Foundation Landing)】
+- [ ] `T-BETA-01` [WIP=0]：落地 `mod-biz-beta/manifest.ts` 与 `schema.ts`
+  - 目标 `seam`：`ModManifest` 与 `BetaTranscriptomicsJobSpec` 契约
+  - 修改文件：`src/mods/mod-biz-beta/manifest.ts`, `src/mods/mod-biz-beta/schema.ts`, `test/mods/biz-beta/manifest.spec.ts`
+  - 具体正面动作：定义 GEO 常规分析（清洗、质检、差异、富集、WGCNA、Lasso）、单细胞与空间转录组请求 Schema、四元组产物映射与 `bizBeta.getAnalysisDigest` 只读能力签名。
+  - 一键验收命令：`pnpm vitest run test/mods/biz-beta/manifest.spec.ts`
+
+【阶段Ⅱ：相关配套 (Supporting Facilities)】
+- [ ] `T-BETA-02` [WIP=0]：实现 `SEED` 守卫、`%.17g` 序列化、三轮种子交集校验与 5 类边界测试矩阵
+  - 目标 `seam`：`BizBetaSeam.executeTranscriptomicsPipeline(spec)`
+  - 修改文件：`src/mods/mod-biz-beta/implementation.ts`, `test/mods/biz-beta/seed-contract.spec.ts`, `test/mods/biz-beta/matrix-integrity.spec.ts`
+  - 具体正面动作：校验外部种子（缺失返退出码 `3`），对接 `compute-engine` 与 `bridge-engine`（含 K40 8 核真实 Adapter 与本地 Mock Adapter），实现行列守恒与 `NaN` 拦截（失败删残卷返退出码 `1`）。
+  - 一键验收命令：`pnpm vitest run test/mods/biz-beta/seed-contract.spec.ts test/mods/biz-beta/matrix-integrity.spec.ts`
+
+【阶段Ⅲ：功能实现 (Feature Implementation)】
+- [ ] `T-BETA-03` [WIP=0]：打通三轮稳健交集产物落盘、只读总线挂载与双腿回归终验
+  - 目标 `seam`：`CapabilityBus` 只读响应与 `DATA/beta-outputs/*.tsv` 落盘
+  - 修改文件：`src/mods/mod-biz-beta/implementation.ts`, `src/mods/mod-biz-beta/slots/BetaPipelineSlot.ts`, `test/mods/biz-beta/determinism.spec.ts`
+  - 具体正面动作：输出比特级对齐的 `%.17g` 矩阵结果文件，登记 `ledger/actions.jsonl` 并通过 G1 至 G7 门禁。
+  - 一键验收命令：`pnpm vitest run test/mods/biz-beta/determinism.spec.ts`

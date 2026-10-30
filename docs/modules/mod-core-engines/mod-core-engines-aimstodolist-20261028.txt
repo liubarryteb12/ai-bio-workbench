@@ -1,0 +1,54 @@
+文件落盘路径：docs/modules/mod-core-engines/mod-core-engines-aimstodolist-20261028.txt
+
+```
+
+```text
+一、 当前模块工序锁状态
+当前工序锁：`[WIP=1]`
+当前激活原子任务：`T-CORE-01`（全平台唯一激活任务，严格限时小于 30 分钟）
+
+二、 已封板基线凭证区
+- 基线时间戳：`2026-10-28T10:14:00+08:00`
+- 基线验证命令：`node ops/check-gates.mjs --baseline`
+- 退出码：`0`
+- 断言通过数：`36 / 36`
+- 关键基线产物 SHA256：
+  - `src/core/types.ts`: `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`
+
+三、 三阶段垂直切片原子任务单（每个切片 < 30m）
+
+【阶段Ⅰ：基础落地 (Foundation Landing)】
+- [ ] `T-CORE-01` [WIP=1]：落地 `src/core/types.ts` 与 `src/core/path-guard.ts`
+  - 目标 `seam`：`PathGuard.resolveSafePath(root, relPath)`
+  - 修改文件：`src/core/types.ts`, `src/core/path-guard.ts`, `test/core/path-guard.spec.ts`
+  - 具体正面动作：定义 `ModManifest` 与 `ExitCode` 接口；实现四类合法根目录解析，拦截 `..` 路径跳转、空字节与 `/sdcard` 路径并返退出码 `2`。
+  - 一键验收命令：`pnpm vitest run test/core/path-guard.spec.ts`
+- [ ] `T-CORE-02` [WIP=0]：落地双轨追加式台账引擎 `src/core/ledger-store.ts`
+  - 目标 `seam`：`LedgerStore.appendRecord(stream, payload)`
+  - 修改文件：`src/core/ledger-store.ts`, `ledger/INDEX.json`, `test/core/ledger-store.spec.ts`
+  - 具体正面动作：实现 UTF-8 LF 格式 JSONL 原子追加写入，每次写入后自动重算对应文件 SHA256 并同步更新 `ledger/INDEX.json`。
+  - 一键验收命令：`pnpm vitest run test/core/ledger-store.spec.ts`
+
+【阶段Ⅱ：相关配套 (Supporting Facilities)】
+- [ ] `T-CORE-03` [WIP=0]：落地 `bridge-engine` AST 语法守卫、K40 Termux 8022 端口桥接与双落点哈希对齐
+  - 目标 `seam`：`BridgeEngineSeam.invokeRemote(cmd)`
+  - 修改文件：`src/engines/bridge-engine/interface.ts`, `src/engines/bridge-engine/implementation.ts`, `test/engines/bridge-engine.spec.ts`
+  - 具体正面动作：实现命令词法与 AST 扫描，静态拦截 `find`、`ps`、`grep -r`（坑位 `P-29`），强制注入 `NO_PROXY=localhost,127.0.0.1,k40.local`，核验 `src/` 与 `bin/` SHA256 对齐。
+  - 一键验收命令：`pnpm vitest run test/engines/bridge-engine.spec.ts`
+- [ ] `T-CORE-04` [WIP=0]：落地 `compute-engine` 种子守卫、K40 8 核满载绑定与 5m/40m 分档超时器
+  - 目标 `seam`：`ComputeEngineSeam.runTask(req)`
+  - 修改文件：`src/engines/compute-engine/interface.ts`, `src/engines/compute-engine/implementation.ts`, `test/engines/compute-engine.spec.ts`
+  - 具体正面动作：校验外部 `seed` 参数（缺失返退出码 `3`），锁定 `workers: 8` 原生多线程并发，生成 `setsid nohup` 命令行，绑定 300s/2400s 超时熔断器与残缺文件清理钩子。
+  - 一键验收命令：`pnpm vitest run test/engines/compute-engine.spec.ts`
+- [ ] `T-CORE-05` [WIP=0]：落地 `plot-engine` 与 `sync-engine` 深度模块及双 Adapter
+  - 目标 `seam`：`PlotEngineSeam.renderMatrix(spec)`, `SyncEngineSeam.packSigned(data)`
+  - 修改文件：`src/engines/plot-engine/implementation.ts`, `src/engines/sync-engine/implementation.ts`, `test/engines/plot-sync.spec.ts`
+  - 具体正面动作：实现图像非空白像素方差 $\sigma > 0$ 检验（返退出码 `1` 并删残卷）及 512KB 分片 Ed25519 签名验签。
+  - 一键验收命令：`pnpm vitest run test/engines/plot-sync.spec.ts`
+
+【阶段Ⅲ：功能实现 (Feature Implementation)】
+- [ ] `T-CORE-06` [WIP=0]：落地微内核四大插座（`ModLoader`、`SlotManager`、`CapabilityBus`、`DeliverableCollector`）与 G1 至 G7 门禁扫描器
+  - 目标 `seam`：`ModLoader.loadAll()`, `CapabilityBus.query()`, `DeliverableCollector.collectVerified()`
+  - 修改文件：`src/core/mod-loader.ts`, `src/core/slot-manager.ts`, `src/core/capability-bus.ts`, `src/core/deliverable-collector.ts`, `ops/check-gates.mjs`
+  - 具体正面动作：完成四元组核验降级、只读深冻结总线、插槽空态折叠以及 G1 至 G7 门禁自动化扫描脚本。
+  - 一键验收命令：`pnpm vitest run test/core/sockets.spec.ts && node ops/check-gates.mjs`

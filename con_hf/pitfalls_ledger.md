@@ -396,3 +396,12 @@
 - **防回归单测用例路径**：无需新增用例，这 5 条本身就是真链路探针，改它们等于拆警报。
   防线在文档：README 第 3 条 + 本条台账。
 - **验证状态**：已修复。提权后 848/848 全绿 ×3，`tsc --noEmit` exit 0，`npm run build` exit 0。
+
+### P-43 A2A 终态比较必须先归一化协议枚举
+
+- **所属域**：A2A 状态机与前端轮询。
+- **现象**：Pi 返回 `TASK_STATE_COMPLETED` 等大写协议枚举，前端只比较 `completed` 等小写短名，已完成任务仍继续轮询。
+- **风险路径**：任务到终态后未被识别，24 小时超时逻辑可能继续调用 `CancelTask`，界面状态与远端真实状态长期不一致。
+- **永久修复**：所有路由响应统一经过 `normalizeA2ATask()`，控制面使用小写 `status.state`，原始协议值保存在 `status.remote_state`。
+- **防回归用例**：`BioanalysDesktop/tests/a2a_state.test.js` 与 `BioanalysDesktop/tests/pi_agent_routes.test.js`。
+- **验证状态**：Node 定向测试 `19/19 PASS`；真实 completed 与 canceled 任务均通过 `GetTask` 读回归一化状态。

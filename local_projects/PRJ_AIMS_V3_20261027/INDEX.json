@@ -3,9 +3,9 @@
     "data": 195,
     "debug": 0,
     "deliverables": 317,
-    "figures": 166
+    "figures": 186
   },
-  "generated_at": "2026-10-28T02:49:55.754595+00:00",
+  "generated_at": "2026-10-29T13:32:19.368523+00:00",
   "generated_by": "ops/ledger_indexer.py",
   "issues": [],
   "ledger_summary": {

@@ -1,0 +1,136 @@
+文件落盘路径：docs/modules/mod-portal-sync/mod-portal-sync-aims落地-20261028.txt
+
+```
+
+```text
+一、 模块物理目录与微内核插座映射
+- `src/mods/mod-portal-sync/manifest.ts` ──► 接入 `ModLoader`、`SlotManager`（挂载至 `topbar.action`）与 `DeliverableCollector`
+- `src/mods/mod-portal-sync/schema.ts` ──► 声明私有表 `sync_manifests`、`sync_chunks`
+- `src/mods/mod-portal-sync/implementation.ts` ──► 调用 `sync-engine`、`PathGuard`、`CapabilityBus` 实现打包与验签
+
+二、 数据库/IndexedDB 状态表 Schema 与 1:1 真实产物映射表
+1. 私有存储表 `sync_manifests` Schema：
+   - `bundle_id` (TEXT PRIMARY KEY)
+   - `group_id` (TEXT NOT NULL)
+   - `created_at_iso` (TEXT NOT NULL, ISO 8601 带时区)
+   - `chunk_count` (INTEGER NOT NULL, $\ge 1$)
+   - `total_bytes` (INTEGER NOT NULL, $\ge 1$)
+   - `merkle_root_sha256` (TEXT NOT NULL, 64 位 hex)
+   - `ed25519_signature_hex` (TEXT NOT NULL, 128 位 hex)
+2. 四元组真实产物映射：
+   - `lines`: `["src/mods/mod-portal-sync/implementation.ts:1-120"]`
+   - `analysis_step`: `"portal_sync.export_signed_packlet"`
+   - `produces`: `"SIGNED_PACKLET_BUNDLE"`
+   - `output_glob`: `"deliverables/bundle-*.packlet.json"`
+   - `sample_project_output`: `"data/deliverables/bundle-baseline-20261028.packlet.json"`
+
+三、 核心防崩算法与生产级架构骨架
+
+1. 分片配额与默克尔根守恒公式：
+   设原始字节流长度为 $L$（$L > 0$），单分片配额常量 $C = 524288$（512KB），则分片总数 $K = \lceil L / C \rceil$。第 $i$ 个分片字节长度 $l_i$ 满足：
+   $$\sum_{i=0}^{K-1} l_i = L, \quad 1 \le l_i \le 524288$$
+   根摘要计算公式为：
+   $$H_{\text{root}} = \text{SHA256}\left( \text{SHA256}(\text{chunk}_0) \parallel \text{SHA256}(\text{chunk}_1) \parallel \dots \parallel \text{SHA256}(\text{chunk}_{K-1}) \right)$$
+
+2. 架构契约与占位骨架代码：
+
+```typescript
+// 文件路径：src/mods/mod-portal-sync/schema.ts
+export interface SyncChunkRecord {
+  readonly bundleId: string;
+  readonly chunkIndex: number;
+  readonly totalChunks: number;
+  readonly byteLength: number;
+  readonly chunkSha256: string;
+  readonly payloadBase64: string;
+}
+
+export interface SignedPackletFile {
+  readonly bundleId: string;
+  readonly groupId: string;
+  readonly createdAtIso: string;
+  readonly merkleRootSha256: string;
+  readonly ed25519SignatureHex: string;
+  readonly publicKeyHex: string;
+  readonly chunks: readonly SyncChunkRecord[];
+}
+
+```
+
+```typescript
+// 文件路径：src/mods/mod-portal-sync/implementation.ts
+import type { DeliverableMod } from "../../core/DeliverableCollector.js";
+import { DeliverableCollector } from "../../core/DeliverableCollector.js";
+import type { SignedPacklet, SyncEngine } from "../../engines/sync-engine/interface.js";
+import type { PortalSyncManifestV1 } from "./schema.js";
+
+export interface PortalSyncExportRequest {
+  readonly id: string;
+  readonly mods: readonly DeliverableMod[];
+  readonly privateKeyPem: string;
+  readonly now?: Date;
+}
+
+export interface PortalSyncExportResult {
+  readonly id: string;
+  readonly manifest: PortalSyncManifestV1;
+  readonly packlet: SignedPacklet;
+}
+
+export interface PortalSyncImportOptions {
+  readonly now?: Date;
+  readonly maxAgeMs?: number;
+}
+
+export interface PortalSyncSeam {
+  exportSignedDeliverable(request: PortalSyncExportRequest): Promise<PortalSyncExportResult>;
+  importVerifiedBundle(
+    packlet: SignedPacklet,
+    publicKeyPem: string,
+    options?: PortalSyncImportOptions
+  ): Promise<PortalSyncManifestV1>;
+}
+
+export class PortalSyncAdapter implements PortalSyncSeam {
+  public constructor(
+    private readonly collector: DeliverableCollector,
+    private readonly syncEngine: SyncEngine
+  ) {}
+}
+
+// 行为真源：src/mods/mod-portal-sync/implementation.ts
+// 导出走 DeliverableCollector + SyncEngine.packSigned。
+// 导入走 SyncEngine.unpackVerified，并强制 512KB 分片上限、Ed25519 验签、
+// 24 小时包时效与 5 分钟未来时钟容差。
+```
+
+四、 跨模块 `CapabilityBus` 只读联动接口契约
+
+* 提供能力（`capabilitiesProvided`）：
+* `capabilityId`: `"portalSync.getLastBundleInfo"`
+* 请求参数：`{}`
+* 返回结构：`Readonly<{ lastBundleId: string | null; lastExportedAtIso: string | null; verifiedChunkCount: number }>`
+
+
+* 消费能力（`capabilitiesConsumed`）：
+* `"bizAlpha.getConsumptionSummary"`
+* `"bizBeta.getAnalysisDigest"`
+
+
+
+五、 专属自动化回归测试矩阵
+
+| 测试文件落点 | 守护 `seam` | 防 G1 至 G7 复发硬断言 |
+| --- | --- | --- |
+| `test/mods/portal-sync/manifest.spec.ts` | `PortalSyncManifest` | 断言四元组 `output_glob` 与样本产物真实存在（防 G1、G2） |
+| `test/mods/portal-sync/matrix.spec.ts` | `PortalSyncSeam.importVerifiedBundle` | 覆盖 5 类损坏/越界/篡改分片输入矩阵（防 G3），断言篡改包 100% 返回 `exitCode === 1` |
+
+```
+
+---
+
+
+```
+
+# ================================================================================
+五、 模块 2：mod-biz-alpha（个人生产力、整数分记账与消费结构模块）【1×3 三件套】全文

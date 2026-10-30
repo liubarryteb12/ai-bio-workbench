@@ -1,0 +1,120 @@
+文件落盘路径：docs/modules/mod-biz-beta/mod-biz-beta-aims落地-20261028.txt
+
+```
+
+```text
+一、 模块物理目录与微内核插座映射
+- `src/mods/mod-biz-beta/manifest.ts` ──► 接入 `ModLoader`、`SlotManager`（`sidebar.nav`）与 `DeliverableCollector`
+- `src/mods/mod-biz-beta/schema.ts` ──► 声明 `beta_geo_runs`、`beta_lasso_intersections` 结构
+- `src/mods/mod-biz-beta/implementation.ts` ──► 调用 `compute-engine`、`bridge-engine` 调度 K40 8 核运行环境实现生信分析管线
+
+二、 数据库/状态表 Schema 与 1:1 真实产物映射表
+1. 私有存储表 `beta_geo_runs` Schema：
+   - `job_id` (TEXT PRIMARY KEY)
+   - `pipeline_scope` (TEXT NOT NULL, 枚举：`"GEO_STANDARD"` | `"SCRNA_SEQ"` | `"SPATIAL_TRANSCRIPTOMICS"` | `"FRAMEWORK_RESERVED"`)
+   - `seeds_csv` (TEXT NOT NULL, 默认 `"20261013,20261014,20261015"`)
+   - `sample_count` (INTEGER NOT NULL, $> 0$)
+   - `gene_count` (INTEGER NOT NULL, $> 0$)
+   - `intersected_biomarkers_json` (TEXT NOT NULL)
+   - `output_sha256` (TEXT NOT NULL, 64 位 hex)
+2. 四元组真实产物映射：
+   - `lines`: `["src/mods/mod-biz-beta/implementation.ts:1-170"]`
+   - `analysis_step`: `"biz_beta.geo_lasso_robust_intersection"`
+   - `produces`: `"BIT_EXACT_17G_DEG_LASSO_TSV"`
+   - `output_glob`: `"beta-outputs/robust-biomarkers-*.tsv"`
+   - `sample_project_output`: `"data/beta-outputs/robust-biomarkers-baseline-20261028.tsv"`
+
+三、 核心防崩算法、数学守恒公式与生产级架构骨架
+
+1. 三轮确定性种子 Lasso 特征基因稳健交集与 17 位有效数字守恒公式：
+   - 设种子序列 $S = \{s_1, s_2, s_3\} = \{20261013, 20261014, 20261015\}$，第 $m$ 轮种子在交叉验证最小惩罚系数 $\lambda_{\text{min}}(s_m)$ 下筛选出的非零系数基因集合为 $G(s_m)$，则最终交付的稳健核心基因集合 $G_{\text{robust}}$ 必须严格取全交集：
+     $$G_{\text{robust}} = \bigcap_{m=1}^{3} G(s_m)$$
+   - 若 $|G_{\text{robust}}| = 0$ 或差异表达矩阵任意统计量（$\log_2\text{FC}$、`padj`）出现 `NaN` 或 $\pm\infty$，立即判定内建自校验失败，物理删除临时 `.tsv` 文件并返回退出码 `1`。
+   - 所有浮点统计量序列化统一按 `%.17g` 标准格式化。
+
+2. 架构契约与占位骨架代码：
+
+```typescript
+// 文件路径：src/mods/mod-biz-beta/schema.ts
+export type ActiveBioScope =
+  | "GEO_STANDARD"           // 数据清洗、质检、差异分析、功能富集、WGCNA、Lasso回归
+  | "SCRNA_SEQ"              // 单细胞转录组
+  | "SPATIAL_TRANSCRIPTOMICS"// 单细胞空间转录组
+  | "FRAMEWORK_RESERVED";    // 其他组学类型仅搭框架占位
+
+export interface BetaTranscriptomicsJobSpec {
+  readonly jobId: string;
+  readonly scope: ActiveBioScope;
+  readonly inputMatrixRelPath: string;
+  readonly expectedSamples: number;
+  readonly expectedGenes: number;
+  readonly seeds?: readonly number[]; // 必须显式传入 [20261013, 20261014, 20261015]
+}
+
+export interface BetaAnalysisDigest {
+  readonly jobId: string;
+  readonly scope: ActiveBioScope;
+  readonly seedsUsed: readonly number[];
+  readonly robustBiomarkerSymbols: readonly string[];
+  readonly formattedMetrics17g: Readonly<Record<string, string>>;
+  readonly outputTsvRelPath: string;
+  readonly outputSha256: string;
+}
+
+```
+
+```typescript
+// 文件路径：src/mods/mod-biz-beta/implementation.ts
+import type { ExitCode } from "../../core/types.js";
+import type { BetaTranscriptomicsJobSpec, BetaAnalysisDigest } from "./schema.js";
+import type { BridgeEngineSeam } from "../../engines/bridge-engine/interface.js";
+
+export interface BizBetaSeam {
+  executeTranscriptomicsPipeline(
+    spec: Readonly<BetaTranscriptomicsJobSpec>
+  ): Promise<{ exitCode: ExitCode; digest?: BetaAnalysisDigest }>;
+}
+
+export class BizBetaAdapter implements BizBetaSeam {
+  public constructor(private readonly bridgeEngine: BridgeEngineSeam) {}
+
+  public async executeTranscriptomicsPipeline(
+    spec: Readonly<BetaTranscriptomicsJobSpec>
+  ): Promise<{ exitCode: ExitCode; digest?: BetaAnalysisDigest }> {
+    // 1. D-05 确定性种子显式注入检查：若 !spec.seeds || spec.seeds.length === 0 立即返回 { exitCode: 3 }
+    // 2. PathGuard 校验 inputMatrixRelPath（越界返退出码 2）
+    // 3. 若 spec.scope === "FRAMEWORK_RESERVED"，仅执行契约连通性框架返回；若为 GEO_STANDARD / SCRNA_SEQ / SPATIAL_TRANSCRIPTOMICS，通过 bridgeEngine 派发至 K40 Termux 8 核原生环境执行
+    // 4. 校验输出矩阵维度守恒与非 NaN，按 %.17g 格式化落盘至 data/beta-outputs/（自检不过删残卷返退出码 1）
+    // [AGENT_CODE_FILL_TARGET: 由专职编码 Agent 补齐 GEO/单细胞/空间转录组任务派发、三轮种子交集计算与 %.17g 落盘实现]
+    throw new Error("TODO_BY_CODING_AGENT: BizBetaAdapter.executeTranscriptomicsPipeline");
+  }
+}
+
+```
+
+四、 跨模块 `CapabilityBus` 只读联动接口契约
+
+* 提供能力（`capabilitiesProvided`）：
+* `capabilityId`: `"bizBeta.getAnalysisDigest"`
+* 请求参数：`Readonly<{ jobId: string }>`
+* 返回结构：`Readonly<BetaAnalysisDigest>`
+
+
+* 消费能力（`capabilitiesConsumed`）：`[]`
+
+五、 专属自动化回归测试矩阵
+
+| 测试文件落点 | 守护 `seam` | 防 G1 至 G7 复发硬断言 |
+| --- | --- | --- |
+| `test/mods/biz-beta/seed-contract.spec.ts` | `BizBetaSeam.executeTranscriptomicsPipeline` | 断言缺失 `seeds` 或空数组 100% 返回 `exitCode === 3`（防 D-05 退化） |
+| `test/mods/biz-beta/determinism.spec.ts` | `BizBetaSeam.executeTranscriptomicsPipeline` | 同时挂载 `DeterministicMockBridgeAdapter` 与 `K40TermuxBridgeAdapter` 验证双腿运行（防 G7），断言输出 SHA256 恒定 |
+
+```
+
+---
+
+
+```
+
+# ================================================================================
+七、 模块 4：mod-template-studio（SCI 图表与可视化画布模块）【1×3 三件套】全文

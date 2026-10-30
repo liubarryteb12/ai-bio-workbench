@@ -1,0 +1,164 @@
+文件落盘路径：docs/modules/mod-core-engines/mod-core-engines-aims落地-20261028.txt
+
+```
+
+```text
+一、 模块物理目录与微内核插座映射
+- `src/core/path-guard.ts` ──► 宿主全局路径沙盒 `seam`（拦截 `/sdcard` 与 `..`）
+- `src/core/ledger-store.ts` ──► 双轨 JSONL 台账持久化 `seam`
+- `src/core/mod-loader.ts` ──► 卡带清单扫描与四元组降级插座
+- `src/core/slot-manager.ts` ──► UI 扩展插槽挂载与优雅降级插座
+- `src/core/capability-bus.ts` ──► 跨模块只读查询总线插座
+- `src/core/deliverable-collector.ts` ──► 真实产物四元组验真收集插座
+- `src/engines/{compute,bridge,plot,sync}-engine/` ──► 四大共享能力 `deep module`
+
+二、 状态表 Schema 与 1:1 真实产物映射表
+1. `ledger/INDEX.json` 索引结构 Schema：
+```json
+{
+  "updatedAt": "2026-10-28T10:14:00+08:00",
+  "k40NodeProfile": {
+    "host": "k40.local",
+    "sshPort": 8022,
+    "cpuCores": 8,
+    "screenAlwaysOn": true,
+    "activeCoolingRequired": true
+  },
+  "streams": {
+    "actions": { "path": "ledger/actions.jsonl", "lineCount": 15, "sha256": "<64-hex>" },
+    "changes": { "path": "ledger/changes.jsonl", "lineCount": 9, "sha256": "<64-hex>" },
+    "errors":  { "path": "ledger/errors.jsonl",  "lineCount": 0, "sha256": "<64-hex>" },
+    "fixes":   { "path": "ledger/fixes.jsonl",   "lineCount": 0, "sha256": "<64-hex>" },
+    "pitfalls":{ "path": "ledger/pitfalls.jsonl","lineCount": 8, "sha256": "<64-hex>" }
+  }
+}
+
+```
+
+三、 核心防崩算法、数学守恒公式与生产级架构骨架
+
+1. 图像非空白像素方差校验公式（防退出码 `1` 坏图落盘）：
+设渲染输出的 RGB 像素通道采样序列为 $X = \{x_1, x_2, \dots, x_N\}$，均值 $\mu = \frac{1}{N}\sum_{i=1}^N x_i$，像素方差定义为：
+
+$$\sigma^2 = \frac{1}{N}\sum_{i=1}^N (x_i - \mu)^2$$
+
+
+
+当 $\sigma \le 10^{-4}$ 时，判定为全白或全黑空白废图，立即物理删除残缺文件并返回退出码 `1`。
+2. 微内核路径守卫与 K40 异构桥接引擎架构契约骨架（具体实现细节交由编码 Agent 在对应占位符处补齐）：
+
+```typescript
+// 文件路径：src/core/path-guard.ts
+import path from "node:path";
+import type { ExitCode } from "./types.js";
+
+export type AllowedRoot = "ROOT" | "MODS" | "DATA" | "CACHE";
+
+export interface SafePathOutcome {
+  readonly exitCode: ExitCode;
+  readonly resolvedPath: string;
+  readonly violationReason?: string;
+}
+
+export class PathGuard {
+  private readonly roots: Readonly<Record<AllowedRoot, string>>;
+
+  public constructor(workspaceRoot: string) {
+    const base = path.resolve(workspaceRoot);
+    this.roots = Object.freeze({
+      ROOT: base,
+      MODS: path.resolve(base, "src/mods"),
+      DATA: path.resolve(base, "data"),
+      CACHE: path.resolve(base, "cache")
+    });
+  }
+
+  public resolveSafePath(scope: AllowedRoot, targetRelativePath: string): SafePathOutcome {
+    // [AGENT_CODE_FILL_TARGET: 编码 Agent 在此实现空字节拦截、/sdcard 与 /storage/emulated 慢速分区拦截（坑位 P-22）、path.relative 越界检查，违背时返回 { exitCode: 2, resolvedPath: "", violationReason }]
+    throw new Error("TODO_BY_CODING_AGENT: PathGuard.resolveSafePath");
+  }
+}
+
+```
+
+```typescript
+// 文件路径：src/engines/bridge-engine/interface.ts
+import type { ExitCode } from "../../core/types.js";
+
+export interface BridgeCommand {
+  readonly scriptName: string;
+  readonly rawCommandString: string;
+  readonly srcScriptPath: string;
+  readonly binScriptPath: string;
+  readonly timeoutTier: "interactive_5m" | "batch_40m";
+  readonly workers: 8; // 强制绑定 K40 骁龙 870 八核心全量释放
+  readonly seed?: number;
+}
+
+export interface BridgePayload {
+  readonly exitCode: ExitCode;
+  readonly stdout: string;
+  readonly alignedSha256: string;
+}
+
+export interface BridgeEngineSeam {
+  invokeRemote(cmd: Readonly<BridgeCommand>): Promise<BridgePayload>;
+}
+
+```
+
+```typescript
+// 文件路径：src/engines/bridge-engine/implementation.ts
+import type { BridgeCommand, BridgePayload, BridgeEngineSeam } from "./interface.js";
+
+export class K40TermuxBridgeAdapter implements BridgeEngineSeam {
+  private static readonly FORBIDDEN_PATTERNS = [
+    /\bfind\b/,
+    /\bps\b/,
+    /\bgrep\s+-[a-zA-Z]*r/
+  ] as const;
+
+  public async invokeRemote(cmd: Readonly<BridgeCommand>): Promise<BridgePayload> {
+    // 1. P-29 容器/Termux 高危遍历指令词法与 AST 静态拦截（命中即返退出码 2）
+    // 2. D-05 确定性随机种子检查（缺失即返退出码 3）
+    // 3. P-25 核验 srcScriptPath 与 binScriptPath 的 SHA256 一致性（失配即返退出码 2）
+    // 4. P-26 组装 setsid nohup 独立会话指令，通过 SSH 8022 端口直连 k40.local 原生二进制执行（跳过 PRoot 损耗），强制注入 NO_PROXY=localhost,127.0.0.1,k40.local
+    // [AGENT_CODE_FILL_TARGET: 由专职编码 Agent 补齐 SSH 进程派发、>=60s 低频轮询与状态收集实现]
+    throw new Error("TODO_BY_CODING_AGENT: K40TermuxBridgeAdapter.invokeRemote");
+  }
+}
+
+export class DeterministicMockBridgeAdapter implements BridgeEngineSeam {
+  public async invokeRemote(cmd: Readonly<BridgeCommand>): Promise<BridgePayload> {
+    // [AGENT_CODE_FILL_TARGET: 由专职编码 Agent 补齐本地零外部依赖的确定性 Mock 实现，支撑门禁 G7 双腿运行]
+    throw new Error("TODO_BY_CODING_AGENT: DeterministicMockBridgeAdapter.invokeRemote");
+  }
+}
+
+```
+
+四、 跨模块 `CapabilityBus` 只读联动接口契约
+底座提供全局唯一 `CapabilityBus`：
+
+* 注册签名：`registerCapability(providerModId: string, contract: CapabilityContract): ExitCode`
+* 查询签名：`query<TReq, TRes>(capabilityId: string, request: Readonly<TReq>): Promise<{ exitCode: ExitCode; data?: Readonly<TRes> }>`
+* 保护机制：查询结果返回前强制执行递归 `Object.freeze`，任何下游调用方尝试原地篡改返回属性将直接触发编译期与运行期双重阻断。
+
+五、 专属自动化回归测试矩阵
+
+| 测试文件落点 | 守护 `seam` | 防 G1 至 G7 复发硬断言 |
+| --- | --- | --- |
+| `test/core/path-guard.spec.ts` | `PathGuard.resolveSafePath` | 断言 `../../`、`\0`、`/sdcard/out` 100% 返回 `exitCode === 2`（防 P-22） |
+| `test/engines/bridge-engine.spec.ts` | `BridgeEngineSeam.invokeRemote` | 断言含 `find`、`ps`、`grep -r` 的脚本 100% 返回 `exitCode === 2`（防 P-29） |
+| `test/engines/compute-engine.spec.ts` | `ComputeEngineSeam.runTask` | 断言 `seed: undefined` 100% 返回 `exitCode === 3`（防 D-05 退化） |
+| `test/core/sockets.spec.ts` | `ModLoader.loadAll` & `DeliverableCollector` | 断言缺失真实产物的卡带自动降级为 `degraded`（防 G1、G2），且 Mock 与真实 Adapter 双腿全绿（防 G7） |
+
+```
+
+---
+
+
+```
+
+# ================================================================================
+四、 模块 1：mod-portal-sync（团队分享协同与交付打包模块）【1×3 三件套】全文

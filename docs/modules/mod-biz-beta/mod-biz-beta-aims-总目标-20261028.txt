@@ -1,0 +1,31 @@
+文件落盘路径：docs/modules/mod-biz-beta/mod-biz-beta-aims-总目标-20261028.txt
+
+```
+
+```text
+一、 模块定位（What & Why）
+mod-biz-beta 是负责标准 GEO 常规分析（数据清洗、质检、差异表达分析、功能富集分析、WGCNA 共表达网络、机器学习 Lasso 回归特征筛选）以及单细胞转录组与空间转录组分析的核心业务卡带 B（Adapter）。它专门通过 `compute-engine` 与 `bridge-engine` 调度红米 K40（骁龙 870）Termux 原生 8 核满载算力，执行严格受控的确定性随机种子（`SEED=20261013` 及三轮稳健序列 `20261013, 20261014, 20261015`）计算与 17 位有效数字（`%.17g`）跨语言数值矩阵交换，并通过 `CapabilityBus` 将筛选出的核心生物标志物与统计指标暴露给 `mod-template-studio` 进行 SCI 标准出图。
+
+二、 负面清单（Anti-Goals）
+1. 严禁在未显式传入 `seed` 参数的情况下启动任何 Lasso 回归交叉验证、WGCNA 软阈值抽样或单细胞降维聚类任务（违者必须返回退出码 `3`）。
+2. 严禁在当前阶段实质性编写超出 GEO 常规分析、单细胞转录组与空间转录组范围之外的其他组学具体实现代码（其他组学类型仅允许保留空接口框架占位）。
+3. 严禁使用低于 17 位有效数字精度（`%.17g`）的方式序列化表达矩阵或差异分析结果。
+4. 严禁横向直接 import 其他 `mod-*` 的内部代码。
+
+三、 三阶段业务目标与边界规格（Specs & Edge Cases）
+1. 【阶段Ⅰ：基础落地 (Foundation Landing)】
+   - 落地 `src/mods/mod-biz-beta/manifest.ts` 与私有存储表 `beta_geo_runs`、`beta_lasso_intersections`。
+   - 锁定裁定 `D-04` 与 `D-05`，建立 `%.17g` 精度序列化器与 `SEED` 显式注入检查器。
+2. 【阶段Ⅱ：相关配套 (Supporting Facilities)】
+   - 挂载 `compute-engine`（40 分钟批处理超时档、K40 8 核满载 `workers: 8`）与 `bridge-engine`（`P-26` `setsid nohup`、`P-29` 禁用 `find`/`ps`/`grep -r`）。
+   - 实现三轮种子（`20261013, 20261014, 20261015`）Lasso 回归稳健特征基因交集校验器与表达矩阵行列守恒自校验（样本数或基因数失配、出现 `NaN`/`Infinity` 时立即物理清理残卷并返回退出码 `1`）。
+   - 建立全入口验证矩阵（Execution Matrix）：覆盖缺失种子、含 `NaN` 表达矩阵、维度 0×0 空矩阵、16 至 20 样本标准炎症模型矩阵、三轮交集种子 5 类输入场景。
+3. 【阶段Ⅲ：功能实现 (Feature Implementation)】
+   - 挂载 `sidebar.nav` 与 `workspace.main` 插槽，注册 `bizBeta.getAnalysisDigest` 只读能力，产出 `%.17g` 标准格式差异与特征筛选结果表并通过 G1 至 G7 终验。
+
+四、 完成定义（DoD）与量化验收台账
+| 验收项编号 | 验收判据描述 | 期望退出码 | 一键验证命令 |
+| :--- | :--- | :--- | :--- |
+| DOD-BETA-01 | 未传入 `seeds` 调用 GEO/Lasso 分析接口时 100% 立即返回退出码 3 | 0 | `pnpm vitest run test/mods/biz-beta/seed-contract.spec.ts` |
+| DOD-BETA-02 | 注入含 `NaN` 或样本维度撕裂的表达矩阵时，返回退出码 1 且自动清理残缺输出文件 | 0 | `pnpm vitest run test/mods/biz-beta/matrix-integrity.spec.ts` |
+| DOD-BETA-03 | 固定种子序列 `20261013, 20261014, 20261015` 连续运行两次，输出的 `%.17g` 矩阵文件 SHA256 100% 比特级一致 | 0 | `pnpm vitest run test/mods/biz-beta/determinism.spec.ts` |

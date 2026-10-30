@@ -1,0 +1,29 @@
+文件落盘路径：docs/modules/mod-biz-alpha/mod-biz-alpha-aims-总目标-20261028.txt
+
+```
+
+```text
+一、 模块定位（What & Why）
+mod-biz-alpha 是负责个人每日规划、随手记备忘、每日复盘、整数分记账（Expense Tracking）与消费结构分析（Consumption Structure Analysis）及旅行团费用分摊的核心业务卡带 A（Adapter）。它面向高精度整数分（Integer Cents）核算与复式守恒校验场景，确保每一笔日常开支、指数定投分配与旅游团成员分摊账目均满足零浮点误差与借贷守恒律，并通过 CapabilityBus 向协同分享模块与模板可视化模块提供只读统计摘要。
+
+二、 负面清单（Anti-Goals）
+1. 严禁使用浮点数（如 `19.99`）存储或计算任何金额字段，一切金额参数必须为安全整数分（如 `1999`）。
+2. 严禁在借贷不平或消费结构分类权重之和不等于 10000 基点（100.00%）时将复盘账单状态流转为已封账（`LOCKED`）。
+3. 严禁横向直接 import 其他 `mod-*` 目录下的任何代码。
+
+三、 三阶段业务目标与边界规格（Specs & Edge Cases）
+1. 【阶段Ⅰ：基础落地 (Foundation Landing)】
+   - 落地 `src/mods/mod-biz-alpha/manifest.ts` 与私有表 `alpha_daily_plans`、`alpha_ledger_entries`。
+   - 落地整数分算术核验器：任何非整数输入、负数金额或超出 `Number.MAX_SAFE_INTEGER` 的数值立即拦截并返回退出码 `2`。
+2. 【阶段Ⅱ：相关配套 (Supporting Facilities)】
+   - 实现复式记账守恒律与消费结构/旅行团分摊基点（Basis Points，1% = 100 bps，总和严格等于 10000 bps）余数最大余额法（Largest Remainder Method）分配器，确保分配后各分项整数分之和 100% 等于总金额，偏差大于 0 分立即触发退出码 `1` 并回滚。
+   - 建立全入口边界矩阵：测试 0 分账单、1 分钱 3 人旅行分摊、浮点数非法注入、借贷差额 1 分、超大安全整数边界 5 类场景。
+3. 【阶段Ⅲ：功能实现 (Feature Implementation)】
+   - 挂载 `workspace.main` 与 `inspector.panel` 插槽，注册 `bizAlpha.getConsumptionSummary` 只读总线能力，生成真实对账单与每日复盘产物并通过 G1 至 G7 门禁。
+
+四、 完成定义（DoD）与量化验收台账
+| 验收项编号 | 验收判据描述 | 期望退出码 | 一键验证命令 |
+| :--- | :--- | :--- | :--- |
+| DOD-ALPHA-01 | 传入浮点数 `12.34` 时 100% 触发类型拦截并返回退出码 2 | 0 | `pnpm vitest run test/mods/biz-alpha/cents-guard.spec.ts` |
+| DOD-ALPHA-02 | 10000 分按 `[3333, 3333, 3334]` bps 拆分或任意人数分摊后，分项求和与总额误差恒等于 0 | 0 | `pnpm vitest run test/mods/biz-alpha/conservation.spec.ts` |
+| DOD-ALPHA-03 | 借贷差额为 1 分时，核算器返回退出码 1 且不产生脏数据文件 | 0 | `pnpm vitest run test/mods/biz-alpha/reconcile.spec.ts` |

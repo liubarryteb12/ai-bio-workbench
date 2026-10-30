@@ -1,0 +1,16 @@
+template	language	exit_code	triplet	log
+fig_l2_pca	r	0	PASS	/mnt/ssd/bio_data/.tmp/figure-layout-contracts-20261029/_logs/fig_l2_pca.log
+fig_l2_heatmap	r	0	PASS	/mnt/ssd/bio_data/.tmp/figure-layout-contracts-20261029/_logs/fig_l2_heatmap.log
+fig_l2_volcano	r	0	PASS	/mnt/ssd/bio_data/.tmp/figure-layout-contracts-20261029/_logs/fig_l2_volcano.log
+fig_l1_groupedbar	r	0	PASS	/mnt/ssd/bio_data/.tmp/figure-layout-contracts-20261029/_logs/fig_l1_groupedbar.log
+fig_l1_boxplot	r	0	PASS	/mnt/ssd/bio_data/.tmp/figure-layout-contracts-20261029/_logs/fig_l1_boxplot.log
+fig_l1_density	r	0	PASS	/mnt/ssd/bio_data/.tmp/figure-layout-contracts-20261029/_logs/fig_l1_density.log
+fig_l1_histogram	r	0	PASS	/mnt/ssd/bio_data/.tmp/figure-layout-contracts-20261029/_logs/fig_l1_histogram.log
+fig_l1_scatter	r	0	PASS	/mnt/ssd/bio_data/.tmp/figure-layout-contracts-20261029/_logs/fig_l1_scatter.log
+fig_l1_violin	r	0	PASS	/mnt/ssd/bio_data/.tmp/figure-layout-contracts-20261029/_logs/fig_l1_violin.log
+fig_l3_sankey	r	0	PASS	/mnt/ssd/bio_data/.tmp/figure-layout-contracts-20261029/_logs/fig_l3_sankey.log
+fig_l2p_dotplot	python	0	PASS	/mnt/ssd/bio_data/.tmp/figure-layout-contracts-20261029/_logs/fig_l2p_dotplot.log
+fig_l2p_volcano	python	0	PASS	/mnt/ssd/bio_data/.tmp/figure-layout-contracts-20261029/_logs/fig_l2p_volcano.log
+fig_l2p_umap	python	0	PASS	/mnt/ssd/bio_data/.tmp/figure-layout-contracts-20261029/_logs/fig_l2p_umap.log
+fig_l2_umap	python	0	PASS	/mnt/ssd/bio_data/.tmp/figure-layout-contracts-20261029/_logs/fig_l2_umap.log
+fig_l2p_violin	python	0	PASS	/mnt/ssd/bio_data/.tmp/figure-layout-contracts-20261029/_logs/fig_l2p_violin.log
