@@ -20,6 +20,10 @@ WIDTHS_MM: dict[str, float] = {
     "single": 88.0,
     "medium": 130.0,
     "wide": 180.0,
+    "square_small": 58.0,
+    "square_single": 88.0,
+    "square_medium": 130.0,
+    "square_wide": 180.0,
 }
 
 OKABE_ITO_PALETTE: tuple[str, ...] = (
@@ -73,11 +77,13 @@ def activate_style() -> None:
 
 def create_single_canvas(
     size_preset: str = "single",
-    height_mm: float = 75.0,
+    height_mm: float | None = None,
 ) -> tuple[plt.Figure, plt.Axes]:
     """Generate a single-Axes canvas with exact millimetre physical dimensions."""
     activate_style()
     width_mm = WIDTHS_MM.get(size_preset, 88.0)
+    if height_mm is None:
+        height_mm = width_mm if size_preset.startswith("square") else 75.0
     w_in = width_mm / 25.4
     h_in = height_mm / 25.4
     fig, ax = plt.subplots(1, 1, figsize=(w_in, h_in))
@@ -116,6 +122,8 @@ def export_single_fig(
     width_mm = WIDTHS_MM.get(size_preset, 88.0)
     if height_mm is not None:
         fig.set_size_inches(width_mm / 25.4, height_mm / 25.4)
+    elif size_preset.startswith("square"):
+        fig.set_size_inches(width_mm / 25.4, width_mm / 25.4)
 
     stem = f"{name}_{version}" if version else name
     pdf_path = out_path / f"{stem}.pdf"
