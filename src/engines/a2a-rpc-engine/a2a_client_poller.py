@@ -15,7 +15,16 @@ import urllib.error
 import urllib.request
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
+
+ENGINE_ROOT = Path(__file__).resolve().parent.parent
+ARTIFACT_ENGINE_ROOT = ENGINE_ROOT / "artifact-sync-engine"
+if str(ARTIFACT_ENGINE_ROOT) not in sys.path:
+    sys.path.insert(0, str(ARTIFACT_ENGINE_ROOT))
+
+import artifact_validator  # noqa: E402
+from artifact_extractor import extract_artifact_from_rpc  # noqa: E402
 
 TERMINAL_STATES = frozenset({"completed", "failed", "canceled", "rejected"})
 BACKOFF_SCHEDULE_SEC: Tuple[float, ...] = (5.0, 10.0, 20.0, 30.0)
@@ -138,7 +147,10 @@ class A2AClientPoller:
     def _extract_state(task: Dict[str, Any]) -> str:
         status = task.get("status")
         if isinstance(status, dict):
-            state = status.get("state", "unknown")
+            # evaluate_task() keeps the remote terminal state beside the
+            # local acceptance mirror, so a second evaluation must not mistake
+            # awaiting_final_acceptance for the phone's actual state.
+            state = status.get("remote_state") or status.get("state", "unknown")
         elif isinstance(status, str):
             state = status
         else:
@@ -176,6 +188,112 @@ class A2AClientPoller:
     def cancel_task(self, task_id: str) -> Dict[str, Any]:
         result = self._rpc_post("CancelTask", {"id": task_id}, timeout_sec=CANCEL_TASK_TIMEOUT_SEC)
         return self._extract_task(result)
+
+    def evaluate_task(
+        self,
+        task: Dict[str, Any],
+        workspace_root: Optional[str] = None,
+        command_results: Optional[List[Dict[str, Any]]] = None,
+        input_paths: Optional[List[str]] = None,
+        verifier: str = "codex",
+    ) -> Dict[str, Any]:
+        """Require Codex final acceptance before treating a task as complete."""
+        if not isinstance(task, dict):
+            return {
+                "state": "acceptance_failed",
+                "passed": False,
+                "errors": ["ERR_TASK_NOT_OBJECT"],
+                "artifact": None,
+                "task": task,
+            }
+
+        remote_state = self._extract_state(task)
+        if remote_state != "completed":
+            return {
+                "state": remote_state,
+                "passed": False,
+                "errors": [],
+                "artifact": None,
+                "task": task,
+            }
+
+        try:
+            artifact = extract_artifact_from_rpc({"task": task})
+        except ValueError as exc:
+            return self._annotate_evaluation(
+                task,
+                remote_state,
+                "acceptance_failed",
+                False,
+                [str(exc)],
+                None,
+            )
+
+        base_errors = artifact_validator.validate_artifact(artifact)
+        preliminary_errors = artifact_validator.validate_preliminary_acceptance(
+            artifact
+        )
+        if (
+            not preliminary_errors
+            and "final_acceptance" not in artifact
+            and workspace_root is not None
+            and command_results is not None
+        ):
+            artifact["final_acceptance"] = artifact_validator.build_final_acceptance(
+                artifact,
+                workspace_root=workspace_root,
+                command_results=command_results,
+                input_paths=input_paths,
+                verifier=verifier,
+            )
+        final_errors = artifact_validator.validate_final_acceptance(artifact)
+        completion_errors = list(
+            dict.fromkeys(base_errors + preliminary_errors + final_errors)
+        )
+        if not base_errors and not preliminary_errors and not final_errors:
+            state = "completed"
+            passed = True
+        elif (
+            not base_errors
+            and not preliminary_errors
+            and final_errors == ["ERR_ACCEPTANCE_FIELD_MISSING:final_acceptance"]
+        ):
+            state = "awaiting_final_acceptance"
+            passed = False
+        else:
+            state = "acceptance_failed"
+            passed = False
+        return self._annotate_evaluation(
+            task,
+            remote_state,
+            state,
+            passed,
+            completion_errors,
+            artifact,
+        )
+
+    @staticmethod
+    def _annotate_evaluation(
+        task: Dict[str, Any],
+        remote_state: str,
+        state: str,
+        passed: bool,
+        errors: List[str],
+        artifact: Optional[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        status = task.get("status")
+        if not isinstance(status, dict):
+            status = {}
+            task["status"] = status
+        status["remote_state"] = remote_state
+        status["state"] = state
+        return {
+            "state": state,
+            "passed": passed,
+            "errors": list(errors),
+            "artifact": artifact,
+            "task": task,
+        }
 
     def dispatch_and_wait(
         self,
@@ -217,7 +335,11 @@ class A2AClientPoller:
         )
 
     def poll_existing_task(
-        self, task_id: str, max_wait_sec: float = 3600.0, tolerate_network: bool = True
+        self,
+        task_id: str,
+        max_wait_sec: float = 3600.0,
+        tolerate_network: bool = True,
+        state_file: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Resume polling a known task id without re-sending SendMessage.
 
@@ -233,7 +355,7 @@ class A2AClientPoller:
                 task = self.get_task(task_id)
                 state = self._extract_state(task)
                 if state in TERMINAL_STATES:
-                    self._clear_state_file()
+                    self._clear_state_file(state_file)
                     return task
             except A2AProtocolError:
                 if not tolerate_network:
@@ -252,28 +374,58 @@ class A2AClientPoller:
             "[ERR_TASK_TIMEOUT] task {0} exceeded {1}s during resume".format(task_id, max_wait_sec)
         )
 
-    def _save_state(self, project_id: str, step_id: str, task_id: str) -> None:
-        if not self.state_file:
-            return
-        with open(self.state_file, "w", encoding="utf-8", newline="\n") as handle:
+    def _state_file_for(self, project_id: str) -> str:
+        if self.state_file:
+            return self.state_file
+        if not project_id or project_id in {".", ".."}:
+            raise ValueError("project_id must be a non-empty project directory name")
+        if os.path.basename(project_id) != project_id or "/" in project_id or "\\" in project_id:
+            raise ValueError("project_id must not contain path separators")
+        workspace_root = os.environ.get("CODEX_WORKSPACE_ROOT") or os.getcwd()
+        return os.path.join(
+            workspace_root,
+            "local_projects",
+            project_id,
+            "debug",
+            "active_a2a_task.json",
+        )
+
+    def _save_state(
+        self,
+        project_id: str,
+        step_id: str,
+        task_id: str,
+        state_file: Optional[str] = None,
+    ) -> None:
+        path = state_file or self._state_file_for(project_id)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        tmp_path = path + ".tmp"
+        with open(tmp_path, "w", encoding="utf-8", newline="\n") as handle:
             json.dump(
                 {"project_id": project_id, "step_id": step_id, "task_id": task_id},
                 handle,
             )
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chmod(tmp_path, 0o600)
+        os.replace(tmp_path, path)
 
-    def _load_state(self) -> Optional[Dict[str, Any]]:
-        if not self.state_file:
-            return None
+    def _load_state(
+        self, project_id: str, state_file: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        path = state_file or self._state_file_for(project_id)
         try:
-            with open(self.state_file, encoding="utf-8") as handle:
+            with open(path, encoding="utf-8") as handle:
                 return json.load(handle)
         except (OSError, json.JSONDecodeError):
             return None
 
-    def _clear_state_file(self) -> None:
-        if self.state_file:
+    def _clear_state_file(self, state_file: Optional[str] = None) -> None:
+        path = state_file or self.state_file
+        if path:
             try:
-                os.remove(self.state_file)
+                os.remove(path)
             except FileNotFoundError:
                 pass
 
@@ -283,6 +435,10 @@ class A2AClientPoller:
         step_id: str,
         script_path: str,
         expected_outputs: str = "",
+        inputs: Optional[Sequence[str]] = None,
+        outputs: Optional[Sequence[str]] = None,
+        workspace_dir: Optional[str] = None,
+        runtime: str = "termux",
         max_wait_sec: float = 3600.0,
     ) -> Dict[str, Any]:
         """Resume an in-flight task for the same step, else dispatch a new one.
@@ -291,14 +447,49 @@ class A2AClientPoller:
         idempotent wrapper, so a repeat dispatch after reconnect can never
         spawn a duplicate process on the phone.
         """
-        saved = self._load_state()
+        output_values = (
+            list(outputs)
+            if outputs is not None
+            else [
+                item.strip()
+                for item in str(expected_outputs).split(",")
+                if item.strip()
+            ]
+        )
+        task_paths = {
+            "workspace_dir": (
+                workspace_dir
+                if workspace_dir is not None
+                else "$HOME/workspace/projects/{0}".format(project_id)
+            ),
+            "script_path": script_path,
+            "inputs": list(inputs or []),
+            "outputs": output_values,
+        }
+        path_errors = artifact_validator.validate_dispatch_paths(
+            task_paths,
+            runtime=runtime,
+        )
+        if path_errors:
+            code = (
+                "A2A_TASK_PATH_NOT_VISIBLE"
+                if any(error.startswith("ERR_TASK_PATH_") for error in path_errors)
+                else "A2A_TASK_INVALID"
+            )
+            raise A2AProtocolError(code, ";".join(path_errors))
+
+        state_file = self._state_file_for(project_id)
+        saved = self._load_state(project_id, state_file)
         if (
             saved
             and saved.get("project_id") == project_id
             and saved.get("step_id") == step_id
             and saved.get("task_id")
         ):
-            return self.poll_existing_task(saved["task_id"], max_wait_sec=max_wait_sec)
+            resumed = self.poll_existing_task(
+                saved["task_id"], max_wait_sec=max_wait_sec, state_file=state_file
+            )
+            return self.evaluate_task(resumed)["task"]
 
         prompt = (
             "Execute pre-built step via the idempotent wrapper. Run exactly:\n"
@@ -312,9 +503,12 @@ class A2AClientPoller:
         task_id = self._extract_task_id(task)
         state = self._extract_state(task)
         if state in TERMINAL_STATES or task_id is None:
-            return task
-        self._save_state(project_id, step_id, task_id)
-        return self.poll_existing_task(task_id, max_wait_sec=max_wait_sec)
+            return self.evaluate_task(task)["task"]
+        self._save_state(project_id, step_id, task_id, state_file)
+        completed = self.poll_existing_task(
+            task_id, max_wait_sec=max_wait_sec, state_file=state_file
+        )
+        return self.evaluate_task(completed)["task"]
 
 
 def _run_self_test() -> int:
