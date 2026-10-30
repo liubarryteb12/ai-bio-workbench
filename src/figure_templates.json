@@ -1,8 +1,9 @@
 {
   "schema_version": 1,
   "generated_from": {
-    "csv": "reference/05.可参考出图代码/_meta/bizard_index.csv",
-    "report": "reference/05.可参考出图代码/_meta/r453_verification_report.json"
+    "database": "reference/05.可参考出图代码/图码对应库_交付包/图码对应库_交付包/chart_code_library.db",
+    "source_manifest": "src/figure_sources/manifest.json",
+    "source_match_policy": "exact | analogous"
   },
   "templates": [
     {
@@ -47,7 +48,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_dendrogram",
@@ -82,7 +88,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_donut",
@@ -113,7 +124,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_groupedbar",
@@ -121,10 +137,10 @@
       "level": "L1",
       "category": "Composition",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R",
-      "source_sha256": "da21074542cef95ffa7c033a5b6bb291b49384f034b2ef9eb79e3322d98213e8",
-      "preview": "reference/05.可参考出图代码/L1_基础统计图/L1_groupedbar_verified.png",
-      "preview_sha256": "ce2563faae2c2a7e1dc2e7cb4ef63204f9a926b6daf4488da3acc70bbb904f42",
+      "source": "src/figure_sources/fig_l1_groupedbar.R",
+      "source_sha256": "015718932853bf38e7c4981275fa5f13b19f3115218687bd2b23976b075a51e1",
+      "preview": "src/figure_previews/fig_l1_groupedbar.png",
+      "preview_sha256": "154b9a4ac4572b7d0107eaf5c86ca23748bfe556d4811d2ab6d458db465f5a9f",
       "verified": true,
       "deps_status": "ready",
       "deps": [
@@ -141,10 +157,30 @@
         "l1_figures_bulk"
       ],
       "adapt_vars": {
-        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "x_col": "横轴类别列名",
-        "value_col": "数值列名",
-        "group_col": "分组或本体列名"
+        "input_data": {
+          "description": "Project-local read-only input file path",
+          "type": "string",
+          "required": true,
+          "default": null
+        },
+        "x_col": {
+          "description": "Category column",
+          "type": "string",
+          "required": true,
+          "default": "Description"
+        },
+        "value_col": {
+          "description": "Numeric value column",
+          "type": "string",
+          "required": true,
+          "default": "NES"
+        },
+        "group_col": {
+          "description": "Facet or ontology column",
+          "type": "string",
+          "required": true,
+          "default": "ont"
+        }
       },
       "lines": [
         "line1_bulk"
@@ -159,7 +195,21 @@
       "output_glob": "figures/line1_bulk/custom_fig_l1_groupedbar.png",
       "canonical_output": "L1_groupedbar_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_groupedbar.png",
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": 215,
+      "catalog_title": "Grouped, stacked and percent stacked barplot in ggplot2",
+      "catalog_page_url": "https://r-graph-gallery.com/48-grouped-barplot-with-ggplot2.html",
+      "catalog_language": "R",
+      "source_match": "exact",
+      "figure_layout": {
+        "width_mm": 88,
+        "height_mm": 60,
+        "min_width_mm": 66,
+        "min_height_mm": 45,
+        "dpi": 300,
+        "column": "single",
+        "legend_position": "right"
+      }
     },
     {
       "id": "fig_l1_partpiechart",
@@ -193,7 +243,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_piechart",
@@ -224,7 +279,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_radialstackedbar",
@@ -259,7 +319,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_treemap",
@@ -293,7 +358,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_waffle",
@@ -326,7 +396,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_biplot",
@@ -360,7 +435,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_bubble",
@@ -397,7 +477,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2_bubbleheatmap",
@@ -431,7 +516,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2_complexheatmap",
@@ -470,7 +560,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_connectedscatter",
@@ -504,7 +599,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_correlogram",
@@ -538,7 +638,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_density2d",
@@ -576,7 +681,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2_heatmap",
@@ -584,10 +694,10 @@
       "level": "L2",
       "category": "Correlation",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L2_more_code.R",
-      "source_sha256": "0b5342dd0cac39eb87615aa1220d44c09c440b8801e93af288d9ab778f0c6c1d",
-      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2_heatmap_verified.png",
-      "preview_sha256": "0cb713ab3a486330059352c7e339ff9b40c7901500e88ae44327c13f4ba8f16c",
+      "source": "src/figure_sources/fig_l2_heatmap.R",
+      "source_sha256": "51f998eb9df8a96a23163d55db6b2b085ee22bf5faaf815db5b1bab2964ea9eb",
+      "preview": "src/figure_previews/fig_l2_heatmap.png",
+      "preview_sha256": "75698eaeb926e40426021a0dd1e044d420a85817b79f8e8670a24314952acefd",
       "verified": true,
       "deps_status": "ready",
       "deps": [
@@ -615,11 +725,36 @@
         "l1_figures_bulk"
       ],
       "adapt_vars": {
-        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "row_col": "行注释列名",
-        "column_col": "列注释列名",
-        "value_col": "表达或差异数值列",
-        "group_col": "样本分组列名"
+        "input_data": {
+          "description": "Project-local read-only input file path",
+          "type": "string",
+          "required": true,
+          "default": null
+        },
+        "row_col": {
+          "description": "Gene or feature column",
+          "type": "string",
+          "required": true,
+          "default": null
+        },
+        "column_col": {
+          "description": "Sample or observation column",
+          "type": "string",
+          "required": true,
+          "default": "sample"
+        },
+        "value_col": {
+          "description": "Expression or score column",
+          "type": "string",
+          "required": true,
+          "default": "expr"
+        },
+        "group_col": {
+          "description": "Sample group column",
+          "type": "string",
+          "required": true,
+          "default": "group"
+        }
       },
       "lines": [
         "line1_bulk"
@@ -634,7 +769,21 @@
       "output_glob": "figures/line1_bulk/custom_fig_l2_heatmap.png",
       "canonical_output": "L2_heatmap_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_04_topvar_heatmap.png",
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": 227,
+      "catalog_title": "ggplot2 heatmap",
+      "catalog_page_url": "https://r-graph-gallery.com/79-levelplot-with-ggplot2.html",
+      "catalog_language": "R",
+      "source_match": "exact",
+      "figure_layout": {
+        "width_mm": 180,
+        "height_mm": 120,
+        "min_width_mm": 135,
+        "min_height_mm": 90,
+        "dpi": 300,
+        "column": "wide",
+        "legend_position": "right"
+      }
     },
     {
       "id": "fig_l2_pca",
@@ -642,10 +791,10 @@
       "level": "L2",
       "category": "Correlation",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L2_more_code.R",
-      "source_sha256": "0b5342dd0cac39eb87615aa1220d44c09c440b8801e93af288d9ab778f0c6c1d",
-      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2_pca_verified.png",
-      "preview_sha256": "48767feb6d1877d45f621eea4e9b3893f714ed5fecfaf29537fded4411b155c2",
+      "source": "src/figure_sources/fig_l2_pca.py",
+      "source_sha256": "d27bba5db5a8cbf66578e41d6b1454fa6cc3c5b4d1ba18e204a9caf6bcb85583",
+      "preview": "src/figure_previews/fig_l2_pca.png",
+      "preview_sha256": "0d75c4951f3b0cb387b061b16af8975d526ce329abc24026337c0cb3c246d659",
       "verified": true,
       "deps_status": "ready",
       "deps": [
@@ -659,8 +808,18 @@
         "l1_figures_bulk"
       ],
       "adapt_vars": {
-        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "group_col": "细胞或样本分组列名"
+        "input_data": {
+          "description": "Project-local read-only input file path",
+          "type": "string",
+          "required": true,
+          "default": null
+        },
+        "group_col": {
+          "description": "Sample group column",
+          "type": "string",
+          "required": true,
+          "default": "group"
+        }
       },
       "lines": [
         "line1_bulk"
@@ -675,7 +834,21 @@
       "output_glob": "figures/line1_bulk/custom_fig_l2_pca.png",
       "canonical_output": "L2_pca_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_02_pca.png",
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": 484,
+      "catalog_title": "Visualise principal component analysis with Matplotlib",
+      "catalog_page_url": "https://python-graph-gallery.com/515-intro-pca-graph-python/",
+      "catalog_language": "Python",
+      "source_match": "analogous",
+      "figure_layout": {
+        "width_mm": 88,
+        "height_mm": 80,
+        "min_width_mm": 66,
+        "min_height_mm": 60,
+        "dpi": 300,
+        "column": "single",
+        "legend_position": "right"
+      }
     },
     {
       "id": "fig_l1_scatter",
@@ -683,10 +856,10 @@
       "level": "L1",
       "category": "Correlation",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R",
-      "source_sha256": "da21074542cef95ffa7c033a5b6bb291b49384f034b2ef9eb79e3322d98213e8",
-      "preview": "reference/05.可参考出图代码/L1_基础统计图/L1_scatter_verified.png",
-      "preview_sha256": "b9b016259471011545c2b8115aa2f0f00cdf05f5d8cd0e664b21ac0c568f5e8c",
+      "source": "src/figure_sources/fig_l1_scatter.R",
+      "source_sha256": "0df8bc4bf91f89032ef5e596a26667615de2dd400a81b05352c8242f490b8f5e",
+      "preview": "src/figure_previews/fig_l1_scatter.png",
+      "preview_sha256": "ed838ce2afd1238ed0e73778fc44b5cb82984a50ebe15aae6d6bdf36ea5936aa",
       "verified": true,
       "deps_status": "ready",
       "deps": [
@@ -702,10 +875,30 @@
         "l1_figures_bulk"
       ],
       "adapt_vars": {
-        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "x_col": "横轴数值列名",
-        "y_col": "纵轴数值列名",
-        "label_genes": "需要标注的基因清单，可为空"
+        "input_data": {
+          "description": "Project-local read-only input file path",
+          "type": "string",
+          "required": true,
+          "default": null
+        },
+        "x_col": {
+          "description": "X-axis numeric column",
+          "type": "string",
+          "required": true,
+          "default": "rf_importance"
+        },
+        "y_col": {
+          "description": "Y-axis numeric column",
+          "type": "string",
+          "required": true,
+          "default": "gbdt_importance"
+        },
+        "label_genes": {
+          "description": "Genes to label; may be empty",
+          "type": "string_list",
+          "required": false,
+          "default": []
+        }
       },
       "lines": [
         "line1_bulk"
@@ -720,7 +913,21 @@
       "output_glob": "figures/line1_bulk/custom_fig_l1_scatter.png",
       "canonical_output": "L1_scatter_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_scatter.png",
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": 329,
+      "catalog_title": "Scatterplot with automatic text repel",
+      "catalog_page_url": "https://r-graph-gallery.com/web-scatterplot-with-text-repel-ggrepel.html",
+      "catalog_language": "R",
+      "source_match": "exact",
+      "figure_layout": {
+        "width_mm": 88,
+        "height_mm": 75,
+        "min_width_mm": 66,
+        "min_height_mm": 56,
+        "dpi": 300,
+        "column": "single",
+        "legend_position": "right"
+      }
     },
     {
       "id": "fig_l1_ternaryplot",
@@ -752,7 +959,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2_umap",
@@ -760,10 +972,10 @@
       "level": "L2",
       "category": "Correlation",
       "language": "python",
-      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_umap_code.py",
-      "source_sha256": "34b79c4febb105c93cd31d80b6d6ebdde4fc7870ad3f8a15e16ad098d8c2ee7d",
-      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_umap_verified.png",
-      "preview_sha256": "cfc9b53c09d1393464831dd9c4d248e04e34bd85208a3125db1fd43c8d04a7d2",
+      "source": "src/figure_sources/fig_l2_umap.py",
+      "source_sha256": "e913b7b61f0aa17730ac3b4353d782960b9fbaef3869b18724c37e9168b501cf",
+      "preview": "src/figure_previews/fig_l2_umap.png",
+      "preview_sha256": "4cb516c0f53095c86cd0aa99c8cb65de163bcb2b849bbf0799f296f00f0c7a21",
       "verified": true,
       "deps_status": "ready",
       "deps": [
@@ -780,8 +992,18 @@
         "l2_figures_scrna"
       ],
       "adapt_vars": {
-        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "group_col": "细胞分组列名"
+        "input_data": {
+          "description": "Project-local read-only input file path",
+          "type": "string",
+          "required": true,
+          "default": null
+        },
+        "group_col": {
+          "description": "Cell group or cluster column",
+          "type": "string",
+          "required": true,
+          "default": "group"
+        }
       },
       "lines": [
         "line2_scrna"
@@ -794,9 +1016,23 @@
         "custom_fig_l2_umap.png"
       ],
       "output_glob": "figures/line2_scrna/custom_fig_l2_umap.png",
-      "canonical_output": "umap_L2p_umap_verified.png",
+      "canonical_output": "umap_L2_umap_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2_umap.png",
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": 505,
+      "catalog_title": "Scatter plot with a grouping variable with Pandas",
+      "catalog_page_url": "https://python-graph-gallery.com/537-scatter-plots-grouped-by-color-with-pandas/",
+      "catalog_language": "Python",
+      "source_match": "analogous",
+      "figure_layout": {
+        "width_mm": 180,
+        "height_mm": 90,
+        "min_width_mm": 135,
+        "min_height_mm": 68,
+        "dpi": 300,
+        "column": "wide",
+        "legend_position": "right"
+      }
     },
     {
       "id": "fig_l1_areachart",
@@ -832,7 +1068,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_linechart",
@@ -867,7 +1108,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_stackedarea",
@@ -904,7 +1150,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_streamgraph",
@@ -939,7 +1190,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_timeseries",
@@ -972,7 +1228,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_boxplot",
@@ -980,10 +1241,10 @@
       "level": "L1",
       "category": "Distribution",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_boxplot_code.R",
-      "source_sha256": "dfc6a22b7585849c1c4d11bec312d654b9af63bf20dd2e42876c28834f8b0b0d",
-      "preview": "reference/05.可参考出图代码/L1_基础统计图/L1_boxplot_verified.png",
-      "preview_sha256": "ce3d2cb08118011f727b4c901fe4921d81129433a9e0507e43edad5b22bf8a82",
+      "source": "src/figure_sources/fig_l1_boxplot.R",
+      "source_sha256": "c74acd22fd945969fee698a4408ac93fe25d93741fc0496118da638d3e47fb6a",
+      "preview": "src/figure_previews/fig_l1_boxplot.png",
+      "preview_sha256": "a4320b3e334c6681760aa0ad4e70eb7ddf6f5439d27125d19bda497435fa38b3",
       "verified": true,
       "deps_status": "ready",
       "deps": [
@@ -1001,8 +1262,18 @@
         "l1_figures_bulk"
       ],
       "adapt_vars": {
-        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "value_col": "效应量列名"
+        "input_data": {
+          "description": "Project-local read-only input file path",
+          "type": "string",
+          "required": true,
+          "default": null
+        },
+        "value_col": {
+          "description": "Effect-size or measurement column",
+          "type": "string",
+          "required": true,
+          "default": "log2FC"
+        }
       },
       "lines": [
         "line1_bulk"
@@ -1017,7 +1288,21 @@
       "output_glob": "figures/line1_bulk/custom_fig_l1_boxplot.png",
       "canonical_output": "L1_boxplot_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_boxplot.png",
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": 232,
+      "catalog_title": "Boxplot with individual data points",
+      "catalog_page_url": "https://r-graph-gallery.com/89-box-and-scatter-plot-with-ggplot2.html",
+      "catalog_language": "R",
+      "source_match": "exact",
+      "figure_layout": {
+        "width_mm": 88,
+        "height_mm": 60,
+        "min_width_mm": 66,
+        "min_height_mm": 45,
+        "dpi": 300,
+        "column": "single",
+        "legend_position": "none"
+      }
     },
     {
       "id": "fig_l1_breakplot",
@@ -1053,7 +1338,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_density",
@@ -1061,10 +1351,10 @@
       "level": "L1",
       "category": "Distribution",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R",
-      "source_sha256": "da21074542cef95ffa7c033a5b6bb291b49384f034b2ef9eb79e3322d98213e8",
-      "preview": "reference/05.可参考出图代码/L1_基础统计图/L1_density_verified.png",
-      "preview_sha256": "4ef80fda655ee0583ed91871258d6b1e8aaa91b0feb2c0abfbe3abcdf3d23af3",
+      "source": "src/figure_sources/fig_l1_density.R",
+      "source_sha256": "f922d5e7fa43e1e04133c14eb86af798e7e25930699138427b73fcc5e29f6715",
+      "preview": "src/figure_previews/fig_l1_density.png",
+      "preview_sha256": "833fa912cc862ad95f996ce5d41fb9c9e4beb7be1b1299b4ebd48a330c633084",
       "verified": true,
       "deps_status": "ready",
       "deps": [
@@ -1084,7 +1374,12 @@
         "l1_figures_bulk"
       ],
       "adapt_vars": {
-        "input_data": "项目本线只读输入文件路径，相对于本项目根目录"
+        "input_data": {
+          "description": "Project-local read-only input file path",
+          "type": "string",
+          "required": true,
+          "default": null
+        }
       },
       "lines": [
         "line1_bulk"
@@ -1099,7 +1394,21 @@
       "output_glob": "figures/line1_bulk/custom_fig_l1_density.png",
       "canonical_output": "L1_density_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_density.png",
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": 61,
+      "catalog_title": "Basic density chart with ggplot2",
+      "catalog_page_url": "https://r-graph-gallery.com/21-distribution-plot-using-ggplot2.html.html",
+      "catalog_language": "R",
+      "source_match": "exact",
+      "figure_layout": {
+        "width_mm": 88,
+        "height_mm": 60,
+        "min_width_mm": 66,
+        "min_height_mm": 45,
+        "dpi": 300,
+        "column": "single",
+        "legend_position": "none"
+      }
     },
     {
       "id": "fig_l1_histogram",
@@ -1107,10 +1416,10 @@
       "level": "L1",
       "category": "Distribution",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R",
-      "source_sha256": "da21074542cef95ffa7c033a5b6bb291b49384f034b2ef9eb79e3322d98213e8",
-      "preview": "reference/05.可参考出图代码/L1_基础统计图/L1_histogram_verified.png",
-      "preview_sha256": "963d13ef6505c7e8c561c7c7e3cc290d52a797920e8594a3aea8d263d6810a3c",
+      "source": "src/figure_sources/fig_l1_histogram.R",
+      "source_sha256": "934710e51d1e48820341bb65a155fc1c0b361b1b8b4c7f42733c733fee69106d",
+      "preview": "src/figure_previews/fig_l1_histogram.png",
+      "preview_sha256": "af4294c3b0b1cf0e57a9ef9157d42384348585f1fc63ea9ec6af1633314b801d",
       "verified": true,
       "deps_status": "ready",
       "deps": [
@@ -1127,7 +1436,12 @@
         "l1_figures_bulk"
       ],
       "adapt_vars": {
-        "input_data": "项目本线只读输入文件路径，相对于本项目根目录"
+        "input_data": {
+          "description": "Project-local read-only input file path",
+          "type": "string",
+          "required": true,
+          "default": null
+        }
       },
       "lines": [
         "line1_bulk"
@@ -1142,7 +1456,21 @@
       "output_glob": "figures/line1_bulk/custom_fig_l1_histogram.png",
       "canonical_output": "L1_histogram_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_histogram.png",
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": 68,
+      "catalog_title": "Basic histogram with ggplot2",
+      "catalog_page_url": "https://r-graph-gallery.com/220-basic-ggplot2-histogram.html.html",
+      "catalog_language": "R",
+      "source_match": "exact",
+      "figure_layout": {
+        "width_mm": 88,
+        "height_mm": 60,
+        "min_width_mm": 66,
+        "min_height_mm": 45,
+        "dpi": 300,
+        "column": "single",
+        "legend_position": "none"
+      }
     },
     {
       "id": "fig_l1_radialcolumnchart",
@@ -1179,7 +1507,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_raincloudplot",
@@ -1212,7 +1545,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_ridgeline",
@@ -1247,7 +1585,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_violin",
@@ -1255,10 +1598,10 @@
       "level": "L1",
       "category": "Distribution",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_violin_code.R",
-      "source_sha256": "9470bc63b49396ee5fc0fe0725063254849047e37e2482799db7ba54979e259a",
-      "preview": "reference/05.可参考出图代码/L1_基础统计图/L1_violin_verified.png",
-      "preview_sha256": "ae6039c8be08fbc06e6511151c28a3419dfe13941c3ad9cd2b7edeb58658dcbb",
+      "source": "src/figure_sources/fig_l1_violin.R",
+      "source_sha256": "cdcd52b7ed1a2f2e4cd8066b5147529ad9cb95fb8c45660499928e2ab86d9799",
+      "preview": "src/figure_previews/fig_l1_violin.png",
+      "preview_sha256": "9857d0f42263ffcfe242df2025c568ea8ad89fc66c93f754ba8472c535990981",
       "verified": true,
       "deps_status": "ready",
       "deps": [
@@ -1277,8 +1620,18 @@
         "l1_figures_bulk"
       ],
       "adapt_vars": {
-        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "value_col": "效应量列名"
+        "input_data": {
+          "description": "Project-local read-only input file path",
+          "type": "string",
+          "required": true,
+          "default": null
+        },
+        "value_col": {
+          "description": "Effect-size or measurement column",
+          "type": "string",
+          "required": true,
+          "default": "log2FC"
+        }
       },
       "lines": [
         "line1_bulk"
@@ -1293,7 +1646,21 @@
       "output_glob": "figures/line1_bulk/custom_fig_l1_violin.png",
       "canonical_output": "L1_violin_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_violin.png",
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": 298,
+      "catalog_title": "Violin plot with included boxplot and sample size in ggplot2",
+      "catalog_page_url": "https://r-graph-gallery.com/violin_and_boxplot_ggplot2.html",
+      "catalog_language": "R",
+      "source_match": "exact",
+      "figure_layout": {
+        "width_mm": 88,
+        "height_mm": 60,
+        "min_width_mm": 66,
+        "min_height_mm": 45,
+        "dpi": 300,
+        "column": "single",
+        "legend_position": "none"
+      }
     },
     {
       "id": "fig_l1_barplot",
@@ -1336,7 +1703,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_circularbarplot",
@@ -1370,7 +1742,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_upsetplot",
@@ -1402,7 +1779,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l1_vennplot",
@@ -1435,7 +1817,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l3_combinationpanel",
@@ -1470,7 +1857,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2_kaplanmeierplot",
@@ -1499,7 +1891,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2_lollipopplot",
@@ -1533,7 +1930,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2_metaforestplot",
@@ -1570,7 +1972,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2_mosaicplot",
@@ -1607,7 +2014,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2_nomogram",
@@ -1641,7 +2053,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2_regressiontable",
@@ -1675,7 +2092,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2_cellchatcircleplot",
@@ -1708,7 +2130,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2_chromosomeplot",
@@ -1737,7 +2164,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2_genestructureplot",
@@ -1770,7 +2202,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_kegg_pathway",
@@ -1803,7 +2240,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2_manhattanplot",
@@ -1836,7 +2278,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2_multivolcanoplot",
@@ -1869,7 +2316,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2_mutationoncoplot",
@@ -1902,7 +2354,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2_networkplot",
@@ -1936,7 +2393,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l3_sankeybubbleplot",
@@ -1967,7 +2429,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2_textenrichmentbarplot",
@@ -1999,7 +2466,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2_volcano",
@@ -2007,10 +2479,10 @@
       "level": "L2",
       "category": "Omics",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L2_core_code.R",
-      "source_sha256": "d60ecbf24668aacf3498168ac4d7279bb9347f26c1e6106c548e87eba9bcc07b",
-      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2_volcano_verified.png",
-      "preview_sha256": "eef1a672d0ab82518f68cc3aa6d2d198f319469614ede9a8039fe2e267042b04",
+      "source": "src/figure_sources/fig_l2_volcano.R",
+      "source_sha256": "777712fc2ce47d5187b339d5b06cb30a98662f38afae2be71d490b9c12c7ba38",
+      "preview": "src/figure_previews/fig_l2_volcano.png",
+      "preview_sha256": "1533ded79a58d3345c9ce3b27ee6a5af38dbc2c1affc1ce4f724dd712e04d509",
       "verified": true,
       "deps_status": "ready",
       "deps": [
@@ -2022,9 +2494,24 @@
         "l1_figures_bulk"
       ],
       "adapt_vars": {
-        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "group_col": "比较方向定义使用的分组列名",
-        "label_genes": "需要标注的基因清单，可为空"
+        "input_data": {
+          "description": "Project-local read-only input file path",
+          "type": "string",
+          "required": true,
+          "default": null
+        },
+        "group_col": {
+          "description": "Comparison group column",
+          "type": "string",
+          "required": true,
+          "default": "group"
+        },
+        "label_genes": {
+          "description": "Genes to label; may be empty",
+          "type": "string_list",
+          "required": false,
+          "default": []
+        }
       },
       "lines": [
         "line1_bulk"
@@ -2039,7 +2526,21 @@
       "output_glob": "figures/line1_bulk/custom_fig_l2_volcano.png",
       "canonical_output": "L2_volcano_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_03_volcano_limma.png",
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": 329,
+      "catalog_title": "Scatterplot with automatic text repel",
+      "catalog_page_url": "https://r-graph-gallery.com/web-scatterplot-with-text-repel-ggrepel.html",
+      "catalog_language": "R",
+      "source_match": "analogous",
+      "figure_layout": {
+        "width_mm": 88,
+        "height_mm": 80,
+        "min_width_mm": 66,
+        "min_height_mm": 60,
+        "dpi": 300,
+        "column": "single",
+        "legend_position": "right"
+      }
     },
     {
       "id": "fig_l2_ivolcanoplot",
@@ -2074,7 +2575,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2p_barplot",
@@ -2112,7 +2618,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2p_boxplot",
@@ -2148,7 +2659,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2p_complexheatmap",
@@ -2186,7 +2702,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2p_confusionmatrixplot",
@@ -2221,7 +2742,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2p_enrichmentplot",
@@ -2256,7 +2782,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l3p_facetgridplot",
@@ -2291,7 +2822,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2p_gseaplot",
@@ -2326,7 +2862,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2p_heatmap",
@@ -2365,7 +2906,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l3_multipanel",
@@ -2373,12 +2919,12 @@
       "level": "L3",
       "category": "R",
       "language": "r",
-      "source": "reference/05.可参考出图代码/L3_高级组合图/L3_multipanel_code.R",
-      "source_sha256": "2d57dfd823386971dfdd423af101da48a4c3db6d100729e428e4190e080213c1",
-      "preview": "reference/05.可参考出图代码/L3_高级组合图/L3_multipanel_verified.png",
-      "preview_sha256": "6a84b7eb58cd9ff50b2e192973e3fe33c5e408423af59f002b596e81ab42cbcc",
-      "verified": true,
-      "deps_status": "ready",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
       "deps": [
         "ggplot2",
         "patchwork"
@@ -2391,20 +2937,20 @@
         "group_col": "真实标签列名",
         "value_col": "预测概率列名"
       },
-      "lines": [
-        "line1_bulk"
-      ],
-      "analysis_step": "l1_ml_external",
-      "input_tables": [
-        "external_validation_preds.tsv"
-      ],
-      "produces": [
-        "custom_fig_l3_multipanel.png"
-      ],
-      "output_glob": "figures/line1_bulk/custom_fig_l3_multipanel.png",
-      "canonical_output": "L3_multipanel_verified.png",
-      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l3_multipanel.png",
-      "deprecated": false
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": true,
+      "pending_reason": "reference/03出图规范 v3.0 forbids multi-panel composition",
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2p_pcaplot",
@@ -2440,7 +2986,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l3p_publicationstyle",
@@ -2476,7 +3027,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2p_rocprplot",
@@ -2512,7 +3068,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l3p_sankeydiagram",
@@ -2548,7 +3109,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2p_scatterplot",
@@ -2586,7 +3152,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2p_dotplot",
@@ -2594,10 +3165,10 @@
       "level": "L2",
       "category": "Python",
       "language": "python",
-      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_more_code.py",
-      "source_sha256": "79cf20cbfffbd90e016abef003845540de71948ae8e6031587c420a05038af76",
-      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_dotplot_verified.png",
-      "preview_sha256": "4b7bc5da8b8e60d1e4be5687a7366feafb01a6c140ccb1abf717b015ae10321d",
+      "source": "src/figure_sources/fig_l2p_dotplot.py",
+      "source_sha256": "12c89ae1c1cbee2d3a496a72fb5b80ecc36c5ae7b6eca35fb5e35569241f2fcf",
+      "preview": "src/figure_previews/fig_l2p_dotplot.png",
+      "preview_sha256": "70642a861484351d372abb36dbd9d35754236a854b6200ab93639d1d98bc7644",
       "verified": true,
       "deps_status": "ready",
       "deps": [
@@ -2612,8 +3183,18 @@
         "l3_figures_spatial"
       ],
       "adapt_vars": {
-        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "group_col": "分组列名"
+        "input_data": {
+          "description": "Project-local read-only input file path",
+          "type": "string",
+          "required": true,
+          "default": null
+        },
+        "group_col": {
+          "description": "Cell type or group column",
+          "type": "string",
+          "required": true,
+          "default": "celltype"
+        }
       },
       "lines": [
         "line2_scrna"
@@ -2626,9 +3207,23 @@
         "custom_fig_l2p_dotplot.png"
       ],
       "output_glob": "figures/line2_scrna/custom_fig_l2p_dotplot.png",
-      "canonical_output": "figures/dotplot__L2p_dotplot_verified.png",
+      "canonical_output": "dotplot__L2p_dotplot_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/l2_13_target_gene_dotplot.png",
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": 414,
+      "catalog_title": "Basic Bubble Plot with matplotlib",
+      "catalog_page_url": "https://python-graph-gallery.com/270-basic-bubble-plot/",
+      "catalog_language": "Python",
+      "source_match": "analogous",
+      "figure_layout": {
+        "width_mm": 88,
+        "height_mm": 60,
+        "min_width_mm": 66,
+        "min_height_mm": 45,
+        "dpi": 300,
+        "column": "single",
+        "legend_position": "right"
+      }
     },
     {
       "id": "fig_l2p_scrnastackedviolin",
@@ -2665,7 +3260,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2p_umap",
@@ -2673,10 +3273,10 @@
       "level": "L2",
       "category": "Python",
       "language": "python",
-      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_umap_code.py",
-      "source_sha256": "34b79c4febb105c93cd31d80b6d6ebdde4fc7870ad3f8a15e16ad098d8c2ee7d",
-      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_umap_verified.png",
-      "preview_sha256": "cfc9b53c09d1393464831dd9c4d248e04e34bd85208a3125db1fd43c8d04a7d2",
+      "source": "src/figure_sources/fig_l2p_umap.py",
+      "source_sha256": "e913b7b61f0aa17730ac3b4353d782960b9fbaef3869b18724c37e9168b501cf",
+      "preview": "src/figure_previews/fig_l2p_umap.png",
+      "preview_sha256": "9d249903e9823a986f2e05c6460f76ecf175b267f7758b57a94dbb97da4da6bb",
       "verified": true,
       "deps_status": "ready",
       "deps": [
@@ -2692,8 +3292,18 @@
         "l3_figures_spatial"
       ],
       "adapt_vars": {
-        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "group_col": "细胞或样本分组列名"
+        "input_data": {
+          "description": "Project-local read-only input file path",
+          "type": "string",
+          "required": true,
+          "default": null
+        },
+        "group_col": {
+          "description": "Cell type or cluster column",
+          "type": "string",
+          "required": true,
+          "default": "group"
+        }
       },
       "lines": [
         "line3_spatial"
@@ -2708,7 +3318,21 @@
       "output_glob": "figures/line3_spatial/custom_fig_l2p_umap.png",
       "canonical_output": "umap_L2p_umap_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/l3_human_06_umap_sample.png",
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": 505,
+      "catalog_title": "Scatter plot with a grouping variable with Pandas",
+      "catalog_page_url": "https://python-graph-gallery.com/537-scatter-plots-grouped-by-color-with-pandas/",
+      "catalog_language": "Python",
+      "source_match": "analogous",
+      "figure_layout": {
+        "width_mm": 88,
+        "height_mm": 80,
+        "min_width_mm": 66,
+        "min_height_mm": 60,
+        "dpi": 300,
+        "column": "single",
+        "legend_position": "right"
+      }
     },
     {
       "id": "fig_l2p_survivalplot",
@@ -2744,7 +3368,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2p_upsetplot",
@@ -2778,7 +3407,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2p_vennplot",
@@ -2811,7 +3445,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l2p_violin",
@@ -2819,10 +3458,10 @@
       "level": "L2",
       "category": "Python",
       "language": "python",
-      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_more_code.py",
-      "source_sha256": "79cf20cbfffbd90e016abef003845540de71948ae8e6031587c420a05038af76",
-      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_violin_verified.png",
-      "preview_sha256": "e1ac52c2f3c89ed0a985f479cce3a300716d6cd5c9bee0e0488cfad44544a427",
+      "source": "src/figure_sources/fig_l2p_violin.py",
+      "source_sha256": "04c11db5c3fa8edf9b5bc8d89f1885fa37a4037cc9884ddcf163fd5b53b89700",
+      "preview": "src/figure_previews/fig_l2p_violin.png",
+      "preview_sha256": "7af74540598d4d84c40b348548d907a2982bdab98195ac1534a4320f9cfa4fd1",
       "verified": true,
       "deps_status": "ready",
       "deps": [
@@ -2836,9 +3475,24 @@
         "l3_figures_spatial"
       ],
       "adapt_vars": {
-        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "group_col": "细胞类型列名",
-        "value_col": "组成比例列名"
+        "input_data": {
+          "description": "Project-local read-only input file path",
+          "type": "string",
+          "required": true,
+          "default": null
+        },
+        "group_col": {
+          "description": "Cell type column",
+          "type": "string",
+          "required": true,
+          "default": "group"
+        },
+        "value_col": {
+          "description": "Composition proportion column",
+          "type": "string",
+          "required": true,
+          "default": "prop"
+        }
       },
       "lines": [
         "line2_scrna"
@@ -2851,9 +3505,23 @@
         "custom_fig_l2p_violin.png"
       ],
       "output_glob": "figures/line2_scrna/custom_fig_l2p_violin.png",
-      "canonical_output": "figures/violin_L2p_violin_verified.png",
+      "canonical_output": "violin_L2p_violin_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_violin.png",
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": 472,
+      "catalog_title": "Violin plot with Beeswarm",
+      "catalog_page_url": "https://python-graph-gallery.com/502-violinplot-and-swarmplot/",
+      "catalog_language": "Python",
+      "source_match": "exact",
+      "figure_layout": {
+        "width_mm": 180,
+        "height_mm": 85,
+        "min_width_mm": 135,
+        "min_height_mm": 64,
+        "dpi": 300,
+        "column": "wide",
+        "legend_position": "none"
+      }
     },
     {
       "id": "fig_l2p_volcano",
@@ -2861,10 +3529,10 @@
       "level": "L2",
       "category": "Python",
       "language": "python",
-      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_more_code.py",
-      "source_sha256": "79cf20cbfffbd90e016abef003845540de71948ae8e6031587c420a05038af76",
-      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_volcano_verified.png",
-      "preview_sha256": "a8acdde7f648d47b6969a7c130a7708ef107646ba152f87b7fd2ebc83c813068",
+      "source": "src/figure_sources/fig_l2p_volcano.py",
+      "source_sha256": "8e33825a9e45ab20a160c97a7020f41a471074356a712f00cd193ca1c330b756",
+      "preview": "src/figure_previews/fig_l2p_volcano.png",
+      "preview_sha256": "e87e98cf377759c794a67e21e4eecd74ec4377f58965df79cfeceebca8a1b50c",
       "verified": true,
       "deps_status": "ready",
       "deps": [
@@ -2877,9 +3545,24 @@
         "l3_figures_spatial"
       ],
       "adapt_vars": {
-        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "group_col": "比较方向定义使用的分组列名",
-        "label_genes": "需要标注的基因清单，可为空"
+        "input_data": {
+          "description": "Project-local read-only input file path",
+          "type": "string",
+          "required": true,
+          "default": null
+        },
+        "group_col": {
+          "description": "Cell type column",
+          "type": "string",
+          "required": true,
+          "default": "celltype"
+        },
+        "label_genes": {
+          "description": "Genes to label; may be empty",
+          "type": "string_list",
+          "required": false,
+          "default": []
+        }
       },
       "lines": [
         "line2_scrna"
@@ -2894,7 +3577,21 @@
       "output_glob": "figures/line2_scrna/custom_fig_l2p_volcano.png",
       "canonical_output": "L2p_volcano_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/l2_08_deg_volcano_basal_keratinocyte.png",
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": 683,
+      "catalog_title": "Scatterplot with labels and text repel in Matplotlib",
+      "catalog_page_url": "https://python-graph-gallery.com/web-text-repel-with-matplotlib/",
+      "catalog_language": "Python",
+      "source_match": "analogous",
+      "figure_layout": {
+        "width_mm": 88,
+        "height_mm": 80,
+        "min_width_mm": 66,
+        "min_height_mm": 60,
+        "dpi": 300,
+        "column": "single",
+        "legend_position": "right"
+      }
     },
     {
       "id": "fig_l3_chorddiagram",
@@ -2934,7 +3631,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l3_network",
@@ -2968,7 +3670,12 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": null,
+      "catalog_title": null,
+      "catalog_page_url": null,
+      "catalog_language": null,
+      "source_match": null
     },
     {
       "id": "fig_l3_sankey",
@@ -2976,10 +3683,10 @@
       "level": "L3",
       "category": "Proportion",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L3_sankey_code.R",
-      "source_sha256": "6c94fe74a10569e0b43ea0d79047a69156411d1883920eaf285234ae548438d8",
-      "preview": "reference/05.可参考出图代码/L3_高级组合图/L3_sankey_verified.png",
-      "preview_sha256": "24dcd8c3b8f00a4c3d0dc37b82c84cb51a6df4b635f99f026040bab036d1de83",
+      "source": "src/figure_sources/fig_l3_sankey.R",
+      "source_sha256": "fecd39ff2ad7c0cb1247c43db57a50dc0d283ca64541a710a5be0496500d4adc",
+      "preview": "src/figure_previews/fig_l3_sankey.png",
+      "preview_sha256": "cdb380ccd5809c043263ee9088b92e3c8188424e2c5f2785638310ee5ef8a035",
       "verified": true,
       "deps_status": "ready",
       "deps": [
@@ -2996,8 +3703,18 @@
         "l1_figures_bulk"
       ],
       "adapt_vars": {
-        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "module_col": "模块列名"
+        "input_data": {
+          "description": "Project-local read-only input file path",
+          "type": "string",
+          "required": true,
+          "default": null
+        },
+        "module_col": {
+          "description": "Module column",
+          "type": "string",
+          "required": true,
+          "default": "module"
+        }
       },
       "lines": [
         "line1_bulk"
@@ -3012,7 +3729,21 @@
       "output_glob": "figures/line1_bulk/custom_fig_l3_sankey.png",
       "canonical_output": "L3_sankey_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l3_sankey.png",
-      "deprecated": false
+      "deprecated": false,
+      "catalog_id": 328,
+      "catalog_title": "Sankey Bump Chart in R with ggplot2 and ggsankey",
+      "catalog_page_url": "https://r-graph-gallery.com/web-sankey-diagram-with-highlight.html",
+      "catalog_language": "R",
+      "source_match": "exact",
+      "figure_layout": {
+        "width_mm": 130,
+        "height_mm": 100,
+        "min_width_mm": 98,
+        "min_height_mm": 75,
+        "dpi": 300,
+        "column": "medium",
+        "legend_position": "none"
+      }
     }
   ]
 }

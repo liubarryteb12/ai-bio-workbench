@@ -2,11 +2,13 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import './app.css';
 
 import { LINES, LINE_LABELS } from '../server/domain.js';
+import { isTerminalA2ATaskState, normalizeA2ATask } from '../server/a2a_state.js';
 import {
   fileFingerprint, forgetUploadId, readStoredUploadId, resumeStartIndex, storeUploadId,
   uploadIdFromFingerprint,
 } from './lib/uploadSession';
 import type { UploadStatus } from './lib/uploadSession';
+import { PiAgentChat } from './PiAgentChat';
 
 // ============================================================
 // 类型定义
@@ -240,7 +242,26 @@ type FigureTemplateItem = {
   preview: string | null;
   source_sha256: string | null;
   linked_mods: string[];
-  adapt_vars: Record<string, string>;
+  adapt_vars: Record<string, {
+    description: string;
+    type: 'string' | 'string_list';
+    required: boolean;
+    default: string | string[] | null;
+  }>;
+  palette?: {
+    name?: string;
+    type?: string;
+    values?: string[];
+  } | null;
+  figure_layout?: {
+    width_mm: number;
+    height_mm: number;
+    min_width_mm: number;
+    min_height_mm: number;
+    dpi: number;
+    column: string;
+    legend_position: LegendPosition;
+  };
   block_reason: string;
 };
 type FigureTemplateResponse = {
@@ -252,6 +273,38 @@ type FigureTemplateResponse = {
   templates?: FigureTemplateItem[];
   error?: string;
 };
+
+const APP_RESPONSIVE_STYLES = `
+@media (max-width: 720px) {
+  .app-root .app-header {
+    align-items: flex-start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    height: auto;
+    min-height: 56px;
+    padding: 8px 16px;
+  }
+  .app-root .tab-nav {
+    display: flex;
+    flex-wrap: wrap;
+    height: auto;
+  }
+  .app-root .project-selector-wrap {
+    margin-left: 0;
+    max-width: 100%;
+  }
+  .app-root .studio-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .app-root .studio-fig-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .app-root .figure-adapt-preview {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+`;
 type FigureAdaptResponse = {
   ok: boolean;
   projectId: string;
@@ -345,7 +398,7 @@ function readApiState<T extends object>(raw: T | { error: string } | null): ApiS
 // 视图枚举
 // ============================================================
 
-type ViewKey = 'onboarding' | 'console' | 'preflight' | 'studio' | 'pi-agent';
+type ViewKey = 'onboarding' | 'console' | 'preflight' | 'studio' | 'pi-agent' | 'pi-chat';
 
 const VIEWS: Array<{ key: ViewKey; label: string }> = [
   { key: 'onboarding', label: '新建项目向导' },
@@ -353,6 +406,7 @@ const VIEWS: Array<{ key: ViewKey; label: string }> = [
   { key: 'preflight', label: '五维自检' },
   { key: 'studio', label: '结果预览 Studio' },
   { key: 'pi-agent', label: 'Pi Agent 监控' },
+  { key: 'pi-chat', label: 'Pi Agent 对话' },
 ];
 
 const SUBDIRS = ['raw_data', 'processed', 'results', 'envs'];
@@ -480,6 +534,7 @@ export function App() {
 
   return (
     <div className="app-root">
+      <style>{APP_RESPONSIVE_STYLES}</style>
       <header className="app-header">
         <h1 className="app-title">BioanalysDesktop</h1>
         <div className="app-header-sep" />
@@ -533,6 +588,7 @@ export function App() {
       {view === 'preflight' && <PreFlightDashboard />}
       {view === 'studio' && <ResultPreviewStudio project={project} />}
 {view === 'pi-agent' && <PiAgentMonitor />}
+{view === 'pi-chat' && <PiAgentChat />}
     </div>
   );
 }
@@ -2293,7 +2349,7 @@ type PiCall = {
 };
 type PiCallsResponse = { ok: boolean; error?: string; calls?: PiCall[]; totals?: { input_tokens: number; output_tokens: number; cost_usd: number } };
 type PiModelResponse = { ok: boolean; current?: { provider: string; model: string }; allowed?: Array<{ provider: string; model: string }>; error?: string };
-type PiDispatchResponse = { ok: boolean; http_status?: number; task?: { id?: string; status?: { state?: string } } | null; error?: string };
+type PiDispatchResponse = { ok: boolean; http_status?: number; task?: { id?: string; status?: { state?: string } } | null; poll_url?: string | null; error?: string };
 type PiTimelineEntry = { ts: string; level: string; text: string };
 
 function PiAgentMonitor() {
@@ -2366,6 +2422,41 @@ function PiAgentMonitor() {
     finally { setSwitching(false); }
   };
 
+  const pollDispatchedTask = async (pollUrl: string, taskId: string) => {
+    const delays = [5000, 10000, 20000, 30000];
+    const deadline = Date.now() + 86400000;
+    let pollIndex = 0;
+    while (Date.now() < deadline) {
+      const delay = delays[Math.min(pollIndex, delays.length - 1)];
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      pollIndex += 1;
+      try {
+        const res = await fetch(pollUrl);
+        const payload = await res.json() as PiDispatchResponse;
+        const normalizedPayload = { ...payload, task: normalizeA2ATask(payload.task) };
+        setDispatchResult(normalizedPayload);
+        if (isTerminalA2ATaskState(normalizedPayload.task?.status?.state)) {
+          void loadCalls();
+          void loadOverview();
+          return;
+        }
+      } catch {
+        // Transient polling failures continue with the same backoff schedule.
+      }
+    }
+    try {
+      const res = await fetch('/api/pi-agent/task/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: taskId }),
+      });
+      const payload = await res.json();
+      setDispatchResult({ ...payload, task: normalizeA2ATask(payload.task) });
+    } catch {
+      // Preserve the last observed task state when cancellation is unavailable.
+    }
+  };
+
   const dispatchTask = async () => {
     if (!dispatchMsg.trim()) return;
     setDispatching(true); setDispatchResult(null);
@@ -2373,11 +2464,18 @@ function PiAgentMonitor() {
       const res = await fetch('/api/pi-agent/dispatch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: dispatchMsg }),
+        body: JSON.stringify({ message: dispatchMsg, returnImmediately: true }),
       });
       const payload = await res.json();
-      setDispatchResult(payload);
-      if (payload.ok) { void loadCalls(); void loadOverview(); }
+      const normalizedPayload = { ...payload, task: normalizeA2ATask(payload.task) };
+      setDispatchResult(normalizedPayload);
+      if (payload.ok) {
+        void loadCalls();
+        void loadOverview();
+        if (payload.poll_url && payload.task?.id) {
+          void pollDispatchedTask(payload.poll_url, payload.task.id);
+        }
+      }
     } catch (e) {
       setDispatchResult({ ok: false, error: e instanceof Error ? e.message : String(e) });
     } finally { setDispatching(false); }
@@ -2868,10 +2966,17 @@ const TEMPLATE_LINE_PREFIX: Record<string, string> = {
   line3_spatial: 'l3_',
 };
 
-const LIST_ADAPT_VARS = ['label_genes', 'axis_cols'];
+const LEGEND_POSITION_OPTIONS = ['none', 'right', 'top', 'inside'] as const;
+type LegendPosition = (typeof LEGEND_POSITION_OPTIONS)[number];
+const LEGEND_POSITION_LABELS: Record<LegendPosition, string> = {
+  none: '无图例',
+  right: '右侧',
+  top: '顶部',
+  inside: '图内',
+};
 
-function adaptValue(key: string, value: string): string | string[] {
-  if (!LIST_ADAPT_VARS.includes(key)) return value.trim();
+function adaptValue(key: string, value: string, type: string): string | string[] {
+  if (type !== 'string_list') return value.trim();
   return value.split(/[,\s\n\r，；]+/).map((item) => item.trim()).filter(Boolean);
 }
 
@@ -2881,6 +2986,7 @@ function FigureAdaptCard({ project }: { project: string }) {
   const [registryOk, setRegistryOk] = useState(false);
   const [registryError, setRegistryError] = useState<string[]>([]);
   const [templateId, setTemplateId] = useState('');
+  const [legendPositionOverride, setLegendPositionOverride] = useState<LegendPosition | null>(null);
   const [adaptVars, setAdaptVars] = useState<Record<string, string>>({});
   const [deriving, setDeriving] = useState(false);
   const [derivation, setDerivation] = useState<FigureAdaptResponse | null>(null);
@@ -2906,8 +3012,13 @@ function FigureAdaptCard({ project }: { project: string }) {
   useEffect(() => {
     const selected = templates.find((item) => item.id === templateId);
     const next: Record<string, string> = {};
-    for (const key of Object.keys(selected?.adapt_vars || {})) next[key] = '';
+    for (const [key, declaration] of Object.entries(selected?.adapt_vars || {})) {
+      next[key] = Array.isArray(declaration.default)
+        ? declaration.default.join(', ')
+        : String(declaration.default ?? '');
+    }
     setAdaptVars(next);
+    setLegendPositionOverride((selected?.figure_layout?.legend_position ?? null) as LegendPosition | null);
     setDerivation(null);
     setAdaptError('');
   }, [templateId, templates]);
@@ -2916,9 +3027,18 @@ function FigureAdaptCard({ project }: { project: string }) {
   const lineTemplates = templates.filter((item) => (
     item.linked_mods.some((mod) => mod.startsWith(TEMPLATE_LINE_PREFIX[line]))
   ));
-  const hasRequiredVars = selected && Object.keys(adaptVars).length > 0
-    ? Object.values(adaptVars).every((value) => value.trim() !== '')
-    : false;
+  const missingRequiredVars = selected
+    ? Object.entries(selected.adapt_vars)
+      .filter(([, declaration]) => declaration.required)
+      .filter(([key, declaration]) => {
+        const value = adaptVars[key] || '';
+        return declaration.type === 'string_list'
+          ? adaptValue(key, value, declaration.type).length === 0
+          : value.trim() === '';
+      })
+      .map(([key]) => key)
+    : [];
+  const layout = selected?.figure_layout;
 
   const derive = useCallback(async () => {
     if (!selected) return;
@@ -2931,7 +3051,11 @@ function FigureAdaptCard({ project }: { project: string }) {
         projectId: project,
         lineId: line,
         templateId: selected.id,
-        adaptVars: Object.fromEntries(Object.entries(adaptVars).map(([key, value]) => [key, adaptValue(key, value)])),
+        adaptVars: Object.fromEntries(Object.entries(adaptVars).map(([key, value]) => [
+          key,
+          adaptValue(key, value, selected.adapt_vars[key]?.type || 'string'),
+        ])),
+        legendPositionOverride,
         seed: 20261013,
       };
       const res = await fetch('/api/figures/adapt/derive', {
@@ -2950,7 +3074,7 @@ function FigureAdaptCard({ project }: { project: string }) {
     } finally {
       setDeriving(false);
     }
-  }, [adaptVars, line, project, selected]);
+  }, [adaptVars, legendPositionOverride, line, project, selected]);
 
   const dispatchAdaptTask = useCallback(async () => {
     if (!derivation?.task) return;
@@ -2976,7 +3100,7 @@ function FigureAdaptCard({ project }: { project: string }) {
   }, [derivation]);
 
   return (
-    <div className="card">
+    <div className="card" data-testid="figure-adapt-card">
       <div className="card-head">
         <h2 className="card-title">图模板适配</h2>
         <span className={`badge ${registryOk ? 'badge-pass' : 'badge-unknown'}`}>
@@ -2989,7 +3113,7 @@ function FigureAdaptCard({ project }: { project: string }) {
       <div className="form-grid-2">
         <div className="form-group">
           <label className="form-label">分析线</label>
-          <select className="form-select" value={line} onChange={(e) => {
+          <select className="form-select" data-testid="figure-adapt-line" value={line} onChange={(e) => {
             setLine(e.target.value);
             setTemplateId('');
           }}>
@@ -3000,7 +3124,7 @@ function FigureAdaptCard({ project }: { project: string }) {
         </div>
         <div className="form-group">
           <label className="form-label">图模板</label>
-          <select className="form-select" value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
+          <select className="form-select" data-testid="figure-adapt-template" value={templateId} onChange={(e) => setTemplateId(e.target.value)}>
             <option value="">选择图模板</option>
             {lineTemplates.map((item) => (
               <option key={item.id} value={item.id} disabled={item.deps_status !== 'ready'}>
@@ -3013,7 +3137,10 @@ function FigureAdaptCard({ project }: { project: string }) {
       </div>
 
       {selected && (
-        <div className="studio-fig-grid" style={{ gridTemplateColumns: 'auto 1fr', marginBottom: 12 }}>
+        <div
+          className="studio-fig-grid figure-adapt-preview"
+          style={{ gridTemplateColumns: 'auto 1fr', marginBottom: 12 }}
+        >
           <img
             src={`/api/figures/templates/preview?id=${encodeURIComponent(selected.id)}`}
             alt={selected.name}
@@ -3022,26 +3149,95 @@ function FigureAdaptCard({ project }: { project: string }) {
           />
           <div>
             <p className="subtle">{selected.category} · {selected.language} · {selected.level}</p>
+            <p className="subtle" data-testid="figure-adapt-layout">
+              {layout
+                ? `固定物理画布：${layout.width_mm} x ${layout.height_mm} mm（最小 ${layout.min_width_mm} x ${layout.min_height_mm} mm，DPI ${layout.dpi}，栏位 ${layout.column}，模板图例 ${layout.legend_position}）`
+                : '固定物理画布：模板未声明 figure_layout'}
+            </p>
+            {selected.palette && (selected.palette.name || selected.palette.values) && (
+              <p className="subtle" data-testid="figure-adapt-palette">
+                色板：{selected.palette.name || '模板默认'}
+                {selected.palette.values?.length
+                  ? ` · ${selected.palette.values.slice(0, 8).join(' / ')}`
+                  : ''}
+              </p>
+            )}
             {selected.source_sha256 && <p className="subtle">Master-SHA256：{selected.source_sha256.slice(0, 16)}</p>}
           </div>
         </div>
       )}
-
-      {selected && Object.entries(selected.adapt_vars).map(([key, description]) => (
-        <div className="form-group" key={key}>
-          <label className="form-label">{key}</label>
-          <input
-            className="form-input"
-            value={adaptVars[key] || ''}
-            placeholder={description}
-            onChange={(e) => setAdaptVars((prev) => ({ ...prev, [key]: e.target.value }))}
-          />
+      {selected && (
+        <div className="form-group" data-testid="figure-adapt-legend-position">
+          <fieldset style={{ border: 'none', margin: 0, padding: 0 }}>
+            <legend className="form-label">图例位置覆盖</legend>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 4 }}>
+              {LEGEND_POSITION_OPTIONS.map((position) => (
+                <label key={position} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13 }}>
+                  <input
+                    type="radio"
+                    name="figure-legend-position"
+                    value={position}
+                    checked={legendPositionOverride === position}
+                    onChange={() => setLegendPositionOverride(position)}
+                  />
+                  {position}
+                  <span className="subtle">{LEGEND_POSITION_LABELS[position]}</span>
+                </label>
+              ))}
+            </div>
+            <p className="subtle">
+              {layout
+                ? `模板默认 ${layout.legend_position}${LEGEND_POSITION_LABELS[layout.legend_position]}；选择后以覆盖值生成脚本和台账。`
+                : '模板未声明图例位置；选择后以覆盖值生成脚本和台账。'}
+            </p>
+            <button
+              className="btn"
+              data-testid="figure-adapt-legend-reset"
+              type="button"
+              onClick={() => setLegendPositionOverride(null)}
+              disabled={legendPositionOverride === null}
+            >
+              恢复模板默认
+            </button>
+            <p className="subtle" style={{ marginTop: 4 }}>
+              留空使用模板默认；选择后以覆盖值生成脚本和台账。
+            </p>
+          </fieldset>
         </div>
-      ))}
+      )}
+      {selected && (
+        <div className="form-grid-2" data-testid="figure-adapt-vars">
+          {Object.entries(selected.adapt_vars).length === 0 ? (
+            <p className="hint">该模板没有可修改的 adapt_vars 参数。</p>
+          ) : Object.entries(selected.adapt_vars).map(([key, declaration]) => (
+            <div className="form-group" key={key}>
+              <label className="form-label" htmlFor={`figure-adapt-var-${key}`}>
+                {key}
+                <span className="subtle">{declaration.required ? '（必填）' : '（选填）'}</span>
+              </label>
+              <input
+                className="form-input"
+                id={`figure-adapt-var-${key}`}
+                value={adaptVars[key] || ''}
+                placeholder={declaration.description}
+                onChange={(e) => setAdaptVars((prev) => ({ ...prev, [key]: e.target.value }))}
+              />
+              <span className="subtle">
+                {declaration.description} · 类型 {declaration.type} · 默认 {Array.isArray(declaration.default)
+                  ? declaration.default.join(', ') || '(空)'
+                  : declaration.default || '(空)'}）
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="chip-row">
-        <button className="btn btn-primary" onClick={() => void derive()}
-          disabled={deriving || !selected || !hasRequiredVars}>
+        <button
+          className="btn btn-primary"
+          data-testid="figure-adapt-derive"
+          onClick={() => void derive()}
+          disabled={deriving || !selected || missingRequiredVars.length > 0}>
           {deriving ? '派生中...' : '生成交付副本'}
         </button>
         <button className="btn" onClick={() => void dispatchAdaptTask()}

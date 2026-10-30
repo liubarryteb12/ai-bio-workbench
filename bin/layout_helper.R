@@ -1,4 +1,4 @@
-# layout_helper.R — 单图 SCI 排版外挂装饰器（R 端，aims v3.0 §5.3）
+# layout_helper.R — 单图 SCI 排版外挂装饰器（R 端，reference/03出图规范 v3.0）
 #
 # 零重写原则：母版 ggplot 出图脚本不改绘图主干，画完 `p` 后调用本函数叠加主题层，
 # 再 ggsave。与 Python 端 ops/layout_helper.py 的两档画幅同值，
@@ -17,8 +17,7 @@
 #          badge_text = "[Virtual KO - DR Genes]")
 #   layout_save_r(p, "l1_01_pca.png", spec)
 #
-# 注意：分面（facet）图不要套用。统一搬图例会把各分面挤扁，
-# docs/figure_spec.md §三之二 已说明该豁免。
+# 注意：分面（facet）图不要套用。统一搬图例会把各分面挤扁。
 
 LAYOUT_TEMPLATES <- list(
   template_4x3 = list(
@@ -26,16 +25,16 @@ LAYOUT_TEMPLATES <- list(
     legend_position = "outside_right",
     legend_direction = "vertical",
     axis_style = "classic_L",
-    x_label_rotation = "auto_45",
+    x_label_rotation = "horizontal",
     show_footnote_panel = FALSE
   ),
   template_16x9 = list(
     aspect_ratio = "16:9",
     legend_position = "bottom_center",
     legend_direction = "horizontal",
-    axis_style = "boxed",
-    x_label_rotation = "auto_45",
-    show_footnote_panel = TRUE
+    axis_style = "classic_L",
+    x_label_rotation = "horizontal",
+    show_footnote_panel = FALSE
   )
 )
 
@@ -49,13 +48,11 @@ LAYOUT_LEGACY_TEMPLATES <- c(
   template_3_clinical_note = "template_4x3"
 )
 
-# 画幅基准与 Python 端一致：宽 7.2in，高按比例推
-LAYOUT_BASE_WIDTH_IN <- 7.2
+# 画幅基准与 Python 端一致：默认单栏 88 mm，高按比例推。
+# 参考图或项目显式给出双栏尺寸时，由 preserve 环境变量锁住脚本原尺寸。
+LAYOUT_BASE_WIDTH_IN <- 88 / 25.4
 LAYOUT_ASPECT <- list("4:3" = c(4, 3), "16:9" = c(16, 9),
                       "3:2" = c(3, 2), "1:1" = c(1, 1))
-
-LAYOUT_LONG_LABEL_CHARS <- 8
-LAYOUT_MANY_LABELS <- 5
 
 #' 归一化排版配置：接受 NULL / jsonlite 解析出的 list / 只有 template_id 的简写
 #'
@@ -146,20 +143,13 @@ apply_sci_plot_layout_r <- function(p, layout_spec = NULL, footnote_text = NULL,
     legend_box <- "vertical"
   }
 
-  # X 轴标签避让：auto_45 只在"标签长且项多"时触发，避免无谓倾斜
+  # 单图规范禁止 45 度刻度标签；长名称交给换行或横向条形图。
   angle <- 0
   hjust <- 0.5
   rotation_mode <- rules$x_label_rotation
-  labels <- layout_x_labels(p)
-  if (identical(rotation_mode, "45")) {
-    angle <- 45
-    hjust <- 1
-  } else if (identical(rotation_mode, "auto_45")) {
-    if (length(labels) > LAYOUT_MANY_LABELS &&
-        max(nchar(labels), 0) > LAYOUT_LONG_LABEL_CHARS) {
-      angle <- 45
-      hjust <- 1
-    }
+  if (identical(rotation_mode, "45") || identical(rotation_mode, "auto_45")) {
+    angle <- 0
+    hjust <- 0.5
   }
 
   if (identical(rules$axis_style, "classic_L")) {
@@ -172,58 +162,46 @@ apply_sci_plot_layout_r <- function(p, layout_spec = NULL, footnote_text = NULL,
     legend.position = legend_position,
     legend.direction = legend_direction,
     legend.box = legend_box,
-    legend.title = ggplot2::element_text(size = 9),
-    legend.text = ggplot2::element_text(size = 8),
+    legend.title = ggplot2::element_text(size = 7),
+    legend.text = ggplot2::element_text(size = 6.5),
     legend.key = ggplot2::element_blank(),
-    axis.text.x = ggplot2::element_text(angle = angle, hjust = hjust, vjust = if (angle > 0) 1 else 0.5, size = 8),
-    axis.text.y = ggplot2::element_text(size = 8),
-    axis.title = ggplot2::element_text(size = 9),
-    plot.title = ggplot2::element_text(
-      size = 10, face = "bold",
-      hjust = if (identical(position, "bottom_center")) 0.5 else 0
-    ),
-    # 图注一律左下起（figure_spec §三之二：横版在轴框下方，从左边开始），
-    # 不能依赖脚本自己写 hjust —— ggplot 默认 caption 是右对齐的。
-    plot.caption = ggplot2::element_text(hjust = 0, size = 8, colour = "grey20"),
-    plot.caption.position = "plot",
-    plot.title.position = "plot"
+    legend.key.size = ggplot2::unit(3, "mm"),
+    axis.text.x = ggplot2::element_text(angle = angle, hjust = hjust, vjust = 0.5, size = 6.5),
+    axis.text.y = ggplot2::element_text(size = 6.5),
+    axis.title = ggplot2::element_text(size = 7),
+    plot.title = ggplot2::element_blank(),
+    plot.subtitle = ggplot2::element_blank(),
+    axis.line = ggplot2::element_line(linewidth = 0.5 / 2.845276),
+    axis.ticks = ggplot2::element_line(linewidth = 0.5 / 2.845276),
+    axis.ticks.length = ggplot2::unit(1.4, "mm"),
+    panel.grid = ggplot2::element_blank(),
+    plot.background = ggplot2::element_blank(),
+    panel.background = ggplot2::element_blank(),
+    plot.margin = ggplot2::margin(2, 2, 2, 2, unit = "mm")
   )
 
   if (identical(position, "bottom_center")) {
-    # 底部预留 15% 安全内边距，防图例与脚注贴边被裁
-    p <- p + ggplot2::theme(plot.margin = ggplot2::margin(8, 8, 22, 8))
+    # 底部预留图例空间，固定画布不靠 tight bbox 扩边。
+    p <- p + ggplot2::theme(plot.margin = ggplot2::margin(2, 2, 8, 2, unit = "mm"))
   }
 
   if (!is.null(title)) {
     p <- p + ggplot2::labs(title = title)
   }
 
-  if (!is.null(footnote_text) && nzchar(as.character(footnote_text)) &&
-      isTRUE(rules$show_footnote_panel)) {
-    p <- p + ggplot2::labs(caption = as.character(footnote_text)) +
-      ggplot2::theme(
-        # 脚注内容与位置与 Python 端一致；浅灰底栏是 matplotlib 侧的实现，
-        # ggplot2 的 element_text 不支持背景色（ggtext 才有 element_textbox），
-        # 这里不强加依赖，只保证信息不丢、位置不压面板。
-        plot.caption = ggplot2::element_text(
-          hjust = 0, size = 8, colour = "grey20",
-          margin = ggplot2::margin(t = 6, b = 2)
-        ),
-        plot.caption.position = "plot"
-      )
-  }
+  # 单图图注写入 06_report 元数据，不画进画布。
 
   if (!is.null(badge_text) && nzchar(as.character(badge_text))) {
     p <- p + ggplot2::labs(tag = as.character(badge_text)) +
       ggplot2::theme(
-        plot.tag = ggplot2::element_text(size = 9, face = "bold", colour = "#B22222"),
+        plot.tag = ggplot2::element_text(size = 7, face = "bold", colour = "#B22222"),
         plot.tag.position = c(1, 1)
       )
   }
   p
 }
 
-#' 便捷落盘：按模板尺寸与 dpi 保存，统一 bbox 收紧
+#' 便捷落盘：按模板尺寸与 dpi 保存，保持固定画布
 layout_save_r <- function(p, filename, layout_spec = NULL, ...) {
   normalized <- normalize_layout_spec_r(layout_spec)
   size <- layout_figsize_r(normalized)

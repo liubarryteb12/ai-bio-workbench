@@ -1,4 +1,8 @@
 {
+  "defaultProvider": "zai",
+  "defaultModel": "glm-5.3-flash",
+  "thinkingLevel": "high",
+  "temperature": 0.2,
   "a2a": {
     "server": {
       "enabled": true,

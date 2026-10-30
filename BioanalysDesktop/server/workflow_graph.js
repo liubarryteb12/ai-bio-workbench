@@ -162,6 +162,7 @@ export function validateRegistry() {
 const RAW_INPUTS = new Set([
   'series_matrix', 'gpl', 'gpl_soft', 'gpl_soft_mouse', 'gpl_soft_human',
   'grouping.txt', 'raw_tar', 'processed', 'survival_data',
+  'val_expr_genes.tsv', 'val_group_map.tsv',
 ]);
 
 function sameSeries(modId, seriesId) {

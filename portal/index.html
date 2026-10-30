@@ -1298,9 +1298,10 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     container.innerHTML = '';
     const values = (selectedFigureTemplates[template.id] || {}).adapt_vars || {};
     Object.entries(template.adapt_vars || {}).forEach(function (entry) {
-      const key = entry[0], description = entry[1];
+      const key = entry[0], declaration = entry[1] || {};
+      const description = declaration.description || String(declaration);
       const field = el('div', { class: 'field' }, [
-        el('label', { for: `${template.id}-adapt-${key}`, text: `${key}${/可为空/.test(description) ? '' : ' *'}` }),
+        el('label', { for: `${template.id}-adapt-${key}`, text: `${key}${declaration.required ? ' *' : ''}` }),
         el('input', { type: 'text', id: `${template.id}-adapt-${key}`, placeholder: description })
       ]);
       const input = field.querySelector('input');
@@ -1308,7 +1309,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       input.addEventListener('input', function () {
         if (!selectedFigureTemplates[template.id]) selectedFigureTemplates[template.id] = { adapt_vars: {} };
         const raw = input.value;
-        const parsed = /清单|数组|列表/.test(String(description))
+        const parsed = declaration.type === 'string_list'
           ? raw.split(/[\s,;，；]+/).filter(Boolean)
           : raw;
         selectedFigureTemplates[template.id].adapt_vars[key] = parsed;

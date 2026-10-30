@@ -123,8 +123,8 @@ export function normalizeBiologicalPriors(priors) {
  * 与 ops/layout_helper.py 的 TEMPLATES 同值（两端各自持有副本，不共享代码）。
  */
 export const PLOT_LAYOUT_TEMPLATES = {
-  template_4x3: { aspect_ratio: '4:3', legend_position: 'outside_right', legend_direction: 'vertical', axis_style: 'classic_L', x_label_rotation: 'auto_45', show_footnote_panel: false },
-  template_16x9: { aspect_ratio: '16:9', legend_position: 'bottom_center', legend_direction: 'horizontal', axis_style: 'boxed', x_label_rotation: 'auto_45', show_footnote_panel: true },
+  template_4x3: { aspect_ratio: '4:3', legend_position: 'outside_right', legend_direction: 'vertical', axis_style: 'classic_L', x_label_rotation: 'horizontal', show_footnote_panel: false },
+  template_16x9: { aspect_ratio: '16:9', legend_position: 'bottom_center', legend_direction: 'horizontal', axis_style: 'classic_L', x_label_rotation: 'horizontal', show_footnote_panel: false },
 };
 export const DEFAULT_TEMPLATE_ID = 'template_4x3';
 

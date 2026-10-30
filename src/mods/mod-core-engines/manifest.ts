@@ -1,29 +1,28 @@
-export interface ModManifest {
-  id: `mod-${string}`;
-  name: string;
-  version: string;
-  stageOrder: 'foundation' | 'supporting' | 'feature';
-  plane: 'pc-codex' | 'mobile-termux' | 'cross-plane';
-  enginesRequired: Array<
-    'a2a-rpc-engine' | 'transport-keepalive-engine' | 'artifact-sync-engine' | 'security-audit-engine'
-  >;
-  configPaths: string[];
-  verificationScripts: string[];
-  capabilitiesProvided: string[];
-  capabilitiesConsumed: string[];
-}
+import { provideCapability, type ModManifest } from '../../core/types';
+
+export type { ModManifest } from '../../core/types';
 
 export const manifest: ModManifest = {
-  id: 'mod-core-engines',
-  name: 'Core Engines Foundation',
+  modId: 'mod-core-engines',
+  displayName: 'Core Engines Foundation',
   version: '1.0.0',
+  state: 'ready',
+  dbStores: [],
   stageOrder: 'foundation',
   plane: 'cross-plane',
   enginesRequired: ['security-audit-engine'],
   configPaths: ['configs/a2a/pi-settings.example.json'],
   verificationScripts: ['ops/pi_termux_bootstrap.sh'],
-  capabilitiesProvided: ['workspace_path_guard', 'settings_security_audit', 'bootstrap_validation'],
+  capabilitiesProvided: [
+    provideCapability('workspace_path_guard'),
+    provideCapability('settings_security_audit'),
+    provideCapability('bootstrap_validation'),
+  ],
   capabilitiesConsumed: [],
+  slots: [],
+  artifacts: [],
+  initialize: async () => 0,
+  teardown: async () => 0,
 };
 
 export default manifest;

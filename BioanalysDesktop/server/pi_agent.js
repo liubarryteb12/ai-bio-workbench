@@ -20,10 +20,16 @@ export const PI_SSH_TARGET = 'k40';
 export const PI_WORKSPACE = '/data/data/com.termux/files/home/workspace';
 export const PI_AGENT_DIR = '/data/data/com.termux/files/home/.pi/agent';
 
+/** Pi Agent 默认模型；白名单顺序同时决定 18787 页面的默认展示顺序。 */
+export const DEFAULT_MODEL = {
+  provider: 'zai',
+  model: 'glm-5.3-flash',
+};
+
 /** 与 ops/pi_a2a_daemon.sh 的模型锁同源（A2A-D 锁定组合，不得扩大） */
 export const ALLOWED_MODELS = [
+  DEFAULT_MODEL,
   { provider: 'deepseek', model: 'deepseek-v4.1-flash' },
-  { provider: 'zai', model: 'glm-5.3-flash' },
 ];
 
 const ADB_FORWARD_PORT = 9910;
@@ -82,7 +88,7 @@ export function buildCurrentModelCommand() {
   return b64Envelope([
     `cat ${PI_AGENT_DIR}/.provider_name 2>/dev/null || echo unknown`,
     `cat ${PI_AGENT_DIR}/.provider_model 2>/dev/null || echo unknown`,
-  ].join('\necho '));
+  ].join('\n'));
 }
 
 export function buildPeerTokenCommand() {
@@ -92,13 +98,69 @@ export function buildPeerTokenCommand() {
 export function buildSwitchModelCommand(provider, model) {
   const hit = ALLOWED_MODELS.find((m) => m.provider === provider && m.model === model);
   if (!hit) throw new Error('ERR_MODEL_NOT_ALLOWED');
-  // pin 文件是 daemon 的唯一模型真源；写完后重启 tmux 让 --model 生效。
+  const providerKeyPath = `${PI_AGENT_DIR}/.provider_keys/${provider}`;
+  const legacyKeyPath = `${PI_AGENT_DIR}/.provider_key`;
+  const settingsPath = `${PI_AGENT_DIR}/settings.json`;
+  const keyResolution = provider === 'zai'
+    ? `key_file="${providerKeyPath}"; [ -s "$key_file" ] || key_file="${legacyKeyPath}"`
+    : `key_file="${providerKeyPath}"`;
+  const updateSettings = [
+    `python3 - "${settingsPath}" '${provider}' '${model}' <<'PY'`,
+    'import json',
+    'import os',
+    'import sys',
+    'path, provider, model = sys.argv[1:4]',
+    'with open(path, encoding="utf-8") as handle:',
+    '    config = json.load(handle)',
+    'if not isinstance(config, dict):',
+    '    raise SystemExit("ERR_SETTINGS_NOT_OBJECT")',
+    'config["defaultProvider"] = provider',
+    'config["defaultModel"] = model',
+    'tmp_path = path + ".tmp"',
+    'with open(tmp_path, "w", encoding="utf-8", newline="\\n") as handle:',
+    '    json.dump(config, handle, indent=2, ensure_ascii=False)',
+    '    handle.write("\\n")',
+    '    handle.flush()',
+    '    os.fsync(handle.fileno())',
+    'os.chmod(tmp_path, 0o600)',
+    'os.replace(tmp_path, path)',
+    'PY',
+  ].join('\n');
+  // settings.json 是可审计配置真源，pin 文件供 daemon 快速读取；
+  // 切换完成后直接从 pin 读取实际值并启动 Pi，避免 daemon 推导层与配置漂移。
   return b64Envelope([
+    keyResolution,
+    'if [ ! -s "$key_file" ]; then echo ERR_PROVIDER_KEY_MISSING; exit 2; fi',
+    updateSettings,
     `printf '${provider}\\n' > ${PI_AGENT_DIR}/.provider_name`,
     `printf '${model}\\n' > ${PI_AGENT_DIR}/.provider_model`,
     `chmod 600 ${PI_AGENT_DIR}/.provider_name ${PI_AGENT_DIR}/.provider_model`,
     'tmux kill-session -t pi-a2a 2>/dev/null || true',
-    'A2A_DAEMON_MODE=foreground bash "$HOME/bin/pi_a2a_daemon.sh" >/dev/null 2>&1 &',
+    "PIN_PROVIDER=\"$(tr -d ' \\t\\r\\n' < \"$HOME/.pi/agent/.provider_name\")\"",
+    "PIN_MODEL=\"$(tr -d ' \\t\\r\\n' < \"$HOME/.pi/agent/.provider_model\")\"",
+    'case "$PIN_PROVIDER/$PIN_MODEL" in',
+    '  zai/glm-5.3-flash)',
+    '    export PI_PROVIDER_ENV=ZAI_API_KEY',
+    '    export ZAI_API_KEY="$(cat "$key_file")"',
+    '    ;;',
+    '  deepseek/deepseek-v4.1-flash)',
+    '    export PI_PROVIDER_ENV=DEEPSEEK_API_KEY',
+    '    export DEEPSEEK_API_KEY="$(cat "$key_file")"',
+    '    ;;',
+    '  *)',
+    '    echo ERR_LAUNCH_MODEL_MISMATCH provider="$PIN_PROVIDER" model="$PIN_MODEL"',
+    '    exit 1',
+    '    ;;',
+    'esac',
+    "LAUNCHER_MODEL=\"$PIN_MODEL\"",
+    'tmux new-session -d -s pi-a2a -n a2a-server -c "$HOME/workspace/projects" \\',
+    "  \"exec bash '$HOME/bin/pi_a2a_launch.sh' '$LAUNCHER_MODEL' high\"",
+    'if ! curl --noproxy "*" -fsS --max-time 4 http://127.0.0.1:9910/.well-known/agent-card.json >/dev/null 2>&1; then',
+    '  echo ERR_SERVER_NOT_READY',
+    '  exit 1',
+    'fi',
+    'echo PIN_PROVIDER=$PIN_PROVIDER',
+    'echo PIN_MODEL=$PIN_MODEL',
     'echo SWITCH_OK',
   ].join('\n'));
 }
@@ -128,22 +190,30 @@ export function parseOverview(text) {
   };
 }
 
-/** 派发 A2A v1.0 SendMessage：PC 直连 adb forward 的 9910，token 从手机现读 */
-export function postA2ARequest(promptText, token, timeoutMs = 90000) {
+/** 构造 A2A JSON-RPC 请求，便于测试和审计请求体。 */
+export function buildA2ARpcPayload(method, params) {
+  return {
+    jsonrpc: '2.0',
+    id: `rpc-18787-${Date.now()}`,
+    method,
+    params,
+  };
+}
+
+export function buildSendMessageParams(promptText, returnImmediately = false) {
+  return {
+    message: {
+      messageId: `msg-18787-${Date.now()}`,
+      role: 'ROLE_USER',
+      parts: [{ text: promptText }],
+    },
+    configuration: { returnImmediately: returnImmediately === true },
+  };
+}
+
+function postA2ARpc(method, params, token, timeoutMs) {
   return new Promise((resolve, reject) => {
-    const payload = Buffer.from(JSON.stringify({
-      jsonrpc: '2.0',
-      id: `rpc-18787-${Date.now()}`,
-      method: 'SendMessage',
-      params: {
-        message: {
-          messageId: `msg-18787-${Date.now()}`,
-          role: 'ROLE_USER',
-          parts: [{ text: promptText }],
-        },
-        configuration: { returnImmediately: false },
-      },
-    }), 'utf8');
+    const payload = Buffer.from(JSON.stringify(buildA2ARpcPayload(method, params)), 'utf8');
     const req = http.request(
       {
         hostname: '127.0.0.1',
@@ -175,6 +245,28 @@ export function postA2ARequest(promptText, token, timeoutMs = 90000) {
     req.write(payload);
     req.end();
   });
+}
+
+/** 派发 A2A v1.0 SendMessage：PC 直连 adb forward 的 9910，token 从手机现读。 */
+export function postA2ARequest(promptText, token, timeoutMs = 240000, options = {}) {
+  const params = buildSendMessageParams(promptText, options.returnImmediately === true);
+  return postA2ARpc('SendMessage', params, token, timeoutMs);
+}
+
+/** 读取已派发任务，不重新发送 SendMessage。 */
+export function getA2ATask(taskId, token, timeoutMs = 30000) {
+  return postA2ARpc('GetTask', { id: taskId }, token, timeoutMs);
+}
+
+/** 超时或人工中止时回收 Pi 侧任务。 */
+export function cancelA2ATask(taskId, token, timeoutMs = 15000) {
+  return postA2ARpc('CancelTask', { id: taskId }, token, timeoutMs);
+}
+
+/** 从 SendMessage/GetTask 的 JSON-RPC 数据中取任务对象。 */
+export function extractTaskFromRpcData(data) {
+  const envelope = data?.task ?? data?.result ?? null;
+  return envelope?.task ?? envelope;
 }
 
 /** 从一条 a2a_sessions JSONL 里提取 usage 聚合与最后一条助手文本 */

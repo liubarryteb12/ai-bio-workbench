@@ -253,7 +253,8 @@
               ],
               "produces": [
                 "ml_report.txt",
-                "ml_roc.png"
+                "ml_roc.png",
+                "external_frozen_model.tsv"
               ],
               "est_minutes": 15,
               "peak_mem_mb": 2800,
@@ -303,15 +304,17 @@
               "id": "l1_ml_external",
               "name": "外部集冻结验证",
               "desc": "在独立验证集上评估训练所得分类器的判别性能，并输出预测结果",
-              "tool": "pROC",
-              "language": "R",
+              "tool": "sklearn",
+              "language": "Python",
               "requires": [
-                "expr_genes.tsv",
-                "group_map.tsv",
-                "key_genes.tsv"
+                "external_frozen_model.tsv",
+                "val_expr_genes.tsv",
+                "val_group_map.tsv"
               ],
               "produces": [
                 "external_validation_preds.tsv",
+                "external_frozen_coefs.tsv",
+                "external_validation_metrics.tsv",
                 "external_validation_report.txt"
               ],
               "est_minutes": 6,

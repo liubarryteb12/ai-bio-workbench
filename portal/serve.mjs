@@ -126,7 +126,7 @@ const SYNC_CACHE = path.join(INBOX, '.sync_cache');
 const TRIGGER_COOLDOWN_MS = 60_000;
 const SYNC_RESULT_MAX_BODY = Number(process.env.PORTAL_SYNC_RESULT_MAX_BYTES || 32 * 1024 * 1024);
 const TRIGGER_LIMITS = new Map();
-const FIGURE_ROOT_PREFIX = 'reference/05.可参考出图代码';
+const FIGURE_ROOT_PREFIX = 'src/figure_previews';
 
 /** 文件名安全化：保留中英文、数字、下划线、连字符 */
 function safeName(text) {
@@ -303,7 +303,8 @@ function resolveLocally(reg, seriesId, selectedIds, koGene) {
 
   // 依赖闭合：requires（非原始输入）的生产者必须也被选中
   const rawInputs = new Set(['series_matrix', 'gpl', 'gpl_soft', 'gpl_soft_mouse',
-    'gpl_soft_human', 'grouping.txt', 'raw_tar', 'processed', 'survival_data']);
+    'gpl_soft_human', 'grouping.txt', 'raw_tar', 'processed', 'survival_data',
+    'val_expr_genes.tsv', 'val_group_map.tsv']);
   const bare = (key) => key.slice(seriesId.length + 1);
   for (const key of selected) {
     const entry = index.get(key);

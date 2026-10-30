@@ -127,10 +127,10 @@ fail <- function(message) {
 }
 
 # --- 0. grouping.txt 解析（两模式共用） ---
-# 真实结构（cat -A 实测）：tab 分隔，但第一列是 "分组名 长标签"
-# （如 "皮损组 LS"，空格拼接），第二列是短标签（L），后面依次是 样本数 / GSM列表 / 样本标签。
-# 表头只写了 5 个名字，与数据行对不齐，所以 GSM 列按 "以 GSM+数字开头" 特征匹配找，
-# 组标签从第一列取最后一个空格词，都不按下标猜。
+# 兼容两种结构：
+#   A. 每行一个样本：GSM<TAB>group
+#   B. 每组一行：分组名<TAB>短标签<TAB>样本数<TAB>GSM逗号列表...
+# GSM 字段按 "以 GSM+数字开头" 特征匹配，不按下标猜。
 # warn=FALSE：grouping.txt 末尾无换行，warning 会混进 stderr 干扰排查
 read_grouping_map <- function(path) {
   grouping_lines <- readLines(path, encoding = "UTF-8", warn = FALSE)
@@ -140,6 +140,16 @@ read_grouping_map <- function(path) {
     # 宽松匹配会把表头当数据行收进来，再被严格匹配打失败。
     if (!grepl("GSM[0-9]", grouping_line)) next
     fields <- strsplit(grouping_line, "\t")[[1]]
+    if (length(fields) < 2) fail(sprintf("grouping 行列数不足: %s", grouping_line))
+    if (grepl("^GSM[0-9]", trimws(fields[1]))) {
+      sample_id <- trimws(fields[1])
+      grouping_tag <- trimws(fields[2])
+      if (!grepl("^[A-Za-z0-9_-]+$", grouping_tag)) {
+        fail(sprintf("grouping 组标签解析异常: %s（来自 %s）", grouping_tag, grouping_line))
+      }
+      grouping_map[[grouping_tag]] <- c(grouping_map[[grouping_tag]], sample_id)
+      next
+    }
     if (length(fields) < 3) fail(sprintf("grouping 行列数不足: %s", grouping_line))
     gsm_field_index <- grep("^GSM[0-9]", fields)
     if (length(gsm_field_index) == 0) fail(sprintf("grouping 行里找不到 GSM 列表: %s", grouping_line))
@@ -156,6 +166,7 @@ read_grouping_map <- function(path) {
 }
 
 grouping_map <- if (nzchar(grouping_file)) read_grouping_map(grouping_file) else NULL
+group_source <- if (identical(prep_mode, "counts_rnaseq")) "grouping_file" else "series_matrix"
 
 if (identical(prep_mode, "counts_rnaseq")) {
   # ============================ B. Bulk RNA-seq counts 路径 ============================
@@ -305,7 +316,7 @@ if (identical(prep_mode, "counts_rnaseq")) {
     fail("样本元数据行与数据表列数不一致")
   }
 
-  # tissue: lesion -> LS；tissue: perilesional skin -> NLS。其它形态不猜，直接失败
+  # tissue 能直接编码分组时优先使用 GEO 元数据；否则回退用户分组表并留痕。
   group_values <- vapply(char_values, function(text_value) {
     tissue <- sub("^tissue:\\s*", "", text_value)
     if (identical(tolower(tissue), "lesion")) return("LS")
@@ -313,8 +324,25 @@ if (identical(prep_mode, "counts_rnaseq")) {
     NA_character_
   }, character(1), USE.NAMES = FALSE)
   if (any(is.na(group_values))) {
-    fail(sprintf("无法从 tissue 特征派生分组: %s",
-                 paste(unique(char_values[is.na(group_values)]), collapse = " | ")))
+    if (is.null(grouping_map)) {
+      fail(sprintf("GEO tissue 无法派生分组且未提供 grouping 文件: %s",
+                   paste(unique(char_values[is.na(group_values)]), collapse = " | ")))
+    }
+    grouping_group_values <- rep(NA_character_, length(gsm_cols))
+    for (grouping_tag in names(grouping_map)) {
+      for (gsm in grouping_map[[grouping_tag]]) {
+        sample_index <- match(gsm, gsm_cols)
+        if (!is.na(sample_index)) grouping_group_values[sample_index] <- grouping_tag
+      }
+    }
+    if (any(is.na(grouping_group_values))) {
+      fail(sprintf("GEO tissue 无法派生分组，且 grouping 未覆盖样本: %s",
+                   paste(gsm_cols[is.na(grouping_group_values)], collapse = ",")))
+    }
+    group_values <- grouping_group_values
+    group_source <- "grouping_file"
+  } else {
+    group_source <- "series_matrix"
   }
 
   # --- 2. GPL 注释：探针 -> gene symbol ---
@@ -356,19 +384,23 @@ if (identical(prep_mode, "counts_rnaseq")) {
       fail(sprintf("grouping 的 GSM 集合与 series matrix 不一致: grouping=%d 个, matrix=%d 个",
                    length(grouping_gsms), length(gsm_cols)))
     }
-    mismatch <- c()
-    for (grouping_tag in names(grouping_map)) {
-      for (gsm in grouping_map[[grouping_tag]]) {
-        sample_index <- match(gsm, gsm_cols)
-        if (!is.na(sample_index) && group_values[sample_index] != grouping_tag) {
-          mismatch <- c(mismatch, sprintf("%s: GEO=%s vs grouping=%s", gsm, group_values[sample_index], grouping_tag))
+    if (identical(group_source, "series_matrix")) {
+      mismatch <- c()
+      for (grouping_tag in names(grouping_map)) {
+        for (gsm in grouping_map[[grouping_tag]]) {
+          sample_index <- match(gsm, gsm_cols)
+          if (!is.na(sample_index) && group_values[sample_index] != grouping_tag) {
+            mismatch <- c(mismatch, sprintf("%s: GEO=%s vs grouping=%s", gsm, group_values[sample_index], grouping_tag))
+          }
         }
       }
+      if (length(mismatch) > 0) {
+        fail(sprintf("grouping 与 GEO 元数据分组冲突: %s", paste(mismatch, collapse = "; ")))
+      }
+      grouping_check <- sprintf("一致（%d 组 %d 样本）", length(grouping_map), length(grouping_gsms))
+    } else {
+      grouping_check <- sprintf("用作分组来源（%d 组 %d 样本）", length(grouping_map), length(grouping_gsms))
     }
-    if (length(mismatch) > 0) {
-      fail(sprintf("grouping 与 GEO 元数据分组冲突: %s", paste(mismatch, collapse = "; ")))
-    }
-    grouping_check <- sprintf("一致（%d 组 %d 样本）", length(grouping_map), length(grouping_gsms))
   }
 
   # 报告字段刻意与原单模式版本逐字一致（不加 prep_mode 行）：A 侧既有产物是下游输入，
@@ -404,9 +436,8 @@ group_table <- table(group_values)
 if (any(group_table < 2)) fail(sprintf("有分组样本数不足 2: %s", paste(names(group_table), collapse = "/")))
 
 # --- 6. 产物落盘（工作目录即 <line>/processed/） ---
-# counts 路径的样本名就是 counts 列名（GSM），芯片路径沿用 GEO 标题；
-# 两条路径都必须让 expr 列名与 group_map$sample 完全一致，下游 join 才不用分支。
-sample_labels <- if (identical(prep_mode, "counts_rnaseq")) sample_names else title_values
+# 两条路径都用 GSM 作为稳定样本键；title 只用于展示，不作为项目主键。
+sample_labels <- if (identical(prep_mode, "counts_rnaseq")) sample_names else gsm_cols
 setnames(gene_expr, c("gene", sample_labels))
 fwrite(gene_expr, "expr_genes.tsv", sep = "\t")
 fwrite(data.table(sample = sample_labels, group = group_values), "group_map.tsv", sep = "\t")
@@ -418,6 +449,7 @@ report_lines <- c(
   counts_report,
   sprintf("genes=%d", gene_count),
   sprintf("samples=%d", length(numeric_cols)),
+  sprintf("group_source=%s", group_source),
   dist_line,
   sprintf("value_range=%.2f - %.2f", value_range[1], value_range[2]),
   sprintf("groups=%s", paste(sprintf("%s:%d", names(group_table), as.integer(group_table)), collapse = " "))
@@ -436,6 +468,7 @@ if (identical(prep_mode, "counts_rnaseq")) {
   cat("counts_rows=", nrow(counts_table), "\n", sep = "")
   cat("genes=", gene_count, "\n", sep = "")
   cat("samples=", length(numeric_cols), "\n", sep = "")
+  cat("group_source=", group_source, "\n", sep = "")
   cat("value_range=", sprintf("%.2f-%.2f", value_range[1], value_range[2]), "\n", sep = "")
   cat("groups=", paste(sprintf("%s:%d", names(group_table), as.integer(group_table)), collapse = " "), "\n", sep = "")
   cat("grouping_check=", grouping_check, "\n", sep = "")
@@ -444,6 +477,7 @@ if (identical(prep_mode, "counts_rnaseq")) {
   cat("probes_annotated=", probes_annotated, "\n", sep = "")
   cat("genes=", gene_count, "\n", sep = "")
   cat("samples=", length(numeric_cols), "\n", sep = "")
+  cat("group_source=", group_source, "\n", sep = "")
   cat("value_range=", sprintf("%.2f-%.2f", value_range[1], value_range[2]), "\n", sep = "")
   cat("groups=", paste(sprintf("%s:%d", names(group_table), as.integer(group_table)), collapse = " "), "\n", sep = "")
   cat("grouping_check=", grouping_check, "\n", sep = "")

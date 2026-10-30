@@ -9,7 +9,8 @@ import { indexMods } from './workflow_graph.js';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
 const REGISTRY = path.join(REPO, 'src', 'figure_templates.json');
-const FIGURE_ROOT = 'reference/05.可参考出图代码';
+const FIGURE_SOURCE_ROOT = 'src/figure_sources';
+const FIGURE_PREVIEW_ROOT = 'src/figure_previews';
 const PROJECTS_ROOT = '/mnt/ssd/bio_data/projects';
 let cache = null;
 
@@ -30,15 +31,15 @@ export function reloadFigureTemplates() {
   return loadFigureTemplates();
 }
 
-function isPathInsideFigureRoot(relative) {
+function isPathInsideRoot(relative, root) {
   const normalized = relative.split('\\').join('/');
-  return normalized === FIGURE_ROOT || normalized.startsWith(`${FIGURE_ROOT}/`);
+  return normalized === root || normalized.startsWith(`${root}/`);
 }
 
-function validateReadyPath(item, pathKey, hashKey, errors) {
+function validateReadyPath(item, pathKey, hashKey, root, errors) {
   const relative = item[pathKey];
-  if (typeof relative !== 'string' || relative.length === 0 || !isPathInsideFigureRoot(relative)) {
-    errors.push(`${item.id}: ${pathKey} 必须位于 ${FIGURE_ROOT}`);
+  if (typeof relative !== 'string' || relative.length === 0 || !isPathInsideRoot(relative, root)) {
+    errors.push(`${item.id}: ${pathKey} 必须位于 ${root}`);
     return;
   }
   const target = path.join(REPO, relative);
@@ -49,6 +50,38 @@ function validateReadyPath(item, pathKey, hashKey, errors) {
     if (item[hashKey] !== actual) {
       errors.push(`${item.id}: ${hashKey} 与磁盘文件不一致`);
     }
+  }
+}
+
+function validateFigureProvenance(item, errors) {
+  if (!Number.isInteger(item.catalog_id) || item.catalog_id <= 0) {
+    errors.push(`${item.id}: catalog_id 必须是正整数`);
+  }
+  if (typeof item.catalog_title !== 'string' || item.catalog_title.length === 0) {
+    errors.push(`${item.id}: catalog_title 缺失`);
+  }
+  if (typeof item.catalog_page_url !== 'string' || !/^https?:\/\//.test(item.catalog_page_url)) {
+    errors.push(`${item.id}: catalog_page_url 非法`);
+  }
+  const catalogLanguage = String(item.catalog_language || '').toLowerCase();
+  if (!['r', 'python'].includes(catalogLanguage)) {
+    errors.push(`${item.id}: catalog_language 非法`);
+  }
+  if (!['exact', 'analogous'].includes(item.source_match)) {
+    errors.push(`${item.id}: source_match 必须是 exact 或 analogous`);
+  }
+  if (item.source_match === 'exact' && catalogLanguage !== item.language) {
+    errors.push(`${item.id}: exact 来源语言必须与实现语言一致`);
+  }
+  // The materialized master keeps the catalog source language. An analogous
+  // template may render in another language, so its source extension follows
+  // the catalog language rather than the adapter implementation language.
+  const expectedExtension = catalogLanguage === 'python' ? '.py' : '.R';
+  if (path.extname(item.source || '') !== expectedExtension) {
+    errors.push(`${item.id}: source 扩展名必须为 ${expectedExtension}`);
+  }
+  if (path.extname(item.preview || '') !== '.png') {
+    errors.push(`${item.id}: preview 扩展名必须为 .png`);
   }
 }
 
@@ -64,8 +97,27 @@ function validateAdaptDeclaration(item, errors) {
   }
   for (const key of keys) {
     const value = item.adapt_vars[key];
-    if (typeof value !== 'string' || value.trim().length === 0) {
+    if (item.deps_status !== 'ready') {
+      if (typeof value !== 'string' || value.trim().length === 0) {
+        errors.push(`${item.id}: adapt_vars.${key} 缺少说明`);
+      }
+      continue;
+    }
+    if (!value || Array.isArray(value) || typeof value !== 'object') {
+      errors.push(`${item.id}: adapt_vars.${key} 必须是声明对象`);
+      continue;
+    }
+    if (typeof value.description !== 'string' || value.description.trim().length === 0) {
       errors.push(`${item.id}: adapt_vars.${key} 缺少说明`);
+    }
+    if (!['string', 'string_list'].includes(value.type)) {
+      errors.push(`${item.id}: adapt_vars.${key}.type 非法`);
+    }
+    if (typeof value.required !== 'boolean') {
+      errors.push(`${item.id}: adapt_vars.${key}.required 必须是布尔值`);
+    }
+    if (!('default' in value)) {
+      errors.push(`${item.id}: adapt_vars.${key}.default 缺失`);
     }
   }
 }
@@ -156,8 +208,9 @@ export function validateRegistry() {
     validateAdaptDeclaration(item, errors);
 
     if (item.deps_status === 'ready' && item.verified) {
-      validateReadyPath(item, 'source', 'source_sha256', errors);
-      validateReadyPath(item, 'preview', 'preview_sha256', errors);
+      validateFigureProvenance(item, errors);
+      validateReadyPath(item, 'source', 'source_sha256', FIGURE_SOURCE_ROOT, errors);
+      validateReadyPath(item, 'preview', 'preview_sha256', FIGURE_PREVIEW_ROOT, errors);
       validateReadyMapping(item, mods, errors);
     } else if (item.deps_status === 'ready' && !item.verified) {
       errors.push(`${item.id}: deps_status=ready 必须先通过验证`);
@@ -297,7 +350,22 @@ export function resolveFigure(templateId, lineId, projectId, adaptVars = {}, sel
 
   const declared = Object.keys(template.adapt_vars || {});
   for (const key of declared) {
-    if (!(key in adaptVars)) errors.push(`adapt_vars 缺必填字段 ${key}`);
+    if (template.adapt_vars[key].required && !(key in adaptVars)) {
+      errors.push(`adapt_vars 缺必填字段 ${key}`);
+    }
+  }
+  for (const [key, declaration] of Object.entries(template.adapt_vars || {})) {
+    if (!(key in adaptVars)) continue;
+    const value = adaptVars[key];
+    if (declaration.type === 'string_list') {
+      if (!Array.isArray(value) || value.some((item) => typeof item !== 'string' || item.trim().length === 0)) {
+        errors.push(`adapt_vars.${key} 必须是非空字符串数组`);
+      }
+      continue;
+    }
+    if (typeof value !== 'string' || value.trim().length === 0) {
+      errors.push(`adapt_vars.${key} 必须是非空字符串`);
+    }
   }
   for (const [key, value] of Object.entries(adaptVars)) {
     validateAdaptValue(value, lineId, projectId, `${templateId}.${key}`, errors);

@@ -229,7 +229,13 @@ _install_layout_guard()
 
 def rd(name):
     p = os.path.join(D, name)
-    return pd.read_csv(p, sep="\t") if os.path.exists(p) else None
+    if not os.path.exists(p):
+        return None
+    try:
+        return pd.read_csv(p, sep="\t")
+    except pd.errors.EmptyDataError:
+        log("skip empty input: %s" % name)
+        return None
 
 
 def trunc(text, width=56):

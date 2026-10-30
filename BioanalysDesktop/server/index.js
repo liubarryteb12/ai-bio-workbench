@@ -8,6 +8,7 @@
  */
 
 import http from 'node:http';
+import childProcess from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { timingSafeEqual } from 'node:crypto';
@@ -17,7 +18,7 @@ import {
   DEFAULT_SERIAL, SYSTEM_LOGS, LINES, DEFAULT_PROJECT, sanitizeProjectId, projectLineDir,
   PROJECTS_ROOT, resolveLineFromDataType, normalizeDatasets, normalizeDataSource,
 } from './domain.js';
-import { findAdb, runSync, runSshRaw, runSshStrict } from './proc.js';
+import { assertAllowedProgram, findAdb, runSync, runSshRaw, runSshStrict } from './proc.js';
 import { checkLink } from './link.js';
 import {
   buildHardwareCommand, parseHardwareOutput, evaluateHardware,
@@ -64,26 +65,12 @@ import {
 } from './task.js';
 import { runTask } from './run.js';
 import {
-  PI_SSH_TARGET,
-  buildOverviewCommand,
-  buildCallsCommand,
-  buildCallDetailCommand,
-  buildDaemonLogCommand,
-  buildCurrentModelCommand,
-  buildSwitchModelCommand,
-  buildPeerTokenCommand,
-  postA2ARequest,
-  fetchTelemetry,
-  fetchTelemetryViaPath,
-  parseOverview,
-  parseTranscript,
-  parseSessionList,
-  parseCurrentModel,
-  parseTranscriptTimeline,
-  fetchAgentCard,
-  redact,
-  ALLOWED_MODELS,
-} from './pi_agent.js';
+  createTaskRecovery,
+  scanLocalProjectLedgers,
+  scanRemoteRunningLedgers,
+} from './task_recovery.js';
+import { handlePiAgentRoutes } from './pi_agent_routes.js';
+import { getRuntimeSnapshot, initializeRuntime } from './runtime_slots.js';
 import {
   buildAdaptUploadPairs, readAdaptManifest, runReportBuild, pullDeliverables, checkRemoteProjectDir,
   isAllowedDeliverableName, localDeliverDir, localDeliverFilePath,
@@ -92,6 +79,7 @@ import {
 
 const PORT = Number(process.env.BAD_PORT || 18787);
 const REPO_ROOT = path.resolve(fileURLToPath(new URL('../../', import.meta.url)));
+let runtimeStartupError = null;
 
 /** 把项目相对 adapt_vars 输入映射成远端任务可用的绝对路径 */
 function remoteTaskInput(rawPath, projectId, lineId) {
@@ -222,6 +210,179 @@ function closeSink(taskId) {
   logSinks.delete(taskId);
 }
 
+function shellQuoteText(text) {
+  return `'${String(text).replace(/'/g, String.raw`'\''`)}'`;
+}
+
+function isSafeRemoteLogPath(candidate) {
+  const raw = String(candidate || '');
+  if (!raw.startsWith(`${SYSTEM_LOGS}/`) || raw.includes('\0')) return false;
+  return !raw.split('/').includes('..');
+}
+
+function isSafeLocalLogPath(candidate) {
+  const raw = String(candidate || '');
+  if (!raw) return false;
+  const resolved = path.resolve(REPO_ROOT, raw);
+  return resolved === REPO_ROOT || resolved.startsWith(`${REPO_ROOT}${path.sep}`);
+}
+
+function readLocalLogChunk(logPath, offset) {
+  if (!fs.existsSync(logPath)) return { missing: true, text: '' };
+  const stat = fs.statSync(logPath);
+  if (!stat.isFile()) throw new Error(`日志路径不是文件: ${logPath}`);
+  if (stat.size <= offset) return { missing: false, text: '' };
+  const length = Math.min(stat.size - offset, 256 * 1024);
+  const buffer = Buffer.alloc(length);
+  const fd = fs.openSync(logPath, 'r');
+  try {
+    const read = fs.readSync(fd, buffer, 0, length, offset);
+    return { missing: false, text: buffer.subarray(0, read).toString('utf8') };
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+function readRemoteLogChunk(logPath, offset) {
+  return new Promise((resolve, reject) => {
+    assertAllowedProgram(['ssh']);
+    const command = [
+      `if [ -f ${shellQuoteText(logPath)} ]; then`,
+      `  tail -c +${Math.max(1, offset + 1)} ${shellQuoteText(logPath)}`,
+      'else',
+      "  printf '__BIO_LOG_MISSING__'",
+      'fi',
+    ].join('\n');
+    childProcess.execFile(
+      'ssh',
+      ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=5', 'k40-ubuntu', command],
+      { encoding: 'utf8', timeout: 12000, maxBuffer: 2 * 1024 * 1024, windowsHide: true },
+      (error, stdout, stderr) => {
+        if (error) {
+          reject(new Error(String(stderr || error.message).trim()));
+          return;
+        }
+        const text = String(stdout ?? '');
+        if (text === '__BIO_LOG_MISSING__') {
+          resolve({ missing: true, text: '' });
+          return;
+        }
+        resolve({ missing: false, text });
+      },
+    );
+  });
+}
+
+/**
+ * Reattach an SSE log stream for a task recovered from a durable ledger.
+ * The follower is read-only and stops on three consecutive failures instead
+ * of pretending the remote stream is healthy.
+ */
+function attachRecoveredLogStream(recovered) {
+  const taskId = recovered.taskId;
+  const remote = recovered.recoverySource === 'remote';
+  const rawLogPath = String(recovered.logFile || '');
+  const safe = remote ? isSafeRemoteLogPath(rawLogPath) : isSafeLocalLogPath(rawLogPath);
+  if (!safe) {
+    console.warn(`[task-recovery] ${taskId} 日志路径不安全或缺失，跳过日志挂接: ${rawLogPath}`);
+    sendEvent(taskId, 'stderr', `[recovery] 日志路径不可用: ${rawLogPath}\n`);
+    return () => {};
+  }
+
+  let offset = 0;
+  let stopped = false;
+  let timer = null;
+  let failures = 0;
+  sendEvent(taskId, 'stdout', `[recovery] 已从${remote ? '远端' : '本地'}台账恢复任务 ${taskId}\n`);
+
+  const schedule = (delayMs) => {
+    if (stopped) return;
+    timer = setTimeout(poll, delayMs);
+    timer.unref?.();
+  };
+
+  const poll = async () => {
+    if (stopped) return;
+    if (!runningTasks.has(taskId)) {
+      stopped = true;
+      return;
+    }
+    try {
+      const chunk = remote
+        ? await readRemoteLogChunk(rawLogPath, offset)
+        : readLocalLogChunk(path.resolve(REPO_ROOT, rawLogPath), offset);
+      if (stopped) return;
+      if (chunk.missing) {
+        throw new Error('日志文件尚不可读');
+      }
+      if (chunk.text) {
+        offset += Buffer.byteLength(chunk.text, 'utf8');
+        sendEvent(taskId, 'stdout', chunk.text);
+      }
+      failures = 0;
+      schedule(3000);
+    } catch (cause) {
+      failures += 1;
+      const message = cause instanceof Error ? cause.message : String(cause);
+      console.warn(`[task-recovery] ${taskId} 日志轮询失败 ${failures}/3: ${message}`);
+      sendEvent(taskId, 'stderr', `[recovery] 日志轮询失败 ${failures}/3: ${message}\n`);
+      if (failures >= 3) {
+        stopped = true;
+        return;
+      }
+      schedule(5000);
+    }
+  };
+
+  schedule(0);
+  return () => {
+    stopped = true;
+    if (timer) clearTimeout(timer);
+  };
+}
+
+function stopRecoveredTask(taskId, task) {
+  task?.detachLogStream?.();
+  runningTasks.delete(taskId);
+  sendEvent(taskId, 'exit', JSON.stringify({ code: 143, note: '已请求中止恢复任务' }));
+
+  if (!/^[A-Za-z0-9._-]+$/.test(String(taskId)) || taskId.includes('..')) {
+    console.warn(`[task-recovery] 拒绝中止非法 taskId: ${taskId}`);
+    return;
+  }
+  const markerPath = `${SYSTEM_LOGS}/_running/${taskId}.json`;
+  const command = [
+    `marker=${shellQuoteText(markerPath)}`,
+    'pid=$(sed -n \'s/.*"wrapper_pid": \\([0-9][0-9]*\\).*/\\1/p\' "$marker" 2>/dev/null)',
+    'if [ -n "$pid" ]; then kill -TERM -- "-$pid" 2>/dev/null || true; fi',
+    'rm -f "$marker"',
+    'echo STOPPED',
+  ].join('\n');
+  childProcess.execFile(
+    'ssh',
+    ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=5', 'k40-ubuntu', command],
+    { encoding: 'utf8', timeout: 15000, windowsHide: true },
+    (error, _stdout, stderr) => {
+      if (error) {
+        console.warn(`[task-recovery] ${taskId} 远端中止失败: ${String(stderr || error.message).trim()}`);
+      }
+    },
+  );
+}
+
+const recoverRunningTasks = createTaskRecovery({
+  runningTasks,
+  scanLocal: () => scanLocalProjectLedgers({
+    localProjectsRoot: path.join(REPO_ROOT, 'local_projects'),
+  }),
+  scanRemote: process.env.BAD_DISABLE_REMOTE_TASK_RECOVERY === '1'
+    ? async () => ({ ok: true, entries: [], warnings: [] })
+    : () => scanRemoteRunningLedgers({ sshTarget: 'k40-ubuntu' }),
+  attachLogStream: attachRecoveredLogStream,
+  killRecoveredTask: stopRecoveredTask,
+  warn: (item) => console.warn(`[task-recovery] ${item.source}${item.file ? ` ${item.file}` : ''}: ${item.message}`),
+});
+
 /**
  * 从服务器读台账 JSON。
  *
@@ -326,46 +487,6 @@ function json(res, status, payload) {
  */
 function uploadError(res, status, message) {
   return json(res, status, { ok: false, error: String(message ?? '') });
-}
-
-/** 从 termux-battery-status 的原始 JSON 串里挑展示字段（解析失败给 unknown） */
-function parseBattery(raw) {
-  if (typeof raw === 'string' && raw.includes('unavailable')) {
-    return { percentage: 'unavailable', status: 'unavailable', plugged: 'unavailable', temperature: 'unavailable' };
-  }
-  try {
-    const obj = JSON.parse(raw);
-    return {
-      percentage: obj.percentage ?? 'unknown',
-      status: obj.status ?? 'unknown',
-      plugged: obj.plugged ?? 'unknown',
-      temperature: obj.temperature ?? 'unknown',
-    };
-  } catch {
-    return { percentage: 'unknown', status: 'unknown', plugged: 'unknown', temperature: 'unknown' };
-  }
-}
-
-/** 追加一条 mod-pi-observability 的台账动作（追加式，失败不影响主流程） */
-function appendPiLedger(action, details) {
-  try {
-    const dir = path.join(process.cwd(), 'con_hf', 'ledger');
-    fs.mkdirSync(dir, { recursive: true });
-    fs.appendFileSync(
-      path.join(dir, 'actions.jsonl'),
-      JSON.stringify({
-        id: `ACT-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
-        ts: new Date().toISOString(),
-        type: 'action',
-        kind: 'mod_pi_observability',
-        action,
-        detail: details,
-      }) + '\n',
-      'utf8',
-    );
-  } catch {
-    // 台账写失败只降级，不影响观测主流程
-  }
 }
 
 // ── 任务提交路径预校验（S29 / R9；2026-10-21 收敛到 ledger.js 单一事实源）──
@@ -827,6 +948,25 @@ const server = http.createServer(async (req, res) => {
       'Cache-Control': 'no-store',
     });
     return res.end(JSON.stringify({ error: '需要登录：请输入工作台账号口令' }));
+  }
+
+  if (url.pathname === '/api/runtime/slots' && req.method === 'GET') {
+    if (runtimeStartupError) {
+      return json(res, 503, {
+        ok: false,
+        error: 'ERR_RUNTIME_NOT_READY',
+        detail: runtimeStartupError,
+      });
+    }
+    try {
+      return json(res, 200, { ok: true, ...getRuntimeSnapshot() });
+    } catch (cause) {
+      return json(res, 503, {
+        ok: false,
+        error: 'ERR_RUNTIME_NOT_INITIALIZED',
+        detail: cause instanceof Error ? cause.message : String(cause),
+      });
+    }
   }
 
   if (url.pathname === '/api/projects/list') {
@@ -1376,168 +1516,7 @@ const server = http.createServer(async (req, res) => {
   // ============================================================
   // Pi Agent 观测管控（mod-pi-observability）
   // ============================================================
-
-  if (url.pathname === '/api/pi-agent/overview') {
-    // 聚合：A2A AgentCard 与 9911 遥测（走 adb forward），SSH 探针兜底模型/内存
-    try {
-      const cardPromise = fetchAgentCard();
-      const tokenRes = runSshRaw(PI_SSH_TARGET, buildPeerTokenCommand(), { timeoutMs: 15000 });
-      const telePromise = fetchTelemetry(tokenRes.text.trim());
-      const raw = runSshRaw(PI_SSH_TARGET, buildOverviewCommand(), { timeoutMs: 15000 });
-      const card = await cardPromise;
-      const tele = await telePromise;
-      const overview = parseOverview(raw.text);
-      overview.a2a_card = card.status === 200 ? { name: card.data?.name, version: card.data?.version, url: card.data?.url } : null;
-      overview.telemetry = tele.status === 200
-        ? {
-            usage: tele.data?.usage ?? null,
-            usage_by_model: tele.data?.usage_by_model ?? [],
-            recent_calls: (tele.data?.recent_calls ?? []).slice(0, 15),
-          }
-        : null;
-      overview.battery = parseBattery(overview.battery_raw);
-      delete overview.battery_raw;
-      return json(res, 200, { ok: true, ...overview });
-    } catch (cause) {
-      return json(res, 200, { ok: false, online: false, error: cause instanceof Error ? cause.message : String(cause) });
-    }
-  }
-
-  if (url.pathname === '/api/pi-agent/calls') {
-    // 调用台账：优先走 9911 Sidecar（74ms vs SSH 逐文件 5.2s），失败才逐文件
-    try {
-      const tokenRes = runSshRaw(PI_SSH_TARGET, buildPeerTokenCommand(), { timeoutMs: 15000 });
-      const tele = await fetchTelemetry(tokenRes.text.trim(), 8000);
-      let calls;
-      let totals;
-      if (tele.status === 200 && Array.isArray(tele.data?.recent_calls)) {
-        calls = tele.data.recent_calls;
-        totals = tele.data.totals;
-      } else {
-        const limit = Math.min(Math.max(Number(new URL(req.url, 'http://x').searchParams.get('limit')) || 20, 1), 50);
-        const list = runSshRaw(PI_SSH_TARGET, buildCallsCommand(limit), { timeoutMs: 15000 });
-        const sessions = parseSessionList(list.text).slice(0, limit);
-        calls = sessions.map((session) => {
-          const detail = runSshRaw(PI_SSH_TARGET, buildCallDetailCommand(session.file), { timeoutMs: 15000 });
-          return { ...session, ...parseTranscript(detail.text) };
-        });
-        const acc = calls.reduce((a, c) => ({
-          input_tokens: a.input_tokens + c.input_tokens,
-          output_tokens: a.output_tokens + c.output_tokens,
-          cost_usd: a.cost_usd + c.cost_usd,
-        }), { input_tokens: 0, output_tokens: 0, cost_usd: 0 });
-        totals = { ...acc, cost_usd: Number(acc.cost_usd.toFixed(4)), total_calls: calls.length };
-      }
-      return json(res, 200, { ok: true, calls, totals });
-    } catch (cause) {
-      return json(res, 200, { ok: false, error: cause instanceof Error ? cause.message : String(cause) });
-    }
-  }
-
-  if (url.pathname === '/api/pi-agent/logs') {
-    // 双流日志：daemon.log 或选中任务的 childTranscript；优先 9911 Sidecar
-    try {
-      const params = new URL(req.url, 'http://x').searchParams;
-      const tail = params.get('tail') || '120';
-      const taskFile = params.get('task_file') || '';
-      try {
-        const tokenRes = runSshRaw(PI_SSH_TARGET, buildPeerTokenCommand(), { timeoutMs: 15000 });
-        const qs = taskFile ? `task_file=${encodeURIComponent(taskFile)}&` : '';
-        const tele = await fetchTelemetryViaPath(tokenRes.text.trim(), `/api/telemetry/logs?${qs}tail=${tail}`);
-        if (tele.status === 200 && Array.isArray(tele.data?.lines)) {
-          const raw = tele.data.lines.join('\n');
-          const taskIdMatch = taskFile.match(/_task-(.+)\.jsonl$/);
-          const timeline = parseTranscriptTimeline(raw, taskIdMatch ? taskIdMatch[1] : '');
-          const lines = timeline.map((e) => `[${e.ts}] [${e.level}] ${e.text}`);
-          return json(res, 200, { ok: true, source: taskFile, lines, timeline });
-        }
-      } catch { /* sidecar offline: fall through to ssh */ }
-      const command = taskFile ? buildCallDetailCommand(taskFile) : buildDaemonLogCommand(tail);
-      const raw = runSshRaw(PI_SSH_TARGET, command, { timeoutMs: 15000 });
-      const taskIdMatch = taskFile ? taskFile.match(/_task-(.+)\.jsonl$/) : null;
-      let lines;
-      if (taskFile) {
-        const timeline = parseTranscriptTimeline(raw.text, taskIdMatch ? taskIdMatch[1] : '');
-        lines = timeline.map((e) => `[${e.ts}] [${e.level}] ${e.text}`);
-        return json(res, 200, { ok: true, source: taskFile, lines, timeline });
-      } else {
-        lines = redact(raw.text).split('\n').filter(Boolean);
-      }
-      return json(res, 200, {
-        ok: true,
-        source: taskFile || 'pi_a2a_daemon.log',
-        lines,
-        timeline: [],
-      });
-    } catch (cause) {
-      return json(res, 200, { ok: false, error: cause instanceof Error ? cause.message : String(cause) });
-    }
-  }
-
-  if (url.pathname === '/api/pi-agent/model' && req.method === 'GET') {
-    // 当前模型 + 白名单（前端下拉只展示白名单，不传 Key）
-    try {
-      const raw = runSshRaw(PI_SSH_TARGET, buildCurrentModelCommand(), { timeoutMs: 15000 });
-      return json(res, 200, { ok: true, current: parseCurrentModel(raw.text), allowed: ALLOWED_MODELS });
-    } catch (cause) {
-      return json(res, 200, { ok: false, error: cause instanceof Error ? cause.message : String(cause) });
-    }
-  }
-
-  if (url.pathname === '/api/pi-agent/model' && req.method === 'POST') {
-    // 切换模型：校验白名单 -> 改 pin 文件 -> 重启 tmux daemon（daemon 自己再校验一遍模型锁）
-    let body = '';
-    req.on('data', (chunk) => { body += chunk; });
-    req.on('end', () => {
-      try {
-        const requested = JSON.parse(body || '{}');
-        const command = buildSwitchModelCommand(requested.provider, requested.model);
-        const raw = runSshRaw(PI_SSH_TARGET, command, { timeoutMs: 30000 });
-        if (!raw.text.includes('SWITCH_OK')) {
-          return json(res, 502, { ok: false, error: `切换失败: ${redact(raw.text).slice(0, 200)}` });
-        }
-        appendPiLedger('pi_agent_model_switch', { provider: requested.provider, model: requested.model });
-        return json(res, 200, { ok: true, current: { provider: requested.provider, model: requested.model } });
-      } catch (cause) {
-        const message = cause instanceof Error ? cause.message : String(cause);
-        const status = message.includes('ERR_MODEL_NOT_ALLOWED') ? 400 : 500;
-        return json(res, status, { ok: false, error: message });
-      }
-    });
-    return;
-  }
-
-  if (url.pathname === '/api/pi-agent/dispatch' && req.method === 'POST') {
-    // 从面板直接派发 A2A 测试任务：token 服务端现读，浏览器拿不到
-    let body = '';
-    req.on('data', (chunk) => { body += chunk; });
-    req.on('end', () => {
-      let promptText;
-      try {
-        promptText = String((JSON.parse(body || '{}').message) || '').trim();
-      } catch {
-        promptText = '';
-      }
-      if (!promptText) {
-        return json(res, 400, { ok: false, error: 'message 字段必填' });
-      }
-      if (promptText.length > 4000) {
-        return json(res, 400, { ok: false, error: 'message 超过 4000 字符上限' });
-      }
-      const tokenRes = runSshRaw(PI_SSH_TARGET, buildPeerTokenCommand(), { timeoutMs: 15000 });
-      const token = tokenRes.text.trim();
-      if (!token || token.length < 48) {
-        return json(res, 502, { ok: false, error: '无法从手机读取 peer token（SSH 链路或文件缺失）' });
-      }
-      postA2ARequest(promptText, token, 90000)
-        .then((out) => {
-          appendPiLedger('pi_agent_a2a_dispatch', { prompt: promptText.slice(0, 200), status: out.status });
-          return json(res, 200, { ok: out.status === 200, http_status: out.status, task: out.data?.task ?? null });
-        })
-        .catch((cause) => json(res, 502, { ok: false, error: redact(cause instanceof Error ? cause.message : String(cause)) }));
-    });
-    return;
-  }
+  if (await handlePiAgentRoutes(req, res, url, { json, runSshRaw })) return;
 
   if (url.pathname === '/api/link/check') {
     // 四段自检 + 服务状态，链不通时也能拿到"断在哪段"的结构化结果
@@ -1634,6 +1613,7 @@ const server = http.createServer(async (req, res) => {
       source_sha256: item.source_sha256,
       linked_mods: item.linked_mods,
       adapt_vars: item.adapt_vars,
+      figure_layout: item.figure_layout || null,
       block_reason: item.block_reason || '',
     }));
     return json(res, 200, {
@@ -1676,6 +1656,10 @@ const server = http.createServer(async (req, res) => {
 
   if (url.pathname === '/api/figures/catalog') {
     const check = validateFigureCatalog();
+    const availability = {
+      available: check.available,
+      reason: check.reason,
+    };
     const entries = searchFigureCatalog({
       query: url.searchParams.get('q') || '',
       language: url.searchParams.get('language') || '',
@@ -1704,6 +1688,7 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, {
       ok: check.ok,
       catalog_ok: check.ok,
+      ...availability,
       catalog_errors: check.errors,
       stats: check.stats,
       entries,
@@ -1715,6 +1700,7 @@ const server = http.createServer(async (req, res) => {
     const resolved = resolveCatalogFigure(catalogId);
     if (!resolved.ok || !resolved.preview_abs) {
       return json(res, 404, {
+        ...(resolved.available === false ? { available: false, reason: resolved.reason } : {}),
         error: `候选图预览不可用: ${catalogId}`,
         errors: resolved.errors,
       });
@@ -1788,6 +1774,7 @@ const server = http.createServer(async (req, res) => {
         templateId,
         template: resolved.template,
         adaptVars,
+        legendPositionOverride: requested.legendPositionOverride,
       });
       if (!derivation.ok) {
         return json(res, 422, { ok: false, errors: derivation.errors, template_id: templateId });
@@ -2732,10 +2719,22 @@ if (process.env.LINE_INFER_PROBE) {
   const dag = JSON.parse(process.env.LINE_INFER_PROBE);
   process.stdout.write(lineFromPipeline(dag));
 } else {
-  server.listen(PORT, '127.0.0.1', () => {
-    console.log(`[bioanalys-desktop] backend listening on http://127.0.0.1:${PORT}`);
-    console.log(`[bioanalys-desktop] adb = ${adb}`);
-  });
+  (async () => {
+    try {
+      const snapshot = await initializeRuntime();
+      console.log(
+        `[bioanalys-desktop] runtime ready modules=${snapshot.modules.length} `
+        + `slots=${snapshot.slots.filter((item) => !item.empty).length}`
+      );
+    } catch (cause) {
+      runtimeStartupError = cause instanceof Error ? cause.message : String(cause);
+      console.error(`[bioanalys-desktop] runtime initialization failed: ${runtimeStartupError}`);
+    }
+    server.listen(PORT, '127.0.0.1', () => {
+      console.log(`[bioanalys-desktop] backend listening on http://127.0.0.1:${PORT}`);
+      console.log(`[bioanalys-desktop] adb = ${adb}`);
+    });
+  })();
 }
 
 export { server };

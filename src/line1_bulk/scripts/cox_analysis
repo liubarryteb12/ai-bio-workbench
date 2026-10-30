@@ -61,6 +61,31 @@ group_file <- Sys.getenv("GROUP_FILE")
 key_file <- Sys.getenv("KEY_FILE")
 surv_file <- Sys.getenv("SURV_FILE")
 
+`%||%` <- function(a, b) if (is.null(a) || length(a) == 0) b else a
+
+# project.json 由任务引擎注入，Cox 的报告必须跟随当前项目，而不是沿用旧项目假设。
+read_project_meta <- function(path) {
+  if (!nzchar(path) || !file.exists(path)) return(NULL)
+  if (!requireNamespace("jsonlite", quietly = TRUE)) return(NULL)
+  tryCatch(
+    jsonlite::fromJSON(path, simplifyVector = FALSE),
+    error = function(e) NULL
+  )
+}
+
+project_meta <- read_project_meta(Sys.getenv("BIOANALYS_PROJECT_JSON", ""))
+project_id <- as.character(project_meta$project_id %||% "unknown")
+train_dataset <- "unknown"
+train_platform <- "unknown"
+datasets <- project_meta$data_source$datasets %||% list()
+for (dataset in datasets) {
+  if (identical(as.character(dataset$role %||% ""), "train")) {
+    train_dataset <- as.character(dataset$gse %||% "unknown")
+    train_platform <- as.character(dataset$gpl %||% "unknown")
+    break
+  }
+}
+
 for (f in c(expr_file, group_file)) {
   if (!file.exists(f)) fail(paste("缺少输入", f))
 }
@@ -91,13 +116,21 @@ has_survival <- !is.null(surv) &&
 if (!has_survival) {
   say("NO_SURVIVAL_ENDPOINT")
   say("当前数据集无生存终点（futime/fustat），Cox 回归不可执行。")
-  say("原因：GSE277173 是配对皮损 vs 皮损旁设计，series matrix 只有 tissue 字段。")
+  dataset_label <- if (train_dataset != "unknown") {
+    paste0(train_dataset, "/", train_platform)
+  } else {
+    "current dataset"
+  }
+  say("原因：", dataset_label, " 没有可用的生存终点列。")
   say("如需 Cox 分析，请在 survival_meta.tsv 中提供 sample/futime/fustat 列。")
   writeLines(c(
     "step=cox_analysis",
-    "seed=20261013",
+    paste("seed=", Sys.getenv("BIOANALYS_SEED")),
+    paste("project_id=", project_id),
+    paste("train_dataset=", train_dataset),
+    paste("train_platform=", train_platform),
     "status=SKIPPED_NO_SURVIVAL_ENDPOINT",
-    "reason=GSE277173 has no survival data (futime/fustat). Paired lesion vs perilesional design.",
+    paste0("reason=", dataset_label, " has no survival data (futime/fustat)."),
     "how_to_enable=Provide survival_meta.tsv with columns: sample, futime (days), fustat (0/1).",
     "outputs=cox_report.txt (placeholder)"
   ), "cox_report.txt")
@@ -223,6 +256,9 @@ if (nrow(forest_data) > 0) {
 lines <- c(
   "step=cox_analysis",
   paste("seed=", Sys.getenv("BIOANALYS_SEED")),
+  paste("project_id=", project_id),
+  paste("train_dataset=", train_dataset),
+  paste("train_platform=", train_platform),
   paste("samples=", length(samples), "genes=", length(genes)),
   paste("events=", sum(fustat), "of", length(fustat)),
   "method=univariate Cox (per hub gene) + LASSO-Cox + multivariate Cox",

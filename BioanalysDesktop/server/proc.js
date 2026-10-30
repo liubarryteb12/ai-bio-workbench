@@ -14,24 +14,41 @@ import { existsSync } from 'node:fs';
 /** 本地允许执行的程序白名单：除此之外一律拒绝 */
 export const ALLOWED_LOCAL_PROGRAMS = ['ssh', 'scp', 'adb'];
 
-/** adb 的候选位置，与 ops/00_link_check.ps1 保持一致 */
-const ADB_CANDIDATES = [
-  'C:/adb/platform-tools/adb.exe',
-];
-
 /**
- * 定位 adb 可执行：约定路径优先，其次 Android SDK，最后退回 PATH。
- * 用 existsSync 而不是 which，因为 Windows 下 PATH 里的 adb 可能被别的工具遮蔽。
+ * 定位 adb 可执行：显式环境变量优先，其次 PATH，最后 Android SDK 兜底。
+ * PATH 查询使用 where.exe / which，避免把当前目录里同名文件当成 PATH 命中。
  */
 export function findAdb() {
-  const fromEnv = [
+  for (const name of ['BIO_ADB_PATH', 'ADB_PATH']) {
+    const candidate = process.env[name]?.trim();
+    if (candidate) return candidate;
+  }
+
+  const pathCandidate = findAdbOnPath();
+  if (pathCandidate) return pathCandidate;
+
+  const sdkCandidates = [
     process.env.LOCALAPPDATA && `${process.env.LOCALAPPDATA}/Android/Sdk/platform-tools/adb.exe`,
     process.env.USERPROFILE && `${process.env.USERPROFILE}/AppData/Local/Android/Sdk/platform-tools/adb.exe`,
   ].filter(Boolean);
-  for (const candidate of [...ADB_CANDIDATES, ...fromEnv]) {
+  for (const candidate of sdkCandidates) {
     if (existsSync(candidate)) return candidate;
   }
   return 'adb';
+}
+
+function findAdbOnPath() {
+  const command = process.platform === 'win32' ? 'where.exe' : 'which';
+  const result = childProcess.spawnSync(command, ['adb'], {
+    encoding: 'utf8',
+    timeout: 5000,
+    windowsHide: true,
+  });
+  if (result.error || result.status !== 0) return undefined;
+  return String(result.stdout ?? '')
+    .split(/\r?\n/)
+    .map((candidate) => candidate.trim())
+    .find((candidate) => candidate && existsSync(candidate));
 }
 
 /**

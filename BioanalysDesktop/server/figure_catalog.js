@@ -27,6 +27,11 @@ const VALID_STATUSES = new Set([
 ]);
 
 let cache = null;
+const CATALOG_READINESS = {
+  available: true,
+  reason: 'ok',
+  detail: '',
+};
 
 function sha256(file) {
   return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
@@ -57,7 +62,18 @@ function resolveLibraryPath(relative, errors, entryId, label) {
 
 export function loadFigureCatalog() {
   if (cache) return cache;
-  cache = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf8'));
+  if (CATALOG_READINESS.available) {
+    try {
+      cache = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf8'));
+    } catch (cause) {
+      CATALOG_READINESS.available = false;
+      CATALOG_READINESS.reason = 'catalog_read_failed';
+      CATALOG_READINESS.detail = cause instanceof Error ? cause.message : String(cause);
+    }
+  }
+  if (!CATALOG_READINESS.available) {
+    return { schema_version: 1, entries: [] };
+  }
   return cache;
 }
 
@@ -89,6 +105,12 @@ export function validateFigureCatalog() {
     code_missing: 0,
   };
 
+  if (!CATALOG_READINESS.available) {
+    errors.push(
+      `catalog 不可用（${CATALOG_READINESS.reason}）: ${CATALOG_READINESS.detail || CATALOG_PATH}`,
+    );
+    return { ok: false, available: false, reason: CATALOG_READINESS.reason, errors, stats };
+  }
   if (catalog.schema_version !== 1) errors.push('catalog schema_version 必须为 1');
   if (!Array.isArray(catalog.entries)) {
     errors.push('catalog entries 必须是数组');
@@ -158,7 +180,7 @@ export function validateFigureCatalog() {
     }
   }
 
-  return { ok: errors.length === 0, errors, stats };
+  return { ok: errors.length === 0, available: true, reason: 'ok', errors, stats };
 }
 
 export function searchFigureCatalog({
@@ -191,6 +213,22 @@ export function searchFigureCatalog({
 }
 
 export function resolveCatalogFigure(catalogId) {
+  if (!CATALOG_READINESS.available) {
+    return {
+      ok: false,
+      available: false,
+      reason: CATALOG_READINESS.reason,
+      errors: [`catalog 不可用（${CATALOG_READINESS.reason}）`],
+      entry: null,
+      code_abs: null,
+      preview_abs: null,
+      code_repo_path: null,
+      preview_repo_path: null,
+      code_sha256: null,
+      preview_sha256: null,
+      suggested_template_id: null,
+    };
+  }
   const entry = loadFigureCatalog().entries.find(
     (candidate) => candidate.catalog_id === catalogId,
   );

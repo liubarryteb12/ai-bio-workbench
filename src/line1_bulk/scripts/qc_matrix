@@ -4,11 +4,11 @@
 # 做三件事：
 #   1. 契约核对：样本集合与 group_map 一致、基因名无重复、矩阵无 NA；
 #   2. 逐样本指标：检出基因数、表达中位数、与同组其他样本的 Spearman 相关中位数；
-#   3. 离群判定：组内相关中位数低于 (全体均值 - 3*SD) 判离群，有离群即失败
-#      （QC 是闸口，发现离群必须让人看，不带着疑问往下游走）。
+#   3. 离群判定：组内相关中位数低于 (全体均值 - 3*SD) 标记为离群。
+#      离群样本保留并标记 review_required，由下游报告与人工复核处理。
 #
 # 产物（写入工作目录 <line>/processed/）：qc_report.txt / sample_qc.tsv。
-# 自校验内建：任一不过非零退出，台账记 failed。
+# 数据契约失败时非零退出；离群只标记，不删除样本，不阻断下游。
 set -euo pipefail
 
 RSCRIPT_BIN="${BIOANALYS_RSCRIPT:-/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript}"
@@ -106,13 +106,7 @@ sample_qc <- data.table(
   outlier = samples %in% outliers
 )
 
-# --- 3. 自校验：QC 是闸口，有离群就失败，不带着疑问往下游走 ---
-if (length(outliers) > 0) {
-  fail(sprintf("检出离群样本: %s（组内相关中位数 < %.4f）。先人工核查再下游",
-               paste(outliers, collapse = ","), outlier_cutoff))
-}
-
-# --- 4. 产物落盘 ---
+# --- 3. 产物落盘：离群样本保留，QC 门禁状态交人工复核 ---
 fwrite(sample_qc[order(group, sample)], "sample_qc.tsv", sep = "\t")
 report_lines <- c(
   sprintf("step=qc_matrix"),
@@ -126,6 +120,8 @@ report_lines <- c(
           min(cor_mat[lower.tri(cor_mat)]), max(cor_mat[lower.tri(cor_mat)])),
   sprintf("outlier_cutoff=%.4f", outlier_cutoff),
   sprintf("outliers=%s", if (length(outliers) == 0) "无" else paste(outliers, collapse = ",")),
+  sprintf("qc_gate=%s", if (length(outliers) == 0) "pass" else "review_required"),
+  "outlier_policy=mark_only_not_removed",
   sprintf("median_expr_range=%.2f - %.2f", min(sample_qc$median_expr), max(sample_qc$median_expr))
 )
 writeLines(report_lines, "qc_report.txt")
@@ -140,6 +136,8 @@ cat("groups=", paste(sprintf("%s:%d", names(group_sizes), as.integer(group_sizes
 cat("spearman_cor_range=", sprintf("%.4f-%.4f", min(cor_mat[lower.tri(cor_mat)]), max(cor_mat[lower.tri(cor_mat)])), "\n", sep = "")
 cat("outlier_cutoff=", sprintf("%.4f", outlier_cutoff), "\n", sep = "")
 cat("outliers=", if (length(outliers) == 0) "无" else paste(outliers, collapse = ","), "\n", sep = "")
+cat("qc_gate=", if (length(outliers) == 0) "pass" else "review_required", "\n", sep = "")
+cat("outlier_policy=mark_only_not_removed\n", sep = "")
 RSCRIPT
 
 echo "qc_matrix done: qc_report.txt / sample_qc.tsv 已写入 $(pwd)"
