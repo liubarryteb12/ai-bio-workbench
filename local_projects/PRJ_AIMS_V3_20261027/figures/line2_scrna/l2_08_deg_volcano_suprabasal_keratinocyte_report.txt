@@ -1,0 +1,8 @@
+step_executed=standardize_line2_figure
+artifact_png=l2_08_deg_volcano_suprabasal_keratinocyte.png
+artifact_pdf=l2_08_deg_volcano_suprabasal_keratinocyte.pdf
+artifact_object=l2_08_deg_volcano_suprabasal_keratinocyte_plot.pkl
+width_mm=88.0
+height_mm=80.0
+dpi=300
+seed=42

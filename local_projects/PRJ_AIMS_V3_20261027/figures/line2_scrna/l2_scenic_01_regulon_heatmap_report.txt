@@ -1,0 +1,8 @@
+step_executed=standardize_line2_figure
+artifact_png=l2_scenic_01_regulon_heatmap.png
+artifact_pdf=l2_scenic_01_regulon_heatmap.pdf
+artifact_object=l2_scenic_01_regulon_heatmap_plot.pkl
+width_mm=180.0
+height_mm=120.0
+dpi=300
+seed=42

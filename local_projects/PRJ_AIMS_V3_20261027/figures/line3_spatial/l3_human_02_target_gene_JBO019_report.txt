@@ -1,0 +1,8 @@
+step_executed=standardize_line3_figure
+artifact_png=l3_human_02_target_gene_JBO019.png
+artifact_pdf=l3_human_02_target_gene_JBO019.pdf
+artifact_object=l3_human_02_target_gene_JBO019_plot.pkl
+width_mm=88.0
+height_mm=88.0
+dpi=300
+seed=42

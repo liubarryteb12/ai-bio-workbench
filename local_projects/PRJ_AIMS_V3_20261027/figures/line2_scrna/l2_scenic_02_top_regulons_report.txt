@@ -1,0 +1,8 @@
+step_executed=standardize_line2_figure
+artifact_png=l2_scenic_02_top_regulons.png
+artifact_pdf=l2_scenic_02_top_regulons.pdf
+artifact_object=l2_scenic_02_top_regulons_plot.pkl
+width_mm=130.0
+height_mm=85.0
+dpi=300
+seed=42

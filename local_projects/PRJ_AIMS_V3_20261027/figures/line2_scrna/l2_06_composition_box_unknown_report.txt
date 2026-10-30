@@ -1,0 +1,8 @@
+step_executed=standardize_line2_figure
+artifact_png=l2_06_composition_box_unknown.png
+artifact_pdf=l2_06_composition_box_unknown.pdf
+artifact_object=l2_06_composition_box_unknown_plot.pkl
+width_mm=88.0
+height_mm=75.0
+dpi=300
+seed=42

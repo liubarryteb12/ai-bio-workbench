@@ -1,0 +1,8 @@
+step_executed=standardize_line2_figure
+artifact_png=custom_fig_l2p_violin.png
+artifact_pdf=custom_fig_l2p_violin.pdf
+artifact_object=custom_fig_l2p_violin_plot.pkl
+width_mm=88.0
+height_mm=75.0
+dpi=300
+seed=42

@@ -1,0 +1,8 @@
+step_executed=standardize_line2_figure
+artifact_png=l2_15_dr_gsea_top.png
+artifact_pdf=l2_15_dr_gsea_top.pdf
+artifact_object=l2_15_dr_gsea_top_plot.pkl
+width_mm=130.0
+height_mm=85.0
+dpi=300
+seed=42

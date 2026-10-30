@@ -1,0 +1,8 @@
+step_executed=standardize_line3_figure
+artifact_png=l3_human_10_dr_gsea_top.png
+artifact_pdf=l3_human_10_dr_gsea_top.pdf
+artifact_object=l3_human_10_dr_gsea_top_plot.pkl
+width_mm=130.0
+height_mm=85.0
+dpi=300
+seed=42

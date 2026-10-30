@@ -1,0 +1,8 @@
+step_executed=standardize_line3_figure
+artifact_png=l3_mouse_03_ko_dr_JBO010.png
+artifact_pdf=l3_mouse_03_ko_dr_JBO010.pdf
+artifact_object=l3_mouse_03_ko_dr_JBO010_plot.pkl
+width_mm=88.0
+height_mm=88.0
+dpi=300
+seed=42

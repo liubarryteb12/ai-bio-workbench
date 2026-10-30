@@ -1,0 +1,8 @@
+step_executed=standardize_line2_figure
+artifact_png=l2_20_composition_panel.png
+artifact_pdf=l2_20_composition_panel.pdf
+artifact_object=l2_20_composition_panel_plot.pkl
+width_mm=180.0
+height_mm=120.0
+dpi=300
+seed=42

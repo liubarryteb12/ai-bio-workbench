@@ -1,0 +1,8 @@
+step_executed=standardize_line3_figure
+artifact_png=l3_mouse_16_domain_panel.png
+artifact_pdf=l3_mouse_16_domain_panel.pdf
+artifact_object=l3_mouse_16_domain_panel_plot.pkl
+width_mm=180.0
+height_mm=120.0
+dpi=300
+seed=42

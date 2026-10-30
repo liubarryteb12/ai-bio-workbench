@@ -1,0 +1,8 @@
+step_executed=standardize_line2_figure
+artifact_png=l2_16_dr_regulatory_network.png
+artifact_pdf=l2_16_dr_regulatory_network.pdf
+artifact_object=l2_16_dr_regulatory_network_plot.pkl
+width_mm=88.0
+height_mm=88.0
+dpi=300
+seed=42

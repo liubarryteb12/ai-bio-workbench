@@ -1,0 +1,8 @@
+step_executed=standardize_line2_figure
+artifact_png=custom_fig_l2p_volcano.png
+artifact_pdf=custom_fig_l2p_volcano.pdf
+artifact_object=custom_fig_l2p_volcano_plot.pkl
+width_mm=88.0
+height_mm=80.0
+dpi=300
+seed=42
