@@ -1,0 +1,8 @@
+step_executed=standardize_pipeline_figure
+artifact_png=l1_15_kegg_top.png
+artifact_pdf=l1_15_kegg_top.pdf
+artifact_object=l1_15_kegg_top_plot.pkl
+width_mm=130.0
+height_mm=90.0
+dpi=300
+seed=42

@@ -1,0 +1,8 @@
+step_executed=standardize_pipeline_figure
+artifact_png=l1_18_rfe_curve.png
+artifact_pdf=l1_18_rfe_curve.pdf
+artifact_object=l1_18_rfe_curve_plot.pkl
+width_mm=88.0
+height_mm=75.0
+dpi=300
+seed=42

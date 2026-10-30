@@ -1,0 +1,8 @@
+step_executed=standardize_pipeline_figure
+artifact_png=custom_fig_l1_density.png
+artifact_pdf=custom_fig_l1_density.pdf
+artifact_object=custom_fig_l1_density_plot.pkl
+width_mm=88.0
+height_mm=60.0
+dpi=300
+seed=42

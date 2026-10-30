@@ -1,0 +1,8 @@
+step_executed=standardize_pipeline_figure
+artifact_png=l1_30_wgcna_sample_tree.png
+artifact_pdf=l1_30_wgcna_sample_tree.pdf
+artifact_object=l1_30_wgcna_sample_tree_plot.pkl
+width_mm=180.0
+height_mm=100.0
+dpi=300
+seed=42

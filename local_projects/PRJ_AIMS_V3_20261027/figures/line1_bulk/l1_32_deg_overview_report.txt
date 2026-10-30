@@ -1,0 +1,8 @@
+step_executed=standardize_pipeline_figure
+artifact_png=l1_32_deg_overview.png
+artifact_pdf=l1_32_deg_overview.pdf
+artifact_object=l1_32_deg_overview_plot.pkl
+width_mm=180.0
+height_mm=180.0
+dpi=300
+seed=42

@@ -1,0 +1,8 @@
+step_executed=standardize_pipeline_figure
+artifact_png=l1_23_cluster_heatmap.png
+artifact_pdf=l1_23_cluster_heatmap.pdf
+artifact_object=l1_23_cluster_heatmap_plot.pkl
+width_mm=130.0
+height_mm=100.0
+dpi=300
+seed=42

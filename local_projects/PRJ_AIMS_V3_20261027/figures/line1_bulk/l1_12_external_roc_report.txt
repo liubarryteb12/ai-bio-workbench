@@ -1,0 +1,8 @@
+step_executed=standardize_pipeline_figure
+artifact_png=l1_12_external_roc.png
+artifact_pdf=l1_12_external_roc.pdf
+artifact_object=l1_12_external_roc_plot.pkl
+width_mm=88.0
+height_mm=80.0
+dpi=300
+seed=42

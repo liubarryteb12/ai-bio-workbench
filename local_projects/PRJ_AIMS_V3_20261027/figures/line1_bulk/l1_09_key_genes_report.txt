@@ -1,0 +1,8 @@
+step_executed=standardize_pipeline_figure
+artifact_png=l1_09_key_genes.png
+artifact_pdf=l1_09_key_genes.pdf
+artifact_object=l1_09_key_genes_plot.pkl
+width_mm=88.0
+height_mm=60.0
+dpi=300
+seed=42

@@ -1,0 +1,8 @@
+step_executed=standardize_pipeline_figure
+artifact_png=l1_02_pca.png
+artifact_pdf=l1_02_pca.pdf
+artifact_object=l1_02_pca_plot.pkl
+width_mm=88.0
+height_mm=80.0
+dpi=300
+seed=42
