@@ -1,6 +1,40 @@
 # handoff — 跨会话交接
 
-> 最后更新：2026-11-01（后端 36 端点全部拆完，前端两视图出山，见下节第二十七轮）
+> 最后更新：2026-11-01（ACL 阻塞解除 + K40 上线，真机抓出一处提交门禁假绿灯，见下节第二十八轮）
+
+> **2026-11-01 第二十八轮（阻塞解除、算力面上线、真机抓出假绿灯）**：
+> ① **`.git` 的 NTFS DENY 阻塞解除**：连续三轮报 GIT-LOCKED 的根因是 `.git` 上有两条显式 DENY ACE
+>   （`W,D,Rc,DC` 加子对象继承，目标是两个域 SID）。本轮核对当前令牌，这两个 SID **都不在令牌里**，
+>   `git add` / `git commit` 实测退出码 0，阻塞结束。相关工具是 `ops/fix_codex_sandbox_acl.ps1`。
+>   教训：探测脚本别用 `New-Item -Path .git\x.lock` 判可写。它在子目录里会**凭空建出一个空 `.git` 目录**，
+>   看起来像"仓库里有嵌套仓库"。本轮就误建过一次，已确认空并删除。
+> ② **K40 算力面上线**（`CONTAINER_OK` / `aarch64`），`adb` 也就位（2 台 device）。
+>   长期基线 992/931/fail5/skipped56 里 5 红 + 56 条件跳过共 61 条设备依赖测试，
+>   本轮**第一次在真机上真跑并全绿**。新基线：**tests 996 pass 995 fail 0 skipped 1**。
+> ③ **真机抓出一处提交门禁假绿灯**（本轮最有价值的产出，读代码读不出来）：
+>   `ops/check_storage_and_isolation.sh` 只开 `set -e` 没开 `pipefail`，`df -P` 失败时管道尾的 `tr`
+>   仍回 0，`USED_PERCENT` 取到空串，`$((100 - 空))` 把空当 0，于是打印
+>   「[OK] …剩余空间=100%」并 exit 0。存储水位根本没测到却判健康，属 P-15 同类。
+>   同文件第 2 维早有 `-z` 空值守卫，第 3 维漏了。修法是 `pipefail` 加 `^[0-9]+$` 校验。
+>   先红后绿：新增 `tests/storage_gate_false_green.test.js`（正对照修复前就绿，证明环在驱动门禁），
+>   修复前 4 条 1 绿 3 红、红条原文即症状，修复后 4/4。**容器侧经
+>   `ops/sync_and_verify_remote.ps1` 部署，远端预检直接报"1 个漂移"，说明真机此前一直跑旧版**，
+>   部署后对账 1/1，并在容器内实跑复验：空测量探针 exit 1 且不再打印通过行。
+> ④ **后端前置层搬完，`index.js` 877 → 334 行**（提交 `53f5166`）：7 个前置模块加 `remote_exec.js`。
+>   `remote_exec.js` 用 `.tmp/move-remote-exec.cjs` 按 AST 字节偏移切片，脚本内置 verbatim 门禁，
+>   五个函数逐个 `diff-func` `TOTAL_DIFF=0`。两处静态守卫按文件内既有并集口径各加一个文件
+>   （`runRemoteStrict(` 计数 5 与 `function listRemoteProcessed(`），正则一字未动。
+>   冷启动实测 **330ms**（`node .tmp/boot-time-probe.ps1`），08 号书第 7 项靠切除阻塞达标而非拉长超时。
+> ⑤ **待消偏差**：`ledger_fetch` / `static_assets` / `query_views` / `task_input` 仍是 factory 注入
+>   （当时 `runRemote` 留驻 index.js，否则成环）。`remote_exec.js` 现已存在，这层仪式多余，
+>   下一提交改直接 import。`index.js` 死 import 64 处（Hume 复核），
+>   **删前必须逐条 `rg -w` 核对**：`selfcheck_isolation_merge.test.js` 有静态断言要求 index.js
+>   仍然 import `runSha256ParityCheck` 等符号，照单子盲删会把守卫删红。
+> ⑥ **工具教训**：`node --check` 只做语法检查，抓不到"import 被删但符号仍在用"这类
+>   运行时 ReferenceError（本轮真实踩到一次，靠跑测试才发现）。子代理报告的行数要用
+>   `linecount.cjs` 复核；本轮另有一次**我自己的**误报：PowerShell 标签算术 `++$i+$s-1`
+>   写出 122..129，让我以为文件被并发改动，实为我自己格式化 bug。**怀疑树被污染时先用
+>   git status 加字节级计数定性，再决定要不要返工**。
 
 > **2026-11-01 第二十七轮（P3-01 路由层收口 + P3-02 头两片合入）**：
 > ① **P3-01 路由层收口**：第三至六片把剩余 28 个端点全部搬出，`index.js` 2,196 → **877 行**。
