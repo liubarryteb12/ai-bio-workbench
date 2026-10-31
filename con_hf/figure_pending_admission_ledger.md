@@ -1,0 +1,71 @@
+# Pending 模板准入缺口台账
+
+> 生成：2026-10-31，v3.2 合并后。准入三件套：真实项目样例 + 输入适配器 + plot_matrix 验证。
+
+| id | 线 | 步骤 | 缺真实样例 | 缺适配器/映射 | 缺 plot_matrix 证据 | 建议批次 |
+|---|---|---|---|---|---|---|
+| fig_l1_circularpacking |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_dendrogram |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_donut |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_partpiechart |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_piechart |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_radialstackedbar |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_treemap |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_waffle |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_biplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_bubble |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2_bubbleheatmap |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2_complexheatmap |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_connectedscatter |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_correlogram |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_density2d |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_ternaryplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_areachart |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_linechart |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_stackedarea |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_streamgraph |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_timeseries |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_breakplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_radialcolumnchart |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_raincloudplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_ridgeline |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_barplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_circularbarplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_upsetplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l1_vennplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l3_combinationpanel |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2_kaplanmeierplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2_lollipopplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2_metaforestplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2_mosaicplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2_nomogram |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2_regressiontable |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2_cellchatcircleplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2_chromosomeplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2_genestructureplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2_manhattanplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2_multivolcanoplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2_mutationoncoplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2_networkplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l3_sankeybubbleplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2_textenrichmentbarplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2_ivolcanoplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2p_barplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2p_boxplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2p_complexheatmap |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2p_confusionmatrixplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2p_enrichmentplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l3p_facetgridplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2p_gseaplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2p_heatmap |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2p_pcaplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l3p_publicationstyle |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2p_rocprplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l3p_sankeydiagram |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2p_scatterplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2p_scrnastackedviolin |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2p_survivalplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2p_upsetplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l2p_vennplot |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l3_chorddiagram |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
+| fig_l3_network |  | 未绑定 | 是 | 是 | 是 | 待绑定 |
