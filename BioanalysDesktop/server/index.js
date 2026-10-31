@@ -57,20 +57,18 @@ import { handleFiguresRoutes } from './routes/figures.routes.js';
 import { handleTasksRoutes } from './routes/tasks.routes.js';
 import { handleProjectRoutes } from './routes/projects.routes.js';
 import { createSink, dropSink, sendEvent, closeSink } from './sinks.js';
-import { makeLedgerFetcher } from './ledger_fetch.js';
+import { fetchLedgerFromServer } from './ledger_fetch.js';
 import { renderFiguresPreview } from './portal_page.js';
-import { createStaticAssets } from './static_assets.js';
+import { serveStatic } from './static_assets.js';
 import { PORTAL_INBOX, isSafeManifestName, readPackageManifest, listInboxManifests } from './portal_inbox.js';
-import { createQueryViews } from './query_views.js';
-import { createTaskInput } from './task_input.js';
+import { resolveProjectParam, listProjectsWithMeta, listFiguresForLine } from './query_views.js';
+import { remoteTaskInput, uploadPreparedFigureScripts, deployDataFiles } from './task_input.js';
 import {
   runRemoteRaw, listRemoteProcessed, runRemote, runRemoteStrict, sanitizeBridgeOutput,
 } from './remote_exec.js';
+import { json, uploadError } from './http_response.js';
 
-const { remoteTaskInput, uploadPreparedFigureScripts, deployDataFiles } = createTaskInput({ runRemoteRaw, runRemote });
-const { resolveProjectParam, listProjectsWithMeta, listFiguresForLine } = createQueryViews(runRemote);
-const serveStatic = createStaticAssets(json);
-const fetchLedgerFromServer = makeLedgerFetcher(runRemote);
+
 
 const PORT = Number(process.env.BAD_PORT || 18787);
 const REPO_ROOT = path.resolve(fileURLToPath(new URL('../../', import.meta.url)));
@@ -135,29 +133,6 @@ const adb = findAdb();
 /** 在跑的任务表：id -> {kill, projectId, lineId, step, startedAt}，中止与去重都靠它 */
 const runningTasks = new Map();
 
-function json(res, status, payload) {
-  const body = JSON.stringify(payload, null, 2);
-  res.writeHead(status, {
-    'Content-Type': 'application/json; charset=utf-8',
-    'Cache-Control': 'no-store',
-  });
-  res.end(body);
-}
-/**
- * 上传链路错误响应单一出口（task-8 / B）。
- * 以前 init / chunk 回 {error}，status 回 {ok:false, error}，两种形状并存，
- * 前端只能猜；现在四个端点（init / chunk / status / complete）的 4xx/5xx 一律走这里，
- * 统一回 {ok:false, error}。ok:false 是新增字段，前端（App.tsx 只读 error）不受影响；
- * HTTP 状态码语义不变，调用方传什么状态码就回什么。
- * 成功响应不走本函数。
- * @param {import('node:http').ServerResponse} res
- * @param {number} status
- * @param {string} message 非空字符串
- */
-function uploadError(res, status, message) {
-  return json(res, status, { ok: false, error: String(message ?? '') });
-}
-
 // ── 任务提交路径预校验（S29 / R9；2026-10-21 收敛到 ledger.js 单一事实源）──
 // 单路径归属判定已移到 ledger.js 的 inspectTaskPath / analyzePath，与台账审计
 // （classifyPath）、文件访问守卫共用同一套"合法根"口径；本文件只保留批量包装。
@@ -220,14 +195,15 @@ export function lineFromPipeline(dag) {
 
 // 位置纪律：routeCtx 必须在所有被注入的辅助之后。它是对象字面量，模块加载期就求值，
 // 排在 const 声明之前会踩暂时性死区（PORTAL_INBOX 就这样把服务加载打崩过一次）。
-// 路由模块共用的响应辅助、远端执行器与前置层辅助。runRemoteStrict 等远端执行器定义仍在
-// 本文件，守卫会按本文件计数；其余辅助从前置层模块引入后，以对象注入交给路由模块。
+// 路由模块共用的响应辅助、远端执行器与前置层辅助，全部从各自模块 import 进来，
+// 再以对象注入交给路由模块。远端执行器定义在 remote_exec.js，响应辅助在 http_response.js；
+// 相关静态守卫按并集计数，见 tests/selfcheck_isolation_merge.test.js 的 STRICT_GUARD_SRC。
 const routeCtx = {
   json, uploadError, runRemote, runRemoteRaw, runRemoteStrict, fetchLedgerFromServer, resolveProjectParam,
   REPO_ROOT, listFiguresForLine, listRemoteProcessed, remoteTaskInput,
   // 任务路由需要的进程内状态与 SSE sink：runningTasks 是可变 Map，注入引用而不是复制；
-  // validateTaskPaths 与 sanitizeBridgeOutput 的定义留在本文件（tests/task_submit_validation.test.js
-  // 按 index.js 取 validateTaskPaths，搬走会拿到 undefined）。
+  // validateTaskPaths 的定义必须留在本文件（tests/task_submit_validation.test.js 按 index.js
+  // 取它，搬走会拿到 undefined）；sanitizeBridgeOutput 已搬进 remote_exec.js。
   runningTasks, createSink, sendEvent, closeSink, dropSink, sanitizeBridgeOutput, validateTaskPaths,
   // 项目路由需要的本地读盘与收件箱辅助：从前置层模块引入，注入而不复制第二份。
   listProjectsWithMeta, deployDataFiles, uploadPreparedFigureScripts, lineFromPipeline,
