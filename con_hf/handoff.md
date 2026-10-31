@@ -1,6 +1,41 @@
 # handoff — 跨会话交接
 
-> 最后更新：2026-10-31（工作区清理收口：删除约 37 GB 冗余与临时产物，见下节 2026-10-31 第二十轮）
+> 最后更新：2026-11-01（P3 专项目标立项 + 后端路由拆分头两片落地，见下节第二十六轮）
+
+> **2026-11-01 第二十六轮（P3 专项目标立项，后端拆分头两片）**：
+> ① 立专项目标正本 `con_hf/2026-11-01_P3专项_模块化拆分与A2A择优合入.md`（07 号书
+>    `TASK-P3-01/02/03` 挂账的唯一执行正本，含实测校正、端点归属表、准出判据、硬约束）；
+>    校正记录：旧口径 2,411 / 3,534 行是非空行数，总行数实为 2,533 / 3,801。
+> ② **P3-01 第一片** `a39b497`：`routes/upload.routes.js`（4 个 upload 端点，224 行），
+>    `index.js` 2,533 → 2,343 行。确立派发约定：路由模块命中返回 `true`，
+>    因 `json()` / `uploadError()` 均返回 `undefined`，不可拿其返回值当命中信号；
+>    共享辅助经 `routeCtx` 注入而非搬定义（自检守卫按 `index.js` 统计
+>    `runRemoteStrict(` 出现次数，定义一搬走即计假数）。
+> ③ **P3-01 第二片** `8fdfe48`：`routes/diagnostics.routes.js`（selfcheck / link / ledger /
+>    files-tree，193 行），`index.js` 2,343 → 2,196 行（两轮合计减 337 行）。
+>    模块须声明 `async` 以承接 ledger 端点的 `await`（原先由 `createServer(async ...)` 闭包提供）。
+>    该片由 glm-5.3-flash 子代理实做，主代理独立复核：搬走的 4 个 import 符号在 `index.js`
+>    残余引用 0，无悬空标识符；守卫改扫 `INDEX_SRC + DIAGNOSTICS_SRC` 并集，
+>    `>=5` 下限与四条正则一字未改、反例断言变严，子代理另做消融证明守卫非放松变绿。
+> ④ 卫生：`.gitignore` 补 `.uploads/`（原 `uploads/` 不匹配带点目录，上传测试每跑必产残留）。
+> ⑤ **基线口径修正**：本轮实测 K40 可达与否会让结果在
+>    「989 / 928 pass / 5 fail / 56 skipped」与「989 / 988 pass / 0 fail / 1 skipped」之间摆动，
+>    5 条红固定是 K40 与 adb 设备环境（Node/bash 判定、设备探测、forward 探测、四段自检、
+>    CONTAINER_OK）。记基线必须连设备状态一起记，否则「比基线更好」不可复现。
+> ⑥ 子代理通道实况：glm-5.3-flash 开局连续三轮 429（388ms 内即失败），约十分钟后自行恢复；
+>    跨线程追发消息被权限审批超时挡住，重试要新建线程而不是追发。
+> ⑦ **P3-03 情报已核对完**（`con_hf/dispatch/P3-03_a2a_cherry_pick_triage.md`）：决定性事实是
+>    `src/engines/` 与 `src/core/` 在 master 上为 0 文件而分支有 44 文件，故第二批容灾适配器的
+>    载体 `MockComputeAdapter` 连带微内核底座，属架构准入决策；建议改走「不引入引擎层，
+>    在既有 `server/proc.js` 单一 seam 上加 `BIO_COMPUTE_ADAPTER=mock|ssh`」路线。
+>    另：51 提交里 24 个属 A2A 运行时与出图线，判 skip 并逐条写明理由。
+> ⑧ 端点计数校正：拆分前 `index.js` 有 44 条 `url.pathname` 匹配**分支**（GET/POST 分列、
+>    另有前缀匹配），去重后是 **36 个不同 REST 端点**，此前文档写的「44 个端点」不准确。
+>    已搬 8 个（upload 4 + diagnostics 4），`index.js` 现存 28 个待搬入
+>    projects / tasks / figures / report 四个模块（其中 `/api/health` 按设计留在 `index.js`）。
+>    已搬数与剩余数按各文件去重 `/api/` 字面量实测核对。
+>    P3-02 前端拆 6 视图未动；P3-02 合入后才做第三批 PiAgentChat；
+>    引擎层与 A2A 运行时整体准入需用户裁定。
 
 > **2026-10-31 第二十轮（工作区清理 + 用户四项裁定）**：
 > ① 删除零引用临时与残留：tmp_recheck_scripts、根 tests/ 构建残留、.Temp/.tmp/.uploads/backups/cache、
