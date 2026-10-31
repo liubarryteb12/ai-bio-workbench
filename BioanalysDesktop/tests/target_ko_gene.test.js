@@ -253,7 +253,22 @@ test('P14: 合法基因的 virtual_knockout 下发 200，且 ssh 命令里带 BI
 
 // ───────────── D. 前端静态断言（TaskPanel）─────────────
 
-const appSource = fs.readFileSync(APP_TSX, 'utf8');
+// TaskPanel 搬进 views/ 后，守卫扫「入口 + 全部视图」并集；断言正则保持不变。
+function readViewTsx(dir) {
+  return fs.readdirSync(dir, { withFileTypes: true })
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .flatMap((entry) => {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) return readViewTsx(fullPath);
+      return entry.isFile() && entry.name.endsWith('.tsx')
+        ? [fs.readFileSync(fullPath, 'utf8')]
+        : [];
+    });
+}
+const appSource = [
+  fs.readFileSync(APP_TSX, 'utf8'),
+  ...readViewTsx(path.resolve(import.meta.dirname, '../src/views')),
+].join('\n');
 
 test('P14: TaskPanel 提交体带 targetKoGene 字段，且只在敲除步骤传值', () => {
   assert.match(appSource, /targetKoGene: needsKoGene \? gene : undefined/);
