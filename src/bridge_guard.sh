@@ -13,9 +13,12 @@
 # 契约：
 #   1. --input 必须是调用方真实持有的输入路径，本守卫不编造、不改写路径；
 #   2. 输入不是 .h5ad/.rds 时打印 [BRIDGE SKIP] 并 exit 0（无可校验对象，不假装通过）；
-#   3. 引擎不可达（本机无引擎且 ssh 连接失败/超时，退出码非 0 且输出无断言结论）
-#      时按 BIO_ALLOW_BRIDGE_SKIP 口径降级：显式豁免才 SKIP exit 0（离线干跑），strict 默认 exit 2 硬阻断，守卫不许假绿灯
-#      本身更硬；
+#   3. 引擎不可达（输出无断言结论）按运行态分两级（2026-10-31 裁定）：
+#      a. MODE=local（容器本机执行）或 BIO_STRICT_BRIDGE=1：一律 [BRIDGE FAIL] exit 2
+#         硬阻断，守卫不许假绿灯；
+#      b. MODE=ssh 且 ssh 退出码 255（K40 离线）且未设 BIO_STRICT_BRIDGE=1：
+#         [BRIDGE SKIP] exit 0，离线 dry-run 母版仍要能跑；
+#      c. SSH 可达但引擎校验返回其他非 0：按断言失败阻断，不冒充"不可达"。
 #   3c. 本机模式（MODE=local）下引擎非 0 退出即 [BRIDGE FAIL] 并透传退出码：
 #      本机引擎是否存在已在解析阶段确认过，非 0 只可能是输入不可读或引擎自身
 #      结论为失败。真机实测（2026-10-21，/tmp/bad.h5ad 损坏文件）早期版本把这
@@ -112,11 +115,14 @@ if [ "$ssh_rc" -ne 0 ]; then
     echo "[BRIDGE FAIL] $WHERE 桥接引擎异常退出（local 模式退出码 $ssh_rc），见上方引擎输出"
     exit "$ssh_rc"
   fi
-  # 契约 3 后半：连不上/超时，放行母版继续算（K40 离线时母版仍要能跑）
-  if [ "${BIO_ALLOW_BRIDGE_SKIP:-0}" = "1" ]; then
-    echo "[BRIDGE SKIP] $WHERE 桥接引擎不可达（$MODE 模式退出码 $ssh_rc，显式允许 skip），母版继续执行"; exit 0
+  # 契约 3（裁定后终版）：本机容器内 MODE=local 一律硬阻断 exit 2；
+  # 宿主 MODE=ssh 因 K40 离线（rc=255）且未设 BIO_STRICT_BRIDGE=1 时降级 SKIP exit 0
+  # （离线 dry-run 母版仍要能跑）；BIO_STRICT_BRIDGE=1 则连 ssh 离线也硬阻断。
+  # SSH 可达但引擎校验返回其他非 0（如 1/3）不属于"不可达"，按断言失败阻断。
+  if [ "$ssh_rc" = "255" ] && [ "${BIO_STRICT_BRIDGE:-0}" != "1" ]; then
+    echo "[BRIDGE SKIP] $WHERE 桥接引擎不可达（ssh 退出码 255，K40 离线降级），母版继续执行"; exit 0
   fi
-  echo "[BRIDGE FAIL] $WHERE 桥接引擎不可达（$MODE 模式退出码 $ssh_rc，strict 模式硬阻断；离线干跑请设 BIO_ALLOW_BRIDGE_SKIP=1）" >&2
+  echo "[BRIDGE FAIL] $WHERE 桥接引擎不可达/异常（$MODE 模式退出码 $ssh_rc，strict 硬阻断；离线干跑用 BIO_STRICT_BRIDGE=0 或修复链路）" >&2
   exit 2
 fi
 

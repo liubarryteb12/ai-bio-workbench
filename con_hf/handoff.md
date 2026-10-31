@@ -59,6 +59,19 @@
 >    verify-before-sidecar（REPORT_INTEGRITY_FAIL 拒绝给坏包洗白）；④ 12 个测试 25s 回退
 >    10s（冷启动实测 73ms，证明无启动阻塞）；989 tests / 928 pass / 5 fail（K40 环境）；
 >    08 号书 P3（index.js/App.tsx 拆分 + A2A cherry-pick）未动，挂账待专门目标。
+>
+> **2026-10-31 第二十五轮（08 号书用户裁定终版：桥接契约分级 + 兜底补齐）**：
+> 用户对审查报告三问正式裁定，`bridge_guard.sh` 按裁定终版重写（提交 `e51fd63` 前后同轮）：
+> ① 契约 3 分级：`MODE=local`（容器本机）或 `BIO_STRICT_BRIDGE=1` → 引擎缺失/失败一律
+>    FAIL exit 2 硬阻断；`MODE=ssh` 且 ssh 退出码 255（K40 离线）且未设
+>    BIO_STRICT_BRIDGE=1 → SKIP exit 0（离线 dry-run 母版仍可跑）；SSH 可达但引擎返回
+>    其他非 0 → 按断言失败阻断，不冒充"不可达"；头部契约注释同步重写；
+> ② `isAuthorized` 补 `!AUTH_USER || !AUTH_PASS → false` 防御兜底（上轮 patch 未落上，
+>    本轮复核抓到补齐）；
+> ③ 守卫测试按裁定语义修正（invariant：255→SKIP exit 0 + BIO_STRICT_BRIDGE=1→exit 2；
+>    local 同步），bridge 四套件 + auth + report 全绿；
+> ④ 验证：**989 tests / 928 pass / 5 fail（K40 设备环境红）/ 56 skipped**，零回归；
+> ⑤ 08 号书 7 项返工至此全部按裁定终版闭环；P3 拆分与 A2A cherry-pick 仍挂账。
 > 全量推进计划：`con_hf/2026-10-13_plan_goal全量推进.md`（含工作区盘点结论与阻塞项 B1/B2）。
 
 > **2026-10-23 第十九轮**：proot 15 秒 abort 的真正根因已定位并修掉 runner 侧触发源（P-29），

@@ -166,29 +166,28 @@ test('本机引擎崩溃（无 BRIDGE FAIL 结论）必须判 FAIL，不许降�
   }
 });
 
-test('ssh 分支的不可达（退出码 255）→ strict 默认 exit 2', { skip: NEED_BASH || NEED_PY3 }, () => {
+test('ssh 分支的不可达（退出码 255）→ 默认 SKIP exit 0（K40 离线母版仍可跑）', { skip: NEED_BASH || NEED_PY3 }, () => {
   const world = makeWorld({ engine: null });
   try {
     fs.writeFileSync(world.sshPath, '#!/bin/sh\necho "ssh: Could not resolve hostname k40-ubuntu" >&2\nexit 255\n', { mode: 0o755 });
     const res = runGuard(world);
-    assert.equal(res.code, 2, 'strict 模式远端不可达必须硬阻断; out=' + res.out);
-    assert.match(res.out, /\[BRIDGE FAIL\]/);
-  } finally {
-    fs.rmSync(world.dir, { recursive: true, force: true });
-  }
-});
-test('ssh 分支不可达 + BIO_ALLOW_BRIDGE_SKIP=1 → 降级 SKIP exit 0', { skip: NEED_BASH || NEED_PY3 }, () => {
-  const world = makeWorld({ engine: null });
-  try {
-    fs.writeFileSync(world.sshPath, '#!/bin/sh\nexit 255\n', { mode: 0o755 });
-    const res = runGuard(world, { extraEnv: { BIO_ALLOW_BRIDGE_SKIP: '1' } });
-    assert.equal(res.code, 0, '显式豁免时不可达降级 SKIP; out=' + res.out);
+    assert.equal(res.code, 0, 'K40 离线不该阻断母版; out=' + res.out);
     assert.match(res.out, /\[BRIDGE SKIP\]/);
   } finally {
     fs.rmSync(world.dir, { recursive: true, force: true });
   }
 });
-
+test('ssh 分支不可达 + BIO_STRICT_BRIDGE=1 → 硬阻断 exit 2', { skip: NEED_BASH || NEED_PY3 }, () => {
+  const world = makeWorld({ engine: null });
+  try {
+    fs.writeFileSync(world.sshPath, '#!/bin/sh\nexit 255\n', { mode: 0o755 });
+    const res = runGuard(world, { extraEnv: { BIO_STRICT_BRIDGE: '1' } });
+    assert.equal(res.code, 2, 'strict 模式 ssh 离线也硬阻断; out=' + res.out);
+    assert.match(res.out, /\[BRIDGE FAIL\]/);
+  } finally {
+    fs.rmSync(world.dir, { recursive: true, force: true });
+  }
+});
 test('BRIDGE_ENGINE_LOCAL 显式置空可强制走 ssh 分支', { skip: NEED_BASH }, () => {
   const world = makeWorld({
     engine: 'import sys\nprint("[BRIDGE OK] should not run")\nsys.exit(0)\n',

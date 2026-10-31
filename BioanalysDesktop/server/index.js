@@ -157,6 +157,7 @@ function safeEqual(left, right) {
 
 function isAuthorized(req) {
   if (!AUTH_ENABLED) return true;
+  if (!AUTH_USER || !AUTH_PASS) return false;
   const header = req.headers.authorization || '';
   if (!header.startsWith('Basic ')) return false;
   let decoded;
