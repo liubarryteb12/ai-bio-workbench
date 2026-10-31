@@ -14,7 +14,7 @@
 #   1. --input 必须是调用方真实持有的输入路径，本守卫不编造、不改写路径；
 #   2. 输入不是 .h5ad/.rds 时打印 [BRIDGE SKIP] 并 exit 0（无可校验对象，不假装通过）；
 #   3. 引擎不可达（本机无引擎且 ssh 连接失败/超时，退出码非 0 且输出无断言结论）
-#      时打印 [BRIDGE SKIP] 并 exit 0：K40 离线时母版必须还能跑，守卫永不比计算
+#      时按 BIO_ALLOW_BRIDGE_SKIP 口径降级：显式豁免才 SKIP exit 0（离线干跑），strict 默认 exit 2 硬阻断，守卫不许假绿灯
 #      本身更硬；
 #   3c. 本机模式（MODE=local）下引擎非 0 退出即 [BRIDGE FAIL] 并透传退出码：
 #      本机引擎是否存在已在解析阶段确认过，非 0 只可能是输入不可读或引擎自身
@@ -55,7 +55,10 @@ while [ $# -gt 0 ]; do
     --to) TO_LANG="${2:-}"; shift 2 ;;
     --script) SCRIPT_NAME="${2:-}"; shift 2 ;;
     --stage) STAGE="${2:-}"; shift 2 ;;
-    *) echo "[BRIDGE SKIP] $GUARD_NAME 未知参数: $1" >&2; exit 0 ;;
+    *)
+      echo "[BRIDGE FAIL] $GUARD_NAME 未知参数: $1（拼写错误严禁静默绕过）" >&2
+      exit 2
+      ;;
   esac
 done
 

@@ -10,7 +10,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import { timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual, randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -128,28 +128,23 @@ function uploadPreparedFigureScripts(preparedFigures) {
  *      并打印到控制台（同时落 server/.auth_runtime.json，权限限本机），消灭免密裸奔；
  *   3. node:test 运行环境（NODE_TEST_CONTEXT 存在）与显式豁免保持免密，测试零改动。
  */
-let AUTH_USER = process.env.BAD_AUTH_USER || '';
-let AUTH_PASS = process.env.BAD_AUTH_PASS || '';
-const AUTH_ENABLED = Boolean(AUTH_USER && AUTH_PASS);
+let AUTH_USER = process.env.BAD_AUTH_USER || process.env.WORKBENCH_AUTH_USER || '';
+let AUTH_PASS = process.env.BAD_AUTH_PASS || process.env.WORKBENCH_AUTH_PASS || '';
+let AUTH_ENABLED = Boolean(AUTH_USER && AUTH_PASS);
 
-const IS_TEST_RUNTIME = Boolean(process.env.NODE_TEST_CONTEXT);
+const IS_TEST_RUNTIME = Boolean(process.env.NODE_TEST_CONTEXT) && process.env.BIO_TEST_FORCE_FAIL_CLOSED !== '1';
 const DEV_NOAUTH = process.env.BIO_ALLOW_DEV_NOAUTH === '1';
 if (!AUTH_ENABLED && !IS_TEST_RUNTIME && !DEV_NOAUTH) {
-  const crypto = await import('node:crypto');
-  const generatedUser = 'admin';
-  const generatedPass = crypto.randomBytes(18).toString('base64url');
-  const runtimeAuthFile = path.join(REPO_ROOT, 'BioanalysDesktop', '.auth_runtime.json');
-  fs.writeFileSync(runtimeAuthFile, JSON.stringify({
-    user: generatedUser,
-    pass: generatedPass,
-    generatedAt: new Date().toISOString(),
-  }, null, 2) + '\n', { mode: 0o600 });
-  console.error('[bioanalys-desktop] 未配置 BAD_AUTH_USER/PASS，已自动生成一次性凭证：');
-  console.error(`[bioanalys-desktop]   账号 ${generatedUser}`);
-  console.error(`[bioanalys-desktop]   口令 ${generatedPass}`);
-  console.error(`[bioanalys-desktop]   （已写入 ${runtimeAuthFile}，重启会重新生成；正式部署请用 serve_guard 注入固定口令）`);
-  AUTH_USER = generatedUser;
-  AUTH_PASS = generatedPass;
+  AUTH_USER = 'admin';
+  AUTH_PASS = randomBytes(18).toString('base64url');
+  AUTH_ENABLED = true;
+  console.error('[SECURITY][D-29 Fail-Closed] 未检测到 BAD_AUTH_USER/BAD_AUTH_PASS，已启用临时会话强鉴权。');
+  console.error(`[SECURITY] 账号 ${AUTH_USER} 口令 ${AUTH_PASS}（重启重新生成；正式部署用 serve_guard 注入固定口令）`);
+  if (process.env.BIO_AUTH_RUNTIME_FILE) {
+    fs.writeFileSync(process.env.BIO_AUTH_RUNTIME_FILE, JSON.stringify({
+      user: AUTH_USER, pass: AUTH_PASS, enabled: true, generatedAt: new Date().toISOString(),
+    }), 'utf8');
+  }
 }
 
 /** 定长比较，避免按字节提前返回泄露口令前缀 */

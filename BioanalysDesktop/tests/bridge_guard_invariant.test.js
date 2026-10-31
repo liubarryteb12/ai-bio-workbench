@@ -288,3 +288,9 @@ test('未知 --stage → 守卫 2 且明确拒绝，不进入引擎（非法参�
   assert.match(res.stderr, /BRIDGE FAIL/);
   assert.doesNotMatch(res.stdout + res.stderr, /BRIDGE SKIP/);
 });
+
+test('未知参数 → exit 2（拼写错误严禁静默绕过）', { skip: BASH === null ? '宿主无 bash 解释器' : false }, () => {
+  const res = runGuard({ sshScript: '#!/bin/sh\nexit 0\n' }, ['--inpuut', 'x.h5ad', '--from', 'Python', '--to', 'R', '--script', 'gsva_pathways']);
+  assert.equal(res.code, 2, res.stderr);
+  assert.match(res.stdout + res.stderr, /未知参数/);
+});

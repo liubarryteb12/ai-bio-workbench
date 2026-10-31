@@ -49,7 +49,7 @@ before(async () => {
   child.on('exit', (code) => { childExit = { code, stderr: stderrText.slice(-2000) }; });
 
   // 等 health 就绪，最多 10s
-  const deadline = Date.now() + 25000;
+  const deadline = Date.now() + 10000;
   for (;;) {
     if (childExit) throw new Error(`服务进程提前退出 (code ${childExit.code}): ${childExit.stderr}`);
     try {
@@ -58,7 +58,7 @@ before(async () => {
     } catch {
       // 没起来就继续等
     }
-    if (Date.now() > deadline) throw new Error(`服务 25s 内没就绪: ${stderrText.slice(-2000)}`);
+    if (Date.now() > deadline) throw new Error(`服务 10s 内没就绪: ${stderrText.slice(-2000)}`);
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
 });

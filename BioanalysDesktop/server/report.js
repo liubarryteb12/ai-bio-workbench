@@ -26,6 +26,7 @@ import childProcess from 'node:child_process';
 import { HOSTS, SSD_ROOT, PROJECTS_ROOT, SYSTEM_LOGS, LINES, sanitizeProjectId } from './domain.js';
 import { assertAllowedProgram } from './proc.js';
 import { stripSshNoise } from './run.js';
+import { verifyDelivery } from '../../ops/ed25519_tools.mjs';
 
 const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
@@ -488,6 +489,16 @@ export function writeSha256Sidecars(projectId) {
   const safe = sanitizeProjectId(projectId);
   if (!safe) throw new Error(`projectId 非法: ${projectId}`);
   const dir = localDeliverDir(safe);
+  // Verify-before-sidecar（v3.3 审查返工）：已回搬的包若带 CHECKSUMS.sha256 + CHECKSUMS.sig，
+  // 必须先公钥验签并逐文件比对清单哈希；任一不符立即抛错，严禁对可能被篡改的文件重算哈希洗白。
+  const checksumsPath = path.join(dir, 'CHECKSUMS.sha256');
+  const sigPath = path.join(dir, 'CHECKSUMS.sig');
+  if (fs.existsSync(checksumsPath) && fs.existsSync(sigPath)) {
+    const verdict = verifyDelivery(dir, { publicKeyPath: process.env.BIO_ED25519_PUBLIC_KEY_PATH });
+    if (!verdict.ok) {
+      throw new Error(`[REPORT_INTEGRITY_FAIL] 回搬交付包验签失败: ${verdict.reason}；已拒绝生成 sidecar`);
+    }
+  }
   let names;
   try {
     names = fs.readdirSync(dir);

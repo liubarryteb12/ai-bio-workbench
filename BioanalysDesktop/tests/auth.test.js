@@ -14,6 +14,9 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import net from 'node:net';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { spawn } from 'node:child_process';
 
 /**
@@ -53,7 +56,7 @@ before(async () => {
   child.stderr.on('data', (chunk) => { stderrText += chunk.toString(); });
   child.on('exit', (code) => { childExit = { code, stderr: stderrText.slice(-2000) }; });
 
-  const deadline = Date.now() + 25000;
+  const deadline = Date.now() + 10000;
   for (;;) {
     if (childExit) throw new Error(`服务进程提前退出 (code ${childExit.code}): ${childExit.stderr}`);
     try {
@@ -62,7 +65,7 @@ before(async () => {
     } catch {
       // 没起来就继续等
     }
-    if (Date.now() > deadline) throw new Error(`服务 25s 内没就绪: ${stderrText.slice(-2000)}`);
+    if (Date.now() > deadline) throw new Error(`服务 10s 内没就绪: ${stderrText.slice(-2000)}`);
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
 });
@@ -115,4 +118,58 @@ test('正确凭证放行 200', async () => {
 test('静态页同样受口令保护（不能靠改路径绕过）', async () => {
   const response = await api('/');
   assert.equal(response.status, 401);
+});
+
+/**
+ * D-29 Fail-Closed 负路径（v3.3 审查返工）：
+ * 剥离测试豁免（BIO_TEST_FORCE_FAIL_CLOSED=1 压过 NODE_TEST_CONTEXT），
+ * 无 BAD_AUTH_* 时必须自动生成随机凭证并强制 401；凭据经 BIO_AUTH_RUNTIME_FILE
+ * 回读验证，杜绝"生成了密码但 isAuthorized 恒放行"的假修复。
+ */
+test('Fail-Closed：无凭证配置时自动生成随机凭证并强制 401/200', async () => {
+  const port2 = await freePort();
+  const runtimeFile = path.join(os.tmpdir(), `auth-runtime-${port2}.json`);
+  const child2 = spawn(process.execPath, ['server/index.js'], {
+    env: {
+      ...process.env,
+      BAD_PORT: String(port2),
+      BAD_AUTH_USER: '',
+      BAD_AUTH_PASS: '',
+      NODE_TEST_CONTEXT: '', // 显式压过测试豁免
+      BIO_TEST_FORCE_FAIL_CLOSED: '1',
+      BIO_AUTH_RUNTIME_FILE: runtimeFile,
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let stderr2 = '';
+  child2.stderr.on('data', (c) => { stderr2 += c.toString(); });
+  child2.on('exit', (code) => { if (code !== 0 && code !== null) stderr2 += `\nexit=${code}`; });
+  try {
+    const base2 = `http://127.0.0.1:${port2}`;
+    const deadline2 = Date.now() + 10000;
+    for (;;) {
+      try {
+        const r = await fetch(`${base2}/api/health`, { signal: AbortSignal.timeout(1000) });
+        if (r.ok) break;
+      } catch { /* 等启动 */ }
+      if (Date.now() > deadline2) throw new Error(`Fail-Closed 服务 10s 未就绪: ${stderr2.slice(-500)}`);
+      await new Promise((r) => setTimeout(r, 200));
+    }
+
+    // 1) 无凭证 → 401（若此处放行，说明 AUTH_ENABLED 未置 true 的假修复复发）
+    const noAuth = await fetch(`${base2}/api/projects/list`, { signal: AbortSignal.timeout(5000) });
+    assert.equal(noAuth.status, 401, 'Fail-Closed 下无凭证必须 401');
+
+    // 2) 运行时文件回读凭证 → 200
+    const runtime = JSON.parse(fs.readFileSync(runtimeFile, 'utf8'));
+    assert.ok(runtime.user && runtime.pass, 'BIO_AUTH_RUNTIME_FILE 必须写出生成凭证');
+    const withAuth = await fetch(`${base2}/api/projects/list`, {
+      headers: { Authorization: basic(runtime.user, runtime.pass) },
+      signal: AbortSignal.timeout(5000),
+    });
+    assert.equal(withAuth.status, 200, '自动生成的凭证必须放行');
+  } finally {
+    child2.kill();
+    fs.rmSync(runtimeFile, { force: true });
+  }
 });

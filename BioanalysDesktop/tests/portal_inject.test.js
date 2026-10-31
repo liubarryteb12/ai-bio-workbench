@@ -30,7 +30,7 @@ let mod = null;
 let pageHtml = '';
 
 async function waitReady(base) {
-  const deadline = Date.now() + 25000;
+  const deadline = Date.now() + 10000;
   while (Date.now() < deadline) {
     try {
       const res = await fetch(`${base}/health`);

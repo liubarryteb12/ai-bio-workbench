@@ -41,7 +41,7 @@ const child = spawn(process.execPath, [PORTAL], {
 });
 
 // 等服务就绪（最多 10s）
-const healthDeadline = Date.now() + 25000;
+const healthDeadline = Date.now() + 10000;
 let up = false;
 while (Date.now() < healthDeadline) {
   try {
