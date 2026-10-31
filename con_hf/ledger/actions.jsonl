@@ -490,3 +490,11 @@
 {"id":"ACT-1793346300108-6b5cb3","ts":"2026-10-30T07:45:00.108Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_a2a_task_cancel","detail":{"task_id":"task-789","status":200}}
 {"id":"ACT-1793349768299-ec0d07","ts":"2026-10-30T08:42:48.299Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_a2a_task_poll","detail":{"task_id":"task-456","status":200}}
 {"id":"ACT-1793349768300-5ba21f","ts":"2026-10-30T08:42:48.300Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_a2a_task_cancel","detail":{"task_id":"task-789","status":200}}
+{"id":"ACT-1793366930173-e4e807","ts":"2026-10-30T13:28:50.173Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_a2a_dispatch","detail":{"prompt":"你好","status":200,"actual_provider":"zai","actual_model":"glm-5.3-flash"}}
+{"id":"ACT-1793366935553-9b0336","ts":"2026-10-30T13:28:55.553Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_a2a_task_poll","detail":{"task_id":"task-a954ba348aa449ef","status":200}}
+{"id":"ACT-1793419143721-004fe0","ts":"2026-10-31T03:59:03.721Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_a2a_task_poll","detail":{"task_id":"task-e2e-cancel","status":200}}
+{"id":"ACT-1793419224298-8ec0e0","ts":"2026-10-31T04:00:24.298Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_a2a_task_poll","detail":{"task_id":"task-e2e-cancel","status":200}}
+{"id":"ACT-1793420316728-e8c557","ts":"2026-10-31T04:18:36.728Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_a2a_task_poll","detail":{"task_id":"task-456","status":200}}
+{"id":"ACT-1793420316729-62f337","ts":"2026-10-31T04:18:36.729Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_a2a_task_cancel","detail":{"task_id":"task-789","status":200}}
+{"id":"ACT-1793420553795-895b2b","ts":"2026-10-31T04:22:33.795Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_a2a_task_poll","detail":{"task_id":"task-456","status":200}}
+{"id":"ACT-1793420553797-b9daf5","ts":"2026-10-31T04:22:33.797Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_a2a_task_cancel","detail":{"task_id":"task-789","status":200}}

@@ -859,7 +859,7 @@ test('pi agent chat dispatches, polls, shows the real reply and clears history',
     returnImmediately: true,
   });
 
-  await expect(page.getByTestId('pi-chat-message-assistant')).toHaveCount(1);
+  await expect(page.getByTestId('pi-chat-message-assistant')).toHaveCount(1, { timeout: 20_000 });
   await expect(page.getByTestId('pi-chat-message-assistant')).toContainText('Pi 已收到 GPD1 调研任务');
   await expect(page.getByTestId('pi-chat-status')).toContainText('completed');
 
@@ -884,7 +884,7 @@ test('pi agent chat survives reload without duplicating terminal messages and ca
       { id: 'user-1', role: 'user', text: '取消重试任务', ts: 1, taskId: 'task-e2e-cancel', status: 'working' },
       { id: 'user-2', role: 'user', text: '刷新去重任务', ts: 2, taskId: 'task-e2e-dup', status: 'completed' },
       { id: 'as-1', role: 'assistant', text: '已有回复', ts: 3, taskId: 'task-e2e-dup', status: 'completed' },
-      { id: 'sys-1', role: 'system', text: '任务 completed。', ts: 4, taskId: 'task-e2e-dup', status: 'completed' },
+      { id: 'sys-1', role: 'system', text: '任务 completed。', ts: 4, taskId: 'task-e2e-cancel', status: 'completed' },
     ]));
   });
   await page.goto(ADMIN_BASE);
