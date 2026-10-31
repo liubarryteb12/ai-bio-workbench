@@ -64,7 +64,12 @@ test('运行包装器不在容器内使用 find、ps 或 grep -r（P-29）', () 
 });
 
 test('生产提交层对全局 SSH 并发设 409 硬闸门', () => {
-  const text = fs.readFileSync(path.join(REPO, 'BioanalysDesktop', 'server', 'index.js'), 'utf8');
+  // 提交层的 409 闸门随任务路由搬进 routes/tasks.routes.js。守卫扫「入口 + 归属模块」并集，
+  // 三条断言正则一字不改。
+  const text = [
+    fs.readFileSync(path.join(REPO, 'BioanalysDesktop', 'server', 'index.js'), 'utf8'),
+    fs.readFileSync(path.join(REPO, 'BioanalysDesktop', 'server', 'routes', 'tasks.routes.js'), 'utf8'),
+  ].join('\n');
   assert.match(text, /runningTasks\.size > 0/);
   assert.match(text, /P-29 禁止并发 SSH/);
   assert.match(text, /json\(res, 409/);
