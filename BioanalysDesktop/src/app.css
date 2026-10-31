@@ -544,6 +544,54 @@ body {
   color: #9aa5b1;
 }
 
+/* P17：合并报灯下的结构化子灯（第 4 维 = 隔离门禁 + 远端版本一致性） */
+.selfcheck-subs {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed #d7dde5;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.selfcheck-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.selfcheck-sub-dot {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.selfcheck-sub-dot.selfcheck-dot-pass { background: #e6f6ec; color: #0f7b3f; border-color: #0f7b3f; }
+.selfcheck-sub-dot.selfcheck-dot-fail { background: #fdecea; color: #b3261e; border-color: #b3261e; }
+.selfcheck-sub-dot.selfcheck-dot-warn { background: #fff8e1; color: #8a6d00; border-color: #b58900; }
+.selfcheck-sub-dot.selfcheck-dot-unknown { background: #eceff1; color: #5b6770; border-color: #9aa5b1; }
+
+.selfcheck-sub-label {
+  flex: none;
+  font-weight: 600;
+  color: #52606d;
+}
+
+.selfcheck-sub-value {
+  color: #7b8794;
+  font-family: Consolas, monospace;
+  word-break: break-all;
+}
+
 .selfcheck-summary {
   margin-bottom: 16px;
 }

@@ -1,0 +1,34 @@
+{
+  "task_id": "37603e9c-2289-49ed-b6f1-74cd0b978395",
+  "project_id": "PRJ_AIMS_V3_20261027",
+  "line_id": "line2_scrna",
+  "step_name": "enrichment",
+  "mod_id": "l2_branches_enrich",
+  "status": "completed",
+  "start_time": "2026-10-27T18:42:17.821Z",
+  "end_time": "2026-10-27T18:44:45.176Z",
+  "environment": {
+    "language": "Python",
+    "version": "3.12.3",
+    "env_name": "line2_scrna_env",
+    "container_image": "proot-ubuntu24.04-aarch64",
+    "random_seed": 20261021
+  },
+  "resource_usage": {
+    "max_cpu_percent": null,
+    "max_memory_gb": null,
+    "disk_io_peak_mb_s": null
+  },
+  "io_files": {
+    "input": [
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line2_scrna/processed/deg_all_by_celltype.tsv",
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line2_scrna/processed/deg_significant_by_celltype.tsv"
+    ],
+    "output": []
+  },
+  "checkpoint_status": "passed",
+  "error_log": null,
+  "exit_code": 0,
+  "next_action_suggested": null,
+  "compute_node_id": "k40-ubuntu"
+}

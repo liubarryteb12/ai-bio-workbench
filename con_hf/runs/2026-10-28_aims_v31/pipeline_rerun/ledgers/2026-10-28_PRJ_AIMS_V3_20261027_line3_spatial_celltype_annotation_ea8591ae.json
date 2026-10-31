@@ -1,0 +1,36 @@
+{
+  "task_id": "ea8591ae-b88b-4893-9c5a-fc35bc16493c",
+  "project_id": "PRJ_AIMS_V3_20261027",
+  "line_id": "line3_spatial",
+  "step_name": "celltype_annotation",
+  "mod_id": "l3_branches_celltype",
+  "status": "completed",
+  "start_time": "2026-10-27T20:03:31.712Z",
+  "end_time": "2026-10-27T20:05:18.709Z",
+  "environment": {
+    "language": "Python",
+    "version": "3.12.3",
+    "env_name": "line3_spatial_env",
+    "container_image": "proot-ubuntu24.04-aarch64",
+    "random_seed": 20261013
+  },
+  "resource_usage": {
+    "max_cpu_percent": null,
+    "max_memory_gb": null,
+    "disk_io_peak_mb_s": null
+  },
+  "io_files": {
+    "input": [
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line3_spatial/processed/spatial_marker_mouse.h5ad",
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line3_spatial/processed/spatial_marker_human.h5ad",
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line3_spatial/processed/domain_markers_mouse.tsv",
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line3_spatial/processed/domain_markers_human.tsv"
+    ],
+    "output": []
+  },
+  "checkpoint_status": "passed",
+  "error_log": null,
+  "exit_code": 0,
+  "next_action_suggested": null,
+  "compute_node_id": "k40-ubuntu"
+}

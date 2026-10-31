@@ -309,6 +309,11 @@ test('真跑：只有 links 没有 info → 不回落网络，exit 1 且指名�
 /** 下载中断场景：.gz 只写到一半（缺 end-of-stream 标记），解析必须折成可执行的修复指引。 */
 function truncatedScenario() {
   return scenario('truncated', () => {
+    // BASH 缺失时提前返回可断言的形状，而不是 spawnSync(null) 直接抛 TypeError。
+    // 静态守卫测试已经覆盖脚本源码口径；真跑用例另加 { skip: NEED } 守卫。
+    if (!BASH) {
+      return { code: null, stdout: '', stderr: 'host has no bash', dir: '', edges: null, hubs: null, report: null };
+    }
     const tree = buildTree({});
     // 先造一份足够长的边表，再截断到 55%：保证截断点落在流中间而不是尾部对齐处。
     const rows = [LINKS_HEADER];
@@ -331,7 +336,7 @@ test('静态：离线读失败必须折成修复指引，不许裸 traceback', (
   assert.ok(/import zlib/.test(SRC), 'zlib.error 要在白名单里，必须 import zlib');
 });
 
-test('下载中断的残片 .gz：exit 1 且给 gzip -t 指引，不冒 traceback', () => {
+test('下载中断的残片 .gz：exit 1 且给 gzip -t 指引，不冒 traceback', { skip: NEED }, () => {
   const r = truncatedScenario();
   assert.equal(r.code, 1, '残片必须硬失败，不许静默出半套边表');
   assert.match(r.stderr, /离线 protein\.links 读取失败/, 'stderr 要点名是哪份离线文件');

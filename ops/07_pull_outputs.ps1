@@ -1,12 +1,16 @@
-﻿<#
+<#
   ops/07_pull_outputs.ps1  —  产出回搬通道（服务器 -> 本地电脑）
 
   背景：计算全部在手机 Linux 服务器端完成，本地是零算力交互终端。用户拍板：
   分析产物（processed/ results/ figures/ 下的文件）与任务台账（system_logs/）必须
   回搬到本地电脑存档，服务器只保留运行态正本。本脚本是这条回搬通道：
-    服务器 /mnt/ssd/bio_data/projects/<项目>/<line>/{processed,results,figures}/*
-        ->  本地 outputs/<项目>/<line>/{processed,results,figures}/
-    服务器 /mnt/ssd/bio_data/system_logs/*.json
+    服务器 /mnt/ssd/bio_data/projects/<项目>/<line>/processed/*
+        ->  本地 local_projects/<项目>/data/<line>/processed/
+    服务器 /mnt/ssd/bio_data/projects/<项目>/<line>/results/*
+        ->  本地 local_projects/<项目>/data/<line>/results/
+    服务器 /mnt/ssd/bio_data/projects/<项目>/<line>/figures/*
+        ->  本地 local_projects/<项目>/figures/<line>/
+    服务器 /mnt/ssd/bio_data/system_logs/*_<项目>_*.json
         ->  本地 outputs/system_logs/
 
   与 ops/05 / 06 同模式（ssh alive 探测 + scp + 逐文件字节校验），但跳过规则不同：
@@ -32,7 +36,8 @@ param(
 
 $ErrorActionPreference = 'Continue'
 $repoRoot = Split-Path -Parent $PSScriptRoot
-if ($LocalRoot -eq '') { $LocalRoot = Join-Path $repoRoot 'outputs' }
+if ($LocalRoot -eq '') { $LocalRoot = Join-Path $repoRoot 'local_projects' }
+$machineLogRoot = Join-Path $repoRoot 'outputs/system_logs'
 
 # 项目 ID 校验（与后端 server/domain.js 的 sanitizeProjectId 同规则）
 if ($Project -notmatch '^[A-Za-z0-9._-]{1,64}$' -or $Project.StartsWith('.')) {
@@ -79,21 +84,26 @@ foreach ($line in $lines) {
     }
     foreach ($f in $files) {
       $parts = "$f".Trim() -split "`t"
+      $localSub = if ($sub -eq 'figures') {
+        "figures/$line"
+      } else {
+        "data/$line/$sub"
+      }
       $pending += [pscustomobject]@{
         Remote = $parts[1]
         Size   = [int64]$parts[0]
-        Local  = Join-Path $LocalRoot "$Project/$line/$sub/$(Split-Path -Leaf $parts[1])"
+        Local  = Join-Path $LocalRoot "$Project/$localSub/$(Split-Path -Leaf $parts[1])"
       }
     }
   }
 }
-$logOut = & ssh -o ConnectTimeout=10 -o BatchMode=yes $targetHost "find '$SsdRoot/system_logs' -maxdepth 1 -type f -name '*.json' -printf '%s\t%p\n' 2>/dev/null" 2>&1
+$logOut = & ssh -o ConnectTimeout=10 -o BatchMode=yes $targetHost "find '$SsdRoot/system_logs' -maxdepth 1 -type f -name '*_${Project}_*.json' -printf '%s\t%p\n' 2>/dev/null" 2>&1
 foreach ($f in @($logOut | Where-Object { "$_" -match "^(\d+)\t.*\.json$" })) {
   $parts = "$f".Trim() -split "`t"
   $pending += [pscustomobject]@{
     Remote = $parts[1]
     Size   = [int64]$parts[0]
-    Local  = Join-Path $LocalRoot "system_logs/$(Split-Path -Leaf $parts[1])"
+    Local  = Join-Path $machineLogRoot (Split-Path -Leaf $parts[1])
   }
 }
 
@@ -113,7 +123,17 @@ foreach ($item in $pending) {
 Write-Host ("[pull] 清单 $($pending.Count) 个：新增 $nNew / 未变跳过 $nSame / 远端已更新需覆盖 $nStale")
 
 if ($todo.Count -eq 0) {
-  Write-Host '[pull] 没有待回搬文件（本地均为最新副本），退出'
+  $existingMismatch = @($pending | Where-Object {
+    -not (Test-Path $_.Local) -or (Get-Item $_.Local).Length -ne $_.Size
+  })
+  if ($existingMismatch.Count -gt 0) {
+    Write-Host "[pull] FAIL 本地已有副本有 $($existingMismatch.Count) 个字节数不符" -ForegroundColor Red
+    $existingMismatch | Select-Object -First 20 | ForEach-Object {
+      Write-Host "  [校验] SIZE_MISMATCH $($_.Local)" -ForegroundColor Red
+    }
+    exit 1
+  }
+  Write-Host "[pull] PASS 本地 $($pending.Count) 个文件均与远端列表字节数一致，无需回搬" -ForegroundColor Green
   exit 0
 }
 
@@ -137,20 +157,14 @@ if ($fail -gt 0) {
   exit 1
 }
 
-# --- 5. 字节校验（远端 stat 批量 vs 本地 Length）---
+# --- 5. 字节校验（回搬前远端列表 Size vs 本地 Length）---
 Write-Host '[pull] 校验回搬文件字节数...'
-$remotePaths = ($todo | ForEach-Object { "'$($_.Remote)'" }) -join ' '
-$statOut = & ssh -o ConnectTimeout=10 -o BatchMode=yes $targetHost "stat -c '%n %s' $remotePaths 2>/dev/null" 2>&1
-$remoteSizes = @{}
-foreach ($statLine in $statOut) {
-  if ("$statLine" -match '^(.+) (\d+)$') { $remoteSizes[$Matches[1]] = [int64]$Matches[2] }
-}
 $mismatch = 0
 foreach ($item in $todo) {
-  $remoteSize = $remoteSizes[$item.Remote]
-  $localSize = (Get-Item $item.Local).Length
-  if ($null -eq $remoteSize -or $remoteSize -ne $localSize) {
-    Write-Host "  [校验] SIZE_MISMATCH $(Split-Path -Leaf $item.Remote) 远端 $remoteSize vs 本地 $localSize" -ForegroundColor Red
+  $localItem = Get-Item $item.Local -ErrorAction SilentlyContinue
+  $localSize = if ($localItem) { $localItem.Length } else { $null }
+  if ($null -eq $localSize -or $item.Size -ne $localSize) {
+    Write-Host "  [校验] SIZE_MISMATCH $(Split-Path -Leaf $item.Remote) 远端列表 $($item.Size) vs 本地 $localSize" -ForegroundColor Red
     $mismatch++
   }
 }

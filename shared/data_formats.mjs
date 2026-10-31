@@ -2,7 +2,7 @@
  * shared/data_formats.mjs — 数据文件格式白名单的唯一权威（S30 / 架构评审 2.3 A8）
  *
  * 为什么要有这个文件：
- *   同一份数据有两个入口：8787 工作台（BioanalysDesktop/server/upload.js 的
+ *   同一份数据有两个入口：18787 工作台（BioanalysDesktop/server/upload.js 的
  *   ALLOWED_EXT）与 8080 用户提交台（portal/lib/archive.mjs 的 DATA_EXT）。
  *   两边原来各持一份字面量（14 项 / 9 项），同一份数据走两个入口会得到不同
  *   校验结论。本模块把白名单收敛为单一事实源：两端都 import 这里，只此一份。

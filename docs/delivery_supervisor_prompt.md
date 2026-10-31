@@ -18,7 +18,7 @@
 - 根路径：`/mnt/ssd/bio_data/`（文件系统必须为 `f2fs` 或 `ext4`，严禁读写 `/sdcard` 等 FUSE 路径；剩余可用空间必须 >= 20%）。
 
 ### 2. 语言、依赖与随机种子基线
-- R 版本：`4.3.3`（核心栈：`clusterProfiler`, `WGCNA`, `limma`, `glmnet`, `scTenifoldKnk`）。
+- 当前 R 主线为 `4.5.3`，精确包版本按 `docs/software_versions.json` 及线 env manifest 核对，不从历史台账推当前环境。
 - Python 版本：`3.12.3`（核心栈：`scanpy 1.12.4`, `sklearn 1.9.1`, `shap 0.53.0`, `networkx 3.7`, `liana`, `scipy.optimize.nnls`）。
 - 全局随机种子：全流程固定 `seed = 20261013`（经 `BIOANALYS_SEED` 注入），严禁擅自更改导致结果漂移。
 
@@ -58,7 +58,7 @@
 - **禁改前后端框架**：严禁修改 `BioanalysDesktop/src/`（前端四视图）与 `BioanalysDesktop/server/`（14 模块 + 入口及 109 个单测）。
 - **禁改 ops 防崩底座**：严禁修改 ops 6 件套（`/mnt/ssd/bio_data/ops/` 下 5 个 + `/etc/profile.d/bio_limits.sh`）。
 - **禁改原始母版代码**：严禁直接修改 `bin/<line>/` 或 `src/<line>/scripts/` 下的 53 个原始模板脚本。
-- **禁破隔离与合规红线**：严禁跨线读取数据（如严禁从 `line2` 提取单细胞数据给 `line3` 做反卷积参考）；严禁绕过 20 条肿瘤/免疫浸润中英文正则黑名单（`server/tumor_blacklist.js`，2026-10-21 按 `aims/aims.txt` §三.1 规格正本二次裁定：由实现侧 27 条吸纳 12 条可用项后定为 20 条）；严禁把虚拟敲除当成第四条独立线。
+- **禁破隔离与合规红线**：严禁跨线读取数据（如严禁从 `line2` 提取单细胞数据给 `line3` 做反卷积参考）；严禁绕过 20 条肿瘤/免疫浸润中英文正则黑名单（`server/tumor_blacklist.js`，现行口径见 `aims/20261026_0749_aims_v3_0_spec.md` §2.1：由实现侧 27 条吸纳 12 条可用项后定为 20 条）；严禁把虚拟敲除当成第四条独立线。
 
 ### 2. 项目实例沙盒复制与自主适配原则（方案 A）
 - **工作沙盒锚定**：所有客户项目操作严格限定在 `/mnt/ssd/bio_data/projects/<project_id>/<line>/` 目录下。

@@ -1,0 +1,23 @@
+line3_spatial 全链取证 | 项目=PRJ_AIMS_V3_20261027 线=line3_spatial 种子=20261013 工作台=http://127.0.0.1:8792
+步骤数=17 起始索引=0 预检=开
+空间虚拟敲除靶基因（提交层字段）=Spp1
+PASS | 工作台在线 | HTTP undefined
+PASS | 1. ingest_spatial 结果 | status=completed exit=0
+PASS | 2. qc_spots 结果 | status=completed exit=0
+PASS | 3. normalize_hvg 结果 | status=completed exit=0
+PASS | 4. dim_reduce 结果 | status=completed exit=0
+PASS | 5. spatial_domains 结果 | status=completed exit=0
+PASS | 6. spatial_markers 结果 | status=completed exit=0
+PASS | 7. spatial_autocorr 结果 | status=completed exit=0
+PASS | 8. spatial_cooccurrence 结果 | status=completed exit=0
+PASS | 9. spatial_composition 结果 | status=completed exit=0
+PASS | 10. spatial_communication 结果 | status=completed exit=0
+PASS | 11. celltype_annotation 结果 | status=completed exit=0
+PASS | 12. spatial_localization 结果 | status=completed exit=0
+PASS | 13. spatial_knockout 结果 | status=completed exit=0
+PASS | 14. dr_post_analysis 结果 | status=completed exit=0
+PASS | 15. enrichment 结果 | status=completed exit=0
+PASS | 16. enrichment_figures 结果 | status=completed exit=0
+PASS | 17. spatial_figures 结果 | status=completed exit=0
+
+结果：18/18 通过，WARN 0 条

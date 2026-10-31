@@ -33,6 +33,7 @@
 """
 
 import argparse
+import base64
 import datetime
 import fnmatch
 import hashlib
@@ -41,6 +42,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -793,21 +795,47 @@ def scan_project(project_dir):
 
     lines = {}
     for line in LINES:
-        base = os.path.join(project_dir, line)
-        if not os.path.isdir(base):
+        legacy_base = os.path.join(project_dir, line)
+        data_base = os.path.join(project_dir, "data", line)
+        figure_base = os.path.join(project_dir, "figures", line)
+        adapt_base = os.path.join(project_dir, "figures", "adapt")
+        if not os.path.isdir(legacy_base) and not os.path.isdir(data_base) and not os.path.isdir(figure_base):
             continue
-        entry = {"dir": base, "figures": [], "results": [], "processed": [],
-                 "scripts": [], "tables": []}
-        for sub, key in (("figures", "figures"), ("results", "results"),
-                         ("processed", "processed"), ("scripts", "scripts")):
-            d = os.path.join(base, sub)
-            if os.path.isdir(d):
-                # 统一用正斜杠：报告与清单里的相对路径要跨平台可读，
-                # 且 STEP_CATALOG 的产物声明也是正斜杠写法
-                entry[key] = sorted(
-                    sub + "/" + n for n in os.listdir(d)
-                    if os.path.isfile(os.path.join(d, n))
-                )
+        entry = {"dir": project_dir, "figures": [], "results": [], "processed": [],
+                 "scripts": [], "adapted": [], "tables": []}
+        if os.path.isdir(legacy_base):
+            entry["dir"] = legacy_base
+            entry["search_dir"] = legacy_base
+            for sub, key in (("figures", "figures"), ("results", "results"),
+                             ("processed", "processed"), ("scripts", "scripts"),
+                             ("figures/adapt", "adapted")):
+                d = os.path.join(legacy_base, sub)
+                if os.path.isdir(d):
+                    entry[key] = sorted(
+                        sub + "/" + n for n in os.listdir(d)
+                        if os.path.isfile(os.path.join(d, n))
+                        and (key != "adapted" or n.lower().endswith((".r", ".py")))
+                    )
+        else:
+            entry["search_dir"] = data_base
+            for sub, key in (("processed", "processed"), ("results", "results")):
+                d = os.path.join(data_base, sub)
+                if os.path.isdir(d):
+                    entry[key] = sorted(
+                        "data/%s/%s/%s" % (line, sub, n)
+                        for n in os.listdir(d)
+                        if os.path.isfile(os.path.join(d, n))
+                    )
+            for d, key, prefix in (
+                (figure_base, "figures", "figures/%s" % line),
+                (adapt_base, "adapted", "figures/adapt"),
+            ):
+                if os.path.isdir(d):
+                    entry[key] = sorted(
+                        prefix + "/" + n for n in os.listdir(d)
+                        if os.path.isfile(os.path.join(d, n))
+                        and (key != "adapted" or n.lower().endswith((".r", ".py")))
+                    )
         # 交付用结果表：results/ 是规范位置，但母版脚本实际把统计表写在 processed/。
         # 只收表格类扩展名，不把 .h5ad/.rds/.pkl 检查点或 .pdf 图件混进 tables。
         entry["tables"] = sorted(set(
@@ -859,10 +887,11 @@ def artifact_dir(entry):
     优先 results/（非空时），否则回落 processed/。两者都不存在返回 results/
     的路径，让下游 summarize_* 自然读不到并如实返回 None（不编数字）。
     """
-    results = os.path.join(entry["dir"], "results")
+    base = entry.get("search_dir") or entry["dir"]
+    results = os.path.join(base, "results")
     if entry.get("results"):
         return results
-    processed = os.path.join(entry["dir"], "processed")
+    processed = os.path.join(base, "processed")
     if entry.get("processed"):
         return processed
     return results
@@ -1396,6 +1425,10 @@ def chapter3(ctx):
 
         blocks.append(("h3", "步骤 %s · %s" % (item.get("order") or "?", label)))
         blocks.append(("p", "**标记**：`%s`" % tag))
+        blocks.append(("callout", (
+            "DEG 是组间转录本丰度消长；DR Genes 是虚拟敲除后的调控网络拓扑微扰，"
+            "表达量未必改变，二者不可互换判读。"
+        )))
 
         # ① 核心结论：有数据说数据，没数据说没数据
         conclusion = None
@@ -1477,7 +1510,53 @@ def chapter3(ctx):
         # ④ SCI 英文图注模板
         if meta.get("legend"):
             blocks.append(("code", "Figure legend: " + meta["legend"]))
+    append_gallery(blocks, ctx)
     return "第三章：分步分析结果与三段式深度解读 (Step-by-Step Results)", blocks
+
+
+def figure_dpi(project):
+    """取项目声明的出图 DPI；缺失时按管线归一化口径回落 300。"""
+    try:
+        return int((project.get("plot_layout_config") or {}).get("dpi") or 300)
+    except (TypeError, ValueError):
+        return 300
+
+
+def build_gallery_assets(ctx):
+    """收集可内联的 PNG 图件，按分析线与文件名稳定排序。"""
+    assets = []
+    for line in LINES:
+        entry = ctx["lines"].get(line)
+        if not entry:
+            continue
+        for rel in entry["figures"]:
+            if not rel.lower().endswith(".png"):
+                continue
+            full = os.path.join(entry["dir"], rel)
+            if not os.path.isfile(full):
+                continue
+            try:
+                with open(full, "rb") as fh:
+                    data = base64.b64encode(fh.read()).decode("ascii")
+            except OSError:
+                continue
+            assets.append({
+                "title": os.path.splitext(os.path.basename(rel))[0],
+                "line": LINE_LABEL.get(line, line),
+                "path": f"figures/{line}/{os.path.basename(rel)}",
+                "dpi": figure_dpi(ctx["project"]),
+                "data": data,
+            })
+    return assets
+
+
+def append_gallery(blocks, ctx):
+    """把项目真实 PNG 图件并入第三章尾部，保持七章结构不变。"""
+    assets = build_gallery_assets(ctx)
+    if not assets:
+        return
+    blocks.append(("h3", "300 DPI 图廊"))
+    blocks.append(("gallery", assets))
 
 
 def chapter4(ctx):
@@ -1702,6 +1781,9 @@ def render_markdown(meta, chapters):
                 out.append(payload)
                 out.append("```")
                 out.append("")
+            elif kind == "callout":
+                out.append("> " + payload)
+                out.append("")
             elif kind == "kv":
                 out.append("| 字段 | 内容 |")
                 out.append("|---|---|")
@@ -1746,6 +1828,11 @@ ul{padding-left:22px}
 .tag-deg,.tag-dr{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
 .tag-deg{background:#e0edff;color:#1d4ed8}
 .tag-dr{background:#ffedd5;color:#c2410c}
+.callout{background:#ecfeff;border-left:4px solid #0891b2;padding:10px 14px;margin:12px 0;color:#155e75}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin:14px 0}
+.gallery-item{background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:0}
+.gallery-item img{width:100%;height:auto;display:block}
+.gallery-item figcaption{padding:10px 12px;font-size:12.5px;color:var(--muted)}
 .search{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font-size:13px;margin-bottom:14px}
 .hidden{display:none}
 @media(max-width:900px){.layout{grid-template-columns:1fr}nav{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line)}main{padding:24px}}
@@ -1793,6 +1880,19 @@ def render_html(meta, chapters):
                 body.append("<ul>%s</ul>" % "".join("<li>%s</li>" % html.escape(x) for x in payload))
             elif kind == "code":
                 body.append("<pre>%s</pre>" % html.escape(payload))
+            elif kind == "callout":
+                body.append('<div class="callout">%s</div>' % html.escape(payload))
+            elif kind == "gallery":
+                cards = []
+                for asset in payload:
+                    src = "data:image/png;base64,%s" % asset["data"]
+                    cards.append(
+                        '<figure class="gallery-item"><img src="%s" alt="%s">'
+                        '<figcaption><strong>%s</strong> · %s · %s DPI</figcaption></figure>'
+                        % (src, html.escape(asset["title"]), html.escape(asset["title"]),
+                           html.escape(asset["line"]), html.escape(str(asset["dpi"])))
+                    )
+                body.append('<div class="gallery">%s</div>' % "".join(cards))
             elif kind == "kv":
                 rows = "".join("<tr><th>%s</th><td>%s</td></tr>" % (html.escape(k), html.escape(str(v)))
                                for k, v in payload)
@@ -1847,33 +1947,111 @@ def collect_chapters(ctx):
     return [builder(ctx) for builder in CHAPTER_BUILDERS]
 
 
+ADAPTED_CODE_DIR = "01_Adapted_Code"
+PUBLIC_KEY_NAME = "ED25519_PUBLIC_KEY.pem"
+MASTER_HEADER_RE = re.compile(
+    r"^#\s*Master-Source:\s*(.*?)\s*\|\s*Master-SHA256:\s*([0-9a-f]{64})\s*$",
+    re.MULTILINE,
+)
+
+
 def assemble(ctx, out_dir, no_tar=False):
     """生成三大件并打包。返回产物路径字典。"""
     meta = build_meta(ctx)
     chapters = collect_chapters(ctx)
 
     delivery = os.path.join(out_dir, "%s_Client_Delivery" % ctx["project_id"])
-    d_scripts = os.path.join(delivery, "01_Adapted_Scripts")
+    # 同项目重建必须从空目录开始，旧包残留文件不得混入新清单与签名。
+    if os.path.isdir(delivery):
+        shutil.rmtree(delivery)
+    d_code = os.path.join(delivery, "01_Adapted_Code")
     d_figures = os.path.join(delivery, "02_Figures_and_Tables")
     d_report = os.path.join(delivery, "03_Interpretation_Report")
-    for d in (d_scripts, d_figures, d_report):
+    for d in (d_code, d_figures, d_report):
         os.makedirs(d, exist_ok=True)
 
-    copied = {"scripts": 0, "figures": 0, "tables": 0}
+    copied = {"scripts": 0, "adapted_code": 0, "figures": 0, "tables": 0}
+    adapted_reconcile = []
 
-    # 第一大件：实例脚本（按线分子目录，脚本内绝对路径脱敏）
+    # 第一大件：适配代码。普通实例脚本按线落盘；图级模板派生副本保留
+    # figures/adapt 的项目内语义，便于和母版 SHA256 对账。
     for line, entry in ctx["lines"].items():
         for rel in entry["scripts"]:
             src = os.path.join(entry["dir"], rel)
-            dst = os.path.join(d_scripts, line, os.path.basename(rel))
+            text = read_text(src)
+            header = MASTER_HEADER_RE.search(text)
+            if header:
+                # 18787 现有上传接缝会把派生副本放进本线 scripts/；
+                # 打包时按头部证据归位到交付包的 figures/adapt。
+                dst = os.path.join(d_code, "figures", "adapt", os.path.basename(rel))
+                rel_path = "figures/adapt/" + os.path.basename(rel)
+            else:
+                dst = os.path.join(d_code, line, os.path.basename(rel))
+                rel_path = "%s/%s" % (line, os.path.basename(rel))
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            try:
+                with open(dst, "w", encoding="utf-8", newline="\n") as fh:
+                    fh.write(desensitize(text, ctx["project_dir"]))
+                if header:
+                    copied["adapted_code"] += 1
+                    adapted_reconcile.append({
+                        "path": rel_path,
+                        "master_source": header.group(1),
+                        "master_sha256": header.group(2),
+                        "derived_sha256": hashlib.sha256(
+                            desensitize(text, ctx["project_dir"]).encode("utf-8")
+                        ).hexdigest(),
+                    })
+                else:
+                    copied["scripts"] += 1
+            except OSError:
+                pass
+
+    for line, entry in ctx["lines"].items():
+        for rel in entry.get("adapted", []):
+            src = os.path.join(entry["dir"], rel)
+            dst = os.path.join(d_code, rel)
             os.makedirs(os.path.dirname(dst), exist_ok=True)
             try:
                 text = read_text(src)
+                header = MASTER_HEADER_RE.search(text)
+                if not header:
+                    raise RuntimeError(
+                        "figures/adapt 缺少 Master-Source 与 Master-SHA256 头: %s" % rel
+                    )
                 with open(dst, "w", encoding="utf-8", newline="\n") as fh:
                     fh.write(desensitize(text, ctx["project_dir"]))
-                copied["scripts"] += 1
+                copied["adapted_code"] += 1
+                adapted_reconcile.append({
+                    "path": rel,
+                    "master_source": header.group(1),
+                    "master_sha256": header.group(2),
+                    "derived_sha256": hashlib.sha256(
+                        desensitize(text, ctx["project_dir"]).encode("utf-8")
+                    ).hexdigest(),
+                })
             except OSError:
                 pass
+
+    if adapted_reconcile:
+        report_path = os.path.join(d_code, "_report.txt")
+        lines = [
+            "# 01_Adapted_Code 对账说明",
+            "",
+            "required_master_header=true",
+            "header_fields=Master-Source, Master-SHA256",
+            "",
+        ]
+        for item in sorted(adapted_reconcile, key=lambda row: row["path"]):
+            lines.extend([
+                "## %s" % item["path"],
+                "Master-Source: %s" % item["master_source"],
+                "Master-SHA256: %s" % item["master_sha256"],
+                "Delivered-SHA256: %s" % item["derived_sha256"],
+                "",
+            ])
+        with open(report_path, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write("\n".join(lines).rstrip("\n") + "\n")
 
     # 第二大件：图件与结果表
     for line, entry in ctx["lines"].items():
@@ -1915,6 +2093,9 @@ def assemble(ctx, out_dir, no_tar=False):
         "files": {
             "scripts": ["%s/%s" % (line, os.path.basename(rel))
                         for line, e in ctx["lines"].items() for rel in e["scripts"]],
+            "adapted_code": [rel
+                             for line, e in ctx["lines"].items()
+                             for rel in e.get("adapted", [])],
             "figures": ["figures/%s/%s" % (line, os.path.basename(rel))
                         for line, e in ctx["lines"].items() for rel in e["figures"]],
             "tables": ["tables/%s/%s" % (line, os.path.basename(rel))
@@ -1929,12 +2110,21 @@ def assemble(ctx, out_dir, no_tar=False):
     # 只覆盖三大件与 manifest 自身落盘之后的现实，manifest 里的 counts 是
     # 复制成功计数、这里是文件系统实测字节，两者不一致以本清单为准。
     checksums = write_checksums(delivery)
+    signature = sign_checksums(delivery, required=True)
 
     tar_path = None
+    sidecar_path = None
     if not no_tar:
         tar_path = os.path.join(out_dir, "%s_Client_Delivery.tar.gz" % ctx["project_id"])
         with tarfile.open(tar_path, "w:gz") as tar:
             tar.add(delivery, arcname=os.path.basename(delivery))
+        digest = hashlib.sha256()
+        with open(tar_path, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                digest.update(chunk)
+        sidecar_path = tar_path + ".sha256"
+        with open(sidecar_path, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write("%s  %s\n" % (digest.hexdigest(), os.path.basename(tar_path)))
 
     return {
         "delivery_dir": delivery,
@@ -1943,7 +2133,10 @@ def assemble(ctx, out_dir, no_tar=False):
         "manifest": os.path.join(delivery, "delivery_manifest.json"),
         "checksums": checksums["path"],
         "checksums_count": checksums["count"],
+        "signature": signature,
+        "public_key": os.path.join(delivery, PUBLIC_KEY_NAME),
         "tar": tar_path,
+        "tar_sha256": sidecar_path,
         "counts": copied,
         "chapters": len(chapters),
     }
@@ -1952,6 +2145,7 @@ def assemble(ctx, out_dir, no_tar=False):
 # 校验清单名：与本地 .sha256 旁挂同一套 sha256sum 语法，客户可直接
 # `sha256sum -c CHECKSUMS.sha256` 复核包内每个文件是否被改过。
 CHECKSUMS_NAME = "CHECKSUMS.sha256"
+SIGNATURE_NAME = "CHECKSUMS.sig"
 
 
 def write_checksums(delivery_dir, skip=()):
@@ -1970,7 +2164,7 @@ def write_checksums(delivery_dir, skip=()):
         for name in sorted(filenames):
             full = os.path.join(dirpath, name)
             rel = os.path.relpath(full, delivery_dir).replace(os.sep, "/")
-            if rel in skip_set or rel == CHECKSUMS_NAME:
+            if rel in skip_set or rel in (CHECKSUMS_NAME, SIGNATURE_NAME):
                 continue
             if not os.path.isfile(full):
                 continue
@@ -1988,6 +2182,56 @@ def write_checksums(delivery_dir, skip=()):
         for rel, digest in rows:
             fh.write("%s  %s\n" % (digest, rel))
     return {"path": checksums_path, "files": [rel for rel, _ in rows], "count": len(rows)}
+
+
+def sign_checksums(delivery_dir, required=False):
+    """用 Ed25519 私钥对 CHECKSUMS.sha256 生成 CHECKSUMS.sig。"""
+    node = shutil.which("node")
+    if not node:
+        raise RuntimeError("node 不可用，无法生成 CHECKSUMS.sig")
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ed25519_tools.mjs")
+    result = subprocess.run(
+        [node, script, "--delivery-dir", delivery_dir, "--sign-only"]
+        + (["--required"] if required else []),
+        capture_output=True, text=True, timeout=120,
+    )
+    if result.returncode != 0:
+        raise RuntimeError("Ed25519 签名失败: %s" % result.stderr.strip())
+    signature_path = os.path.join(delivery_dir, SIGNATURE_NAME)
+    if not os.path.isfile(signature_path) or os.path.getsize(signature_path) != 64:
+        raise RuntimeError("CHECKSUMS.sig 生成失败或不是 64 字节")
+    return {"path": signature_path, "bytes": os.path.getsize(signature_path)}
+
+
+def generate_selftest_ed25519_keys(root):
+    """自检用一次性密钥：写临时文件读入内存后立即删除。"""
+    node = shutil.which("node")
+    if not node:
+        raise RuntimeError("node 不可用，无法生成自检 Ed25519 密钥")
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ed25519_tools.mjs")
+    private_path = os.path.join(root, ".selftest_private_key")
+    public_path = os.path.join(root, ".selftest_public_key")
+    result = subprocess.run(
+        [node, script, "--generate-keys", "--private-key-output", private_path,
+         "--public-key-output", public_path],
+        capture_output=True, text=True, timeout=30,
+    )
+    if result.returncode != 0:
+        raise RuntimeError("自检 Ed25519 密钥生成失败: %s" % result.stderr.strip())
+    try:
+        private_key = read_text(private_path).strip()
+        public_key = read_text(public_path).strip()
+        if not private_key.startswith("-----BEGIN PRIVATE KEY-----"):
+            raise RuntimeError("自检私钥文件不完整")
+        if not public_key.startswith("-----BEGIN PUBLIC KEY-----"):
+            raise RuntimeError("自检公钥文件不完整")
+        return private_key, public_key
+    finally:
+        for path in (private_path, public_path):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
 
 # ============================================================
 # 自检与 CLI
@@ -2041,7 +2285,30 @@ def self_test():
     with open(os.path.join(proj, "line1_bulk", "scripts", "deg_limma"), "w", encoding="utf-8") as fh:
         fh.write("#!/bin/bash\n# 数据目录：%s/projects/PRJ_SELFTEST\n" % DATA_ROOT)
 
+    selfcheck = {
+        "checks": [
+            {"id": "fs_type", "label": "文件系统", "status": "pass", "value": "ext4"},
+            {"id": "storage", "label": "存储水位", "status": "pass", "value": "82% free"},
+            {"id": "memory", "label": "内存水位", "status": "pass", "value": "3.2/7.5GB"},
+            {"id": "isolation", "label": "跨线隔离", "status": "pass", "value": "line1 ok"},
+            {"id": "link", "label": "链路连通", "status": "pass", "value": "ssh ok"},
+        ],
+    }
+    with open(os.path.join(proj, "selfcheck.json"), "w", encoding="utf-8") as fh:
+        json.dump(selfcheck, fh, ensure_ascii=False, indent=2)
+
     ctx = scan_project(proj)
+    ctx["ledgers"] = [{
+        "task_id": "task-selftest-0001",
+        "line_id": "line1_bulk",
+        "step_name": "deg_limma",
+        "status": "completed",
+        "checkpoint_status": "passed",
+        "start_time": "2026-10-26T10:00:00Z",
+        "end_time": "2026-10-26T10:01:00Z",
+        "environment": {"language": "R", "version": "4.5.3", "random_seed": 20261026},
+        "resource_usage": {"max_memory_gb": 1.2},
+    }]
     check("扫描到 project.json", ctx["project_id"] == "PRJ_SELFTEST")
     check("扫描到 1 条分析线", len(ctx["lines"]) == 1)
     check("扫描到结果表", "results/deg_sig.tsv" in ctx["lines"]["line1_bulk"]["results"])
@@ -2063,12 +2330,12 @@ def self_test():
     # 用假清单测纯函数：不依赖本机是否部署了真实清单，跑在哪台机器结论都一样。
     fake_versions = {
         "seed": {"value": 20261013},
-        "interpreters": [{"name": "R", "version": "4.3.3", "language": "R", "role": "统计",
+        "interpreters": [{"name": "R", "version": "4.5.3", "language": "R", "role": "统计",
                           "lines": ["line1_bulk", "line2_scrna"]}],
         "packages": [
             {"name": "WGCNA", "version": "1.74", "language": "R", "role": "共表达网络",
              "lines": ["line1_bulk"], "citation": "WGCNA"},
-            {"name": "limma", "version": "3.58.1", "language": "R", "role": "DEG",
+            {"name": "limma", "version": "3.68.5", "language": "R", "role": "DEG",
              "lines": ["line1_bulk"], "citation": "limma"},
             {"name": "scanpy", "version": "1.12.4", "language": "Python", "role": "单细胞",
              "lines": ["line2_scrna"], "citation": "Scanpy"},
@@ -2136,21 +2403,47 @@ def self_test():
     check("HTML 单文件且无外链资源",
           "<style>" in page and "<script>" in page and "http://" not in page and "https://" not in page)
     check("HTML 含七章锚点", page.count('<h2 id="ch') == 7)
+    check("300 DPI 图廊已内联",
+          "300 DPI 图廊" in page and "data:image/png;base64," in page and "300 DPI" in page)
+    check("DEG 与 DR 标记强区分",
+          "tag-deg" in page and "tag-dr" in page
+          and "DEG 是组间转录本丰度消长" in page and "DR Genes 是虚拟敲除后的调控网络拓扑微扰" in page)
+    check("五维自检与台账摘要已渲染",
+          "五维环境自检" in page and "台账汇总" in page and "跨线隔离" in page)
 
     out = os.path.join(root, "deliverables")
     os.makedirs(out, exist_ok=True)
-    result = assemble(ctx, out)
+    saved_private_key = os.environ.get("BIO_ED25519_PRIVATE_KEY")
+    saved_public_key = os.environ.get("BIO_ED25519_PUBLIC_KEY")
+    selftest_private_key, selftest_public_key = generate_selftest_ed25519_keys(root)
+    os.environ["BIO_ED25519_PRIVATE_KEY"] = selftest_private_key
+    os.environ["BIO_ED25519_PUBLIC_KEY"] = selftest_public_key
+    try:
+        result = assemble(ctx, out)
+    finally:
+        if saved_private_key is None:
+            os.environ.pop("BIO_ED25519_PRIVATE_KEY", None)
+        else:
+            os.environ["BIO_ED25519_PRIVATE_KEY"] = saved_private_key
+        if saved_public_key is None:
+            os.environ.pop("BIO_ED25519_PUBLIC_KEY", None)
+        else:
+            os.environ["BIO_ED25519_PUBLIC_KEY"] = saved_public_key
     check("三大件目录齐全",
           all(os.path.isdir(os.path.join(result["delivery_dir"], d))
-              for d in ("01_Adapted_Scripts", "02_Figures_and_Tables", "03_Interpretation_Report")))
+              for d in ("01_Adapted_Code", "02_Figures_and_Tables", "03_Interpretation_Report")))
     check("报告 md/html 都落盘",
           os.path.isfile(result["report_md"]) and os.path.isfile(result["report_html"]))
     check("脚本绝对路径已脱敏",
-          DATA_ROOT not in read_text(os.path.join(result["delivery_dir"], "01_Adapted_Scripts",
+          DATA_ROOT not in read_text(os.path.join(result["delivery_dir"], "01_Adapted_Code",
                                                   "line1_bulk", "deg_limma")))
     check("tar.gz 已生成且非空",
           result["tar"] and os.path.getsize(result["tar"]) > 0,
           human_bytes(os.path.getsize(result["tar"]) if result["tar"] else 0))
+    signature_path = os.path.join(result["delivery_dir"], SIGNATURE_NAME)
+    public_key_path = os.path.join(result["delivery_dir"], PUBLIC_KEY_NAME)
+    check("签名与公钥材料落盘", result["signature"] and os.path.isfile(signature_path)
+          and os.path.isfile(public_key_path))
 
     # ---- 包内完整性清单（m00939 边界①）----
     cks = result.get("checksums")
@@ -2215,7 +2508,19 @@ def self_test():
     check("processed-only 项目仍给出 DEG 结论", "**2** 个差异表达基因" in proc_md)
     proc_out = os.path.join(root, "deliverables_proc")
     os.makedirs(proc_out, exist_ok=True)
-    proc_result = assemble(proc_ctx, proc_out, no_tar=True)
+    os.environ["BIO_ED25519_PRIVATE_KEY"] = selftest_private_key
+    os.environ["BIO_ED25519_PUBLIC_KEY"] = selftest_public_key
+    try:
+        proc_result = assemble(proc_ctx, proc_out, no_tar=True)
+    finally:
+        if saved_private_key is None:
+            os.environ.pop("BIO_ED25519_PRIVATE_KEY", None)
+        else:
+            os.environ["BIO_ED25519_PRIVATE_KEY"] = saved_private_key
+        if saved_public_key is None:
+            os.environ.pop("BIO_ED25519_PUBLIC_KEY", None)
+        else:
+            os.environ["BIO_ED25519_PUBLIC_KEY"] = saved_public_key
     check("processed-only 项目结果表进第二大件", proc_result["counts"]["tables"] >= 2,
           str(proc_result["counts"]))
 
@@ -2270,6 +2575,8 @@ def main(argv=None):
     print("  报告：%s" % os.path.basename(result["report_md"]))
     print("  校验清单：%s（%d 个文件，sha256sum -c 可复核）"
           % (CHECKSUMS_NAME, result.get("checksums_count", 0)))
+    if result.get("signature"):
+        print("  签名：CHECKSUMS.sig（64 字节，客户端公钥验签）")
     print("  图件 %d / 结果表 %d / 脚本 %d"
           % (result["counts"]["figures"], result["counts"]["tables"], result["counts"]["scripts"]))
     if result["tar"]:

@@ -1,0 +1,13 @@
+{
+  "generated_at": "2026-10-28T10:47:44.4762688+08:00",
+  "archive": "local_projects\\PRJ_AIMS_V3_20261027\\deliverables\\PRJ_AIMS_V3_20261027_Client_Delivery.tar.gz",
+  "archive_bytes": 72943771,
+  "archive_sha256_expected": "433b2116eb84cff4f8d1b39ef9a85a90aa329fb145f0f9dda0483811de8eb2ce",
+  "archive_sha256_actual": "433b2116eb84cff4f8d1b39ef9a85a90aa329fb145f0f9dda0483811de8eb2ce",
+  "archive_sha256_match": true,
+  "extracted_dir": "con_hf\\runs\\2026-10-28_final_gate_v31\\delivery_extract\\PRJ_AIMS_V3_20261027_Client_Delivery",
+  "manifest_entries": 329,
+  "extracted_files": 332,
+  "signature": "VERIFIED 329",
+  "exit_code": 0
+}

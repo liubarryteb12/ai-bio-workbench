@@ -1,0 +1,100 @@
+{
+  "catalog_path": "D:\\00.AIagent\\codespace\\AI辅助生信分析流程工作台\\ops\\tests\\batch_direct_fixture\\library\\catalog.json",
+  "entries": [
+    {
+      "artifact": {
+        "blank": null,
+        "detail": "artifact missing",
+        "exists": false,
+        "height": null,
+        "path": "artifact.png",
+        "sha256": null,
+        "size_bytes": null,
+        "valid": false,
+        "width": null
+      },
+      "catalog_id": "rgg_0070",
+      "evidence_dir": "rgg_0070",
+      "exit_code": 1,
+      "failure_kind": "code_failure",
+      "source_sha256": "cceba4cc16b0758aa3f142c6ffbb453f10137c56e0fa6e642325907c95dcfe53",
+      "source_status": "code_ready",
+      "status": "failed",
+      "validation_exit": 1,
+      "verdict": "fail"
+    },
+    {
+      "artifact": {
+        "blank": null,
+        "detail": "artifact missing",
+        "exists": false,
+        "height": null,
+        "path": "artifact.png",
+        "sha256": null,
+        "size_bytes": null,
+        "valid": false,
+        "width": null
+      },
+      "catalog_id": "rgg_0117",
+      "evidence_dir": "rgg_0117",
+      "exit_code": 1,
+      "failure_kind": "code_failure",
+      "source_sha256": "d9975cbb4154518e6cdb36f16c3e4ed048506a28976fbddc1b0fa65ca39070d1",
+      "source_status": "code_ready",
+      "status": "failed",
+      "validation_exit": 1,
+      "verdict": "fail"
+    },
+    {
+      "artifact": {
+        "blank": null,
+        "detail": "artifact missing",
+        "exists": false,
+        "height": null,
+        "path": "artifact.png",
+        "sha256": null,
+        "size_bytes": null,
+        "valid": false,
+        "width": null
+      },
+      "catalog_id": "rgg_0136",
+      "evidence_dir": "rgg_0136",
+      "exit_code": 1,
+      "failure_kind": "code_failure",
+      "source_sha256": "ece572e1d9c48a62cbe06d615df0849be29a0e88211dc91f9976f7e6522370b9",
+      "source_status": "code_ready",
+      "status": "failed",
+      "validation_exit": 1,
+      "verdict": "fail"
+    }
+  ],
+  "environment": {
+    "host": "k40-ubuntu",
+    "r_libs_user": "/opt/R/4.5.3-site-library",
+    "remote_root": "/mnt/ssd/bio_data",
+    "rscript": "/opt/R/4.5.3/bin/Rscript",
+    "seed": 42,
+    "threads": 4,
+    "timeout_seconds": 180
+  },
+  "generated_at": "2026-10-27T21:08:59+08:00",
+  "output_root": "D:\\00.AIagent\\codespace\\AI辅助生信分析流程工作台\\ops\\tests\\batch_direct_fixture\\r_adapter",
+  "run_id": "figure_catalog_r_adapter_20261027_210851",
+  "schema_version": 1,
+  "selection": {
+    "language": "R",
+    "status": "code_ready"
+  },
+  "summary": {
+    "code_failure": 3,
+    "dependency_failure": 0,
+    "failed": 3,
+    "image_failure": 0,
+    "network_failure": 0,
+    "pass": 0,
+    "source_mismatch": 0,
+    "timeout": 0,
+    "total": 3,
+    "transfer_failure": 0
+  }
+}

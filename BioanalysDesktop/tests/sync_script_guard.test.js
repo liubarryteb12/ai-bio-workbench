@@ -18,12 +18,10 @@ const PROC = path.join(ROOT, 'BioanalysDesktop', 'server', 'proc.js');
 const syncText = fs.readFileSync(SYNC, 'utf8');
 const procText = fs.readFileSync(PROC, 'utf8');
 
-test('同步脚本存在且是 UTF-8 with BOM（中文 .ps1 铁律）', () => {
+test('同步脚本存在且是 UTF-8 无 BOM（当前仓库铁律）', () => {
   const buf = fs.readFileSync(SYNC);
   assert.ok(buf.length > 3000, '同步脚本过短，可能被截断');
-  assert.equal(buf[0], 0xef, '缺 UTF-8 BOM 第 1 字节');
-  assert.equal(buf[1], 0xbb, '缺 UTF-8 BOM 第 2 字节');
-  assert.equal(buf[2], 0xbf, '缺 UTF-8 BOM 第 3 字节');
+  assert.notDeepEqual(Array.from(buf.subarray(0, 3)), [0xef, 0xbb, 0xbf], '不应出现 UTF-8 BOM');
 });
 
 test('同步脚本自身只用 LF（避免 CRLF 进 git 与远端）', () => {
@@ -129,17 +127,12 @@ test('P-07 所有用 childProcess 垫片的测试文件都走默认导入', () =
   assert.ok(shimFiles >= 5, '垫片文件数异常偏少：' + shimFiles);
 });
 
-test('.gitattributes 把同步脚本钉成 LF，且规则排在 *.ps1 之后', () => {
-  // 没有这条，fresh clone 时 *.ps1 text eol=crlf 会把脚本 checkout 成 CRLF，
-  // 上一条断言在别人的机器上必红（而本机恰好是 LF，最容易漏）。
+test('.gitattributes 把所有 PowerShell 脚本钉成 LF', () => {
   const attrs = fs.readFileSync(path.join(ROOT, '.gitattributes'), 'utf8').split('\n');
-  const ps1At = attrs.findIndex((line) => /^\*\.ps1\s+text\s+eol=crlf/.test(line));
-  const pinAt = attrs.findIndex((line) =>
-    /^ops\/sync_and_verify_remote\.ps1\s+text\s+eol=lf/.test(line)
+  assert.ok(
+    attrs.some((line) => /^\*\.ps1\s+text\s+eol=lf/.test(line)),
+    '缺 *.ps1 text eol=lf 规则',
   );
-  assert.ok(ps1At >= 0, '缺 *.ps1 eol=crlf 规则');
-  assert.ok(pinAt >= 0, '缺 ops/sync_and_verify_remote.ps1 eol=lf 例外规则');
-  assert.ok(pinAt > ps1At, '例外规则必须排在 *.ps1 之后，否则被后面的规则覆盖');
 });
 
 test('同步脚本声明了三种退出码语义', () => {

@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "catalog_id": "rgg_0070",
+      "status": "code_ready",
+      "lang": "R",
+      "title": "rgg_0070",
+      "code_path": "code/rgg_0070.R",
+      "preview_path": "figures/rgg_0070.png",
+      "deps": [
+        "circlize"
+      ],
+      "code_file_sha256": "cceba4cc16b0758aa3f142c6ffbb453f10137c56e0fa6e642325907c95dcfe53"
+    },
+    {
+      "catalog_id": "rgg_0136",
+      "status": "code_ready",
+      "lang": "R",
+      "title": "rgg_0136",
+      "code_path": "code/rgg_0136.R",
+      "preview_path": "figures/rgg_0136.png",
+      "deps": [
+        "ggplot2",
+        "packcircles",
+        "viridis"
+      ],
+      "code_file_sha256": "ece572e1d9c48a62cbe06d615df0849be29a0e88211dc91f9976f7e6522370b9"
+    },
+    {
+      "catalog_id": "rgg_0117",
+      "status": "code_ready",
+      "lang": "R",
+      "title": "rgg_0117",
+      "code_path": "code/rgg_0117.R",
+      "preview_path": "figures/rgg_0117.png",
+      "deps": [
+        "tidyverse"
+      ],
+      "code_file_sha256": "d9975cbb4154518e6cdb36f16c3e4ed048506a28976fbddc1b0fa65ca39070d1"
+    }
+  ]
+}

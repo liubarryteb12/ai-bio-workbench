@@ -1,0 +1,14 @@
+selfcheck_all_pass=True
+preflight_exit=10
+{"port":18787,"status":"expected","safe_to_stop":true,"owners":[{"pid":51576,"process_name":"node.exe","states":["Listen"],"matches_expected":true}]}
+portal_health=200
+netstat:
+  TCP    127.0.0.1:9171         127.0.0.1:18787        TIME_WAIT       0
+  TCP    127.0.0.1:18787        0.0.0.0:0              LISTENING       51576
+dry_run:
+[2026-10-28 09:59:37] 守护启动 node=D:\node-v2.4\node.exe interval=30s once=True requireAuth=False dryRun=True
+[2026-10-28 09:59:38] 工作台 18787 正常
+[2026-10-28 09:59:38] 用户端 8080 正常
+[2026-10-28 09:59:38] sync daemon skip：SYNC_TOKEN 未配置
+[2026-10-28 09:59:38] frpc 不在运行，准备拉起
+[2026-10-28 09:59:38] [dry-run] 将拉起 frpc

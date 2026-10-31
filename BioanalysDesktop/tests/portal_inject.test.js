@@ -5,7 +5,7 @@
  * portal/serve.mjs 在返回页面时把唯一权威（shared/data_formats.mjs 与
  * BioanalysDesktop/server/tumor_blacklist.js）注入成 window.__SHARED_CONTRACTS__。
  * 本测试起真实 portal 服务，断言：注入内容与权威逐项相等、注入脚本安全、
- * 页面仍保留离线回落字面量、前端 #region P5 段在有/无注入时行为正确。
+ * 页面不再保存手工副本，且缺少注入时 fail-closed。
  */
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -78,26 +78,6 @@ function injectedJsonText(html) {
   return m[1];
 }
 
-/** 解析字面量副本（与 parity 测试同一套正则，确保测的是同一处文本） */
-function parseLiteralExt(html) {
-  const m = html.match(/var DATA_EXT\s*=\s*\[([^\]]*)\]\s*;/);
-  assert.ok(m, '页面里找不到 var DATA_EXT = [...]; 字面量');
-  return [...m[1].matchAll(/'([^']*)'/g)].map((x) => x[1]);
-}
-
-function parseLiteralMax(html) {
-  const m = html.match(/var MAX_DATA_BYTES\s*=\s*([0-9*\s]+);/);
-  assert.ok(m, '页面里找不到 var MAX_DATA_BYTES = ...; 字面量');
-  return m[1].split('*').map((s) => Number(s.trim())).reduce((a, b) => a * b, 1);
-}
-
-function parseLiteralBlacklist(html) {
-  const block = html.match(/var BL_PATTERNS\s*=\s*\[([\s\S]*?)\];/);
-  assert.ok(block, '页面里找不到 var BL_PATTERNS = [...]; 字面量');
-  return [...block[1].matchAll(/\/((?:[^\/\\\n]|\\.)+)\/([gimsuy]*)/g)]
-    .map((m) => ({ source: m[1], flags: m[2] }));
-}
-
 /** 取页面里的 #region P5 shared contracts 段（运行时覆盖逻辑） */
 function sharedContractsRegion(html) {
   const m = html.match(/\/\/ #region P5 shared contracts[\s\S]*?\/\/ #endregion P5 shared contracts/);
@@ -128,9 +108,9 @@ function runRegion(region, injection) {
     RegExp, Math, Array, JSON,
   };
   const prefix = [
-    "var DATA_EXT = ['.h5ad', '.rdata'];",
-    'var MAX_DATA_BYTES = 5 * 1024 * 1024 * 1024;',
-    'var BL_PATTERNS = [/cancer/i];',
+    'var DATA_EXT = [];',
+    'var MAX_DATA_BYTES = 0;',
+    'var BL_PATTERNS = [];',
   ].join('\n');
   const suffix = '\n;({ DATA_EXT: DATA_EXT, MAX_DATA_BYTES: MAX_DATA_BYTES, BL_PATTERNS: BL_PATTERNS });';
   const out = vm.runInNewContext(prefix + '\n' + region + suffix, sandbox, { filename: 'index.html#P5' });
@@ -188,28 +168,13 @@ test('注入脚本重建的正则与 checkTumorBlacklist 判定矩阵一致', ()
   }
 });
 
-// ---------- 2. 离线回落：字面量副本仍在且与权威一致 ----------
+// ---------- 2. 来源页不保存手工副本 ----------
 
-test('served 页面仍保留三处离线字面量副本（服务端注入不删副本）', () => {
-  assert.deepEqual(parseLiteralExt(pageHtml), SHARED_EXT);
-  assert.equal(parseLiteralMax(pageHtml), SHARED_MAX);
-  assert.equal(parseLiteralBlacklist(pageHtml).length, BLACKLIST_PATTERNS.length);
-  assert.equal(parseLiteralBlacklist(pageHtml).length, 20);
-});
-
-test('剥掉注入后，页面仍能读到与权威一致的字面量（离线双击场景）', () => {
-  const stripped = pageHtml.replace(
-    /<script>window\.__SHARED_CONTRACTS__ = [\s\S]*?;<\/script>/,
-    ANCHOR
-  );
-  assert.equal(stripped.includes('<script>window.__SHARED_CONTRACTS__ = '), false);
-  assert.ok(stripped.includes(ANCHOR));
-  assert.deepEqual(parseLiteralExt(stripped), SHARED_EXT);
-  assert.equal(parseLiteralMax(stripped), SHARED_MAX);
-  const literalBl = parseLiteralBlacklist(stripped).map((p) => new RegExp(p.source, p.flags || ''));
-  const expected = BLACKLIST_PATTERNS.map((re) => new RegExp(re.source, re.flags));
-  for (const text of ['cancer', '肿瘤', '免疫浸润', 'normal']) {
-    assert.equal(literalBl.some((re) => re.test(text)), expected.some((re) => re.test(text)), text);
+test('磁盘与响应页都不保存三份共享契约字面量副本', () => {
+  for (const html of [fs.readFileSync(INDEX_HTML, 'utf8'), pageHtml]) {
+    assert.doesNotMatch(html, /var DATA_EXT\s*=\s*\[\s*['"]\./);
+    assert.doesNotMatch(html, /var MAX_DATA_BYTES\s*=\s*5\s*\*\s*1024/);
+    assert.doesNotMatch(html, /var BL_PATTERNS\s*=\s*\[[\s\S]*?\/cancer/i);
   }
 });
 
@@ -250,15 +215,9 @@ test('前端 #region 段：有注入时覆盖三份副本，并同步 accept 与
   assert.equal(dom.guideText.nodeValue.includes('.h5ad'), false, '旧扩展名应被替换掉');
 });
 
-test('前端 #region 段：无注入时保留字面量副本，不改写 DOM', () => {
+test('前端 #region 段：无注入时 fail-closed', () => {
   const region = sharedContractsRegion(pageHtml);
-  const { out, dom } = runRegion(region, null);
-  assert.deepEqual([...out.DATA_EXT], ['.h5ad', '.rdata']);
-  assert.equal(out.MAX_DATA_BYTES, 5 * 1024 * 1024 * 1024);
-  assert.equal(out.BL_PATTERNS.length, 1);
-  assert.equal(dom.byId['f-df-file'].attrs.accept, undefined);
-  assert.equal(dom.byId['h-df-file'].textContent, 'STATIC_HINT');
-  assert.match(dom.guideText.nodeValue, /支持 \.h5ad \.rdata，单文件上限 5 GiB。/);
+  assert.throws(() => runRegion(region, null), /共享契约未注入/);
 });
 
 // ---------- 5. 其他端点不受注入影响 ----------

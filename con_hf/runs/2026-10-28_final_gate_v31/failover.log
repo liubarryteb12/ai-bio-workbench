@@ -1,0 +1,10 @@
+✔ 算力节点池未配置备用节点时只包含 K40 主节点 (2.3883ms)
+✔ 算力节点池从显式环境变量读取备用节点，且只允许 K40 作主节点 (0.9511ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 295.1307

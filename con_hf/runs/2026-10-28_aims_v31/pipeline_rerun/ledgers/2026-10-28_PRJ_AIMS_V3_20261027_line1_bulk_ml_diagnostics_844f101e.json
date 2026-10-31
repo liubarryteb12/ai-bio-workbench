@@ -1,0 +1,35 @@
+{
+  "task_id": "844f101e-b882-4717-8866-c38e355f887c",
+  "project_id": "PRJ_AIMS_V3_20261027",
+  "line_id": "line1_bulk",
+  "step_name": "ml_diagnostics",
+  "mod_id": "l1_ml_diag",
+  "status": "completed",
+  "start_time": "2026-10-27T18:33:12.378Z",
+  "end_time": "2026-10-27T18:33:25.350Z",
+  "environment": {
+    "language": "R",
+    "version": "4.5.3",
+    "env_name": "line1_bulk_env",
+    "container_image": "proot-ubuntu24.04-aarch64",
+    "random_seed": 20261021
+  },
+  "resource_usage": {
+    "max_cpu_percent": null,
+    "max_memory_gb": null,
+    "disk_io_peak_mb_s": null
+  },
+  "io_files": {
+    "input": [
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line1_bulk/processed/expr_genes.tsv",
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line1_bulk/processed/group_map.tsv",
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line1_bulk/processed/ml_core_hub_genes.tsv"
+    ],
+    "output": []
+  },
+  "checkpoint_status": "passed",
+  "error_log": null,
+  "exit_code": 0,
+  "next_action_suggested": null,
+  "compute_node_id": "k40-ubuntu"
+}

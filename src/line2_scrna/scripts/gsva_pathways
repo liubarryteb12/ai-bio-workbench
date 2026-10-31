@@ -19,11 +19,13 @@
 #   ../figures/l2_14_gsva_heatmap.png
 #
 # 口径：GSVA 是"通路活性打分"，与 ORA/GSEA 的"差异富集"不同，回答"哪些通路在哪些
-#   细胞类型活跃"。pseudobulk = 每 celltype 内细胞表达均值（13 个 profile）；
-#   输入矩阵用全基因（非 2000 HVG，保证通路覆盖率）；R GSVA 包 kcdf=Gaussian。
+#   细胞类型活跃"。pseudobulk = celltype x sample 的 counts 求和后 CP10K+log1p；
+#   输入矩阵用整合对象内全基因 counts（非 scaled X，避免负值）；R GSVA 包 kcdf=Gaussian。
 # 口径：docs/figure_spec.md（Agg/150dpi/英文标签；热图行=通路列=细胞类型；
 #       colorbar 带 label；图注置坐标轴框外）。
 set -euo pipefail
+
+RSCRIPT_BIN="${BIOANALYS_RSCRIPT:-/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript}"
 
 seed="${BIOANALYS_SEED:-UNSET}"
 if [ "$seed" = "UNSET" ]; then
@@ -101,7 +103,7 @@ fi
 echo "input_matrix=$NORM"
 echo "bridge_stage=$BRIDGE_STAGE"
 
-# 1) Python 侧：做 pseudobulk（celltype 均值），落中间 tsv
+# 1) Python 侧：做 pseudobulk（celltype x sample counts 求和），落中间 tsv
 BIO_GSVA_NORM="$NORM" python3 - <<'PYSCRIPT'
 import os
 import sys
@@ -132,30 +134,49 @@ if norm.n_obs != deg.n_obs or not (norm.obs_names == deg.obs_names).all():
 if "celltype" not in deg.obs.columns:
     fail("scrna_deg 缺 obs['celltype']")
 celltype = deg.obs["celltype"].astype(str)
+if "counts" not in norm.layers:
+    fail("%s 缺 layers['counts']，拒绝把 scaled X 当作伪 bulk 源" % NORM)
+for _sample_col in ("donor", "sample", "sample_title"):
+    if _sample_col in norm.obs.columns:
+        sample = norm.obs[_sample_col].astype(str)
+        break
+else:
+    fail("%s 缺样本列（donor/sample/sample_title 至少一个）" % NORM)
 
-X = norm.X
-X = np.asarray(X.todense()) if hasattr(X, "todense") else np.asarray(X)
-if not np.all(np.isfinite(X)):
-    fail("表达矩阵含非有限值")
-if X.min() < -1e-9:
-    fail("表达矩阵含负值（应为 log 归一化非负值）")
+counts = norm.layers["counts"]
+_vals = counts.data if hasattr(counts, "data") else np.asarray(counts).ravel()
+if _vals.size == 0:
+    fail("counts 层为空")
+if not np.all(np.isfinite(_vals)):
+    fail("counts 层含非有限值")
+if _vals.min() < -1e-9:
+    fail("counts 层含负值")
 
-celltypes = sorted(celltype.unique().tolist())
-pb = np.zeros((X.shape[1], len(celltypes)), dtype=np.float64)
+keys = celltype + "|" + sample
+groups = sorted(keys.unique().tolist())
+pb = np.zeros((counts.shape[1], len(groups)), dtype=np.float64)
 n_cells = []
-for j, ct in enumerate(celltypes):
-    m = (celltype.to_numpy() == ct)
-    pb[:, j] = X[m].mean(axis=0)
+meta = []
+for j, group in enumerate(groups):
+    m = (keys.to_numpy() == group)
+    sums = np.asarray(counts[m].sum(axis=0)).ravel().astype(np.float64)
+    lib = float(sums.sum())
+    if lib <= 0:
+        fail("伪 bulk 分组 %s 的 counts 总量为 0" % group)
+    pb[:, j] = np.log1p(sums / lib * 1e4)
     n_cells.append(int(m.sum()))
+    ct, smp = group.split("|", 1)
+    meta.append({"group": group, "celltype": ct, "sample": smp, "n_cells": int(m.sum())})
 if not np.all(np.isfinite(pb)):
     fail("pseudobulk 含非有限值")
+if pb.min() < -1e-9:
+    fail("pseudobulk 含负值")
 
-out = pd.DataFrame(pb, index=norm.var_names, columns=celltypes)
+out = pd.DataFrame(pb, index=norm.var_names, columns=groups)
 out.index.name = "gene"
 out.to_csv("_gsva_pseudobulk.tsv", sep="\t")
-pd.DataFrame({"celltype": celltypes, "n_cells": n_cells}).to_csv(
-    "_gsva_ncells.tsv", sep="\t", index=False)
-print("pseudobulk %d genes x %d celltypes" % (out.shape[0], out.shape[1]), flush=True)
+pd.DataFrame(meta).to_csv("_gsva_ncells.tsv", sep="\t", index=False)
+print("pseudobulk %d genes x %d celltype-sample groups" % (out.shape[0], out.shape[1]), flush=True)
 PYSCRIPT
 
 # 2) 桥接四项断言守卫（task-10 / m00939 边界②）：本母版是跨语言步骤
@@ -191,12 +212,12 @@ elif [ -z "$BRIDGE_GUARD" ]; then
 fi
 
 # 2) R 侧：GSVA 打分
-Rscript - <<'RSCRIPT'
+"$RSCRIPT_BIN" - <<'RSCRIPT'
 suppressMessages({
   library(GSVA)
   library(GSEABase)
 })
-fail <- function(msg) { cat("gsva_pathways(R) 自校验失败:", msg, "\n", file = stderr()); quit(status = 1) }
+fail <- function(...) { cat("gsva_pathways(R) 自校验失败:", ..., "\n", file = stderr()); quit(status = 1) }
 log <- function(...) cat(..., "\n")
 
 pb <- as.matrix(read.delim("_gsva_pseudobulk.tsv", row.names = 1, check.names = FALSE))
@@ -204,8 +225,10 @@ if (ncol(pb) < 2) fail("pseudobulk 细胞类型 < 2，GSVA 无意义")
 log("pseudobulk:", nrow(pb), "genes x", ncol(pb), "celltypes")
 
 # 基因集：读 gmt 缓存（term \t na \t gene... 标准 gmt），只保留在本矩阵命中 >= 10 基因的通路
-gmt_files <- list.files("../references/gmt_cache", pattern = "\\.gmt$", full.names = TRUE)
-if (length(gmt_files) == 0) fail("gmt_cache 下无 gmt 文件")
+# BIO_GMT_CACHE 可覆盖 gmt 缓存目录（默认 <cwd>/../references/gmt_cache，见 SPEC_DECISIONS D-22）
+GMT_CACHE <- Sys.getenv("BIO_GMT_CACHE", unset = "../references/gmt_cache")
+gmt_files <- list.files(GMT_CACHE, pattern = "\\.gmt$", full.names = TRUE)
+if (length(gmt_files) == 0) fail("gmt_cache 下无 gmt 文件（目录: ", GMT_CACHE, "）")
 genes <- rownames(pb)
 sets <- list()
 for (f in gmt_files) {
@@ -254,6 +277,7 @@ import pandas as pd
 import anndata as ad
 
 ad.settings.allow_write_nullable_strings = False
+NORM = os.environ.get("BIO_GSVA_NORM", "scrna_norm.h5ad")
 plt.rcParams.update({
     "figure.dpi": 300, "savefig.dpi": 300, "font.size": 9,
     "axes.titlesize": 10, "axes.grid": False,
@@ -417,11 +441,19 @@ scores = pd.read_csv("gsva_scores.tsv", sep="\t")
 if "pathway" not in scores.columns:
     fail("gsva_scores 缺 pathway 列")
 ncells = pd.read_csv("_gsva_ncells.tsv", sep="\t")
-celltypes = [c for c in scores.columns if c != "pathway"]
-if len(celltypes) != len(ncells):
-    fail("细胞类型数与 pseudobulk 记录不一致")
+profiles = [c for c in scores.columns if c != "pathway"]
+if len(profiles) != len(ncells):
+    fail("pseudobulk profile 数与记录不一致")
+required_meta = {"group", "celltype", "sample", "n_cells"}
+if not required_meta <= set(ncells.columns):
+    fail("pseudobulk 记录缺列: %s" % sorted(required_meta - set(ncells.columns)))
 
-mat = scores.set_index("pathway")[celltypes]
+profile_celltypes = [str(p).split("|", 1)[0] for p in profiles]
+full_mat = scores.set_index("pathway")[profiles]
+# GSVA 在 celltype x donor 伪 bulk 上打分；热图按 celltype 对 donor 取均值，
+# 避免把每个 donor 列直接铺成超宽图像并触发手机端绘图内存错误。
+mat = full_mat.T.groupby(profile_celltypes, sort=True).mean().T
+celltypes = list(mat.columns)
 if not np.all(np.isfinite(mat.to_numpy())):
     fail("GSVA 矩阵含非有限值")
 
@@ -444,7 +476,7 @@ ax.set_xticklabels(celltypes, rotation=45, ha="right", fontsize=8)
 caption(fig, "line2 scrna: GSVA pathway activity (top-%d by variance)" % len(short),
         "gsva_scores.tsv from step: gsva_pathways",
         "row = pathway, col = celltype, z-scored per pathway",
-        "pseudobulk = per-celltype mean expr")
+        "pseudobulk = celltype x donor counts, CP10K + log1p; heatmap averages donors")
 fig.colorbar(im, ax=ax, shrink=0.5, label="GSVA z-score")
 fig.subplots_adjust(left=0.42, right=0.90, top=0.97, bottom=0.20)
 fig.savefig(os.path.join("..", "figures", "l2_14_gsva_heatmap.png"))
@@ -455,12 +487,15 @@ plt.rcParams["figure.autolayout"] = True
 deg = ad.read_h5ad("scrna_deg.h5ad")
 deg.uns["gsva"] = {
     "method": "GSVA (R GSVA pkg, kcdf=Gaussian) on per-celltype pseudobulk",
-    "input_matrix": "%s X (full genes, log-normalized)" % NORM,
-    "n_pathways": int(mat.shape[0]),
+    "input_matrix": "%s layers['counts'] (full genes, CP10K + log1p pseudobulk)" % NORM,
+    "n_pathways": int(full_mat.shape[0]),
+    "n_profiles": int(len(profiles)),
     "n_celltypes": int(mat.shape[1]),
     "celltypes": celltypes,
-    "n_cells_per_celltype": dict(zip(ncells["celltype"].astype(str),
-                                     ncells["n_cells"].astype(int))),
+    "n_cells_per_celltype": {
+        str(k): int(v) for k, v in
+        ncells.groupby("celltype")["n_cells"].sum().sort_index().items()
+    },
     "score_note": "GSVA 分数是通路活性相对量，非富集 p 值；跨通路不可直接比大小",
     "seed": SEED,
 }
@@ -469,9 +504,10 @@ deg.write_h5ad("scrna_gsva.h5ad")
 lines = [
     "step=gsva_pathways",
     "seed=%d" % SEED,
-    "method=GSVA (R GSVA, kcdf=Gaussian) on per-celltype pseudobulk",
-    "input=%s full-gene log-normalized matrix (not HVG subset)" % NORM,
-    "n_pathways=%d" % mat.shape[0],
+    "method=GSVA (R GSVA, kcdf=Gaussian) on celltype x donor pseudobulk",
+    "input=%s layers['counts'] full-gene CP10K+log1p pseudobulk (not HVG subset)" % NORM,
+    "n_pathways=%d" % full_mat.shape[0],
+    "n_profiles=%d" % len(profiles),
     "n_celltypes=%d" % len(celltypes),
     "celltypes=%s" % ",".join(celltypes),
     "",
@@ -484,12 +520,13 @@ for p in var.head(TOP_N).index:
 lines += [
     "",
     "limitations:",
-    "  1. pseudobulk 用每 celltype 均值（13 个 profile），无供体级重复，故不做组间检验；",
-    "     该步骤回答“通路在哪些细胞类型活跃”，差异富集由步骤 17 ORA/GSEA 负责。",
+    "  1. pseudobulk 为 celltype x donor 的 counts 汇总；热图按 celltype 对 donor 均值，",
+    "     该步骤回答通路在哪些细胞类型活跃，差异富集由 ORA/GSEA 步骤负责。",
     "  2. GSVA 分数是相对活性，不是 p 值；跨通路比大小无意义，只看同通路跨类型排序。",
     "",
     "elapsed_seconds=%.1f" % (time.time() - START),
 ]
+lines.append("outputs=scrna_gsva.h5ad, gsva_scores.tsv")
 with open("gsva_report.txt", "w", encoding="utf-8") as fh:
     fh.write("\n".join(lines) + "\n")
 
@@ -500,3 +537,9 @@ for tmp in ["_gsva_pseudobulk.tsv", "_gsva_ncells.tsv"]:
         pass
 print("gsva_pathways_done pathways=%d" % mat.shape[0], flush=True)
 PYSCRIPT
+
+# sha256 产物台账后置补登：复用独立脚本，写法与其余步骤解耦。
+if [ -x "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" ]; then
+  "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" "$PWD" "gsva_report.txt" > /dev/null 2>>"$0.ledger.err" \
+  || echo "WARN sha256 ledger backfill failed, see $0.ledger.err" >&2
+fi

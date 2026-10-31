@@ -22,6 +22,11 @@ import argparse
 import os
 import sys
 
+RSCRIPT_BIN = os.environ.get(
+    "BIOANALYS_RSCRIPT",
+    "/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript",
+)
+
 # 输出固定 UTF-8：引擎会被 Windows 宿主（自测/垫片）和 Linux 计算节点共同调用，
 # 默认编码在 Windows 控制台是 cp936，中文结论会变成乱码，调用方 grep 不到关键字。
 for _stream in (sys.stdout, sys.stderr):
@@ -141,7 +146,7 @@ cat("[BRIDGE PASS] all 4 assertions passed\\n")
 '''
     env = dict(os.environ)
     env["BRIDGE_STAGE"] = stage
-    result = subprocess.run(["Rscript", "-e", script, "--", path],
+    result = subprocess.run([RSCRIPT_BIN, "--vanilla", "-e", script, path],
                            capture_output=True, text=True, timeout=120, env=env)
     if result.returncode != 0:
         fail(result.stderr.strip() or result.stdout.strip() or "RDS check failed")

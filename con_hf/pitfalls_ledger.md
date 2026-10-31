@@ -278,3 +278,121 @@
 - **永久修复方案**：① 不能把「不跑 ps 就不会崩」当保险，长任务必须用 `system_logs/_running/<task_id>.json` 残留来取证中断（D-20）；② 长链取证脚本按「快照 + 只认新增台账」定位台账（P15 runner 的做法），避免时钟漂移叠加崩溃造成假失败；③ 重跑前先确认 proot pid / etime 是否变化（只认这个，容器内 uptime 不可信，P-22）。
 - **防回归单测用例路径**：`BioanalysDesktop/tests/proot_probe_guard.test.js`（P-23/P-24/P-25 三条并存，且断言 runner 用「快照 + 新增台账」而不是时间比较）。
 
+
+
+### P-26 本机进程树承载远端长任务必死：line2 的 scenic_tf 连杀三次，根因是「引擎 ssh 子进程随本机 pwsh 退出被回收」
+
+- **所属域**：取证脚本 / 任务编排（PC 侧 -> K40）
+- **现象与复现条件**：line2 全链取证里 scenic_tf（GRNBoost2 要 20-40 分钟）连续三次被打死：
+  ① 引擎 8791 的 ssh 子进程随本机 pwsh 调用结束被回收，任务从 `/api/tasks` 消失、远端只剩 `_running/task_*.json` 残留标记；
+  ② runner 用 `Start-Process` 起，pwsh 退出即被杀，runner 报 `TypeError: fetch failed`；
+  ③ runner 固定 180s 台账等待，对 20-40 分钟的重步骤必然假失败。
+  line1 那次能成是因为每步 3s~2.6min，**撑过了进程存活期**，不是方法对。
+- **RCA**：Windows 上 `Start-Job` / `Start-Process` 起的 node 进程属于本次 pwsh 调用的作业对象，pwsh 一退就连进程带子进程树一起回收；
+  `run_in_background: true` 的 pwsh job 同理受 harness 管辖。所以「本机有个长活进程在等远端」这个形态本身不可靠。
+- **永久修复方案**：远端 `setsid nohup` 起 `ops/run_throttled_task.sh`（命令串模式 `BIO_EXEC_CMD`，`BIO_WRAPPER_LEDGER=1` 保留台账），
+  本机 runner **只轮询**（`_running/` 标记 + 台账快照差集 + 日志字节数），不承载远端任务生命周期。
+  已落地为 `cn_debug/lib/chain_runner.mjs` + `cn_debug/2026-10-22_m1_line2_rest.mjs`。
+  实测：`setsid nohup bash -c 'for i in $(seq 1 60)...' & ` 在 ssh 断开 12 秒后 `pgrep` 仍能找到，证明 setsid 形态有效。
+- **防回归单测用例路径**：`BioanalysDesktop/tests/proot_probe_guard.test.js`（断言 cn_debug 下 chain runner 不得用 `/api/tasks` 作判活依据、必须含 setsid/nohup 与「快照 + 只认新增台账」）。
+
+
+### P-28 proot 每 15 秒 abort 的根因是容器 /tmp 堆积（无 systemd 永不自动清理）
+
+- **所属域**：计算容器健康度 / proot 稳定性
+  > **2026-10-23 第十九轮修订**：本条 RCA 的「/tmp 堆积是根因」判定**已被推翻**，
+  > 真正的充分条件是 **ssh 连接流**，见 P-29。/tmp 清理与 watchdog GC 作为卫生项保留。
+- **现象与复现条件**：`ubuntu-sshd` 日志里
+  `./path/path.c:546: Comparison compare_paths2(const char *, size_t, const char *, size_t): assertion "length1 > 0" failed`
+  + `proot warning: signal 6 received`，**严格 15.0/16.0 秒周期**（实测 514 次，均值 15.16s）。
+  runsv 每次重拉都新建 proot，新的活 15 秒即崩，容器永远不可用。
+- **RCA**（全部有实测依据）：
+  1. **容器 /tmp 堆积 873 项 / 4.9G**（`rootfs/tmp`），里面是历史探针
+     （`_probe_grn.py`、`_snap1.txt`、`s28_bad_bridge.h5ad`、`inst_bioc.R`、`ppi_verify` 等）与临时 h5ad。
+  2. **proot 容器没有 systemd**，`/etc/tmpfiles.d/` 不存在，所以 `/tmp` **永远不会自动清理**。
+  3. proot 启动参数含 `--link2symlink`（`proot-distro login` 默认），每次路径解析都要
+     逐层走遍这些 bind 挂载点；`compare_paths2` 在深层/符号链路径上收到空段就断言失败。
+  4. **排除的假设**（都有反证）：
+     - SSH 连接活动触发：abort 前 10s 内 Accepted 中位数 = 0，均值 0.39
+       **低于**全局基线 0.50；且实验建连接后立即断开等 40s，abort 增量 = 0。
+     - 会话断开触发：同上实验反证。
+     - 手动探测：完全静默 180s 不碰 adb/ssh，abort 照旧 15s 一次。
+     - `tick.sh`（5 分钟）/ `bio_watchdog.sh`(60s)：周期不匹配，且脚本中无递归遍历。
+     - 双 runsvdir：修好后 abort 依旧（第十五轮已验证）。
+     - 双 runsvdir + 手动开的容器（pid 31140）：与 abort 周期无关。
+- **永久修复方案**：
+  1. **立即**：清理容器 `/tmp` 中 24 小时以前的项（2026-10-22 实测 873 → 12 项，零失败）。
+  2. **根治**：`ops/bio_watchdog.sh` 新增第三项职责：每 6 小时执行一次
+     `find /tmp -mindepth 1 -maxdepth 1 -mmin +1440 -exec rm -rf {} +`（只删一层、只删 24h 以前，
+     不会动正在跑的任务），并把结果写入 watchdog 日志。
+  3. **防回归**：`BioanalysDesktop/tests/watchdog_tmp_gc.test.js`
+     （断言 watchdog 含 `CONTAINER_TMP` 指向容器 rootfs/tmp、`-mmin +1440`、
+     `-mindepth 1 -maxdepth 1`、周期 360 循环）。
+- **防回归单测用例路径**：`BioanalysDesktop/tests/watchdog_tmp_gc.test.js`
+- **验证状态**：清理后同一个 proot（pid 16009）已稳定运行 8.7 小时零 abort；
+  修补后需要求：部署新 watchdog → 观察 24 小时无 abort。
+
+
+### P-29 proot 每 15 秒 abort 的真正充分条件是 ssh 连接流（P-28 修订）
+
+- **所属域**：计算容器健康度 / proot 稳定性
+- **现象与复现条件**：与 P-28 完全同形——`ubuntu-sshd` 日志
+  `./path/path.c:546: compare_paths2 ... assertion "length1 > 0" failed` + `signal 6`，
+  **严格 15 秒周期**，runsv 每次重拉新 proot，新的活 15 秒即崩。
+- **RCA**（2026-10-23 全部实测依据）：
+  1. **反证 P-28 的 /tmp 归因**：本轮 abort 活跃时容器 `rootfs/tmp` 只有 **1 项**
+     （`_snap1.txt`），watchdog 的 6 小时 GC 也一直在跑。/tmp 干净仍崩，堆积不是必要条件。
+  2. **反证计算负载归因**：停掉本机 runner 后静默 3 分钟（08:19:25 → 08:24:59 UTC），
+     远端 scenic_tf 的 Python 进程**仍在运行**（`_running` 标记在位、日志在写），
+     abort 计数 **202 → 202 零增长**。计算不是触发源。
+  3. **正证连接流归因**：同一份日志里两段 abort 之间有 **15 分 27 秒零 abort 窗口**
+     （07:54:42 → 08:10:09），窗口内我做过十余次单发 ssh（健康检查、产物清点、
+     死标记清理、母版 md5 比对）而 abort 不起；窗口结束于 08:10:09，其前 71 秒
+     （08:08:58-08:10:09）出现 **12 个并发 Accepted**。第二段 abort 第一个杀掉的
+     正是那个已稳定 15 分钟的 proot（pid 22511）。
+  4. **为什么以前查不出来**：P-28 的排除项「静默 180s abort 照旧」与「abort 前 Accepted
+     中位数 = 0」都是在**有另一个探测源在跑**的背景下采的——上一轮"静默"时轮询脚本
+     没停，所以静默窗口并不干净。本轮先把 runner 进程停掉再计时，才拿到干净窗口。
+  5. **机制解释**（推断，未在 proot 源码层证实）：高频/并发 ssh 让 sshd 反复解析
+     `--link2symlink` 下的 bind 挂载链，`compare_paths2` 在某个并发时序上收到空段即断言
+     失败；sshd 死后 runsv 立刻重拉，本机 runner 的重试又立刻接上，形成 15 秒自我维持环。
+- **永久修复方案**：
+  1. **runner 不得对容器做高频轮询**：`cn_debug/lib/chain_runner.mjs` 的 `ssh()` 当前是
+     「3 次重试 + ServerAliveInterval=15」，`waitNewLedger()` 每 10s 一轮询——对 20-40 分钟
+     的重步骤就是每分钟 6 次连接，正好喂饱循环。轮询间隔应拉到 60s 以上，重试改为 1-2 次。
+  2. **判活改用"单次长连接"形态**：一次 ssh 里把「读标记 + 读日志字节 + 读台账列表」合并成
+     一条命令，不要拆成三次往返（母版 md5 比对那次 9 次串行 ssh 就是典型反例）。
+  3. **长任务下发前先确认容器安静**：观察 60 秒无 abort 再下发，避免任务刚起就被循环拖死。
+  4. **保留** P-28 的 /tmp GC 与 watchdog 修补，但改判为卫生项而非根因修复。
+- **防回归单测用例路径**：`BioanalysDesktop/tests/proot_probe_guard.test.js`（应新增
+  「runner 轮询间隔下限」与「单次 ssh 合并探测」断言）。
+- **验证状态**：停 runner + 静默 3 分钟，abort 零增长且 scenic_tf 正常推进（P-24 四信号在位）。
+
+### P-30 adb 与 ssh 的链路测试红是沙箱权限假象，不是代码回归（2026-10-24）
+
+- **现象**：`BioanalysDesktop` 全量测试固定 5 条红，与代码改动无关：
+  `link.test.js` 三条（设备探测 / forward 探测 / 四段自检）、`proc.test.js` 一条
+  （真连服务器拿 `CONTAINER_OK`）、`consistency.test.js` 一条（远端目录准备）。
+  另有 46 条 skipped，容易被误读成"链路类用例本该跳过"。
+- **根因**（两条独立，同在沙箱权限）：
+  1. `adb.exe` 一启动即 `Cannot mkdir '\.android': Permission denied`，退出码
+     `3221226505` = `0xC0000142`（进程初始化失败）。它要把家目录建在**盘根**，
+     而沙箱无权在 `C:\` 或 `D:\` 建目录，所以连 `adb version` 都崩，
+     `adb devices` 自然看不到 `3a3e1f52`，forward 重建也全部失败。
+  2. `ssh` 报 `Could not resolve hostname k40-ubuntu`：`~/.ssh/config` 里的别名
+     读不到（沙箱对用户主目录只读），HostAlias 无从解析。
+- **为什么反复误判**：症状长得像"手机没连"或"代码改坏了"，且 `link.test.js` 的断言
+  文案（"链路应通；若此测试红，先查 adb 与 USB"）把人往排查手机的方向引。
+  实际手机与链路一直是好的。
+- **环境变量绕不过去**（本轮实测，别再试）：设 `HOME`、`USERPROFILE`、
+  `HOMEDRIVE`+`HOMEPATH`、`APPDATA`、`ANDROID_SDK_HOME`、`ANDROID_ADB_SERVER_HOME`
+  全部无效，`adb` 仍去建盘根 `\.android`。这不是家目录指向问题，是盘根写权限问题。
+- **永久修复方案**：把判定顺序写进文档，见 `BioanalysDesktop/README.md`
+  「跑测试前先知道三件事」第 3 条：看到这 5 条红先提权复跑，再决定是否查代码。
+  提权后实测 `3a3e1f52`（alioth / M2012K11AC）在线、双 forward 在位、
+  Termux 与容器 sshd 均返回 OK，**848/848 全绿、0 skipped**，连续三次复跑稳定。
+- **顺带修正的认知**：46 条 skipped 不是"链路类用例的预期形态"，同样是沙箱假象
+  （宿主 python3 / bash + pandas 等依赖在提权后才可见）。提权跑出的 0 skipped 才是真基线。
+- **防回归单测用例路径**：无需新增用例，这 5 条本身就是真链路探针，改它们等于拆警报。
+  防线在文档：README 第 3 条 + 本条台账。
+- **验证状态**：已修复。提权后 848/848 全绿 ×3，`tsc --noEmit` exit 0，`npm run build` exit 0。

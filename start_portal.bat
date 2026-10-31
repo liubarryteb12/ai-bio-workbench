@@ -1,39 +1,39 @@
 @echo off
-chcp 936 >nul
+chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
 
 echo ============================================
-echo   ÓÃ»§ĞèÇóÌá½»Ì¨ ¡¤ Æô¶¯
+echo   ç”¨æˆ·éœ€æ±‚æäº¤å° Â· å¯åŠ¨
 echo ============================================
 echo.
 
 where node >nul 2>nul
 if errorlevel 1 (
-  echo [´íÎó] Î´ÕÒµ½ Node.js£¬ÇëÏÈ°²×° Node.js ºóÖØÊÔ¡£
+  echo [é”™è¯¯] æœªæ‰¾åˆ° Node.jsï¼Œè¯·å…ˆå®‰è£… Node.js åé‡è¯•ã€‚
   echo.
   pause
   exit /b 1
 )
 
-netstat -ano | findstr ":8080 " | findstr "LISTENING" >nul 2>nul
-if not errorlevel 1 (
-  echo [ÌáÊ¾] 8080 ¶Ë¿ÚÒÑ±»Õ¼ÓÃ£¬ÓÃ»§ĞèÇóÌá½»Ì¨¿ÉÄÜÒÑ¾­ÔÚÔËĞĞ¡£
-  echo         ÇëÖ±½Ó·ÃÎÊ http://127.0.0.1:8080/
-  echo         ÈôÒªÖØÆô£¬ÇëÏÈ¹Ø±ÕÒÑÓĞµÄÌá½»Ì¨´°¿Ú¡£
-  echo.
-  pause
-  exit /b 1
-)
+pwsh -NoProfile -File "%~dp0ops\port_preflight.ps1" -Port 8080 -ExpectedPattern "portal[\\/]serve\.mjs" >nul 2>nul
+if not errorlevel 1 goto portal_port_free
+echo [æç¤º] 8080 ç«¯å£å·²è¢« Bound æˆ– Listen çŠ¶æ€å ç”¨ï¼Œå¯åŠ¨å·²å–æ¶ˆã€‚
+echo         è¯·è¿è¡Œä»¥ä¸‹å‘½ä»¤æŸ¥çœ‹å ç”¨è€…ï¼Œç¦æ­¢ç›´æ¥ç»“æŸæœªçŸ¥è¿›ç¨‹ï¼š
+echo         pwsh -File ops\port_preflight.ps1 -Port 8080 -ExpectedPattern "portal[\\/]serve\.mjs"
+echo.
+pause
+exit /b 1
+:portal_port_free
 
-echo ¿Í»§·ÃÎÊµØÖ·: http://127.0.0.1:8080/
-echo ĞèÇóÊÕ¼şÏä  : %~dp0portal\inbox\
-echo °´ Ctrl+C ¿ÉÍ£Ö¹·şÎñ¡£
+echo å®¢æˆ·è®¿é—®åœ°å€: http://127.0.0.1:8080/
+echo éœ€æ±‚æ”¶ä»¶ç®±  : %~dp0portal\inbox\
+echo æŒ‰ Ctrl+C å¯åœæ­¢æœåŠ¡ã€‚
 echo.
 
 node "%~dp0portal\serve.mjs"
 
 echo.
-echo [ÒÑÍ£Ö¹] ÓÃ»§ĞèÇóÌá½»Ì¨ÒÑÍË³ö¡£
+echo [å·²åœæ­¢] ç”¨æˆ·éœ€æ±‚æäº¤å°å·²é€€å‡ºã€‚
 pause
 endlocal

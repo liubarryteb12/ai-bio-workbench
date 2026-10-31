@@ -1,0 +1,24 @@
+registry=figure_templates.check=ok
+plot_matrix={"entries": 27, "matrix": "D:\\00.AIagent\\codespace\\AI�������ŷ������̹���̨\\reference\\05.�ɲο���ͼ����\\_meta\\script_plot_matrix.json", "ok": true, "overall_status": "pass", "run_id": "aims_v31_plot_matrix_20261028"}
+handoff={"command": "check-handoff", "handoff": "local_projects/PRJ_AIMS_V3_20261027/handoff.md", "ok": true, "project": "PRJ_AIMS_V3_20261027", "sections": ["项目背景", "当前进度", "已知坑", "下一步"]}
+node_full=974/974 PASS
+playwright=15/15 PASS
+typescript=PASS
+vite_build=PASS
+k40_real_input=6/6 PASS
+k40_pipeline_55=55/55 PASS seed_contract=PASS
+png_validation=6/6 PASS
+json_module_manifest=PASS
+ready_input_tables_subset=PASS
+git_trackable_assets=PASS
+port_preflight_fail_closed=PASS
+workbench_18787_selfcheck=all_pass
+portal_8080_health=200
+k40_link_check=PASS
+remote_sync=101/101 PASS
+deploy_parity=55/55 PASS
+portal_sync_ticket=2026-10-28_101353_requirement_PRJ_AIMS_V3_20261027
+portal_sync_result=done files=17
+delivery_signature=VERIFIED 329
+final_gate_precheck=24 PASS / 0 PENDING / 0 FAIL
+remaining_release_blocker=clean worktree commits

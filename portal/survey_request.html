@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0d9488">
+<meta name="description" content="课题调研需求单：填一个方向，由 AI 按筛子外出调研数据并反推可做课题">
+<title>课题调研需求</title>
+<style>
+:root {
+  --brand: #0d9488;
+  --brand-dark: #0f766e;
+  --brand-soft: #ccfbf1;
+  --bg: #f6f8fb;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --text-faint: #94a3b8;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --success: #059669;
+  --success-soft: #ecfdf5;
+  --warn: #b45309;
+  --warn-soft: #fffbeb;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, .06);
+  --shadow: 0 1px 3px rgba(15, 23, 42, .08), 0 1px 2px rgba(15, 23, 42, .04);
+  color-scheme: light;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased;
+  touch-action: manipulation; padding-bottom: 80px;
+}
+.skip-link { position: absolute; left: -9999px; top: 8px; z-index: 100; background: var(--brand); color: #fff; padding: 10px 16px; border-radius: 8px; font-weight: 600; text-decoration: none; }
+.skip-link:focus { left: 8px; }
+:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; border-radius: 6px; }
+
+.site-header { background: linear-gradient(135deg, #0f766e, #0d9488 55%, #14b8a6); color: #fff; padding: 28px 24px 26px; }
+.header-inner { max-width: 900px; margin: 0 auto; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-mark { width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0; background: rgba(255, 255, 255, .18); display: flex; align-items: center; justify-content: center; font-size: 21px; }
+.brand h1 { font-size: 20px; font-weight: 700; letter-spacing: .2px; text-wrap: balance; }
+.brand p { font-size: 13px; opacity: .88; }
+.header-note { margin-top: 16px; display: inline-flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .22); padding: 6px 12px; border-radius: 999px; font-size: 12.5px; }
+
+.progress-wrap { background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 20; }
+.progress { max-width: 900px; margin: 0 auto; display: flex; list-style: none; padding: 0 12px; overflow-x: auto; }
+.progress li { flex: 1; min-width: 120px; display: flex; align-items: center; gap: 9px; padding: 14px 8px; font-size: 13px; color: var(--text-faint); border-bottom: 2.5px solid transparent; white-space: nowrap; }
+.progress li .num { width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0; background: var(--surface-2); border: 1.5px solid var(--border-strong); color: var(--text-muted); font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; }
+.progress li[aria-current="step"] { color: var(--brand-dark); font-weight: 600; border-bottom-color: var(--brand); }
+.progress li[aria-current="step"] .num { background: var(--brand); border-color: var(--brand); color: #fff; }
+.progress li[data-done="true"] { color: var(--text-muted); }
+.progress li[data-done="true"] .num { background: var(--brand-soft); border-color: var(--brand); color: var(--brand-dark); }
+
+main { max-width: 900px; margin: 0 auto; padding: 28px 24px 0; }
+.panel { display: none; }
+.panel.is-active { display: block; animation: rise .28s ease-out; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: none; } }
+@media (prefers-reduced-motion: reduce) { .panel.is-active { animation: none; } }
+
+.step-head { margin-bottom: 20px; }
+.step-head .eyebrow { color: var(--brand-dark); font-size: 12.5px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; }
+.step-head h2 { font-size: 23px; font-weight: 700; margin: 4px 0 6px; text-wrap: balance; }
+.step-head p { color: var(--text-muted); font-size: 14px; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px; margin-bottom: 18px; box-shadow: var(--shadow-sm); }
+.card-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.card-sub { color: var(--text-muted); font-size: 13px; margin-bottom: 16px; }
+
+.guide { display: flex; gap: 10px; align-items: flex-start; background: var(--brand-soft); border: 1px solid #99f6e4; color: #115e59; padding: 12px 14px; border-radius: var(--radius); font-size: 13px; margin-bottom: 18px; }
+.guide .ico { flex-shrink: 0; font-size: 15px; line-height: 1.5; }
+
+.field { margin-bottom: 18px; }
+.field:last-child { margin-bottom: 0; }
+.field > label { display: block; font-size: 13.5px; font-weight: 600; margin-bottom: 6px; }
+.field .req { color: var(--danger); margin-left: 2px; }
+.field .hint { color: var(--text-muted); font-size: 12.5px; margin-top: 6px; }
+
+input[type="text"], textarea, select {
+  width: 100%; font-family: inherit; font-size: 14px; color: var(--text);
+  background: var(--surface); border: 1.5px solid var(--border-strong);
+  border-radius: var(--radius); padding: 10px 12px; transition: border-color .15s ease;
+}
+input[type="text"]:focus, textarea:focus, select:focus { border-color: var(--brand); outline: none; }
+textarea { resize: vertical; min-height: 84px; line-height: 1.6; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { position: relative; }
+.chip input { position: absolute; opacity: 0; width: 0; height: 0; }
+.chip span { display: inline-block; padding: 8px 14px; border: 1.5px solid var(--border-strong); border-radius: 999px; font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; background: var(--surface); transition: all .15s ease; user-select: none; }
+.chip input:checked + span { border-color: var(--brand); background: var(--brand-soft); color: var(--brand-dark); }
+.chip input:focus-visible + span { outline: 3px solid var(--brand); outline-offset: 2px; }
+
+.msg { font-size: 12.5px; margin-top: 6px; min-height: 18px; }
+.msg.warn { color: var(--warn); }
+.msg.err { color: var(--danger); }
+
+.nav { max-width: 900px; margin: 24px auto 0; padding: 0 24px; display: flex; gap: 12px; justify-content: space-between; }
+.btn { font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; border-radius: var(--radius); padding: 11px 20px; border: 1.5px solid transparent; transition: background-color .15s ease, border-color .15s ease, color .15s ease; }
+.btn-primary { background: var(--brand); color: #fff; box-shadow: var(--shadow-sm); }
+.btn-primary:hover:not(:disabled) { background: var(--brand-dark); }
+.btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+.btn-ghost { background: var(--surface); border-color: var(--border-strong); color: var(--text-muted); }
+.btn-ghost:hover:not(:disabled) { border-color: var(--brand); color: var(--brand-dark); }
+
+.result { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px; box-shadow: var(--shadow-sm); }
+.result-row { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.result-row:last-child { border-bottom: none; }
+.result-row .k { flex-shrink: 0; width: 110px; color: var(--text-muted); font-weight: 600; }
+.result-row .v { color: var(--text); word-break: break-word; }
+.ticket-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; background: var(--brand-soft); color: var(--brand-dark); padding: 2px 8px; border-radius: 6px; }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">跳到主内容</a>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">🧭</div>
+      <div>
+        <h1>课题调研需求</h1>
+        <p>填一个方向，AI 按筛子外出调研数据，回一份可做的课题清单</p>
+      </div>
+    </div>
+    <div class="header-note">本单只收方向，不收数据。要素卡由调研过程自己填。</div>
+  </div>
+</header>
+
+<div class="progress-wrap">
+  <ol class="progress" id="progress">
+    <li data-step="1" aria-current="step"><span class="num">1</span>研究方向</li>
+    <li data-step="2"><span class="num">2</span>数据倾向</li>
+    <li data-step="3"><span class="num">3</span>确认提交</li>
+  </ol>
+</div>
+
+<main id="main">
+  <section class="panel is-active" data-panel="1" aria-labelledby="h-step1">
+    <div class="step-head">
+      <div class="eyebrow">第一步</div>
+      <h2 id="h-step1" tabindex="-1">想研究什么病</h2>
+      <p>疾病名是唯一必填项。填英文名检索更准，中文名可以写在兴趣点里。</p>
+    </div>
+
+    <div class="card">
+      <div class="field">
+        <label for="f-disease">疾病名称<span class="req" aria-hidden="true">*</span></label>
+        <input type="text" id="f-disease" placeholder="如 idiopathic pulmonary fibrosis" autocomplete="off">
+        <div class="hint">填英文名。留空无法开始检索。</div>
+        <div class="msg" id="m-disease" role="status"></div>
+      </div>
+
+      <div class="field">
+        <label for="f-interest">兴趣点</label>
+        <textarea id="f-interest" placeholder="想关注的机制、基因、表型。一句话即可，留空表示只按疾病检索。"></textarea>
+        <div class="hint">选填。它影响课题反推的倾向，不影响检索范围。</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" data-panel="2" aria-labelledby="h-step2">
+    <div class="step-head">
+      <div class="eyebrow">第二步</div>
+      <h2 id="h-step2" tabindex="-1">想要哪类数据</h2>
+      <p>这三项帮调研缩小范围。全留默认也能跑，只是候选集会宽一些。</p>
+    </div>
+
+    <div class="card">
+      <div class="field">
+        <label>物种</label>
+        <div class="chips" id="f-organism">
+          <label class="chip"><input type="radio" name="organism" value="any" checked><span>不限</span></label>
+          <label class="chip"><input type="radio" name="organism" value="Homo sapiens"><span>人源</span></label>
+          <label class="chip"><input type="radio" name="organism" value="Mus musculus"><span>鼠源</span></label>
+        </div>
+        <div class="hint">选不限时人源优先，这是筛子对必选件的要求。</div>
+      </div>
+
+      <div class="field">
+        <label for="f-tissue">组织</label>
+        <input type="text" id="f-tissue" placeholder="如 lung、liver，留空不限" autocomplete="off">
+        <div class="hint">选填。器官名，英文。</div>
+      </div>
+
+      <div class="field">
+        <label>数据类型</label>
+        <div class="chips" id="f-kinds">
+          <label class="chip"><input type="checkbox" name="kinds" value="bulk" checked><span>Bulk RNA-seq</span></label>
+          <label class="chip"><input type="checkbox" name="kinds" value="array"><span>基因芯片</span></label>
+          <label class="chip"><input type="checkbox" name="kinds" value="scrna"><span>单细胞</span></label>
+          <label class="chip"><input type="checkbox" name="kinds" value="spatial"><span>空间转录组</span></label>
+        </div>
+        <div class="hint">对应筛子的四类数据。至少勾一项。</div>
+        <div class="msg" id="m-kinds" role="status"></div>
+      </div>
+
+      <div class="field">
+        <label for="f-clue">你手上已有的线索</label>
+        <textarea id="f-clue" placeholder="已知的 GSE 编号、看过的文献、或已经拿到的数据。留空表示从零开始。"></textarea>
+        <div class="hint">选填。有线索能省掉一轮检索。</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" data-panel="3" aria-labelledby="h-step3">
+    <div class="step-head">
+      <div class="eyebrow">第三步</div>
+      <h2 id="h-step3" tabindex="-1">确认并提交</h2>
+      <p>核对下面几项，提交后 AI 按筛子外出调研，结果回到本页。</p>
+    </div>
+
+    <div class="card">
+      <div class="result" id="summary"></div>
+      <div class="guide" style="margin-top:18px;margin-bottom:0;">
+        <span class="ico" aria-hidden="true">ℹ️</span>
+        <div>调研完成后，边缘病、BioProject 去重、批次混杂这三项会标为<b>待人工裁定</b>，不会由客户自行拍板。</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="nav">
+  <button type="button" class="btn btn-ghost" id="btn-prev" disabled>← 上一步</button>
+  <button type="button" class="btn btn-primary" id="btn-next">下一步 →</button>
+  <button type="button" class="btn btn-primary" id="btn-submit" style="display:none;">提交调研需求</button>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var $$ = function (sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); };
+
+  var TOTAL = 3;
+  var state = { step: 1, submitting: false };
+
+  function collect() {
+    var kinds = $$('#f-kinds input:checked').map(function (i) { return i.value; });
+    var org = (document.querySelector('#f-organism input:checked') || {}).value || 'any';
+    return {
+      disease: $('f-disease').value.trim(),
+      interest: $('f-interest').value.trim(),
+      organism: org,
+      tissue: $('f-tissue').value.trim(),
+      data_kinds: kinds,
+      clue: $('f-clue').value.trim()
+    };
+  }
+
+  function validateStep(n) {
+    if (n === 1) {
+      var d = $('f-disease').value.trim();
+      var m = $('m-disease');
+      if (!d) { m.textContent = '疾病名称必填，填英文名检索更准。'; m.className = 'msg err'; return false; }
+      m.textContent = ''; m.className = 'msg';
+      return true;
+    }
+    if (n === 2) {
+      var kinds = $$('#f-kinds input:checked').length;
+      var mk = $('m-kinds');
+      if (!kinds) { mk.textContent = '至少勾一项数据类型。'; mk.className = 'msg err'; return false; }
+      mk.textContent = ''; mk.className = 'msg';
+      return true;
+    }
+    return true;
+  }
+
+  function renderSummary() {
+    var v = collect();
+    var kindsLabel = { bulk: 'Bulk RNA-seq', array: '基因芯片', scrna: '单细胞', spatial: '空间转录组' };
+    var rows = [
+      ['疾病', v.disease || '（未填）'],
+      ['兴趣点', v.interest || '（未填）'],
+      ['物种', v.organism === 'any' ? '不限（人源优先）' : v.organism],
+      ['组织', v.tissue || '不限'],
+      ['数据类型', v.data_kinds.length ? v.data_kinds.map(function (k) { return kindsLabel[k] || k; }).join('、') : '（未选）'],
+      ['已有线索', v.clue || '无']
+    ];
+    $('summary').innerHTML = rows.map(function (r) {
+      return '<div class="result-row"><div class="k">' + r[0] + '</div><div class="v">' + escapeHtml(r[1]) + '</div></div>';
+    }).join('');
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function goStep(n) {
+    n = Math.max(1, Math.min(TOTAL, n));
+    state.step = n;
+    $$('.panel').forEach(function (p) { p.classList.toggle('is-active', Number(p.dataset.panel) === n); });
+    $$('#progress li').forEach(function (li) {
+      var s = Number(li.dataset.step);
+      if (s === n) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
+      li.dataset.done = s < n ? 'true' : 'false';
+    });
+    $('btn-prev').disabled = n === 1;
+    $('btn-next').style.display = n === TOTAL ? 'none' : '';
+    $('btn-submit').style.display = n === TOTAL ? '' : 'none';
+    if (n === TOTAL) renderSummary();
+    var h = document.querySelector('.panel.is-active h2');
+    if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }
+
+  $('btn-prev').addEventListener('click', function () { goStep(state.step - 1); });
+  $('btn-next').addEventListener('click', function () {
+    if (!validateStep(state.step)) return;
+    goStep(state.step + 1);
+  });
+
+  $('btn-submit').addEventListener('click', function () {
+    if (state.submitting) return;
+    if (!validateStep(1) || !validateStep(2)) { goStep(1); return; }
+    var payload = collect();
+    state.submitting = true;
+    $('btn-submit').disabled = true;
+    $('btn-submit').textContent = '提交中…';
+
+    fetch('/api/survey/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.body && res.body.error ? res.body.error : '提交失败');
+        var tid = res.body && res.body.ticket_id;
+        window.location.href = '/survey_result.html?ticket=' + encodeURIComponent(tid);
+      })
+      .catch(function (e) {
+        state.submitting = false;
+        $('btn-submit').disabled = false;
+        $('btn-submit').textContent = '提交调研需求';
+        alert('提交失败：' + e.message);
+      });
+  });
+
+  goStep(1);
+})();
+</script>
+</body>
+</html>

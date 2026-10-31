@@ -156,7 +156,26 @@ test('index.js：第 1~4 维都走 runRemoteStrict，不许再退回宽松版', 
 test('index.js：第 4 维把隔离灯与 SHA256 灯合并成一条 checks', () => {
   assert.match(INDEX_SRC, /import \{[^}]*runSha256ParityCheck[^}]*\} from '\.\/selfcheck\.js'/s);
   assert.match(INDEX_SRC, /import \{[^}]*mergeIsolationChecks[^}]*\} from '\.\/selfcheck\.js'/s);
-  assert.match(INDEX_SRC, /checks\.push\(mergeIsolationChecks\(isolation, runSha256ParityCheck\(\)\)\)/);
+  assert.match(INDEX_SRC, /const merged = mergeIsolationChecks\(isolation, runSha256ParityCheck\(\)\)/);
+  assert.match(INDEX_SRC, /checks\.push\(\{/);
+});
+
+test('P17：index.js 把合并灯的结构化子灯下发给前端（sub_checks）', () => {
+  assert.match(INDEX_SRC, /sub_checks:/, '第 4 维要下发 sub_checks');
+  assert.match(INDEX_SRC, /merged\.subChecks/, '要遍历 mergeIsolationChecks 返回的 subChecks');
+  for (const sub of ['id', 'label', 'status', 'value', 'detail']) {
+    assert.match(INDEX_SRC, new RegExp(sub + ':'), '子灯字段要齐全：' + sub);
+  }
+});
+
+test('P17：App.tsx 渲染 sub_checks 子灯', () => {
+  const appSrc = fs.readFileSync(path.join(REPO_ROOT, 'BioanalysDesktop', 'src', 'App.tsx'), 'utf8');
+  assert.match(appSrc, /sub_checks/, '前端要读 sub_checks');
+  assert.match(appSrc, /selfcheck-subs/, '前端要渲染子灯容器');
+  assert.match(appSrc, /SelfCheckSubItem/, '前端要有子灯类型');
+  const css = fs.readFileSync(path.join(REPO_ROOT, 'BioanalysDesktop', 'src', 'app.css'), 'utf8');
+  assert.match(css, /\.selfcheck-subs/, 'CSS 要有子灯容器');
+  assert.match(css, /\.selfcheck-sub-dot\.selfcheck-dot-pass/, 'CSS 要有子灯四档颜色');
 });
 
 test('index.js：五维结构没被改动（fs_type / storage / memory / isolation / link 各一条）', () => {

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildLedgerEntry, buildTaskScript } from '../server/task.js';
+import { buildLedgerEntry, buildTaskScript, parseComputeNodes } from '../server/task.js';
 import { auditCommand } from '../server/audit.js';
 import { LINES, PROJECTS_ROOT, BIN_ROOT, DEFAULT_PROJECT } from '../server/domain.js';
 
@@ -11,6 +11,28 @@ const baseParams = {
   args: ['--input', 'expr.tsv'],
   seed: 42,
 };
+
+test('算力节点池未配置备用节点时只包含 K40 主节点', () => {
+  assert.deepEqual(parseComputeNodes(null), [
+    { id: 'k40-ubuntu', host: 'k40-ubuntu', primary: true },
+  ]);
+});
+
+test('算力节点池从显式环境变量读取备用节点，且只允许 K40 作主节点', () => {
+  const pool = parseComputeNodes(JSON.stringify([
+    { id: 'k40-ubuntu', host: 'k40-ubuntu', primary: true },
+    { id: 'backup-arm64', host: 'backup-arm64', primary: false },
+  ]));
+  assert.equal(pool.length, 2);
+  assert.equal(pool[1].id, 'backup-arm64');
+  assert.throws(
+    () => parseComputeNodes(JSON.stringify([
+      { id: 'k40-ubuntu', host: 'k40-ubuntu', primary: false },
+      { id: 'other', host: 'other', primary: true },
+    ])),
+    /k40-ubuntu/,
+  );
+});
 
 test('台账字段齐全：project_id / line_id / step / seed / io_files / 时间戳都在', () => {
   const entry = buildLedgerEntry({
@@ -162,6 +184,77 @@ test('脚本把本线全局 bin 目录注入 PATH，部署的步骤脚本才能�
   }
 });
 
+test('adapted 任务执行项目脚本并把 canonical 图复制为 custom 产物', () => {
+  const output = `${PROJECTS_ROOT}/${P}/line1_bulk/figures/custom_fig_l2_pca.png`;
+  const script = buildTaskScript({
+    projectId: P,
+    lineId: 'line1_bulk',
+    step: 'adapt_fig_l2_pca',
+    inputs: [],
+    outputs: [output],
+    seed: 20261013,
+    adapted: true,
+    language: 'r',
+    scriptPath: `${PROJECTS_ROOT}/${P}/line1_bulk/scripts/adapt_fig_l2_pca.R`,
+    canonicalOutput: 'L2_pca_verified.png',
+  });
+  assert.match(script, /Rscript --vanilla/);
+  assert.match(script, /adapt_fig_l2_pca\.R/);
+  assert.ok(script.includes('L2_pca_verified.png'));
+  assert.ok(script.includes('custom_fig_l2_pca.png'));
+  assert.match(script, /adapted output missing/);
+});
+
+test('adapted 任务拒绝跨项目脚本路径', () => {
+  assert.throws(() => buildTaskScript({
+    projectId: P,
+    lineId: 'line1_bulk',
+    step: 'adapt_fig_l2_pca',
+    inputs: [],
+    outputs: [`${PROJECTS_ROOT}/${P}/line1_bulk/figures/custom_fig_l2_pca.png`],
+    adapted: true,
+    language: 'r',
+    scriptPath: `${PROJECTS_ROOT}/other/line1_bulk/scripts/adapt_fig_l2_pca.R`,
+    canonicalOutput: 'L2_pca_verified.png',
+  }), /scriptPath 非法/);
+});
+
+test('adapted 任务对 canonical 错误文案统一 shellQuote', () => {
+  const output = `${PROJECTS_ROOT}/${P}/line1_bulk/figures/custom_fig_l2_pca.png`;
+  const canonicalOutput = "x'; touch /tmp/pwn; #";
+  const script = buildTaskScript({
+    projectId: P,
+    lineId: 'line1_bulk',
+    step: 'adapt_fig_l2_pca',
+    inputs: [],
+    outputs: [output],
+    adapted: true,
+    language: 'r',
+    scriptPath: `${PROJECTS_ROOT}/${P}/line1_bulk/scripts/adapt_fig_l2_pca.R`,
+    canonicalOutput,
+  });
+  assert.ok(script.includes(String.raw`'adapted output missing: x'\''; touch /tmp/pwn; #'`));
+  assert.equal(script.includes("echo 'adapted output missing: x'; touch /tmp/pwn; #"), false);
+});
+
+test('adapted Python 任务通过环境变量继承 BIOANALYS_SEED', () => {
+  const output = `${PROJECTS_ROOT}/${P}/line2_scrna/figures/custom_fig_l2p_umap.png`;
+  const script = buildTaskScript({
+    projectId: P,
+    lineId: 'line2_scrna',
+    step: 'adapt_fig_l2p_umap',
+    inputs: [],
+    outputs: [output],
+    seed: 20261013,
+    adapted: true,
+    language: 'python',
+    scriptPath: `${PROJECTS_ROOT}/${P}/line2_scrna/scripts/adapt_fig_l2p_umap.py`,
+    canonicalOutput: 'umap_L2p_umap_verified.png',
+  });
+  assert.match(script, /export BIOANALYS_SEED="\$SEED"/);
+  assert.match(script, /python3 .*adapt_fig_l2p_umap\.py/);
+});
+
 test('含单引号的参数按标准方式转义，远端 shell 能解析', () => {
   const step = "deg'O'Brien";
   const input = `${PROJECTS_ROOT}/${P}/line1_bulk/processed/it's fine.tsv`;
@@ -215,7 +308,7 @@ test('environment 不传时用默认值（manifest 缺失时的退化路径）',
     endedAt: '2026-10-12T10:05:00Z',
   });
   assert.equal(entry.environment.language, 'R');
-  assert.equal(entry.environment.version, '4.3.3');
+  assert.equal(entry.environment.version, '4.5.3');
   assert.equal(entry.environment.env_name, 'line1_bulk_env');
   assert.equal(entry.environment.container_image, 'proot-ubuntu24.04-aarch64');
 });

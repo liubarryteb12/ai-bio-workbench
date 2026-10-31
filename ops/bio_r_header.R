@@ -16,8 +16,5 @@ if (requireNamespace("future", quietly = TRUE)) {
     options(future.globals.maxSize = 6.0 * 1024^3)
 }
 
-# 固定种子（与 aims v2.4 对齐：seed=20261013）
-set.seed(20261013)
-
 # 内存软提醒（R 无 RLIMIT_AS 等价物，用 gc() 周期性回收）
 # 重度计算脚本可手动调用 gc() 防内存碎片堆积

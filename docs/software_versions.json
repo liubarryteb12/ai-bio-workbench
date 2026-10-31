@@ -1,31 +1,31 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-19",
+  "generated_at": "2026-10-25",
   "scope": "本项目三条分析线实际在用的解释器与包（版本号由远端容器实采，不抄文档）",
   "probe": {
-    "script": "cn_debug/2026-10-19_s11_collect_versions.py",
-    "raw_output": "2026-10-19_s11_versions_raw.json",
+    "script": "2026-10-25 remote read-only R and Python version probe",
+    "raw_output": "reference/09.待整理/ledger-rscript-path-unification.md",
     "host": "localhost",
     "probe_python": "3.12.3",
-    "channel": "adb forward tcp:10022 -> ssh k40-ubuntu -> proot-distro ubuntu",
+    "channel": "ssh k40-ubuntu",
     "policy": "只读探测：不安装、不升级、不改容器环境"
   },
   "seed": {
     "value": 20261013,
-    "source": "aims/aims.txt 铁律#3 契约值 20261013；运行时由任务引擎以 BIOANALYS_SEED 注入（BioanalysDesktop/server/task.js:54），各步骤实际取值另见任务台账 random_seed 字段"
+    "source": "aims/20261026_0749_aims_v3_0_spec.md §2.1 契约值 20261013；运行时由任务引擎以 BIOANALYS_SEED 注入（BioanalysDesktop/server/task.js:54），各步骤实际取值另见任务台账 random_seed 字段"
   },
   "interpreters": [
     {
       "name": "R",
-      "version": "4.3.3",
-      "version_raw": "Rscript (R) version 4.3.3 (2024-02-29)",
+      "version": "4.5.3",
+      "version_raw": "Rscript (R) version 4.5.3 (2026-03-11)",
       "language": "R",
       "role": "统计建模、富集分析与图件（线 1 步骤 1-4；线 2 富集/LASSO 桥接）",
       "lines": [
         "line1_bulk",
         "line2_scrna"
       ],
-      "source": "Rscript --version"
+      "source": "/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --version"
     },
     {
       "name": "python3",
@@ -51,19 +51,19 @@
       "lines": [
         "line1_bulk"
       ],
-      "source": "Rscript -e 'if (requireNamespace(\"WGCNA\", quietly=TRUE)) cat(as.character(packageVersion(\"WGCNA\"))) else cat(\"__MISSING__\")'",
+      "source": "/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript -e 'if (requireNamespace(\"WGCNA\", quietly=TRUE)) cat(as.character(packageVersion(\"WGCNA\"))) else cat(\"__MISSING__\")'",
       "citation": "WGCNA"
     },
     {
       "name": "limma",
-      "version": "3.58.1",
+      "version": "3.68.5",
       "installed": true,
       "language": "R",
       "role": "DEG 线性模型 + 经验贝叶斯收缩（deg_limma）",
       "lines": [
         "line1_bulk"
       ],
-      "source": "Rscript -e 'if (requireNamespace(\"limma\", quietly=TRUE)) cat(as.character(packageVersion(\"limma\"))) else cat(\"__MISSING__\")'",
+      "source": "/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript -e 'if (requireNamespace(\"limma\", quietly=TRUE)) cat(as.character(packageVersion(\"limma\"))) else cat(\"__MISSING__\")'",
       "citation": "limma",
       "note": "本目录无 limma 原始论文，引用处会明写「未获取」"
     },
@@ -76,79 +76,79 @@
       "lines": [
         "line1_bulk"
       ],
-      "source": "Rscript -e 'if (requireNamespace(\"ggplot2\", quietly=TRUE)) cat(as.character(packageVersion(\"ggplot2\"))) else cat(\"__MISSING__\")'",
+      "source": "/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript -e 'if (requireNamespace(\"ggplot2\", quietly=TRUE)) cat(as.character(packageVersion(\"ggplot2\"))) else cat(\"__MISSING__\")'",
       "citation": null
     },
     {
       "name": "clusterProfiler",
-      "version": "4.10.1",
+      "version": "4.20.3",
       "installed": true,
       "language": "R",
       "role": "GO BP/CC/MF 与 KEGG 的 ORA / GSEA（enrichment_bulk）",
       "lines": [
         "line1_bulk"
       ],
-      "source": "Rscript -e 'if (requireNamespace(\"clusterProfiler\", quietly=TRUE)) cat(as.character(packageVersion(\"clusterProfiler\"))) else cat(\"__MISSING__\")'",
+      "source": "/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript -e 'if (requireNamespace(\"clusterProfiler\", quietly=TRUE)) cat(as.character(packageVersion(\"clusterProfiler\"))) else cat(\"__MISSING__\")'",
       "citation": null
     },
     {
       "name": "data.table",
-      "version": "1.14.10",
+      "version": "1.18.6.1",
       "installed": true,
       "language": "R",
       "role": "大表读写与分组聚合",
       "lines": [
         "line1_bulk"
       ],
-      "source": "Rscript -e 'if (requireNamespace(\"data.table\", quietly=TRUE)) cat(as.character(packageVersion(\"data.table\"))) else cat(\"__MISSING__\")'",
+      "source": "/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript -e 'if (requireNamespace(\"data.table\", quietly=TRUE)) cat(as.character(packageVersion(\"data.table\"))) else cat(\"__MISSING__\")'",
       "citation": null
     },
     {
       "name": "glmnet",
-      "version": "4.1.8",
+      "version": "5.1",
       "installed": true,
       "language": "R",
       "role": "LASSO 特征筛选（ml_model）",
       "lines": [
         "line1_bulk"
       ],
-      "source": "Rscript -e 'if (requireNamespace(\"glmnet\", quietly=TRUE)) cat(as.character(packageVersion(\"glmnet\"))) else cat(\"__MISSING__\")'",
+      "source": "/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript -e 'if (requireNamespace(\"glmnet\", quietly=TRUE)) cat(as.character(packageVersion(\"glmnet\"))) else cat(\"__MISSING__\")'",
       "citation": null
     },
     {
       "name": "survival",
-      "version": "3.5.8",
+      "version": "3.8.12",
       "installed": true,
       "language": "R",
       "role": "Cox 比例风险模型（cox_analysis）",
       "lines": [
         "line1_bulk"
       ],
-      "source": "Rscript -e 'if (requireNamespace(\"survival\", quietly=TRUE)) cat(as.character(packageVersion(\"survival\"))) else cat(\"__MISSING__\")'",
+      "source": "/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript -e 'if (requireNamespace(\"survival\", quietly=TRUE)) cat(as.character(packageVersion(\"survival\"))) else cat(\"__MISSING__\")'",
       "citation": null
     },
     {
       "name": "org.Hs.eg.db",
-      "version": "3.18.0",
+      "version": "3.23.1",
       "installed": true,
       "language": "R",
       "role": "Gene Symbol → Entrez ID 注释（富集分析入参）",
       "lines": [
         "line1_bulk"
       ],
-      "source": "Rscript -e 'if (requireNamespace(\"org.Hs.eg.db\", quietly=TRUE)) cat(as.character(packageVersion(\"org.Hs.eg.db\"))) else cat(\"__MISSING__\")'",
+      "source": "/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript -e 'if (requireNamespace(\"org.Hs.eg.db\", quietly=TRUE)) cat(as.character(packageVersion(\"org.Hs.eg.db\"))) else cat(\"__MISSING__\")'",
       "citation": null
     },
     {
       "name": "matrixStats",
-      "version": "1.2.0",
+      "version": "1.5.0",
       "installed": true,
       "language": "R",
       "role": "矩阵行列统计（QC 与网络构建）",
       "lines": [
         "line1_bulk"
       ],
-      "source": "Rscript -e 'if (requireNamespace(\"matrixStats\", quietly=TRUE)) cat(as.character(packageVersion(\"matrixStats\"))) else cat(\"__MISSING__\")'",
+      "source": "/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript -e 'if (requireNamespace(\"matrixStats\", quietly=TRUE)) cat(as.character(packageVersion(\"matrixStats\"))) else cat(\"__MISSING__\")'",
       "citation": null
     },
     {
@@ -160,60 +160,60 @@
       "lines": [
         "line2_scrna"
       ],
-      "source": "Rscript -e 'if (requireNamespace(\"GSVA\", quietly=TRUE)) cat(as.character(packageVersion(\"GSVA\"))) else cat(\"__MISSING__\")'",
+      "source": "/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript -e 'if (requireNamespace(\"GSVA\", quietly=TRUE)) cat(as.character(packageVersion(\"GSVA\"))) else cat(\"__MISSING__\")'",
       "citation": null
     },
     {
       "name": "GSEABase",
-      "version": "1.64.0",
+      "version": "1.72.0",
       "installed": true,
       "language": "R",
       "role": "GSVA 输入基因集封装",
       "lines": [
         "line2_scrna"
       ],
-      "source": "Rscript -e 'if (requireNamespace(\"GSEABase\", quietly=TRUE)) cat(as.character(packageVersion(\"GSEABase\"))) else cat(\"__MISSING__\")'",
+      "source": "/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript -e 'if (requireNamespace(\"GSEABase\", quietly=TRUE)) cat(as.character(packageVersion(\"GSEABase\"))) else cat(\"__MISSING__\")'",
       "citation": null
     },
     {
       "name": "Seurat",
-      "version": "5.6.0",
-      "installed": true,
+      "version": null,
+      "installed": false,
       "language": "R",
-      "role": "已安装；三条线的步骤脚本均未 library()（线 2/线 3 走 scanpy）",
+      "role": "R 4.5.3 站点库未安装；三条线的步骤脚本均未 library()（线 2/线 3 走 scanpy）",
       "lines": [],
-      "source": "Rscript -e 'if (requireNamespace(\"Seurat\", quietly=TRUE)) cat(as.character(packageVersion(\"Seurat\"))) else cat(\"__MISSING__\")'",
+      "source": "/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript -e 'if (requireNamespace(\"Seurat\", quietly=TRUE)) cat(as.character(packageVersion(\"Seurat\"))) else cat(\"__MISSING__\")'",
       "citation": null,
-      "note": "容器内可用但未进入本项目流程，故不作为方法学引用"
+      "note": "2026-10-25 在 R 4.5.3 站点库实测 requireNamespace('Seurat') 为 FALSE，故不作为方法学引用"
     },
     {
       "name": "pheatmap",
-      "version": "1.0.12",
+      "version": "1.0.13",
       "installed": true,
       "language": "R",
       "role": "已安装；步骤脚本未 library()（热图由 ComplexHeatmap/ggplot2 路线承担）",
       "lines": [],
-      "source": "Rscript -e 'if (requireNamespace(\"pheatmap\", quietly=TRUE)) cat(as.character(packageVersion(\"pheatmap\"))) else cat(\"__MISSING__\")'",
+      "source": "/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript -e 'if (requireNamespace(\"pheatmap\", quietly=TRUE)) cat(as.character(packageVersion(\"pheatmap\"))) else cat(\"__MISSING__\")'",
       "citation": null
     },
     {
       "name": "ComplexHeatmap",
-      "version": "2.18.0",
+      "version": "2.26.1",
       "installed": true,
       "language": "R",
       "role": "已安装；步骤脚本未 library()",
       "lines": [],
-      "source": "Rscript -e 'if (requireNamespace(\"ComplexHeatmap\", quietly=TRUE)) cat(as.character(packageVersion(\"ComplexHeatmap\"))) else cat(\"__MISSING__\")'",
+      "source": "/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript -e 'if (requireNamespace(\"ComplexHeatmap\", quietly=TRUE)) cat(as.character(packageVersion(\"ComplexHeatmap\"))) else cat(\"__MISSING__\")'",
       "citation": null
     },
     {
       "name": "pROC",
-      "version": "1.18.5",
+      "version": "1.19.1",
       "installed": true,
       "language": "R",
       "role": "已安装；步骤脚本未 library()（AUC 由 sklearn 计算）",
       "lines": [],
-      "source": "Rscript -e 'if (requireNamespace(\"pROC\", quietly=TRUE)) cat(as.character(packageVersion(\"pROC\"))) else cat(\"__MISSING__\")'",
+      "source": "/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript -e 'if (requireNamespace(\"pROC\", quietly=TRUE)) cat(as.character(packageVersion(\"pROC\"))) else cat(\"__MISSING__\")'",
       "citation": null
     },
     {

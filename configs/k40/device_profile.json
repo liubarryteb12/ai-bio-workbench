@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-10-26T19:18:14+08:00",
+  "device": {
+    "name": "Redmi K40",
+    "codename": "alioth",
+    "model": "M2012K11AC",
+    "serial": "3a3e1f52",
+    "soc": "Qualcomm SM8250 Snapdragon 870",
+    "arch": "arm64-v8a"
+  },
+  "android": {
+    "release": "13",
+    "hyperos_version": "V816.0.10.0.TKHCNXM",
+    "build": "TKQ1.221114.001",
+    "build_tags": "test-keys",
+    "boot_completed": true,
+    "adb_enabled": true,
+    "developer_options_enabled": true,
+    "bootloader": {
+      "locked": true,
+      "verified_boot_state": "green"
+    }
+  },
+  "resources": {
+    "mem_total_kb": 11783376,
+    "mem_available_kb": 8204548,
+    "zram_swap_total_kb": 8388604,
+    "zram_swap_used_kb": 1363456,
+    "data_total_human": "225G",
+    "data_used_human": "28G",
+    "data_available_human": "198G",
+    "max_thermal_c": 52.5
+  },
+  "termux": {
+    "phase": "complete",
+    "installed": true,
+    "version": "0.118.0",
+    "boot_installed": true,
+    "boot_version": "0.8.1",
+    "debuggable": true,
+    "run_as_available": true,
+    "root_available": false,
+    "apk_backup_sha256": "10b412fa0aca5a4585c367a446f8e63525bdc9a7b8dfce2d3f84c2f148e19e21",
+    "boot_apk_backup_sha256": "97e6d336f05b59f7cb25e8efa7173e0a6e665f3022b75c6d55a69b6399ecacc8",
+    "prefix": "/data/data/com.termux/files/usr",
+    "home": "/data/data/com.termux/files/home",
+    "ssh_port": 8022,
+    "ssh_user": "u0_a283",
+    "sshd_running": true,
+    "wake_lock_held": true,
+    "boot_script": "/data/data/com.termux/files/home/.termux/boot/start-sshd.sh",
+    "miui_autostart_enabled": true,
+    "battery_optimization_whitelisted": true
+  },
+  "container": {
+    "manager": "proot-distro 5.10.3",
+    "name": "ubuntu",
+    "distro": "Ubuntu 24.04.5 LTS",
+    "arch": "aarch64",
+    "rootfs_size": "3.7G",
+    "runtime_status": "needs_rework",
+    "python_version": "3.12.3",
+    "python_venv": "/root/venvs/bio-py",
+    "r_version": "4.3.3",
+    "r_expected_version": "4.5.3",
+    "r_expected_prefix": "/opt/R/4.5.3",
+    "r_expected_site_library": "/opt/R/4.5.3-site-library",
+    "bioconductor_version": "3.18"
+  },
+  "server_strategy": {
+    "runtime": "termux_base_plus_proot_ubuntu",
+    "analysis_runtime": "k40-ubuntu",
+    "native_postmarketos": "blocked_by_official_bootloader_unlock",
+    "shared_android_kernel": true,
+    "remote_proxy_reverse_port": 7890
+  }
+}

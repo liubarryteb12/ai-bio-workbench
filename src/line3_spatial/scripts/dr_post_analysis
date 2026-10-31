@@ -36,6 +36,7 @@ echo "step_executed=dr_post_analysis"
 echo "bioanalys_seed=${seed}"
 
 python3 - <<'PYSCRIPT'
+import hashlib
 import os
 import sys
 import time
@@ -60,7 +61,8 @@ plt.rcParams.update({
 START = time.time()
 SEED = int(os.environ["BIOANALYS_SEED"])
 ALPHA = 0.05
-CACHE = os.path.join("..", "references", "gmt_cache")
+# BIO_GMT_CACHE 可覆盖 gmt 缓存目录（默认 <cwd>/../references/gmt_cache，见 SPEC_DECISIONS D-22）
+CACHE = os.environ.get("BIO_GMT_CACHE", os.path.join("..", "references", "gmt_cache"))
 os.makedirs(CACHE, exist_ok=True)
 UP = "#D62728"
 DOWN = "#1F77B4"
@@ -435,8 +437,25 @@ report_lines += [
     "  3. DR 是调控变化不是表达变化，与域 marker 交集只作交叉印证。",
     "",
     "elapsed_seconds=%.1f" % (time.time() - START),
+    "outputs=dr_enrichment_mouse.tsv, dr_enrichment_human.tsv, dr_overlap_mouse.tsv, dr_overlap_human.tsv, ../figures/l3_mouse_10_dr_gsea_top.png, ../figures/l3_mouse_11_dr_overlap.png, ../figures/l3_human_10_dr_gsea_top.png, ../figures/l3_human_11_dr_overlap.png, dr_post_report.txt",
 ]
 with open("dr_post_report.txt", "w", encoding="utf-8") as fh:
     fh.write("\n".join(report_lines) + "\n")
+
+for _artifact in sorted(os.listdir(".")):
+    if not os.path.isfile(_artifact):
+        continue
+    if _artifact == 'dr_post_report.txt':
+        continue
+    with open(_artifact, "rb") as _fh:
+        _digest = hashlib.sha256(_fh.read()).hexdigest()
+    with open('dr_post_report.txt', "a", encoding="utf-8") as _fh:
+        _fh.write("%s_sha256=%s\n" % (_artifact, _digest))
 log("dr_post_analysis_done")
 PYSCRIPT
+
+# sha256 产物台账后置补登：复用独立脚本，写法与其余步骤解耦。
+if [ -x "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" ]; then
+  "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" "$PWD" "dr_post_report.txt" > /dev/null 2>>"$0.ledger.err" \
+  || echo "WARN sha256 ledger backfill failed, see $0.ledger.err" >&2
+fi

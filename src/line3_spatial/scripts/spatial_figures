@@ -544,4 +544,33 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         log("skip %s_16_domain_panel（缺样本或域标签）" % pre)
 
 log("figures_done count=%d elapsed=%.1fs" % (len(made), time.time() - START))
+if not made:
+    fail("未生成任何图件；拒绝以零产物正常退出")
+
+# 产物清单落盘：只打 stdout 的话，任务重跑与事后核对时清单就沦了。
+try:
+    _man = os.path.join(OUT, "figures_manifest.txt")
+    with open(_man, "w", encoding="utf-8") as _fh:
+        _fh.write("step=%s seed=%s out=%s count=%d elapsed=%.1fs%s" % (
+            os.path.basename(sys.argv[0]),
+            os.environ.get("BIOANALYS_SEED", "UNSET"),
+            OUT, len(made), time.time() - START, chr(10)))
+        for _n in made:
+            _p = os.path.join(OUT, _n)
+            _sz = os.path.getsize(_p) if os.path.exists(_p) else -1
+            _fh.write("%s%s%d%s" % (_n, chr(9), _sz, chr(10)))
+    log("wrote figures_manifest.txt (%d entries)" % len(made))
+    try:
+        with open(_man, "a", encoding="utf-8") as _fh:
+            _fh.write("outputs=%s\n" % ", ".join(["figures_manifest.txt"] + list(made)))
+    except OSError as _exc:
+        log("WARN outputs append failed: %s" % _exc)
+except OSError as _exc:
+    log("WARN 产物清单落盘失败: %s" % _exc)
 PYSCRIPT
+
+# sha256 产物台账后置补登：复用独立脚本，写法与其余步骤解耦。
+if [ -x "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" ]; then
+  "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" "$PWD/../figures" "figures_manifest.txt" > /dev/null 2>>"$0.ledger.err" \
+  || echo "WARN sha256 ledger backfill failed, see $0.ledger.err" >&2
+fi

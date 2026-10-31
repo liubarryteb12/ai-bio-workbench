@@ -48,7 +48,7 @@ const BASH = findBash();
 
 test('run.js 必须把 throttled 置为 true（否则降权/门禁/线程封顶对引擎任务全部失效）', () => {
   const text = fs.readFileSync(RUN_JS, 'utf8');
-  assert.ok(/buildTaskScript\(\{\s*\.\.\.task,\s*throttled:\s*true\s*\}\)/.test(text),
+  assert.ok(/buildTaskScript\(\{\s*\.\.\.task,\s*throttled:\s*true,\s*detached,\s*wrapperTaskId,/.test(text),
     'run.js 必须以 throttled: true 调用 buildTaskScript');
   assert.equal(/buildTaskScript\(task\)/.test(text), false, '不得再出现不传 throttled 的调用');
 });
@@ -111,7 +111,9 @@ test('审计对包装后的脚本仍然放行（改走包装器不能被 audit �
 test('静态：task.js 不再把 rawCmd 当 $5 传（D-21 根因不许回潮）', () => {
   const text = fs.readFileSync(TASK_JS, 'utf8');
   assert.ok(text.includes('export BIO_EXEC_CMD='), 'task.js 缺命令串注入');
-  assert.ok(text.includes('export BIO_WRAPPER_LEDGER=0'), 'task.js 缺台账开关');
+  assert.ok(text.includes("detached ? '1' : '0'"), 'task.js 缺 detached/前台台账分流');
+  const script = buildTaskScript({ ...BASE, throttled: true });
+  assert.ok(script.includes('export BIO_WRAPPER_LEDGER=0'), '前台包装器必须关闭重复台账');
   assert.ok(text.includes('self $' + '{shellQuote(') && text.includes('binDir(lineId)'),
     '必须把母版绝对路径传给门禁');
   assert.equal(text.includes('self $' + '{rawCmd}'), false, '旧的 rawCmd 当 $5 写法必须彻底删掉');

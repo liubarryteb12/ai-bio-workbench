@@ -4,7 +4,7 @@
 #   2. DR 调控网络可视化（SCENIC regulon 靶基因 ∩ DR 基因 → TF→DR 边）
 #   3. DR ∩ 线内 DEG ∩ 细胞类型 marker 交集
 #
-# 输入（cwd 下）：
+# 输入（--input 绝对路径优先，未传则回落到 cwd 下同名文件）：
 #   scrna_knockout.h5ad（步骤 9 产物：uns['virtual_knockout'] + var tenifold_*）
 #   ko_dr_genes.tsv（步骤 9 DR 全表）
 #   scenic_regulons.csv（步骤 19 产物：cisTarget regulon，含 TargetGenes）
@@ -35,8 +35,37 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+# 输入按文件名特征分流为五个角色，经环境变量交给 Python 层。
+# 未显式传入时留空，由 Python 层回落到 cwd 固定文件名（兼容旧调用方式）。
+in_ko_h5ad=""
+in_ko_dr_tsv=""
+in_scenic_csv=""
+in_deg_tsv=""
+in_deg_h5ad=""
+for path in "${INPUTS[@]:-}"; do
+  [ -n "$path" ] || continue
+  case "$path" in
+    *knockout*.h5ad) in_ko_h5ad="$path" ;;
+    *ko_dr_genes*.tsv) in_ko_dr_tsv="$path" ;;
+    *scenic_regulons*.csv) in_scenic_csv="$path" ;;
+    *deg_all_by_celltype*.tsv) in_deg_tsv="$path" ;;
+    *deg*.h5ad) in_deg_h5ad="$path" ;;
+    *) echo "无法识别的输入文件: $path（需要 knockout.h5ad / ko_dr_genes.tsv / scenic_regulons.csv / deg_all_by_celltype.tsv / deg.h5ad）" >&2; exit 2 ;;
+  esac
+done
+
 echo "step_executed=dr_post_analysis"
 echo "bioanalys_seed=${seed}"
+export IN_KO_H5AD="$in_ko_h5ad"
+export IN_KO_DR_TSV="$in_ko_dr_tsv"
+export IN_SCENIC_CSV="$in_scenic_csv"
+export IN_DEG_TSV="$in_deg_tsv"
+export IN_DEG_H5AD="$in_deg_h5ad"
+echo "input_knockout_h5ad=${in_ko_h5ad:-（未提供，回落 cwd）}"
+echo "input_ko_dr_genes=${in_ko_dr_tsv:-（未提供，回落 cwd）}"
+echo "input_scenic_regulons=${in_scenic_csv:-（未提供，回落 cwd）}"
+echo "input_deg_all_by_celltype=${in_deg_tsv:-（未提供，回落 cwd）}"
+echo "input_deg_h5ad=${in_deg_h5ad:-（未提供，回落 cwd）}"
 
 python3 - <<'PYSCRIPT'
 import os
@@ -219,12 +248,29 @@ def _install_layout_guard():
 _install_layout_guard()
 
 
-for f in ["scrna_knockout.h5ad", "ko_dr_genes.tsv", "scenic_regulons.csv",
-          "deg_all_by_celltype.tsv", "scrna_deg.h5ad"]:
+
+def resolve_input(env_key, default_name):
+    """优先用 bash 层经 --input 解析出的绝对路径，缺失时回落到 cwd 固定名。"""
+    p = os.environ.get(env_key, "").strip()
+    if p:
+        if not os.path.exists(p):
+            fail("传入的输入不存在: %s" % p)
+        log("input %s -> %s" % (default_name, p))
+        return p
+    return default_name
+
+
+KO_H5AD = resolve_input("IN_KO_H5AD", "scrna_knockout.h5ad")
+KO_DR_TSV = resolve_input("IN_KO_DR_TSV", "ko_dr_genes.tsv")
+SCENIC_CSV = resolve_input("IN_SCENIC_CSV", "scenic_regulons.csv")
+DEG_TSV = resolve_input("IN_DEG_TSV", "deg_all_by_celltype.tsv")
+DEG_H5AD = resolve_input("IN_DEG_H5AD", "scrna_deg.h5ad")
+
+for f in [KO_H5AD, KO_DR_TSV, SCENIC_CSV, DEG_TSV, DEG_H5AD]:
     if not os.path.exists(f):
         fail("缺少输入 %s" % f)
 
-ko_adata = ad.read_h5ad("scrna_knockout.h5ad")
+ko_adata = ad.read_h5ad(KO_H5AD)
 vk = ko_adata.uns.get("virtual_knockout")
 if not isinstance(vk, dict):
     fail("scrna_knockout.h5ad 缺 uns['virtual_knockout']")
@@ -233,7 +279,7 @@ if not ko_gene:
     fail("uns['virtual_knockout'] 缺 ko_gene")
 log("ko_gene=%s n_dr=%s" % (ko_gene, vk.get("n_dr_genes")))
 
-dr = pd.read_csv("ko_dr_genes.tsv", sep="\t")
+dr = pd.read_csv(KO_DR_TSV, sep="\t")
 if "is_knockout_gene" not in dr.columns or "Z" not in dr.columns:
     fail("ko_dr_genes 缺 is_knockout_gene 或 Z 列")
 dr["adjusted p-value"] = pd.to_numeric(dr["adjusted p-value"], errors="coerce")
@@ -245,7 +291,8 @@ if len(dr_nonko) < 20:
 # ================= 1. DR 富集（prerank GSEA） =================
 import gseapy
 
-gmt_dir = os.path.join("..", "references", "gmt_cache")
+# BIO_GMT_CACHE 可覆盖 gmt 缓存目录（默认 <cwd>/../references/gmt_cache，见 SPEC_DECISIONS D-22）
+gmt_dir = os.environ.get("BIO_GMT_CACHE", os.path.join("..", "references", "gmt_cache"))
 gmt_files = [f for f in os.listdir(gmt_dir) if f.endswith(".gmt")] if os.path.isdir(gmt_dir) else []
 if not gmt_files:
     fail("gmt_cache 下无 gmt 文件")
@@ -328,7 +375,7 @@ plt.close(fig)
 plt.rcParams["figure.autolayout"] = True
 
 # ================= 2. DR 调控网络（SCENIC regulon ∩ DR） =================
-reg = pd.read_csv("scenic_regulons.csv", index_col=[0, 1], header=[0, 1])
+reg = pd.read_csv(SCENIC_CSV, index_col=[0, 1], header=[0, 1])
 if ("Enrichment", "TargetGenes") not in reg.columns:
     fail("scenic_regulons 缺 TargetGenes 列")
 sig_dr = set(dr_nonko.loc[dr_nonko["adjusted p-value"] < ALPHA, "Gene"].astype(str))
@@ -393,12 +440,12 @@ if len(net):
     plt.close(fig)
 
 # ================= 3. DR ∩ DEG ∩ marker 交集 =================
-deg = pd.read_csv("deg_all_by_celltype.tsv", sep="\t")
+deg = pd.read_csv(DEG_TSV, sep="\t")
 if "significant" not in deg.columns:
     fail("deg_all_by_celltype 缺 significant 列")
 sig_deg = set(deg.loc[deg["significant"].astype(bool), "gene_symbol"].astype(str))
 
-deg_adata = ad.read_h5ad("scrna_deg.h5ad")
+deg_adata = ad.read_h5ad(DEG_H5AD)
 marker_sets = deg_adata.uns.get("annotation", {}).get("marker_sets", {})
 marker_to_ct = {}
 for ct, genes in marker_sets.items():
@@ -490,8 +537,15 @@ lines += [
     "  3. DR 与 DEG 概念不同：DR 是调控变化，DEG 是表达变化，交集只作交叉印证不作等价。",
     "",
     "elapsed_seconds=%.1f" % (time.time() - START),
+    "outputs=dr_enrichment.tsv, dr_regulatory_network.tsv, dr_overlap.tsv, ../figures/l2_15_dr_gsea_top.png, ../figures/l2_16_dr_regulatory_network.png, ../figures/l2_17_dr_overlap.png, dr_post_report.txt",
 ]
 with open("dr_post_report.txt", "w", encoding="utf-8") as fh:
     fh.write("\n".join(lines) + "\n")
 log("dr_post_analysis_done")
 PYSCRIPT
+
+# sha256 产物台账后置补登：复用独立脚本，写法与其余步骤解耦。
+if [ -x "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" ]; then
+  "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" "$PWD" "dr_post_report.txt" > /dev/null 2>>"$0.ledger.err" \
+  || echo "WARN sha256 ledger backfill failed, see $0.ledger.err" >&2
+fi

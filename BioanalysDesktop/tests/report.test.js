@@ -186,7 +186,11 @@ after(() => {
 test('buildReportCommand：正常项目 id 产出 cd 数据面 + --project 单引号目录', () => {
   const { command, remoteProjectDir } = buildReportCommand('PRJ_20261020_DKD_bulk');
   assert.equal(remoteProjectDir, '/mnt/ssd/bio_data/projects/PRJ_20261020_DKD_bulk');
-  assert.ok(command.startsWith('cd /mnt/ssd/bio_data && python3 ops/build_client_report.py'));
+  assert.ok(command.startsWith(
+    "cd /mnt/ssd/bio_data && BIO_ED25519_PRIVATE_KEY_PATH='/mnt/ssd/bio_data/ops/secrets/ed25519_private.pem'",
+  ));
+  assert.match(command, /BIO_ED25519_PUBLIC_KEY_PATH='\/mnt\/ssd\/bio_data\/ops\/secrets\/ed25519_public\.pem'/);
+  assert.match(command, /python3 ops\/build_client_report\.py/);
   assert.ok(command.includes("--project '/mnt/ssd/bio_data/projects/PRJ_20261020_DKD_bulk'"));
 });
 

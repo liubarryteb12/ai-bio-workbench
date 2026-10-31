@@ -1,54 +1,54 @@
 @echo off
-chcp 936 >nul
+chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
 
 echo ============================================
-echo   ¹ÜÀíÔ±¹¤×÷Ì¨ ¡¤ Æô¶¯
+echo   ç®¡ç†å‘˜å·¥ä½œå° Â· å¯åŠ¨
 echo ============================================
 echo.
 
 where node >nul 2>nul
 if errorlevel 1 (
-  echo [´íÎó] Î´ÕÒµ½ Node.js£¬ÇëÏÈ°²×° Node.js ºóÖØÊÔ¡£
+  echo [é”™è¯¯] æœªæ‰¾åˆ° Node.jsï¼Œè¯·å…ˆå®‰è£… Node.js åé‡è¯•ã€‚
   echo.
   pause
   exit /b 1
 )
 
-netstat -ano | findstr ":8787 " | findstr "LISTENING" >nul 2>nul
-if not errorlevel 1 (
-  echo [ÌáÊ¾] 8787 ¶Ë¿ÚÒÑ±»Õ¼ÓÃ£¬¹¤×÷Ì¨¿ÉÄÜÒÑ¾­ÔÚÔËĞĞ¡£
-  echo         ÇëÖ±½Ó·ÃÎÊ http://127.0.0.1:8787/
-  echo         ÈôÒªÖØÆô£¬ÇëÏÈ¹Ø±ÕÒÑÓĞµÄ¹¤×÷Ì¨´°¿Ú¡£
-  echo.
-  pause
-  exit /b 1
-)
+pwsh -NoProfile -File "%~dp0ops\port_preflight.ps1" -Port 18787 -ExpectedPattern "server[\\/]index\.js" >nul 2>nul
+if not errorlevel 1 goto workbench_port_free
+echo [æç¤º] 18787 ç«¯å£å·²è¢« Bound æˆ– Listen çŠ¶æ€å ç”¨ï¼Œå¯åŠ¨å·²å–æ¶ˆã€‚
+echo         è¯·è¿è¡Œä»¥ä¸‹å‘½ä»¤æŸ¥çœ‹å ç”¨è€…ï¼Œç¦æ­¢ç›´æ¥ç»“æŸæœªçŸ¥è¿›ç¨‹ï¼š
+echo         pwsh -File ops\port_preflight.ps1 -Port 18787 -ExpectedPattern "server[\\/]index\.js"
+echo.
+pause
+exit /b 1
+:workbench_port_free
 
 if not exist "BioanalysDesktop\dist\index.html" (
-  echo [ÌáÊ¾] Ç°¶ËÉĞÎ´¹¹½¨£¬ÕıÔÚÖ´ĞĞ npm run build ...
+  echo [æç¤º] å‰ç«¯å°šæœªæ„å»ºï¼Œæ­£åœ¨æ‰§è¡Œ npm run build ...
   pushd "BioanalysDesktop"
   call npm run build
   if errorlevel 1 (
-    echo [´íÎó] Ç°¶Ë¹¹½¨Ê§°Ü£¬Çë¼ì²é BioanalysDesktop Ä¿Â¼ÏÂµÄ npm »·¾³¡£
+    echo [é”™è¯¯] å‰ç«¯æ„å»ºå¤±è´¥ï¼Œè¯·æ£€æŸ¥ BioanalysDesktop ç›®å½•ä¸‹çš„ npm ç¯å¢ƒã€‚
     popd
     pause
     exit /b 1
   )
   popd
-  echo [Íê³É] Ç°¶Ë¹¹½¨Íê³É¡£
+  echo [å®Œæˆ] å‰ç«¯æ„å»ºå®Œæˆã€‚
   echo.
 )
 
-echo ¹¤×÷Ì¨µØÖ·: http://127.0.0.1:8787/
-echo °´ Ctrl+C ¿ÉÍ£Ö¹·şÎñ¡£
+echo å·¥ä½œå°åœ°å€: http://127.0.0.1:18787/
+echo æŒ‰ Ctrl+C å¯åœæ­¢æœåŠ¡ã€‚
 echo.
 
 cd /d "%~dp0BioanalysDesktop"
 node server\index.js
 
 echo.
-echo [ÒÑÍ£Ö¹] ¹¤×÷Ì¨·şÎñÒÑÍË³ö¡£
+echo [å·²åœæ­¢] å·¥ä½œå°æœåŠ¡å·²é€€å‡ºã€‚
 pause
 endlocal

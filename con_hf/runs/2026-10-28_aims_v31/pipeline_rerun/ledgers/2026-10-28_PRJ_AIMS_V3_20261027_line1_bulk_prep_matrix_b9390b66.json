@@ -1,0 +1,35 @@
+{
+  "task_id": "b9390b66-cec9-4f62-a800-e4bede4aeea2",
+  "project_id": "PRJ_AIMS_V3_20261027",
+  "line_id": "line1_bulk",
+  "step_name": "prep_matrix",
+  "mod_id": "l1_ingest_prep",
+  "status": "completed",
+  "start_time": "2026-10-27T18:24:58.754Z",
+  "end_time": "2026-10-27T18:25:05.840Z",
+  "environment": {
+    "language": "R",
+    "version": "4.5.3",
+    "env_name": "line1_bulk_env",
+    "container_image": "proot-ubuntu24.04-aarch64",
+    "random_seed": 20261021
+  },
+  "resource_usage": {
+    "max_cpu_percent": null,
+    "max_memory_gb": null,
+    "disk_io_peak_mb_s": null
+  },
+  "io_files": {
+    "input": [
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line1_bulk/raw_data/GSE277173_series_matrix.txt.gz",
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line1_bulk/raw_data/GPL11532-32230.txt",
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line1_bulk/raw_data/grouping.txt"
+    ],
+    "output": []
+  },
+  "checkpoint_status": "passed",
+  "error_log": null,
+  "exit_code": 0,
+  "next_action_suggested": null,
+  "compute_node_id": "k40-ubuntu"
+}

@@ -1,0 +1,14 @@
+step_executed=figure_catalog_r_adapter
+catalog_id=rgg_0070
+status=failed
+verdict=fail
+failure_kind=code_failure
+exit_code=1
+validation_exit=1
+host=k40-ubuntu
+seed=42
+timeout_seconds=180
+artifact_sha256=
+artifact_width=
+artifact_height=
+artifact_detail=artifact missing

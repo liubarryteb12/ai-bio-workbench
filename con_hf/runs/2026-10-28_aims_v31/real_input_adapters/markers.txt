@@ -1,0 +1,6 @@
+/mnt/ssd/bio_data/system_logs/task_1793122852878_1d610790.log:ADAPT_REAL_INPUT_OK pca rows=16
+/mnt/ssd/bio_data/system_logs/task_1793122914072_05f705f5.log:ADAPT_REAL_INPUT_OK heatmap genes=50 samples=16
+/mnt/ssd/bio_data/system_logs/task_1793122975221_97558737.log:ADAPT_REAL_INPUT_OK volcano rows=20019
+/mnt/ssd/bio_data/system_logs/task_1793123036366_73d813e9.log:ADAPT_REAL_INPUT_OK dotplot rows=143
+/mnt/ssd/bio_data/system_logs/task_1793123097454_31590942.log:ADAPT_REAL_INPUT_OK volcano rows=5000
+/mnt/ssd/bio_data/system_logs/task_1793123158572_21628f40.log:ADAPT_REAL_INPUT_OK umap cells=6877 groups=2

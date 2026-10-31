@@ -9,6 +9,7 @@
 | 脚本 | 位置 | 用途 | 实测状态 |
 |---|---|---|---|
 | `00_link_check.ps1` | PC | 链路四段自检：设备 → forward → Termux sshd → 容器 sshd，加四服务状态 | exit 0 |
+| `10_diagnose_abort.ps1` | PC | proot abort 分诊器（只读）：按 logcat 判 P-29（15 秒周期）/ P-23（容器内敏感命令）/ 未归类，逐类给处置步骤 | exit 0 无活动；exit 1 判出 P-23/P-29；exit 2 链路不通 |
 | `_archive/ops/01_fix_svlogger.ps1`（已归档 2026-10-21） | PC | 修复 log 子服务 crash-loop（坑#88），可回滚。一次性修复器，2026-10-20 reboot 后已执行完成；**若复发从 `_archive/` 取回**（`git mv _archive/ops/01_fix_svlogger.ps1 ops/`） | exit 0 |
 | 上述脚本依赖的模板 | PC → 手机 | `svlogger_sshd` / `svlogger_crond` / `svlogger_ssh-agent`（本地 `ops/` 下本就不存在，只在远端 Termux 服务目录） | 已生效 |
 | `02_check_isolation.ps1` | PC | 校验 `src/<line>/` 代码无跨线引用 | exit 0，反向验证过 |
@@ -18,7 +19,10 @@
 | `06_deploy_scripts.ps1` | PC | 步骤脚本部署通道：`src/<line>/scripts/` → 服务器 `<line>/bin/`，scp 直送 + chmod 755 + 字节校验 + `test -x` 复核。`-Line` 单线 / `-Force` 覆盖 / `-Rehearse` 演练 | line1_bulk 首脚本 probe_env 部署 exit 0；复验任务全链路 completed exit 0（2026-10-13） |
 | `bio_watchdog.sh` | 手机 Termux | 保活看护（runit 监管）：每分钟重申 `termux-wake-lock` + 检查 5 个服务非 run 则 `sv up`。部署到 `~/p_actions/bin/`，服务目录 `$PREFIX/var/service/bio-watchdog/` | 2026-10-18 实测：唤醒锁 LONG 常驻；`sv down crond` 49 秒内被拉起；`kill -9` 后 runsv 5 秒自愈 |
 | `fix_runsvdir.sh` | 手机 Termux | 双 runsvdir 抢锁修复（R15）：杀双 runsvdir+runsv+补杀 proot → 单实例 `runsvdir -P` 重拉 → `sv up` 六服务。**执行方式必须 `run-as com.termux sh <script>`**（直接 exec bash 被 Android W^X 拦） | 2026-10-20 真机 reboot 实战：R15 爆发后用本脚本修复，runsvdir 恢复为 1、六服务全 run（报告 `con_hf/2026-10-20_reboot_test.md`） |
-| `serve_guard.ps1` | PC | 运行时守护：每 30 秒探活 工作台 8787 / 用户端 8080 / frpc，挂了按端口占用者杀掉再拉起。默认工作台免口令（本机用）；加 `-RequireAuth` 才带口令启动（口令文件 `~/.bioanalys/workbench_auth.json`，首次需要时自动生成）。**不注册开机自启**，需要时手动启动 | 2026-10-18 故障注入实测：杀 8787+8080 → 一个周期内重建；杀 frpc → 重建且公网 45644 恢复 200；`-RequireAuth` 下免密实例被识别并替换 |
+| `08_migrate_to_projects.sh`（+ `.ps1` 一键入口） | 服务器 | 数据面引入项目维度后的一次性迁移：顶层平铺三线 `mv` 进 `projects/default/`，`bin/` `envs/` 提到顶层全局，旧台账 `io_files` 加 `projects/<项目>/` 前缀并补 `project_id`。同分区 rename 秒级完成，迁移前后逐线比对文件数与字节；幂等（已迁移直接 `ALREADY_MIGRATED` 退出 0） | 2026-10-14 迁移实测：文件数与字节逐线一致，旧台账重写后 04 巡检全过 |
+| `render_report_html.py` | 服务器 | 把交付目录的 `Analysis_Report.md` 渲染成单文件出版级 HTML（内联 CSS、零外部依赖、含目录锚点与七章结构）。`--self-test` 跑内建用例（转义 / 死锚点 / 缺输入抛 `InputError`）；写盘前自校验，不自行容错 | 远端已部署；`BioanalysDesktop/tests/report_html.test.js` 覆盖 |
+| `port_preflight.ps1` | PC | 端口占用预检：读取全部 TCP 状态，按进程命令行白名单区分本项目 Node 服务与外部进程。退出码 `0=free / 10=expected / 20=foreign / 2=error`，只有 `expected` 允许进入停止流程 | 2026-10-28 fixture 覆盖 free、Bound foreign、Listen expected；迁移后真机识别 18787 为本项目 Node expected |
+| `serve_guard.ps1` | PC | 运行时守护：每 30 秒探活 18787 / 8080 / frpc。服务异常时先调 `port_preflight.ps1`，只停止命令行匹配本项目 Node 服务的 owner；外部进程占用只记录并按原样保留。`-DryRun` 只输出决策，不启动服务。默认工作台免口令，`-RequireAuth` 才启用口令；不注册开机自启 | 2026-10-28 迁移后 18787 五维自检 PASS，8080 `/health` 200 |
 | `layout_helper.py` | 服务器 `ops/` | 单图 SCI 三模板外挂装饰器（Python/matplotlib）：`apply_sci_plot_layout(fig, ax, spec, footnote_text, badge_text)`。读 `project.json` 的 `plot_layout_config`，落位标题/图例/X 轴避让/脚注栏，返回 dpi | 2026-10-18 本机 31 条断言全过（含几何审计零违规）+ 远端部署冒烟通过；已部署 `/mnt/ssd/bio_data/ops/` |
 | `layout_autoload/sitecustomize.py` | 服务器 `ops/layout_autoload/` | Python 解释器级模板挂载：任务脚本把本目录放进 `PYTHONPATH`，启动即读 `BIOANALYS_PROJECT_JSON` 并包装 `Figure.savefig`。母版脚本零改动 | 2026-10-18 远端 16 条断言 + 真实 `bulk_figures` 端到端通过（DPI 300、画布按模板重设） |
 | `layout_autoload/Rprofile` | 服务器 `ops/layout_autoload/` | R 端模板挂载：包装 `ggplot2::ggsave`，摘掉母版自带的 `width/height/units/dpi` 后按模板落盘 | 2026-10-18 真实 `pca_matrix` 端到端通过（PDF 518×291 pt ≈ 7.19×4.04 in，16:9） |
@@ -27,14 +31,23 @@
 | `build_client_report.py` | 服务器 `ops/` | 客户交付包七章解读报告引擎：扫描项目产物 → 生成 `Analysis_Report.md` + 单文件交互 `Analysis_Report.html` → 归集 `01_Adapted_Scripts` / `02_Figures_and_Tables` / `03_Interpretation_Report` → 打 `<id>_Client_Delivery.tar.gz`。`--dry-run` 预览、`--no-tar` 只出三大件、`--self-test` 自检。第二章新增「软件与版本登记 / 随机种子 / 方法学引用」三段，数据读 `software_versions.json` + `reference_citations.json`（缺失时正文明确写"版本清单缺失"，不静默） | 2026-10-19 S11 后自检 30 条全过；`PRJ_E2E_GSE277173` 实跑 exit 0，版本表含 WGCNA 1.74 / limma 3.58.1，引用 2 条（WGCNA + Bioconductor），limma 明写"本目录无原始论文" |
 | `gen_reference_index.py` | 本地仓库 | 从 `reference/生信分析可用参考文献/citations.json` 生成人读索引 `INDEX.md`，并逐个校验 PDF 路径真实存在（`--check` 只校验不写盘）。改文献信息改 JSON 后重跑，避免索引与报告引用两套说法 | 2026-10-19 生成 18 个 PDF 全覆盖索引，`--check` PASS |
 | `run_throttled_task.sh` | 服务器 | 统一降权执行包装器 + 自动台账 JSON（aims §六.3）。默认不绑核仅 nice/ionice 降权（2026-10-20 契约变更，实测 EAS 动态调度更快），`BIO_PIN_CPUS=4,5,6` 可恢复静态绑核 | 长任务守护主通道；**台账只有 `project_id`/`random_seed` 两字段的历史缺口待补** |
-| `verify_bridge_checkpoint.py` | 服务器 | 跨语言转换四项断言（基因名完整性 / 矩阵行列方向与稀疏性 / 细胞 Barcode 顺序 / 降维与空间坐标保留） | **当前 58 个分析脚本 0 次调用它（aims §一.3 铁律空转）**，8787 提交层统一接线在整改队列 |
+| `verify_bridge_checkpoint.py` | 服务器 | 跨语言转换四项断言（基因名完整性 / 矩阵行列方向与稀疏性 / 细胞 Barcode 顺序 / 降维与空间坐标保留） | **当前 58 个分析脚本 0 次调用它（aims §一.3 铁律空转）**，18787 提交层统一接线在整改队列 |
 | `check_storage_and_isolation.sh` | 服务器 | 存储水位门禁（<20% 阻断）+ FUSE 红线 + 跨线路径静态扫描（aims §六.2 四门禁） | 隔离红线的服务器侧执行者 |
 | `bio_limits.sh` | 服务器 | 容器全局线程封顶与无头渲染配置（aims §六.1，落 `/etc/profile.d/`） | 已在容器生效 |
 | `bio_memory_guard.py` | 服务器 | Python 脚本级 7.5GB 软熔断头部模板（aims §六.4） | 与 `bio_r_header.R` 配对 |
 | `bio_r_header.R` | 服务器 | R 脚本级 7.5GB 防崩头部模板（aims §六.4） | R 脚本入口 `source()` 它 |
 | `07_pull_outputs.ps1` | PC | 产物回搬通道：远端 `projects/<id>/<line>/{figures,results}` → 本地 `outputs/`；同名同大小才跳过（#186 修复后规则）+ 字节校验 | 与 `06` 构成"下发-回搬"一对 |
 | `08_migrate_to_projects.ps1` / `.sh` | PC / 服务器 | 数据面一次性迁移：顶层三线目录 → `projects/<id>/<line>/` 结构（2026-10 已完成的历史迁移） | 历史工具，保留备查 |
+| `09_snapshot.ps1` | PC | 工作区快照：源码 + 台账打成带 SHA256 的 zip 落 `snapshots/`，`.git` 只读、无法 commit 时充当回滚点。`-Keep` 保留代数 / `-Note` 备注 / `-DryRun` 演练 | 实测 775 文件 86.7MB，解压后 775/775 字节一致 |
 | `audit_figure_layout.py` | 服务器 | 出图布局合规审计（真渲染判决 A–E，`--runner bash --seed` 真跑脚本取几何） | 出图规范四工具之一；`--seed` 必须传真种子（#190 教训） |
+| `build_figure_catalog.py` | PC | 把外部图码交付包导入项目候选库：按单图状态拆分，生成 `catalog.json`、`manifest.csv`、独立代码文件和单图预览，并保留验证/阻塞状态 | 2026-10-27 候选库 772 条，其中 438 条通用候选、16 条 K40 验证通过 |
+| `verify_figure_catalog.py` | PC/K40 | 批量验证 Python 候选：外部 seed、Agg、单图输出、PNG 校验、证据归档和失败分类 | 2026-10-27 22 条实跑，8 通过、6 缺依赖、8 外网失败 |
+| `figure_catalog_r_adapter.R` | K40 | R 单图输出适配器：统一 PNG 设备、外部 seed 和单图落盘 | 2026-10-27 批量 19 条中 6 通过，9 缺依赖，4 代码失败 |
+| `analyze_figure_catalog_splits.py` | PC | 对页面级多图记录生成单图拆分计划，输出 split_ready、缺主图、人工映射和外网阻塞分类 | 2026-10-27 179 条全覆盖 |
+| `materialize_figure_catalog_splits.py` | PC | 消费 split_ready，按代码 cell 和图片顺序生成单图代码与预览候选 | 2026-10-27 23 条记录生成 82 个候选，23 个有本地主图 |
+| `verify_plot_matrix.py` | 服务器 | 参考出图库源码级矩阵验证：逐个隔离运行 R/Python 入口，检查 `RENDER_OK`、PNG 解码与非空白、PDF 文件头和产物 SHA256，输出 `plot_matrix.json`、`PLOT_AVAILABILITY.md` 与 `summary.tsv` | 2026-10-27 K40 实跑 27/27 非隔离源码通过，1 个隔离文件按策略排除 |
+| `stage_plot_matrix.ps1` | PC | 把中文源码路径复制为纯英文 payload，供 K40 矩阵验证使用，并保留原始源码 SHA256 清单 | 2026-10-27 28 条目 staging 通过 |
+| `build_plot_contact_sheet.py` | 本地可视化 | 从 `plot_matrix.json` 生成带条目标签的 QA 总览。使用与交付单位始终是单张图，总览不进入成品 | 2026-10-27 41 张 PNG QA 总览生成成功 |
 | `fig_theme.py` / `fig_theme.R` | 服务器 | 出图主题层。Python 侧默认关（`BIOANALYS_PY_THEME=1` 开，实测对显式传参脚本零收益 #193）；R 侧仅 base R par（ggplot 走 SCI 模板 #193） | 底座保留、默认不启用 |
 
 ### 交付报告依赖的两份清单
@@ -54,7 +67,8 @@
 | 你的处境 | 唯一入口 | 别用 |
 |---|---|---|
 | ssh 连不上 K40 / 隧道断 | `00_link_check.ps1`（四段自检 + 自动重建） | 手动 `adb forward` 再手动试 |
-| 8787 或 8080 服务没起/崩了 | `serve_guard.ps1`（注入口令常驻） | 裸 `node server/index.js`（缺口令环境） |
+| 容器 15 秒一崩 / proot abort | `10_diagnose_abort.ps1`（只读分诊，按 P-29/P-23 给处置） | 直接 `proot-distro reset` 重装（最后手段，先分诊） |
+| 18787 或 8080 服务没起/崩了 | `serve_guard.ps1`（注入口令常驻） | 裸 `node server/index.js`（缺口令环境） |
 | 手机六服务挂 / reboot 后双 runsvdir 抢锁 | `fix_runsvdir.sh`（必须 `run-as com.termux sh` 执行） | 逐条 `sv up` 手工拉 |
 | Termux 服务被系统杀 | `bio_watchdog.sh`（runit 自愈，49 秒拉起） | 另写 cron 保活 |
 | 改完分析脚本要上线 | `06_deploy_scripts.ps1 -Line <线>` | 手动 scp（无字节校验） |
@@ -62,7 +76,7 @@
 | 台账合法性存疑 | `03_check_logs_remote.sh`（`04` 是它的一键 PC 壳） | 人肉 cat JSON 判断 |
 | 代码疑似跨线引用 | `02_check_isolation.ps1` | grep 了就算 |
 | 图件合规存疑 | `docs/figure_spec.md` §七 四工具 | 肉眼看 |
-| 要给客户交付 | 8787 `/api/report/build`（内部调 `build_client_report.py`） | ssh 上手跑 CLI（S27 前的老路） |
+| 要给客户交付 | 18787 `/api/report/build`（内部调 `build_client_report.py`） | ssh 上手跑 CLI（S27 前的老路） |
 | 测试数据上盘 | `05_push_testdata.ps1` | 手动 scp 到 raw_data |
 
 **归档区**：`_archive/` 只放冷备脚本，不参与日常链路；归档清单与"为何有些评审建议归档却保留在职"见 `_archive/README.md`。
@@ -286,3 +300,34 @@ info 表缺失时保留 `9606.ENSP...` 原始 ID 并打 warning，不中断。
 - 容器（proot）读 Termux home 路径不可靠，脚本里的绝对路径要用容器侧自己的路径。
 - PowerShell 不支持 `<` 重定向，`ssh ... < script.sh` 这种写法在本机不可用，改用 scp 传过去再执行。
 - `04_check_logs.ps1` 跑完会在容器 `/tmp/` 留下 `03_check_logs_remote.sh`，不自动删（省一次 ssh 往返，方便手动复跑）。
+
+## 季度例行维护（工作区瘦身流程，2026-10-31 沉淀）
+
+每季度（或 D 盘可用空间低于 20%）跑一轮两阶段清理。核心纪律：删前零引用核查，删后落台账。
+
+### 阶段 A：零引用残留清理
+
+1. 找残留：`.Temp`、`.tmp`、`.uploads`、`backups`、`cache`、`__pycache__`、`*.pyc`、
+   根目录隐藏探针脚本（`.probe_*.sh`、`.run_*.sh`、`.tmp_probe.sh`）、
+   `BioanalysDesktop` 下 `.tmp`（ko-gene 测试目录会积累数百个）、`.Temp`、`.uploads`、
+   `artifacts`、`console`、`test-results`、`tests\.build`、`server\runtime\.generated`。
+2. 逐项确认零引用：在代码（排除 node_modules/dist）、`docs`、`con_hf` 台账文本里搜目录名。
+   零引用才进删除清单；有引用的单独记录原因。
+3. 删除必须走带路径守卫的脚本：先 `Resolve-Path`，断言结果以工作区根开头，越界直接跳过。
+   删除脚本用完即删，不留工作区。
+4. E2E spool 类（`con_hf/sync/e2e_*`、`portal/inbox/sync_results`）按 mtime 清 7 天前的。
+
+### 阶段 B：重复与大体量裁定
+
+1. 重复核查交给子代理做哈希级比对（文件名+大小全量匹配，抽样 SHA256），禁止凭文件名目测判重复。
+2. 大体量目录（>100MB）删除必须用户裁定，逐项列「体量 / 真源在哪 / 删除后果」三要素。
+3. 远端 SSD 为真源的本地回搬副本（`outputs/<项目>`、`local_projects/<项目>/data`），
+   删除前确认 `ops/07_pull_outputs.ps1` 可随时拉回。
+4. 不可逆参考数据（如 `cn_debug/scenic_db`）默认保留，重下需要网络的都算不可逆。
+5. 每次清理后：更新 `con_hf/handoff.md` 头部与第二十轮式清理小节，记录删除清单、
+   保留裁定与前后磁盘空间；`.gitignore` 同步增补忽略声明，防止已删目录复活。
+
+### 台账与验收
+
+- 验收判据：`git status --untracked-files=normal` 中临时目录残留为 0；handoff 有本轮记录；磁盘空间变化有数字。
+- 本轮执行记录：2026-10-31 第二十轮，释放约 37 GB（D 盘 47.3→84 GB），详见 `con_hf/handoff.md`。

@@ -30,6 +30,32 @@ function findBash() {
 const BASH = findBash();
 const NEED_BASH = BASH === null ? '宿主无 bash 解释器' : false;
 
+/**
+ * Locate a python3 usable inside Git-Bash.
+ *
+ * Why: the guard local branch needs command -v python3 to hit; on Windows the common
+ * shape is Git for Windows installed with Python absent from PATH. Without it the three
+ * local-branch cases silently degrade to the ssh branch, testing D-14 as a false green.
+ *
+ * Probe order: env BRIDGE_GUARD_PYTHON3 -> command -v python3 in Git-Bash ->
+ * Codex bundled Python (fallback when the host has no python3 at all).
+ * @returns {string|null} path bash can execute, or null
+ */
+function findPython3() {
+  const fromEnv = String(process.env.BRIDGE_GUARD_PYTHON3 || '').trim();
+  if (fromEnv && fs.existsSync(fromEnv)) return fromEnv;
+  if (!BASH) return null;
+  const probe = spawnSync(BASH, ['-lc', 'command -v python3'], { encoding: 'utf8' });
+  const hit = (probe.stdout || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean)[0];
+  if (hit) return hit;
+  const bundled = 'C:/Users/18765/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe';
+  return fs.existsSync(bundled) ? bundled : null;
+}
+
+const PY3 = findPython3();
+/** local branch is testable only when python3 is present; skip with a reason, never invert. */
+const NEED_PY3 = PY3 ? false : '宿主日 python3';
+
 /** 造一套工作区：dummy 输入 + 可控的本机引擎 + 会被记录的 ssh 垫片。 */
 function makeWorld({ engine }) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bridge-local-'));
@@ -51,7 +77,18 @@ function makeWorld({ engine }) {
   } else {
     enginePath = path.join(dir, 'no_such_engine.py');
   }
-  return { dir, input, sshPath: sshPath.replace(/\\/g, '/'), sshMark, enginePath: enginePath.replace(/\\/g, '/') };
+  // Guard copy: predefine python3 as a bash function so command -v python3 hits.
+  // Adding a fresh dir to PATH is unreliable on Windows (extension-less lookups fail and
+  // sandbox special paths such as /tmp behave oddly); a function is path-agnostic.
+  const guardScript = path.join(dir, 'guard.sh');
+  const guardText = fs.readFileSync(GUARD, 'utf8');
+  const pyFn = PY3 ? 'python3() { ' + PY3.replace(/\\/g, '/') + ' "$@"; }' + '\n' : '';
+  fs.writeFileSync(guardScript, pyFn + guardText, 'utf8');
+  return {
+    dir, input, sshPath: sshPath.replace(/\\/g, '/'), sshMark,
+    enginePath: enginePath.replace(/\\/g, '/'),
+    guardScript: guardScript.replace(/\\/g, '/'),
+  };
 }
 
 function runGuard(world, { localEngine, args = [] } = {}) {
@@ -62,14 +99,14 @@ function runGuard(world, { localEngine, args = [] } = {}) {
   };
   const res = spawnSync(
     BASH,
-    [GUARD, '--input', world.input, '--from', 'Python', '--to', 'R', '--script', 'gsva_pathways', ...args],
+    [world.guardScript, '--input', world.input, '--from', 'Python', '--to', 'R', '--script', 'gsva_pathways', ...args],
     { encoding: 'utf8', env }
   );
   const sshCalled = fs.existsSync(world.sshMark);
   return { code: res.status, out: (res.stdout ?? '') + (res.stderr ?? ''), sshCalled };
 }
 
-test('本机引擎存在时走 local，完全不调用 ssh', { skip: NEED_BASH }, () => {
+test('本机引擎存在时走 local，完全不调用 ssh', { skip: NEED_BASH || NEED_PY3 }, () => {
   const world = makeWorld({
     engine: 'import sys\nprint("[BRIDGE PASS] all 4 assertions passed")\nprint("[BRIDGE OK] fake local engine")\nsys.exit(0)\n',
   });
@@ -96,7 +133,7 @@ test('本机引擎缺失时回落到 ssh，并透传 stage 与输入路径', { s
   }
 });
 
-test('本机引擎判失败时守卫必须中止母版（exit 非 0 + BRIDGE FAIL）', { skip: NEED_BASH }, () => {
+test('本机引擎判失败时守卫必须中止母版（exit 非 0 + BRIDGE FAIL）', { skip: NEED_BASH || NEED_PY3 }, () => {
   const world = makeWorld({
     engine: 'import sys\nsys.stderr.write("[BRIDGE FAIL] obsm missing\\n")\nsys.exit(1)\n',
   });
@@ -110,7 +147,7 @@ test('本机引擎判失败时守卫必须中止母版（exit 非 0 + BRIDGE FAI
   }
 });
 
-test('本机引擎崩溃（无 BRIDGE FAIL 结论）必须判 FAIL，不许降级成 SKIP', { skip: NEED_BASH }, () => {
+test('本机引擎崩溃（无 BRIDGE FAIL 结论）必须判 FAIL，不许降级成 SKIP', { skip: NEED_BASH || NEED_PY3 }, () => {
   // 真机事故（2026-10-21，/tmp/bad.h5ad）：损坏的 h5ad 让 anndata 抛 OSError 并冒出
   // traceback，早期版本把它归到"引擎不可达"→ SKIP → exit 0，坏输入被静默放行。
   // 本机引擎是否存在在解析阶段已经确认过，非 0 只能是校验失败，一律 FAIL（契约 3c）。
@@ -128,7 +165,7 @@ test('本机引擎崩溃（无 BRIDGE FAIL 结论）必须判 FAIL，不许降�
   }
 });
 
-test('ssh 分支的不可达（退出码 255）仍然降级为 SKIP（K40 离线时母版要能跑）', { skip: NEED_BASH }, () => {
+test('ssh 分支的不可达（退出码 255）仍然降级为 SKIP（K40 离线时母版要能跑）', { skip: NEED_BASH || NEED_PY3 }, () => {
   const world = makeWorld({ engine: null });
   try {
     // 换一个必然失败的 ssh 垫片：模拟容器里解析不到主机名

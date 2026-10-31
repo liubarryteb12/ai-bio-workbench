@@ -31,6 +31,21 @@
 | `2026-10-21_verification_*` | S30 白名单三端一致性、上传配额 507 闸门 | `2026-10-21_verification_s30_whitelist.mjs`、`2026-10-21_verification_upload_quota_507.mjs` |
 | `_s28_*`、`_s31_probe_state_db.py` | S28 桥接取证、S31 台账归因探针（只读） | `_s28_forensic.sh` |
 
+## 二之二、R 侧测试案例（2026-10-24，勿放回 src/）
+
+| 目录 | 内容 |
+|---|---|
+| `2026-10-24_r_case/` | 4 个 R 测试案例：`gsva_pathway_score` / `lasso_cox_model` / `geo_tcga_common_deg` / `wgcna_module_trait` |
+
+**为什么在这里**：这 4 个是测试案例，不是正式步骤。它们曾在 `src/line1_bulk/scripts/` 下，
+而 `ops/06_deploy_scripts.ps1` 会把该目录除 README 外的所有文件 scp 到服务器
+`bin/line1_bulk/` 并 chmod 755，测试案例因此会变成线上可执行步骤；同时
+`master_conventions.test.js` 等 4 个测试按「目录下每个文件都是母版」枚举，案例混入即红。
+现已按字节原样搬来此处（SHA256 与搬前一致），`src/` 回到 55 个已登记母版。
+
+**防再犯**：部署脚本已加注册表闸门，未登记进 `src/workflows.json` 的件拒绝部署；
+正式母版先登记再部署，测试案例一律放本目录。
+
 ## 三、一次性调试探针（可删，保留仅为查史）
 
 | 前缀 | 说明 |

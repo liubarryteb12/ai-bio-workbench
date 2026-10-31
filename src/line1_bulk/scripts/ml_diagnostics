@@ -21,6 +21,8 @@
 #   组合模型 LogisticRegression(C=1.0, liblinear)；外部集标准化用训练集均值/标准差（防泄露）。
 set -euo pipefail
 
+RSCRIPT_BIN="${BIOANALYS_RSCRIPT:-/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript}"
+
 seed="${BIOANALYS_SEED:-UNSET}"
 if [ "$seed" = "UNSET" ]; then
   echo "BIOANALYS_SEED 未注入（引擎契约：seed 必须注入）" >&2
@@ -461,7 +463,7 @@ min_class = int(min(y.sum(), (1 - y).sum()))
 epv = min_class / max(len(genes), 1)
 gate_nomo = min_class >= 40 and len(genes) <= min_class // 10
 gate_reason = "" if gate_nomo else (
-    "min_class=%d < 40 或 EPV=%.1f < 10（predictors=%d）——小样本 nomogram 方法学无效，按 SOP Stage 8 降级"
+    "min_class=%d < 40 或 EPV=%.1f < 10（predictors=%d）：小样本 nomogram 方法学无效，按 SOP Stage 8 降级"
     % (min_class, epv, len(genes)))
 with open("_ml_diag_gate.txt", "w") as fh:
     fh.write("1\n" if gate_nomo else "0\n")
@@ -533,7 +535,7 @@ fi
 
 # ---------- Nomogram（仅 gate=1 时执行；rms 容器已实测在装） ----------
 if [ "$(cat _ml_diag_gate.txt 2>/dev/null || echo 0)" = "1" ]; then
-  BIOANALYS_SEED="$seed" Rscript - <<'RSCRIPT'
+  BIOANALYS_SEED="$seed" "$RSCRIPT_BIN" - <<'RSCRIPT'
 fail <- function(msg) { cat("ml_diagnostics(R) 自校验失败:", msg, "\n", file = stderr()); quit(status = 1) }
 seed <- as.integer(Sys.getenv("BIOANALYS_SEED"))
 set.seed(seed)

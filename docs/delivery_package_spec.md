@@ -3,7 +3,7 @@
 > 版本：v1.0（2026-10-14）
 > 适用对象：`ops/09_package_delivery.ps1`（PC 侧入口，ssh 驱动远端打包）
 > 上位约束：`docs/delivery_supervisor_prompt.md` v3.0 第五节、`docs/directories.md`
-> 实现状态：**打包能力已由 `ops/build_client_report.py` + 8787 入口 `server/report.js` 承担**；
+> 实现状态：**打包能力已由 `ops/build_client_report.py` + 18787 入口 `server/report.js` 承担**；
 > `ops/09_package_delivery.ps1` 不再实现（2026-10-21 裁定，见下节「零」）。
 
 > **2026-10-18 补充：本规范的部分内容已被 `aims.txt` v3.0 §7.2 取代。**
@@ -31,7 +31,7 @@
 | 包内 `CHECKSUMS.sha256` | `write_checksums`（相对路径排序，跳过自身与 `PACKAGE_META.json`，先写清单再打 tar） | `ops/build_client_report.py`；2026-10-21 远端真机 285 文件 `sha256sum -c` 全过 |
 
 **因此**：本文第二节点名的入口 `ops/09_package_delivery.ps1` **作废**，不要照它新建脚本；
-本文第三节六条门禁里第 3/5/6 条已在 8787 调用侧实现（引擎 CLI 直跑仍不检查，属于已知边界）；
+本文第三节六条门禁里第 3/5/6 条已在 18787 调用侧实现（引擎 CLI 直跑仍不检查，属于已知边界）；
 第四至七节描述的包内结构与脱敏规则由引擎负责，仍具约束力。
 
 ## 一、定位与边界

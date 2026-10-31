@@ -15,7 +15,7 @@ export default defineConfig({
     proxy: {
       // 前端 /api 一律转发到后端，避免前端直连服务器（本地零算力红线）
       '/api': {
-        target: 'http://127.0.0.1:8787',
+        target: 'http://127.0.0.1:18787',
         changeOrigin: false,
       },
     },

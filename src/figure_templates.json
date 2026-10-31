@@ -1,0 +1,3047 @@
+{
+  "schema_version": 1,
+  "generated_from": {
+    "csv": "reference/05.可参考出图代码/_meta/bizard_index.csv",
+    "report": "reference/05.可参考出图代码/_meta/r453_verification_report.json"
+  },
+  "templates": [
+    {
+      "id": "fig_l1_circularpacking",
+      "name": "包珠图",
+      "level": "L1",
+      "category": "Composition",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "circlepackeR",
+        "cowplot",
+        "data.tree",
+        "dplyr",
+        "flare",
+        "ggiraph",
+        "ggplot2",
+        "ggraph",
+        "htmlwidgets",
+        "igraph",
+        "packcircles",
+        "tidyr",
+        "tidyverse",
+        "viridis"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_dendrogram",
+      "name": "树状图",
+      "level": "L1",
+      "category": "Composition",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "collapsibleTree",
+        "dendextend",
+        "ggraph",
+        "igraph",
+        "tidyverse"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_donut",
+      "name": "环状图",
+      "level": "L1",
+      "category": "Composition",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "ggplot2"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_groupedbar",
+      "name": "分组和堆叠条形图",
+      "level": "L1",
+      "category": "Composition",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending_mapping",
+      "deps": [
+        "RColorBrewer",
+        "dplyr",
+        "ggplot2",
+        "hrbrthemes",
+        "streamgraph",
+        "tibble",
+        "tidyr",
+        "viridis"
+      ],
+      "block_reason": "尚无与模板语义、语言和分析步骤一致的真实项目样例图",
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名",
+        "x_col": "横轴类别列名",
+        "value_col": "均值或计数列名",
+        "error_col": "误差列名，可为空"
+      },
+      "lines": [
+        "line1_bulk"
+      ],
+      "analysis_step": "l1_enrich_figures",
+      "input_tables": [
+        "enrichment_gsea_go.tsv",
+        "enrichment_module_ora.tsv"
+      ],
+      "produces": [
+        "custom_fig_l1_groupedbar.png"
+      ],
+      "output_glob": "figures/line1_bulk/custom_fig_l1_groupedbar.png",
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_partpiechart",
+      "name": "部分高亮饼图",
+      "level": "L1",
+      "category": "Composition",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "dplyr",
+        "ggplot2",
+        "ggpubr",
+        "patchwork"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_piechart",
+      "name": "饼图",
+      "level": "L1",
+      "category": "Composition",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "ggplot2"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_radialstackedbar",
+      "name": "径向堆积柱状图",
+      "level": "L1",
+      "category": "Composition",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "tidyverse",
+        "palmerpenguins"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名",
+        "x_col": "横轴类别列名",
+        "value_col": "均值或计数列名",
+        "error_col": "误差列名，可为空"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_treemap",
+      "name": "矩形树图",
+      "level": "L1",
+      "category": "Composition",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "DOSE",
+        "stats",
+        "tidyverse",
+        "treemap"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_waffle",
+      "name": "华夫饼图",
+      "level": "L1",
+      "category": "Composition",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "dplyr",
+        "ggplot2",
+        "waffle"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_biplot",
+      "name": "载荷图",
+      "level": "L1",
+      "category": "Correlation",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "dplyr",
+        "ggbiplot"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "x_col": "横轴列名",
+        "y_col": "纵轴列名",
+        "label_genes": "需要标注的基因清单，可为空"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_bubble",
+      "name": "气泡图",
+      "level": "L1",
+      "category": "Correlation",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "dplyr",
+        "gapminder",
+        "ggplot2",
+        "hrbrthemes",
+        "viridis"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "x_col": "横轴列名",
+        "y_col": "纵轴列名",
+        "label_genes": "需要标注的基因清单，可为空"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2_bubbleheatmap",
+      "name": "气泡热图",
+      "level": "L2",
+      "category": "Correlation",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "tidyverse",
+        "scRNAtoolVis"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "x_col": "横轴列名",
+        "y_col": "纵轴列名",
+        "label_genes": "需要标注的基因清单，可为空"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2_complexheatmap",
+      "name": "复杂热图",
+      "level": "L2",
+      "category": "Correlation",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "ComplexHeatmap",
+        "circlize",
+        "dendextend",
+        "gridExtra",
+        "pheatmap",
+        "tidyr"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "row_col": "行注释列名",
+        "column_col": "列注释列名",
+        "value_col": "表达或差异数值列",
+        "group_col": "样本分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_connectedscatter",
+      "name": "连接散点图",
+      "level": "L1",
+      "category": "Correlation",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "dplyr",
+        "ggplot2"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "x_col": "横轴列名",
+        "y_col": "纵轴列名",
+        "label_genes": "需要标注的基因清单，可为空"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_correlogram",
+      "name": "相关图",
+      "level": "L1",
+      "category": "Correlation",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "GGally",
+        "corrgram",
+        "corrplot",
+        "ggcorrplot"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_density2d",
+      "name": "二维密度图",
+      "level": "L1",
+      "category": "Correlation",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "MASS",
+        "RColorBrewer",
+        "ggplot2",
+        "hexbin",
+        "mvtnorm",
+        "patchwork",
+        "plotly"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "value_col": "数值列名",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2_heatmap",
+      "name": "热图",
+      "level": "L2",
+      "category": "Correlation",
+      "language": "r",
+      "source": "reference/05.可参考出图代码/_meta/R453_compat/L2_more_code.R",
+      "source_sha256": "0b5342dd0cac39eb87615aa1220d44c09c440b8801e93af288d9ab778f0c6c1d",
+      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2_heatmap_verified.png",
+      "preview_sha256": "0cb713ab3a486330059352c7e339ff9b40c7901500e88ae44327c13f4ba8f16c",
+      "verified": true,
+      "deps_status": "ready",
+      "deps": [
+        "ComplexHeatmap",
+        "RColorBrewer",
+        "circlize",
+        "cowplot",
+        "d3heatmap",
+        "dplyr",
+        "ggplot2",
+        "gridExtra",
+        "heatmaply",
+        "hrbrthemes",
+        "htmlwidgets",
+        "lattice",
+        "pheatmap",
+        "plotly",
+        "readr",
+        "remotes",
+        "tibble",
+        "tidyr",
+        "viridis"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "row_col": "行注释列名",
+        "column_col": "列注释列名",
+        "value_col": "表达或差异数值列",
+        "group_col": "样本分组列名"
+      },
+      "lines": [
+        "line1_bulk"
+      ],
+      "analysis_step": "l1_ingest_prep",
+      "input_tables": [
+        "expr_genes.tsv"
+      ],
+      "produces": [
+        "custom_fig_l2_heatmap.png"
+      ],
+      "output_glob": "figures/line1_bulk/custom_fig_l2_heatmap.png",
+      "canonical_output": "L2_heatmap_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_04_topvar_heatmap.png",
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2_pca",
+      "name": "PCA图",
+      "level": "L2",
+      "category": "Correlation",
+      "language": "r",
+      "source": "reference/05.可参考出图代码/_meta/R453_compat/L2_more_code.R",
+      "source_sha256": "0b5342dd0cac39eb87615aa1220d44c09c440b8801e93af288d9ab778f0c6c1d",
+      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2_pca_verified.png",
+      "preview_sha256": "48767feb6d1877d45f621eea4e9b3893f714ed5fecfaf29537fded4411b155c2",
+      "verified": true,
+      "deps_status": "ready",
+      "deps": [
+        "FactoMineR",
+        "dplyr",
+        "factoextra",
+        "ggfortify",
+        "ggplot2"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "细胞或样本分组列名"
+      },
+      "lines": [
+        "line1_bulk"
+      ],
+      "analysis_step": "l1_qc_pca",
+      "input_tables": [
+        "pca_scores.tsv"
+      ],
+      "produces": [
+        "custom_fig_l2_pca.png"
+      ],
+      "output_glob": "figures/line1_bulk/custom_fig_l2_pca.png",
+      "canonical_output": "L2_pca_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_02_pca.png",
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_scatter",
+      "name": "散点图",
+      "level": "L1",
+      "category": "Correlation",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending_mapping",
+      "deps": [
+        "dplyr",
+        "geomtextpath",
+        "ggExtra",
+        "ggplot2",
+        "ggpmisc",
+        "ggpubr",
+        "plotly"
+      ],
+      "block_reason": "尚无与模板语义、语言和分析步骤一致的真实项目样例图",
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "x_col": "横轴列名",
+        "y_col": "纵轴列名",
+        "label_genes": "需要标注的基因清单，可为空"
+      },
+      "lines": [
+        "line1_bulk"
+      ],
+      "analysis_step": "l1_ml_hub",
+      "input_tables": [
+        "ml_core_hub_genes.tsv"
+      ],
+      "produces": [
+        "custom_fig_l1_scatter.png"
+      ],
+      "output_glob": "figures/line1_bulk/custom_fig_l1_scatter.png",
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_ternaryplot",
+      "name": "三元图",
+      "level": "L1",
+      "category": "Correlation",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "ggtern",
+        "ggthemes"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2_umap",
+      "name": "UMAP图",
+      "level": "L2",
+      "category": "Correlation",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending_mapping",
+      "deps": [
+        "RColorBrewer",
+        "Seurat",
+        "SeuratData",
+        "dplyr",
+        "ggplot2",
+        "mlbench",
+        "patchwork",
+        "umap"
+      ],
+      "block_reason": "尚无与模板语义、语言和分析步骤一致的真实项目样例图",
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "细胞或样本分组列名"
+      },
+      "lines": [
+        "line2_scrna"
+      ],
+      "analysis_step": "l2_integrate_cluster",
+      "input_tables": [
+        "scrna_clustered.h5ad"
+      ],
+      "produces": [
+        "custom_fig_l2_umap.png"
+      ],
+      "output_glob": "figures/line2_scrna/custom_fig_l2_umap.png",
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_areachart",
+      "name": "面积图",
+      "level": "L1",
+      "category": "DataOverTime",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "dygraphs",
+        "ggpattern",
+        "hrbrthemes",
+        "tidyverse",
+        "viridis",
+        "xts"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_linechart",
+      "name": "线性图",
+      "level": "L1",
+      "category": "DataOverTime",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "gghighlight",
+        "ggplot2",
+        "ggpmisc",
+        "patchwork",
+        "viridis"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_stackedarea",
+      "name": "堆叠面积图",
+      "level": "L1",
+      "category": "DataOverTime",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "babynames",
+        "dplyr",
+        "ggplot2",
+        "hrbrthemes",
+        "plotly",
+        "tidyverse",
+        "viridis"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_streamgraph",
+      "name": "流线图",
+      "level": "L1",
+      "category": "DataOverTime",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "dplyr",
+        "ggplot2",
+        "ggstream",
+        "htmlwidgets",
+        "streamgraph"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_timeseries",
+      "name": "时间序列图",
+      "level": "L1",
+      "category": "DataOverTime",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "dplyr",
+        "ggplot2",
+        "patchwork"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_boxplot",
+      "name": "箱线图",
+      "level": "L1",
+      "category": "Distribution",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending_mapping",
+      "deps": [
+        "dplyr",
+        "ggExtra",
+        "ggplot2",
+        "ggpmisc",
+        "ggpubr",
+        "ggtext",
+        "hrbrthemes",
+        "rstatix",
+        "viridis"
+      ],
+      "block_reason": "尚无与模板语义、语言和分析步骤一致的真实项目样例图",
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名",
+        "value_col": "表达或测量值列名"
+      },
+      "lines": [
+        "line1_bulk"
+      ],
+      "analysis_step": "l1_de_limma",
+      "input_tables": [
+        "expr_genes.tsv",
+        "group_map.tsv",
+        "deg_all.tsv"
+      ],
+      "produces": [
+        "custom_fig_l1_boxplot.png"
+      ],
+      "output_glob": "figures/line1_bulk/custom_fig_l1_boxplot.png",
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_breakplot",
+      "name": "断点图",
+      "level": "L1",
+      "category": "Distribution",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "RColorBrewer",
+        "dplyr",
+        "ggbreak",
+        "ggplot2",
+        "ggpubr",
+        "rstatix"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_density",
+      "name": "密度图",
+      "level": "L1",
+      "category": "Distribution",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending_mapping",
+      "deps": [
+        "cowplot",
+        "dplyr",
+        "geomtextpath",
+        "ggExtra",
+        "ggplot2",
+        "ggpmisc",
+        "ggpubr",
+        "hrbrthemes",
+        "readr",
+        "tidyr",
+        "viridis"
+      ],
+      "block_reason": "尚无与模板语义、语言和分析步骤一致的真实项目样例图",
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "value_col": "数值列名",
+        "group_col": "分组列名"
+      },
+      "lines": [
+        "line1_bulk"
+      ],
+      "analysis_step": "l1_ingest_prep",
+      "input_tables": [
+        "expr_genes.tsv",
+        "group_map.tsv"
+      ],
+      "produces": [
+        "custom_fig_l1_density.png"
+      ],
+      "output_glob": "figures/line1_bulk/custom_fig_l1_density.png",
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_histogram",
+      "name": "直方图",
+      "level": "L1",
+      "category": "Distribution",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending_mapping",
+      "deps": [
+        "cowplot",
+        "ggExtra",
+        "ggplot2",
+        "ggpmisc",
+        "ggpubr",
+        "readr",
+        "tidyverse",
+        "viridis"
+      ],
+      "block_reason": "尚无与模板语义、语言和分析步骤一致的真实项目样例图",
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "value_col": "数值列名",
+        "group_col": "分组列名"
+      },
+      "lines": [
+        "line1_bulk"
+      ],
+      "analysis_step": "l1_ingest_prep",
+      "input_tables": [
+        "expr_genes.tsv",
+        "group_map.tsv"
+      ],
+      "produces": [
+        "custom_fig_l1_histogram.png"
+      ],
+      "output_glob": "figures/line1_bulk/custom_fig_l1_histogram.png",
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_radialcolumnchart",
+      "name": "径向柱状图",
+      "level": "L1",
+      "category": "Distribution",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "dplyr",
+        "ggforce",
+        "ggplot2",
+        "scales"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名",
+        "x_col": "横轴类别列名",
+        "value_col": "均值或计数列名",
+        "error_col": "误差列名，可为空"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_raincloudplot",
+      "name": "云雨图",
+      "level": "L1",
+      "category": "Distribution",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "tidyverse",
+        "ggbeeswarm",
+        "palmerpenguins"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_ridgeline",
+      "name": "山脊线图",
+      "level": "L1",
+      "category": "Distribution",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "ggplot2",
+        "ggridges",
+        "hrbrthemes",
+        "readr",
+        "viridis"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_violin",
+      "name": "小提琴图",
+      "level": "L1",
+      "category": "Distribution",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending_mapping",
+      "deps": [
+        "dplyr",
+        "forcats",
+        "gghalves",
+        "ggplot2",
+        "ggstatsplot",
+        "hrbrthemes",
+        "palmerpenguins",
+        "readr",
+        "tidyr",
+        "viridis"
+      ],
+      "block_reason": "尚无与模板语义、语言和分析步骤一致的真实项目样例图",
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名",
+        "value_col": "表达或测量值列名"
+      },
+      "lines": [
+        "line1_bulk"
+      ],
+      "analysis_step": "l1_de_limma",
+      "input_tables": [
+        "expr_genes.tsv",
+        "group_map.tsv",
+        "deg_all.tsv"
+      ],
+      "produces": [
+        "custom_fig_l1_violin.png"
+      ],
+      "output_glob": "figures/line1_bulk/custom_fig_l1_violin.png",
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_barplot",
+      "name": "条形图",
+      "level": "L1",
+      "category": "Ranking",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "cowplot",
+        "dplyr",
+        "forcats",
+        "ggpattern",
+        "ggplot2",
+        "ggpubr",
+        "hrbrthemes",
+        "magrittr",
+        "rstatix",
+        "tidyr"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名",
+        "x_col": "横轴类别列名",
+        "value_col": "均值或计数列名",
+        "error_col": "误差列名，可为空"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_circularbarplot",
+      "name": "圆形条形图",
+      "level": "L1",
+      "category": "Ranking",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "tidyverse"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名",
+        "x_col": "横轴类别列名",
+        "value_col": "均值或计数列名",
+        "error_col": "误差列名，可为空"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_upsetplot",
+      "name": "Upset图",
+      "level": "L1",
+      "category": "Ranking",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "UpSetR",
+        "ggupset"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l1_vennplot",
+      "name": "韦恩图",
+      "level": "L1",
+      "category": "Ranking",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "VennDiagram",
+        "ggVennDiagram",
+        "ggplot2"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l3_combinationpanel",
+      "name": "柱状图+蜂群点图+折线图组合",
+      "level": "L3",
+      "category": "Clinics",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "tidyverse",
+        "ggbeeswarm",
+        "patchwork"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "panel_col": "分面面板列名",
+        "group_col": "分组列名",
+        "value_col": "数值列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2_kaplanmeierplot",
+      "name": "KM 曲线",
+      "level": "L2",
+      "category": "Clinics",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2_lollipopplot",
+      "name": "棒棒糖图",
+      "level": "L2",
+      "category": "Clinics",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "dplyr",
+        "ggplot2",
+        "ggpubr",
+        "patchwork"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2_metaforestplot",
+      "name": "元分析森林图",
+      "level": "L2",
+      "category": "Clinics",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "dplyr",
+        "forestplot",
+        "ggplot2",
+        "grid",
+        "meta",
+        "metafor",
+        "tidyr"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2_mosaicplot",
+      "name": "马赛克图",
+      "level": "L2",
+      "category": "Clinics",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "dplyr",
+        "ggplot2",
+        "graphics",
+        "plyr",
+        "reshape2",
+        "vcd",
+        "wesanderson"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2_nomogram",
+      "name": "诺莫图",
+      "level": "L2",
+      "category": "Clinics",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "readr",
+        "regplot",
+        "rms",
+        "survival"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2_regressiontable",
+      "name": "回归分析表格",
+      "level": "L2",
+      "category": "Clinics",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "datawizard",
+        "dplyr",
+        "gtsummary",
+        "survival"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2_cellchatcircleplot",
+      "name": "细胞-细胞通讯网络圈图",
+      "level": "L2",
+      "category": "Omics",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "CellChat",
+        "ggplot2",
+        "circlize"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2_chromosomeplot",
+      "name": "Omics_ChromosomePlot",
+      "level": "L2",
+      "category": "Omics",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2_genestructureplot",
+      "name": "基因结构图",
+      "level": "L2",
+      "category": "Omics",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "gggenes",
+        "ggtree",
+        "tidyverse"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_kegg_pathway",
+      "name": "KEGG通路图",
+      "level": "L2",
+      "category": "Omics",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "blocked_r453",
+      "deps": [
+        "dbplyr",
+        "pathview"
+      ],
+      "block_reason": "本库尚无 pathview KEGG 通路图母版，历史 L2_enrichment_verified.png 是富集气泡图",
+      "linked_mods": [
+        "l1_enrich_figures"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2_manhattanplot",
+      "name": "曼哈顿图",
+      "level": "L2",
+      "category": "Omics",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "aplot",
+        "qqman",
+        "tidyverse"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2_multivolcanoplot",
+      "name": "多组火山图",
+      "level": "L2",
+      "category": "Omics",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "corrplot",
+        "scRNAtoolVis"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "比较方向定义使用的分组列名",
+        "label_genes": "需要标注的基因清单，可为空"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2_mutationoncoplot",
+      "name": "基因突变全景瀑布图",
+      "level": "L2",
+      "category": "Omics",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "ComplexHeatmap",
+        "tidyverse",
+        "maftools"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2_networkplot",
+      "name": "网络图",
+      "level": "L2",
+      "category": "Omics",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "MetaNet",
+        "dplyr",
+        "igraph",
+        "pcutils"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l3_sankeybubbleplot",
+      "name": "组合桑基气泡图",
+      "level": "L3",
+      "category": "Omics",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "x_col": "横轴列名",
+        "y_col": "纵轴列名",
+        "label_genes": "需要标注的基因清单，可为空"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2_textenrichmentbarplot",
+      "name": "文字叠加的富集分析柱状图",
+      "level": "L2",
+      "category": "Omics",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名",
+        "x_col": "横轴类别列名",
+        "value_col": "均值或计数列名",
+        "error_col": "误差列名，可为空"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2_volcano",
+      "name": "火山图",
+      "level": "L2",
+      "category": "Omics",
+      "language": "r",
+      "source": "reference/05.可参考出图代码/_meta/R453_compat/L2_core_code.R",
+      "source_sha256": "d60ecbf24668aacf3498168ac4d7279bb9347f26c1e6106c548e87eba9bcc07b",
+      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2_volcano_verified.png",
+      "preview_sha256": "eef1a672d0ab82518f68cc3aa6d2d198f319469614ede9a8039fe2e267042b04",
+      "verified": true,
+      "deps_status": "ready",
+      "deps": [
+        "ggrepel",
+        "readxl",
+        "tidyverse"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "比较方向定义使用的分组列名",
+        "label_genes": "需要标注的基因清单，可为空"
+      },
+      "lines": [
+        "line1_bulk"
+      ],
+      "analysis_step": "l1_de_limma",
+      "input_tables": [
+        "deg_all.tsv"
+      ],
+      "produces": [
+        "custom_fig_l2_volcano.png"
+      ],
+      "output_glob": "figures/line1_bulk/custom_fig_l2_volcano.png",
+      "canonical_output": "L2_volcano_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_03_volcano_limma.png",
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2_ivolcanoplot",
+      "name": "交互式火山图",
+      "level": "L2",
+      "category": "Omics",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "ivolcano",
+        "fanyi",
+        "clusterProfiler",
+        "org.Hs.eg.db"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "比较方向定义使用的分组列名",
+        "label_genes": "需要标注的基因清单，可为空"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2p_barplot",
+      "name": "条形图（Python）",
+      "level": "L2",
+      "category": "Python",
+      "language": "python",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "matplotlib",
+        "seaborn",
+        "pandas",
+        "numpy"
+      ],
+      "linked_mods": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名",
+        "x_col": "横轴类别列名",
+        "value_col": "均值或计数列名",
+        "error_col": "误差列名，可为空"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2p_boxplot",
+      "name": "箱线图（Python）",
+      "level": "L2",
+      "category": "Python",
+      "language": "python",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "matplotlib",
+        "seaborn",
+        "pandas",
+        "numpy"
+      ],
+      "linked_mods": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名",
+        "value_col": "表达或测量值列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2p_complexheatmap",
+      "name": "复杂热图（Python）",
+      "level": "L2",
+      "category": "Python",
+      "language": "python",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "matplotlib",
+        "pandas",
+        "numpy",
+        "PyComplexHeatmap"
+      ],
+      "linked_mods": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "row_col": "行注释列名",
+        "column_col": "列注释列名",
+        "value_col": "表达或差异数值列",
+        "group_col": "样本分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2p_confusionmatrixplot",
+      "name": "混淆矩阵（Python）",
+      "level": "L2",
+      "category": "Python",
+      "language": "python",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "matplotlib",
+        "seaborn",
+        "numpy",
+        "scikit-learn"
+      ],
+      "linked_mods": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2p_enrichmentplot",
+      "name": "富集分析图（Python）",
+      "level": "L2",
+      "category": "Python",
+      "language": "python",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "matplotlib",
+        "seaborn",
+        "pandas",
+        "numpy"
+      ],
+      "linked_mods": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l3p_facetgridplot",
+      "name": "分面图（Python）",
+      "level": "L3",
+      "category": "Python",
+      "language": "python",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "matplotlib",
+        "seaborn",
+        "pandas",
+        "numpy"
+      ],
+      "linked_mods": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2p_gseaplot",
+      "name": "GSEA 运行分数图（Python）",
+      "level": "L2",
+      "category": "Python",
+      "language": "python",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "matplotlib",
+        "seaborn",
+        "pandas",
+        "numpy"
+      ],
+      "linked_mods": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2p_heatmap",
+      "name": "热力图（Python）",
+      "level": "L2",
+      "category": "Python",
+      "language": "python",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "matplotlib",
+        "seaborn",
+        "pandas",
+        "numpy",
+        "scipy"
+      ],
+      "linked_mods": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "row_col": "行注释列名",
+        "column_col": "列注释列名",
+        "value_col": "表达或差异数值列",
+        "group_col": "样本分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l3_multipanel",
+      "name": "多面板组合图",
+      "level": "L3",
+      "category": "R",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending_mapping",
+      "deps": [
+        "ggplot2",
+        "patchwork"
+      ],
+      "block_reason": "尚无与模板语义、语言和分析步骤一致的真实项目样例图",
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "panel_col": "分面面板列名",
+        "group_col": "分组列名",
+        "value_col": "数值列名"
+      },
+      "lines": [
+        "line3_spatial"
+      ],
+      "analysis_step": "l3_ko_spatial",
+      "input_tables": [
+        "spatial_knockout_human.h5ad"
+      ],
+      "produces": [
+        "custom_fig_l3_multipanel.png"
+      ],
+      "output_glob": "figures/line3_spatial/custom_fig_l3_multipanel.png",
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2p_pcaplot",
+      "name": "PCA 图（Python）",
+      "level": "L2",
+      "category": "Python",
+      "language": "python",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "matplotlib",
+        "seaborn",
+        "pandas",
+        "numpy",
+        "scikit-learn"
+      ],
+      "linked_mods": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "细胞或样本分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l3p_publicationstyle",
+      "name": "出版级样式与导出（Python）",
+      "level": "L3",
+      "category": "Python",
+      "language": "python",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "matplotlib",
+        "seaborn",
+        "pandas",
+        "numpy",
+        "SciencePlots"
+      ],
+      "linked_mods": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2p_rocprplot",
+      "name": "ROC 与 PR 曲线（Python）",
+      "level": "L2",
+      "category": "Python",
+      "language": "python",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "matplotlib",
+        "seaborn",
+        "pandas",
+        "numpy",
+        "scikit-learn"
+      ],
+      "linked_mods": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l3p_sankeydiagram",
+      "name": "桑基图（Python）",
+      "level": "L3",
+      "category": "Python",
+      "language": "python",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "pandas",
+        "numpy",
+        "plotly"
+      ],
+      "linked_mods": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "axis_cols": "按顺序排列的流轴列名",
+        "value_col": "流量数值列名",
+        "flow_col": "流向分类列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2p_scatterplot",
+      "name": "散点图（Python）",
+      "level": "L2",
+      "category": "Python",
+      "language": "python",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "matplotlib",
+        "seaborn",
+        "pandas",
+        "numpy",
+        "scipy"
+      ],
+      "linked_mods": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "x_col": "横轴列名",
+        "y_col": "纵轴列名",
+        "label_genes": "需要标注的基因清单，可为空"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2p_dotplot",
+      "name": "单细胞点图（Python）",
+      "level": "L2",
+      "category": "Python",
+      "language": "python",
+      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_more_code.py",
+      "source_sha256": "01d5bd21b306677947aa771ccc8f70b97d225919470d5f95536442c4ff8472e6",
+      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_dotplot_verified.png",
+      "preview_sha256": "4b7bc5da8b8e60d1e4be5687a7366feafb01a6c140ccb1abf717b015ae10321d",
+      "verified": true,
+      "deps_status": "ready",
+      "deps": [
+        "scanpy",
+        "anndata",
+        "pandas",
+        "numpy",
+        "matplotlib"
+      ],
+      "linked_mods": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [
+        "line2_scrna"
+      ],
+      "analysis_step": "l2_ko_localization",
+      "input_tables": [
+        "target_gene_localization.tsv"
+      ],
+      "produces": [
+        "custom_fig_l2p_dotplot.png"
+      ],
+      "output_glob": "figures/line2_scrna/custom_fig_l2p_dotplot.png",
+      "canonical_output": "figures/dotplot__L2p_dotplot_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/l2_13_target_gene_dotplot.png",
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2p_scrnastackedviolin",
+      "name": "单细胞堆叠小提琴图（Python）",
+      "level": "L2",
+      "category": "Python",
+      "language": "python",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "scanpy",
+        "anndata",
+        "pandas",
+        "numpy",
+        "matplotlib"
+      ],
+      "linked_mods": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名",
+        "value_col": "表达或测量值列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2p_umap",
+      "name": "单细胞 UMAP 图（Python）",
+      "level": "L2",
+      "category": "Python",
+      "language": "python",
+      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_umap_code.py",
+      "source_sha256": "64d5a860832237813e556edb7eb1b3de2edf386367d41dd69482ef38add72002",
+      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_umap_verified.png",
+      "preview_sha256": "cfc9b53c09d1393464831dd9c4d248e04e34bd85208a3125db1fd43c8d04a7d2",
+      "verified": true,
+      "deps_status": "ready",
+      "deps": [
+        "scanpy",
+        "anndata",
+        "pandas",
+        "numpy",
+        "umap-learn",
+        "matplotlib"
+      ],
+      "linked_mods": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "细胞或样本分组列名"
+      },
+      "lines": [
+        "line3_spatial"
+      ],
+      "analysis_step": "l3_dimred_reduce",
+      "input_tables": [
+        "spatial_dimred_human.h5ad"
+      ],
+      "produces": [
+        "custom_fig_l2p_umap.png"
+      ],
+      "output_glob": "figures/line3_spatial/custom_fig_l2p_umap.png",
+      "canonical_output": "umap_L2p_umap_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/l3_human_06_umap_sample.png",
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2p_survivalplot",
+      "name": "生存曲线（Python）",
+      "level": "L2",
+      "category": "Python",
+      "language": "python",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "matplotlib",
+        "seaborn",
+        "pandas",
+        "numpy",
+        "lifelines"
+      ],
+      "linked_mods": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2p_upsetplot",
+      "name": "UpSet 图（Python）",
+      "level": "L2",
+      "category": "Python",
+      "language": "python",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "matplotlib",
+        "pandas",
+        "numpy"
+      ],
+      "linked_mods": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2p_vennplot",
+      "name": "维恩图（Python）",
+      "level": "L2",
+      "category": "Python",
+      "language": "python",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "matplotlib",
+        "matplotlib-venn"
+      ],
+      "linked_mods": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2p_violin",
+      "name": "小提琴图（Python）",
+      "level": "L2",
+      "category": "Python",
+      "language": "python",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending_mapping",
+      "deps": [
+        "matplotlib",
+        "seaborn",
+        "pandas",
+        "numpy"
+      ],
+      "block_reason": "尚无与模板语义、语言和分析步骤一致的真实项目样例图",
+      "linked_mods": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名",
+        "value_col": "表达或测量值列名"
+      },
+      "lines": [
+        "line2_scrna"
+      ],
+      "analysis_step": "l2_profile_composition",
+      "input_tables": [
+        "celltype_composition.tsv"
+      ],
+      "produces": [
+        "custom_fig_l2p_violin.png"
+      ],
+      "output_glob": "figures/line2_scrna/custom_fig_l2p_violin.png",
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l2p_volcano",
+      "name": "火山图（Python）",
+      "level": "L2",
+      "category": "Python",
+      "language": "python",
+      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_more_code.py",
+      "source_sha256": "01d5bd21b306677947aa771ccc8f70b97d225919470d5f95536442c4ff8472e6",
+      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_volcano_verified.png",
+      "preview_sha256": "a8acdde7f648d47b6969a7c130a7708ef107646ba152f87b7fd2ebc83c813068",
+      "verified": true,
+      "deps_status": "ready",
+      "deps": [
+        "matplotlib",
+        "pandas",
+        "numpy"
+      ],
+      "linked_mods": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "比较方向定义使用的分组列名",
+        "label_genes": "需要标注的基因清单，可为空"
+      },
+      "lines": [
+        "line2_scrna"
+      ],
+      "analysis_step": "l2_profile_deg",
+      "input_tables": [
+        "deg_all_by_celltype.tsv"
+      ],
+      "produces": [
+        "custom_fig_l2p_volcano.png"
+      ],
+      "output_glob": "figures/line2_scrna/custom_fig_l2p_volcano.png",
+      "canonical_output": "L2p_volcano_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/l2_08_deg_volcano_basal_keratinocyte.png",
+      "deprecated": false
+    },
+    {
+      "id": "fig_l3_chorddiagram",
+      "name": "和弦图",
+      "level": "L3",
+      "category": "Proportion",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "chorddiag",
+        "circlize",
+        "dplyr",
+        "ggraph",
+        "igraph",
+        "readr",
+        "readxl",
+        "tidygraph",
+        "tidyverse",
+        "viridis"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l3_network",
+      "name": "网络图",
+      "level": "L3",
+      "category": "Proportion",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
+      "deps": [
+        "RColorBrewer",
+        "cowplot",
+        "igraph",
+        "networkD3"
+      ],
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "group_col": "分组列名"
+      },
+      "lines": [],
+      "analysis_step": null,
+      "input_tables": [],
+      "produces": [],
+      "output_glob": null,
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    },
+    {
+      "id": "fig_l3_sankey",
+      "name": "桑基图",
+      "level": "L3",
+      "category": "Proportion",
+      "language": "r",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending_mapping",
+      "deps": [
+        "dplyr",
+        "ggalluvial",
+        "ggplot2",
+        "networkD3",
+        "openxlsx",
+        "readxl",
+        "tidyverse",
+        "webshot"
+      ],
+      "block_reason": "尚无与模板语义、语言和分析步骤一致的真实项目样例图",
+      "linked_mods": [
+        "l1_figures_bulk"
+      ],
+      "adapt_vars": {
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "axis_cols": "按顺序排列的流轴列名",
+        "value_col": "流量数值列名",
+        "flow_col": "流向分类列名"
+      },
+      "lines": [
+        "line1_bulk"
+      ],
+      "analysis_step": "l1_ml_hub",
+      "input_tables": [
+        "wgcna_modules.tsv",
+        "enrichment_kegg.tsv",
+        "ml_core_hub_genes.tsv"
+      ],
+      "produces": [
+        "custom_fig_l3_sankey.png"
+      ],
+      "output_glob": "figures/line1_bulk/custom_fig_l3_sankey.png",
+      "canonical_output": null,
+      "sample_project_output": null,
+      "deprecated": false
+    }
+  ]
+}

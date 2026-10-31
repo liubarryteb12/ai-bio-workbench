@@ -22,13 +22,19 @@
 
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
+// ssh / 台账快照差集 / 判活口径统一来自公共库（第十二轮待办 4：三份 runner 重复实现收口）
+import {
+  ssh, listLedgers, waitNewLedger, ledgerWaitMsForStep,
+  P as P_LIB, PROJECT as PROJECT_LIB, LINE as LINE_LIB,
+} from './lib/chain_runner.mjs';
 
 const BASE = process.env.BASE || 'http://127.0.0.1:18901';
-const PROJECT = process.env.PROJECT_ID || 'PRJ_E2E_SCRNA';
-const LINE = 'line2_scrna';
-const SEED = 20261021;
-const P = `/mnt/ssd/bio_data/projects/${PROJECT}/${LINE}`;
+const SEED = Number(process.env.SEED || 20261013);
 const LOGS = '/mnt/ssd/bio_data/system_logs';
+// 公共库是这些常量的唯一来源（项目/线/根路径在 lib 里按环境变量解析）
+const P = P_LIB;
+const PROJECT = PROJECT_LIB;
+const LINE = LINE_LIB;
 const START = Number(process.env.START_INDEX || 0);
 const ONLY = process.env.ONLY_STEP || '';
 const RESULT_FILE = 'cn_debug/2026-10-21_m1_line2_chain.result.md';
@@ -47,24 +53,6 @@ function sleepSync(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
-// 连接级抖动（10022 端口被对端关闭 / 超时）重试；命令本身失败不重试，避免副作用命令重复执行。
-const RETRYABLE_SSH = /Connection closed|Connection reset|Broken pipe|kex_exchange|closed by|timed out|Timeout/;
-
-function ssh(cmd, timeout = 180000) {
-  let lastError = null;
-  for (let tryNo = 1; tryNo <= 4; tryNo += 1) {
-    try {
-      return execFileSync('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', 'k40-ubuntu', cmd],
-        { encoding: 'utf8', timeout, maxBuffer: 32 * 1024 * 1024 });
-    } catch (cause) {
-      lastError = cause;
-      const msg = String(cause.message || '');
-      if (!RETRYABLE_SSH.test(msg) || tryNo === 4) throw cause;
-      sleepSync(2000 * tryNo);
-    }
-  }
-  throw lastError;
-}
 
 function check(name, ok, detail = '') {
   results.push({ name, ok, detail });
@@ -80,7 +68,7 @@ function check(name, ok, detail = '') {
 function containerAlive() {
   try {
     const out = ssh('echo ALIVE');
-    return { alive: /ALIVE/.test(out), detail: 'echo ok' };
+    return { alive: /ALIVE/.test(out.text), detail: 'echo ok' };
   } catch (cause) {
     return { alive: false, detail: cause.message.slice(0, 120) };
   }
@@ -92,7 +80,7 @@ function snapshot() {
   const files = new Map();
   const figures = [];
   let out = '';
-  try { out = ssh(cmd); } catch { return { files, figures }; }
+  try { out = ssh(cmd).text; } catch { return { files, figures }; }
   for (const line of out.split('\n')) {
     const parts = line.split('\t');
     if (parts[0] === 'F' && parts[1]) files.set(parts[1], Number(parts[2]));
@@ -112,52 +100,24 @@ function diffSnapshot(before, after) {
   return { created, grown, figs };
 }
 
-// 台账定位口径（P13 修）：提交前先快照已有台账文件名集合，提交后只认「新出现」的文件。
-// 之前用 start_time 与本地 submittedAt 比大小，但 K40 容器是 UTC、本地是 CST(+8)，
-// 永远判「不是新的」，于是每步都白等 180s 再重试一遍（整链时间翻倍）。
-// 文件名用严格正则 _<step>_<8hex>.json，避免 *enrichment_*.json 误命中 enrichment_figures。
-function ledgerFileNames() {
-  try {
-    const out = ssh(`ls ${LOGS}/*${PROJECT}_${LINE}_*.json 2>/dev/null | sed 's#.*/##'`);
-    return new Set(out.split('\n').map((s) => s.trim()).filter(Boolean));
-  } catch {
-    return new Set();
+/**
+ * 引擎侧在册任务 id 集合。
+ * 加 fetch 重试：引擎瞬时不可达（重启/瞬时 CPU 抢占）会让整个取证中断，
+ * 2026-10-21 第一次续跑就是被这个打死的（runner 报 TypeError: fetch failed）。
+ */
+async function runningIds(retries = 5) {
+  let lastErr = null;
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fetch(`${BASE}/api/tasks`, { signal: AbortSignal.timeout(20000) });
+      const body = await res.json();
+      return new Set((body.tasks || []).map((t) => t.taskId));
+    } catch (err) {
+      lastErr = err;
+      await sleep(8000);
+    }
   }
-}
-
-function ledgerForStep(step, known) {
-  const re = new RegExp('_' + step + '_[0-9a-f]{8}\\.json$');
-  let names = [];
-  try {
-    const out = ssh(`ls -t ${LOGS}/*${PROJECT}_${LINE}_*.json 2>/dev/null | sed 's#.*/##'`);
-    names = out.split('\n').map((s) => s.trim()).filter(Boolean);
-  } catch {
-    return null;
-  }
-  const fresh = names.filter((n) => re.test(n) && !known.has(n));
-  if (!fresh.length) return null;
-  const file = `${LOGS}/${fresh[0]}`;
-  try {
-    return { file, ...JSON.parse(ssh(`cat '${file}'`)) };
-  } catch {
-    return null;
-  }
-}
-
-async function waitLedger(step, known, timeoutMs = 180000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    const ledger = ledgerForStep(step, known);
-    if (ledger) return ledger;
-    await sleep(5000);
-  }
-  return null;
-}
-
-async function runningIds() {
-  const res = await fetch(`${BASE}/api/tasks`);
-  const body = await res.json();
-  return new Set((body.tasks || []).map((t) => t.taskId));
+  throw lastErr || new Error('runningIds 失败');
 }
 
 /** 远端 python 读 h5ad 的 uns 口径（只取需要的键，不加载矩阵）。 */
@@ -185,7 +145,7 @@ def plain(value):
 print(json.dumps({k: plain(v) for k, v in payload.items()}, ensure_ascii=False)[:1500])
 PYUNS`;
   try {
-    return JSON.parse(ssh(script, 300000));
+    return JSON.parse(ssh(script, { timeoutMs: 300000 }).text);
   } catch (cause) {
     return { error: String(cause.message || cause).slice(0, 200) };
   }
@@ -195,7 +155,7 @@ PYUNS`;
 function resolveKoGene() {
   if (process.env.KO_GENE) return { gene: process.env.KO_GENE.trim(), source: 'env:KO_GENE', probe: [] };
   try {
-    const meta = JSON.parse(ssh(`cat /mnt/ssd/bio_data/projects/${PROJECT}/project.json 2>/dev/null || echo '{}'`));
+    const meta = JSON.parse(ssh(`cat /mnt/ssd/bio_data/projects/${PROJECT}/project.json 2>/dev/null || echo '{}'`).text);
     const gene = meta?.biological_priors?.target_ko_gene || meta?.acl_and_output?.target_ko_gene;
     if (typeof gene === 'string' && gene.trim()) {
       return { gene: gene.trim(), source: 'project.json', probe: [] };
@@ -234,7 +194,7 @@ print(json.dumps({"n_pop": int(mask.sum()), "rows": rows}, ensure_ascii=False))
 PYKO`;
   let probe = { n_pop: 0, rows: [] };
   try {
-    probe = JSON.parse(ssh(script, 600000));
+    probe = JSON.parse(ssh(script, { timeoutMs: 600000 }).text);
   } catch (cause) {
     return { gene: 'TNF', source: 'fallback:probe_failed', probe: [], error: String(cause.message || cause).slice(0, 200) };
   }
@@ -252,7 +212,7 @@ PYKO`;
 
 async function attempt(spec, index, tryNo, koGene) {
   const label = `${index + 1}. ${spec.step}${tryNo > 1 ? ` (retry ${tryNo - 1})` : ''}`;
-  const knownLedgers = ledgerFileNames();
+  const knownLedgers = listLedgers(spec.step, PROJECT, LINE);
   const startedAt = Date.now();
   const body = {
     projectId: PROJECT, lineId: LINE, step: spec.step,
@@ -287,9 +247,13 @@ async function attempt(spec, index, tryNo, koGene) {
   }
 
   await sleep(1500);
-  const ledger = await waitLedger(spec.step, knownLedgers);
+  // 台账落盘有时延（包装器写完 stdout 才写台账，重步骤还要等 fsync）。按步骤分档等待，
+  // 不再用固定 180s：scenic_tf / dr_post_analysis 这类收尾慢的步骤容易假失败（2026-10-21 踩过）。
+  const ledgerWaitMs = ledgerWaitMsForStep(spec.step, spec.ledgerWaitMs || 180000);
+  const found = waitNewLedger(spec.step, knownLedgers, ledgerWaitMs);
+  const ledger = found.ledger;
   if (!ledger) {
-    check(`${label} 台账`, false, '180s 内未找到台账文件');
+    check(`${label} 台账`, false, `${Math.round(ledgerWaitMs / 1000)}s 内未找到台账文件`);
     return { ok: false, ledger: null, wallSec };
   }
   const ok = ledger.status === 'completed' && ledger.exit_code === 0;
@@ -341,18 +305,18 @@ const STEPS = [
   { step: 'scrna_composition', inputs: [`${P}/processed/scrna_annotated.h5ad`] },
   { step: 'deg_groups', inputs: [`${P}/processed/scrna_composition.h5ad`] },
   { step: 'subcluster', inputs: [`${P}/processed/scrna_deg.h5ad`] },
-  { step: 'enrichment', inputs: [`${P}/processed/deg_all_by_celltype.tsv`, `${P}/processed/deg_significant_by_celltype.tsv`] },
+  { ledgerWaitMs: 600000, step: 'enrichment', inputs: [`${P}/processed/deg_all_by_celltype.tsv`, `${P}/processed/deg_significant_by_celltype.tsv`] },
   { step: 'enrichment_figures', inputs: [`${P}/processed`] },
   { step: 'pseudotime', inputs: [`${P}/processed/scrna_annotated.h5ad`] },
   { step: 'cell_communication', inputs: [`${P}/processed/scrna_annotated.h5ad`, `${P}/processed/scrna_norm.h5ad`] },
-  { step: 'scenic_tf', inputs: [`${P}/processed/scrna_annotated.h5ad`, `${P}/processed/scrna_norm.h5ad`] },
+  { ledgerWaitMs: ledgerWaitMsForStep('scenic_tf'), step: 'scenic_tf', inputs: [`${P}/processed/scrna_annotated.h5ad`, `${P}/processed/scrna_norm.h5ad`] },
   { step: 'scenic_figures', inputs: [`${P}/processed`] },
   { step: 'tf_activity', inputs: [`${P}/processed/deg_all_by_celltype.tsv`, `${P}/processed/deg_significant_by_celltype.tsv`] },
-  { step: 'virtual_knockout', inputs: [`${P}/processed/scrna_annotated.h5ad`, `${P}/processed/scrna_norm.h5ad`, `${P}/processed/hvg_genes.tsv`] },
+  { ledgerWaitMs: ledgerWaitMsForStep('virtual_knockout'), step: 'virtual_knockout', inputs: [`${P}/processed/scrna_annotated.h5ad`, `${P}/processed/scrna_norm.h5ad`, `${P}/processed/hvg_genes.tsv`] },
   { step: 'summarize_dr', inputs: [`${P}/processed/scrna_knockout.h5ad`, `${P}/processed/ko_dr_genes.tsv`] },
   { step: 'target_gene_localization', inputs: [`${P}/processed/scrna_deg.h5ad`, `${P}/processed/deg_all_by_celltype.tsv`, `${P}/processed/ko_dr_genes.tsv`] },
   { step: 'gsva_pathways', inputs: [`${P}/processed/scrna_integrated.h5ad`, `${P}/processed/scrna_deg.h5ad`] },
-  { step: 'dr_post_analysis', inputs: [`${P}/processed/scrna_knockout.h5ad`, `${P}/processed/ko_dr_genes.tsv`, `${P}/processed/scenic_regulons.csv`, `${P}/processed/deg_all_by_celltype.tsv`] },
+  { ledgerWaitMs: 900000, step: 'dr_post_analysis', inputs: [`${P}/processed/scrna_knockout.h5ad`, `${P}/processed/ko_dr_genes.tsv`, `${P}/processed/scenic_regulons.csv`, `${P}/processed/deg_all_by_celltype.tsv`] },
   { step: 'scrna_figures', inputs: [`${P}/processed/scrna_deg.h5ad`] },
 ];
 

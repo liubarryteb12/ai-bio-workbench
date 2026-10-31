@@ -1,0 +1,35 @@
+{
+  "task_id": "157f7f5d-02ac-44df-8fdf-a5fbba485ceb",
+  "project_id": "PRJ_AIMS_V3_20261027",
+  "line_id": "line2_scrna",
+  "step_name": "ingest_counts",
+  "mod_id": "l2_ingest_counts",
+  "status": "completed",
+  "start_time": "2026-10-27T19:30:15.072Z",
+  "end_time": "2026-10-27T19:32:57.767Z",
+  "environment": {
+    "language": "Python",
+    "version": "3.12.3",
+    "env_name": "line2_scrna_env",
+    "container_image": "proot-ubuntu24.04-aarch64",
+    "random_seed": 20261013
+  },
+  "resource_usage": {
+    "max_cpu_percent": null,
+    "max_memory_gb": null,
+    "disk_io_peak_mb_s": null
+  },
+  "io_files": {
+    "input": [
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line2_scrna/raw_data/GSE254707_RAW.tar",
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line2_scrna/raw_data/GPL21697_family.soft.gz",
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line2_scrna/raw_data/grouping.txt"
+    ],
+    "output": []
+  },
+  "checkpoint_status": "passed",
+  "error_log": null,
+  "exit_code": 0,
+  "next_action_suggested": null,
+  "compute_node_id": "k40-ubuntu"
+}

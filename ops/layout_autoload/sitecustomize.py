@@ -34,6 +34,35 @@ def _warn(message):
     sys.stderr.write("[layout_autoload] %s\n" % message)
 
 
+def _install_memory_guard():
+    """在任何科学计算包导入前设置进程级 7.5GB 虚拟内存软熔断。"""
+    here = os.path.dirname(os.path.abspath(__file__))
+    ops_root = os.path.dirname(here)
+    if ops_root not in sys.path:
+        sys.path.insert(0, ops_root)
+    try:
+        from bio_memory_guard import enable_memory_guard
+        enable_memory_guard(7.5)
+    except Exception as cause:  # noqa: BLE001 - 守卫失败不能阻断解释器启动
+        _warn("7.5GB 内存守卫挂载失败: %s" % cause)
+
+
+_install_memory_guard()
+
+
+def _install_numpy_compat():
+    """Keep legacy scientific packages working with current NumPy."""
+    try:
+        import numpy as np
+        if not hasattr(np, "object"):
+            np.object = object
+    except Exception as cause:  # noqa: BLE001 - compatibility shim must not block startup
+        _warn("NumPy legacy alias shim failed: %s" % cause)
+
+
+_install_numpy_compat()
+
+
 def _load_spec():
     """读 project.json 的 plot_layout_config。读不到返回 None（等于不介入）。"""
     path = os.environ.get(_ENV_PROJECT, "").strip()

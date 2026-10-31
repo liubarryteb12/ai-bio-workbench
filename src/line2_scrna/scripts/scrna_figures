@@ -272,7 +272,7 @@ CTRL_COLOR = "#3B4992"   # §八.5 ctrl（对照组）冷蓝
 
 def load_project_json():
     """读任务引擎注入的 project.json（BIOANALYS_PROJECT_JSON，见 task.js 注入段）。
-    未注入/不存在/解析失败都返回 None —— 由调用方决定回落还是失败，不在这里猜。"""
+    未注入/不存在/解析失败都返回 None：由调用方决定回落还是失败，不在这里猜。"""
     path = os.environ.get("BIOANALYS_PROJECT_JSON", "")
     if not path or not os.path.exists(path):
         return None
@@ -289,7 +289,7 @@ def resolve_case_ctrl(observed):
 
     解析顺序（与 line1 bulk_figures 一致，仅多一条观测组校验）：
       1) project.json `grouping_design.contrasts`：`is_primary` 优先，否则第一条；
-         **但 case/ctrl 必须真的出现在观测组里**——project.json 的 contrasts 可能描述的是
+         **但 case/ctrl 必须真的出现在观测组里**：project.json 的 contrasts 可能描述的是
          另一维度（实测 default 项目的 contrasts 是 region/stage 的 LS_vs_NLS，而 line2 的
          观测组是 diagnosis 的 Healthy/Psoriasis），照抄会把方向写到别的维度上；
       2) `grouping_design.groups[].is_reference`：reference 组为 ctrl，另一组为 case（仅两组）；
@@ -787,4 +787,27 @@ if "X_pca_harmony" in adata.obsm or "X_pca" in adata.obsm:
 
 log("figures_done count=%d out=%s elapsed=%.1fs"
     % (len(made), OUT, time.time() - START))
+
+# 产物清单落盘：与其余 figures 步骤对齐，让台账钩子有载体可挂。
+try:
+    _man = os.path.join(OUT, "figures_manifest.txt")
+    with open(_man, "w", encoding="utf-8") as _fh:
+        _fh.write("step=%s seed=%s out=%s count=%d elapsed=%.1fs%s" % (
+            os.path.basename(sys.argv[0]),
+            os.environ.get("BIOANALYS_SEED", "UNSET"),
+            OUT, len(made), time.time() - START, chr(10)))
+        for _n in made:
+            _p = os.path.join(OUT, _n)
+            _sz = os.path.getsize(_p) if os.path.exists(_p) else -1
+            _fh.write("%s%s%d%s" % (_n, chr(9), _sz, chr(10)))
+        _fh.write("outputs=%s\n" % ", ".join(["figures_manifest.txt"] + list(made)))
+    log("wrote figures_manifest.txt (%d entries)" % len(made))
+except OSError as _exc:
+    log("WARN manifest write failed: %s" % _exc)
 PYSCRIPT
+
+# sha256 产物台账后置补登：复用独立脚本，写法与其余步骤解耦。
+if [ -x "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" ]; then
+  "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" "$PWD/../figures" "figures_manifest.txt" > /dev/null 2>>"$0.ledger.err" \
+  || echo "WARN sha256 ledger backfill failed, see $0.ledger.err" >&2
+fi

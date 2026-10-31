@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ml_hub_analysis：line1_bulk 机器学习 —— hub 基因精筛 + 重要性评估（aims 线1"机器学习建模"扩展）。
+# ml_hub_analysis：line1_bulk 机器学习：hub 基因精筛 + 重要性评估（aims 线1"机器学习建模"扩展）。
 #
 # 两类方法（用户 2026-10-14 指定）：
 #   第一类 进一步筛选 hub 基因（减少基因数量，聚焦核心）：
@@ -21,6 +21,8 @@
 # 口径：docs/figure_spec.md（Agg/150dpi/英文标签；图注置坐标轴框外；图例/colorbar 带 label；
 #       热图行=基因列=观测；富集类双标注不适用此处）。样本量小（n=16），全部结论标注为探索性。
 set -euo pipefail
+
+RSCRIPT_BIN="${BIOANALYS_RSCRIPT:-/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript}"
 
 seed="${BIOANALYS_SEED:-UNSET}"
 if [ "$seed" = "UNSET" ]; then
@@ -115,7 +117,7 @@ fi
 
 # ---------- 2) 第一类-LASSO（R glmnet）：系数路径 + 交叉验证 + 选中基因 ----------
 EXPR_FILE="$expr_file" GROUP_FILE="$group_file" BIOANALYS_SEED="$seed" \
-Rscript - <<'RSCRIPT'
+"$RSCRIPT_BIN" - <<'RSCRIPT'
 suppressMessages(library(glmnet))
 fail <- function(msg) { cat("ml_hub_analysis(R) 自校验失败:", msg, "\n", file = stderr()); quit(status = 1) }
 say <- function(...) cat(..., "\n")

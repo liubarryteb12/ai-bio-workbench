@@ -157,11 +157,10 @@ test('守卫把 --stage pre-dimred 原样透传（降级由调用方声明）', 
   assert.match(res.captured, /--stage pre-dimred/);
 });
 
-test('守卫遇到未知 stage 打印 SKIP 并 exit 0（不因参数问题拖垮母版）', { skip: NEED_BASH }, () => {
+test('守卫遇到未知 stage 打印 BRIDGE FAIL 并 exit 2', { skip: NEED_BASH }, () => {
   const res = runGuardCapture(['--input', 'x.h5ad', '--from', 'Python', '--to', 'R', '--stage', 'whenever']);
-  assert.equal(res.code, 0, res.stderr);
-  // 未知参数走 stderr（与守卫既有约定一致），断言两路合并后的文案
-  assert.match(res.stdout + res.stderr, /BRIDGE SKIP/);
+  assert.equal(res.code, 2, res.stderr);
+  assert.match(res.stdout + res.stderr, /BRIDGE FAIL/);
   assert.match(res.stdout + res.stderr, /未知 --stage/);
 });
 
@@ -180,6 +179,10 @@ test('gsva_pathways 按三候选顺序取整合矩阵，回落时显式降级为
   assert.match(src, /--stage "\$BRIDGE_STAGE"/, '守卫调用必须透传阶段');
   assert.match(src, /BIO_GSVA_NORM="\$NORM" python3/, 'python 侧必须从环境变量拿实际输入');
   assert.match(src, /os\.environ\.get\("BIO_GSVA_NORM"/, 'python 侧读环境变量');
+  assert.match(src, /layers\["counts"\]/, '伪 bulk 必须从非负 counts 层聚合，不能直接消费 scaled X');
+  assert.match(src, /\("donor",\s*"sample",\s*"sample_title"\)/, '伪 bulk 样本键优先使用低基数 donor，避免单细胞标题制造数千伪样本');
+  assert.match(src, /celltype[\s\S]*sample/, '伪 bulk 分组必须同时包含 celltype 与样本');
+  assert.match(src, /np\.log1p\(/, 'counts 求和后必须显式做 log1p 归一化');
   // 严禁再把 scrna_norm.h5ad 写成 python heredoc 里的硬编码输入
   assert.doesNotMatch(src, /^NORM = "scrna_norm\.h5ad"$/m, 'python heredoc 里不许再硬编码输入源');
 });

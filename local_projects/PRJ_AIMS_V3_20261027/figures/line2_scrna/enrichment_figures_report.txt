@@ -1,0 +1,6 @@
+step=-
+seed=20261021
+out=/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line2_scrna/processed/../figures
+figure_count=2
+elapsed_seconds=2.1
+outputs=figures_manifest.txt, l2_11_ora_top.png, l2_12_gsea_top.png

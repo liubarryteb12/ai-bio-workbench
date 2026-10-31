@@ -150,7 +150,7 @@ test('老客户端（无数据文件）仍落平铺 JSON，工作台两种形态
   });
   const body = await res.json();
   assert.equal(res.status, 200, JSON.stringify(body));
-  assert.match(body.savedAs, /^\d{4}-\d{2}-\d{2}_\d{6}_需求_测试项目_旧格式\.json$/);
+  assert.match(body.savedAs, /^\d{4}-\d{2}-\d{2}_\d{6}_requirement_[A-Za-z0-9_-]+\.json$/);
   assert.ok(fs.existsSync(path.join(INBOX, body.savedAs)), '扁平 JSON 应直接落在 inbox 根');
 });
 

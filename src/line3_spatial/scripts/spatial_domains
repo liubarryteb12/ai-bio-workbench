@@ -77,6 +77,7 @@ export NORM_INPUTS
 export NORM_OUTDIR="${NORM_OUTDIR:-$(pwd)}"
 
 python3 - <<'PYSCRIPT'
+import hashlib
 import os
 import sys
 import time
@@ -251,5 +252,21 @@ report_lines = [
 ]
 with open("domains_report.txt", "w", encoding="utf-8") as fh:
     fh.write("\n".join(report_lines) + "\n")
+
+for _artifact in sorted(os.listdir(".")):
+    if not os.path.isfile(_artifact):
+        continue
+    if _artifact == 'domains_report.txt':
+        continue
+    with open(_artifact, "rb") as _fh:
+        _digest = hashlib.sha256(_fh.read()).hexdigest()
+    with open('domains_report.txt', "a", encoding="utf-8") as _fh:
+        _fh.write("%s_sha256=%s\n" % (_artifact, _digest))
 log("spatial_domains_done")
 PYSCRIPT
+
+# sha256 产物台账后置补登：复用独立脚本，写法与其余步骤解耦。
+if [ -x "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" ]; then
+  "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" "${NORM_OUTDIR:-$(pwd)}" "domains_report.txt" > /dev/null 2>>"$0.ledger.err" \
+  || echo "WARN sha256 ledger backfill failed, see $0.ledger.err" >&2
+fi

@@ -23,7 +23,8 @@
 # 为受体域时的单位质量强度，逐 pair 取 max）。
 #
 # 自校验内建：输入契约（步骤 9 键集合 + composition 口径键 + 未做过通讯）、
-# 权重行和=1、score 非负、mass 与共现口径一致（对角>0）、与步骤 9 uns 样本记录
+# 权重行和=1、score 非负、样本总邻域质量>0（孤立单 spot 域允许对角质量 0）、
+# 与步骤 9 uns 样本记录
 # 对账（domain 数/n_spots）、spot 级贴回完整、X/counts/X_pca/domain/obs/var 不变量、
 # 参考值对账（单样本单 pair 朴素双重循环）。任一不过非零退出。
 set -euo pipefail
@@ -79,6 +80,7 @@ export COMM_INPUTS
 export COMM_OUTDIR="${COMM_OUTDIR:-$(pwd)}"
 
 python3 - <<'PYSCRIPT'
+import hashlib
 import os
 import sys
 import time
@@ -329,6 +331,7 @@ for path in os.environ["COMM_INPUTS"].splitlines():
     total = np.zeros((n_pairs, n_dom, n_dom))   # 全物种所有样本累加
     mass = np.zeros((n_dom, n_dom))             # domain 对邻域质量（权重和）
     per_sample_norm = {}                        # sample -> 单位质量强度矩阵
+    per_sample_zero_mass = {}                    # sample -> 无自邻域质量的孤立域
     spot_recv = np.zeros(adata.shape[0], dtype=float)   # spot 作受体端收到的最大强度
     for sample in samples:
         sm = sample_arr == sample
@@ -370,13 +373,16 @@ for path in os.environ["COMM_INPUTS"].splitlines():
                     mi @ np.asarray((w @ csr_matrix(m[:, None])).toarray()).ravel())
         if not np.all(s_total >= -1e-12):
             fail("%s %s score 出现负值（表达值非负时不应发生）" % (species, sample))
-        # 只对样本内实际观测到的域断言对角质量 > 0（doms 是全物种并集，
-        # 其他样本私有域在本样本无 spot，对角 mass=0 属正常，坑 #120 同源）
+        # doms 是全物种并集：其他样本私有域 mass=0 属正常。样本内孤立单 spot
+        # 域也可能没有自邻域质量，记录并跳过单位化；样本总质量必须为正。
         local_doms = sorted(set(dcodes[sm].tolist()))
-        for k in local_doms:
-            if s_mass[k, k] <= 0:
-                fail("%s %s 样本内域 %s 对角邻域质量为 0（该域无 spot？）"
-                     % (species, sample, doms[k]))
+        zero_mass_diag = [doms[k] for k in local_doms if s_mass[k, k] <= 0]
+        if float(s_mass.sum()) <= 0:
+            fail("%s %s 样本内所有 domain 对邻域质量均为 0" % (species, sample))
+        if zero_mass_diag:
+            log("%s %s WARN 孤立域无自邻域质量: %s"
+                % (species, sample, ",".join(zero_mass_diag)))
+        per_sample_zero_mass[sample] = zero_mass_diag
         total += s_total
         mass += s_mass
         mass_safe = np.where(s_mass > 0, s_mass, 1.0)
@@ -572,6 +578,7 @@ for path in os.environ["COMM_INPUTS"].splitlines():
         "n_lr_pairs_unmapped": int(unmapped),
         "domains": doms,
         "domain_pair_mass": [[round(float(v), 2) for v in row] for row in mass],
+        "zero_self_mass_domains": per_sample_zero_mass,
         "top_pairs": top_uns,
         "group_tests": group_tests,
         "source_h5ad": path,
@@ -633,5 +640,21 @@ report_lines = [
 ]
 with open("communication_report.txt", "w", encoding="utf-8") as fh:
     fh.write("\n".join(report_lines) + "\n")
+
+for _artifact in sorted(os.listdir(".")):
+    if not os.path.isfile(_artifact):
+        continue
+    if _artifact == 'communication_report.txt':
+        continue
+    with open(_artifact, "rb") as _fh:
+        _digest = hashlib.sha256(_fh.read()).hexdigest()
+    with open('communication_report.txt', "a", encoding="utf-8") as _fh:
+        _fh.write("%s_sha256=%s\n" % (_artifact, _digest))
 log("spatial_communication_done")
 PYSCRIPT
+
+# sha256 产物台账后置补登：复用独立脚本，写法与其余步骤解耦。
+if [ -x "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" ]; then
+  "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" "${COMM_OUTDIR:-$(pwd)}" "communication_report.txt" > /dev/null 2>>"$0.ledger.err" \
+  || echo "WARN sha256 ledger backfill failed, see $0.ledger.err" >&2
+fi

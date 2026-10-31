@@ -1,10 +1,10 @@
 /**
  * 黑名单三处副本一致性测试（B3 收口 / 2026-10-21 二次裁定后）。
  *
- * 背景：非肿瘤黑名单有三个"应该一致"的落点：
- *   1. 规格正本：aims/aims.txt §三.1「黑名单确认清单」（20 条，2026-10-21 二次裁定）；
- *   2. 权威实现：BioanalysDesktop/server/tumor_blacklist.js 的 BLACKLIST_PATTERNS；
- *   3. 纯前端副本：portal/index.html 的 var BL_PATTERNS（门户单文件页无打包步骤，不能 import）。
+ * 背景：非肿瘤黑名单只有两个稳定落点：
+ *   1. 规格正本：v3.0 Spec §2.1.2（20 条，2026-10-21 二次裁定）；
+ *   2. 权威实现：BioanalysDesktop/server/tumor_blacklist.js 的 BLACKLIST_PATTERNS。
+ * portal/index.html 不保存手工副本，由 portal/serve.mjs 在响应期注入。
  *
  * 沿革：实现侧曾自行扩充到 27 条、portal 也跟到 27 条，注释却写着"与工作台同源"；
  * 同日先收敛回 8 条，随后用户裁定「以 aims 为准，吸纳 27 条中可用的并对齐」，
@@ -13,8 +13,8 @@
  *   2. portal 副本不漂移（读文本、解析正则字面量、逐条 String() 比对）；
  *   3. 两侧对同一批文本给出相同判定（server checkTumorBlacklist vs portal 正则数组）。
  *
- * 改动黑名单时：先改 aims/aims.txt，再改 server/tumor_blacklist.js，最后同步
- * portal/index.html 的字面量，否则本测试会红。
+ * 改动黑名单时：先改 v3.0 Spec，再改 server/tumor_blacklist.js。
+ * portal 注入与运行时判定由 tests/portal_inject.test.js 把守。
  */
 
 import test from 'node:test';
@@ -28,7 +28,9 @@ import { BLACKLIST_PATTERNS, checkTumorBlacklist } from '../server/tumor_blackli
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, '..', '..');
 const HTML = fs.readFileSync(path.join(ROOT, 'portal', 'index.html'), 'utf8');
-const AIMS = fs.readFileSync(path.join(ROOT, 'aims', 'aims.txt'), 'utf8');
+const SPEC = [
+  path.join(ROOT, 'aims', 'old', '20261026_0749_aims_v3_0_spec.md'),
+].map((file) => fs.readFileSync(file, 'utf8')).join('\n');
 
 /** 规格正本 20 条：英文 16 + 中文 4，顺序与 aims 清单一致 */
 const EXPECTED = [
@@ -54,17 +56,6 @@ const EXPECTED = [
   { source: '免疫检查点', flags: '' },
 ];
 
-/** 从 index.html 取出 var BL_PATTERNS = [...]; 并解析成正则数组 */
-function parseHtmlBlacklist(text) {
-  const block = text.match(/var BL_PATTERNS\s*=\s*\[([\s\S]*?)\];/);
-  assert.ok(block, 'portal/index.html 里找不到 var BL_PATTERNS = [...]; 字面量');
-  const tokens = [...block[1].matchAll(/\/((?:[^\/\\\n]|\\.)+)\/([gimsuy]*)/g)];
-  assert.ok(tokens.length > 0, 'portal/index.html 的 BL_PATTERNS 里没解析出任何正则');
-  return tokens.map((m) => new RegExp(m[1], m[2]));
-}
-
-const PORTAL_PATTERNS = parseHtmlBlacklist(HTML);
-
 test('权威实现恰好 20 条，且与规格原文逐条同序', () => {
   assert.equal(BLACKLIST_PATTERNS.length, 20);
   const actual = BLACKLIST_PATTERNS.map((re) => ({ source: re.source, flags: re.flags }));
@@ -79,24 +70,14 @@ test('aims 规格正本里能查到这 20 条关键词（规格未被偷偷改�
       .replace(/\(\?![^)]*\)/g, '')
       .replace(/\\s\*/g, ' ')
       .replace(/\?/g, '');
-    assert.ok(AIMS.includes(word), 'aims/aims.txt 里查不到黑名单词「' + word + '」');
+    assert.ok(SPEC.includes(word), 'v3.1 aims 里查不到黑名单词「' + word + '」');
   }
-  assert.ok(AIMS.includes('20 条黑名单'), 'aims/aims.txt 里查不到 20 条黑名单的口径');
+  assert.ok(SPEC.includes('20 条黑名单'), 'v3.1 aims 里查不到 20 条黑名单的口径');
 });
 
-test('portal 副本条数与权威实现一致（20 条）', () => {
-  assert.equal(PORTAL_PATTERNS.length, BLACKLIST_PATTERNS.length);
-  assert.equal(PORTAL_PATTERNS.length, 20);
-});
-
-test('portal 副本逐条与权威实现同源同序（防止单侧漂移）', () => {
-  const server = BLACKLIST_PATTERNS.map((re) => re.toString());
-  const portal = PORTAL_PATTERNS.map((re) => re.toString());
-  assert.deepEqual(portal, server);
-});
-
-test('portal/index.html 注明权威实现位置（副本不许自称同源）', () => {
-  assert.match(HTML, /权威实现：BioanalysDesktop\/server\/tumor_blacklist\.js/);
+test('portal/index.html 不保存黑名单字面量副本，权威只来自响应期注入', () => {
+  assert.doesNotMatch(HTML, /var BL_PATTERNS\s*=\s*\[[\s\S]*?\/cancer/i);
+  assert.match(HTML, /__INJECT_SHARED_CONTRACTS__/);
 });
 
 /** 判定矩阵：两侧对同一批文本必须给出相同"是否命中"结论 */
@@ -141,26 +122,14 @@ const SAMPLES = [
   '   ',
 ];
 
-test('两侧判定矩阵完全一致（命中/放行结论逐条相同）', () => {
-  const diffs = [];
-  for (const text of SAMPLES) {
-    const serverHit = checkTumorBlacklist(text).hit;
-    const portalHit = PORTAL_PATTERNS.some((re) => re.test(text));
-    if (serverHit !== portalHit) diffs.push(JSON.stringify(text) + ': server=' + serverHit + ' portal=' + portalHit);
-  }
-  assert.deepEqual(diffs, []);
-});
-
-test('二次裁定吸纳的词两侧都必须拦截（口径回退锚点）', () => {
+test('二次裁定吸纳的词由权威实现拦截（口径回退锚点）', () => {
   for (const word of ['sarcoma', 'lymphoma', 'leukemia', 'melanoma', 'PD-L1', 'CTLA-4', '免疫检查点']) {
     assert.equal(checkTumorBlacklist(word).hit, true, '「' + word + '」应拦截');
-    assert.equal(PORTAL_PATTERNS.some((re) => re.test(word)), true, 'portal 侧「' + word + '」应拦截');
   }
 });
 
-test('PD 边界两侧都生效（GPD1 / SLC40A1 不许被误伤）', () => {
+test('PD 边界在权威实现生效（GPD1 / SLC40A1 不许被误伤）', () => {
   for (const word of ['GPD1', 'SLC40A1', 'PDK1']) {
     assert.equal(checkTumorBlacklist(word).hit, false, '「' + word + '」应放行');
-    assert.equal(PORTAL_PATTERNS.some((re) => re.test(word)), false, 'portal 侧「' + word + '」应放行');
   }
 });

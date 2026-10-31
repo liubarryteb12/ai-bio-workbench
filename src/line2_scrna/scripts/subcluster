@@ -223,7 +223,14 @@ for g in sorted(groups, key=lambda x: int(x)):
     lines.append("  %s_s%s: %s" % (TARGET, g, top["gene"].tolist()))
 lines.append("")
 lines.append("elapsed_seconds=%.1f" % (time.time() - START))
+lines.append("outputs=subcluster_markers.tsv, subcluster_diagnosis_crosstab.tsv, scrna_subcluster.h5ad, scrna_deg_subclustered.h5ad, subcluster_report.txt")
 with open("subcluster_report.txt", "w", encoding="utf-8") as fh:
     fh.write("\n".join(lines) + "\n")
 log("subcluster_done")
 PYSCRIPT
+
+# sha256 产物台账后置补登：复用独立脚本，写法与其余步骤解耦。
+if [ -x "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" ]; then
+  "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" "$PWD" "subcluster_report.txt" > /dev/null 2>>"$0.ledger.err" \
+  || echo "WARN sha256 ledger backfill failed, see $0.ledger.err" >&2
+fi

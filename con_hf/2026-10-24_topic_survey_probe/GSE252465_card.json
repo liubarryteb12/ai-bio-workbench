@@ -1,0 +1,38 @@
+{
+  "L0_disease": "idiopathic pulmonary fibrosis",
+  "L0_verdict": "纳入（纤维化为主，非肿瘤非免疫）",
+  "L1_accession": "GSE252465",
+  "L1_title": "ControlYu01",
+  "L1_n_samples": 16,
+  "L1_data_type": "单细胞",
+  "L1_groups": {
+    "control": 5,
+    "idiopathic pulmonary fibrosis": 11
+  },
+  "L1_tissues": {
+    "Lung BALF": 16
+  },
+  "L1_library_strategy": "RNA-Seq",
+  "L1_library_source": "transcriptomic single cell",
+  "L1_molecule": "polyA RNA",
+  "L1_instrument": "Illumina NovaSeq 6000",
+  "L1_platform": "GPL24676",
+  "L1_gsm_groups": [
+    "GSM8001691=control",
+    "GSM8001692=control",
+    "GSM8001693=control",
+    "GSM8001694=control",
+    "GSM8001695=control",
+    "GSM8001696=idiopathic pulmonary fibrosis",
+    "GSM8001697=idiopathic pulmonary fibrosis",
+    "GSM8001698=idiopathic pulmonary fibrosis",
+    "GSM8001699=idiopathic pulmonary fibrosis",
+    "GSM8001700=idiopathic pulmonary fibrosis",
+    "GSM8001701=idiopathic pulmonary fibrosis",
+    "GSM8001702=idiopathic pulmonary fibrosis",
+    "GSM8001703=idiopathic pulmonary fibrosis",
+    "GSM8001704=idiopathic pulmonary fibrosis",
+    "GSM8001705=idiopathic pulmonary fibrosis",
+    "GSM8001706=idiopathic pulmonary fibrosis"
+  ]
+}

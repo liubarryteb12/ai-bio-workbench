@@ -1,0 +1,11 @@
+step=- seed=20261013 out=/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line1_bulk/processed/../figures count=10 elapsed=10.2s
+l1_01_correlation.png	130241
+l1_04_topvar_heatmap.png	279512
+l1_02_pca.png	281783
+l1_03_volcano_fdr.png	125650
+l1_03_volcano_nominal.png	174293
+l1_06_ma_fdr.png	184712
+l1_06_ma_nominal.png	189396
+l1_05a_genes_detected.png	89268
+l1_05b_within_group_cor.png	93521
+l1_32_deg_overview.png	901504

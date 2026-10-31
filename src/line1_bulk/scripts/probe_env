@@ -4,7 +4,14 @@
 # 输出全部走 stdout，供 SSE 日志流直接展示；任何一样不对就非零退出，让台账记失败。
 set -euo pipefail
 
+RSCRIPT_BIN="${BIOANALYS_RSCRIPT:-/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript}"
+
 seed="${BIOANALYS_SEED:-UNSET}"
+if [ "$seed" = "UNSET" ]; then
+  echo "BIOANALYS_SEED 未注入（自检脚本要验证的就是这一项）" >&2
+  exit 3
+fi
+
 input_count=0
 output_count=0
 while [ $# -gt 0 ]; do
@@ -21,7 +28,7 @@ echo "cwd=$(pwd)"
 echo "bioanalys_seed=${seed}"
 echo "input_args=${input_count}"
 echo "output_args=${output_count}"
-echo "R=$(Rscript --version 2>&1 | head -1)"
+echo "R=$("$RSCRIPT_BIN" --version 2>&1 | head -1)"
 echo "python=$(python3 --version 2>&1)"
 
 # 环境清单：工作目录是 projects/<项目>/<线>/processed/，而 manifest 全局一份在

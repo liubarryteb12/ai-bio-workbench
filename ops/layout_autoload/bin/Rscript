@@ -7,7 +7,10 @@
 # 保留 user profile，其余参数原样透传。任务脚本把本目录放在 PATH 最前面即可。
 set -euo pipefail
 
-REAL_RSCRIPT="/usr/bin/Rscript"
+# 当前默认入口指向并行安装的 R 4.5.3。
+REAL_RSCRIPT="/opt/R/4.5.3/bin/Rscript"
+export R_LIBS_USER=/opt/R/4.5.3-site-library
+export R_PROFILE_USER=/mnt/ssd/bio_data/ops/layout_autoload/Rprofile
 
 args=()
 for arg in "$@"; do

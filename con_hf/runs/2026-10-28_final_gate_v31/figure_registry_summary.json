@@ -1,0 +1,18 @@
+{
+  "generated_at": "2026-10-28T10:47:51.6058678+08:00",
+  "templates": 82,
+  "ready": 6,
+  "pending": 65,
+  "pending_mapping": 10,
+  "blocked_r453": 1,
+  "groups": [
+    "False/blocked_r453=1",
+    "False/pending=65",
+    "False/pending_mapping=10",
+    "True/ready=6"
+  ],
+  "plot_matrix_entries": 27,
+  "plot_matrix_status": "pass",
+  "artifact_rows": 6,
+  "artifact_pass": 6
+}

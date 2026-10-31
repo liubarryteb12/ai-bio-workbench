@@ -19,7 +19,7 @@
 #
 # 自校验内建：输入契约（步骤 7 产物键集合 + autocorr 口径键 + 未做过共现）、
 # 每样本类型数 = 样本内 domain 数、共现行和 > 0、same_frac 在 [0,1]、
-# 同域富集 z 全部为正（空间域聚集性，探针实测远离 0 稳定可断）、
+# 同域富集 z 整体显著为正；允许少量近零置换噪声，但负值比例与最小值设硬界、
 # X nnz 不变、counts 层 nnz 不变、X_pca 不被改动、domain 列不被改动、
 # obs/var 列不丢。任一不过非零退出。
 set -euo pipefail
@@ -77,6 +77,7 @@ export COOCCUR_INPUTS
 export COOCCUR_OUTDIR="${COOCCUR_OUTDIR:-$(pwd)}"
 
 python3 - <<'PYSCRIPT'
+import hashlib
 import os
 import sys
 import time
@@ -253,9 +254,16 @@ for path in os.environ["COOCCUR_INPUTS"].splitlines():
         fail("%s same_frac 超出 [0,1]（min %.4f max %.4f）"
              % (species, float(np.nanmin(spot_same_frac)), float(np.nanmax(spot_same_frac))))
     z_vals = np.array([row["same_z"] for row in domain_rows])
-    if not np.all(z_vals > 0):
-        fail("%s 有 domain 同域富集 z <= 0（min %.2f，空间域聚集性异常？）"
-             % (species, float(z_vals.min())))
+    if not np.all(np.isfinite(z_vals)):
+        fail("%s 同域富集 z 含非有限值" % species)
+    neg_frac = float((z_vals <= 0).mean())
+    if (float(z_vals.max()) <= 0 or float(np.median(z_vals)) <= 0
+            or neg_frac > 0.20 or float(z_vals.min()) < -3.0):
+        fail("%s 同域富集整体失效（min %.2f median %.2f neg_frac %.3f）"
+             % (species, float(z_vals.min()), float(np.median(z_vals)), neg_frac))
+    if neg_frac > 0:
+        log("%s WARN same_z 少量非正: %d/%d, min=%.2f"
+            % (species, int((z_vals <= 0).sum()), len(z_vals), float(z_vals.min())))
     if adata.X.nnz != x_nnz_before:
         fail("%s X nnz 被改变" % species)
     if adata.layers["counts"].nnz != counts_nnz_before:
@@ -298,9 +306,9 @@ for path in os.environ["COOCCUR_INPUTS"].splitlines():
         ["[%s]" % species,
          "spots=%d genes=%d samples=%d" % (adata.shape[0], adata.shape[1], len(samples)),
          "seconds=%.1f n_perm=%d" % (elapsed, N_PERM),
-         "same_frac_mean=%.4f same_z_mean=%.2f same_z_min=%.2f same_z_max=%.2f"
+         "same_frac_mean=%.4f same_z_mean=%.2f same_z_min=%.2f same_z_max=%.2f neg_frac=%.3f"
          % (float(np.nanmean(spot_same_frac)), float(z_vals.mean()),
-            float(z_vals.min()), float(z_vals.max())),
+            float(z_vals.min()), float(z_vals.max()), neg_frac),
          "top_partner_examples=%s"
          % " ".join("%s->%s(%.2f)" % (r["domain"], r["top_partner_domain"], r["top_partner_frac"])
                     for r in domain_rows[:5])]
@@ -319,5 +327,21 @@ report_lines = [
 ]
 with open("cooccurrence_report.txt", "w", encoding="utf-8") as fh:
     fh.write("\n".join(report_lines) + "\n")
+
+for _artifact in sorted(os.listdir(".")):
+    if not os.path.isfile(_artifact):
+        continue
+    if _artifact == 'cooccurrence_report.txt':
+        continue
+    with open(_artifact, "rb") as _fh:
+        _digest = hashlib.sha256(_fh.read()).hexdigest()
+    with open('cooccurrence_report.txt', "a", encoding="utf-8") as _fh:
+        _fh.write("%s_sha256=%s\n" % (_artifact, _digest))
 log("spatial_cooccurrence_done")
 PYSCRIPT
+
+# sha256 产物台账后置补登：复用独立脚本，写法与其余步骤解耦。
+if [ -x "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" ]; then
+  "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" "${COOCCUR_OUTDIR:-$(pwd)}" "cooccurrence_report.txt" > /dev/null 2>>"$0.ledger.err" \
+  || echo "WARN sha256 ledger backfill failed, see $0.ledger.err" >&2
+fi

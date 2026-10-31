@@ -1,0 +1,34 @@
+{
+  "task_id": "9539e468-95d8-4c66-871c-8dcaf2849cd8",
+  "project_id": "PRJ_AIMS_V3_20261027",
+  "line_id": "line2_scrna",
+  "step_name": "gsva_pathways",
+  "mod_id": "l2_branches_gsva",
+  "status": "completed",
+  "start_time": "2026-10-27T19:46:58.320Z",
+  "end_time": "2026-10-27T19:48:10.671Z",
+  "environment": {
+    "language": "Python",
+    "version": "3.12.3",
+    "env_name": "line2_scrna_env",
+    "container_image": "proot-ubuntu24.04-aarch64",
+    "random_seed": 20261013
+  },
+  "resource_usage": {
+    "max_cpu_percent": null,
+    "max_memory_gb": null,
+    "disk_io_peak_mb_s": null
+  },
+  "io_files": {
+    "input": [
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line2_scrna/processed/scrna_integrated.h5ad",
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line2_scrna/processed/scrna_deg.h5ad"
+    ],
+    "output": []
+  },
+  "checkpoint_status": "passed",
+  "error_log": null,
+  "exit_code": 0,
+  "next_action_suggested": null,
+  "compute_node_id": "k40-ubuntu"
+}

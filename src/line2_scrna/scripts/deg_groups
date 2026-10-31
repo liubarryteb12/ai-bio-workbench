@@ -349,7 +349,14 @@ if top_by_ct:
                             GROUP_B, r["pts_b"] or 0))
 lines.append("")
 lines.append("elapsed_seconds=%.1f" % (time.time() - START))
+lines.append("outputs=scrna_deg.h5ad, deg_all_by_celltype.tsv, deg_significant_by_celltype.tsv")
 with open("deg_report.txt", "w", encoding="utf-8") as fh:
     fh.write("\n".join(lines) + "\n")
 log("deg_groups_done")
 PYSCRIPT
+
+# sha256 产物台账后置补登：复用独立脚本，写法与其余步骤解耦。
+if [ -x "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" ]; then
+  "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" "${DEG_OUTDIR:-$(pwd)}" "deg_report.txt" > /dev/null 2>>"$0.ledger.err" \
+  || echo "WARN sha256 ledger backfill failed, see $0.ledger.err" >&2
+fi

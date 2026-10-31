@@ -329,7 +329,7 @@ export function remoteRawPath(projectId, lineId, filename) {
  *
  * 母版脚本按文件名特征分流（prep_matrix 认 `*grouping*` / `*GPL*` / `*series_matrix*.txt.gz`），
  * 客户上传的中文名（如「分组情况.txt」）不匹配任何规则，会直接 exit 2。
- * 因此把 group_map 角色归一为母版契约名 grouping.txt；其余角色保留原名——
+ * 因此把 group_map 角色归一为母版契约名 grouping.txt；其余角色保留原名，
  * 自有上传模式的文件名一致性校验依赖原名，改名会让校验与实际文件脱节。
  */
 export function deployedRawName(file) {

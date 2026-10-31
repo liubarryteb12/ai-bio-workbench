@@ -7,6 +7,7 @@
 # 职责：
 #   1. 每分钟重申 termux-wake-lock（幂等，重复调用无副作用），防 CPU 休眠冻结进程
 #   2. 每分钟检查 runit 四个服务，非 run 状态立即 sv up
+#   3. 每 6 小时清理容器 /tmp 堆积（见下方「容器 /tmp 治理」注释）
 #
 # 不做什么：不做 ssh 容器探测。`k40-ubuntu` 是 Windows 侧 ~/.ssh/config 的别名，
 # Termux 内不存在（2026-10-18 实测 `Could not resolve hostname`），照抄会导致
@@ -35,6 +36,26 @@ say "=== watchdog start (pid $$) ==="
 
 SERVICES="sshd crond ssh-agent ubuntu-sshd"
 
+# 容器 /tmp 治理（P-28）：proot 容器里没有 systemd，/tmp 永远不会自动清理。
+# 2026-10-22 实测：容器 /tmp 堆积 873 项 / 4.9G（探针、临时 h5ad、安装脚本），
+# proot 的 --link2symlink 在逐层解析这些路径时触发
+# path/path.c:546 compare_paths2 断言 "length1 > 0" 而 SIGABRT（即 15 秒一次的 abort 循环）。
+# 所以每 6 小时清一次 24 小时以前的 /tmp 项（保留正在跑的任务产物）。
+CONTAINER_TMP="/data/data/com.termux/files/usr/var/lib/proot-distro/containers/ubuntu/rootfs/tmp"
+TMP_GC_EVERY=360   # 循环次数（60s 一次，即 6 小时）
+tmp_gc_tick=0
+
+gc_container_tmp() {
+  [ -d "$CONTAINER_TMP" ] || return 0
+  # 只删 24 小时以前的；用 -mmin 而不是 -mtime（后者粒度太粗）
+  local n
+  n=$(find "$CONTAINER_TMP" -mindepth 1 -maxdepth 1 -mmin +1440 2>/dev/null | wc -l)
+  if [ "$n" -gt 0 ]; then
+    find "$CONTAINER_TMP" -mindepth 1 -maxdepth 1 -mmin +1440 -exec rm -rf {} + 2>/dev/null
+    say "container /tmp GC: removed $n stale entries (P-28)"
+  fi
+}
+
 while true; do
   # 1) 唤醒锁：Termux 侧幂等，已持有时不会重复计数
   termux-wake-lock 2>/dev/null || true
@@ -51,6 +72,13 @@ while true; do
         ;;
     esac
   done
+
+  # 3) 容器 /tmp 周期清理（P-28）
+  tmp_gc_tick=$((tmp_gc_tick + 1))
+  if [ "$tmp_gc_tick" -ge "$TMP_GC_EVERY" ]; then
+    gc_container_tmp
+    tmp_gc_tick=0
+  fi
 
   sleep 60
 done

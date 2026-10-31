@@ -20,20 +20,112 @@ _reference/
 *.rds
 
 # ===== 运行时产物 =====
+ops/secrets/
+ops/encoding_backup/
 inbox/
+portal/inbox/
 runs/
+con_hf/runs/
 agent_bio_stack/index/
 agent_bio_stack/n8n/.runtime/
 uploads/
+
+# ===== 本地项目运行载荷，保留项目元数据与台账 =====
+local_projects/*/data/
+local_projects/*/figures/
+local_projects/*/debug/
+local_projects/*/deliverables/
+local_projects/default/
+local_projects/PRJ_20261019_IS_lactylation/
+!local_projects/PRJ_AIMS_V3_20261027/figures/
+!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/
+!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l2_heatmap.png
+!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l2_pca.png
+!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l2_volcano.png
+!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_04_topvar_heatmap.png
+!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_02_pca.png
+!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_03_volcano_limma.png
+!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/
+!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_dotplot.png
+!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_volcano.png
+!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/l2_13_target_gene_dotplot.png
+!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/l2_08_deg_volcano_basal_keratinocyte.png
+!local_projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/
+!local_projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/custom_fig_l2p_umap.png
+!local_projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/l3_human_06_umap_sample.png
+con_hf/sync/
 
 # ===== 大型数据资产（本地/远端已有副本，git 只管文本与规格）=====
 outputs/
 projects/
 project_data/
-reference/
+reference/*
+!reference/05.可参考出图代码/
+reference/05.可参考出图代码/**
+!reference/05.可参考出图代码/L1_基础统计图/
+!reference/05.可参考出图代码/L1_基础统计图/L1_boxplot_code.R
+!reference/05.可参考出图代码/L1_基础统计图/L1_boxplot_README.md
+!reference/05.可参考出图代码/L1_基础统计图/L1_boxplot_verified.pdf
+!reference/05.可参考出图代码/L1_基础统计图/L1_boxplot_verified.png
+!reference/05.可参考出图代码/L1_基础统计图/L1_density_code.R
+!reference/05.可参考出图代码/L1_基础统计图/L1_groupedbar_code.R
+!reference/05.可参考出图代码/L1_基础统计图/L1_histogram_code.R
+!reference/05.可参考出图代码/L1_基础统计图/L1_rest_code.R
+!reference/05.可参考出图代码/L1_基础统计图/L1_scatter_code.R
+!reference/05.可参考出图代码/L1_基础统计图/L1_violin_code.R
+!reference/05.可参考出图代码/L1_基础统计图/L1_density_verified.png
+!reference/05.可参考出图代码/L1_基础统计图/L1_groupedbar_verified.png
+!reference/05.可参考出图代码/L1_基础统计图/L1_histogram_verified.png
+!reference/05.可参考出图代码/L1_基础统计图/L1_scatter_verified.png
+!reference/05.可参考出图代码/L1_基础统计图/L1_violin_verified.png
+!reference/05.可参考出图代码/L2_组学常用图/
+!reference/05.可参考出图代码/L2_组学常用图/L2_core_code.R
+!reference/05.可参考出图代码/L2_组学常用图/L2_enrichment_code.R
+!reference/05.可参考出图代码/L2_组学常用图/L2_heatmap_code.R
+!reference/05.可参考出图代码/L2_组学常用图/L2_more_code.R
+!reference/05.可参考出图代码/L2_组学常用图/L2_pca_code.R
+!reference/05.可参考出图代码/L2_组学常用图/L2_umap_code.R
+!reference/05.可参考出图代码/L2_组学常用图/L2_umap_verified.png
+!reference/05.可参考出图代码/L2_组学常用图/L2_volcano_code.R
+!reference/05.可参考出图代码/L2_组学常用图/L2_heatmap_verified.png
+!reference/05.可参考出图代码/L2_组学常用图/L2_pca_verified.png
+!reference/05.可参考出图代码/L2_组学常用图/L2_volcano_verified.png
+!reference/05.可参考出图代码/L2_组学常用图/L2p_dotplot_code.py
+!reference/05.可参考出图代码/L2_组学常用图/L2p_more_code.py
+!reference/05.可参考出图代码/L2_组学常用图/L2p_umap_code.py
+!reference/05.可参考出图代码/L2_组学常用图/L2p_violin_code.py
+!reference/05.可参考出图代码/L2_组学常用图/L2p_volcano_code.py
+!reference/05.可参考出图代码/L2_组学常用图/L2p_dotplot_verified.png
+!reference/05.可参考出图代码/L2_组学常用图/L2p_umap_verified.png
+!reference/05.可参考出图代码/L2_组学常用图/L2p_volcano_verified.png
+!reference/05.可参考出图代码/L2_组学常用图/L2p_violin_verified.png
+!reference/05.可参考出图代码/L3_高级组合图/
+!reference/05.可参考出图代码/L3_高级组合图/L3_multipanel_code.R
+!reference/05.可参考出图代码/L3_高级组合图/L3_sankey_code.R
+!reference/05.可参考出图代码/L3_高级组合图/L3_sankey_verified.png
+!reference/05.可参考出图代码/L3_高级组合图/L3_multipanel_verified.png
+!reference/05.可参考出图代码/_meta/
+!reference/05.可参考出图代码/_meta/bizard_index.csv
+!reference/05.可参考出图代码/_meta/r453_verification_report.json
+!reference/05.可参考出图代码/_meta/script_plot_matrix.json
+!reference/05.可参考出图代码/_meta/R453_compat/
+!reference/05.可参考出图代码/_meta/R453_compat/L1_boxplot_code.R
+!reference/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R
+!reference/05.可参考出图代码/_meta/R453_compat/L1_violin_code.R
+!reference/05.可参考出图代码/_meta/R453_compat/L2_core_code.R
+!reference/05.可参考出图代码/_meta/R453_compat/L2_more_code.R
+!reference/05.可参考出图代码/_meta/R453_compat/L3_sankey_code.R
+!reference/05.可参考出图代码/library/
+!reference/05.可参考出图代码/library/README.md
+!reference/05.可参考出图代码/library/catalog.json
+!reference/05.可参考出图代码/library/licenses.json
+!reference/05.可参考出图代码/library/manifest.csv
 cache/
 .claude/
+.agents/
 test_use_data/
+artifacts/
+cn_debug/
 
 # ===== 生信大文件格式（按扩展名兜底，防漏网）=====
 *.feather
@@ -47,6 +139,8 @@ test_use_data/
 # ===== Node 与构建产物 =====
 node_modules/
 BioanalysDesktop/dist/
+BioanalysDesktop/test-results/
+BioanalysDesktop/.tmp/
 
 # ===== 临时与调试残留 =====
 *.log
@@ -57,3 +151,19 @@ BioanalysDesktop/dist/
 Thumbs.db
 Desktop.ini
 portal/.portal_token
+$null
+.probe_*.sh
+.run_*.sh
+.tmp_probe.sh
+summary.md
+split_plan.json
+
+# ===== 工作区快照（ops/09_snapshot.ps1 产物，可重新生成，且单个 75MB 级）=====
+snapshots/
+
+# ===== 2026-10-31 清理裁定（用户拍板）=====
+.env.a2a
+# outputs/ 整体已忽略（第 59 行）；outputs/default 历史回搬存量已于 2026-10-31 用户裁定本地删除，
+# 远端 SSD 为真源，此行仅作声明防止复活。
+outputs/default/
+.codex-a2a/

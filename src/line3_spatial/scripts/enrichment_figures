@@ -47,6 +47,7 @@ export FIG_DIR
 
 python3 - <<'PYSCRIPT'
 import os
+import sys
 import time
 
 import matplotlib
@@ -340,4 +341,42 @@ for species in ["mouse", "human"]:
 
 log("figures_done count=%d out=%s elapsed=%.1fs"
     % (len(made), OUT, time.time() - START))
+
+# 产物清单落盘：只打 stdout 的话，任务重跑与事后核对时清单就沦了。
+# 写一份 manifest 到 figures/，让“exit 0 但产物落别处”可核对。
+try:
+    _man = os.path.join(OUT, "figures_manifest.txt")
+    with open(_man, "w", encoding="utf-8") as _fh:
+        _fh.write("step=%s seed=%s out=%s count=%d elapsed=%.1fs%s" % (
+            os.path.basename(sys.argv[0]),
+            os.environ.get("BIOANALYS_SEED", "UNSET"),
+            OUT, len(made), time.time() - START, chr(10)))
+        for _n in made:
+            _p = os.path.join(OUT, _n)
+            _sz = os.path.getsize(_p) if os.path.exists(_p) else -1
+            _fh.write("%s%s%d%s" % (_n, chr(9), _sz, chr(10)))
+    log("wrote figures_manifest.txt (%d entries)" % len(made))
+except OSError as _exc:
+    log("WARN 产物清单落盘失败: %s" % _exc)
+
+# 规范要求的 *_report.txt：manifest 是给人核对的产物清单，report 是给台账
+# 与下游消费的步骤摘要，两者分工不同，都要落。
+try:
+    _rep = os.path.join(OUT, "enrichment_figures_report.txt")
+    with open(_rep, "w", encoding="utf-8") as _fh:
+        _fh.write("step=%s\n" % os.path.basename(sys.argv[0]))
+        _fh.write("seed=%s\n" % os.environ.get("BIOANALYS_SEED", "UNSET"))
+        _fh.write("out=%s\n" % OUT)
+        _fh.write("figure_count=%d\n" % len(made))
+        _fh.write("elapsed_seconds=%.1f\n" % (time.time() - START))
+        _fh.write("outputs=%s\n" % ", ".join(["figures_manifest.txt"] + list(made)))
+    log("wrote enrichment_figures_report.txt")
+except OSError as _exc:
+    log("WARN 步骤报告落盘失败: %s" % _exc)
 PYSCRIPT
+
+# sha256 产物台账后置补登：复用独立脚本，写法与其余步骤解耦。
+if [ -x "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" ]; then
+  "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh" "$PWD/../figures" "enrichment_figures_report.txt" > /dev/null 2>>"$0.ledger.err" \
+  || echo "WARN sha256 ledger backfill failed, see $0.ledger.err" >&2
+fi

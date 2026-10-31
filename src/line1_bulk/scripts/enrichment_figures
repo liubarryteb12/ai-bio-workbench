@@ -46,6 +46,7 @@ export FIG_DIR
 
 python3 - <<'PYSCRIPT'
 import os
+import sys
 import time
 
 import matplotlib
@@ -407,4 +408,21 @@ if kg is not None and len(kg) and {"Description", "NES", "p.adjust"} <= set(kg.c
 
 log("figures_done count=%d out=%s elapsed=%.1fs"
     % (len(made), OUT, time.time() - START))
+
+# 产物清单落盘：只打 stdout 的话，任务重跑与事后核对时清单就沦了。
+# 写一份 manifest 到 figures/，让“exit 0 但产物落别处”可核对。
+try:
+    _man = os.path.join(OUT, "figures_manifest.txt")
+    with open(_man, "w", encoding="utf-8") as _fh:
+        _fh.write("step=%s seed=%s out=%s count=%d elapsed=%.1fs%s" % (
+            os.path.basename(sys.argv[0]),
+            os.environ.get("BIOANALYS_SEED", "UNSET"),
+            OUT, len(made), time.time() - START, chr(10)))
+        for _n in made:
+            _p = os.path.join(OUT, _n)
+            _sz = os.path.getsize(_p) if os.path.exists(_p) else -1
+            _fh.write("%s%s%d%s" % (_n, chr(9), _sz, chr(10)))
+    log("wrote figures_manifest.txt (%d entries)" % len(made))
+except OSError as _exc:
+    log("WARN 产物清单落盘失败: %s" % _exc)
 PYSCRIPT

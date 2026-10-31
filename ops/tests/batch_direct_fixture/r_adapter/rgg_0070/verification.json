@@ -1,0 +1,55 @@
+{
+  "artifact": {
+    "blank": null,
+    "detail": "artifact missing",
+    "exists": false,
+    "height": null,
+    "path": "artifact.png",
+    "sha256": null,
+    "size_bytes": null,
+    "valid": false,
+    "width": null
+  },
+  "artifact_path": null,
+  "catalog_id": "rgg_0070",
+  "command": {
+    "adapter": "figure_catalog_r_adapter.R",
+    "output": "/mnt/ssd/bio_data/tmp/figure_catalog_validation/figure_catalog_r_adapter_20261027_210851/rgg_0070/output/rgg_0070.png",
+    "script": "source.R"
+  },
+  "environment": {
+    "env": {
+      "BIOANALYS_SEED": "42",
+      "BIO_FIGURE_OUTPUT": "/mnt/ssd/bio_data/tmp/figure_catalog_validation/figure_catalog_r_adapter_20261027_210851/rgg_0070/output/rgg_0070.png",
+      "LANG": "C.UTF-8",
+      "MKL_NUM_THREADS": "4",
+      "OMP_NUM_THREADS": "4",
+      "OPENBLAS_NUM_THREADS": "4",
+      "R_DEFAULT_PACKAGES": "datasets,utils,grDevices,graphics,stats,methods",
+      "R_LIBS_USER": "/opt/R/4.5.3-site-library"
+    },
+    "host": "k40-ubuntu",
+    "r_libs_user": "/opt/R/4.5.3-site-library",
+    "remote_root": "/mnt/ssd/bio_data",
+    "rscript": "/opt/R/4.5.3/bin/Rscript",
+    "seed": 42,
+    "threads": 4
+  },
+  "exit_code": 1,
+  "failure_kind": "code_failure",
+  "run_id": "figure_catalog_r_adapter_20261027_210851",
+  "schema_version": 1,
+  "source": {
+    "expected_sha256": "cceba4cc16b0758aa3f142c6ffbb453f10137c56e0fa6e642325907c95dcfe53",
+    "path": "D:\\00.AIagent\\codespace\\AI辅助生信分析流程工作台\\ops\\tests\\batch_direct_fixture\\library\\code\\rgg_0070.R",
+    "sha256": "cceba4cc16b0758aa3f142c6ffbb453f10137c56e0fa6e642325907c95dcfe53"
+  },
+  "source_status": "code_ready",
+  "status": "failed",
+  "stderr_path": "stderr.txt",
+  "stdout_path": "stdout.txt",
+  "timed_out": false,
+  "timeout_seconds": 180,
+  "validation_exit": 1,
+  "verdict": "fail"
+}

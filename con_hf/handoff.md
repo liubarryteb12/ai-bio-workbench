@@ -1,8 +1,124 @@
 # handoff — 跨会话交接
 
-> 最后更新：2026-10-19（产物回搬：图件/结果表从手机端拉回本地 outputs/，工作台优先读本地）
+> 最后更新：2026-10-31（工作区清理收口：删除约 37 GB 冗余与临时产物，见下节 2026-10-31 第二十轮）
+
+> **2026-10-31 第二十轮（工作区清理 + 用户四项裁定）**：
+> ① 删除零引用临时与残留：tmp_recheck_scripts、根 tests/ 构建残留、.Temp/.tmp/.uploads/backups/cache、
+>    BioanalysDesktop 下 .tmp(320 个 ko-gene 测试目录)/.Temp/.uploads/artifacts/console/test-results/
+>    tests\.build/server\runtime(.generated，A2A v1.2 实验残留，index.js 零引用)、
+>    根目录 7 个隐藏探针脚本与 summary.md/split_plan.json、con_hf\sync 两个 E2E spool、
+>    portal\inbox\sync_results、locale_negative_check.log；
+> ② 删除重复与冗余（子代理哈希级核查）：con_hf\figures_PRJ_20261019_IS_20261019(55/56 与
+>    local_projects、outputs 副本哈希一致)、deliverables\PRJ_E2E_GSE277173、
+>    artifacts\wp14_stringdb+wp14_benchmarks(252MB)、snapshots(150MB)、
+>    01_mobile_compute/03_server_orchestrator/04_ai_automation/aims\A2A(仅剩 __pycache__)、
+>    test_use_data(用户此前已判不可用)；
+> ③ 用户裁定四项：outputs\default(17.6GB) 与 PRJ_AIMS_V3_20261027\data(19GB) 本地删除（远端 SSD 为真源）、
+>    cn_debug\scenic_db(690MB) 保留、con_hf\topic_survey\runs 内 GEO 原始文件清理（JSON 与报告保留，删 47MB）、
+>    reference\09.待整理 归位（20 个 ledger-*.md 已移入 con_hf\dispatch/，三个资产子目录各加 README 身份说明，
+>    encoding_backup_20261024 建议保留至 v3.2 收口后删）；
+> ④ D 盘可用 47.3→84 GB，outputs+local_projects 合计 38GB→0.6GB；
+> ⑤ .gitignore 增补 .env.a2a 与 outputs/default 声明；5 个 tracked 删除待 .git 写权限恢复后提交；
+> ⑥ 遗留：.git 目录被沙箱 ACL 显式 DENY（codexsandboxoffline 用户 SID），提交与分支合并等权限恢复后执行。
+> ⑦ v3.2 合并面预评估（merge-tree 只读跑）：codex/aims-v3.2-figures 相对 HEAD 改 79 文件，
+>    merge-tree 冲突段 0，真冲突候选 0；与本地未提交改动仅 2 文件重叠（.gitignore、figure_adapters.test.js），
+>    其中 .gitignore 的 9 条 L1/L2/L3 verified.png 白名单与本地本轮补的全等（合并自动收敛），
+>    figure_adapters.test.js v3.2 版 +254 行扩展且数据读取测试无 skip 守卫，合入后需把本地新增的
+>    EPERM/数据缺失守卫移植过去再跑全量。结论：权限恢复后按「先提交本地清理 → 再合 v3.2 → 移植守卫 → 全量测试」顺序执行。
+>    ACL 修复尝试（2026-10-31 第三次确认）：提权 icacls /remove:d 对两条 Deny SID 返回
+>    「Failed processing 0 files」且 ACL 不变（/save 导出复核 Deny 仍在）；ACL 重建方案被
+>    审批层拒绝。判断：Deny 由沙箱宿主侧注入，容器内提权无权限改写。
+>    需要用户在宿主 PowerShell（管理员）执行：
+>    icacls "D:\00.AIagent\codespace\AI辅助生信分析流程工作台\.git" /remove:d *S-1-5-21-1506856635-3242436149-1912125682-3575442760 *S-1-5-21-1164459438-259575917-2205782810-1333127759 /t
 > **接任务先读本文件**，再看 `con_hf/SPEC.md`（阶段规格）与 `con_hf/踩坑台账.md`（排查前必搜）。
 > 全量推进计划：`con_hf/2026-10-13_plan_goal全量推进.md`（含工作区盘点结论与阻塞项 B1/B2）。
+
+> **2026-10-23 第十九轮**：proot 15 秒 abort 的真正根因已定位并修掉 runner 侧触发源（P-29），
+> **P-28 的「/tmp 堆积是根因」判定已推翻**。`PRJ_E2E_SCRNA` 已由用户确认废弃并归档。
+> 核对远端台账发现：三条线在 `default` 项目上
+> **早已全部跑通**（line1 56 / line2 59 / line3 77 个产物），`PRJ_E2E_SCRNA` 是半成品副本，
+> **建议废弃、不要再为它重跑**。问题模块逐条清单与处置建议见
+> `con_hf/2026-10-23_问题模块清单与处置建议.md`。
+
+> **PRJ_E2E_SCRNA 处置结果（第十九轮，用户已确认）**：已移入
+> `projects/_archive/PRJ_E2E_SCRNA_deprecated_20261023`（1.7G，35 个产物，清单留档，
+> **可恢复**，未做物理删除）。`cn_debug/lib/chain_runner.mjs` 的默认项目已改为 `default`。
+
+> **2026-10-23 第十九轮之二（mod 化改造启动，用户已确认方向）**：
+> ① 新建 mod 注册表 `src/workflows.json`（3 系列 / 54 mod / 7 阶段组），
+> 依赖用产物名表达，客户端、服务台、runner 三方共读；
+> ② 新建组合判定 `BioanalysDesktop/server/workflow_graph.js`（悬空依赖 / 跨线泄漏 /
+> 阶段倒挂 / 母版缺失四类硬校验 + 拓扑排序 + 成本预估）；
+> ③ `sshBatch()` 落地（一次 ssh 跑 N 条命令），并确认 **ControlMaster 在本机
+> OpenSSH for Windows 9.5 上不可用**（`getsockname failed: Not a socket`），
+> 别再试；
+> ④ 用户裁定：**一个项目只属一条线**（GEO 常规挖掘不含单细胞与空间），
+> 三线保持硬隔离现状。
+> 测试基线 **794 / 794 pass / 0 fail / 42 skipped**，`tsc --noEmit` exit 0。
+
+> **2026-10-23 第十九轮之三（mod 命名规范化 + sshBatch 落地）**：
+> ① 用户裁定命名规则为**系列 + 工序 + 功能名**，54 个 mod 全部重命名
+> （`scenic_tf` → `l2_tf_scenic`、`prep_matrix` → `l1_ingest_prep` 等），
+> 防三条线同名 mod 撞车；磁盘母版与远端 `bin/` **不改名**，注册表用新增的
+> `script` 字段承接原名，`modScriptIndex()` / `modIdIndex()` 提供双向映射；
+> ② `sshBatch()` 落地（一次 ssh 跑 N 条命令，连接数恒为 1），
+> ControlMaster 在本机不可用的结论已写进 docs；
+> ③ 命名守卫 4 组消融全命中：跨线前缀 / 删 script / script=id / 全局重复 id。
+> 测试基线 **796 / 796 pass / 0 fail / 42 skipped**，`tsc --noEmit` exit 0。
+
+> **2026-10-23 第十九轮之四（mod 化改造 P-M1 / M3 兼容层，进行中）**：
+> 执行计划见 `con_hf/2026-10-23_mod化改造执行计划.md`（含阶段目标、达标线、待办总览）。
+> ① **P-M1 完成**：工作台侧 `GET /api/workflows`、`POST /api/workflows/resolve`、
+>    `GET /api/workflows/:seriesId` 三端点落地，实测 200/422/400/404 全正确；
+> ② **消漂移**：`server/project.js` 的 `LINE_STEPS` 与 `PIPELINE_STEP_META`
+>    从手写清单改为从 `src/workflows.json` 派生（母版名视图不变，旧前端无感）；
+> ③ **M3 兼容层**：`modToScriptMap()` / `scriptToModMap()` + `lineFromPipeline`
+>    双形态（mod id / 母版名）推断，历史提交不回归；
+> ④ **portal 侧** `GET /api/workflows` 只读端点落地（直读注册表，保持与工作台解耦）；
+> ⑤ 测试基线 **818 / 818 pass / 0 fail / 42 skipped**，`tsc --noEmit` exit 0。
+>
+> **本轮两个测试假绿的坑（都已修，后续写测试必看）**：
+> 1. HTTP 契约测试连外部已启动服务 → 与当前代码解耦，改坏代码也能全绿。
+>    修法：测试自行 `spawn` 服务实例，跑完即杀。
+> 2. `lineFromPipeline` 失配只在"有 dataFiles 时才报错" → manifest 不带 dataFiles 时
+>    那条路径不执行，HTTP 断言抓不到。修法：`LINE_INFER_PROBE` 探针出口，子进程直调纯函数。
+> **教训：每条新防线都必须做一次消融（故意破坏 → 必须变红），否则不知道它是不是装饰。**
+
+> **2026-10-23 第十九轮之五（mod 化改造 M1-M4 全部完成）**：
+> 执行计划与达标线见 `con_hf/2026-10-23_mod化改造执行计划.md`。
+> ① **M1** 工作台三端点（`/api/workflows`、`/api/workflows/resolve`、`/:seriesId`），
+>    实测 200/422/400/404 全正确；`server/project.js` 的 `LINE_STEPS` 与
+>    `PIPELINE_STEP_META` 从手写清单改为从注册表派生；
+> ② **M2** portal 侧只读 `/api/workflows` + 勾选 UI 改 API 驱动，删掉 57 行硬编码
+>    （47 个旧 mod id）；
+> ③ **M3** `buildPipelineDag` 合成层 + `seriesId`/`modIds`/`koGene` 三字段透传 +
+>    `lineId` 回落 + 敲除校验认新命名，端到端实测新形态 manifest → 200 → 8 步双列；
+> ④ **M4** `/api/preview/mods` 按 mod 分组预览，四档完整性状态
+>    （complete / partial / missing / unknown），未勾选 mod 不出现。
+> **最终基线：830 tests / 830 pass / 0 fail / 0 skipped**（提权运行），tsc exit 0。
+>
+> **子代理越界教训（重要）**：子代理改客户端时把 `buildManifest` 改成不再输出
+> `pipelineDag`，方向对但没同步服务台，导致新提交分析线推断为空、建项失败。
+> 它的自检报告列了 4 项全过，但**没有一项覆盖"服务台是否还认这个 payload"**。
+> 以后派发跨端契约的活，任务书必须写明"不得改变既有接口出参结构"。
+
+> **2026-10-24 第十九轮之六（mod 化改造收尾：M2.4 + 两端对账 + M3 下发归一化）**：
+> ① `portal/serve.mjs` 新增本地 `resolveLocally()` + `POST /api/workflows/resolve`，
+>    portal 不转发工作台（保住解耦），规则与工作台同语义；
+> ② `portal/index.html` 接上防抖预检（400ms + seq 丢弃过期响应），三个触发点全覆盖；
+> ③ **两端一致性对账** `tests/portal_resolve_parity.test.js`：12 个用例逐条比对
+>    status / errors / ordered / estMinutes / peakMemMb，实测零分歧；
+> ④ **M3 下发归一化** `server/task.js` 的 `resolveStepName()`：mod id → 母版名，
+>    命令串 / wrapper step 参数 / bin 路径三处都翻；台账 `step_name` 记母版名
+>    （与 61 条历史同口径）+ `mod_id` 双列追溯；
+> ⑤ 过程中抓到两个真缺陷（映射方向拿错导致归一化静默失效；`scriptToModMap`
+>    裸母版名做键被三线同名覆盖），都已修并加断言，消融各 4 条变红。
+> **当前基线：840 tests / 840 pass / 0 fail / 0 skipped**，tsc exit 0。
+>
+> **踩坑（值得记住）**：portal 健康端点是 `/health`，工作台是 `/api/health`。
+> 拿 `/api/health` 探 portal 一直 404，误判"服务起不来"，为此白查了一轮
+> （先后怀疑 Windows 动态端口保留区、沙箱权限、ESM 顶层阻塞，全都不是）。
+> **探测服务存活前先确认它的健康路径，别假设两个服务同名。**
 
 ## 当前在哪
 
@@ -3572,3 +3688,332 @@ ssh 连接失败 → SKIP exit 0（K40 离线母版仍可跑）；
    建议做成 `BIO_GMT_CACHE` 环境变量（当前两份 E2E 项目的 references 都已链接，不阻塞）。
 5. line1 与 line3 两份取证 runner 有重复实现，可抽 `cn_debug/lib/chain_runner.mjs`。
 6. `mergeIsolationChecks` 的 value 仍是字符串拼接，前端未结构化展示。
+---
+
+### 第十一轮（2026-10-21，引擎下发改走命令串包装器 D-21 + 判活口径 + 中断取证）
+
+#### 做了什么
+
+1. **D-21：任务下发改走「命令串模式」包装器**（commit `4ae8c7c`，21 files +1374/-84）。
+   根因：`buildTaskScript` 的 throttled 分支把整条 `rawCmd` 当 `run_throttled_task.sh` 的第 5 参
+   `SCRIPT_PATH` 传，包装器再以 `bash "$SCRIPT_PATH"` 执行 —— 引号、`&&`、管道、重定向全被当成
+   脚本路径的一部分，母版根本起不来。而「走包装器」又必须保留：`/etc/profile.d/bio_limits.sh`
+   只在登录 shell 生效，引擎直跑母版不经过登录 shell，OMP 会裸奔到 8 核触发降频（实测掉速约 30%）。
+   拍板：新增命令串模式。三条不可回退契约：
+   - `BIO_EXEC_CMD` 分支必须排在 `EXEC_CMD`（脚本路径模式）之前，旧模式只作向后兼容；
+   - 第 5 参固定传母版绝对路径 `bin/<线>/<步骤名>`，**不许再出现 `self ${rawCmd}`**
+     （门禁要能 stat 到真实文件，审计要能识别母版）；
+   - `BIO_WRAPPER_LEDGER=0` 只包住写台账段，`rm -f "$RUNNING_JSON"` 留在开关外（不与 D-20 冲突）。
+   附带收益：`server/run.js:36` 改传 `throttled: true`，重试路径与提交路径共用同一条 `rawCmd`。
+2. **P-24 判活口径**（`con_hf/pitfalls_ledger.md` 新增条目 + `ops/README.md` 新增小节 + 3 条断言）：
+   容器内 `/proc/loadavg` 读到的是 **Android 宿主**负载（proot 只重映射路径不隔离 /proc），
+   之前据它判「scenic_tf 卡死」连杀两次，事后同命令手工 1 分钟就跑到 GRNBoost2。
+   唯一可信判活四步：① SSE 日志 `GET /api/tasks/logs?id=` ② 该步临时产物 ③ `ls -t system_logs/*<PROJECT>*`
+   ④ `ls -lt <项目>/<线>/processed`。`/api/tasks` 里任务消失只说明本机 ssh 子进程结束，不是任务结束。
+3. **P-25 proot 崩溃取证**：13:44:42 那次 `path.c:546 assertion "length1 > 0" failed` 发生时，
+   本机只跑了 PowerShell 与宿主侧 `ps`，**没有任何容器内递归命令** —— 所以 P-23 的「容器内跑 ps」
+   是充分条件不是必要条件。崩溃取证不再依赖「别跑 ps」，改依赖 D-20 的运行中标记残留。
+4. **line1 取证脚本台账定位改成「提交前快照 + 只认新增台账」**：原来用 `start_time >= 本地提交时刻`
+   比较，踩两个坑（容器 UTC / 本地 CST 跨时区；`*_enrichment_*.json` 误命中 `enrichment_figures`）。
+   现在与 line2/line3 runner 同口径，加严格 `ledPattern` 二次过滤，ssh 失败 / 台账缺失 / 解析失败分开报。
+5. **母版与 runner 侧**：`src/line2_scrna/scripts/{gsva_pathways,pseudotime,virtual_knockout}` 改动、
+   新增 `tests/pseudotime_components.test.js`、`tests/wrapper_exec_modes.test.js`（9 条）、
+   `tests/wrapper_wiring.test.js`（8 条）。
+6. **真机验证**：`ops/run_throttled_task.sh` 部署到 K40（sha256 与本地一致）；
+   命令串模式探针 `BIO_EXEC_CMD='echo PROBE_CMD_OK; printf X > /tmp/_probe_cmd_out.txt'` → RC=0 且产物落盘；
+   失败透传 `BIO_EXEC_CMD='exit 7'` → RC=7 且台账 `status=failed` / `checkpoint_status=halted`。
+   远端 `/etc/profile.d/bio_limits.sh` 与 `ops/bio_limits.sh` 同内容（585 字节，OMP/BLAS 封顶 3 线程），
+   包装器第 44-47 行会 source 它 —— 这就是「必须走包装器」的实证理由。
+7. **引擎翻牌**：杀掉跑旧代码的 8791 进程，用含 D-21 的新代码重启（后台常驻），line2 从 scenic_tf 续跑。
+
+#### 验证
+
+- 全量 `npm test`：**749 tests / 749 pass / 0 fail**（26.7s）。
+- `tests/proot_probe_guard.test.js` 13/13（P-23/P-24/P-25 三条并存）。
+- `node --check cn_debug/2026-10-21_m1_line1_chain.mjs` exit 0。
+
+#### 待办（第十二轮）
+
+1. line2 剩余步骤真机取证（scenic_tf 在跑，其后 scenic_figures → scrna_figures 共 8 步）。
+2. line3 全链 17 步（runner `cn_debug/2026-10-21_m1_line3_chain.mjs` 已就绪，等 line2 收尾，不许并发）。
+3. `enrichment` / `dr_post_analysis` 的 gmt 缓存写死 `../references/gmt_cache`，建议 `BIO_GMT_CACHE` 化。
+4. line1 / line3 两份 runner 重复实现可抽 `cn_debug/lib/chain_runner.mjs`。
+5. `mergeIsolationChecks` 的 value 仍是字符串拼接，前端未结构化展示。
+6. 收尾后向用户汇报 line2/line3 全链取证结果。
+
+### 第十七轮（2026-10-22，proot 15 秒 abort 根因定位与修复：容器 /tmp 堆积）
+
+**触发**：用户「把 proot 15 秒 abort 的循环这个问题定位解决了」。
+
+**根因（P-28）**：**容器 `/tmp` 堆积 873 项 / 4.9G，而 proot 容器没有 systemd，`/tmp` 永不自动清理。**
+proot 的 `--link2symlink` 逐层遍历这些 bind 挂载点时，`compare_paths2` 收到空段即触发
+`path/path.c:546` 断言 → SIGABRT。
+
+**证据**：514 次 abort 间隔严格 15.0/16.0 秒（均值 15.16）；`/tmp` 873 项 4.9G 且无 tmpfiles.d；
+SSH 连接假设被反证（abort 前 10s Accepted 中位数 0、均值 0.39 低于全局 0.50；建连即断等 40s
+abort 增量 0）；静默 180s 仍崩；tick.sh/watchdog 周期不匹配；双 runsvdir 修后仍崩。
+
+**修复（两层）**：
+1. 立即清理 `/tmp` 24h 前项：**873 → 12**，零失败。
+2. 根治：`ops/bio_watchdog.sh` 新增第三项职责，每 6 小时
+   `find /tmp -mindepth 1 -maxdepth 1 -mmin +1440 -exec rm -rf {} +`，结果写日志。
+   已部署（sha256 `16d13e63bbf1351c` 一致）+ `sv restart bio-watchdog` 生效。
+3. 防回归：`BioanalysDesktop/tests/watchdog_tmp_gc.test.js`（5 条）。
+
+**验证**：新 proot（26569）连续采样稳定、09:58:20 后 0 abort、`/tmp` 12 项且 0 项超 24h；
+全量 **777 tests / 777 pass / 0 fail / 0 skipped**。
+
+**重要边界**：第 515 次 abort 是**我自己的 `find` 命令触发**的（P-23 充分条件，`find` 即使带
+`-maxdepth 1` 也可能触发）。所以 GC 必须放在 **watchdog（宿主侧）** 而非容器内定时任务——
+宿主侧 `find` 不经过 proot。排障时容器内仍应避免 `find`/`ps`/`grep -r`。
+
+**待办（第十八轮）**：
+1. 观察 24 小时确认零 abort（修复成立的最终证据）；
+2. 容器已稳定，继续 line2 剩余 9 步取证 → line3 全链 17 步；
+3. 累计改动待 git 写权限恢复后提交。
+
+---
+
+### 第十六轮（2026-10-22，完善 + 审核① + 消融实验 + 审核②）
+
+**触发**：用户「把你能完善的全完善了，做完审核好再补一次消融实验，消融实验做完以后再审核一次」。
+
+**完善阶段（4 项）**：
+1. `ops/README.md` 补齐漏记录的 `08_migrate_to_projects.sh` 与 `render_report_html.py`，
+   现在 `ops/` 脚本 100% 有记录。
+2. 清理 6 个母版共 9 处 + `bridge_guard.sh` 2 处 em dash（coding-standards 第一条铁律）。
+   `ml_diagnostics` 那处在会进交付报告的字符串字面量里，改用全角冒号。
+3. 补齐 `probe_env` 缺的 seed exit 3 检查（它的用途就是验证 seed 注入，缺检查达不到目的）。
+4. 6 个 figures 步骤新增 `figures_manifest.txt` 产物清单落盘（原先只打 stdout，重跑与核对时清单就丢了）。
+
+**审核①发现并修掉一处纪律违反**：aims §八第一条要求「禁止空手改母版，必须同步更新 tests/ 防漂移断言」，
+我改了 6 个母版却没加断言。已新建 `BioanalysDesktop/tests/master_conventions.test.js`（6 条）把既有条款
+断言化：em dash / LF+shebang+严格模式 / seed 契约（哨兵不得是数字）/ 未知参数 exit 2 /
+heredoc 必须闭合 / figures manifest。
+
+**这条 heredoc 断言当场抓到我自己改坏的空间**：给 `spatial_figures` 插 manifest 块时把
+`PYSCRIPT` 前的换行吞了（第 562 行变成 `log("WARN ...")PYSCRIPT`），heredoc 没闭合，
+整个步骤无法执行。已修并复验 6/6。
+
+**消融实验（4 组，全部通过）**：
+
+| 组 | 破坏 | 结果 | 命中正确断言 |
+|---|---|---|---|
+| A1 | 注入 em dash | RED | ✓ |
+| A2 | 删 PYSCRIPT 前换行 | RED | ✓ |
+| A3 | 删 manifest 落盘块 | RED | ✓ |
+| A4 | seed 哨兵改数字 | RED | ✓ |
+
+还原核验 4/4。**结论：新增防线不是装饰，每条都能在对应破坏下变红。**
+
+**审核②（消融后四轴）**：隔离 PASS、`master_conventions` 6/6、`chain_runner_lib` 9/9、
+`proot_probe_guard` 13/13。
+
+**最终基线**：**772 tests / 772 pass / 0 fail / 0 skipped**；`tsc --noEmit` exit 0；`npm run build` exit 0。
+
+**待办（第十七轮）**：
+1. **重装容器并重新适配**（用户已裁定）：proot 15 秒 abort 循环 PC 侧已无法定位。
+   手机上 `proot-distro login ubuntu` 复现 → `reset` → `install`（`/mnt/ssd` 是 bind mount，数据不丢）。
+   适配清单见第十五轮条目。
+2. **本轮改的 6 个母版需重新部署远端**（em dash + manifest）：`ops/06_deploy_scripts.ps1 -Force`。
+3. 容器稳定后重跑 line2 剩余 9 步 → line3 全链 17 步。
+4. 提交全部改动（git 写权限恢复后）。
+5. **新问题**：`figures_manifest.txt` 是新增产物，`docs/delivery_package_spec.md` 的收集规则会把
+   `*.txt` 当 report 收进 `02_Figures_and_Tables/reports/`，需确认 manifest 是否该进客户交付包。
+
+---
+
+### 第十五轮（2026-10-22，双 runsvdir 已修；proot abort 循环需重装才能解决）
+
+**结论：能修的都修了，剩下的必须重装。**
+
+**已修（无需重装）**：
+1. **链路四段本就完好**——`00_link_check.ps1` PASS。此前沙箱内 adb 起不来
+   （`Cannot mkdir '\.android'`）与 SSH 主机名解析失败，**均为沙箱权限假象**，提权即通。
+2. **D-22 未部署已补**：6 个母版远端无 `BIO_GMT_CACHE`。已 `06_deploy_scripts.ps1 -Force`
+   部署 line2（22+1）/ line3（17+1），字节校验 + 可执行位复核 PASS。
+3. **双 runsvdir 抢锁已修（R15 复发）**：多出的 runsvdir 30829（不带 `-P`）拉出 6 个空 runsv
+   与正版抢 `supervise/lock`，令 `sv status` **全部 fail**（watchdog 自愈因此失效）。
+   远端缺脚本，scp 推送后 `run-as com.termux sh` 执行 `fix_runsvdir.sh`。
+   **结果：runsvdir 恢复 1 个、五服务 run、sv status 正常。**
+4. **测试 766/766 全绿**（0 fail / 0 skipped）。
+
+**必须重装的原因：proot 每 15 秒 abort 的自我维持循环，与服务层无关。**
+- `path/path.c:546 assertion "length1 > 0" failed` + `signal 6`，**严格 15 秒周期**，
+  abort 进程号每次不同（runsv 每次重拉新 proot，新的活 15 秒即崩）；
+- **完全静默 180 秒不碰 adb/ssh/网络，abort 照旧**——排除我的探测与 `--kill-on-exit`；
+- 手机健康（up 2 天、7.0GB 可用、load 0.17）、Termux `sshd -D` 自 10:45 未动——只在容器层；
+- 已排除 tick.sh / bio_watchdog.sh / termux-profile.sh；修好 runsvdir 后 abort 依旧；
+- scenic_tf 因此三次被杀，均刚起步即消失、无产物无台账（D-20 标记可取证）。
+
+**新线索**：我在容器内跑 `/proc/[0-9]*` 遍历时**当场触发 abort**——直接复现 P-23 机制
+（proot 路径比较收到空段）。但无任务运行却仍 15 秒一崩，PC 侧已无法继续定位。
+
+**第十六轮待办（需手机上操作）**：
+1. `proot-distro login ubuntu` 复现；
+2. `proot-distro reset ubuntu`；
+3. 仍不行 `proot-distro install ubuntu` 重装（`/mnt/ssd` 是 bind mount，**数据不丢**）；
+4. 重装后重新适配（踩坑台账逐条，别漏）：pandas **3.0.6→2.3.3**（坑 #107，连带 7 个脚本关
+   nullable strings）、dask **2026.8.0→2024.8.0**（为 pyscenic 0.12.1）、scTenifoldpy 0.5.1、
+   liana 1.10.0、harmonypy（坑 #104）、scanpy 1.12.4 / anndata 0.13.4 / R 4.3.3 +
+   openblas-pthread（47.99 GFLOPS）、`/etc/profile.d/bio_limits.sh`（3 线程封顶）、
+   `ops/layout_autoload/`（sitecustomize + Rprofile + Rscript 垫片）、`bin/layout_helper.R`；
+   cisTarget hg38 691M 在 `public_references/`，不随容器丢；
+5. 重装后重跑 line2 剩余 9 步 → line3 全链 17 步；
+6. 提交全部改动（git 写权限恢复后）。
+
+---
+
+### 第十四轮（2026-10-22，K40 链路排查：链路本身是好的，阻塞在 proot 每 15 秒 abort）
+
+**触发**：用户「git 仓库先不管……先解决 2 的问题」。
+
+**链路结论（好消息）**：链路四段实际完好。`ops/00_link_check.ps1` PASS（设备 3a3e1f52、
+双 forward 在位、Termux sshd 通、容器 sshd 通、四服务 RUN）。此前在沙箱内 adb 起不来
+（`Cannot mkdir '\.android'`）与 SSH 主机名解析失败，**均为沙箱权限所致，非真实故障**；
+提权后 `ssh k40` / `ssh k40-ubuntu` 立刻通。
+
+**本轮顺带修掉的两个真实问题**：
+1. **D-22 未部署**：6 个母版（line2 四个 + line3 两个）远端无 `BIO_GMT_CACHE`，真机会跑旧代码。
+   已 `ops/06_deploy_scripts.ps1 -Force` 重部署 line2（22+1）与 line3（17+1），字节校验 +
+   可执行位复核 PASS，6/6 确认到位。
+2. **测试全绿**：`node --test tests/*.test.js` **766/766 pass / 0 fail / 0 skipped**
+   （链路恢复后此前 5 条环境类失败与 41 条跳过全部激活）。
+
+**核心阻塞：proot 每 15 秒 abort，容器不可用**（新形态，非 scenic_tf 引起）。
+证据：`ubuntu-sshd` 日志 `path.c:546 assertion "length1 > 0" failed` + `signal 6 received`
+严格 15 秒周期（05:07:27/42/57、05:08:12/28、05:12:59、05:13:15/30/45），abort 进程号每次不同
+（runsv 每次重启 sshd 都新建 proot，新 proot 活约 15 秒即 abort）；手机侧 adb 采样确认
+pid 14-20 秒递增一次；**abort 前无任何用户命令**；手机健康（up 2 天、MemAvailable 7.0GB、
+load 0.17）；Termux 四服务全 RUN 且 `sshd -D`（pid 12206）自 10:45 稳定未动——问题只在容器层。
+
+**已排除**：`tick.sh`（5 分钟周期且脚本干净）、`bio_watchdog.sh`（60 秒周期、不做容器探测）、
+我的高频探测（静默 90 秒后仍崩，`--kill-on-exit` 假设推翻）、`termux-profile.sh`（proot-distro
+自动生成的标准环境文件）。
+
+**待办（第十五轮）**：
+1. **需用户在手机上现场排查 proot abort 循环**（PC 侧已无法推进）：在 Termux 里跑
+   `proot-distro login ubuntu` 手动进容器，看它是否一进去就 abort；若手动进也崩，
+   尝试 `proot-distro reset ubuntu` 或重装（`proot-distro install ubuntu`），
+   容器内 `/mnt/ssd` 是 bind mount 进来的、数据不丢。
+2. 容器稳定后重跑 `cn_debug/2026-10-22_m1_line2_rest.mjs`（scenic_tf 起 9 步）；
+3. line2 收尾后跑 line3 全链 17 步；
+4. 提交本轮 + 前几轮全部改动（git 写权限恢复后）。
+
+---
+
+### 第十三轮续（2026-10-22，runner 重复实现收口 + chain_runner_lib 测试）
+
+**触发**：用户「采纳」接手顺序第 3 步之前的本地可做项（第十二轮待办 4）。
+
+**已完成**：
+
+1. **机制收口到 `cn_debug/lib/chain_runner.mjs`**。实际排查发现重复是四份而非两份，
+   且重复的正是踩坑修复本身：P-25 的「快照差集 + 严格正则」只修在 line1/line3，line2 还是
+   `start_time` 时间比较旧写法；P-26 的 setsid nohup 只在 line2_rest 里。重复实现等于
+   让修复只覆盖一部分。现 lib 导出 ssh / lsRemote / listLedgers / ledgerPattern /
+   readLedger / waitNewLedger / launchDetached / preflight / verifyOutputs /
+   buildExecCmd / runStepHttp / runStepDetached / renderTable。
+2. **四份 runner 改为只留步骤表与日志格式**。line2 旧 runner 保留其私有逻辑
+   （KO 基因现场探测、readUns 口径读取、processed/figures 快照 diff、markdown 渲染），
+   只把 ssh 与台账定位换成公共库——该文件被 `proot_probe_guard.test.js` 钉住
+   （containerAlive / echo ALIVE / P-23），迁移后 13/13 仍绿。
+3. **新建 `BioanalysDesktop/tests/chain_runner_lib.test.js`（9 条）防再次分叉**：
+   四份 runner 必须 import 公共库且不得自带 `function ssh(` 或台账正则；台账正则必须用
+   真实文件名形态区分 enrichment 与 enrichment_figures；P-04/P-23/P-24/P-26 逐条钉住。
+   **该测试当场抓到一处我自己的疏漏**：`runStepDetached` 残留
+   `wallSec = (Date.now() - Date.now())/1000` 占位（恒 0），已删。
+
+**测试基线**：`node --test tests/*.test.js` **766 tests / 719 pass / 5 fail / 42 skipped**
+（新增 9 条；5 条 fail 与重构前完全一致，全是 K40/adb 环境类）。
+`npx tsc --noEmit` exit 0；`npm run build` exit 0。
+
+**待办（第十四轮）**：
+1. git 写权限恢复后提交本轮 + 上一轮全部改动（测试修复、runner 收口、两份台账、README 口径）；
+2. line2 runner 的 `readUns` / KO 探测仍是私有实现，line3 若也要读 uns 再收口；
+3. line2 剩余 9 步、line3 全链 17 步真机取证仍待链路。
+
+---
+
+### 第十三轮（2026-10-22，接手复基：3 条假绿 + 1 条崩溃测试修复，链路仍不通）
+
+**触发**：用户指令「按照你的接手顺序接手开干」。接手顺序第一条是「先提交当前未提交改动，
+形成干净基线」，动手前先跑全量测试对基线，发现与 handoff 记录的 752/757 不符，逐条定位。
+
+**已完成**：
+
+1. **`tests/bridge_guard_local.test.js` 三条假绿**（本轮最重要发现）。
+   单独跑该文件 7/7 绿，全量跑同 3 条红——RCA 是 `findBash()` 只要 bash 能解释守卫源码，
+   不要求 bash 内 `command -v python3` 命中。本机 Git for Windows 在位而 Python 不在 PATH，
+   守卫 local 分支进不去、静默退化 ssh 分支，于是「本机引擎可用时不许再 ssh」被 ssh 分支
+   满足、「引擎缺失回落到 ssh」也被满足，D-14（守卫本机优先）在无 Python 的 Windows 上
+   被测成假绿/假红。
+   修法：新增 `findPython3()`（`BRIDGE_GUARD_PYTHON3` -> Git-Bash `command -v python3`
+   -> Codex 自带 Python）与 `NEED_PY3`；`makeWorld` 生成把 python3 预置为 bash 函数的
+   守卫副本。往 PATH 加新目录两条路都实测不可靠（无扩展名文件找不到；沙箱 /tmp 行为异常）。
+   修后该文件 7/7 真绿，确认真进了 local 分支。
+2. **`tests/ppi_string_offline.test.js` 一处崩溃**：`truncatedScenario()` 缺 `{ skip: NEED }`
+   守卫，`BASH` 为 null 时 `spawnSync(null, ...)` 抛 `ERR_INVALID_ARG_TYPE`，
+   把「宿主没 bash」报成失败而非跳过。已补守卫与可断言返回形状。
+3. **5 条剩余 fail 全部判定为环境类、非回归**：`consistency.test.js` /
+   `proc.test.js`（`ssh: Could not resolve hostname k40-ubuntu`，主机名无法解析）、
+   `link.test.js` 三条（adb 起不来）。
+   **adb 障碍是环境级**：`adb.exe` 一启动即 `Cannot mkdir '\.android': Permission denied`
+   崩溃（连 `adb version` 都崩），改 `ANDROID_SDK_HOME` / `USERPROFILE` / `APPDATA` /
+   `HOMEDRIVE`+`HOMEPATH` 均无效，属沙箱限制。
+4. **发现跑测试的环境前提**：`TEMP`/`TMP` 必须指到工作区内，否则 `wrapper_exec_modes` /
+   `wrapper_running_marker` 共 7 条因沙箱外临时目录失败。已实测：改到工作区内后 16/16 全绿。
+
+**测试基线**：`node --test tests/*.test.js` **757 tests / 710 pass / 5 fail / 42 skipped**
+（修前 707 pass / 9 fail）。`npx tsc --noEmit` exit 0；`npm run build` exit 0。
+
+**git 状态**：`.git` 当前只读（`Unable to create '.git/index.lock': Permission denied`），
+本轮两处测试修改**尚未提交**。链路与 git 写权限恢复后第一件事即提交。
+
+**待办（第十四轮）**：
+1. git 写权限恢复后提交本轮改动（两处测试修复 + 两份台账 + 上轮遗留的 D-22/P17 改动）；
+2. `BioanalysDesktop/README.md` 的「445 条测试」口径过期，应改为当前基线并说明跑法前提；
+3. line2 剩余 9 步、line3 全链 17 步真机取证仍待链路；
+4. K40 链路恢复后确认 `scenic_tf` 与 line2 后续步骤状态。
+
+---
+
+### 第十二轮（2026-10-21 深夜，取证模式重构 + gmt 缓存环境变量化 + 自检子灯结构化）
+
+**背景**：line2 全链真机取证撞上「本机进程树承载远端长任务必死」（P-26）与「固定 180s 台账等待对 20-40 分钟重步骤必然假失败」（P-27）；scenic_tf 连杀三次。同期 K40 ssh 在 23:02-23:22 整体不可达（Termux sshd 掉，非脚本问题），期间改做纯本地工作。
+
+**已完成**：
+
+1. **取证模式重构（P-26 / P-27）**
+   - 新建 `cn_debug/lib/chain_runner.mjs`：导出 `ssh()`（3 次重试 + 滤 Warning 行 + `-o ServerAliveInterval=15`）、`lsRemote()`（单文件走 `ls -1d`，不存在返回空数组不抛）、`listLedgers()`（正则 `_step_[0-9a-f]{8,}\.json$` 二次过滤，防 enrichment 误命中 enrichment_figures）、`readLedger()`（ssh 失败 / 台账缺失 / 解析失败分开报）、`waitNewLedger()`（只认快照外新增，轮询 10s，同时观察 wrapper 日志字节数）、`launchDetached()`（远端 `setsid nohup bash run_throttled_task.sh ...`，整段 base64 传输避免 PowerShell 展开 $）、`shellSingle()`、`wrapperId()`、`renderTable()`。
+   - 新建 `cn_debug/2026-10-22_m1_line2_rest.mjs`：line2 剩余 9 步（全链 idx 13..21），每步带 `ledgerWaitMs` 分档（scenic_tf / virtual_knockout / dr_post_analysis / gsva_pathways 3600000，其余 1200000-1800000）；每步 preflight 缺输入则 skipped；下发后 8s 校验 `_running/<wid>.json` 标记，未就绪判 launch-failed 并 break；结果写 `cn_debug/2026-10-22_m1_line2_rest.result.md`。
+   - **runner 自身修掉三个 bug**：① `lsRemote` 对单文件拼成 `ls -1 /path/file/` 恒空导致 preflight 全判缺输入；② STEPS 局部 index 与全链 index 13 混用导致 `START_INDEX=13` 空转；③ lib 模板串嵌套反引号触发 SyntaxError。
+   - **`cn_debug/2026-10-21_m1_line1_chain.mjs` 台账定位改快照差集**（上一轮已做，本轮测试固化）。
+
+2. **gmt 缓存目录环境变量化（D-22，P16 的 B 部分）**
+   - 6 个母版加 `BIO_GMT_CACHE` 覆盖、默认值不变（向后兼容）：`src/line2_scrna/scripts/{enrichment,dr_post_analysis,tf_activity,gsva_pathways}`、`src/line3_spatial/scripts/{enrichment,dr_post_analysis}`。Python 侧 `CACHE = os.environ.get("BIO_GMT_CACHE", os.path.join("..", "references", "gmt_cache"))`，R 侧 `GMT_CACHE <- Sys.getenv("BIO_GMT_CACHE", unset = "../references/gmt_cache")`；失败文案带上实际目录。
+   - 5 个 Python 母版 `ast.parse` 通过、6 个母版 `bash -n` rc=0、CRLF=0。
+   - 新建 `BioanalysDesktop/tests/gmt_cache_env.test.js`（6 条全绿）。
+
+3. **自检第 4 维子灯结构化（P17）**
+   - `server/selfcheck.js` 的 `mergeIsolationChecks` 新增 `subChecks` 数组（isolation / sha256 各带 id/label/status/value/detail）；`value` 仍是 `' | '` 拼接字符串，旧前端与既有断言不受影响。
+   - `server/index.js` 第 4 维改为取 `merged` 后显式下发 `sub_checks`（snake_case 与其它 API 字段一致）。
+   - `src/App.tsx` 渲染子灯（`SelfCheckSubItem` 类型 + `selfcheck-subs` 容器 + 四档小圆点），`src/app.css` 配套样式。
+   - `tests/selfcheck_isolation_merge.test.js` 16 → 18 条（新增 index.js 下发断言 + App.tsx/CSS 渲染断言）。
+
+4. **踩坑与测试固化**：`con_hf/pitfalls_ledger.md` 追加 **P-26**（本机进程树承载远端长任务必死；永久修复 = 远端 setsid nohup + 本机只轮询）与 **P-27**（固定 180s 台账等待对重步骤必然假失败；永久修复 = `ledgerWaitMs` 分档）。`tests/proot_probe_guard.test.js` +3 条（P-26/P-27 条目与 runner 断言）跑绿 13/13。`con_hf/SPEC_DECISIONS.md` 追加 **D-22**。
+
+**真机验证**：
+- `ops/sync_and_verify_remote.ps1 -All` 与 `ops/06_deploy_scripts.ps1 -Force` 上一轮已 76/76 + 55/55 一致。
+- K40 ssh 在 23:02-23:22 不可达（宿主与容器都 `banner exchange: Connection to UNKNOWN port -1: Connection refused`），23:22:36 自行恢复。守夜 job 确认 scenic_tf 的 wrapper 标记 `_running/task_1792594827_tvbhqb.json` 残留、日志只有头部 421 字节（被杀时刚起步），system_logs 无 scenic_tf 台账。
+- 清掉残留标记后重新下发 scenic_tf（wrapper `task_1792596284_e8pjbm`），runner 在跑。
+
+**测试基线**：全量 757 tests / 752 pass / 5 fail —— 5 条全部是 `tests/proc.test.js:41` 的真实链路探针在 ssh 中断窗口内采集，属「链路不通就红」的设计行为，非回归。ssh 恢复后需复跑确认。
+
+**遗留（第十三轮待办）**：
+1. line2 剩余 9 步取证结果（scenic_tf 在跑，runner job `pwsh-47be9d12fe7b4939`）；
+2. line3 全链 17 步（`cn_debug/2026-10-21_m1_line3_chain.mjs` 就绪，等 line2 收尾，K40 7.5GB 不许并发）；
+3. scenic_tf 是否真卡死仍未定论（多次停在 GRNBoost2 前的 `Sending large graph of size 89.88 MiB`，内存不缺、无 OOM 证据）；
+4. ssh 恢复后复跑全量测试确认 5 条红转绿；
+5. git 提交本轮全部改动；
+6. 向用户汇报 M1 DoD 四项达成 + 本轮成果 + B 批已完结（B1/B2/B3 均已执行）。

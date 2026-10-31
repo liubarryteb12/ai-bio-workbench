@@ -14,6 +14,8 @@
 # 图件写入 <line>/figures/l1_03_volcano_limma.png（PNG 300dpi，figure_spec v2.2）。
 set -euo pipefail
 
+RSCRIPT_BIN="${BIOANALYS_RSCRIPT:-/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript}"
+
 seed="${BIOANALYS_SEED:-UNSET}"
 if [ "$seed" = "UNSET" ]; then
   echo "BIOANALYS_SEED 未注入（引擎契约：seed 必须注入）" >&2
@@ -59,7 +61,7 @@ echo "input_expr=${expr_file}"
 echo "input_group_map=${group_file}"
 
 EXPR_FILE="$expr_file" GROUP_FILE="$group_file" BIOANALYS_SEED="$seed" \
-Rscript --vanilla - <<'RSCRIPT'
+"$RSCRIPT_BIN" --vanilla - <<'RSCRIPT'
 suppressPackageStartupMessages({library(data.table); library(limma); library(ggplot2)})
 
 expr_file  <- Sys.getenv("EXPR_FILE")

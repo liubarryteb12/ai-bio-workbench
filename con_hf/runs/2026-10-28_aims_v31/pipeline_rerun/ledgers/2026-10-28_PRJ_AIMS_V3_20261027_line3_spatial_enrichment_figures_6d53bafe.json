@@ -1,0 +1,36 @@
+{
+  "task_id": "6d53bafe-9ff6-4721-9f15-63c96a45be4a",
+  "project_id": "PRJ_AIMS_V3_20261027",
+  "line_id": "line3_spatial",
+  "step_name": "enrichment_figures",
+  "mod_id": "l3_branches_enrich_fig",
+  "status": "completed",
+  "start_time": "2026-10-27T20:12:55.289Z",
+  "end_time": "2026-10-27T20:13:10.671Z",
+  "environment": {
+    "language": "Python",
+    "version": "3.12.3",
+    "env_name": "line3_spatial_env",
+    "container_image": "proot-ubuntu24.04-aarch64",
+    "random_seed": 20261013
+  },
+  "resource_usage": {
+    "max_cpu_percent": null,
+    "max_memory_gb": null,
+    "disk_io_peak_mb_s": null
+  },
+  "io_files": {
+    "input": [
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line3_spatial/processed/enrichment_ora_mouse.tsv",
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line3_spatial/processed/enrichment_ora_human.tsv",
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line3_spatial/processed/enrichment_gsea_mouse.tsv",
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line3_spatial/processed/enrichment_gsea_human.tsv"
+    ],
+    "output": []
+  },
+  "checkpoint_status": "passed",
+  "error_log": null,
+  "exit_code": 0,
+  "next_action_suggested": null,
+  "compute_node_id": "k40-ubuntu"
+}

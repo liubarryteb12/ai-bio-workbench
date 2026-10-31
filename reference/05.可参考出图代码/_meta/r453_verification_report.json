@@ -1,0 +1,500 @@
+{
+  "generated_at": "2026-10-27T02:27:05+08:00",
+  "l1": {
+    "missing_packages": [],
+    "packages": {
+      "ComplexHeatmap": true,
+      "DOSE": true,
+      "GOSemSim": true,
+      "GSEABase": true,
+      "GSVA": true,
+      "WGCNA": true,
+      "aplot": true,
+      "clusterProfiler": true,
+      "data.table": true,
+      "enrichplot": true,
+      "fgsea": true,
+      "ggplot2": true,
+      "ggtree": true,
+      "glmnet": true,
+      "igraph": true,
+      "limma": true,
+      "org.Hs.eg.db": true,
+      "org.Mm.eg.db": true,
+      "pROC": true,
+      "patchwork": true,
+      "survival": true,
+      "treeio": true
+    },
+    "python": {
+      "exit_code": 0,
+      "output": "<string>:6: FutureWarning: `__version__` is deprecated, use `importlib.metadata.version('scanpy')` instead\n<string>:6: FutureWarning: `__version__` is deprecated, use `importlib.metadata.version('anndata')` instead.\npython=3.12.3\nscanpy=1.12.4\nanndata=0.13.4\npandas=3.1.0\nnumpy=2.5.4\nmatplotlib=3.11.2\n"
+    },
+    "rscript_exit": 0,
+    "status": "pass"
+  },
+  "l2": {
+    "checks": [
+      {
+        "command": "/root/venvs/bio-py/bin/python3 /mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py --input /mnt/ssd/bio_data/validation/r453_l2_20261027/good.h5ad --from Python --to R --stage post-dimred",
+        "exit_code": 0,
+        "expected_exit": 0,
+        "expected_marker": "[BRIDGE PASS]",
+        "file": "/mnt/ssd/bio_data/validation/r453_l2_20261027/good.h5ad",
+        "id": "h5ad_good",
+        "output": "[BRIDGE] Python -> R, file=/mnt/ssd/bio_data/validation/r453_l2_20261027/good.h5ad, stage=post-dimred\n[BRIDGE OK] gene names: 30, numeric < 50% (0)\n[BRIDGE OK] matrix shape: obs=12 x var=30, nnz=360, density=1.0000\n[BRIDGE OK] obs names: 12, numeric < 80% (0), sample: ['SAMPLE000', 'SAMPLE001', 'SAMPLE002']\n[BRIDGE OK] embeddings: X_pca, X_umap\n[BRIDGE PASS] all 4 assertions passed for /mnt/ssd/bio_data/validation/r453_l2_20261027/good.h5ad\n",
+        "passed": true,
+        "stage": "post-dimred"
+      },
+      {
+        "command": "/root/venvs/bio-py/bin/python3 /mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py --input /mnt/ssd/bio_data/validation/r453_l2_20261027/numeric_genes.h5ad --from Python --to R --stage post-dimred",
+        "exit_code": 1,
+        "expected_exit": 1,
+        "expected_marker": "[BRIDGE FAIL]",
+        "file": "/mnt/ssd/bio_data/validation/r453_l2_20261027/numeric_genes.h5ad",
+        "id": "h5ad_numeric_genes",
+        "output": "[BRIDGE FAIL] var_names 超过半数为数字索引（30/30），疑似 Ensembl ID 未映射\n[BRIDGE] Python -> R, file=/mnt/ssd/bio_data/validation/r453_l2_20261027/numeric_genes.h5ad, stage=post-dimred\n",
+        "passed": true,
+        "stage": "post-dimred"
+      },
+      {
+        "command": "/root/venvs/bio-py/bin/python3 /mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py --input /mnt/ssd/bio_data/validation/r453_l2_20261027/no_embedding.h5ad --from Python --to R --stage post-dimred",
+        "exit_code": 1,
+        "expected_exit": 1,
+        "expected_marker": "[BRIDGE FAIL]",
+        "file": "/mnt/ssd/bio_data/validation/r453_l2_20261027/no_embedding.h5ad",
+        "id": "h5ad_missing_obsm_post",
+        "output": "[BRIDGE FAIL] obsm 无 X_pca / X_umap / spatial，降维/空间坐标可能丢失\n[BRIDGE] Python -> R, file=/mnt/ssd/bio_data/validation/r453_l2_20261027/no_embedding.h5ad, stage=post-dimred\n[BRIDGE OK] gene names: 30, numeric < 50% (0)\n[BRIDGE OK] matrix shape: obs=12 x var=30, nnz=360, density=1.0000\n[BRIDGE OK] obs names: 12, numeric < 80% (0), sample: ['SAMPLE000', 'SAMPLE001', 'SAMPLE002']\n",
+        "passed": true,
+        "stage": "post-dimred"
+      },
+      {
+        "command": "/root/venvs/bio-py/bin/python3 /mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py --input /mnt/ssd/bio_data/validation/r453_l2_20261027/no_embedding.h5ad --from Python --to R --stage pre-dimred",
+        "exit_code": 0,
+        "expected_exit": 0,
+        "expected_marker": "[BRIDGE WARN]",
+        "file": "/mnt/ssd/bio_data/validation/r453_l2_20261027/no_embedding.h5ad",
+        "id": "h5ad_missing_obsm_pre",
+        "output": "[BRIDGE] Python -> R, file=/mnt/ssd/bio_data/validation/r453_l2_20261027/no_embedding.h5ad, stage=pre-dimred\n[BRIDGE OK] gene names: 30, numeric < 50% (0)\n[BRIDGE OK] matrix shape: obs=12 x var=30, nnz=360, density=1.0000\n[BRIDGE OK] obs names: 12, numeric < 80% (0), sample: ['SAMPLE000', 'SAMPLE001', 'SAMPLE002']\n[BRIDGE WARN] obsm 无 X_pca / X_umap / spatial（stage=pre-dimred，早期矩阵降级为告警，下游消费该文件时必须重新跑 post-dimred 断言）\n[BRIDGE PASS] all 4 assertions passed for /mnt/ssd/bio_data/validation/r453_l2_20261027/no_embedding.h5ad\n",
+        "passed": true,
+        "stage": "pre-dimred"
+      },
+      {
+        "actual": [
+          "基因",
+          "样本",
+          "表达量"
+        ],
+        "command": "/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ -e args <- commandArgs(trailingOnly=TRUE); d <- read.csv(args[1], check.names=FALSE, fileEncoding='UTF-8'); write.csv(d, args[2], row.names=FALSE, quote=FALSE, fileEncoding='UTF-8') /mnt/ssd/bio_data/validation/r453_l2_20261027/中文输入.csv /mnt/ssd/bio_data/validation/r453_l2_20261027/中文回写.csv",
+        "exit_code": 0,
+        "expected": [
+          "基因",
+          "样本",
+          "表达量"
+        ],
+        "id": "csv_utf8_headers",
+        "output": "",
+        "passed": true
+      },
+      {
+        "actual": [
+          "0.10000000000000001",
+          "0.33333333333333331",
+          "3.1415926535897931",
+          "1e-300",
+          "1.2345678901234567",
+          "-0",
+          "1.0000000000000002"
+        ],
+        "command": "/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ -e args <- commandArgs(trailingOnly=TRUE); x <- scan(args[1], quiet=TRUE); writeLines(sprintf('%.17g', x), args[2], useBytes=TRUE) /mnt/ssd/bio_data/validation/r453_l2_20261027/float_values.txt /mnt/ssd/bio_data/validation/r453_l2_20261027/float_roundtrip.txt",
+        "exit_code": 0,
+        "expected": [
+          "0.10000000000000001",
+          "0.33333333333333331",
+          "3.1415926535897931",
+          "1e-300",
+          "1.2345678901234567",
+          "-0",
+          "1.0000000000000002"
+        ],
+        "id": "float17_bit_exact",
+        "output": "",
+        "passed": true
+      }
+    ],
+    "generated_at": "2026-10-27T02:09:38+08:00",
+    "schema_version": 1,
+    "status": "pass"
+  },
+  "l3": {
+    "blocked": 1,
+    "figures": [
+      {
+        "artifacts": [
+          {
+            "file": "L1_groupedbar_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l1_rest"
+          },
+          {
+            "file": "L1_groupedbar_verified.pdf",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l1_rest"
+          }
+        ],
+        "id": "fig_l1_groupedbar",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
+            "file": "L2_heatmap_verified.pdf",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l2_core"
+          },
+          {
+            "file": "L2_heatmap_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l2_more"
+          }
+        ],
+        "id": "fig_l2_heatmap",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
+            "file": "L2_pca_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l2_more"
+          },
+          {
+            "file": "L2_pca_verified.pdf",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l2_more"
+          }
+        ],
+        "id": "fig_l2_pca",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
+            "file": "L1_scatter_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l1_rest"
+          },
+          {
+            "file": "L1_scatter_verified.pdf",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l1_rest"
+          }
+        ],
+        "id": "fig_l1_scatter",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
+            "file": "L2_umap_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l2_more"
+          },
+          {
+            "file": "L2_umap_verified.pdf",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l2_more"
+          }
+        ],
+        "id": "fig_l2_umap",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
+            "file": "L1_boxplot_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l1_boxplot"
+          },
+          {
+            "file": "L1_boxplot_verified.pdf",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l1_boxplot"
+          }
+        ],
+        "id": "fig_l1_boxplot",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
+            "file": "L1_density_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l1_rest"
+          },
+          {
+            "file": "L1_density_verified.pdf",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l1_rest"
+          }
+        ],
+        "id": "fig_l1_density",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
+            "file": "L1_histogram_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l1_rest"
+          },
+          {
+            "file": "L1_histogram_verified.pdf",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l1_rest"
+          }
+        ],
+        "id": "fig_l1_histogram",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
+            "file": "L1_violin_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l1_violin"
+          },
+          {
+            "file": "L1_violin_verified.pdf",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l1_violin"
+          }
+        ],
+        "id": "fig_l1_violin",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
+            "file": "L2_volcano_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l2_core"
+          },
+          {
+            "file": "L2_volcano_verified.pdf",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l2_core"
+          }
+        ],
+        "id": "fig_l2_volcano",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
+            "file": "figures/dotplot__L2p_dotplot_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "py_l2p_more"
+          }
+        ],
+        "id": "fig_l2p_dotplot",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
+            "file": "umap_L2p_umap_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "py_l2p_umap"
+          }
+        ],
+        "id": "fig_l2p_umap",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
+            "file": "figures/violin_L2p_violin_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "py_l2p_more"
+          }
+        ],
+        "id": "fig_l2p_violin",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
+            "file": "L2p_volcano_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "py_l2p_more"
+          },
+          {
+            "file": "L2p_volcano_verified.pdf",
+            "ok": true,
+            "reason": "ok",
+            "runner": "py_l2p_more"
+          }
+        ],
+        "id": "fig_l2p_volcano",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
+            "file": "L3_sankey_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l3_sankey"
+          },
+          {
+            "file": "L3_sankey_verified.pdf",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l3_sankey"
+          }
+        ],
+        "id": "fig_l3_sankey",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
+            "file": "L3_multipanel_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l3_multipanel"
+          },
+          {
+            "file": "L3_multipanel_verified.pdf",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l3_multipanel"
+          }
+        ],
+        "id": "fig_l3_multipanel",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [],
+        "id": "fig_kegg_pathway",
+        "reason": "本库尚无 pathview KEGG 通路图母版，历史 L2_enrichment_verified.png 是富集气泡图",
+        "status": "blocked_r453",
+        "verified": false
+      }
+    ],
+    "ready": 16,
+    "runners": {
+      "py_l2p_more": {
+        "command": "nice -n 10 ionice -c 2 -n 4 /root/venvs/bio-py/bin/python3 /mnt/ssd/bio_data/validation/r453_figures_20261027/runs/py_l2p_more/L2p_more_code.py",
+        "exit_code": 0,
+        "ok": true,
+        "source": "L2_组学常用图/L2p_more_code.py",
+        "source_sha256": "01d5bd21b306677947aa771ccc8f70b97d225919470d5f95536442c4ff8472e6"
+      },
+      "py_l2p_umap": {
+        "command": "nice -n 10 ionice -c 2 -n 4 /root/venvs/bio-py/bin/python3 /mnt/ssd/bio_data/validation/r453_figures_20261027/runs/py_l2p_umap/L2p_umap_code.py",
+        "exit_code": 0,
+        "ok": true,
+        "source": "L2_组学常用图/L2p_umap_code.py",
+        "source_sha256": "64d5a860832237813e556edb7eb1b3de2edf386367d41dd69482ef38add72002"
+      },
+      "r_l1_boxplot": {
+        "command": "cd /mnt/ssd/bio_data/validation/aims_v31_boxplot_20261028_0025/run && env R453_OUT_DIR=/mnt/ssd/bio_data/validation/aims_v31_boxplot_20261028_0025/out BIOANALYS_SEED=20261013 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --vanilla L1_boxplot_code.R",
+        "exit_code": 0,
+        "ok": true,
+        "revalidated_at": "2026-10-28T00:23:00+08:00",
+        "revalidation": "D-23 pure horizontal significance line",
+        "source": "_meta/R453_compat/L1_boxplot_code.R",
+        "source_sha256": "dfc6a22b7585849c1c4d11bec312d654b9af63bf20dd2e42876c28834f8b0b0d"
+      },
+      "r_l1_rest": {
+        "command": "nice -n 10 ionice -c 2 -n 4 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ /mnt/ssd/bio_data/validation/r453_figures_20261027/runs/r_l1_rest/L1_rest_code.R",
+        "exit_code": 0,
+        "ok": true,
+        "source": "_meta/R453_compat/L1_rest_code.R",
+        "source_sha256": "da21074542cef95ffa7c033a5b6bb291b49384f034b2ef9eb79e3322d98213e8"
+      },
+      "r_l1_violin": {
+        "command": "nice -n 10 ionice -c 2 -n 4 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ /mnt/ssd/bio_data/validation/r453_figures_20261027/runs/r_l1_violin/L1_violin_code.R",
+        "exit_code": 0,
+        "ok": true,
+        "source": "_meta/R453_compat/L1_violin_code.R",
+        "source_sha256": "9470bc63b49396ee5fc0fe0725063254849047e37e2482799db7ba54979e259a"
+      },
+      "r_l2_core": {
+        "command": "nice -n 10 ionice -c 2 -n 4 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ /mnt/ssd/bio_data/validation/r453_figures_20261027/runs/r_l2_core/L2_core_code.R",
+        "exit_code": 0,
+        "ok": true,
+        "source": "_meta/R453_compat/L2_core_code.R",
+        "source_sha256": "d60ecbf24668aacf3498168ac4d7279bb9347f26c1e6106c548e87eba9bcc07b"
+      },
+      "r_l2_more": {
+        "command": "nice -n 10 ionice -c 2 -n 4 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ /mnt/ssd/bio_data/validation/r453_figures_20261027/runs/r_l2_more/L2_more_code.R",
+        "exit_code": 0,
+        "ok": true,
+        "source": "_meta/R453_compat/L2_more_code.R",
+        "source_sha256": "0b5342dd0cac39eb87615aa1220d44c09c440b8801e93af288d9ab778f0c6c1d"
+      },
+      "r_l3_multipanel": {
+        "command": "nice -n 10 ionice -c 2 -n 4 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ /mnt/ssd/bio_data/validation/r453_figures_20261027/runs/r_l3_multipanel/L3_multipanel_code.R",
+        "exit_code": 0,
+        "ok": true,
+        "source": "L3_高级组合图/L3_multipanel_code.R",
+        "source_sha256": "2d57dfd823386971dfdd423af101da48a4c3db6d100729e428e4190e080213c1"
+      },
+      "r_l3_sankey": {
+        "command": "nice -n 10 ionice -c 2 -n 4 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ /mnt/ssd/bio_data/validation/r453_figures_20261027/runs/r_l3_sankey/L3_sankey_code.R",
+        "exit_code": 0,
+        "ok": true,
+        "source": "_meta/R453_compat/L3_sankey_code.R",
+        "source_sha256": "6c94fe74a10569e0b43ea0d79047a69156411d1883920eaf285234ae548438d8"
+      }
+    },
+    "status": "pass_with_blocked"
+  },
+  "overall_status": "complete_with_blocked",
+  "r_version_raw": "Rscript (R) version 4.5.3 (2026-03-11)",
+  "schema_version": 1,
+  "site_library": "/opt/R/4.5.3-site-library"
+}

@@ -1,0 +1,33 @@
+{
+  "task_id": "3da3a0f9-ecfe-4277-90cf-2b3311828f44",
+  "project_id": "PRJ_AIMS_V3_20261027",
+  "line_id": "line2_scrna",
+  "step_name": "normalize_hvg",
+  "mod_id": "l2_qc_normalize",
+  "status": "completed",
+  "start_time": "2026-10-27T18:37:45.207Z",
+  "end_time": "2026-10-27T18:38:16.845Z",
+  "environment": {
+    "language": "Python",
+    "version": "3.12.3",
+    "env_name": "line2_scrna_env",
+    "container_image": "proot-ubuntu24.04-aarch64",
+    "random_seed": 20261021
+  },
+  "resource_usage": {
+    "max_cpu_percent": null,
+    "max_memory_gb": null,
+    "disk_io_peak_mb_s": null
+  },
+  "io_files": {
+    "input": [
+      "/mnt/ssd/bio_data/projects/PRJ_AIMS_V3_20261027/line2_scrna/processed/scrna_qc.h5ad"
+    ],
+    "output": []
+  },
+  "checkpoint_status": "passed",
+  "error_log": null,
+  "exit_code": 0,
+  "next_action_suggested": null,
+  "compute_node_id": "k40-ubuntu"
+}
