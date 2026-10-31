@@ -11,6 +11,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
 
 test('建项前把图模板选择转换成可持久化的自动执行任务', (t) => {
+  fs.mkdirSync(path.join(REPO, '.tmp'), { recursive: true });
   const root = fs.mkdtempSync(path.join(REPO, '.tmp', 'figure-project-plan-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
 
