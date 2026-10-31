@@ -1,6 +1,35 @@
 # handoff — 跨会话交接
 
-> 最后更新：2026-10-19（产物回搬：图件/结果表从手机端拉回本地 outputs/，工作台优先读本地）
+> 最后更新：2026-10-31（工作区清理收口：删除约 37 GB 冗余与临时产物，见下节 2026-10-31 第二十轮）
+
+> **2026-10-31 第二十轮（工作区清理 + 用户四项裁定）**：
+> ① 删除零引用临时与残留：tmp_recheck_scripts、根 tests/ 构建残留、.Temp/.tmp/.uploads/backups/cache、
+>    BioanalysDesktop 下 .tmp(320 个 ko-gene 测试目录)/.Temp/.uploads/artifacts/console/test-results/
+>    tests\.build/server\runtime(.generated，A2A v1.2 实验残留，index.js 零引用)、
+>    根目录 7 个隐藏探针脚本与 summary.md/split_plan.json、con_hf\sync 两个 E2E spool、
+>    portal\inbox\sync_results、locale_negative_check.log；
+> ② 删除重复与冗余（子代理哈希级核查）：con_hf\figures_PRJ_20261019_IS_20261019(55/56 与
+>    local_projects、outputs 副本哈希一致)、deliverables\PRJ_E2E_GSE277173、
+>    artifacts\wp14_stringdb+wp14_benchmarks(252MB)、snapshots(150MB)、
+>    01_mobile_compute/03_server_orchestrator/04_ai_automation/aims\A2A(仅剩 __pycache__)、
+>    test_use_data(用户此前已判不可用)；
+> ③ 用户裁定四项：outputs\default(17.6GB) 与 PRJ_AIMS_V3_20261027\data(19GB) 本地删除（远端 SSD 为真源）、
+>    cn_debug\scenic_db(690MB) 保留、con_hf\topic_survey\runs 内 GEO 原始文件清理（JSON 与报告保留，删 47MB）、
+>    reference\09.待整理 归位（20 个 ledger-*.md 已移入 con_hf\dispatch/，三个资产子目录各加 README 身份说明，
+>    encoding_backup_20261024 建议保留至 v3.2 收口后删）；
+> ④ D 盘可用 47.3→84 GB，outputs+local_projects 合计 38GB→0.6GB；
+> ⑤ .gitignore 增补 .env.a2a 与 outputs/default 声明；5 个 tracked 删除待 .git 写权限恢复后提交；
+> ⑥ 遗留：.git 目录被沙箱 ACL 显式 DENY（codexsandboxoffline 用户 SID），提交与分支合并等权限恢复后执行。
+> ⑦ v3.2 合并面预评估（merge-tree 只读跑）：codex/aims-v3.2-figures 相对 HEAD 改 79 文件，
+>    merge-tree 冲突段 0，真冲突候选 0；与本地未提交改动仅 2 文件重叠（.gitignore、figure_adapters.test.js），
+>    其中 .gitignore 的 9 条 L1/L2/L3 verified.png 白名单与本地本轮补的全等（合并自动收敛），
+>    figure_adapters.test.js v3.2 版 +254 行扩展且数据读取测试无 skip 守卫，合入后需把本地新增的
+>    EPERM/数据缺失守卫移植过去再跑全量。结论：权限恢复后按「先提交本地清理 → 再合 v3.2 → 移植守卫 → 全量测试」顺序执行。
+>    ACL 修复尝试（2026-10-31 第三次确认）：提权 icacls /remove:d 对两条 Deny SID 返回
+>    「Failed processing 0 files」且 ACL 不变（/save 导出复核 Deny 仍在）；ACL 重建方案被
+>    审批层拒绝。判断：Deny 由沙箱宿主侧注入，容器内提权无权限改写。
+>    需要用户在宿主 PowerShell（管理员）执行：
+>    icacls "D:\00.AIagent\codespace\AI辅助生信分析流程工作台\.git" /remove:d *S-1-5-21-1506856635-3242436149-1912125682-3575442760 *S-1-5-21-1164459438-259575917-2205782810-1333127759 /t
 > **接任务先读本文件**，再看 `con_hf/SPEC.md`（阶段规格）与 `con_hf/踩坑台账.md`（排查前必搜）。
 > 全量推进计划：`con_hf/2026-10-13_plan_goal全量推进.md`（含工作区盘点结论与阻塞项 B1/B2）。
 

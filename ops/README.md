@@ -300,3 +300,34 @@ info 表缺失时保留 `9606.ENSP...` 原始 ID 并打 warning，不中断。
 - 容器（proot）读 Termux home 路径不可靠，脚本里的绝对路径要用容器侧自己的路径。
 - PowerShell 不支持 `<` 重定向，`ssh ... < script.sh` 这种写法在本机不可用，改用 scp 传过去再执行。
 - `04_check_logs.ps1` 跑完会在容器 `/tmp/` 留下 `03_check_logs_remote.sh`，不自动删（省一次 ssh 往返，方便手动复跑）。
+
+## 季度例行维护（工作区瘦身流程，2026-10-31 沉淀）
+
+每季度（或 D 盘可用空间低于 20%）跑一轮两阶段清理。核心纪律：删前零引用核查，删后落台账。
+
+### 阶段 A：零引用残留清理
+
+1. 找残留：`.Temp`、`.tmp`、`.uploads`、`backups`、`cache`、`__pycache__`、`*.pyc`、
+   根目录隐藏探针脚本（`.probe_*.sh`、`.run_*.sh`、`.tmp_probe.sh`）、
+   `BioanalysDesktop` 下 `.tmp`（ko-gene 测试目录会积累数百个）、`.Temp`、`.uploads`、
+   `artifacts`、`console`、`test-results`、`tests\.build`、`server\runtime\.generated`。
+2. 逐项确认零引用：在代码（排除 node_modules/dist）、`docs`、`con_hf` 台账文本里搜目录名。
+   零引用才进删除清单；有引用的单独记录原因。
+3. 删除必须走带路径守卫的脚本：先 `Resolve-Path`，断言结果以工作区根开头，越界直接跳过。
+   删除脚本用完即删，不留工作区。
+4. E2E spool 类（`con_hf/sync/e2e_*`、`portal/inbox/sync_results`）按 mtime 清 7 天前的。
+
+### 阶段 B：重复与大体量裁定
+
+1. 重复核查交给子代理做哈希级比对（文件名+大小全量匹配，抽样 SHA256），禁止凭文件名目测判重复。
+2. 大体量目录（>100MB）删除必须用户裁定，逐项列「体量 / 真源在哪 / 删除后果」三要素。
+3. 远端 SSD 为真源的本地回搬副本（`outputs/<项目>`、`local_projects/<项目>/data`），
+   删除前确认 `ops/07_pull_outputs.ps1` 可随时拉回。
+4. 不可逆参考数据（如 `cn_debug/scenic_db`）默认保留，重下需要网络的都算不可逆。
+5. 每次清理后：更新 `con_hf/handoff.md` 头部与第二十轮式清理小节，记录删除清单、
+   保留裁定与前后磁盘空间；`.gitignore` 同步增补忽略声明，防止已删目录复活。
+
+### 台账与验收
+
+- 验收判据：`git status --untracked-files=normal` 中临时目录残留为 0；handoff 有本轮记录；磁盘空间变化有数字。
+- 本轮执行记录：2026-10-31 第二十轮，释放约 37 GB（D 盘 47.3→84 GB），详见 `con_hf/handoff.md`。

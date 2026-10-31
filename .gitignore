@@ -73,6 +73,11 @@ reference/05.可参考出图代码/**
 !reference/05.可参考出图代码/L1_基础统计图/L1_rest_code.R
 !reference/05.可参考出图代码/L1_基础统计图/L1_scatter_code.R
 !reference/05.可参考出图代码/L1_基础统计图/L1_violin_code.R
+!reference/05.可参考出图代码/L1_基础统计图/L1_density_verified.png
+!reference/05.可参考出图代码/L1_基础统计图/L1_groupedbar_verified.png
+!reference/05.可参考出图代码/L1_基础统计图/L1_histogram_verified.png
+!reference/05.可参考出图代码/L1_基础统计图/L1_scatter_verified.png
+!reference/05.可参考出图代码/L1_基础统计图/L1_violin_verified.png
 !reference/05.可参考出图代码/L2_组学常用图/
 !reference/05.可参考出图代码/L2_组学常用图/L2_core_code.R
 !reference/05.可参考出图代码/L2_组学常用图/L2_enrichment_code.R
@@ -80,6 +85,7 @@ reference/05.可参考出图代码/**
 !reference/05.可参考出图代码/L2_组学常用图/L2_more_code.R
 !reference/05.可参考出图代码/L2_组学常用图/L2_pca_code.R
 !reference/05.可参考出图代码/L2_组学常用图/L2_umap_code.R
+!reference/05.可参考出图代码/L2_组学常用图/L2_umap_verified.png
 !reference/05.可参考出图代码/L2_组学常用图/L2_volcano_code.R
 !reference/05.可参考出图代码/L2_组学常用图/L2_heatmap_verified.png
 !reference/05.可参考出图代码/L2_组学常用图/L2_pca_verified.png
@@ -92,9 +98,12 @@ reference/05.可参考出图代码/**
 !reference/05.可参考出图代码/L2_组学常用图/L2p_dotplot_verified.png
 !reference/05.可参考出图代码/L2_组学常用图/L2p_umap_verified.png
 !reference/05.可参考出图代码/L2_组学常用图/L2p_volcano_verified.png
+!reference/05.可参考出图代码/L2_组学常用图/L2p_violin_verified.png
 !reference/05.可参考出图代码/L3_高级组合图/
 !reference/05.可参考出图代码/L3_高级组合图/L3_multipanel_code.R
 !reference/05.可参考出图代码/L3_高级组合图/L3_sankey_code.R
+!reference/05.可参考出图代码/L3_高级组合图/L3_sankey_verified.png
+!reference/05.可参考出图代码/L3_高级组合图/L3_multipanel_verified.png
 !reference/05.可参考出图代码/_meta/
 !reference/05.可参考出图代码/_meta/bizard_index.csv
 !reference/05.可参考出图代码/_meta/r453_verification_report.json
@@ -151,3 +160,10 @@ split_plan.json
 
 # ===== 工作区快照（ops/09_snapshot.ps1 产物，可重新生成，且单个 75MB 级）=====
 snapshots/
+
+# ===== 2026-10-31 清理裁定（用户拍板）=====
+.env.a2a
+# outputs/ 整体已忽略（第 59 行）；outputs/default 历史回搬存量已于 2026-10-31 用户裁定本地删除，
+# 远端 SSD 为真源，此行仅作声明防止复活。
+outputs/default/
+.codex-a2a/

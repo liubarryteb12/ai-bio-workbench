@@ -24,9 +24,23 @@ const FORBIDDEN = /(^|[\s"';&|(\`])(pgrep|pkill)\b|\bps\s+-(eo|ef|aux|e|f)\b/;
 
 function listFiles(dir, exts) {
   if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir, { recursive: true, withFileTypes: true })
-    .filter((e) => e.isFile() && exts.some((ext) => e.name.endsWith(ext)))
-    .map((e) => path.join(e.parentPath ?? e.path, e.name));
+  const out = [];
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch (err) {
+    if (err && (err.code === 'EPERM' || err.code === 'EACCES')) return [];
+    throw err;
+  }
+  for (const e of entries) {
+    const full = path.join(dir, e.name);
+    if (e.isDirectory()) {
+      out.push(...listFiles(full, exts));
+    } else if (e.isFile() && exts.some((ext) => e.name.endsWith(ext))) {
+      out.push(full);
+    }
+  }
+  return out;
 }
 
 function isCommentLine(line) {
