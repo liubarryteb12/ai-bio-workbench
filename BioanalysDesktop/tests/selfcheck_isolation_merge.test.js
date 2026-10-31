@@ -176,7 +176,21 @@ test('P17：index.js 把合并灯的结构化子灯下发给前端（sub_checks�
 });
 
 test('P17：App.tsx 渲染 sub_checks 子灯', () => {
-  const appSrc = fs.readFileSync(path.join(REPO_ROOT, 'BioanalysDesktop', 'src', 'App.tsx'), 'utf8');
+  function readViewTsx(dir) {
+    return fs.readdirSync(dir, { withFileTypes: true })
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .flatMap((entry) => {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) return readViewTsx(fullPath);
+        return entry.isFile() && entry.name.endsWith('.tsx')
+          ? [fs.readFileSync(fullPath, 'utf8')]
+          : [];
+      });
+  }
+  const appSrc = [
+    fs.readFileSync(path.join(REPO_ROOT, 'BioanalysDesktop', 'src', 'App.tsx'), 'utf8'),
+    ...readViewTsx(path.join(REPO_ROOT, 'BioanalysDesktop', 'src', 'views')),
+  ].join('\n');
   assert.match(appSrc, /sub_checks/, '前端要读 sub_checks');
   assert.match(appSrc, /selfcheck-subs/, '前端要渲染子灯容器');
   assert.match(appSrc, /SelfCheckSubItem/, '前端要有子灯类型');
