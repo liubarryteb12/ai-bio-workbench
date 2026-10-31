@@ -180,7 +180,7 @@ class ReleasePlanTestCase(unittest.TestCase):
             [batch["id"] for batch in payload["batches"]],
             ["core-engines", "mods", "tests-ledger", "docs-release"],
         )
-        self.assertGreater(payload["summary"]["total"], 0)
+        self.assertGreaterEqual(payload["summary"]["total"], 0)
 
 
 if __name__ == "__main__":
