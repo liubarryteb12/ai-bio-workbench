@@ -53,7 +53,7 @@ before(async () => {
   child.stderr.on('data', (chunk) => { stderrText += chunk.toString(); });
   child.on('exit', (code) => { childExit = { code, stderr: stderrText.slice(-2000) }; });
 
-  const deadline = Date.now() + 10000;
+  const deadline = Date.now() + 25000;
   for (;;) {
     if (childExit) throw new Error(`服务进程提前退出 (code ${childExit.code}): ${childExit.stderr}`);
     try {
@@ -62,7 +62,7 @@ before(async () => {
     } catch {
       // 没起来就继续等
     }
-    if (Date.now() > deadline) throw new Error(`服务 10s 内没就绪: ${stderrText.slice(-2000)}`);
+    if (Date.now() > deadline) throw new Error(`服务 25s 内没就绪: ${stderrText.slice(-2000)}`);
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
 });

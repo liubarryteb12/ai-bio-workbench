@@ -5,6 +5,18 @@ on:
   pull_request:
 
 jobs:
+  hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: LF check for executable scripts
+        run: |
+          bad=$(grep -rlP '\r$' --include='*.sh' --include='*.py' --include='*.R' src ops shared bin 2>/dev/null || true)
+          if [ -n "$bad" ]; then echo "CRLF found in:"; echo "$bad"; exit 1; fi
+      - name: Three-line isolation check
+        shell: pwsh
+        run: ./ops/02_check_isolation.ps1
+
   node:
     runs-on: ubuntu-latest
     defaults:

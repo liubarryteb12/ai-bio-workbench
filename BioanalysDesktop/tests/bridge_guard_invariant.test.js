@@ -254,15 +254,20 @@ test('引擎断言失败（3）→ 守卫透传同码且含 BRIDGE FAIL', { skip
 
 
 
-test('ssh 不可达 → 守卫 0 且含 BRIDGE SKIP（K40 离线母版仍可跑）', { skip: BASH === null ? '宿主无 bash 解释器' : false }, () => {
 
+test('ssh 不可达 → strict 默认 exit 2（不许静默放行）', { skip: BASH === null ? '宿主无 bash 解释器' : false }, () => {
   const res = runGuard({ sshScript: '#!/bin/sh\nexit 255\n' }, ['--input', 'x.h5ad', '--from', 'Python', '--to', 'R', '--script', 'gsva_pathways']);
-
-  assert.equal(res.code, 0, res.stderr);
-
-  assert.match(res.stdout, /BRIDGE SKIP/);
-
+  assert.equal(res.code, 2, res.stderr);
+  assert.match(res.stdout + res.stderr, /BRIDGE FAIL/);
 });
+
+test('ssh 不可达 + BIO_ALLOW_BRIDGE_SKIP=1 → 降级 SKIP exit 0（离线干跑显式豁免）', { skip: BASH === null ? '宿主无 bash 解释器' : false }, () => {
+  const res = runGuard({ sshScript: '#!/bin/sh\nexit 255\n', extra: { BIO_ALLOW_BRIDGE_SKIP: '1' } }, ['--input', 'x.h5ad', '--from', 'Python', '--to', 'R', '--script', 'gsva_pathways']);
+  assert.equal(res.code, 0, res.stderr);
+  assert.match(res.stdout, /BRIDGE SKIP/);
+});
+
+
 
 
 

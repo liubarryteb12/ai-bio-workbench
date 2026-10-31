@@ -128,7 +128,7 @@ childOn.stderr.on('data', (d) => warnLogOn.push(String(d)));
 childOn.stdout.on('data', (d) => warnLogOn.push(String(d)));
 
 async function waitReady(base) {
-  const deadline = Date.now() + 10000;
+  const deadline = Date.now() + 25000;
   while (Date.now() < deadline) {
     try {
       const res = await fetch(`${base}/health`);

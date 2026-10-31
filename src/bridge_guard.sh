@@ -79,7 +79,11 @@ if [ -n "$BRIDGE_ENGINE_LOCAL" ] && [ -f "$BRIDGE_ENGINE_LOCAL" ] && command -v 
 elif command -v "$SSH_CMD" >/dev/null 2>&1; then
   MODE="ssh"
 else
-  echo "[BRIDGE SKIP] $WHERE 本机无引擎且无 $SSH_CMD，无法触达桥接引擎"; exit 0
+  if [ "${BIO_ALLOW_BRIDGE_SKIP:-0}" = "1" ]; then
+    echo "[BRIDGE SKIP] $WHERE 本机无引擎且无 $SSH_CMD，无法触达桥接引擎（显式允许 skip）"; exit 0
+  fi
+  echo "[BRIDGE FAIL] $WHERE 本机无引擎且无 $SSH_CMD，无法触达桥接引擎（strict 模式；离线干跑请设 BIO_ALLOW_BRIDGE_SKIP=1）" >&2
+  exit 2
 fi
 
 # 分开捕获输出与退出码：连接失败的退出码（如 255）与引擎断言失败的退出码
@@ -106,7 +110,11 @@ if [ "$ssh_rc" -ne 0 ]; then
     exit "$ssh_rc"
   fi
   # 契约 3 后半：连不上/超时，放行母版继续算（K40 离线时母版仍要能跑）
-  echo "[BRIDGE SKIP] $WHERE 桥接引擎不可达（$MODE 模式退出码 $ssh_rc），母版继续执行"; exit 0
+  if [ "${BIO_ALLOW_BRIDGE_SKIP:-0}" = "1" ]; then
+    echo "[BRIDGE SKIP] $WHERE 桥接引擎不可达（$MODE 模式退出码 $ssh_rc，显式允许 skip），母版继续执行"; exit 0
+  fi
+  echo "[BRIDGE FAIL] $WHERE 桥接引擎不可达（$MODE 模式退出码 $ssh_rc，strict 模式硬阻断；离线干跑请设 BIO_ALLOW_BRIDGE_SKIP=1）" >&2
+  exit 2
 fi
 
 echo "[BRIDGE OK] $WHERE 桥接四项断言通过（$FROM_LANG -> $TO_LANG, input=$INPUT, stage=$STAGE, engine=$MODE）"

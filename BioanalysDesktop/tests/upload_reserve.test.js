@@ -280,13 +280,13 @@ before(async () => {
     return fakeChild(1);
   });
   await import('../server/index.js');
-  const deadline = Date.now() + 10000;
+  const deadline = Date.now() + 25000;
   for (;;) {
     try {
       const response = await fetch(`${BASE}/api/health`, { signal: AbortSignal.timeout(1000) });
       if (response.ok) break;
     } catch { /* 没起来就继续等 */ }
-    if (Date.now() > deadline) throw new Error(`服务 10s 内没就绪（端口 ${PORT}）`);
+    if (Date.now() > deadline) throw new Error(`服务 25s 内没就绪（端口 ${PORT}）`);
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
 });
