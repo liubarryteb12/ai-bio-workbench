@@ -68,6 +68,7 @@ import {
   isAllowedDeliverableName, localDeliverDir, localDeliverFilePath,
   runReportPreflight, writeSha256Sidecars,
 } from './report.js';
+import { handleUploadRoutes } from './routes/upload.routes.js';
 
 const PORT = Number(process.env.BAD_PORT || 18787);
 const REPO_ROOT = path.resolve(fileURLToPath(new URL('../../', import.meta.url)));
@@ -325,6 +326,11 @@ function json(res, status, payload) {
 function uploadError(res, status, message) {
   return json(res, status, { ok: false, error: String(message ?? '') });
 }
+
+// 路由模块共用的响应辅助与远端执行器。定义仍留在本文件：自检路由的守卫断言按本文件对
+// runRemoteStrict 的出现次数计数，搬走会让那条守卫计到假数。以对象注入交给路由模块，
+// 是为了不把同一份辅助函数复制进每个模块文件。
+const routeCtx = { json, uploadError, runRemote };
 
 // ── 任务提交路径预校验（S29 / R9；2026-10-21 收敛到 ledger.js 单一事实源）──
 // 单路径归属判定已移到 ledger.js 的 inspectTaskPath / analyzePath，与台账审计
@@ -1955,203 +1961,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (url.pathname === '/api/upload/init' && req.method === 'POST') {
-    // 数据导入第 1 步：创建上传会话（强制归属线）
-    let body = '';
-    req.on('data', (chunk) => { body += chunk; });
-    req.on('end', () => {
-      let requested;
-      try {
-        requested = JSON.parse(body || '{}');
-      } catch (cause) {
-        return uploadError(res, 400, `请求体不是合法 JSON: ${cause.message}`);
-      }
-      const lineId = requested.lineId;
-      if (!LINES.includes(lineId)) {
-        return uploadError(res, 400, `必须指定归属线，且只能是 ${LINES.join(' / ')}`);
-      }
-      const projectId = sanitizeProjectId(requested.projectId || DEFAULT_PROJECT);
-      if (!projectId) {
-        return uploadError(res, 400, `projectId 非法（只允许字母数字 . _ -）: ${requested.projectId}`);
-      }
-      const safe = sanitizeFilename(requested.filename);
-      if (!safe) {
-        return uploadError(res, 400, `文件名非法或含路径穿越: ${requested.filename}`);
-      }
-      // 确定性 id：客户端带指纹（project|lineId|name|size|lastModified 的纯函数派生）时，
-      // 前后端算出同一个 id，刷新或换浏览器都能接着传；不带指纹则回落 randomUUID，
-      // 老客户端的 HTTP 契约完全不变（响应里多一个 deterministic 字段，旧调用方会忽略）。
-      const resolved = resolveUploadId({
-        fingerprint: requested.fingerprint,
-        projectId,
-        lineId,
-        filename: safe,
-        size: requested.size,
-        lastModified: requested.lastModified,
-      });
-      if (!resolved.uploadId) {
-        return uploadError(res, 400, 'fingerprint 非法：必须是 <=1024 字符的字符串且不含控制字符');
-      }
-      // 惰性清理陈旧会话：放在参数校验之后、建目录之前。内部节流 10 分钟一次，
-      // 且自己吞掉所有异常（清理失败不能连累上传）。
-      // task-8 A：清理完若仍超过 .uploads 总量配额（大量「正在传」的会话撑爆磁盘），
-      // 直接拒绝新会话，回 507 Payload Too Large：请求本身合法，是服务端存储配额
-      // 已耗尽；用 400 会误导用户去改请求参数。配额数字进错误体，前端能直接展示。
-      const gcReport = maybeGcStaleUploads();
-      if (gcReport && gcReport.overQuota === true) {
-        return uploadError(
-          res, 507,
-          `上传暂存空间已满：当前占用 ${gcReport.totalBytes} 字节，超过配额 ${gcReport.quotaBytes} 字节；`
-          + `请等待进行中的上传完成或清理旧会话后重试`
-        );
-      }
-      const uploadId = resolved.uploadId;
-      try {
-        initUpload(uploadId);
-      } catch (cause) {
-        return uploadError(res, 500, cause.message);
-      }
-      // P4：把客户端声明的大小落成会话级预留额度（原子写 session.json），
-      // chunk 端据此做 413 硬闸门，挡住「声明 10MB 却传 100GB」。
-      // fileSize 缺失或非法时 reservedBytes = null：不硬拦老客户端，只是没有预留额度。
-      // 元数据落盘失败也只降级（响应里如实回 null），不能让一次写文件失败把上传挡在门外。
-      let reservedBytes = normalizeReservedBytes(requested.fileSize);
-      try {
-        writeSessionMeta(uploadId, {
-          name: safe,
-          project: projectId,
-          lineId,
-          fileSize: reservedBytes,
-          reservedBytes,
-        });
-      } catch (cause) {
-        reservedBytes = null;
-        console.warn?.(`[bioanalys-desktop] 会话元数据写入失败（降级为无预留额度）: ${cause.message}`);
-      }
-      return json(res, 200, {
-        uploadId, projectId, lineId, filename: safe, chunkSize: CHUNK_SIZE,
-        deterministic: resolved.deterministic,
-        reservedBytes,
-        hint: '按 chunkSize 切分后依次 POST /api/upload/chunk?uploadId=&index=',
-      });
-    });
-    return;
-  }
-
-  if (url.pathname === '/api/upload/chunk' && req.method === 'POST') {
-    // 数据导入第 2 步：上传单个分片（原始二进制 body）
-    const uploadId = url.searchParams.get('uploadId') || '';
-    const index = url.searchParams.get('index') || '';
-    const chunks = [];
-    let size = 0;
-    req.on('data', (chunk) => {
-      size += chunk.length;
-      if (size > CHUNK_SIZE * 2) { req.destroy(); return; }
-      chunks.push(chunk);
-    });
-    req.on('end', () => {
-      const buf = Buffer.concat(chunks);
-      // P4：写盘之前先过两道闸门，顺序固定：
-      //   1. 会话预留额度 reservedBytes（超了 413，一个字节都不写）；
-      //   2. .uploads 总量配额（超了 507）。
-      // 413 必须优先：客户端多报/少报文件大小时，先明确告诉它「本会话额度不够」，
-      // 而不是让它去猜是不是全局空间满了（那个它自己修不了）。
-      const admission = checkChunkAdmission({ uploadId, index, chunkLength: buf.length });
-      if (!admission.ok) return uploadError(res, admission.status, admission.error);
-      try {
-        writeChunk(uploadId, index, buf);
-        return json(res, 200, { ok: true, index: Number(index), received: listChunks(uploadId) });
-      } catch (cause) {
-        return uploadError(res, 400, cause.message);
-      }
-    });
-    return;
-  }
-
-  if (url.pathname === '/api/upload/status') {
-    // 数据导入第 2.5 步：查询已落盘分片，供前端断点续传（S32 / 架构评审 A8-R5）。
-    // 向后兼容：uploadId / received 两个既有键原样保留（既有调用方按 received 判空），
-    // 本次只增补 exists / chunks / nextIndex / receivedBytes / chunkSize。
-    const uploadId = url.searchParams.get('uploadId') || '';
-    const status = uploadStatus(uploadId);
-    if (status.reason === 'invalid_id') {
-      // 缺失或含路径穿越（'..'、分隔符、隐藏名）：400，绝不下探文件系统
-      return uploadError(res, 400, `uploadId 非法或缺失: ${uploadId}`);
-    }
-    if (!status.ok) {
-      // 没传过：HTTP 仍 200（404 会让前端走错误分支），前端据 nextIndex=0 从 0 开始
-      return json(res, 200, {
-        uploadId, received: [], exists: false, chunks: [], nextIndex: 0,
-        receivedBytes: 0, chunkSize: CHUNK_SIZE, ok: false, reason: 'not_found',
-      });
-    }
-    return json(res, 200, {
-      ok: true, uploadId, exists: true,
-      chunks: status.chunks, nextIndex: status.nextIndex,
-      receivedBytes: status.receivedBytes, chunkSize: status.chunkSize,
-      received: status.chunks,
-    });
-  }
-
-  if (url.pathname === '/api/upload/complete' && req.method === 'POST') {
-    // 数据导入第 3 步：合并 + 格式校验 + scp 到线内 raw_data + 字节校验
-    let body = '';
-    req.on('data', (chunk) => { body += chunk; });
-    req.on('end', () => {
-      let requested;
-      try {
-        requested = JSON.parse(body || '{}');
-      } catch (cause) {
-        return uploadError(res, 400, `请求体不是合法 JSON: ${cause.message}`);
-      }
-      const { uploadId, lineId, filename } = requested;
-      if (!LINES.includes(lineId)) {
-        return uploadError(res, 400, `lineId 非法: ${lineId}`);
-      }
-      const projectId = sanitizeProjectId(requested.projectId || DEFAULT_PROJECT);
-      if (!projectId) {
-        return uploadError(res, 400, `projectId 非法（只允许字母数字 . _ -）: ${requested.projectId}`);
-      }
-      let localPath;
-      try {
-        localPath = assembleChunks(uploadId, filename);
-      } catch (cause) {
-        return uploadError(res, 400, `合并分片失败: ${cause.message}`);
-      }
-      const header = readHeader(localPath);
-      const validation = validateUpload(filename, header);
-      if (!validation.ok) {
-        cleanupUpload(uploadId);
-        return json(res, 200, {
-          ok: false, validation,
-          hint: '格式校验未通过，未落盘到服务器（文件已从暂存清理）',
-        });
-      }
-      const remote = remoteRawPath(projectId, lineId, filename);
-      const localSize = fs.statSync(localPath).size;
-      const scp = runSync(
-        ['scp', '-o', 'StrictHostKeyChecking=no', '-o', 'BatchMode=yes',
-          '-P', '10022', localPath, `root@127.0.0.1:${remote}`],
-        { timeoutMs: 900000 }
-      );
-      if (scp.code !== 0) {
-        return uploadError(res, 500, `scp 上传失败（code=${scp.code}）: ${scp.stderr || scp.stdout}`);
-      }
-      const remoteStat = runRemote(`stat -c %s '${remote}' 2>/dev/null || echo MISSING`);
-      const remoteSize = Number(remoteStat.trim());
-      const sizeMatch = Number.isFinite(remoteSize) && remoteSize === localSize;
-      // P4：上传成功后会话元数据（预留额度）随会话一起作废。显式清一次，不依赖
-      // cleanupUpload 里 rm -rf 的副作用；清理顺序变了也不会留下一个「已完成的预留额度」。
-      clearSessionMeta(uploadId);
-      cleanupUpload(uploadId);
-      return json(res, 200, {
-        ok: sizeMatch, validation, remotePath: remote,
-        localSize, remoteSize: Number.isFinite(remoteSize) ? remoteSize : null, sizeMatch,
-        hint: sizeMatch ? '上传完成，字节校验通过' : '上传后字节数不一致，请重试',
-      });
-    });
-    return;
-  }
+  if (handleUploadRoutes(req, res, url, routeCtx)) return;
 
   if (url.pathname === '/api/tasks' && req.method === 'GET') {
     // 在跑任务列表：让界面知道有没有重复下发。
