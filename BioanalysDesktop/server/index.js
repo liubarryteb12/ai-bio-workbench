@@ -122,12 +122,35 @@ function uploadPreparedFigureScripts(preparedFigures) {
 /**
  * 工作台口令（HTTP Basic）。
  * 18787 会经 frp 暴露到公网，frp 从本机 127.0.0.1 回连，服务端无法用来源地址区分内外，
- * 所以只能整站鉴权：环境变量给了账号口令就强制校验，没给则保持本地开发/测试的免密行为。
- * 正式常驻由 ops/serve_guard.ps1 注入口令（口令文件在用户主目录，不落源码）。
+ * 所以只能整站鉴权。安全口径（D-29 Fail-Closed）：
+ *   1. 环境变量给了账号口令就强制校验（正式常驻由 ops/serve_guard.ps1 注入）；
+ *   2. 非测试环境且未显式 BIO_ALLOW_DEV_NOAUTH=1 时，若未配置口令，自动生成随机强口令
+ *      并打印到控制台（同时落 server/.auth_runtime.json，权限限本机），消灭免密裸奔；
+ *   3. node:test 运行环境（NODE_TEST_CONTEXT 存在）与显式豁免保持免密，测试零改动。
  */
-const AUTH_USER = process.env.BAD_AUTH_USER || '';
-const AUTH_PASS = process.env.BAD_AUTH_PASS || '';
+let AUTH_USER = process.env.BAD_AUTH_USER || '';
+let AUTH_PASS = process.env.BAD_AUTH_PASS || '';
 const AUTH_ENABLED = Boolean(AUTH_USER && AUTH_PASS);
+
+const IS_TEST_RUNTIME = Boolean(process.env.NODE_TEST_CONTEXT);
+const DEV_NOAUTH = process.env.BIO_ALLOW_DEV_NOAUTH === '1';
+if (!AUTH_ENABLED && !IS_TEST_RUNTIME && !DEV_NOAUTH) {
+  const crypto = await import('node:crypto');
+  const generatedUser = 'admin';
+  const generatedPass = crypto.randomBytes(18).toString('base64url');
+  const runtimeAuthFile = path.join(REPO_ROOT, 'BioanalysDesktop', '.auth_runtime.json');
+  fs.writeFileSync(runtimeAuthFile, JSON.stringify({
+    user: generatedUser,
+    pass: generatedPass,
+    generatedAt: new Date().toISOString(),
+  }, null, 2) + '\n', { mode: 0o600 });
+  console.error('[bioanalys-desktop] 未配置 BAD_AUTH_USER/PASS，已自动生成一次性凭证：');
+  console.error(`[bioanalys-desktop]   账号 ${generatedUser}`);
+  console.error(`[bioanalys-desktop]   口令 ${generatedPass}`);
+  console.error(`[bioanalys-desktop]   （已写入 ${runtimeAuthFile}，重启会重新生成；正式部署请用 serve_guard 注入固定口令）`);
+  AUTH_USER = generatedUser;
+  AUTH_PASS = generatedPass;
+}
 
 /** 定长比较，避免按字节提前返回泄露口令前缀 */
 function safeEqual(left, right) {
