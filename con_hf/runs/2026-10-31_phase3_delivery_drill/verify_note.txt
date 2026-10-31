@@ -1,0 +1,4 @@
+tar sha256 sidecar match: True
+Ed25519 verify: VERIFIED 112 (node ops/ed25519_tools.mjs --delivery-dir ... --verify with BIO_ED25519_PUBLIC_KEY_PATH=ops/secrets/ed25519_public.pem)
+Remote build: build_client_report.py --project PRJ_NAFLD_E2E_20261028 -> 112 files, figures 38 / tables 71 / scripts 8, tar 33.6MB
+Portal intake: ticket 2026-10-31_220933_requirement_requirement.json -> portal/inbox (HTTP 200, savedAs ok)

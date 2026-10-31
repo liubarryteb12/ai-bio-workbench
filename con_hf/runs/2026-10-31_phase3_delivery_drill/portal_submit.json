@@ -1,0 +1,26 @@
+{
+  "notes": "Phase-3 delivery-chain drill intake (NAFLD E2E).",
+  "projectId": "PRJ_NAFLD_E2E_20261028",
+  "seed": 20261013,
+  "lineId": "line1_bulk",
+  "pipelineDag": [
+    {"stepId": "probe_env", "outputs": [], "inputs": [], "order": 1}
+  ],
+  "dataSource": {
+    "dataSourceMode": "PUBLIC_DB",
+    "datasets": [
+      {"gse": "GSE48452", "gpl": "GPL11532", "group": "all"},
+      {"gse": "GSE89632", "gpl": "GPL14951", "group": "all"}
+    ],
+    "dataType": "microarray",
+    "sampleCount": 73
+  },
+  "biologicalPriors": {"targetKoGene": ""},
+  "groupingDesign": {
+    "groups": [
+      {"groupId": "Normal", "groupName": "Normal", "role": "control", "sampleIds": []},
+      {"groupId": "Disease", "groupName": "Disease", "role": "case", "sampleIds": []}
+    ],
+    "contrasts": [{"name": "Disease_vs_Normal", "case": "Disease", "ctrl": "Normal", "isPrimary": true}]
+  }
+}
