@@ -29,6 +29,7 @@ con_hf/runs/
 agent_bio_stack/index/
 agent_bio_stack/n8n/.runtime/
 uploads/
+.uploads/
 
 # ===== 本地项目运行载荷，保留项目元数据与台账 =====
 local_projects/*/data/

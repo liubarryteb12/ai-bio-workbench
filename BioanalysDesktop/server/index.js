@@ -25,8 +25,7 @@ import {
   runSha256ParityCheck, mergeIsolationChecks,
   STORAGE_MIN_FREE_PCT,
 } from './selfcheck.js';
-import { summarizeLedger, auditLedgerEntry, inspectTaskPath } from './ledger.js';
-import { assertPathInsideProject, buildTreeFromFind } from './files.js';
+import { inspectTaskPath } from './ledger.js';
 import { assertFiguresPath, parseFigureList, decorateFigures } from './figures.js';
 import {
   pullLineOutputs, readLocalFigures, localFigurePath, LOCAL_OUTPUTS_ROOT,
@@ -69,6 +68,7 @@ import {
   runReportPreflight, writeSha256Sidecars,
 } from './report.js';
 import { handleUploadRoutes } from './routes/upload.routes.js';
+import { handleDiagnosticsRoutes } from './routes/diagnostics.routes.js';
 
 const PORT = Number(process.env.BAD_PORT || 18787);
 const REPO_ROOT = path.resolve(fileURLToPath(new URL('../../', import.meta.url)));
@@ -330,7 +330,9 @@ function uploadError(res, status, message) {
 // 路由模块共用的响应辅助与远端执行器。定义仍留在本文件：自检路由的守卫断言按本文件对
 // runRemoteStrict 的出现次数计数，搬走会让那条守卫计到假数。以对象注入交给路由模块，
 // 是为了不把同一份辅助函数复制进每个模块文件。
-const routeCtx = { json, uploadError, runRemote };
+const routeCtx = {
+  json, uploadError, runRemote, runRemoteStrict, fetchLedgerFromServer, resolveProjectParam,
+};
 
 // ── 任务提交路径预校验（S29 / R9；2026-10-21 收敛到 ledger.js 单一事实源）──
 // 单路径归属判定已移到 ledger.js 的 inspectTaskPath / analyzePath，与台账审计
@@ -1261,160 +1263,11 @@ const server = http.createServer(async (req, res) => {
     });
   }
 
-  // 五维环境自检（前端视图3 调用）
-  if (url.pathname === '/api/selfcheck') {
-    const checks = [];
-    // 1. 路径与 FUSE 红线
-    try {
-      const fsType = runRemoteStrict('df -T /mnt/ssd/bio_data 2>/dev/null | awk "NR==2 {print $2}"').trim();
-      const isFuse = fsType.includes('fuse') || fsType.includes('sdcardfs');
-      checks.push({ id: 'fs_type', label: '文件系统类型', status: isFuse ? 'fail' : 'pass', value: fsType, detail: isFuse ? 'FUSE 层违规' : '原生 ext4/f2fs' });
-    } catch (e) {
-      checks.push({ id: 'fs_type', label: '文件系统类型', status: 'unknown', value: '', detail: '无法读取' });
-    }
-    // 2. 存储水位
-    try {
-      const dfOut = runRemoteStrict('df -P /mnt/ssd/bio_data 2>/dev/null | tail -1').trim().split(/\s+/);
-      const usedPct = (dfOut[4] || '0').replace('%', '').replace(/[^0-9]/g, '');
-      const freePct = 100 - parseInt(usedPct || '0', 10);
-      checks.push({ id: 'storage', label: '存储水位', status: freePct >= STORAGE_MIN_FREE_PCT ? 'pass' : 'fail', value: `${freePct}% free`, detail: freePct >= STORAGE_MIN_FREE_PCT ? '安全' : `低于 ${STORAGE_MIN_FREE_PCT}% 门禁` });
-    } catch (e) {
-      checks.push({ id: 'storage', label: '存储水位', status: 'unknown', value: '', detail: '无法读取' });
-    }
-    // 3. SoC 算力 / 温度 / 7.5GB 内存水位（aims §3 第 3 条；判据全在 selfcheck.js）
-    try {
-      const raw = runRemoteStrict(buildHardwareCommand());
-      checks.push({ id: 'memory', label: 'SoC 算力/温度/内存', ...evaluateHardware(parseHardwareOutput(raw)) });
-    } catch (e) {
-      checks.push({ id: 'memory', label: 'SoC 算力/温度/内存', status: 'unknown', value: '', detail: '无法读取: ' + (e instanceof Error ? e.message : String(e)) });
-    }
-    // 4. 三线隔离 + 桥接引擎 + 远端版本一致性（aims §三.3 第 4 维，一盏灯三件事）
-    //    子灯 a：逐线跑 check_storage_and_isolation.sh（原来只跑 line1_bulk，D6 收敛为逐线）
-    //    子灯 b：本地与远端核心文件 SHA256 比对（D-07 口径，防版本漂移）
-    //    两盏子灯分开算、合并报：detail 能点名到具体哪条坏，界面上仍只占一格。
-    try {
-      const raw = runRemoteStrict(buildIsolationCommand());
-      const isolation = evaluateIsolation(parseIsolationOutput(raw));
-      const merged = mergeIsolationChecks(isolation, runSha256ParityCheck());
-      // P17：子灯结构化下发（前端 sub_checks），value 仍保持字符串兼容旧前端
-      checks.push({
-        id: merged.id,
-        label: merged.label,
-        status: merged.status,
-        value: merged.value,
-        detail: merged.detail,
-        sub_checks: (merged.subChecks ?? []).map((sub) => ({
-          id: sub.id,
-          label: sub.label,
-          status: sub.status,
-          value: sub.value,
-          detail: sub.detail,
-        })),
-      });
-    } catch (e) {
-      checks.push({ id: 'isolation', label: '跨线隔离/桥接/版本', status: 'unknown', value: '', detail: '无法读取: ' + (e instanceof Error ? e.message : String(e)) });
-    }
-    // 5. ADB/SSH 链路（四段探测 + 服务状态）
-    try {
-      const linkResult = checkLink(adb);
-      const segSummary = linkResult.segments
-        .map((s) => `${s.name}:${s.pass ? 'ok' : 'FAIL'}`)
-        .join(' | ');
-      const failedSegs = linkResult.segments.filter((s) => !s.pass)
-        .map((s) => `${s.name} (${s.detail || ''})`)
-        .join('; ');
-      checks.push({
-        id: 'link',
-        label: 'ADB/SSH 链路',
-        status: linkResult.overall === 'pass' ? 'pass' : linkResult.overall === 'warn' ? 'warn' : 'fail',
-        value: segSummary,
-        detail: failedSegs || (linkResult.compute ? `CPU=${linkResult.compute.cpus}/${linkResult.compute.cpusTotal} Mem=${linkResult.compute.memoryGb}GB` : ''),
-      });
-    } catch (e) {
-      checks.push({ id: 'link', label: 'ADB/SSH 链路', status: 'unknown', value: '', detail: '无法检测: ' + (e instanceof Error ? e.message : String(e)) });
-    }
-    const allPass = checks.every((c) => c.status === 'pass');
-    return json(res, 200, { all_pass: allPass, checks });
+  // 诊断路由（自检 / 链路 / 台账 / 文件树），处理体在 routes/diagnostics.routes.js
+  if (await handleDiagnosticsRoutes(req, res, url, { ...routeCtx, adb })) {
+    return;
   }
 
-  if (url.pathname === '/api/link/check') {
-    // 四段自检 + 服务状态，链不通时也能拿到"断在哪段"的结构化结果
-    try {
-      const result = checkLink();
-      return json(res, 200, { serial: DEFAULT_SERIAL, adb, link: result });
-    } catch (cause) {
-      return json(res, 500, {
-        error: cause instanceof Error ? cause.message : String(cause),
-        hint: '先跑一次链路自检定位，或查看 con_hf/踩坑台账.md',
-      });
-    }
-  }
-
-  if (url.pathname === '/api/ledger/check') {
-    // 台账巡检：SSD 未挂载时必须显式报阻塞，不能假装 0 违规
-    const requested = url.searchParams.get('dir') || SYSTEM_LOGS;
-    const probe = runRemote(`if [ -d '${requested}' ]; then echo EXISTS; else echo MISSING; fi`);
-    if (!probe.includes('EXISTS')) {
-      return json(res, 200, {
-        blocked: true,
-        reason: `目录不存在: ${requested}`,
-        hint: '外挂 SSD 未挂载或路径不符，先解决数据面再巡检台账。不得当作"无违规"处理',
-        summary: null,
-      });
-    }
-
-    try {
-      const { entries } = await fetchLedgerFromServer(requested);
-      const audited = entries.map((entry) => ({
-        file: entry.file,
-        path: entry.path,
-        ...auditLedgerEntry(entry.data),
-      }));
-      const summary = summarizeLedger(entries.map((entry) => entry.data));
-      return json(res, 200, { blocked: false, dir: requested, summary, entries: audited });
-    } catch (cause) {
-      return json(res, 500, {
-        error: cause instanceof Error ? cause.message : String(cause),
-        hint: '读台账失败；若 JSON 单个文件损坏，错误信息里会带文件名',
-      });
-    }
-  }
-
-  if (url.pathname === '/api/files/tree') {
-    // 数据面浏览：限定本项目本线，越界一律拒绝；SSD 未挂载时阻塞态
-    const projectId = resolveProjectParam(url);
-    if (!projectId) {
-      return json(res, 400, { error: `project 参数非法（只允许字母数字 . _ -）` });
-    }
-    const lineId = url.searchParams.get('line') || LINES[0];
-    if (!LINES.includes(lineId)) {
-      return json(res, 400, { error: `line 参数非法: ${lineId}，只能是 ${LINES.join(' / ')}` });
-    }
-    const subdir = url.searchParams.get('sub') || '';
-    const lineDir = projectLineDir(projectId, lineId);
-    const guard = assertPathInsideProject(`${lineDir}/${subdir}`, projectId, lineId);
-    if (!guard.ok) {
-      return json(res, 400, { error: guard.reason });
-    }
-
-    const probe = runRemote(`if [ -d '${lineDir}' ]; then echo EXISTS; else echo MISSING; fi`);
-    if (!probe.includes('EXISTS')) {
-      return json(res, 200, {
-        blocked: true,
-        projectId,
-        lineId,
-        reason: `线目录不存在: ${lineDir}`,
-        hint: '项目未创建或该线目录未建，先在项目管理里建项目。不得当作"这条线没数据"处理',
-        tree: null,
-      });
-    }
-
-    const listing = runRemote(
-      `find '${guard.normalized}' -printf '%p|%y|%s|%T@\\n' 2>/dev/null | head -5000`
-    );
-    const tree = buildTreeFromFind(listing, projectId, lineId);
-    return json(res, 200, { blocked: false, projectId, lineId, root: guard.normalized, tree });
-  }
 
   if (url.pathname === '/api/figures/templates') {
     const registry = loadFigureTemplates();

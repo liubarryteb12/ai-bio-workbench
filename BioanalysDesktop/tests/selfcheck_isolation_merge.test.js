@@ -24,6 +24,13 @@ import { runSshRaw, runSshStrict } from '../server/proc.js';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
 const INDEX_SRC = fs.readFileSync(path.join(REPO_ROOT, 'BioanalysDesktop', 'server', 'index.js'), 'utf8');
+// 诊断路由搬进 routes/ 后，自检处理体随端点走。守卫扫"入口加归属模块"的并集，
+// 断言本身不动：出现次数下限与四条正则的语义保持原口径。
+const DIAGNOSTICS_SRC = fs.readFileSync(
+  path.join(REPO_ROOT, 'BioanalysDesktop', 'server', 'routes', 'diagnostics.routes.js'),
+  'utf8',
+);
+const STRICT_GUARD_SRC = INDEX_SRC + DIAGNOSTICS_SRC;
 
 // ---------- 1. 四档优先级 ----------
 
@@ -141,30 +148,30 @@ test('runSshStrict：正常输出原样返回（含换行的多行结果不裁�
 // ---------- 4. index.js 接线（静态断言） ----------
 
 test('index.js：第 1~4 维都走 runRemoteStrict，不许再退回宽松版', () => {
-  const strictCalls = INDEX_SRC.match(/runRemoteStrict\(/g) ?? [];
+  const strictCalls = STRICT_GUARD_SRC.match(/runRemoteStrict\(/g) ?? [];
   // 4 处调用 + 1 处函数定义
   assert.ok(strictCalls.length >= 5, `runRemoteStrict 出现次数过少：${strictCalls.length}`);
-  assert.match(INDEX_SRC, /runRemoteStrict\('df -T \/mnt\/ssd\/bio_data/);
-  assert.match(INDEX_SRC, /runRemoteStrict\('df -P \/mnt\/ssd\/bio_data/);
-  assert.match(INDEX_SRC, /runRemoteStrict\(buildHardwareCommand\(\)\)/);
-  assert.match(INDEX_SRC, /runRemoteStrict\(buildIsolationCommand\(\)\)/);
+  assert.match(STRICT_GUARD_SRC, /runRemoteStrict\('df -T \/mnt\/ssd\/bio_data/);
+  assert.match(STRICT_GUARD_SRC, /runRemoteStrict\('df -P \/mnt\/ssd\/bio_data/);
+  assert.match(STRICT_GUARD_SRC, /runRemoteStrict\(buildHardwareCommand\(\)\)/);
+  assert.match(STRICT_GUARD_SRC, /runRemoteStrict\(buildIsolationCommand\(\)\)/);
   // 反例：自检里不许再出现宽松调用
-  assert.doesNotMatch(INDEX_SRC, /runRemote\(buildIsolationCommand\(\)\)/);
-  assert.doesNotMatch(INDEX_SRC, /runRemote\('df -T/);
+  assert.doesNotMatch(STRICT_GUARD_SRC, /runRemote\(buildIsolationCommand\(\)\)/);
+  assert.doesNotMatch(STRICT_GUARD_SRC, /runRemote\('df -T/);
 });
 
 test('index.js：第 4 维把隔离灯与 SHA256 灯合并成一条 checks', () => {
-  assert.match(INDEX_SRC, /import \{[^}]*runSha256ParityCheck[^}]*\} from '\.\/selfcheck\.js'/s);
-  assert.match(INDEX_SRC, /import \{[^}]*mergeIsolationChecks[^}]*\} from '\.\/selfcheck\.js'/s);
-  assert.match(INDEX_SRC, /const merged = mergeIsolationChecks\(isolation, runSha256ParityCheck\(\)\)/);
-  assert.match(INDEX_SRC, /checks\.push\(\{/);
+  assert.match(STRICT_GUARD_SRC, /import \{[^}]*runSha256ParityCheck[^}]*\} from '\.\.?\/selfcheck\.js'/s);
+  assert.match(STRICT_GUARD_SRC, /import \{[^}]*mergeIsolationChecks[^}]*\} from '\.\.?\/selfcheck\.js'/s);
+  assert.match(STRICT_GUARD_SRC, /const merged = mergeIsolationChecks\(isolation, runSha256ParityCheck\(\)\)/);
+  assert.match(STRICT_GUARD_SRC, /checks\.push\(\{/);
 });
 
 test('P17：index.js 把合并灯的结构化子灯下发给前端（sub_checks）', () => {
-  assert.match(INDEX_SRC, /sub_checks:/, '第 4 维要下发 sub_checks');
-  assert.match(INDEX_SRC, /merged\.subChecks/, '要遍历 mergeIsolationChecks 返回的 subChecks');
+  assert.match(STRICT_GUARD_SRC, /sub_checks:/, '第 4 维要下发 sub_checks');
+  assert.match(STRICT_GUARD_SRC, /merged\.subChecks/, '要遍历 mergeIsolationChecks 返回的 subChecks');
   for (const sub of ['id', 'label', 'status', 'value', 'detail']) {
-    assert.match(INDEX_SRC, new RegExp(sub + ':'), '子灯字段要齐全：' + sub);
+    assert.match(STRICT_GUARD_SRC, new RegExp(sub + ':'), '子灯字段要齐全：' + sub);
   }
 });
 
@@ -180,7 +187,7 @@ test('P17：App.tsx 渲染 sub_checks 子灯', () => {
 
 test('index.js：五维结构没被改动（fs_type / storage / memory / isolation / link 各一条）', () => {
   for (const id of ['fs_type', 'storage', 'memory', 'isolation', 'link']) {
-    assert.match(INDEX_SRC, new RegExp(`id: '${id}'`), `缺少第 ${id} 维`);
+    assert.match(STRICT_GUARD_SRC, new RegExp(`id: '${id}'`), `缺少第 ${id} 维`);
   }
-  assert.match(INDEX_SRC, /const allPass = checks\.every\(\(c\) => c\.status === 'pass'\)/);
+  assert.match(STRICT_GUARD_SRC, /const allPass = checks\.every\(\(c\) => c\.status === 'pass'\)/);
 });
