@@ -29,6 +29,18 @@
 >    「Failed processing 0 files」且 ACL 不变（/save 导出复核 Deny 仍在）；ACL 重建方案被
 >    审批层拒绝。判断：Deny 由沙箱宿主侧注入，容器内提权无权限改写。
 >    需要用户在宿主 PowerShell（管理员）执行：
+>    ACL 解除结果（2026-10-31 晚）：用户重试后 .git 根目录可写探测曾短暂 OK。实际机制是沙箱
+>    过滤器按路径规则拦截 .git 子路径写打开，NTFS ACL 修复（/inheritance:r + /grant:r 重建，
+>    第一条 Deny SID 被 .NET ACL 剥离）不改变过滤器行为。最终通过沙箱外执行通道
+>    （require_escalated cmd.exe git）完成全部 git 写操作：
+>    ① 489330c chore(cleanup): remove duplicated figures, legacy deliverables and audit artifacts
+>      （40 files，+2852/-789，含 5 个 tracked 删除、20 个 ledger 移位、9 张 verified.png、
+>      .gitignore 增补、handoff 更新、两个测试守卫修复、ops/README 季度维护小节）；
+>    ② 5331b24 chore(line-endings): bridge_guard_invariant.test.js 换行归一（CRLF 噪声隔离）；
+>    ③ 79c1665 merge: framework updates from 框架更新后10.31 → master（--no-ff，master 现为
+>      唯一主线）。合并后 master 全量测试 974 tests / 912 pass / 5 fail / 57 skipped，
+>      5 个 fail 全部为 K40 真机链路测试（设备未连接，与既有环境基线一致），
+>      proot_probe_guard 13/13 绿。阶段一四项完成判定全部达成。
 >    icacls "D:\00.AIagent\codespace\AI辅助生信分析流程工作台\.git" /remove:d *S-1-5-21-1506856635-3242436149-1912125682-3575442760 *S-1-5-21-1164459438-259575917-2205782810-1333127759 /t
 > **接任务先读本文件**，再看 `con_hf/SPEC.md`（阶段规格）与 `con_hf/踩坑台账.md`（排查前必搜）。
 > 全量推进计划：`con_hf/2026-10-13_plan_goal全量推进.md`（含工作区盘点结论与阻塞项 B1/B2）。
