@@ -16,6 +16,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const SERVER = fileURLToPath(new URL('../server/index.js', import.meta.url));
+const FIGURES_ROUTES = fileURLToPath(new URL('../server/routes/figures.routes.js', import.meta.url));
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -149,7 +150,10 @@ test('未知系列 404，非法 project 400', async (t) => {
 
 test('静态守卫：端点必须基于勾选的 modIds 过滤，不透出 requires/produces 内部结构', async () => {
   const { readFile } = await import('node:fs/promises');
-  const src = await readFile(SERVER, 'utf8');
+  const src = [
+    await readFile(SERVER, 'utf8'),
+    await readFile(FIGURES_ROUTES, 'utf8'),
+  ].join('\n');
   assert.match(src, /url\.pathname === '\/api\/preview\/mods'/, '必须存在 /api/preview/mods 路由');
   assert.match(src, /const picked = modIds\.length/, '必须按 modIds 过滤');
   assert.match(src, /function listRemoteProcessed\(/, '必须有 processed 列目录辅助');
