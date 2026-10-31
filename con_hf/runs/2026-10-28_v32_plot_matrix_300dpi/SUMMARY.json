@@ -1,0 +1,42 @@
+{
+  "schema_version": "aims-v3.2-figure-increment",
+  "generated_at": "2026-10-28T12:05:34.2891341+08:00",
+  "status": "PASS",
+  "registry": {
+    "ready": 16,
+    "pending_mapping": 0,
+    "new_real_adapters": 10
+  },
+  "k40": {
+    "passed": 10,
+    "total": 10,
+    "seed": "20261013",
+    "local_remote_hash_match": 10
+  },
+  "samples": {
+    "valid": 10,
+    "total": 10
+  },
+  "plot_matrix": {
+    "entries": 27,
+    "status": "pass",
+    "png": 41,
+    "invalid": 0,
+    "min_dpi": 299.999,
+    "max_dpi": 299.999
+  },
+  "tests": {
+    "node_pass": 985,
+    "node_fail": 0,
+    "playwright_pass": 16,
+    "playwright_fail": 0,
+    "typescript": "PASS",
+    "vite_build": "PASS",
+    "python_verifier_pass": 16,
+    "python_verifier_fail": 0
+  },
+  "residual": [
+    "portal figure_templates sync ticket not yet rerun",
+    "A2A aims not in this increment"
+  ]
+}

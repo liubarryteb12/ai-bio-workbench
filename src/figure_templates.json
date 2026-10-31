@@ -121,12 +121,12 @@
       "level": "L1",
       "category": "Composition",
       "language": "r",
-      "source": null,
-      "source_sha256": null,
-      "preview": null,
-      "preview_sha256": null,
-      "verified": false,
-      "deps_status": "pending_mapping",
+      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R",
+      "source_sha256": "da21074542cef95ffa7c033a5b6bb291b49384f034b2ef9eb79e3322d98213e8",
+      "preview": "reference/05.可参考出图代码/L1_基础统计图/L1_groupedbar_verified.png",
+      "preview_sha256": "ce2563faae2c2a7e1dc2e7cb4ef63204f9a926b6daf4488da3acc70bbb904f42",
+      "verified": true,
+      "deps_status": "ready",
       "deps": [
         "RColorBrewer",
         "dplyr",
@@ -137,31 +137,28 @@
         "tidyr",
         "viridis"
       ],
-      "block_reason": "尚无与模板语义、语言和分析步骤一致的真实项目样例图",
       "linked_mods": [
         "l1_figures_bulk"
       ],
       "adapt_vars": {
         "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "group_col": "分组列名",
         "x_col": "横轴类别列名",
-        "value_col": "均值或计数列名",
-        "error_col": "误差列名，可为空"
+        "value_col": "数值列名",
+        "group_col": "分组或本体列名"
       },
       "lines": [
         "line1_bulk"
       ],
-      "analysis_step": "l1_enrich_figures",
+      "analysis_step": "l1_enrich_bulk",
       "input_tables": [
-        "enrichment_gsea_go.tsv",
-        "enrichment_module_ora.tsv"
+        "enrichment_gsea_go.tsv"
       ],
       "produces": [
         "custom_fig_l1_groupedbar.png"
       ],
       "output_glob": "figures/line1_bulk/custom_fig_l1_groupedbar.png",
-      "canonical_output": null,
-      "sample_project_output": null,
+      "canonical_output": "L1_groupedbar_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_groupedbar.png",
       "deprecated": false
     },
     {
@@ -686,12 +683,12 @@
       "level": "L1",
       "category": "Correlation",
       "language": "r",
-      "source": null,
-      "source_sha256": null,
-      "preview": null,
-      "preview_sha256": null,
-      "verified": false,
-      "deps_status": "pending_mapping",
+      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R",
+      "source_sha256": "da21074542cef95ffa7c033a5b6bb291b49384f034b2ef9eb79e3322d98213e8",
+      "preview": "reference/05.可参考出图代码/L1_基础统计图/L1_scatter_verified.png",
+      "preview_sha256": "b9b016259471011545c2b8115aa2f0f00cdf05f5d8cd0e664b21ac0c568f5e8c",
+      "verified": true,
+      "deps_status": "ready",
       "deps": [
         "dplyr",
         "geomtextpath",
@@ -701,14 +698,13 @@
         "ggpubr",
         "plotly"
       ],
-      "block_reason": "尚无与模板语义、语言和分析步骤一致的真实项目样例图",
       "linked_mods": [
         "l1_figures_bulk"
       ],
       "adapt_vars": {
         "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "x_col": "横轴列名",
-        "y_col": "纵轴列名",
+        "x_col": "横轴数值列名",
+        "y_col": "纵轴数值列名",
         "label_genes": "需要标注的基因清单，可为空"
       },
       "lines": [
@@ -722,8 +718,8 @@
         "custom_fig_l1_scatter.png"
       ],
       "output_glob": "figures/line1_bulk/custom_fig_l1_scatter.png",
-      "canonical_output": null,
-      "sample_project_output": null,
+      "canonical_output": "L1_scatter_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_scatter.png",
       "deprecated": false
     },
     {
@@ -763,13 +759,13 @@
       "name": "UMAP图",
       "level": "L2",
       "category": "Correlation",
-      "language": "r",
-      "source": null,
-      "source_sha256": null,
-      "preview": null,
-      "preview_sha256": null,
-      "verified": false,
-      "deps_status": "pending_mapping",
+      "language": "python",
+      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_umap_code.py",
+      "source_sha256": "34b79c4febb105c93cd31d80b6d6ebdde4fc7870ad3f8a15e16ad098d8c2ee7d",
+      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_umap_verified.png",
+      "preview_sha256": "cfc9b53c09d1393464831dd9c4d248e04e34bd85208a3125db1fd43c8d04a7d2",
+      "verified": true,
+      "deps_status": "ready",
       "deps": [
         "RColorBrewer",
         "Seurat",
@@ -780,13 +776,12 @@
         "patchwork",
         "umap"
       ],
-      "block_reason": "尚无与模板语义、语言和分析步骤一致的真实项目样例图",
       "linked_mods": [
-        "l1_figures_bulk"
+        "l2_figures_scrna"
       ],
       "adapt_vars": {
         "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "group_col": "细胞或样本分组列名"
+        "group_col": "细胞分组列名"
       },
       "lines": [
         "line2_scrna"
@@ -799,8 +794,8 @@
         "custom_fig_l2_umap.png"
       ],
       "output_glob": "figures/line2_scrna/custom_fig_l2_umap.png",
-      "canonical_output": null,
-      "sample_project_output": null,
+      "canonical_output": "umap_L2p_umap_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2_umap.png",
       "deprecated": false
     },
     {
@@ -985,12 +980,12 @@
       "level": "L1",
       "category": "Distribution",
       "language": "r",
-      "source": null,
-      "source_sha256": null,
-      "preview": null,
-      "preview_sha256": null,
-      "verified": false,
-      "deps_status": "pending_mapping",
+      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_boxplot_code.R",
+      "source_sha256": "dfc6a22b7585849c1c4d11bec312d654b9af63bf20dd2e42876c28834f8b0b0d",
+      "preview": "reference/05.可参考出图代码/L1_基础统计图/L1_boxplot_verified.png",
+      "preview_sha256": "ce3d2cb08118011f727b4c901fe4921d81129433a9e0507e43edad5b22bf8a82",
+      "verified": true,
+      "deps_status": "ready",
       "deps": [
         "dplyr",
         "ggExtra",
@@ -1002,30 +997,26 @@
         "rstatix",
         "viridis"
       ],
-      "block_reason": "尚无与模板语义、语言和分析步骤一致的真实项目样例图",
       "linked_mods": [
         "l1_figures_bulk"
       ],
       "adapt_vars": {
         "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "group_col": "分组列名",
-        "value_col": "表达或测量值列名"
+        "value_col": "效应量列名"
       },
       "lines": [
         "line1_bulk"
       ],
       "analysis_step": "l1_de_limma",
       "input_tables": [
-        "expr_genes.tsv",
-        "group_map.tsv",
         "deg_all.tsv"
       ],
       "produces": [
         "custom_fig_l1_boxplot.png"
       ],
       "output_glob": "figures/line1_bulk/custom_fig_l1_boxplot.png",
-      "canonical_output": null,
-      "sample_project_output": null,
+      "canonical_output": "L1_boxplot_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_boxplot.png",
       "deprecated": false
     },
     {
@@ -1070,12 +1061,12 @@
       "level": "L1",
       "category": "Distribution",
       "language": "r",
-      "source": null,
-      "source_sha256": null,
-      "preview": null,
-      "preview_sha256": null,
-      "verified": false,
-      "deps_status": "pending_mapping",
+      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R",
+      "source_sha256": "da21074542cef95ffa7c033a5b6bb291b49384f034b2ef9eb79e3322d98213e8",
+      "preview": "reference/05.可参考出图代码/L1_基础统计图/L1_density_verified.png",
+      "preview_sha256": "4ef80fda655ee0583ed91871258d6b1e8aaa91b0feb2c0abfbe3abcdf3d23af3",
+      "verified": true,
+      "deps_status": "ready",
       "deps": [
         "cowplot",
         "dplyr",
@@ -1089,29 +1080,25 @@
         "tidyr",
         "viridis"
       ],
-      "block_reason": "尚无与模板语义、语言和分析步骤一致的真实项目样例图",
       "linked_mods": [
         "l1_figures_bulk"
       ],
       "adapt_vars": {
-        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "value_col": "数值列名",
-        "group_col": "分组列名"
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录"
       },
       "lines": [
         "line1_bulk"
       ],
       "analysis_step": "l1_ingest_prep",
       "input_tables": [
-        "expr_genes.tsv",
-        "group_map.tsv"
+        "expr_genes.tsv"
       ],
       "produces": [
         "custom_fig_l1_density.png"
       ],
       "output_glob": "figures/line1_bulk/custom_fig_l1_density.png",
-      "canonical_output": null,
-      "sample_project_output": null,
+      "canonical_output": "L1_density_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_density.png",
       "deprecated": false
     },
     {
@@ -1120,12 +1107,12 @@
       "level": "L1",
       "category": "Distribution",
       "language": "r",
-      "source": null,
-      "source_sha256": null,
-      "preview": null,
-      "preview_sha256": null,
-      "verified": false,
-      "deps_status": "pending_mapping",
+      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R",
+      "source_sha256": "da21074542cef95ffa7c033a5b6bb291b49384f034b2ef9eb79e3322d98213e8",
+      "preview": "reference/05.可参考出图代码/L1_基础统计图/L1_histogram_verified.png",
+      "preview_sha256": "963d13ef6505c7e8c561c7c7e3cc290d52a797920e8594a3aea8d263d6810a3c",
+      "verified": true,
+      "deps_status": "ready",
       "deps": [
         "cowplot",
         "ggExtra",
@@ -1136,29 +1123,25 @@
         "tidyverse",
         "viridis"
       ],
-      "block_reason": "尚无与模板语义、语言和分析步骤一致的真实项目样例图",
       "linked_mods": [
         "l1_figures_bulk"
       ],
       "adapt_vars": {
-        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "value_col": "数值列名",
-        "group_col": "分组列名"
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录"
       },
       "lines": [
         "line1_bulk"
       ],
       "analysis_step": "l1_ingest_prep",
       "input_tables": [
-        "expr_genes.tsv",
-        "group_map.tsv"
+        "expr_genes.tsv"
       ],
       "produces": [
         "custom_fig_l1_histogram.png"
       ],
       "output_glob": "figures/line1_bulk/custom_fig_l1_histogram.png",
-      "canonical_output": null,
-      "sample_project_output": null,
+      "canonical_output": "L1_histogram_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_histogram.png",
       "deprecated": false
     },
     {
@@ -1272,12 +1255,12 @@
       "level": "L1",
       "category": "Distribution",
       "language": "r",
-      "source": null,
-      "source_sha256": null,
-      "preview": null,
-      "preview_sha256": null,
-      "verified": false,
-      "deps_status": "pending_mapping",
+      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_violin_code.R",
+      "source_sha256": "9470bc63b49396ee5fc0fe0725063254849047e37e2482799db7ba54979e259a",
+      "preview": "reference/05.可参考出图代码/L1_基础统计图/L1_violin_verified.png",
+      "preview_sha256": "ae6039c8be08fbc06e6511151c28a3419dfe13941c3ad9cd2b7edeb58658dcbb",
+      "verified": true,
+      "deps_status": "ready",
       "deps": [
         "dplyr",
         "forcats",
@@ -1290,30 +1273,26 @@
         "tidyr",
         "viridis"
       ],
-      "block_reason": "尚无与模板语义、语言和分析步骤一致的真实项目样例图",
       "linked_mods": [
         "l1_figures_bulk"
       ],
       "adapt_vars": {
         "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "group_col": "分组列名",
-        "value_col": "表达或测量值列名"
+        "value_col": "效应量列名"
       },
       "lines": [
         "line1_bulk"
       ],
       "analysis_step": "l1_de_limma",
       "input_tables": [
-        "expr_genes.tsv",
-        "group_map.tsv",
         "deg_all.tsv"
       ],
       "produces": [
         "custom_fig_l1_violin.png"
       ],
       "output_glob": "figures/line1_bulk/custom_fig_l1_violin.png",
-      "canonical_output": null,
-      "sample_project_output": null,
+      "canonical_output": "L1_violin_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_violin.png",
       "deprecated": false
     },
     {
@@ -2394,39 +2373,37 @@
       "level": "L3",
       "category": "R",
       "language": "r",
-      "source": null,
-      "source_sha256": null,
-      "preview": null,
-      "preview_sha256": null,
-      "verified": false,
-      "deps_status": "pending_mapping",
+      "source": "reference/05.可参考出图代码/L3_高级组合图/L3_multipanel_code.R",
+      "source_sha256": "2d57dfd823386971dfdd423af101da48a4c3db6d100729e428e4190e080213c1",
+      "preview": "reference/05.可参考出图代码/L3_高级组合图/L3_multipanel_verified.png",
+      "preview_sha256": "6a84b7eb58cd9ff50b2e192973e3fe33c5e408423af59f002b596e81ab42cbcc",
+      "verified": true,
+      "deps_status": "ready",
       "deps": [
         "ggplot2",
         "patchwork"
       ],
-      "block_reason": "尚无与模板语义、语言和分析步骤一致的真实项目样例图",
       "linked_mods": [
         "l1_figures_bulk"
       ],
       "adapt_vars": {
         "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "panel_col": "分面面板列名",
-        "group_col": "分组列名",
-        "value_col": "数值列名"
+        "group_col": "真实标签列名",
+        "value_col": "预测概率列名"
       },
       "lines": [
-        "line3_spatial"
+        "line1_bulk"
       ],
-      "analysis_step": "l3_ko_spatial",
+      "analysis_step": "l1_ml_external",
       "input_tables": [
-        "spatial_knockout_human.h5ad"
+        "external_validation_preds.tsv"
       ],
       "produces": [
         "custom_fig_l3_multipanel.png"
       ],
-      "output_glob": "figures/line3_spatial/custom_fig_l3_multipanel.png",
-      "canonical_output": null,
-      "sample_project_output": null,
+      "output_glob": "figures/line1_bulk/custom_fig_l3_multipanel.png",
+      "canonical_output": "L3_multipanel_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l3_multipanel.png",
       "deprecated": false
     },
     {
@@ -2618,7 +2595,7 @@
       "category": "Python",
       "language": "python",
       "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_more_code.py",
-      "source_sha256": "01d5bd21b306677947aa771ccc8f70b97d225919470d5f95536442c4ff8472e6",
+      "source_sha256": "79cf20cbfffbd90e016abef003845540de71948ae8e6031587c420a05038af76",
       "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_dotplot_verified.png",
       "preview_sha256": "4b7bc5da8b8e60d1e4be5687a7366feafb01a6c140ccb1abf717b015ae10321d",
       "verified": true,
@@ -2697,7 +2674,7 @@
       "category": "Python",
       "language": "python",
       "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_umap_code.py",
-      "source_sha256": "64d5a860832237813e556edb7eb1b3de2edf386367d41dd69482ef38add72002",
+      "source_sha256": "34b79c4febb105c93cd31d80b6d6ebdde4fc7870ad3f8a15e16ad098d8c2ee7d",
       "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_umap_verified.png",
       "preview_sha256": "cfc9b53c09d1393464831dd9c4d248e04e34bd85208a3125db1fd43c8d04a7d2",
       "verified": true,
@@ -2842,27 +2819,26 @@
       "level": "L2",
       "category": "Python",
       "language": "python",
-      "source": null,
-      "source_sha256": null,
-      "preview": null,
-      "preview_sha256": null,
-      "verified": false,
-      "deps_status": "pending_mapping",
+      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_more_code.py",
+      "source_sha256": "79cf20cbfffbd90e016abef003845540de71948ae8e6031587c420a05038af76",
+      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_violin_verified.png",
+      "preview_sha256": "e1ac52c2f3c89ed0a985f479cce3a300716d6cd5c9bee0e0488cfad44544a427",
+      "verified": true,
+      "deps_status": "ready",
       "deps": [
         "matplotlib",
         "seaborn",
         "pandas",
         "numpy"
       ],
-      "block_reason": "尚无与模板语义、语言和分析步骤一致的真实项目样例图",
       "linked_mods": [
         "l2_figures_scrna",
         "l3_figures_spatial"
       ],
       "adapt_vars": {
         "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "group_col": "分组列名",
-        "value_col": "表达或测量值列名"
+        "group_col": "细胞类型列名",
+        "value_col": "组成比例列名"
       },
       "lines": [
         "line2_scrna"
@@ -2875,8 +2851,8 @@
         "custom_fig_l2p_violin.png"
       ],
       "output_glob": "figures/line2_scrna/custom_fig_l2p_violin.png",
-      "canonical_output": null,
-      "sample_project_output": null,
+      "canonical_output": "figures/violin_L2p_violin_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_violin.png",
       "deprecated": false
     },
     {
@@ -2886,7 +2862,7 @@
       "category": "Python",
       "language": "python",
       "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_more_code.py",
-      "source_sha256": "01d5bd21b306677947aa771ccc8f70b97d225919470d5f95536442c4ff8472e6",
+      "source_sha256": "79cf20cbfffbd90e016abef003845540de71948ae8e6031587c420a05038af76",
       "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_volcano_verified.png",
       "preview_sha256": "a8acdde7f648d47b6969a7c130a7708ef107646ba152f87b7fd2ebc83c813068",
       "verified": true,
@@ -3000,12 +2976,12 @@
       "level": "L3",
       "category": "Proportion",
       "language": "r",
-      "source": null,
-      "source_sha256": null,
-      "preview": null,
-      "preview_sha256": null,
-      "verified": false,
-      "deps_status": "pending_mapping",
+      "source": "reference/05.可参考出图代码/_meta/R453_compat/L3_sankey_code.R",
+      "source_sha256": "6c94fe74a10569e0b43ea0d79047a69156411d1883920eaf285234ae548438d8",
+      "preview": "reference/05.可参考出图代码/L3_高级组合图/L3_sankey_verified.png",
+      "preview_sha256": "24dcd8c3b8f00a4c3d0dc37b82c84cb51a6df4b635f99f026040bab036d1de83",
+      "verified": true,
+      "deps_status": "ready",
       "deps": [
         "dplyr",
         "ggalluvial",
@@ -3016,31 +2992,26 @@
         "tidyverse",
         "webshot"
       ],
-      "block_reason": "尚无与模板语义、语言和分析步骤一致的真实项目样例图",
       "linked_mods": [
         "l1_figures_bulk"
       ],
       "adapt_vars": {
         "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "axis_cols": "按顺序排列的流轴列名",
-        "value_col": "流量数值列名",
-        "flow_col": "流向分类列名"
+        "module_col": "模块列名"
       },
       "lines": [
         "line1_bulk"
       ],
-      "analysis_step": "l1_ml_hub",
+      "analysis_step": "l1_de_wgcna",
       "input_tables": [
-        "wgcna_modules.tsv",
-        "enrichment_kegg.tsv",
-        "ml_core_hub_genes.tsv"
+        "wgcna_modules.tsv"
       ],
       "produces": [
         "custom_fig_l3_sankey.png"
       ],
       "output_glob": "figures/line1_bulk/custom_fig_l3_sankey.png",
-      "canonical_output": null,
-      "sample_project_output": null,
+      "canonical_output": "L3_sankey_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l3_sankey.png",
       "deprecated": false
     }
   ]

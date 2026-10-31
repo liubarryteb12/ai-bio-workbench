@@ -56,3 +56,26 @@ test('real mode preserves proxy isolation and bounded serial dispatch', () => {
   assert.match(text, /\[string\]\$WorkbenchUser\s*=\s*\$env:BIO_WORKBENCH_USER/);
   assert.match(text, /\[string\]\$WorkbenchPass\s*=\s*\$env:BIO_WORKBENCH_PASS/);
 });
+
+test('real mode resolves lineId with PowerShell-safe fallback and uses sync outbox', () => {
+  const text = fs.readFileSync(DAEMON, 'utf8');
+  assert.doesNotMatch(text, /\$Requirement\.lineId\s*\|\|\s*\$Requirement\.seriesId/);
+  assert.match(
+    text,
+    /\$lineId\s*=\s*if\s*\(\s*-not\s*\[string\]::IsNullOrWhiteSpace\(\$Requirement\.lineId\)\s*\)\s*\{\s*\[string\]\$Requirement\.lineId\s*\}\s*else\s*\{\s*\[string\]\$Requirement\.seriesId\s*\}/s,
+  );
+  assert.match(text, /\[string\]\$SpoolRoot\s*=\s*'con_hf\/sync\/outbox'/);
+  assert.ok(!text.includes('con_hf/sync/spool'));
+});
+
+test('real mode consumes the server execution plan and dispatches adapted figure tasks', () => {
+  const text = fs.readFileSync(DAEMON, 'utf8');
+  assert.match(text, /\/api\/projects\/execution-plan/);
+  assert.match(text, /\/api\/projects\/figures\/apply/);
+  assert.match(text, /function Invoke-FigureApplyReal/);
+  assert.match(text, /\$executionPlan\.tasks/);
+  assert.match(text, /adapted\s*=\s*\[bool\]\$task\.adapted/);
+  assert.match(text, /scriptPath\s*=\s*\[string\]\$task\.scriptPath/);
+  assert.match(text, /canonicalOutput\s*=\s*\[string\]\$task\.canonicalOutput/);
+  assert.match(text, /depends_on_step|dependsOnStep/);
+});

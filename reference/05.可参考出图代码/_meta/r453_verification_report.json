@@ -430,14 +430,14 @@
         "exit_code": 0,
         "ok": true,
         "source": "L2_组学常用图/L2p_more_code.py",
-        "source_sha256": "01d5bd21b306677947aa771ccc8f70b97d225919470d5f95536442c4ff8472e6"
+        "source_sha256": "79cf20cbfffbd90e016abef003845540de71948ae8e6031587c420a05038af76"
       },
       "py_l2p_umap": {
         "command": "nice -n 10 ionice -c 2 -n 4 /root/venvs/bio-py/bin/python3 /mnt/ssd/bio_data/validation/r453_figures_20261027/runs/py_l2p_umap/L2p_umap_code.py",
         "exit_code": 0,
         "ok": true,
         "source": "L2_组学常用图/L2p_umap_code.py",
-        "source_sha256": "64d5a860832237813e556edb7eb1b3de2edf386367d41dd69482ef38add72002"
+        "source_sha256": "34b79c4febb105c93cd31d80b6d6ebdde4fc7870ad3f8a15e16ad098d8c2ee7d"
       },
       "r_l1_boxplot": {
         "command": "cd /mnt/ssd/bio_data/validation/aims_v31_boxplot_20261028_0025/run && env R453_OUT_DIR=/mnt/ssd/bio_data/validation/aims_v31_boxplot_20261028_0025/out BIOANALYS_SEED=20261013 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --vanilla L1_boxplot_code.R",

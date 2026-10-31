@@ -19,6 +19,7 @@ SAFE_ID_RE = re.compile(r"^[a-z0-9_]+$")
 SAFE_BASENAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 FORMAL_MATRIX_DEFAULT = Path("reference/05.可参考出图代码/_meta/script_plot_matrix.json")
+MIN_PNG_DPI = 299.0
 
 
 def _paths(*names):
@@ -531,6 +532,14 @@ def inspect_png(path):
                 "dpi": dpi,
                 "pixel_variance": pixel_variance,
                 "detail": "blank PNG",
+            }
+        if not isinstance(dpi, list) or len(dpi) < 2 or min(dpi) < MIN_PNG_DPI:
+            return False, {
+                "width": width,
+                "height": height,
+                "dpi": dpi,
+                "pixel_variance": pixel_variance,
+                "detail": f"PNG must be at least 300 DPI, got {dpi}",
             }
         return True, {
             "width": width,

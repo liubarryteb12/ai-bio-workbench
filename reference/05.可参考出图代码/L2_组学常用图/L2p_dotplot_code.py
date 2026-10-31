@@ -12,7 +12,7 @@ import matplotlib
 matplotlib.use("Agg")
 
 rng = np.random.default_rng(42)
-sc.set_figure_params(dpi=300, frameon=False, fontsize=7)
+sc.set_figure_params(dpi=300, dpi_save=300, frameon=False, fontsize=7)
 
 n_per = 250
 k = 4

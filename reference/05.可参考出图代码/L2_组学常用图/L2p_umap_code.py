@@ -20,7 +20,7 @@ sc.tl.leiden(adata, resolution=0.8, flavor="igraph", n_iterations=2, directed=Fa
 
 sc.settings.figdir = "."
 sc.settings.autoshow = False
-sc.settings.set_figure_params(dpi=300, frameon=False, fontsize=7, vector_friendly=True)
+sc.settings.set_figure_params(dpi=300, dpi_save=300, frameon=False, fontsize=7, vector_friendly=True)
 sc.pl.umap(adata, color="leiden", palette=["#0072B2", "#D55E00", "#009E73", "#CC79A7"],
            size=8, title="scanpy UMAP (leiden)",
            save="_L2p_umap_verified.png")

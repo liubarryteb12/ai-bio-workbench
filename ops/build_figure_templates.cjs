@@ -185,74 +185,133 @@ const TEMPLATE_MAPPINGS = {
     sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/l2_08_deg_volcano_basal_keratinocyte.png',
   },
   fig_l1_groupedbar: {
-    lines: ['line1_bulk'], analysis_step: 'l1_enrich_figures',
-    input_tables: ['enrichment_gsea_go.tsv', 'enrichment_module_ora.tsv'],
+    lines: ['line1_bulk'], analysis_step: 'l1_enrich_bulk',
+    input_tables: ['enrichment_gsea_go.tsv'],
     produces: ['custom_fig_l1_groupedbar.png'],
     output_glob: 'figures/line1_bulk/custom_fig_l1_groupedbar.png',
-    sample_project_output: null,
+    canonical_output: 'L1_groupedbar_verified.png',
+    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_groupedbar.png',
+    adapt_vars: {
+      input_data: '项目本线只读输入文件路径，相对于本项目根目录',
+      x_col: '横轴类别列名',
+      value_col: '数值列名',
+      group_col: '分组或本体列名',
+    },
   },
   fig_l1_scatter: {
     lines: ['line1_bulk'], analysis_step: 'l1_ml_hub',
     input_tables: ['ml_core_hub_genes.tsv'],
     produces: ['custom_fig_l1_scatter.png'],
     output_glob: 'figures/line1_bulk/custom_fig_l1_scatter.png',
-    sample_project_output: null,
+    canonical_output: 'L1_scatter_verified.png',
+    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_scatter.png',
+    adapt_vars: {
+      input_data: '项目本线只读输入文件路径，相对于本项目根目录',
+      x_col: '横轴数值列名',
+      y_col: '纵轴数值列名',
+      label_genes: '需要标注的基因清单，可为空',
+    },
   },
   fig_l1_boxplot: {
     lines: ['line1_bulk'], analysis_step: 'l1_de_limma',
-    input_tables: ['expr_genes.tsv', 'group_map.tsv', 'deg_all.tsv'],
+    input_tables: ['deg_all.tsv'],
     produces: ['custom_fig_l1_boxplot.png'],
     output_glob: 'figures/line1_bulk/custom_fig_l1_boxplot.png',
-    sample_project_output: null,
+    canonical_output: 'L1_boxplot_verified.png',
+    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_boxplot.png',
+    adapt_vars: {
+      input_data: '项目本线只读输入文件路径，相对于本项目根目录',
+      value_col: '效应量列名',
+    },
   },
   fig_l1_density: {
     lines: ['line1_bulk'], analysis_step: 'l1_ingest_prep',
-    input_tables: ['expr_genes.tsv', 'group_map.tsv'],
+    input_tables: ['expr_genes.tsv'],
     produces: ['custom_fig_l1_density.png'],
     output_glob: 'figures/line1_bulk/custom_fig_l1_density.png',
-    sample_project_output: null,
+    canonical_output: 'L1_density_verified.png',
+    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_density.png',
+    adapt_vars: {
+      input_data: '项目本线只读输入文件路径，相对于本项目根目录',
+    },
   },
   fig_l1_histogram: {
     lines: ['line1_bulk'], analysis_step: 'l1_ingest_prep',
-    input_tables: ['expr_genes.tsv', 'group_map.tsv'],
+    input_tables: ['expr_genes.tsv'],
     produces: ['custom_fig_l1_histogram.png'],
     output_glob: 'figures/line1_bulk/custom_fig_l1_histogram.png',
-    sample_project_output: null,
+    canonical_output: 'L1_histogram_verified.png',
+    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_histogram.png',
+    adapt_vars: {
+      input_data: '项目本线只读输入文件路径，相对于本项目根目录',
+    },
   },
   fig_l1_violin: {
     lines: ['line1_bulk'], analysis_step: 'l1_de_limma',
-    input_tables: ['expr_genes.tsv', 'group_map.tsv', 'deg_all.tsv'],
+    input_tables: ['deg_all.tsv'],
     produces: ['custom_fig_l1_violin.png'],
     output_glob: 'figures/line1_bulk/custom_fig_l1_violin.png',
-    sample_project_output: null,
+    canonical_output: 'L1_violin_verified.png',
+    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_violin.png',
+    adapt_vars: {
+      input_data: '项目本线只读输入文件路径，相对于本项目根目录',
+      value_col: '效应量列名',
+    },
   },
   fig_l2_umap: {
     lines: ['line2_scrna'], analysis_step: 'l2_integrate_cluster',
     input_tables: ['scrna_clustered.h5ad'],
     produces: ['custom_fig_l2_umap.png'],
     output_glob: 'figures/line2_scrna/custom_fig_l2_umap.png',
-    sample_project_output: null,
+    canonical_output: 'umap_L2p_umap_verified.png',
+    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2_umap.png',
+    language: 'python',
+    linked_mods: ['l2_figures_scrna'],
+    source_runner_id: 'py_l2p_umap',
+    source_override: `${FIGURE_ROOT}/L2_组学常用图/L2p_umap_code.py`,
+    preview_override: `${FIGURE_ROOT}/L2_组学常用图/L2p_umap_verified.png`,
+    adapt_vars: {
+      input_data: '项目本线只读输入文件路径，相对于本项目根目录',
+      group_col: '细胞分组列名',
+    },
   },
   fig_l3_multipanel: {
-    lines: ['line3_spatial'], analysis_step: 'l3_ko_spatial',
-    input_tables: ['spatial_knockout_human.h5ad'],
+    lines: ['line1_bulk'], analysis_step: 'l1_ml_external',
+    input_tables: ['external_validation_preds.tsv'],
     produces: ['custom_fig_l3_multipanel.png'],
-    output_glob: 'figures/line3_spatial/custom_fig_l3_multipanel.png',
-    sample_project_output: null,
+    output_glob: 'figures/line1_bulk/custom_fig_l3_multipanel.png',
+    canonical_output: 'L3_multipanel_verified.png',
+    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l3_multipanel.png',
+    adapt_vars: {
+      input_data: '项目本线只读输入文件路径，相对于本项目根目录',
+      group_col: '真实标签列名',
+      value_col: '预测概率列名',
+    },
   },
   fig_l2p_violin: {
     lines: ['line2_scrna'], analysis_step: 'l2_profile_composition',
     input_tables: ['celltype_composition.tsv'],
     produces: ['custom_fig_l2p_violin.png'],
     output_glob: 'figures/line2_scrna/custom_fig_l2p_violin.png',
-    sample_project_output: null,
+    canonical_output: 'figures/violin_L2p_violin_verified.png',
+    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_violin.png',
+    adapt_vars: {
+      input_data: '项目本线只读输入文件路径，相对于本项目根目录',
+      group_col: '细胞类型列名',
+      value_col: '组成比例列名',
+    },
   },
   fig_l3_sankey: {
-    lines: ['line1_bulk'], analysis_step: 'l1_ml_hub',
-    input_tables: ['wgcna_modules.tsv', 'enrichment_kegg.tsv', 'ml_core_hub_genes.tsv'],
+    lines: ['line1_bulk'], analysis_step: 'l1_de_wgcna',
+    input_tables: ['wgcna_modules.tsv'],
     produces: ['custom_fig_l3_sankey.png'],
     output_glob: 'figures/line1_bulk/custom_fig_l3_sankey.png',
-    sample_project_output: null,
+    canonical_output: 'L3_sankey_verified.png',
+    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l3_sankey.png',
+    adapt_vars: {
+      input_data: '项目本线只读输入文件路径，相对于本项目根目录',
+      module_col: '模块列名',
+    },
   },
 };
 
@@ -303,15 +362,19 @@ function buildRegistry() {
     let blockReason = null;
     let activeStatus = status;
     const mapping = TEMPLATE_MAPPINGS[id] || null;
+    const effectiveLanguage = mapping?.language || language;
 
     if (isReady) {
       if (!mapping) fail(`ready 行缺少真实产物映射：${id}`);
       if (!reportId) fail(`ready 行缺少 r453 报告匹配：${enName}`);
       const artifactInfo = runnerByArtifact.get(path.basename(locationRaw));
       if (!artifactInfo) fail(`ready 行缺少 PNG artifact：${locationRaw}`);
-      const runner = artifactInfo.runner;
-      source = `${FIGURE_ROOT}/${runner.source}`;
-      preview = `${FIGURE_ROOT}/${locationRaw}`;
+      const runner = mapping.source_runner_id
+        ? report.l3.runners?.[mapping.source_runner_id]
+        : artifactInfo.runner;
+      if (!runner) fail(`ready 行缺少 runner：${id}`);
+      source = mapping.source_override || `${FIGURE_ROOT}/${runner.source}`;
+      preview = mapping.preview_override || `${FIGURE_ROOT}/${locationRaw}`;
       const sourceFile = path.join(REPO, source);
       const previewFile = path.join(REPO, preview);
       if (!fs.existsSync(sourceFile)) fail(`ready source 缺失：${source}`);
@@ -345,7 +408,7 @@ function buildRegistry() {
       name,
       level: normalizedLevel,
       category,
-      language,
+      language: effectiveLanguage,
       source,
       source_sha256: sourceSha256,
       preview,
@@ -354,8 +417,8 @@ function buildRegistry() {
       deps_status: activeStatus,
       deps: dependencies(dependenciesRaw),
       ...(blockReason ? { block_reason: blockReason } : {}),
-      linked_mods: linkedMods(raw ? { enName, language } : null, status),
-      adapt_vars: adaptVars({ enName, language }),
+      linked_mods: mapping?.linked_mods || linkedMods(raw ? { enName, language } : null, status),
+      adapt_vars: mapping?.adapt_vars || adaptVars({ enName, language }),
       lines: mapping ? mapping.lines : [],
       analysis_step: mapping ? mapping.analysis_step : null,
       input_tables: mapping ? mapping.input_tables : [],
@@ -372,9 +435,9 @@ function buildRegistry() {
     acc[item.deps_status] = (acc[item.deps_status] || 0) + 1;
     return acc;
   }, {});
-  if (counts.ready !== 6) fail(`ready 数不是 6：${counts.ready}`);
+  if (counts.ready !== 16) fail(`ready 数不是 16：${counts.ready}`);
   if (counts.pending !== 65) fail(`pending 数不是 65：${counts.pending}`);
-  if (counts.pending_mapping !== 10) fail(`pending_mapping 数不是 10：${counts.pending_mapping}`);
+  if ((counts.pending_mapping || 0) !== 0) fail(`pending_mapping 数不是 0：${counts.pending_mapping || 0}`);
   if (counts.blocked_r453 !== 1) fail(`blocked_r453 数不是 1：${counts.blocked_r453}`);
 
   return {

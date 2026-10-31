@@ -29,7 +29,7 @@ param(
     [string]$PortalBase = ($env:PORTAL_BASE ? $env:PORTAL_BASE : 'http://127.0.0.1:8080'),
     [string]$SyncToken = $env:SYNC_TOKEN,
     [int]$BatchSize = ($env:SYNC_BATCH ? [int]$env:SYNC_BATCH : 1),
-    [string]$SpoolRoot = 'con_hf/sync/spool',
+    [string]$SpoolRoot = 'con_hf/sync/outbox',
     [string]$ActionsPath = 'con_hf/ledger/actions.jsonl',
     [switch]$Once,
     [int]$IntervalSec = 30,
@@ -88,19 +88,37 @@ function Invoke-WorkbenchApi {
     return Invoke-RestMethod -Uri ($WorkbenchBase + $Path) -Method $Method -Headers $headers
 }
 
+function Invoke-FigureApplyReal {
+    param([string]$ProjectId, [object]$Requirement)
+    $figures = @($Requirement.figure_templates)
+    if ($figures.Count -eq 0) { return $null }
+    $lineId = if (-not [string]::IsNullOrWhiteSpace($Requirement.lineId)) {
+        [string]$Requirement.lineId
+    } else {
+        [string]$Requirement.seriesId
+    }
+    return Invoke-WorkbenchApi -Path '/api/projects/figures/apply' -Method 'POST' -Body @{
+        projectId = $ProjectId
+        lineId = $lineId
+        figure_templates = $figures
+        pipelineDag = @($Requirement.pipelineDag)
+    }
+}
+
 function Invoke-ProjectCreateReal {
     param([string]$Ticket, [string]$ProjectId, [object]$Requirement, [string]$PackagePath)
     $body = if ($Requirement) { $Requirement } else { @{ projectId = $ProjectId } }
     if (!$body.projectId) { $body.projectId = $ProjectId }
     $existingProjects = Invoke-WorkbenchApi -Path '/api/projects/list'
     if (@($existingProjects.projects | Where-Object { $_.projectId -eq $ProjectId }).Count -gt 0) {
+        $figureApply = Invoke-FigureApplyReal -ProjectId $ProjectId -Requirement $Requirement
         return @{
             imported = $true
             existing = $true
             project_id = $ProjectId
             package_path = $PackagePath
             workbench_project_id = $ProjectId
-            response = @{ projectId = $ProjectId; existing = $true }
+            response = @{ projectId = $ProjectId; existing = $true; figure_apply = $figureApply }
         }
     }
     try {
@@ -116,13 +134,14 @@ function Invoke-ProjectCreateReal {
     } catch {
         $statusCode = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 0 }
         if ($statusCode -eq 409) {
+            $figureApply = Invoke-FigureApplyReal -ProjectId $ProjectId -Requirement $Requirement
             return @{
                 imported = $true
                 existing = $true
                 project_id = $ProjectId
                 package_path = $PackagePath
                 workbench_project_id = $ProjectId
-                response = @{ projectId = $ProjectId; existing = $true }
+                response = @{ projectId = $ProjectId; existing = $true; figure_apply = $figureApply }
             }
         }
         throw
@@ -142,7 +161,11 @@ function Wait-TaskComplete {
 
 function Invoke-TaskDispatchReal {
     param([string]$Ticket, [string]$ProjectId, [object]$Requirement)
-    $lineId = [string]($Requirement.lineId || $Requirement.seriesId)
+    $lineId = if (-not [string]::IsNullOrWhiteSpace($Requirement.lineId)) {
+        [string]$Requirement.lineId
+    } else {
+        [string]$Requirement.seriesId
+    }
     if (!$lineId) { throw "无法确定分析线：ticket=$Ticket" }
     $seedValue = $Requirement.seed
     if (!$seedValue) {
@@ -150,24 +173,43 @@ function Invoke-TaskDispatchReal {
         if (!$envSeed) { throw "real mode 需要显式种子：requirement.seed 或 SYNC_SEED，ticket=$Ticket" }
         $seedValue = [int]$envSeed
     }
-    $steps = @($Requirement.pipelineDag | ForEach-Object { $_.stepId })
-    if ($steps.Count -eq 0) { throw "pipelineDag 缺失：ticket=$Ticket" }
+    $executionPlan = Invoke-WorkbenchApi -Path '/api/projects/execution-plan' -Method 'POST' -Body @{
+        projectId = $ProjectId
+        pipelineDag = @($Requirement.pipelineDag)
+    }
+    $tasks = @($executionPlan.tasks)
+    if ($tasks.Count -eq 0) { throw "执行计划为空：ticket=$Ticket" }
     $results = @()
-    foreach ($step in $steps) {
+    foreach ($task in $tasks) {
+        $step = [string]$task.step
         $body = @{
             projectId = $ProjectId
             lineId = $lineId
             step = [string]$step
-            inputs = @($Requirement.pipelineDag | Where-Object { $_.stepId -eq $step } | ForEach-Object { $_.inputs }) | Where-Object { $_ }
-            outputs = @($Requirement.pipelineDag | Where-Object { $_.stepId -eq $step } | ForEach-Object { $_.outputs }) | Where-Object { $_ }
+            inputs = @($task.inputs) | Where-Object { $_ }
+            outputs = @($task.outputs) | Where-Object { $_ }
             seed = [int]$seedValue
+        }
+        $adapted = [bool]$task.adapted
+        if ($task.kind -eq 'adapted_figure' -or $adapted) {
+            $body.adapted = $adapted
+            $body.scriptPath = [string]$task.scriptPath
+            $body.language = [string]$task.language
+            $body.canonicalOutput = [string]$task.canonicalOutput
+            $body.dependsOnStep = [string]$task.depends_on_step
         }
         if ([string]$step -like '*knockout*' -or [string]$step -like '*ko_*') {
             $body.targetKoGene = [string]$Requirement.biologicalPriors.targetKoGene
         }
         $response = Invoke-WorkbenchApi -Path '/api/tasks/submit' -Method 'POST' -Body $body
         Wait-TaskComplete -TaskId $response.taskId | Out-Null
-        $results += @{ task_id = $response.taskId; step = [string]$step; waited = $true }
+        $results += @{
+            task_id = $response.taskId
+            step = [string]$step
+            kind = [string]$task.kind
+            depends_on_step = [string]$task.depends_on_step
+            waited = $true
+        }
     }
     return @{ dispatched = $true; project_id = $ProjectId; tasks = $results }
 }

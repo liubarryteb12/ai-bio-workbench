@@ -249,7 +249,7 @@ test('figure selector groups cards by L1, L2 and L3 with language and preview la
   expect(response.status()).toBe(200);
   const body = await response.json();
   expect(body.templates).toHaveLength(82);
-  expect(body.templates.filter((item: { deps_status: string }) => item.deps_status === 'ready')).toHaveLength(6);
+  expect(body.templates.filter((item: { deps_status: string }) => item.deps_status === 'ready')).toHaveLength(16);
 
   const readyCard = page.locator('[data-template-id="fig_l2_pca"]');
   await expect(readyCard).toContainText('R');
@@ -258,6 +258,58 @@ test('figure selector groups cards by L1, L2 and L3 with language and preview la
   await expect(readyCard.locator('img')).toBeVisible();
   await expect.poll(() => readyCard.locator('img').evaluate((image: HTMLImageElement) => image.naturalWidth))
     .toBeGreaterThan(0);
+});
+
+test('every ready figure card switches between fixture and real project previews', async ({ page }) => {
+  const readyByLine = [
+    ['line1_bulk', [
+      'fig_l1_boxplot', 'fig_l1_density', 'fig_l1_groupedbar', 'fig_l1_histogram',
+      'fig_l1_scatter', 'fig_l1_violin', 'fig_l2_heatmap', 'fig_l2_pca',
+      'fig_l2_volcano', 'fig_l3_multipanel', 'fig_l3_sankey',
+    ]],
+    ['line2_scrna', [
+      'fig_l2_umap', 'fig_l2p_dotplot', 'fig_l2p_violin', 'fig_l2p_volcano',
+    ]],
+    ['line3_spatial', ['fig_l2p_umap']],
+  ] as const;
+
+  for (const [lineId, templateIds] of readyByLine) {
+    await advanceToStep4(page, lineId);
+    await waitForFigureRegistry(page);
+    await expect(page.locator('[data-testid="figure-template-card"]')).toHaveCount(templateIds.length);
+
+    for (const templateId of templateIds) {
+      const card = page.locator(`[data-template-id="${templateId}"]`);
+      const image = card.locator('img.figure-preview');
+      const fixtureButton = card.getByRole('button', { name: '标准 Fixture 预览' });
+      const projectButton = card.getByRole('button', { name: '真实项目产出示例' });
+
+      await expect(fixtureButton).toHaveAttribute('aria-pressed', 'true');
+      await expect(projectButton).toHaveAttribute('aria-pressed', 'false');
+      await expect.poll(async () => image.evaluate((node: HTMLImageElement) => node.naturalWidth))
+        .toBeGreaterThan(0);
+      const fixtureUrl = await image.getAttribute('src');
+      expect(fixtureUrl).toContain('/api/figure-templates/preview?');
+
+      await projectButton.click();
+      await expect(projectButton).toHaveAttribute('aria-pressed', 'true');
+      await expect(fixtureButton).toHaveAttribute('aria-pressed', 'false');
+      await expect(card).toHaveAttribute('data-preview-mode', 'project');
+      await expect.poll(async () => image.getAttribute('src'))
+        .toContain(`/api/figure-templates/project-preview?id=${templateId}`);
+      await expect.poll(async () => image.evaluate((node: HTMLImageElement) => node.naturalWidth))
+        .toBeGreaterThan(0);
+      expect(await image.getAttribute('src')).not.toBe(fixtureUrl);
+
+      await fixtureButton.click();
+      await expect(fixtureButton).toHaveAttribute('aria-pressed', 'true');
+      await expect(projectButton).toHaveAttribute('aria-pressed', 'false');
+      await expect(card).toHaveAttribute('data-preview-mode', 'fixture');
+      await expect.poll(async () => image.getAttribute('src')).toBe(fixtureUrl);
+      await expect.poll(async () => image.evaluate((node: HTMLImageElement) => node.naturalWidth))
+        .toBeGreaterThan(0);
+    }
+  }
 });
 
 test('candidate catalog link opens a working single-figure catalog', async ({ page, context }) => {
@@ -280,24 +332,24 @@ test('figure selector defaults to ready previews and keeps pending cards behind 
 
   await expect(page.getByTestId('figure-filter-ready')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('figure-filter-all')).toHaveAttribute('aria-pressed', 'false');
-  await expect(page.locator('[data-testid="figure-template-card"]')).toHaveCount(3);
+  await expect(page.locator('[data-testid="figure-template-card"]')).toHaveCount(11);
   await expect(page.locator('.figure-card .figure-preview-empty')).toHaveCount(0);
-  await expect(page.locator('.figure-preview')).toHaveCount(3);
+  await expect(page.locator('.figure-preview')).toHaveCount(11);
   await expect.poll(async () => page.locator('.figure-preview').evaluateAll(
     (images: HTMLImageElement[]) => images.filter((image) => image.complete && image.naturalWidth > 0).length,
-  )).toBe(3);
+  )).toBe(11);
 
   await page.getByTestId('figure-filter-all').click();
   await expect(page.getByTestId('figure-filter-ready')).toHaveAttribute('aria-pressed', 'false');
   await expect(page.getByTestId('figure-filter-all')).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('[data-testid="figure-template-card"]')).toHaveCount(59);
+  await expect(page.locator('[data-testid="figure-template-card"]')).toHaveCount(60);
   await expect(page.locator('[data-template-id="fig_l1_circularpacking"]')).toBeVisible();
 });
 
 test('ready preview count follows the selected analysis line', async ({ page }) => {
   for (const [lineId, expectedCount] of [
-    ['line1_bulk', 3],
-    ['line2_scrna', 2],
+    ['line1_bulk', 11],
+    ['line2_scrna', 4],
     ['line3_spatial', 1],
   ] as const) {
     await advanceToStep4(page, lineId);
