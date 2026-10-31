@@ -29,20 +29,36 @@
 >    「Failed processing 0 files」且 ACL 不变（/save 导出复核 Deny 仍在）；ACL 重建方案被
 >    审批层拒绝。判断：Deny 由沙箱宿主侧注入，容器内提权无权限改写。
 >    需要用户在宿主 PowerShell（管理员）执行：
->    ACL 解除结果（2026-10-31 晚）：用户重试后 .git 根目录可写探测曾短暂 OK。实际机制是沙箱
->    过滤器按路径规则拦截 .git 子路径写打开，NTFS ACL 修复（/inheritance:r + /grant:r 重建，
->    第一条 Deny SID 被 .NET ACL 剥离）不改变过滤器行为。最终通过沙箱外执行通道
->    （require_escalated cmd.exe git）完成全部 git 写操作：
->    ① 489330c chore(cleanup): remove duplicated figures, legacy deliverables and audit artifacts
->      （40 files，+2852/-789，含 5 个 tracked 删除、20 个 ledger 移位、9 张 verified.png、
->      .gitignore 增补、handoff 更新、两个测试守卫修复、ops/README 季度维护小节）；
->    ② 5331b24 chore(line-endings): bridge_guard_invariant.test.js 换行归一（CRLF 噪声隔离）；
->    ③ 79c1665 merge: framework updates from 框架更新后10.31 → master（--no-ff，master 现为
->      唯一主线）。合并后 master 全量测试 974 tests / 912 pass / 5 fail / 57 skipped，
->      5 个 fail 全部为 K40 真机链路测试（设备未连接，与既有环境基线一致），
->      proot_probe_guard 13/13 绿。阶段一四项完成判定全部达成。
 >    icacls "D:\00.AIagent\codespace\AI辅助生信分析流程工作台\.git" /remove:d *S-1-5-21-1506856635-3242436149-1912125682-3575442760 *S-1-5-21-1164459438-259575917-2205782810-1333127759 /t
 > **接任务先读本文件**，再看 `con_hf/SPEC.md`（阶段规格）与 `con_hf/踩坑台账.md`（排查前必搜）。
+>
+>    **ACL 解除结果（2026-10-31 晚，用户重试后）**：沙箱过滤器按路径拦截 .git 子路径写打开，
+>    NTFS ACL 修复（.NET ACL 剥离第一条 Deny + /inheritance:r + /grant:r 重建）不改变过滤器
+>    行为；最终通过沙箱外执行通道（require_escalated cmd.exe git）完成全部 git 写操作。
+> **2026-10-31 第二十一轮（阶段二：v3.2 图模板真实映射落地）**：`eb08154` 合入
+>    codex/aims-v3.2-figures（.gitignore 白名单重复冲突已解，ready 6 → 16）；`2065b8d`
+>    落地修复（aims/bio 四卷迁移 + figure_project_plan .tmp mkdir 守卫）；合并后
+>    985 tests / 924 pass / 5 fail（K40 环境红）/ 56 skipped；新建
+>    con_hf/figure_pending_admission_ledger.md（65 个 pending 逐条缺口台账 + 五步推进程序
+>    + 批次规划）；ready 升级属 K40 恢复后的运营动作。
+> **2026-10-31 第二十二轮（阶段三：交付链路常态化演练，K40 在线）**：链路恢复（cmd.exe 通道
+>    带 ANDROID_SDK_HOME 稳定解析 k40-ubuntu）；portal 收单实证（票据 2026-10-31_220933
+>    落 inbox）；K40 执行实证（NAFLD line1 全链产物在位）；交付包实证（build_client_report
+>    112 文件 / 33.6MB / Ed25519 签名）；客户端验签 VERIFIED 112；证据落
+>    con_hf/runs/2026-10-31_phase3_delivery_drill/。阶段三判据达成。
+> **2026-10-31 第二十三轮（作战书 P1+P2）**：`a85694d` vite 5.4.11 → 5.4.21 精确锁版
+>    （GHSA-587h-7wmj-h5pm 修复）+ 工作台鉴权 Fail-Closed（D-29）+ .gitignore/.auth_runtime；
+>    `916b317` 12 个测试启动超时统一 25s + bridge_guard strict 模式（不可达 exit 2，
+>    BIO_ALLOW_BRIDGE_SKIP=1 显式豁免）+ CI 扩展（LF 检查 + 隔离检查）；987/926 pass。
+> **2026-10-31 第二十四轮（08 号返工指令书：7 处 AI 失效模式根治）**：`ae24710`
+>    fix(v33-rework)：① 鉴权击穿根治（AUTH_ENABLED 改 let + 显式置 true；static
+>    randomBytes；删无效 0o600 默认写盘，仅 BIO_AUTH_RUNTIME_FILE 显式落临时文件；
+>    isAuthorized 空凭据防御兜底；新增 Fail-Closed 负路径单测：BIO_TEST_FORCE_FAIL_CLOSED=1
+>    压过 NODE_TEST_CONTEXT，断言无凭证 401 + 运行时凭证 200）；② bridge_guard 未知参数
+>    FAIL exit 2（新增 --inpuut 断言）+ 头部契约注释同步；③ writeSha256Sidecars 加
+>    verify-before-sidecar（REPORT_INTEGRITY_FAIL 拒绝给坏包洗白）；④ 12 个测试 25s 回退
+>    10s（冷启动实测 73ms，证明无启动阻塞）；989 tests / 928 pass / 5 fail（K40 环境）；
+>    08 号书 P3（index.js/App.tsx 拆分 + A2A cherry-pick）未动，挂账待专门目标。
 > 全量推进计划：`con_hf/2026-10-13_plan_goal全量推进.md`（含工作区盘点结论与阻塞项 B1/B2）。
 
 > **2026-10-23 第十九轮**：proot 15 秒 abort 的真正根因已定位并修掉 runner 侧触发源（P-29），
