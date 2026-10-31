@@ -17,6 +17,8 @@ import { fileURLToPath } from 'node:url';
 
 const SERVER = fileURLToPath(new URL('../server/index.js', import.meta.url));
 const FIGURES_ROUTES = fileURLToPath(new URL('../server/routes/figures.routes.js', import.meta.url));
+// processed 列目录辅助搬进 remote_exec.js，守卫扫并集，断言口径不动。
+const REMOTE_EXEC = fileURLToPath(new URL('../server/remote_exec.js', import.meta.url));
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -153,6 +155,7 @@ test('静态守卫：端点必须基于勾选的 modIds 过滤，不透出 requi
   const src = [
     await readFile(SERVER, 'utf8'),
     await readFile(FIGURES_ROUTES, 'utf8'),
+    await readFile(REMOTE_EXEC, 'utf8'),
   ].join('\n');
   assert.match(src, /url\.pathname === '\/api\/preview\/mods'/, '必须存在 /api/preview/mods 路由');
   assert.match(src, /const picked = modIds\.length/, '必须按 modIds 过滤');

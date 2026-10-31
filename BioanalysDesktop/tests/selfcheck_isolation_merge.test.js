@@ -30,7 +30,13 @@ const DIAGNOSTICS_SRC = fs.readFileSync(
   path.join(REPO_ROOT, 'BioanalysDesktop', 'server', 'routes', 'diagnostics.routes.js'),
   'utf8',
 );
-const STRICT_GUARD_SRC = INDEX_SRC + DIAGNOSTICS_SRC;
+// runRemoteStrict 的定义搬进 remote_exec.js 后，定义那一处也跟着走。
+// 并集再加一个文件，出现次数下限与四条正则仍是原口径。
+const REMOTE_EXEC_SRC = fs.readFileSync(
+  path.join(REPO_ROOT, 'BioanalysDesktop', 'server', 'remote_exec.js'),
+  'utf8',
+);
+const STRICT_GUARD_SRC = INDEX_SRC + DIAGNOSTICS_SRC + REMOTE_EXEC_SRC;
 
 // ---------- 1. 四档优先级 ----------
 
