@@ -1,6 +1,68 @@
 # handoff — 跨会话交接
 
-> 最后更新：2026-11-01（P3 专项目标立项 + 后端路由拆分头两片落地，见下节第二十六轮）
+> 最后更新：2026-11-01（后端 36 端点全部拆完，前端两视图出山，见下节第二十七轮）
+
+> **2026-11-01 第二十七轮（P3-01 路由层收口 + P3-02 头两片合入）**：
+> ① **P3-01 路由层收口**：第三至六片把剩余 28 个端点全部搬出，`index.js` 2,196 → **877 行**。
+>    提交 `496e7a9`(report) / `2c8f411`(figures) / `505ea76`(tasks 含 SSE) / `654c73f`(projects 13 端点)。
+>    36 个 REST 端点全部出山，`/api/health` 与静态兜底按设计留守。
+> ② **本轮唯一真回归**（实跑冒烟抓到，不是读代码读出来的）：抽取器把无花括号的
+>    `if (x) return json(...)` 搬成 `if (x) json(...); return true;`，语义变成「无条件命中」，
+>    表现为 `GET /api/workflows/line2_scrna` 成功响应被吞。修 `bareBodyReturns` 自动补括号后转绿。
+> ③ **`routeCtx` 顺序纪律**（写进代码注释）：`routeCtx` 是对象字面量，模块加载期即求值，
+>    声明必须在全部被注入的 `const` 之后、`createServer` 之前。第六片违反一次，
+>    TDZ 让模块加载失败，由 `pipeline_line_infer` 探针子进程非 0 退出如实报红。
+> ④ **沉淀四个可复用静态审计**（`.tmp/` 不入库，后续每片必跑）：`audit-unbound.cjs` 作用域分析
+>    查未绑定标识符（专治「工具输出把标识符渲染错乱、照屏幕抄代码」这类雷）、
+>    `audit-ctx-keys.cjs` 查注入键是否真在 `routeCtx`、`audit-hit-return.cjs` 查响应点后是否
+>    显式 `return true`、`verbatim-diff.cjs` 证明「搬运不是重写」。
+>    第六片实测：未绑定 0 / 缺键 0 / 漏派 0 / 归一化 384 行相同，5 行差异全是
+>    handler 级 `return;` → `return true;`（`pair-returns.cjs` 逐锚点核对 fail=0）。
+> ⑤ **P3-02 头两片合入** `de8dad5`：shared 的 44 类型 + 10 常量 + 3 辅助下沉，
+>    `LedgerAuditView`（TaskPanel + LedgerPanel）出山，`App.tsx` 3,800 → 2,990 行。
+>    主代理自建 `verify-app-split.cjs` 独立复核，不采信子代理自报：旧 3,534 非空行
+>    `missing=0`；**DOM 指纹（className 多重集 + JSX 标签多重集）165 类名 / 63 标签，差异 0 条**。
+>    本项目 `App.tsx` 无 `data-testid`，DOM 指纹比 E2E 更能证明没拆坏。
+>    守卫非放松用 `ablation-ko-guard.cjs` 四步消融证明（只扫 App.tsx 断言为假 → 并集是必需的）。
+> ⑥ **口径校正再记一条**：行数一律按总行数（LF）判定。第五片提交信息里的「1,671→1,339」
+>    与 07 号书口径是非空行数，实测该提交后总行数 1,334。历史提交不改，以本条为准。
+> ⑦ **子代理模型通道**：glm-5.3-flash 已不在可选模型列表内，本轮派工改用同系列 glm-5.2
+>    （Lovelace 做 F4 图件视图、Banach 做前置层依赖普查），验收门槛不变。
+> ⑧ **待用户裁定的架构问题**（P3-03 卡在这，不在我这）：`codex/a2a-v1` 领先 51 个提交，
+>    普查判定 picked 6 / rejected 36 / **需人工裁定 9**。9 条的共性是「整套微内核引擎层与
+>    A2A 运行时是否准入 master」（`b42aae4` 引擎底座、`0e3e161` 28 文件 7 件核心 + 8 引擎、
+>    `3439950` 86 文件、`42c429e` 123 文件测试、`b5b46f9` 131 文件混合）。
+>    建议路线仍是「不引入引擎层，在既有 `server/proc.js` 单一 seam 上加
+>    `BIO_COMPUTE_ADAPTER=mock|ssh`」。证据见 `con_hf/2026-11-01_P3-03_a2a_pick_candidate_census.md`。
+> ⑨ **剩余量（实测）**：P3-01 还差前置层 8 个模块与 `index.js` 里 43 个死 import；
+>    P3-02 还差 F3 自检 / F4 图件 / F5 结果 / F6 引导四个视图（2,990 → 目标 < 350 行）；
+>    P3-02 收尾要补 6 视图渲染冒烟测试（桌面 UI 现在零渲染级测试，是既有缺口）。
+>    设备前提不变：K40 离线、`adb` 不在 PATH，基线 989 / 928 pass / 5 fail / 56 skipped。
+
+> **2026-11-01 第二十七轮附记（核查 08 号书七项与两条口径澄清）**：
+> ⑩ **08 号书七项复核结论**：1/2/3/4/5/7 六项经实测成立（其中 4 与 5 用 git-bash
+>    `D:\Git\bin\bash.exe` 实跑，33 条桥接用例 26 pass / 7 宿主条件 skip / 0 fail，
+>    `--inpuut` 断言真跑到；7 已无任何 25000ms 残留，剩下的长 timeout 全是 spawnSync
+>    跑 Python 的子进程上限，不是 08 号书要打的那类）。
+> ⑪ **第 6 项查出覆盖空洞并补上** `3160fd2`：verify-before-sidecar 拦截此前只被正向用例经过，
+>    没有任何一条构造「已签名但内容被改」的交付包，把拦截删掉不会有任何测试变红。
+>    已补 3 条（篡改必抛 + 换公钥冒充必抛 + 正向对照防恒假），并断言坏包旁边不得出现 `.sha256`。
+>    基线随之从 989/928 变为 **992/931 pass / 5 fail / 56 skipped**，后续按这个口径看。
+> ⑫ **CRLF 一条是假案件，别再查**：`lf-audit` 扫出 `auth.test.js` L175 与
+>    `figure_project_plan.test.js` L14 各 1 行 CRLF，改成 LF 后 `git diff` 是空的，
+>    磁盘字节与 blob 完全相同（6799 = 6799）。原因是 `.gitattributes` 已钉 `eol=lf`，
+>    仓库里一直是 LF，只有工作区被某个工具写成 CRLF。结论：这条属工作区噪声，
+>    不可也不需要产生提交，`.gitattributes` 已在防它复发。
+> ⑬ **子代理模型通道更新**：glm-5.2 也在当日打光（`503 no usable account`，
+>    八账号分别报「今日额度用尽 / 已停用 / 凭证已过期」），且是在交付之后才断气，
+>    该片已由主代理复核合入，无返工。后续派工按本文件既有裁定回落 `deepseek-v4.1-flash`。
+> ⑭ **前置层依赖普查已就绪**（`con_hf/2026-11-01_prelude_dependency_census.md`，只读子代理产出）：
+>    要点是 `runRemoteStrict(` 并集现值 5（定义 1 在 `index.js` + 调用 4 在
+>    `diagnostics.routes.js`），搬 `remote_exec.js` 会掉到 4，必须同步加并集；
+>    `listRemoteProcessed` 被 `preview_mods.test.js:159` 的 `/function listRemoteProcessed\(/`
+>    钉住，同一条守卫管；`resolveProjectParam` 与 `listFiguresForLine` 在 `createServer`
+>    闭包里直调，搬进 `query_views.js` 后 `index.js` 要自己 import 回来。
+>    除上述两条守卫外，8 个前置模块均为零新增守卫。
 
 > **2026-11-01 第二十六轮（P3 专项目标立项，后端拆分头两片）**：
 > ① 立专项目标正本 `con_hf/2026-11-01_P3专项_模块化拆分与A2A择优合入.md`（07 号书
