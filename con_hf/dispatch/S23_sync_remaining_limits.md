@@ -34,7 +34,7 @@ S22 按契约停在派发单清单外又发现的 3 处过期值，主 Agent 现
    参考文献的 20MB/5 篇不得动。
 
 【任务项】
-1. 改前先读 `portal/lib/archive.mjs` 29–36 行贴实际值（若与你预期不符立即停下上报）。
+1. 改前先读 `portal/lib/archive.mjs` 29-36 行贴实际值（若与你预期不符立即停下上报）。
 2. 按规格改 3 处。
 3. 自检：
    - `grep -n "最多 3 个\|MAX_DATA_FILES_PER_ROLE = 3" portal/index.html` → 0 命中

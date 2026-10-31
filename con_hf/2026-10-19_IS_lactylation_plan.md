@@ -23,24 +23,24 @@
 - line3：ingest_spatial → qc_spots → normalize → dim_reduce → 聚类
 - LRG 基因集 ✅
 
-### 方案二（乳酸化评分与 IQR 分型）— 全在 line2
+### 方案二（乳酸化评分与 IQR 分型）: 全在 line2
 - 五算法（AUCell/UCell/singscore/GSVA/AddModuleScore）细胞级评分 → 各自 min-max 归一 → 综合得分（均值）
 - IQR 分型：<P25=LLS、P25~P75=LDTS、>P75=LHS
 - LHS vs LLS DEG（线内 Seurat FindMarkers，adj p<0.05）
 
-### 方案三（hdWGCNA 与候选基因筛选）— line2
+### 方案三（hdWGCNA 与候选基因筛选）: line2
 - hdWGCNA（仅 LHS 细胞，Seurat object）→ 与 LHS 得分显著正相关模块 → 模块内枢纽（kME/kIM 阈值）
 - 三源交集：hdWGCNA hub ∩ (LHS-LLS DEG) ∩ (线2 MCAO/sharm 变化的 LRG，小鼠口径)
 - 产出候选基因清单（含每基因来源标注）
 
-### 方案四（空间转录组）— line3，隔离红线口径
+### 方案四（空间转录组）: line3，隔离红线口径
 - 标准化/整合/聚类逐样本域识别
 - HE 形态 + 域 marker 注释三区域：缺血核心区 / 半暗带 / 对侧正常区
 - 区域乳酸化评分比较（spot 级评分 + 区域间检验）
 - **11 个重点目标基因空间定位出图**（AKT1/BCL2L1/CASP1/DNMT1/HSP90AB1/MAPK14/MDM2/MMP9/ABCA1/ORMDL3/PLEKHA1，小鼠 Title case）
 - 反卷积：**不使用 line2 参考**（用户拍板）。RCTD 参考来源未定（public_references 无批准的小鼠脑 scRNA）→ 默认跳过并在最终报告如实记录；如后续获得公共参考再补。空间的"高乳酸化富集验证"用线内 spot 级评分 + 区域定位完成。
 
-### 方案五（ML 筛选枢纽 LRG + 诊断模型）— line1
+### 方案五（ML 筛选枢纽 LRG + 诊断模型）: line1
 - 主体 ✅ 已完成：候选=33 个（线1 LRG 敏感口径）；LASSO 23/RF 16/Boruta 21/XGBoost 6/单因素logistic 33 → 交集 hub=CBR1/HNRNPL/SMARCA4/TST/VIM；LOOCV AUC 0.9585；GSE16561 冻结验证 AUC 0.8237（Sens 0.590/Spec 1.000）；ROC/校准/交集/重要性 4 图
 - 衔接步（待 line2 候选产出后）：把 line2 候选基因并入候选池重跑五算法 → 最终 hub → 用最终 hub 重跑逻辑回归 + GSE16561 冻结验证（里程碑 M2）
 - 已知标注：单因素 Cox 因无生存数据用单因素 logistic 替代（报告已注明）

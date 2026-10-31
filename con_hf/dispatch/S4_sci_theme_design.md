@@ -48,7 +48,7 @@ bioanalys_par <- function(...) {   # base R：png() 设备图的统一 par
 挂载方式（改 `ops/layout_autoload/Rprofile`，不动脚本）：
 - 已有 `ggsave` 包装保留；
 - 新增包装 `print.ggplot` / `plot.ggplot`：绘图前把 `bioanalys_gg_theme()` 加进对象
-  （`obj + theme`，不覆盖脚本已显式设过的 theme——用 `theme_get()` 合并，
+  （`obj + theme`，不覆盖脚本已显式设过的 theme:用 `theme_get()` 合并，
   脚本显式设置优先，主题只兜底）；
 - `bioanalys_par()` 由 base R 出图脚本显式调用（仅 3 个脚本，改的是本地 src/ 母版，
   属我们的源码，不算破母版只读边界）。
@@ -69,7 +69,7 @@ bioanalys_par <- function(...) {   # base R：png() 设备图的统一 par
 |---|---|---|
 | T1 | 落盘 DPI==300 | `figure_audit_scan.py` A2（已有） |
 | T2 | 图内最小字号 ≥8pt | `figure_code_audit.py` C4/C8/C9（已有） |
-| T3 | 图例外置、图注轴框外、标注不出框、不重叠 | `audit_figure_layout.py` A–E（仅 Python） |
+| T3 | 图例外置、图注轴框外、标注不出框、不重叠 | `audit_figure_layout.py` A-E（仅 Python） |
 | T4 | 模板只放大不缩小 | 探针：给定 figsize=(6,5) 的图，主题后画布尺寸不得小于 (6,5)*300 |
 | T5 | R base 图 par 生效 | 探针：渲染后读 PNG 尺寸/字幅，或 `par("cex")` 日志断言 |
 | T6 | 主题不改变数据内容 | 同种子重跑前后**表格 md5 不变**，图件 md5 允许变（样式变） |
@@ -84,7 +84,7 @@ bioanalys_par <- function(...) {   # base R：png() 设备图的统一 par
 
 ## 5. 风险与回退
 
-- **图件 md5 必然变化**（样式变）——这是预期，不是回归；回归判据是 T6（表格不变）+ 机器审计不红。
+- **图件 md5 必然变化**（样式变）:这是预期，不是回归；回归判据是 T6（表格不变）+ 机器审计不红。
 - R `print.ggplot` 包装若与脚本内 `theme()` 冲突，可能改变图幅 → 用"只兜底不覆盖"合并策略，
   并在 S4a 用 3 个脚本的 before/after 图件对比逐张核。
 - 回退：`BIOANALYS_LAYOUT_DISABLE=1` 可整层关闭；`ops/fig_theme.*` 可直接删（脚本不依赖它）。

@@ -16,10 +16,10 @@
 - G2 共享图例：域色码（tab20+tab20b+tab20c 60 色板 + 物种级 dom_order 标签）在图组
   下方居中只画一次；域数 >12 按列分组（每列 ≤12 行，沿用 `legend_out` 规则）。
 - 跑场 `default` 项目，审计与重跑均传 `--seed 20261013`（磁盘同源，provenance 一致；
-  `spatial_figures` 是纯渲染步骤，种子只进 stdout 回显——S18 报告 §3.8-5 结论，
+  `spatial_figures` 是纯渲染步骤，种子只进 stdout 回显:S18 报告 §3.8-5 结论，
   本轮用 md5 基线实证）。
-- 契约主体：`con_hf/2026-10-19_figure_polish_plan.md`「Step 5 组图契约」G1–G5；
-  验收 A1–A9。
+- 契约主体：`con_hf/2026-10-19_figure_polish_plan.md`「Step 5 组图契约」G1-G5；
+  验收 A1-A9。
 
 ## 1. 读码与面板映射确认（已完成，行号依据）
 
@@ -138,7 +138,7 @@ figures_done count=59 elapsed=51.6s
   #7F7F7F/#C7C7C7/#636363 等漏掉的假象；正式探针的颜色过滤只排除近白/近黑）。
 - matplotlib `tab20.colors` 是深/浅成对顺序（非索引顺序），组合图 A/B/C 与图例
   用的正是 07/08 单图同一套 `palette[j]`；单图 01 的 `cat_colors` 是 tab20 索引
-  序且只有 20 色（覆盖不了 57 域），故组合图 A 按共享色板取色——组合图内部
+  序且只有 20 色（覆盖不了 57 域），故组合图 A 按共享色板取色:组合图内部
   A/B/C/图例完全同码，单图 01 本身一行未动。
 
 G1/G2 探针（`cn_debug/2026-10-20_verification_s18r_g1g2.py`，复用 S16 像素底层；
@@ -169,11 +169,11 @@ neg1 涂白字母 B → `FAIL P2 面板 B 左上角外侧未找到字形`；neg2
 
 - 部署：`pwsh -NoProfile ops/06_deploy_scripts.ps1 -Line line3_spatial -Force`（`-Command`
   形式被运行时审批门拦，与 S16 报告 §5 注记一致，改用同一脚本的位置参数形式）。
-  脚本自报 `FAIL 10 个文件校验不符（MISSING）`——经排查是**校验环节的 ssh 假阴性**：
+  脚本自报 `FAIL 10 个文件校验不符（MISSING）`:经排查是**校验环节的 ssh 假阴性**：
   18 个文件实际全部 scp 成功（远端 mtime 10:05-10:06），同一条 stat 命令单独重跑全部
   正常；**全量核对 18/18 md5 本地=远端**（spatial_figures = `83def938…` ✓）。
   deploy 脚本 `$LASTEXITCODE` 在 `scp … | Out-Null` 管道后恒为 0（scp 失败静默）+
-  校验循环高频 ssh 被拒——两处工具缺陷，`ops/` 属冻结区未改，登记待修。
+  校验循环高频 ssh 被拒:两处工具缺陷，`ops/` 属冻结区未改，登记待修。
 - md5 基线：`/tmp/s18r_before.md5`，170 文件（figures 69 + processed 101）。
 - 提交：POST `/api/tasks/submit`，taskId `default-line3_spatial-1792491138676`
   （inputs=2 份 h5ad，outputs=71 张，seed=20261013；JSON 存 `cn_debug/s18r_submit.json`）。
@@ -181,13 +181,13 @@ neg1 涂白字母 B → `FAIL P2 面板 B 左上角外侧未找到字形`；neg2
   mouse `45401360…`、human `18c58331…`）。
 - **台账未落盘（A7 阻断）**：两次提交均无 `2026-10-20_default_line3_spatial_spatial_figures_*.json`。
   归因（见 §8-2）：`run.js persistEntry` 组装的远端命令长 **10,117 字符**，超过本环境
-  ssh 子进程的 **~8KB 命令截断阈值**（实测：6,040 字符完整到达，8,231 被静默截断——
+  ssh 子进程的 **~8KB 命令截断阈值**（实测：6,040 字符完整到达，8,231 被静默截断:
   截断点落在 base64 载荷内，`| base64 -d > file` 未执行，`&&` 链断掉但 `echo` 自身
   exit 0，引擎按退出码判成功，错误不可见）。entry 本身自审合法（node 复刻
   `buildLedgerEntry+auditLedgerEntry` → `legal=true problems=[]`）；小载荷写台账同命令
   模式手测通过。**根因在引擎侧（portal 冻结区，本切片无权修）**。
 - **基线比对（P0 差异）**：processed **101/101 逐字节零变化** ✓；figures 新增 2 张组合图 ✓；
-  但 `spatial_figures` 产出的 **57 张单图 md5 全部变化**（另 12 张非本步骤产物零变化）——
+  但 `spatial_figures` 产出的 **57 张单图 md5 全部变化**（另 12 张非本步骤产物零变化）:
   违反派发单「其余 69 张 md5 一个不许变」，按纪律停止。
 
 ## 8. 归因实验与结论矩阵（全部实测）
@@ -222,7 +222,7 @@ neg1 涂白字母 B → `FAIL P2 面板 B 左上角外侧未找到字形`；neg2
   非 07_pull_outputs）后为 71 张，与远端 71/71 逐字节一致。**注意：自动回搬已把本地
   归档里的 57 张旧正本覆盖**；其中 36 张可从远端 `/tmp/s18r_dev_a/figures/`（dev 渲染）
   恢复，**21 张旧字节（02/03×20 + human_05）已无副本**（仅 md5 记录在
-  `/tmp/s18r_before.md5`）——如实上报，不掩饰。
+  `/tmp/s18r_before.md5`）:如实上报，不掩饰。
 - 远端 `/tmp/` 留档：`s18r_before.md5`（基线）、`s18r_after1.md5`（重跑后）、
   `s18r_dev_a/`（dev 渲染 59 图）、`s18r_probe_tpl/`（模板归因实验产物）。
 
@@ -262,7 +262,7 @@ seed=20261013 的证据改由渲染 stdout（`bioanalys_seed=20261013`）+ 提�
 
 在保留成员单图的前提下于 `spatial_figures` 新增 line3 首张组合图
 `l3_{sp}_16_domain_panel.png`（A=代表样本空间域散点 / B=域组成 / C=target gene
-域均值），满足 G1–G5 并跑通审计链；caption 登记一条；重跑 seed=20261013 并以
+域均值），满足 G1-G5 并跑通审计链；caption 登记一条；重跑 seed=20261013 并以
 md5 基线证不变量。
 
 ### 11.2 实现摘要
@@ -313,7 +313,7 @@ processed/ 全部数据、12 张非本步骤图件。
 
 ### 11.6 架构/接口变更建议
 
-见 §9 P0-2/P1：引擎台账写长命令截断、deploy 校验假阴性——均建议另立修复切片；
+见 §9 P0-2/P1：引擎台账写长命令截断、deploy 校验假阴性:均建议另立修复切片；
 line1/line2 组图（10/26 outputs）未触发该截断，line3 71 outputs 必触发。
 
 ### 11.7 待主 Agent 决策事项

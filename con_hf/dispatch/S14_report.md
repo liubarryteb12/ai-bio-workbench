@@ -91,7 +91,7 @@ line3_spatial/processed/deconv_report.txt 2026-10-18 07:16:29  seed=20261018
 line3_spatial/processed/dr_post_report.txt 2026-10-18 07:16:55  seed=20261018
 ```
 
-配套数值表 mtime 与报告同批（07:13–07:16）→ **磁盘上这批数值表是 20261018 那次运行算出来的**。
+配套数值表 mtime 与报告同批（07:13-07:16）→ **磁盘上这批数值表是 20261018 那次运行算出来的**。
 这条事实是 §5.1 归因的依据，也是 §5.3 阻断的证据基础。
 
 ## 五、逐脚本审计记录
@@ -147,9 +147,9 @@ audit-csv: /tmp/s14_line2_scrna_gsva_pathways.csv (1 图)
 
 | 对象 | 文件数（前/后） | 清单 md5（前） | 清单 md5（后） | 差异文件 | 归因 |
 |---|---|---|---|---|---|
-| `line2_scrna/figures` | 37 / 37 | `ebc69f017a523073c78cc0e125b1ae02` | 同左（`(no diff)`） | 0 | — |
+| `line2_scrna/figures` | 37 / 37 | `ebc69f017a523073c78cc0e125b1ae02` | 同左（`(no diff)`） | 0 | : |
 | `line2_scrna/processed` | 59 / 59 | `49e1b388b65874f249ffd4143f1955b6` | 2 个文件变 | `gsva_report.txt`、`scrna_gsva.h5ad` | provenance + 计时 |
-| `gsva_scores.tsv`（数值表） | 1 | — | — | **0（不在 diff 里）** | 无变化 |
+| `gsva_scores.tsv`（数值表） | 1 | : | : | **0（不在 diff 里）** | 无变化 |
 
 **差异归因（逐项，含证据）**
 
@@ -270,12 +270,12 @@ audit-csv: /tmp/s14_line3_spatial_celltype_annotation.csv (4 图)
 
 | 对象 | 文件数（前/后） | 差异文件 | 差异行 | 归因 |
 |---|---|---|---|---|
-| `line3_spatial/figures` | 69 / 69 | 0（`(no diff)`） | — | — |
+| `line3_spatial/figures` | 69 / 69 | 0（`(no diff)`） | : | : |
 | `line3_spatial/processed` | 101 / 101 | **1：`deconv_report.txt`** | `seed=20261018→20261013`、`elapsed_seconds=43.5→44.8` | provenance + 计时 |
 | `celltype_scores_{mouse,human}.tsv`（数值表） | 2 | **0** | 逐字节一致 | 无变化 |
 | `celltype_annotation_{mouse,human}.tsv`（数值表） | 2 | **0** | 逐字节一致 | 无变化 |
 | `spatial_deconv_{mouse,human}.h5ad` | 2 | **0** | 整个文件 md5 未变 | 无变化 |
-| 新增/消失文件 | 0 | — | — | — |
+| 新增/消失文件 | 0 | : | : | : |
 
 **归因说明（这步为什么天然安全，且有实测支撑）**
 
@@ -289,7 +289,7 @@ NNLS 解卷积是 `scipy.optimize.nnls` 确定性求解，`score_genes` 无随�
 **CSV 落本地**：`cn_debug/figure_audit_sweep/s14_line3_spatial_celltype_annotation.csv`，
 md5 `ba44131917d92d279cb49da5e4070f76`，内容 4 行全 PASS。
 
-### 5.3 `line2_scrna / dr_post_analysis`（3 图）与 `line3_spatial / dr_post_analysis`（4 图）——**P0：未开跑**
+### 5.3 `line2_scrna / dr_post_analysis`（3 图）与 `line3_spatial / dr_post_analysis`（4 图）:**P0：未开跑**
 
 **为什么不开跑（不是推测，是 /tmp 探针实测）**
 
@@ -327,7 +327,7 @@ Lead_genes 变化行数: 0
 结论：**A(20261018) 逐字节复现磁盘表 → 磁盘表就是 20261018 版本；B(20261013) 必然不同。**
 也就是说，跑这两个审计**不是**「只改 seed provenance」，而是**把 3 张交付数值表
 （`dr_enrichment.tsv`、`dr_enrichment_mouse.tsv`、`dr_enrichment_human.tsv`）换成另一组数字**；
-同时报告里 `top by FDR` 那 8 行（`NES=%.2f FDR q=%.2g`，`l2:472-473`）也会变 ——
+同时报告里 `top by FDR` 那 8 行（`NES=%.2f FDR q=%.2g`，`l2:472-473`）也会变 :
 那既不是 seed 行也不是计时行。
 
 按派发单停止条件（「任何 `.tsv` 数值表 md5 变化」「报告里除 seed=/计时行以外的任何行变化」
@@ -340,7 +340,7 @@ Lead_genes 变化行数: 0
 | `l2/dr_post_analysis` | `dr_enrichment.tsv`、`dr_regulatory_network.tsv`、`dr_overlap.tsv`、`dr_post_report.txt` | `dr_enrichment.tsv` **数值变**（实测）；`dr_regulatory_network.tsv` / `dr_overlap.tsv` 两种子下 md5 相同（`154a5ca2…` / `fde93eba…`，实测） |
 | `l3/dr_post_analysis` | `dr_enrichment_{mouse,human}.tsv`、`dr_overlap_{mouse,human}.tsv`、`dr_post_report.txt` | `dr_enrichment_*` **数值变**（实测）；`dr_overlap_*` 未单独比对 |
 
-### 5.4 A4 — 合并 `cn_debug/figure_audit_all.csv`
+### 5.4 A4 : 合并 `cn_debug/figure_audit_all.csv`
 
 ```
 $ python $TMPDIR/s14/merge_audit_csv.py "D:/00.AIagent/codespace/AI辅助生信分析流程工作台"
@@ -366,7 +366,7 @@ source tag: {'line1_bulk': 27, 's13_A': 93, 's13_B': 1, 's14_B': 5}
 | 总判决 | **126 图，PASS=126，FAIL=0，无其他判决** |
 | 来源分布 | `line1_bulk` 27、`s13_A` 93、`s13_B` 1、`s14_B` 5 |
 
-### 5.5 A5 — 三线打分复跑（尾行原文）
+### 5.5 A5 : 三线打分复跑（尾行原文）
 
 ```
 $ python cn_debug/figure_score.py --dir outputs/PRJ_E2E_GSE277173/line1_bulk/figures \
@@ -412,11 +412,11 @@ score: figs=69 PASS=65 FIX=0 FAIL=0 UNVERIFIED=4 avg=98.8 threshold=75
 | `l1_07_ppi_network.png`、`l1_08_ppi_hubs.png` | B1?~B4? | STRING 不可复现，禁跑（#191） |
 | `l1_28~31_wgcna_*.png`（4 张） | B1?~B4? | line1 base-R `png()` 图，同上无机器判决 |
 
-即 line2 的 B 项缺口从 4 张降到 3 张、line3 从 8 张降到 4 张，**未清零**——
+即 line2 的 B 项缺口从 4 张降到 3 张、line3 从 8 张降到 4 张，**未清零**:
 差额 7 张全部是本轮 P0 阻断的 `dr_post_analysis` 图，不是工具缺口。
 line1 那 8 张是存量已知缺口，与本切片无关。
 
-### 5.6 A6 — 错种子报告修复清单
+### 5.6 A6 : 错种子报告修复清单
 
 | 文件 | 改前 seed | 改后 seed | 数值表是否一致 | 状态 |
 |---|---|---|---|---|
@@ -443,12 +443,12 @@ line3_spatial/processed/dr_post_report.txt:seed=20261018    ← 待裁决
 
 1. **本轮的 P0 与 S13 的 P0 性质不同，必须分开看**：
    S13 的 `l2_13` 差异是「只改 provenance，数字零变化」（数值表逐字节一致，主 Agent 已裁决接受）。
-   本轮 `dr_post_analysis` 的差异是「**数字本身换一组**」——置换检验的 p 值/NES 随种子重抽，
+   本轮 `dr_post_analysis` 的差异是「**数字本身换一组**」:置换检验的 p 值/NES 随种子重抽，
    1975/1975 行 NES 变、max|ΔFDR q|=0.502。这不是 provenance 修复，是**结果重算**。
    拿 S13 的裁决口径直接套到这两个脚本上会误判，所以我没有套。
 2. **磁盘上的交付图与数值表目前同种子同源**（都来自 20261018 那次运行）。
    一旦按 20261013 重算 `dr_enrichment*.tsv`，图（`l2_15/16/17`、`l3_*_10/11`）若不重出，
-   交付物内部就会「图 vs 表不同种子」——这是 S12 §5.5 P1 与 S13 §8.2 点过的
+   交付物内部就会「图 vs 表不同种子」:这是 S12 §5.5 P1 与 S13 §8.2 点过的
    「重算→重扫→重打分」整链问题，不是单步能收口的。
 3. **`l2_14_gsva_heatmap.png` 的判决对象**：判决针对本次 20261013 重渲染的图；
    `gsva_scores.tsv` 字节未变 → 重渲染图与磁盘交付图应同源（GSVA 无随机过程）。
@@ -456,7 +456,7 @@ line3_spatial/processed/dr_post_report.txt:seed=20261018    ← 待裁决
 4. **`l3_*_14/15` 的判决对象**：同上，且该步连 h5ad 都字节未变，风险更低；同样未逐像素比对。
 5. **探针不写项目目录**：两个 `dr_post` 探针输入是软链，输出落 `/tmp/s14probe_*`；
    line3 探针把 `gmt_cache` **复制**到探针树里（`load_lib()` 在缺库时会联网下载并写
-   `../references/gmt_cache`，直接软链会让探针污染真 references）——已规避。
+   `../references/gmt_cache`，直接软链会让探针污染真 references）:已规避。
 6. **耗时**：`gsva_pathways` 75.2s（S12 估 2.2s+import，实测含 R GSVA 7174 通路 × 13 类型）；
    `celltype_annotation` 58.6s（S12 估 43.5s+import，接近）。均远低于 600s 上限。
 7. **`figure_audit_all.csv` 的 `source` 列**沿用 S13 的 4 列口径（第 4 列即「注明来源」）；
@@ -481,19 +481,19 @@ line3_spatial/processed/dr_post_report.txt:seed=20261018    ← 待裁决
   之后**必须**把 7 张图按新数重渲染并重扫重打分，否则交付物内部图/表不同源。
   代价：3 张数值表 + 7 张图 + 2 份报告全变，要立「重算→重扫→重打分」整链切片。
 - **(b) 在副本上跑审计（不改真数据）**：把 `processed/` 复制到 `/tmp/s14_stage/<line>/processed`
-  （line2 ≈1.5GB、line3 ≈2–3GB，磁盘余量 149G 够），`--cwd` 指向副本。
+  （line2 ≈1.5GB、line3 ≈2-3GB，磁盘余量 149G 够），`--cwd` 指向副本。
   软链穿透只写副本，真 `processed/` 零风险，**能立刻拿到 7 张图的几何判决**，交付数据一字不动。
   代价：`--cwd` 偏离派发单模板（属变更建议，需你批准）。执行预计 line2 ≈40s + line3 ≈60s + 两次 cp。
 - **(c) 维持不跑**：7 张图继续 UNVERIFIED，等「按真种子整链重算」立项时一起做。
 
-**另需裁决**：两份 `dr_post_report.txt` 的错种子（20261018）是否随同处理——
+**另需裁决**：两份 `dr_post_report.txt` 的错种子（20261018）是否随同处理:
 按 (b) 只拿图判决、报告仍留 20261018（provenance 仍错）；按 (a) 则一并修对但要重出图。
 
 ## 十、建议下一步
 
-1. 先裁 §9。若选 (b)，我可在 3–5 min 内把 7 张图判完，然后只需在合并表里追加 2 个 CSV
+1. 先裁 §9。若选 (b)，我可在 3-5 min 内把 7 张图判完，然后只需在合并表里追加 2 个 CSV
    再复跑两次打分（预期 line2 UNVERIFIED=0、line3 UNVERIFIED=0）。
-2. 无论选哪个，建议把 §8.1（`_stage_dir()` 写时复制）与 §8.2（`--cwd-copy`）立为独立切片——
+2. 无论选哪个，建议把 §8.1（`_stage_dir()` 写时复制）与 §8.2（`--cwd-copy`）立为独立切片:
    否则下一次 B 档审计还是同一个坑。
 3. **line1 的 8 张 UNVERIFIED 不在本切片范围**（2 张 R 图 + 2 张 PPI 禁跑 + 4 张 WGCNA base-R 图），
    要清零需另立「line1 R 图几何审计」专项。

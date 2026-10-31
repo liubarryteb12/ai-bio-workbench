@@ -5,7 +5,7 @@
   2) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\portal\index.html（**你只改这一个文件**）
   3) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\portal\lib\archive.mjs
      （`DATA_ROLES`/`DATA_EXT`/`MAX_DATA_BYTES`/`validateDataFiles`/`buildPackagePlan`
-     的**全部**校验规则——UI 必须与服务端一致，这是契约主体）
+     的**全部**校验规则:UI 必须与服务端一致，这是契约主体）
   4) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\portal\serve.mjs
      （`handleDataFileUpload` 的 query 参数契约、`handleSubmit` 的 payload 字段契约）
   5) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\BioanalysDesktop\tests\portal_submit.test.js
@@ -43,7 +43,7 @@
      **UI 必须把这个规则显式呈现**（下拉选项来自用户在步骤 2 填的数据集 GSE 列表）。
    - `name`：原始文件名（服务端会 sanitize；文件名里出现的 `GSE\d+`/`GPL\d+`
      必须与 bind 一致，不一致服务端 400）。
-   - 返回 `{ok:true, name, path, size}` 或 `{ok:false, error}`——**error 必须原样展示给用户**。
+   - 返回 `{ok:true, name, path, size}` 或 `{ok:false, error}`:**error 必须原样展示给用户**。
    - 单文件上限 1 GiB；扩展名白名单：
      `.tsv .csv .txt .gz .zip .xlsx .h5ad .rds .mtx`
      （**UI 要在文件选择器旁明示，且前端先做同规则预检，别等服务端拒**）。

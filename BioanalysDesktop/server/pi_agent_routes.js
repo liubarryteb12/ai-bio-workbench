@@ -421,5 +421,50 @@ export async function handlePiAgentRoutes(req, res, url, deps) {
     return true;
   }
 
+  // ============================================================
+  // v2.0 遥测心跳捎带 (Heartbeat Piggybacking)
+  // ============================================================
+  if (url.pathname === '/api/v1/a2a/heartbeat' && req.method === 'POST') {
+    const payload = await readJsonBody(req);
+    if (!payload) {
+      json(res, 400, { ok: false, error: '非法 JSON 请求体' });
+      return true;
+    }
+    const nodeId = payload.node_id || 'k40-ubuntu-node01';
+    const tempC = payload.battery_temp_c ?? 35.0;
+    const thermalState = payload.thermal_state || 'NORMAL';
+    const unsyncedTriads = Array.isArray(payload.completed_triads) ? payload.completed_triads : [];
+
+    ledger('pi_agent_telemetry_heartbeat', {
+      node_id: nodeId,
+      battery_temp_c: tempC,
+      mem_available_mb: payload.mem_available_mb,
+      thermal_state: thermalState,
+      throttle_count: payload.throttle_count,
+      active_jobs_count: payload.active_jobs_count,
+    });
+
+    const ackedSteps = [];
+    for (const triad of unsyncedTriads) {
+      if (triad?.step_id) {
+        ackedSteps.push(triad.step_id);
+        ledger('pi_agent_triad_synced', {
+          node_id: nodeId,
+          task_id: triad.task_id,
+          manifest_id: triad.manifest_id,
+          step_id: triad.step_id,
+          exit_code: triad.exit_code,
+        });
+      }
+    }
+
+    json(res, 200, {
+      ok: true,
+      server_time: new Date().toISOString(),
+      acked_step_ids: ackedSteps,
+    });
+    return true;
+  }
+
   return false;
 }

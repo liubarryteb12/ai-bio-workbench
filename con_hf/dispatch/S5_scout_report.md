@@ -18,7 +18,7 @@
 - §二.3：箱线**须显示个体点**（n 小时必须）；热图行=基因列=观测，聚类树可选但须与数值口径一致。
 - §三：二分类固定色 ctrl=`#3B4992` / case=`#EE0000`；连续量单色系 ramp（viridis 默认），禁彩虹。
 - §八.2：出图代码**不得硬编码组名**。
-- §七：B1–B4/D2/D3 只能来自机器判决，导不到即 UNVERIFIED。
+- §七：B1-B4/D2/D3 只能来自机器判决，导不到即 UNVERIFIED。
 
 ---
 
@@ -115,7 +115,7 @@
 - **风险与回归面**：
   - **必须传 `row_linkage=link`**：`clustermap` 默认 `method="average"/metric="euclidean"`，不传则叶序与现状（`linkage(Z, method="ward")`，494 行）不同，图与 ARI 说明对不上。
   - 数值：`link` 与 `ari`（494-496 行）不动 → `ml_core_hub_genes.tsv` 应字节不变（可作回归锚点）。
-  - 图幅：figsize / 边距 / colorbar 位置全变，A–E 几何项需重审；`layout_fix` 对多轴图只做文本收边、不搬图例（`ml_hub_analysis:342-357`），组图例要挂到 `g.ax_col_colors` / `g.ax_heatmap` 手工给。
+  - 图幅：figsize / 边距 / colorbar 位置全变，A-E 几何项需重审；`layout_fix` 对多轴图只做文本收边、不搬图例（`ml_hub_analysis:342-357`），组图例要挂到 `g.ax_col_colors` / `g.ax_heatmap` 手工给。
   - 依赖：seaborn 0.13.2（已装），`ml_hub_analysis` 现未 import seaborn。
   - 确定性：叶序由 `link` 决定 → 可复现；色条位置固定 → 无随机性。
 - **工作量**：中（38 行 → 约 25 行，逐项对齐色条/图例/tick）
@@ -190,7 +190,7 @@
   sns.stripplot(data=df, x="diagnosis", y="prop", ax=ax, jitter=0.12, size=4, color="k")
   ```
 - **理由**：
-  1. 规范 §二.3"箱线须显示个体点"——现 356 行把点全部画在 `x = j+1` **同一竖线上**，同值点完全重合（供体 3 vs 5，见 `composition_report.txt:9` 的 `n_donors={'Healthy': 3, 'Psoriasis': 5}`，重合概率不低）；`stripplot(jitter=)` 才真正可读。
+  1. 规范 §二.3"箱线须显示个体点":现 356 行把点全部画在 `x = j+1` **同一竖线上**，同值点完全重合（供体 3 vs 5，见 `composition_report.txt:9` 的 `n_donors={'Healthy': 3, 'Psoriasis': 5}`，重合概率不低）；`stripplot(jitter=)` 才真正可读。
   2. 现面色 `#4C72B0/#C44E52` **违反** §三 / §八.5（ctrl=`#3B4992`、case=`#EE0000`）；同仓库 R 侧（`pca_matrix:110`、`deg_limma:118`）用的是规范色，同一交付内配色不一致。
 - **风险与回归面**：
   - 数值：箱体统计口径不变（seaborn 默认 1.5×IQR 须线，与 `matplotlib.boxplot` 相同）；`prop` 矩阵计算（341-349 行）不动。
@@ -240,16 +240,16 @@
   cmap = plt.get_cmap("tab20")
   return {c: cmap(i % 20) for i, c in enumerate(cats)}, cats
   ```
-- **目标**：与同仓库另三处对齐 —— `scrna_figures:255-262`、`enrichment_figures(l2):243-249`、`enrichment_figures(l3):245-251`、`celltype_annotation:231-237` 都是 `tab20+tab20b+tab20c` 拼 60 色。
-- **理由**：§三之二 硬约束"分类数超过 20 色必须拼接更大色板，否则循环撞色后同色不同类，图例失效"。`l3_07_domain_composition` 的域数可达 57（`spatial_figures:399-404` 注释已承认），但**同一脚本的 `cat_colors` 仍是 20 色**——`01_domains` 逐样本图若某样本域数 >20 就撞色。
-- **风险**：不改数值；只影响 `01_domains` 的配色（逐样本域数通常 <20，故当前产物**可能**未撞色——**未验证**，需查每样本域数）。改动后 `01_domains` 全部重渲染。
+- **目标**：与同仓库另三处对齐 : `scrna_figures:255-262`、`enrichment_figures(l2):243-249`、`enrichment_figures(l3):245-251`、`celltype_annotation:231-237` 都是 `tab20+tab20b+tab20c` 拼 60 色。
+- **理由**：§三之二 硬约束"分类数超过 20 色必须拼接更大色板，否则循环撞色后同色不同类，图例失效"。`l3_07_domain_composition` 的域数可达 57（`spatial_figures:399-404` 注释已承认），但**同一脚本的 `cat_colors` 仍是 20 色**:`01_domains` 逐样本图若某样本域数 >20 就撞色。
+- **风险**：不改数值；只影响 `01_domains` 的配色（逐样本域数通常 <20，故当前产物**可能**未撞色:**未验证**，需查每样本域数）。改动后 `01_domains` 全部重渲染。
 - **工作量**：小（4 行，复制同仓库既有实现）
 
 #### S5-16 · `spatial_figures` KO DR 表达用 `magma`（**保留**）
 
 - **位置**：`src/line3_spatial/scripts/spatial_figures:316`
 - **现状**：`sc = ax.scatter(..., c=koe[m], cmap="magma", ...)`
-- **判定**：规范 §二.2 要求"连续量用单色系 ramp（viridis 默认），**禁彩虹色系（jet）**"。`magma` 是感知均匀序列 ramp、非彩虹，且与 `02_target_gene` 的 viridis **刻意区分两个不同生物学量**（目标基因表达 vs KO DR 均值）——同图族里两种连续量用同一色阶才是可读性问题。→ **保留，不换**。
+- **判定**：规范 §二.2 要求"连续量用单色系 ramp（viridis 默认），**禁彩虹色系（jet）**"。`magma` 是感知均匀序列 ramp、非彩虹，且与 `02_target_gene` 的 viridis **刻意区分两个不同生物学量**（目标基因表达 vs KO DR 均值）:同图族里两种连续量用同一色阶才是可读性问题。→ **保留，不换**。
 
 ---
 
@@ -259,7 +259,7 @@
 |---|---|---|---|
 | N1 | **patchwork / cowplot** 多面板拼图 | **无落地位置** | R 侧 6 张图里 4 张是 base R（`wgcna_modules` 的 `png()+par/plot/labeledHeatmap`、`cox_analysis` 的 `segments/points`），patchwork 只能组合 ggplot 对象；另 2 张 ggplot（`pca_matrix:115`、`deg_limma:115`）本就是单图，无拼合需求。Step 5 的三张组图目标全在 Python 线（line1 四联 / line2 UMAP 网格 / line3 逐样本组合）→ patchwork 用不上；Python 侧应走 matplotlib `subplot_mosaic`/`GridSpec`。 |
 | N2 | **ggsignif** 包 | **包不适用，但需求成立** | ggsignif 是 ggplot2 扩展，唯一的组间箱线图是 `l2_06`（13 张，Python）→ **包本身用不上**。但"要不要标显著性"是另一个问题：`scrna_composition` 已算好逐 celltype 的 KW + 2 组精确置换 p（存于 `adata.uns["composition"]["group_tests_json"]`，`scrna_composition:365,439`），n=3 vs 5（`composition_report.txt:9`），`perm_p=0.03509` 已显著（basal / suprabasal / unknown 三类，`composition_report.txt:10-12`）→ 想标是**有数据支撑**的。落地方案是 Python 侧手绘括号（2 条 `ax.plot` + 1 个 `ax.text`，约 6 行），不是 ggsignif。见 S5-17。 |
-| N3 | **viridis**（R 包）/ 统一色阶 | **无适用点** | Python 侧 17 个出图脚本的 rcParams **全部**声明 `"image.cmap": "viridis"`（`grep -c '"image.cmap": "viridis"'` = 17，与 17 个装 layout guard 的脚本数一致）；空间表达图 `spatial_figures:281` 已 viridis。R 侧唯一连续色是 `wgcna_modules:547` 的 `blueWhiteRed(50)`——±1 相关的**发散色阶是正确的**，换 viridis 会丢掉"正/负"语义。 |
+| N3 | **viridis**（R 包）/ 统一色阶 | **无适用点** | Python 侧 17 个出图脚本的 rcParams **全部**声明 `"image.cmap": "viridis"`（`grep -c '"image.cmap": "viridis"'` = 17，与 17 个装 layout guard 的脚本数一致）；空间表达图 `spatial_figures:281` 已 viridis。R 侧唯一连续色是 `wgcna_modules:547` 的 `blueWhiteRed(50)`:±1 相关的**发散色阶是正确的**，换 viridis 会丢掉"正/负"语义。 |
 | N4 | **ComplexHeatmap** 换 R 热图 | **不建议** | R 侧热图只有 `l1_29`（`labeledHeatmap`，`wgcna_modules:543-547`），是 WGCNA 官方标准图；换 ComplexHeatmap 要重写 cell 数值标注 / colorbar label（`mtext("correlation r", side=4)`，553 行）/ 行序，收益是外观统一，风险是 **R 图无几何审计**（`figure_manual_review.md` §1：`figs=0`），改完只能目视。 |
 | N5 | **enrichplot** 换富集图 | **不建议** | 三线 8 张富集图全是 Python `barh`（`enrichment_figures`×3、`dr_post_analysis`×2），带 `caption()` / `legend_out()` 体系。改用 enrichplot 需把出图整块搬到 R，丢掉 layout guard 与 caption 契约，工作量"大"、回归面覆盖三线。 |
 | N6 | **seaborn** 换堆叠条形（`scrna_figures:322-336`、`spatial_figures:408-411`、`celltype_annotation:430-435`） | **不建议** | seaborn 0.13 无原生 stacked bar（`barplot` 只聚合不堆叠）；`pandas.plot(kind="bar", stacked=True)` 也不是 seaborn。换过去不减少代码，只多一层索引对齐。 |
@@ -286,7 +286,7 @@
 
 | 编号 | 内容 | 工作量 | 验证方式 |
 |---|---|---|---|
-| S5-09 | `scrna_figures:350-367` 组成箱线 → seaborn box+strip（13 张）+ 同步 S5-10 色值 | 中 | ① 数值锚：`md5sum processed/*composition*` 前后一致（本图块只读 `prop`，不改表）<br>② 箱体口径：改前用同一份 `data` 数组算 `np.percentile(vals, [25, 50, 75])` 作期望值；改后从 `ax.artists[i].get_path().vertices[:, 1]` 读回箱体上下缘，两者必须逐值相等（一次性探针，不落盘）<br>③ 审计：`--script .../bin/line2_scrna/scrna_figures --cwd projects/PRJ_E2E_GSE277173/line2_scrna/processed --runner bash --seed 20261013 --csv /tmp/audit_scrna.csv` → 13 张 `l2_06_*` A–E 全 PASS<br>④ 色值：`grep -n '#4C72B0\|#C44E52' src/line2_scrna/scripts/scrna_figures` 在 `06/10` 图块内必须 0 命中<br>⑤ 确定性：同种子连跑两次，13 张 md5 逐一相同（验证 jitter 种子已固定） |
+| S5-09 | `scrna_figures:350-367` 组成箱线 → seaborn box+strip（13 张）+ 同步 S5-10 色值 | 中 | ① 数值锚：`md5sum processed/*composition*` 前后一致（本图块只读 `prop`，不改表）<br>② 箱体口径：改前用同一份 `data` 数组算 `np.percentile(vals, [25, 50, 75])` 作期望值；改后从 `ax.artists[i].get_path().vertices[:, 1]` 读回箱体上下缘，两者必须逐值相等（一次性探针，不落盘）<br>③ 审计：`--script .../bin/line2_scrna/scrna_figures --cwd projects/PRJ_E2E_GSE277173/line2_scrna/processed --runner bash --seed 20261013 --csv /tmp/audit_scrna.csv` → 13 张 `l2_06_*` A-E 全 PASS<br>④ 色值：`grep -n '#4C72B0\|#C44E52' src/line2_scrna/scripts/scrna_figures` 在 `06/10` 图块内必须 0 命中<br>⑤ 确定性：同种子连跑两次，13 张 md5 逐一相同（验证 jitter 种子已固定） |
 | S5-02 | `ml_hub_analysis:807-844` 热图 → `sns.clustermap(row_linkage=link)` | 中 | ① 数值锚：`md5sum processed/ml_core_hub_genes.tsv` 前后**必须完全一致**（`link`/`ari` 路径未动）<br>② 叶序：由 `row_linkage=link` 构造保证；若改为不传 linkage，则必须证明 `leaves_list(linkage(Z, method="ward"))` 与 `leaves_list(clustermap.row_linkage)` 逐位相同<br>③ 审计同上（`ml_hub_analysis`，`--seed 20261013`）→ `l1_23` A/B/C/D 全 PASS；注意 `layout_fix` 对多轴图**不搬图例**，组图例位置需单独目视<br>④ ARI 图注数值不变：`ari` 由 `adjusted_rand_score(y, clusters)` 算出（494-496 行），本项不动该路径 → 由 ① 的 `ml_core_hub_genes.tsv` md5 已覆盖；图注字符串（836 行）源不变即值不变 |
 | S5-04 | `pca_matrix:115-127` 加 `geom_text_repel` 样本标签 | 小 | ① 数值锚：`md5sum processed/pca_scores.tsv` 不变<br>② 可复现：同种子连跑两次 `l1_02_pca_step3.png` md5 相同（验证 `seed=` 生效）<br>③ 无机器判决（R）→ 进 `con_hf/figure_manual_review.md` §3 清单，状态写"未目视"，**不得改 PASS**<br>④ 目视判据：16 个样本标签全部可见（`max.overlaps=Inf` 生效，无静默丢弃）、无叠字、未超画布 |
 
@@ -313,7 +313,7 @@
 | 多面板拼图 → patchwork / cowplot | **不成立**：R 图全是 base R 或单图 ggplot；组图目标全在 Python（见 N1） |
 | 连续色 → viridis | **已全覆盖**，R 侧唯一的 `blueWhiteRed` 是正确选择（见 N3） |
 | 热图 → ComplexHeatmap / pheatmap | **只剩 1 张可换（`l1_29`），且不值得**（见 N4） |
-| 箱线/小提琴/条形 → seaborn | **仅 `l2_06` 一张族（13 张）有真实收益**（点未抖动 + 色值违规）；堆叠条形/UMAP/热图换成 seaborn 是净负收益（N6–N8） |
+| 箱线/小提琴/条形 → seaborn | **仅 `l2_06` 一张族（13 张）有真实收益**（点未抖动 + 色值违规）；堆叠条形/UMAP/热图换成 seaborn 是净负收益（N6-N8） |
 
 **给主 Agent 的建议**：S5 实施切片不要按"包"派发（"用 seaborn 改一批图"），按**图块**派发（S5-01 / S5-02 / S5-09+10 / S5-04 四个独立切片），每片自带 before/after 与负对照。
 
@@ -339,9 +339,9 @@ if "ax.legend(" in stripped or "plt.legend(" in stripped:
 | 跨行 `loc=` | `enrichment_figures(l1):280-282`（`lower right`）、`ml_hub_analysis:545-547`（`upper left`）、`ml_hub_analysis:629-631`（`lower right`）、`ml_hub_analysis:667-670`（`upper left`） | `loc` 落在 `ax.legend(` 之后第 3 行，2 行窗口看不到 |
 | 裸 `ax.legend()` | `ml_model:298`、`ml_model:325`、`external_validation:281` | 默认 `loc="best"`（轴内），但正则只匹配**显式** `loc=` 字符串 |
 
-**当前是否可见缺陷：大概率否** —— 这 7 处都在单轴图里，`_install_layout_guard()` 在 `savefig` 前调 `layout_fix()`→`legend_out()` 会把图例搬到轴框外（17 个脚本都装了 guard，`grep -c '^_install_layout_guard()'` = 17）。但：
+**当前是否可见缺陷：大概率否** : 这 7 处都在单轴图里，`_install_layout_guard()` 在 `savefig` 前调 `layout_fix()`→`legend_out()` 会把图例搬到轴框外（17 个脚本都装了 guard，`grep -c '^_install_layout_guard()'` = 17）。但：
 1. 规范 §三之二 明确"**源级也不得写轴内 `loc`**，`layout_fix` 只是兜底"；
-2. 审计报 `no issue` 是**假阴性**——Step 4 任何图块改写后，若仍靠这条审计证明"没引入违规"，结论不可信。
+2. 审计报 `no issue` 是**假阴性**:Step 4 任何图块改写后，若仍靠这条审计证明"没引入违规"，结论不可信。
 **未验证**：未跑审计（#190 禁止），故"当前产物无 B 项违规"是推断，不是实测。
 
 ### F2 · 二分类色值不统一（§三 / §八.5）
@@ -358,7 +358,7 @@ if "ax.legend(" in stripped or "plt.legend(" in stripped:
 ### F3 · 出图代码硬编码组名（§八.2）
 
 `bulk_figures:256` `GCOLOR = {"LS": ..., "NLS": ...}`、`bulk_figures:365/393` 轴标签 `"log2FC (LS vs NLS)"`、`scrna_figures:438` `"log2FC (Psoriasis vs Healthy)"`。规范 §八.2 要求"出图与统计代码不得写死组名，组名从 `group_map.tsv` 与 `project.json` 读；写死会让换项目时静默算错方向"。
-**影响面**：`GCOLOR.get(g, "gray")`（302 行）在换项目后会把所有组画成灰色且不报错——静默降级。属独立缺陷，不在 S5 范围，但**改这些图块时不得原样保留**。
+**影响面**：`GCOLOR.get(g, "gray")`（302 行）在换项目后会把所有组画成灰色且不报错:静默降级。属独立缺陷，不在 S5 范围，但**改这些图块时不得原样保留**。
 
 ---
 
@@ -388,11 +388,11 @@ if "ax.legend(" in stripped or "plt.legend(" in stripped:
 2. **S5-17 是否批准把已有的 `perm_p` 标到 `l2_06` 箱线上**（数据已就绪，Python 手绘括号；不是 ggsignif）。
 3. **F1（C1 审计漏检）是否先修再派 S5**：若不修，任何 S5 切片的"源码扫描 no issue"结论都不可信。
 4. **F2/F3（色值 / 硬编码组名）是否并入 S5-09 同批**：同批改省一次 13 张重渲染，但会把"包替换切片"变成"替换 + 契约修复"混合切片，验收面变大。
-5. **Step 4 派发粒度**：建议按图块派发（4 个独立切片），不按包派发——理由见 §6。
+5. **Step 4 派发粒度**：建议按图块派发（4 个独立切片），不按包派发:理由见 §6。
 
 ## 11. 建议下一步
 
 1. 主 Agent 裁决上述 4 项。
 2. 先派 **S5-01**（P0，4 行，风险最低）做一次完整闭环：基线 md5 → 改 → 审计（`--seed 20261013`）→ 负对照 → 登记。跑通这条链路后，后续切片的验证模板就固定了。
-3. **不要派** patchwork / ggsignif / viridis / ComplexHeatmap / enrichplot 的实施切片（§4 N1–N5 已给出可复核理由）。
+3. **不要派** patchwork / ggsignif / viridis / ComplexHeatmap / enrichplot 的实施切片（§4 N1-N5 已给出可复核理由）。
 4. Step 5 组图若启动，Python 侧用 `subplot_mosaic`/`GridSpec`，不要引入 patchwork。

@@ -26,7 +26,7 @@
 2. 修 ①：把 STEP_CATALOG 改成 **line 维度**（如 `STEP_CATALOG[line_id][step_id]`），
    保持所有现有查询点的行为不变（先 `grep -n "STEP_CATALOG" ops/build_client_report.py`
    找全部读取处，逐个适配；查询 API 的形状由你定，但必须能按 (line, step) 唯一取到条目）。
-3. 修 ②：逐条对齐 §2.5 表——
+3. 修 ②：逐条对齐 §2.5 表:
    - 声明名改成**脚本实际写出的名字**（含物种段 `<sp>`、样本段 `<sample>`、celltype 后缀等）；
    - 声明产物不存在的（`l2_01_umap_clusters`、`l2_10_cellchat`）→ 从对应步骤条目里删掉，
      并保证该图若真由别的步骤产（如 `l2_01_umap_celltype` 由 scrna_figures 产）就在那个步骤里声明；

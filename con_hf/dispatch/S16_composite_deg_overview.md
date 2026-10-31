@@ -3,7 +3,7 @@
 【你是谁】项目实现型子 Agent。动手前必须完整阅读：
   1) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\con_hf\dispatch\SUBAGENT_CONTRACT.md
   2) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\con_hf\2026-10-19_figure_polish_plan.md
-     的「Step 5 组图契约」G1–G5（**逐条遵守，这是本切片的验收主体**）
+     的「Step 5 组图契约」G1-G5（**逐条遵守，这是本切片的验收主体**）
   3) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\docs\figure_spec.md §一/§三/§三之二
   4) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\src\line1_bulk\scripts\bulk_figures
      （你只改这一个文件）
@@ -67,7 +67,7 @@ G4 Python 用 subplot_mosaic/GridSpec 不引 patchwork、G5 验收三条）。
        --cwd projects/PRJ_E2E_GSE277173/line1_bulk/processed \
        --runner bash --seed 20261013 --csv /tmp/s16_audit_bulk.csv'
      ```
-     → `l1_32` 的 A–E 必须全 PASS；**注意 #190：这会真跑脚本并重写报告，
+     → `l1_32` 的 A-E 必须全 PASS；**注意 #190：这会真跑脚本并重写报告，
      跑前先对 `processed/` 与 `figures/` 建 md5 基线，跑后逐项比对，
      数据表必须逐字节一致、报告只许 elapsed 行变**。
    - `python cn_debug/figure_score.py --dir outputs/PRJ_E2E_GSE277173/line1_bulk/figures \
@@ -95,7 +95,7 @@ G4 Python 用 subplot_mosaic/GridSpec 不引 patchwork、G5 验收三条）。
 A1 `l1_32_deg_overview.png` 生成，四面板 A/B/C/D 与规格一致。
 A2 G1/G2 探针通过（或明确未验证 + 原因）。
 A3 单图 4 张仍在且 PASS；`figure_audit_scan` 全 PASS 含 `l1_32`。
-A4 几何审计 `l1_32` A–E 全 PASS；基线对比表证明数据表零变化。
+A4 几何审计 `l1_32` A-E 全 PASS；基线对比表证明数据表零变化。
 A5 `figure_score` 里 `l1_32` PASS 且 C1/C2 命中；已合并进 `figure_audit_all.csv`。
 A6 台账 completed/exit 0/passed；`code_audit` no issue。
 A7 `figures.js` 只新增一条 caption，既有条目未动（贴 diff 或计数对比）。

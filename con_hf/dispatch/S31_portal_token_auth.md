@@ -10,7 +10,7 @@
   4) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\BioanalysDesktop\tests\portal_submit.test.js
      （真进程 E2E 范式，你的新测试照它写；**这些既有断言一条不许红**）
   5) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\aims\aims.txt §一.1
-     （"HTTP/S（配合外网穿透与 Token 鉴权）支持远程建项、大文件分片上传与结果预览"——
+     （"HTTP/S（配合外网穿透与 Token 鉴权）支持远程建项、大文件分片上传与结果预览":
      本切片的规格依据）
 以上是最高行为准则；本派发单只定义任务项。
 
@@ -24,9 +24,9 @@
 
 【背景（主 Agent 已裁决，用户 2026-10-20 授权"先 B 后 A"）】
 - P0 风险（架构评审 R1）：portal 设计为"可单独内网穿透给客户"
-  （serve.mjs:5-8 注释），但四个端点**无任何鉴权**——可达者即可匿名写需求 JSON、
+  （serve.mjs:5-8 注释），但四个端点**无任何鉴权**:可达者即可匿名写需求 JSON、
   上传至 5GiB 文件、投毒参考文献。
-- aims §一.1 要求"配合外网穿透与 Token 鉴权"——**规格有要求，实现缺席**。
+- aims §一.1 要求"配合外网穿透与 Token 鉴权":**规格有要求，实现缺席**。
 - 约束：现有客户已在无口令使用；**默认行为必须保持开放**
   （不设 env 时与今天完全一样），只有运维显式设了 `PORTAL_TOKEN` 才启用鉴权。
 
@@ -37,7 +37,7 @@
    `PORTAL_PORT`/`PORTAL_INBOX` 同一处风格）。
 2. **豁免端点**：`GET /`、`GET /index.html`、`GET /health` **永不鉴权**
    （页面要能打开、健康检查要能探活）。
-3. **受保护端点**：`/api/submit`、`/api/datafiles`、`/api/references`——
+3. **受保护端点**：`/api/submit`、`/api/datafiles`、`/api/references`:
    当 `PORTAL_TOKEN` 非空时，要求请求携带 token，两种形态都接受：
    - `Authorization: Bearer <token>` 头；
    - query 参数 `?token=<token>`（便于浏览器表单/下载直链）。
@@ -58,7 +58,7 @@
 10. 所有 `/api/*` 的 fetch（`/api/submit`、`/api/datafiles`、`/api/references`）
     在 `auth_required` 时自动带上 `Authorization: Bearer <token>` 头；
     401 时原样展示服务端 error 并提示重新输入 token。
-11. `auth_required` 为 false 时**零变化**（不显示 token 区、不加头）——
+11. `auth_required` 为 false 时**零变化**（不显示 token 区、不加头）:
     现有客户无感。
 
 三、测试 `BioanalysDesktop/tests/portal_auth.test.js`（新建，≥8 条，全绿）：

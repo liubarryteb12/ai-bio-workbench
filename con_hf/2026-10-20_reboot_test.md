@@ -1,4 +1,4 @@
-# 真机 `adb reboot` 端到端实测报告（2026-10-20 10:28–10:40）
+# 真机 `adb reboot` 端到端实测报告（2026-10-20 10:28-10:40）
 
 > 目的：验证遗留项「v6 LOGDIR 修复 + 契约变更（不绑核/openblas）后，真重启能否零（少）手工恢复」。
 > 结论：**双通与五服务恢复成功**（含一次 R15 双 runsvdir 抢锁的实战修复）；暴露 boot_v2 一个新缺陷（R15）。
@@ -10,12 +10,12 @@
 |---|---|
 | 10:28:17 | 预检全绿（设备在线、算力空闲、R 基线 48.44 GFLOPS、五服务 run）→ `adb reboot` |
 | 10:28:49 | `sys.boot_completed=1`（32s）；`dumpsys user` = `RUNNING_LOCKED`（FBE，Termux 起不来） |
-| 10:29–10:33 | 轮询等待解锁（用户 10:33:07 完成解锁，225s） |
+| 10:29-10:33 | 轮询等待解锁（用户 10:33:07 完成解锁，225s） |
 | 10:33:1x | MIUI 自启动生效：`com.termux.boot`(8173) + `com.termux`(8215) 自动拉起，**无需 am start** |
 | 10:33:3x | **R15 爆发**：boot 日志刷 `runsv <svc>: fatal: unable to lock supervise/lock`；诊断见 §二 |
-| 10:34–10:36 | `ops/fix_runsvdir.sh`（run-as out-of-band 通道）修复：杀双 runsvdir → 杀 runsv → 补杀 proot → 单实例重拉 → sv up |
-| 10:36–10:38 | 重建 `adb forward`（8022/10022，重启后 PC 侧转发表被清——reference 坑#84） |
-| 10:38–10:40 | 全量验证通过（见 §三） |
+| 10:34-10:36 | `ops/fix_runsvdir.sh`（run-as out-of-band 通道）修复：杀双 runsvdir → 杀 runsv → 补杀 proot → 单实例重拉 → sv up |
+| 10:36-10:38 | 重建 `adb forward`（8022/10022，重启后 PC 侧转发表被清:reference 坑#84） |
+| 10:38-10:40 | 全量验证通过（见 §三） |
 
 ## 二、R15：双 runsvdir 并存抢锁（新缺陷，boot_v2 v6 判据盲区）
 
@@ -25,7 +25,7 @@
 
 **根因**：Termux:Boot 链路里 boot 脚本被触发两次（MIUI 自启动投递 + 二次触发路径未定位），
 两个 `runsvdir -P $SVDIR` 并存。**boot_v2 v6 的 R1 段判据（杀「空转」或「environ 无 LOGDIR」
-的 runsvdir）杀不掉它们**——两个都有 LOGDIR 且都非空转。这是判据盲区（同族：R1/R3 复发加强版）。
+的 runsvdir）杀不掉它们**:两个都有 LOGDIR 且都非空转。这是判据盲区（同族：R1/R3 复发加强版）。
 
 **修复**（`ops/fix_runsvdir.sh`，已归档，可复用）：
 1. 杀所有 runsvdir → 2. 杀所有 runsv（SIGTERM 会传导到服务进程）→ 3. 补杀
@@ -34,7 +34,7 @@
    → 6. 30s 有界等待验证。
 
 **执行通道备注**：`run-as com.termux bash <script>` 被 Android W^X 拦（exec failed:
-Permission denied）——必须 `run-as com.termux sh <script>`（系统 sh 解释执行）。
+Permission denied）:必须 `run-as com.termux sh <script>`（系统 sh 解释执行）。
 `run-as` 裸环境里 `sv` 不可见（PATH 是 Android 的，坑#78），需全路径或显式 export。
 
 **修复后状态**：runsvdir=1，六服务各一 runsv，日志风暴停止（390 条为历史累积，无新增）。
@@ -52,14 +52,14 @@ Permission denied）——必须 `run-as com.termux sh <script>`（系统 sh 解
 | R 吞吐（openblas 3t） | 48.44 GFLOPS | **48.44 GFLOPS**（checksum -7600.0476 逐位一致） | ✅ |
 | 绑核契约 | 默认不绑核 | 默认不绑核（BIO_PIN_CPUS 版 wrapper 在位） | ✅ |
 | 数据面 | 3 项目 / 142G avail | 3 项目 / 142G avail | ✅ |
-| `ubuntu-sshd` 显示 `got TERM` | — | 有（pid 8441） | ✅ 无害（proot 忽略 TERM，termux_keepalive §六.2；10022 实测可连） |
+| `ubuntu-sshd` 显示 `got TERM` | : | 有（pid 8441） | ✅ 无害（proot 忽略 TERM，termux_keepalive §六.2；10022 实测可连） |
 
 ## 四、待办与建议
 
 1. **boot_v2 的 R15 防护**：设备侧幂等闸**已于 2026-10-20 安装验证**
    （`~/.termux/boot/start-p_actions.sh` 开头 `pgrep -x runsvdir && exit 0`，备份
    `.bak_20261020_idem`，实测手动触发 rc=0 不重拉）；**母本加固**（多 runsvdir 判据 +
-   幂等闸）待用户拍板去向（reference/ 只读，设备侧已与母本漂移——以设备侧为准需同步母本）。
+   幂等闸）待用户拍板去向（reference/ 只读，设备侧已与母本漂移:以设备侧为准需同步母本）。
 2. **幽灵 runsv 残留（已隔离，非阻塞）**：com.termux.boot 域的 runsv 8423 + proot 8441
    跨 app 域杀不掉（SELinux），接受其继续提供 10022（功能无损），日志噪声 ~1 行/5s，
    **下次 reboot 自然清除**。若用户要求立即清净：只能再 reboot（幂等闸已防双触发复发）。

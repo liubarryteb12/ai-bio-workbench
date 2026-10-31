@@ -11,7 +11,7 @@
 | `ops/__pycache__/` | 删除 | 不存在；但仓库内另有 7 个 `__pycache__` | 全部删除 |
 | `cn_debug/subagent_*.log`（24 个 4.9MB） | 删除 | 实为 21 个 `*.log` 共 **497,925 字节（486KB）** | 全部删除 |
 
-实测释放：**1,042,977 字节（约 1.0MB）**——其中 `*.log` 21 个 486KB、`__pycache__` 7 个 532KB（`cn_debug` 1 个 + `project_data/` 4 个 + `reference/` 2 个）。
+实测释放：**1,042,977 字节（约 1.0MB）**:其中 `*.log` 21 个 486KB、`__pycache__` 7 个 532KB（`cn_debug` 1 个 + `project_data/` 4 个 + `reference/` 2 个）。
 
 删除清单（`cn_debug/`，全部被 `.gitignore:52` 的 `*.log` 忽略，删除不进版本库）：
 `figure_audit_sweep_subagent_s2.log`、`figure_audit_sweep_subagent_s3.log`、`subagent_s27/s28/s28b/s31.log`、`serve_guard.log`、`workbench_err/out/server.log`、`portal_server.log`、`s50_rerun_clean.log`、`s9_run_stdout.log`、`2026-10-19_e2e_line2_smoke.log`、`2026-10-19_verify_step_catalog.log`、`2026-10-20_s26_e2e_server_stderr.log`（0 字节）、`figure_audit_sweep_s4c_v9.log`、`_s28_check1/check2/probe/run3.log`。
@@ -51,7 +51,7 @@
 
 ### 未批量归档：`cn_debug/` 一次性探针
 
-`cn_debug/` 有 266 个受版本控制文件（约 33MB）。评审 §2.2 说"一次性探针可归档"，但 §2.5 同时要求"保留判决证据"，且 `con_hf/dispatch/` 的报告逐条按 `cn_debug/<文件名>` 引用——批量移动会让这些引用失效。
+`cn_debug/` 有 266 个受版本控制文件（约 33MB）。评审 §2.2 说"一次性探针可归档"，但 §2.5 同时要求"保留判决证据"，且 `con_hf/dispatch/` 的报告逐条按 `cn_debug/<文件名>` 引用:批量移动会让这些引用失效。
 处置改为**建索引不搬家**：新增 `cn_debug/README.md`，五节登记（判决证据勿删 / 验证脚本按切片 / 一次性探针可删 / 目录说明 / 已清理记录），并规定"新增探针必须登记"。
 
 ## 三、验证
@@ -63,6 +63,6 @@
 
 ## 四、遗留
 
-1. `con_hf/2026-10-20_调研_三线定制数据集与实验设计.md:145` 仍写 `docs/geo_mining_sop_v1.md`——历史调研文档，按"台账追加不重写"纪律未改，读者按 v2 版本记录可跳转。
+1. `con_hf/2026-10-20_调研_三线定制数据集与实验设计.md:145` 仍写 `docs/geo_mining_sop_v1.md`:历史调研文档，按"台账追加不重写"纪律未改，读者按 v2 版本记录可跳转。
 2. `cn_debug/` 里 `s3_*`/`s4_*`/`s5*` 系列原型脚本（约 100 个）确属"可删"，但它们是三线母版脚本的演化证据，按 §2.5 保留；如后续确认不需要，可整体移入 `_archive/cn_debug/`。
 3. `ops_legacy_2026-10-20/`（`cn_debug` 下）与 `_archive/` 存在语义重叠，下一轮可合并。

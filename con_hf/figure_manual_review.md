@@ -8,7 +8,7 @@
 ## 1. 为什么需要这份清单
 
 `ops/audit_figure_layout.py` 靠 monkeypatch `matplotlib.figure.Figure.savefig` 做几何判定，
-**只覆盖 Python 出图**。R 脚本（`png()` 设备）跑审计得到 `figs=0 fail=0`——
+**只覆盖 Python 出图**。R 脚本（`png()` 设备）跑审计得到 `figs=0 fail=0`:
 那既不是通过也不是失败，是**没有判决**。实测证据：`wgcna_modules`、`pca_matrix`、
 `deg_limma` 三个脚本跑审计均 `figs=0`（2026-10-19）。
 
@@ -32,8 +32,8 @@
 |---|---|
 | 扩展名 PNG / DPI==300 / 最短边≥1200px / 非空白 / 边缘无裁切 | **6/6 PASS**（并入 33/33 fail=0） |
 | 命名符合 `l<n>_<序号>_<语义>.png` | PASS |
-| 源码级（C1–C9：轴内图例/低DPI/低字号/错目录/PDF/res=/dpi） | 对应脚本 `no issue found` |
-| 同种子复现性 | `pca_matrix` 连跑两次图件 md5 均为 `b9db6bd4…`；WGCNA 产物 V1–V10 全过 |
+| 源码级（C1-C9：轴内图例/低DPI/低字号/错目录/PDF/res=/dpi） | 对应脚本 `no issue found` |
+| 同种子复现性 | `pca_matrix` 连跑两次图件 md5 均为 `b9db6bd4…`；WGCNA 产物 V1-V10 全过 |
 
 ## 3. 机器没有判决、需要人眼看的（每张图的检查点）
 

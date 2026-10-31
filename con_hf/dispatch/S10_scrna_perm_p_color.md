@@ -5,7 +5,7 @@
   2) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\con_hf\dispatch\S5_scout_report.md
      （§3.2 scrna_figures 的 S5-17 与 S5-10、§7-F2/§7-F3）
   3) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\con_hf\dispatch\S9_fix_color_groupname.md
-     （line1 同题已完成的实现，是你的写法范本——**沿用它的 resolve_case_ctrl 思路**）
+     （line1 同题已完成的实现，是你的写法范本:**沿用它的 resolve_case_ctrl 思路**）
   4) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\con_hf\踩坑台账.md 的 #190、#193、#194
 以上是最高行为准则；本派发单只定义任务项。
 
@@ -30,7 +30,7 @@
      line2 的 contrasts 以 project.json 实际内容为准；读不到就按规则派生并在 stdout 打印。
 2. **S5-17 箱线标 perm_p**（scout §3.2 / §5-P2-S5-17）：
    - 数据来源：`uns["composition"]["group_tests_json"]`（`scrna_composition` 写入，n=3 vs 5，
-     `perm_p=0.03509` 等已算好）——**不要自己重算统计**。
+     `perm_p=0.03509` 等已算好）:**不要自己重算统计**。
    - 只对有 `perm_p` 的 celltype 画括号 + 文本；无值时静默不画且不报错。
    - 文本数值必须与 `composition_report.txt` 里的 `perm_p` 逐值一致（写一次性断言比对，不落盘）。
    - 括号文字极易触发 A 项出框（audit 的 A 判据），靠 `fit_text_edges` 兜底，必须实测。
@@ -42,7 +42,7 @@
    - `python cn_debug/figure_code_audit.py --root src` → `no issue found`
    - `python cn_debug/figure_audit_scan.py --dir outputs/default/line2_scrna/figures`
    - 几何审计（真渲染判决）：`ssh k40-ubuntu 'cd /mnt/ssd/bio_data && python3 ops/audit_figure_layout.py --script /mnt/ssd/bio_data/bin/line2_scrna/scrna_figures --cwd projects/default/line2_scrna/processed --runner bash --seed 20261013 --csv /tmp/audit_scrna.csv'`
-     → 13 张 `l2_06_*` 的 CSV 逐行贴出；A–E 全 PASS 才算过
+     → 13 张 `l2_06_*` 的 CSV 逐行贴出；A-E 全 PASS 才算过
      （注意 #190：这会真跑脚本并重写报告，跑前先做 processed/ 与 figures/ 的 md5 基线，跑后逐项对比，
      数据表 md5 必须不变、`*_report.txt` 只允许 elapsed 行变）
    - 颜色断言：从重渲染的组成图/PCA 图里取像素，断言 ctrl `#3B4992`(59,73,146) 与
@@ -61,7 +61,7 @@
 A1 `grep -nE '#4C72B0|#C44E52' src/line2_scrna/scripts/scrna_figures` 0 命中。
 A2 组名/方向来自 project.json 或规则派生，有 stdout 证据。
 A3 perm_p 括号：只出现在有值的 celltype；文本与 `composition_report.txt` 逐值一致（断言通过）。
-A4 台账 completed/exit 0/passed；`figure_audit_scan` 全 PASS；几何审计 13 张 A–E 全 PASS。
+A4 台账 completed/exit 0/passed；`figure_audit_scan` 全 PASS；几何审计 13 张 A-E 全 PASS。
 A5 颜色像素断言通过。
 A6 同 seed 两次渲染 13 张 md5 全同。
 A7 processed 数据表 md5 不变（基线对比表）。

@@ -9,7 +9,7 @@
 ## 0. 结论摘要（给小白的三句话）
 
 1. **架构没坏，坏在"管家太多了"**：客户门户、管理工作台、运维脚本是三套独立系统，
-   同一件事（守护/日志检查/链接检查）有多处实现——你感觉的"臃肿"主要来自这里，
+   同一件事（守护/日志检查/链接检查）有多处实现:你感觉的"臃肿"主要来自这里，
    不是分析流程本身。
 2. **分析主线是健康的**：三线 137 张图件全过判决、处理数据零污染、建项契约有
    30+ 条断言把守；但有两个"承诺了没接上"的地方（桥接四项断言 0 次调用、
@@ -81,7 +81,7 @@
 
 ### 1.10 项目根非 git 仓库：所有改动无原生回滚
 - **证据**：`git status` → not a git repository（S18R 报告同样记录）。
-- **判断**：**建议初始化 git**（B 批，需你授权）——这是"框架没想象中好"的真实痛点：
+- **判断**：**建议初始化 git**（B 批，需你授权）:这是"框架没想象中好"的真实痛点：
   任何误操作都没有原生回滚手段，只能靠手工备份。
 
 ## 2. 臃肿清单（五分类，每项有体积/行数证据）
@@ -108,7 +108,7 @@
   与 `consistency.test.js` 同口径），`04_check_logs.ps1` 归档。
 - **上传白名单两套不一致**：8787 允许 `.h5/.loom/.soft/.tar/.rdata`
   （`upload.js:24-27`），portal 允许 `.xlsx` 但不允许上述（`archive.mjs:23`）
-  ——**同一份数据走两个入口校验结论不同**，用户会困惑。建议以 aims 数据集形态为准
+  :**同一份数据走两个入口校验结论不同**，用户会困惑。建议以 aims 数据集形态为准
   统一成一份（S30 处理）。
 
 ### 2.4 【抽公共】判决：**不抽**（附理由）
@@ -211,7 +211,7 @@ S30 杂项收敛（D3/白名单/续传/守护说明）→ B 批等你授权。
 
 A 批全部完成：A1/A2（S26）、A3（D3 事实性漂移已修：`aims/aims.txt:140` 为 `png_300dpi`，`src/App.tsx:1888` 写 300 DPI）、A4（S27 交付报告入口）、A5（S28 桥接四项断言接线）、A6（`ops/README.md` 收敛说明）、A7（S29 TaskPanel + `validateTaskPaths`）、A8（S30 白名单单一事实源 `shared/data_formats.mjs` + S32 断点续传）。
 
-B 批：B4（portal `PORTAL_TOKEN` 可选鉴权，S31）与 B5（git 初始化）已完成；**B1/B2/B3 仍待用户授权**——B1 实测已无收益（`cn_debug/scenic_db` 与 `ops/__pycache__` 早已不存在，剩余可删约 0.36MB）；B2 未执行（`_archive/` 未建，待归档 7 个 ops 脚本 + `geo_mining_sop_v1.md` 约 50KB）；B3 口径差未裁。
+B 批：B4（portal `PORTAL_TOKEN` 可选鉴权，S31）与 B5（git 初始化）已完成；**B1/B2/B3 仍待用户授权**:B1 实测已无收益（`cn_debug/scenic_db` 与 `ops/__pycache__` 早已不存在，剩余可删约 0.36MB）；B2 未执行（`_archive/` 未建，待归档 7 个 ops 脚本 + `geo_mining_sop_v1.md` 约 50KB）；B3 口径差未裁。
 
 C 批维持原判。D 批：D1 由提交层兜住（脚本内仍 0 调用）、D2 口径未定义（非缺陷）、D3 已修、D4 已作废并改由 8787 侧四道闸承担、D5 已实现（4MB 分片续传）、D6 已收敛（`server/selfcheck.js`：温度/内存/负载 + 三线逐线隔离 + 桥接存在性）、D7 维持跳过。
 
@@ -222,8 +222,8 @@ C 批维持原判。D 批：D1 由提交层兜住（脚本内仍 0 调用）、D
 ## 落地状态（2026-10-21 第二轮收口，以此为准）
 
 **B 批已全部处置**（用户一句话全批）：
-- **B1 已执行**：删 `cn_debug/*.log` 21 个 + `__pycache__` 7 个，合计 1,042,977 字节（约 1.0MB）。评审估的 689MB 收益**不存在**——`cn_debug/scenic_db/` 与 `ops/__pycache__` 早已不存在。
-- **B2 部分执行（有理由）**：`_archive/{README.md,docs,ops}` 已建，`docs/geo_mining_sop_v1.md` 与 `ops/01_fix_svlogger.ps1` 已归档，`ops/README.md` / `docs/geo_mining_sop_v2.md` 引用同步。**未搬** `serve_guard.ps1` / `bio_watchdog.sh` / `fix_runsvdir.sh` / `04_check_logs.ps1`——A6 已判定它们是 `ops/README.md` 决策表的唯一入口，`03_check_logs_remote.sh` 是 `04` 调用的服务端本体（壳+体不构成重复）；`ops/svlogger_*` 本地本就不存在。`cn_debug/` 266 个受控文件改加 `cn_debug/README.md` 索引（§2.5 要求保留判决证据）。
+- **B1 已执行**：删 `cn_debug/*.log` 21 个 + `__pycache__` 7 个，合计 1,042,977 字节（约 1.0MB）。评审估的 689MB 收益**不存在**:`cn_debug/scenic_db/` 与 `ops/__pycache__` 早已不存在。
+- **B2 部分执行（有理由）**：`_archive/{README.md,docs,ops}` 已建，`docs/geo_mining_sop_v1.md` 与 `ops/01_fix_svlogger.ps1` 已归档，`ops/README.md` / `docs/geo_mining_sop_v2.md` 引用同步。**未搬** `serve_guard.ps1` / `bio_watchdog.sh` / `fix_runsvdir.sh` / `04_check_logs.ps1`:A6 已判定它们是 `ops/README.md` 决策表的唯一入口，`03_check_logs_remote.sh` 是 `04` 调用的服务端本体（壳+体不构成重复）；`ops/svlogger_*` 本地本就不存在。`cn_debug/` 266 个受控文件改加 `cn_debug/README.md` 索引（§2.5 要求保留判决证据）。
 - **B3 已收敛**：`server/tumor_blacklist.js` 27 → **8 条**（与 `aims/aims.txt` §三.1 逐条同序），`portal/index.html` 副本同步，`tests/tumor_blacklist.test.js` 15 条 + `tests/tumor_blacklist_parity.test.js` 7 条把守；`aims/aims.txt:72-77` 改为「8 条正本 + 沿革 + 已知边界」。
 
 **本轮同时关掉的四条遗留**：ledger 口径差（`ledger.js` 的 `analyzePath`/`inspectTaskPath` 成为唯一事实源，`server/index.js` 删除私有实现改为复用）、`.uploads` 无 TTL（GC 24h + `BIO_UPLOAD_TTL_HOURS`）、续传依赖 localStorage（确定性 uploadId 由 `shared/upload_session.mjs` 派生，前后端同一实现）、前端续传分支无测试（逻辑抽到 `src/lib/uploadSession.ts`，`node --test` 直接 import）。

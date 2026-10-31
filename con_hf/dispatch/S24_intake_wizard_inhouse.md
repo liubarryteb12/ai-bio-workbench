@@ -3,7 +3,7 @@
 【你是谁】项目实现型子 Agent。动手前必须完整阅读：
   1) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\con_hf\dispatch\SUBAGENT_CONTRACT.md
   2) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\con_hf\dispatch\S21_scout_workbench_gaps.md
-     的「疑点 b/c」「风险 R2/R11/R12/R13」「切片建议 #1」——**本切片的缺口清单与验收思路**
+     的「疑点 b/c」「风险 R2/R11/R12/R13」「切片建议 #1」:**本切片的缺口清单与验收思路**
   3) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\BioanalysDesktop\tests\v3_intake.test.js
      （**30 条用例 = 服务端 v3 intake 四块的契约形状，你的表单字段必须与之对齐**）
   4) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\BioanalysDesktop\tests\dualmode.test.js
@@ -21,11 +21,11 @@
 `BioanalysDesktop/server/domain.js`（如需）、`BioanalysDesktop/tests/*.test.js`（新增/扩展用例）。
 **禁止碰**：`portal/`、`ops/`、`src/`、`server/index.js` 路由挂载（除非新增端点，下面规格没让你加）、
 其他 server 模块、`docs/`、`con_hf/`（报告除外）。
-【并行约束】S18R 在改 `server/figures.js` 与 `src/line3_spatial/`——**你别碰这两个**。
+【并行约束】S18R 在改 `server/figures.js` 与 `src/line3_spatial/`:**你别碰这两个**。
 
 【背景（主 Agent 已裁决）】
 - **R2（死路）**：工作台 OnboardingPortal 无法录入 v3 intake 四块（排版/阈值/协变量/
-  配对/验证集映射/focus genes/WGCNA 参数——以 v3_intake.test.js 的实际形状为准），
+  配对/验证集映射/focus genes/WGCNA 参数:以 v3_intake.test.js 的实际形状为准），
   也进不了 IN_HOUSE 模式（选"自有数据"落 PUBLIC_DB，domain.js:97-101 →
   project.js 拒非 GSM 样本）。手工建项只能用默认值；自有数据项目在工作台建不出来。
 - **R11**：species/domain/dataType/sampleCount/contrasts 无服务端校验（脏值静默进 project.json）。
@@ -44,10 +44,10 @@
    （照 portal/index.html:517-520 的既有先例），默认 `template_4x3`，
    写进 submit body 的 `plotLayoutConfig.templateId`。
 3. **IN_HOUSE 通道**：数据来源模式单选（PUBLIC_DB / IN_HOUSE_UPLOAD，语义照
-   portal 的同名实现——可参考 portal/index.html:383-390 与 S19 的字段收集逻辑）。
+   portal 的同名实现:可参考 portal/index.html:383-390 与 S19 的字段收集逻辑）。
    选 IN_HOUSE 时：显示"自有数据三件套"必填（id_type / value_scale / train_matrix，
    照 dualmode.test.js 的契约），且数据集配对区切换为自有数据形态
-   （不需要 GSE 编号，用 LOC 编号——dualmode.test.js 有 LOC 编号断言，照它）。
+   （不需要 GSE 编号，用 LOC 编号:dualmode.test.js 有 LOC 编号断言，照它）。
 4. **R13 顺带修**：`LAYOUT_TEMPLATE_LABEL`（App.tsx:203-207）键改为
    `template_4x3` / `template_16x9`（服务端 project.js:123-126 的现行 id），
    旧 id 兼容映射保留（project.js:133-137 有旧 id → 新 id 的映射，照它）。
@@ -56,7 +56,7 @@
 
 二、server/project.js（+domain.js 如需）：
 6. **R11 校验补齐**（逐条，失败 400 且 error 点名字段）：
-   - `species`：非空且在枚举（Homo sapiens / Mus musculus / Rattus norvegicus——
+   - `species`：非空且在枚举（Homo sapiens / Mus musculus / Rattus norvegicus:
      照 portal/index.html:下拉的三项；不认识就拒）；
    - `domain`：非空且在枚举（照 portal 下拉七项）；
    - `dataType`：非空且在 DATA_TYPE 枚举（domain.js 既有，别发明新枚举）；
@@ -80,13 +80,13 @@
 
 【任务项】
 1. 先读 v3_intake.test.js 全文，把四块的字段清单（字段名/类型/默认值）整理成表
-   贴进回报第 1 节——这是你的表单 schema，不许走样。
+   贴进回报第 1 节:这是你的表单 schema，不许走样。
 2. 读 dualmode.test.js 的 IN_HOUSE 建项用例，列出三件套与 LOC 编号规则。
 3. 实现 App.tsx 表单（四块 + 模板选择 + IN_HOUSE 通道），字段收集进 submit body。
 4. 实现 project.js 校验（R11 六条 + R12 + line_id），保持既有用例全绿。
 5. 写测试（第 10 条规格）。
 6. 自检：`cd BioanalysDesktop && npm test` **全绿**（237 旧 + 新增，一条不许红；
-   如有红灯，先判断是你的改动破坏还是既有 flake——S20 报告提过 1 次环境性 flake，
+   如有红灯，先判断是你的改动破坏还是既有 flake:S20 报告提过 1 次环境性 flake，
    重跑一次确认；连续 2 次同位置红即是你破坏，修到绿再交付）。
 7. 前端构建：`cd BioanalysDesktop && npm run build` 必须成功
    （TypeScript 编译过 = 类型安全的第一道关；贴输出尾行）。
@@ -99,7 +99,7 @@
    - **IN_HOUSE 全链**：IN_HOUSE payload → 200 → project.json 的
      data_source_mode='IN_HOUSE_UPLOAD' + LOC 编号正确（照 dualmode.test.js）。
    验证脚本落 `cn_debug/2026-10-20_verification_s24_intake_e2e.mjs`（幂等可复跑）。
-9. 客户端构建产物 dist/ 会由 npm run build 更新——**这是允许的**（dist 在文件域内）；
+9. 客户端构建产物 dist/ 会由 npm run build 更新:**这是允许的**（dist 在文件域内）；
    但不要手工改 dist 文件。
 10. **每完成一步就更新一次 `con_hf/dispatch/S24_report.md`**（硬要求）。
 

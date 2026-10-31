@@ -53,7 +53,7 @@ tail -20 ~/p_actions/logs/watchdog.log
 
 **已知设计边界（2026-10-20 实测，勿再踩）**：bio-watchdog **没有 log 子服务**
 （日志走自带的 `~/p_actions/logs/watchdog.log`）。`sv status bio-watchdog/log` 报
-`unable to change to service directory` 是**无害现象，不要手动补 `log/run`**——
+`unable to change to service directory` 是**无害现象，不要手动补 `log/run`**:
 runsvdir 运行中不热扫描新服务目录，补了也没有 runsv 接管，只会让 boot 脚本的
 `[ -d "$SVDIR/$s/log" ] && sv up` 守卫每次触发 warning。2026-10-20 曾误补后回退
 （删掉 `$SVDIR/bio-watchdog/log` 即恢复，主服务零影响）。同理，运行中给任何服务
@@ -160,7 +160,7 @@ Read from remote host 127.0.0.1: Unknown error
 base64 合成**一次** ssh 执行，连接数恒为 1，与命令数无关。实测一次连接跑完 9 条
 md5 比对只用 519ms（原来是 9 次 ssh）。
 
-（base64 传输同时绕开 PowerShell 展开 `$` / `<` / 引号的问题——这个坑当天踩了三次。）
+（base64 传输同时绕开 PowerShell 展开 `$` / `<` / 引号的问题:这个坑当天踩了三次。）
 
 ### 自检命令
 

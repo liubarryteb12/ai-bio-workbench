@@ -38,7 +38,7 @@
   scikit-learn 1.9.1 / matplotlib 3.11.2 / seaborn 0.13.2 / networkx 3.7 / statsmodels 0.15.0 /
   harmonypy 2.0.2 / liana 1.10.0 / pyscenic 0.12.1 / arboreto 0.1.6 / gseapy 1.3.1 /
   scTenifold 0.5.1 / shap 0.53.0 / h5py 3.16.0 / Pillow 12.3.0 / adjustText 1.4.0
-- **squidpy 未安装**（`ModuleNotFoundError`）——与 `src/line3_spatial/scripts/spatial_domains:220`
+- **squidpy 未安装**（`ModuleNotFoundError`）:与 `src/line3_spatial/scripts/spatial_domains:220`
   记录的「squidpy dry-run 连带降级、改走 numpy 原生实现」一致。
 
 「该包属于哪条线」不是猜的：对 `src/<line>/scripts/` 逐个 grep `library()/require()` 与
@@ -54,7 +54,7 @@ PyYAML 6.0.3，但为交付链路引入隐式依赖不值得；`json` 是 stdlib
 
 - 机读源：`reference/生信分析可用参考文献/citations.json`（15 条 entries + 4 条 duplicates）。
 - 人读视图：`reference/生信分析可用参考文献/INDEX.md`（105 行），由 `ops/gen_reference_index.py`
-  从 JSON 生成，**不手写**——报告引用与人工索引读同一份数据，避免两套说法漂移。
+  从 JSON 生成，**不手写**:报告引用与人工索引读同一份数据，避免两套说法漂移。
   生成时逐个校验 PDF 路径真实存在；04 目录下任一 PDF 未进索引即报错。
 
 取值一律用 `pdftotext -f 1 -l 1 -enc UTF-8` 抽首页文字层，取不到的写「未获取」。核对中发现
@@ -89,7 +89,7 @@ PyYAML 6.0.3，但为交付链路引入隐式依赖不值得；`json` 是 stdlib
 自测中抓到并修掉两个自己的 bug（都留了回归断言）：
 
 1. `active_lines` 最初用 `pipeline_dag` 的 stepId 去 `STEP_CATALOG[line]` 反查，结果
-   **三条线全部命中**——`enrichment_figures` 在三线 catalog 里重名。首次实跑的报告里因此
+   **三条线全部命中**:`enrichment_figures` 在三线 catalog 里重名。首次实跑的报告里因此
    混进了 scanpy / harmonypy / liana 等未跑线的包。改为以任务台账 `line_id` 为主、该线产物为辅，
    并加断言「重名步骤不会把未跑的线判成 active」。
 2. 降级用例最初"通过"得莫名其妙：环境变量指向不存在的文件时仍回落到了默认清单。

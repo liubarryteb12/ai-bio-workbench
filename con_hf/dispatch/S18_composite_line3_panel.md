@@ -3,7 +3,7 @@
 【你是谁】项目实现型子 Agent。动手前必须完整阅读：
   1) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\con_hf\dispatch\SUBAGENT_CONTRACT.md
   2) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\con_hf\2026-10-19_figure_polish_plan.md
-     的「Step 5 组图契约」G1–G5
+     的「Step 5 组图契约」G1-G5
   3) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\con_hf\dispatch\S16_composite_deg_overview.md
      与 `con_hf/dispatch/S16_report.md`（line1 同题已完成，是你的写法范本；
      G1/G2 探针 `cn_debug/2026-10-20_verification_s16_g1g2.py` 的复用方式）
@@ -69,7 +69,7 @@ S17 在做 line2（`l2_20_composition_panel.png`）。本切片做 line3 首张�
        --cwd projects/default/line3_spatial/processed \
        --runner bash --seed 20261018 --csv /tmp/s18_audit.csv'
      ```
-     → `l3_20` 的 A–E 必须全 PASS。**#190 纪律**：跑前对 `processed/` 与 `figures/`
+     → `l3_20` 的 A-E 必须全 PASS。**#190 纪律**：跑前对 `processed/` 与 `figures/`
      建 md5 基线，跑后逐项比对；数据表必须逐字节一致，报告只许 `elapsed_seconds` 变化。
    - `python cn_debug/figure_score.py --dir outputs/default/line3_spatial/figures \
        --audit-csv cn_debug/figure_audit_all.csv --code-csv cn_debug/code_audit.csv \
@@ -95,7 +95,7 @@ S17 在做 line2（`l2_20_composition_panel.png`）。本切片做 line3 首张�
 A1 `l3_20_domain_panel.png` 生成，三面板 A/B/C 与规格一致，且面板图名选择有脚本依据。
 A2 G1/G2 探针通过（含负对照变红证据），或明确未验证 + 原因。
 A3 单图 3 张仍在且 PASS；`figure_audit_scan` 全 PASS 含 `l3_20`。
-A4 几何审计 `l3_20` A–E 全 PASS；基线对比表证明数据表零变化。
+A4 几何审计 `l3_20` A-E 全 PASS；基线对比表证明数据表零变化。
 A5 `figure_score` 里 `l3_20` PASS 且 C1/C2 命中；已合并进 `figure_audit_all.csv`。
 A6 台账 completed/exit 0/passed；`code_audit` no issue。
 A7 `figures.js` 只新增一条 caption，既有条目未动。

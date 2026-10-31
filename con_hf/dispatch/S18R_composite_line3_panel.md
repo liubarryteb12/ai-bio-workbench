@@ -3,7 +3,7 @@
 【你是谁】项目实现型子 Agent。动手前必须完整阅读：
   1) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\con_hf\dispatch\SUBAGENT_CONTRACT.md
   2) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\con_hf\2026-10-19_figure_polish_plan.md
-     的「Step 5 组图契约」G1–G5
+     的「Step 5 组图契约」G1-G5
   3) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\con_hf\dispatch\S18_composite_line3_panel.md
      （**本派发单取代它；S18 原单的 4 条假设已被实测证伪，不要参考其中的面板映射**）
   4) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\con_hf\dispatch\S18_report.md
@@ -29,7 +29,7 @@
    原单的 B/C 面板假设证伪，**不补新单图、不定义新口径**。
 3. line3 磁盘产物种子证据指向 **20261013**（`processed/*_report.txt` 的 `seed=` 行）。
    派发纪律改为：**审计传 `--seed 20261013`**（与磁盘同源，属 provenance 一致）；
-   重跑任务同样传 20261013。**这不是 #199 的 seed-sensitive 场景**——
+   重跑任务同样传 20261013。**这不是 #199 的 seed-sensitive 场景**:
    `spatial_figures` 是纯渲染步骤，种子只进 stdout 不进数值
    （S18 报告 §3.8-5 的结论），但仍须建 md5 基线验证这一点。
 
@@ -37,7 +37,7 @@
 
 - 图名：`l3_{species}_16_domain_panel.png`（mouse 与 human 各一张，共 2 张）
 - 三个面板（G1 编号 A/B/C），**全部出自 `spatial_figures` 已有单图，零重算**：
-  - **A** = `{sp}_01_domains_{sample}`（空间域图）—— **样本选取规则见下**
+  - **A** = `{sp}_01_domains_{sample}`（空间域图）: **样本选取规则见下**
   - **B** = `{sp}_07_domain_composition`（域组成）
   - **C** = `{sp}_08_target_gene_by_domain`（target gene 按域分布）
   - 面板图名与复用数组的对应关系，你必须先从脚本里读出来并在回报里贴依据；
@@ -51,7 +51,7 @@
 - G2 共享图例：空间域色码（A 与 C 共用）在图组**下方居中**只画一次（横排、
   `frameon=False`、带语义标题如 `spatial domain`）；A/C 面板内**不得**重复画同一组图例。
   域数量 >12 时按列分组（每列 ≤12 行，沿用脚本既有 `legend_out` 规则）。
-  注意脚本里已有注释：mouse 域数可达 57，色板是 tab20+tab20b+tab20c 拼的 60 色——
+  注意脚本里已有注释：mouse 域数可达 57，色板是 tab20+tab20b+tab20c 拼的 60 色:
   **共享图例必须沿用同一套色板与同一套域标签**，不许另建色板。
 - 图注：图组级 caption 一条一行（§三之二），至少含：图名语义、三个面板各是什么、
   物种、输入产物、A 面板样本 ID 与选取规则。
@@ -91,7 +91,7 @@
         --cwd projects/default/line3_spatial/processed \
         --runner bash --seed 20261013 --csv /tmp/s18r_audit.csv'
       ```
-      → 2 张新图的 A–E 必须全 PASS；**跑前再建一次基线**，跑后同样逐项比对
+      → 2 张新图的 A-E 必须全 PASS；**跑前再建一次基线**，跑后同样逐项比对
       （审计不带 `--write`，数据表仍须逐字节一致）。
     - `python cn_debug/figure_score.py --dir outputs/default/line3_spatial/figures \
         --audit-csv cn_debug/figure_audit_all.csv --code-csv cn_debug/code_audit.csv \
@@ -120,7 +120,7 @@ A1 2 张 `l3_{sp}_16_domain_panel.png` 生成，三面板 A/B/C 与规格一致�
 A2 A 面板样本为 mouse=BH001 / human=JBO014，回报里贴选取规则的执行证据。
 A3 G1/G2 探针通过（含负对照变红证据），或明确未验证 + 原因。
 A4 单图 6 张仍在且 PASS；`figure_audit_scan` 全 PASS 且总 figs=71。
-A5 几何审计 2 张新图 A–E 全 PASS；两次基线对比都证明数据表零变化、69 张旧图零变化。
+A5 几何审计 2 张新图 A-E 全 PASS；两次基线对比都证明数据表零变化、69 张旧图零变化。
 A6 `figure_score` 里 2 张新图 PASS 且 C1/C2 命中；已合并进 `figure_audit_all.csv`。
 A7 台账 completed/exit 0/passed；`code_audit` no issue。
 A8 `figures.js` 只新增一条 caption，既有条目未动。

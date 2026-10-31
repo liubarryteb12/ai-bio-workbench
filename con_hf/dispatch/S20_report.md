@@ -25,7 +25,7 @@
   `grep -rn "单文件超过上限\|超过单文件上限\|other 角色最多\|写入数据文件失败\|读取上传内容失败\|上传内容为空" BioanalysDesktop/tests/`）：
   唯一命中 `portal_archive.test.js:179` 的测试名 `超过单文件上限时拒绝`；
   其断言为 `/超过/`（第 183 行），匹配的是 archive.mjs:130 的
-  `体积 ${size} 字节超过单文件上限 ${MAX_DATA_BYTES}`——该文案按要求**不动**。
+  `体积 ${size} 字节超过单文件上限 ${MAX_DATA_BYTES}`:该文案按要求**不动**。
   其余 5 个候选文案在测试中零命中，可安全改 serve.mjs 的超限提示。
 - 基线（改前）：`cd BioanalysDesktop && npm test` → tests 237 / pass 237 / fail 0。
 - 项目根非 git 仓库（`git status` 报 not a git repository），无提交类动作，验证以文件内容+测试为准。
@@ -49,12 +49,12 @@ MAX_BODY、REF_MAX_*、DATA_ROLES、DATA_EXT、handleSubmit、/api/references；
 
 共 3 个代码点 + 2 条注释 + 1 个新辅助函数：
 
-1. `portal/lib/archive.mjs:29` — `MAX_DATA_BYTES` 改为 `Number(process.env.PORTAL_MAX_DATA_BYTES) > 0
+1. `portal/lib/archive.mjs:29` : `MAX_DATA_BYTES` 改为 `Number(process.env.PORTAL_MAX_DATA_BYTES) > 0
    ? Number(...) : 5 * 1024 * 1024 * 1024`（默认 5 GiB = 5368709120）。
-   注释更新为："2026-10-20 用户拍板 5 GiB；依据：单细胞/空间 RAW tar 常见 1–3GB，
+   注释更新为："2026-10-20 用户拍板 5 GiB；依据：单细胞/空间 RAW tar 常见 1-3GB，
    IS 项目 line3 原始包实测 1.89GB"，并说明 env 覆盖的用途与同步生效机制。
    `validateDataFiles` 与 `serve.mjs` 均 import 该常量，覆盖后两端天然同步。
-2. `portal/lib/archive.mjs:32` — `MAX_DATA_FILES_PER_ROLE` 3 → 5，注释补明
+2. `portal/lib/archive.mjs:32` : `MAX_DATA_FILES_PER_ROLE` 3 → 5，注释补明
    "仅约束 other 角色；其余角色由 validateDataFiles 硬编码为每角色 1 个"。
 3. `portal/serve.mjs` `handleDataFileUpload` 重写为流式写盘：
    - `fs.createWriteStream` 边收边写；函数内不再有 `chunks` 数组 / `Buffer.concat`（grep 确认，
@@ -147,7 +147,7 @@ MAX_BODY、REF_MAX_*、DATA_ROLES、DATA_EXT、handleSubmit、/api/references；
 ## 七、latent 问题上报（任务项 7，只上报未修）
 
 `serve.mjs` 里"同 sid 下同角色只留一个"用 `n.startsWith(\`${role}__\`)` 找旧文件，但落盘名由
-`uniqueInDir(dir, name)` 产生、**不带 role 前缀**，该过滤永远匹配不到任何文件——"同角色重复上传
+`uniqueInDir(dir, name)` 产生、**不带 role 前缀**，该过滤永远匹配不到任何文件:"同角色重复上传
 先删旧的"实际失效。本切片用真服务复现（C6）：同一 sid+role+name 上传两次，得到
 `dup_matrix.tsv` 与 `dup_matrix_2.tsv` 两个文件并存，旧文件未被删。下游 `validateDataFiles`
 会在提交时以"角色只允许一个文件"拦住，不产生错误交付，只是 uploads 目录会留垃圾。

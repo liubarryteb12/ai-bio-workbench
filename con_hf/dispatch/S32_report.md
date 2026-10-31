@@ -4,13 +4,13 @@
 - 派发单：`con_hf/dispatch/S32_upload_resume.md`
 - 项目根：`D:\00.AIagent\codespace\AI辅助生信分析流程工作台`
 - 完成时间：2026-10-21
-- 结论：四件事全部落地——服务端导出 `uploadStatus`、`GET /api/upload/status` 返回断点、前端从 `nextIndex` 真正续传、D5 文档漂移收敛；新增 19 条测试全绿；`npm test` 381/381 全绿（本切片开工前实测基线 346/346，本切片 +19，其余 +16 来自并行切片在窗口内合入）；`npm run build` 成功；`npx tsc --noEmit` 零错误。未连 K40、未做任何 git 写操作。
+- 结论：四件事全部落地:服务端导出 `uploadStatus`、`GET /api/upload/status` 返回断点、前端从 `nextIndex` 真正续传、D5 文档漂移收敛；新增 19 条测试全绿；`npm test` 381/381 全绿（本切片开工前实测基线 346/346，本切片 +19，其余 +16 来自并行切片在窗口内合入）；`npm run build` 成功；`npx tsc --noEmit` 零错误。未连 K40、未做任何 git 写操作。
 
 ## 1. 任务理解
 
 目标（对应架构评审 A8 / R5）：
 
-1. **R5 断点续传名不副实**：`aims/aims.txt` 写的是「分片断点续传」，但前端 `UploadPanel` 的流程是 init → 从第 0 片循环到最后一篇 → complete，全程不查任何状态；`GET /api/upload/status` 虽已存在，只回 `{uploadId, received}`，没有「下一片该从哪开始」的信息。1–3GB 原始数据一旦断线/刷新，只能整包重传。
+1. **R5 断点续传名不副实**：`aims/aims.txt` 写的是「分片断点续传」，但前端 `UploadPanel` 的流程是 init → 从第 0 片循环到最后一篇 → complete，全程不查任何状态；`GET /api/upload/status` 虽已存在，只回 `{uploadId, received}`，没有「下一片该从哪开始」的信息。1-3GB 原始数据一旦断线/刷新，只能整包重传。
 2. **D5 文档漂移**：aims 写 5MB 分片，实现是 4MB（`CHUNK_SIZE = 4 * 1024 * 1024`）。
 
 要求交付四件事：
@@ -90,11 +90,11 @@
 
 ### 4.1 续传口径（与 `assembleChunks` 既有判定对齐，未自造规则）
 
-`nextIndex` 取**最小缺失口径**：从 0 开始第一个不存在的分片序号。`assembleChunks` 要求 `0..N` 连续，两种口径在 `[0,1,3]` 上分别给 3 / 2——给 2 才能既补齐空洞又不让已收的 3 白占；且 `writeChunk` 是覆盖写，重写同一片幂等（有专门用例）。代码注释（`server/upload.js:173-178`）与测试断言（「有空洞 [0,1,3] -> nextIndex 2」）写的是同一口径。
+`nextIndex` 取**最小缺失口径**：从 0 开始第一个不存在的分片序号。`assembleChunks` 要求 `0..N` 连续，两种口径在 `[0,1,3]` 上分别给 3 / 2:给 2 才能既补齐空洞又不让已收的 3 白占；且 `writeChunk` 是覆盖写，重写同一片幂等（有专门用例）。代码注释（`server/upload.js:173-178`）与测试断言（「有空洞 [0,1,3] -> nextIndex 2」）写的是同一口径。
 
 ### 4.2 为什么前端必须缓存 `uploadId`
 
-`POST /api/upload/init` 每次生成新的 `randomUUID`（`server/index.js:1286` 附近，本切片未改）。如果只按派发单字面的「init 后先查 status」，每次重试都会拿到一个空目录的新 id，status 永远 `nextIndex=0`——续传在真实断线场景下等于没做。因此实现是「init 后查 status」+「用 `localStorage` 记住 `文件指纹 → uploadId`」，重试（含刷新页面）先按旧 id 查，只有会话确实不存在时才重新 init。指纹含 `size` 与 `lastModified`，同名不同内容的文件不会误续传。这是本切片对派发单的一处必要加强，已在第 6 节标为假设/风险。
+`POST /api/upload/init` 每次生成新的 `randomUUID`（`server/index.js:1286` 附近，本切片未改）。如果只按派发单字面的「init 后先查 status」，每次重试都会拿到一个空目录的新 id，status 永远 `nextIndex=0`:续传在真实断线场景下等于没做。因此实现是「init 后查 status」+「用 `localStorage` 记住 `文件指纹 → uploadId`」，重试（含刷新页面）先按旧 id 查，只有会话确实不存在时才重新 init。指纹含 `size` 与 `lastModified`，同名不同内容的文件不会误续传。这是本切片对派发单的一处必要加强，已在第 6 节标为假设/风险。
 
 ### 4.3 前后端契约
 
@@ -183,8 +183,8 @@ TSC_EXIT=0
 ## 6. 假设与风险
 
 1. **续传依赖浏览器 localStorage**（本切片最大假设）：换浏览器、清站点数据、隐私模式下 `localStorage` 不可用时，只能从头传。UI 文案已明说边界，未假装「任意设备可续传」。
-2. **指纹不含文件内容**：`name|size|lastModified` 相同但内容不同的文件（例如原地覆盖同名文件且时间戳一致）理论上会复用旧会话。概率极低，且 assemble 后服务端仍做格式校验与字节数校验，不会静默产出错误数据；若要更强，需加 sha256（代价是上传前整文件读一遍 1–3GB，不可接受）。
-3. **陈旧会话无 TTL**：`.uploads/<uuid>/` 在 complete 成功/校验失败时被 `cleanupUpload` 清理，但用户中途放弃且不重试的会话会一直占磁盘（**既有行为**，本切片未扩范围做 GC）。1–3GB 数据下长期累积有实际风险，见第 7 节建议。
+2. **指纹不含文件内容**：`name|size|lastModified` 相同但内容不同的文件（例如原地覆盖同名文件且时间戳一致）理论上会复用旧会话。概率极低，且 assemble 后服务端仍做格式校验与字节数校验，不会静默产出错误数据；若要更强，需加 sha256（代价是上传前整文件读一遍 1-3GB，不可接受）。
+3. **陈旧会话无 TTL**：`.uploads/<uuid>/` 在 complete 成功/校验失败时被 `cleanupUpload` 清理，但用户中途放弃且不重试的会话会一直占磁盘（**既有行为**，本切片未扩范围做 GC）。1-3GB 数据下长期累积有实际风险，见第 7 节建议。
 4. **scp 失败（complete 500）时不清理**：服务端既有行为（失败分支 `return` 在 `cleanupUpload` 之前），本切片利用它实现「scp 失败后重试直接合并」；但若用户换浏览器，这部分磁盘同样滞留。
 5. **`/api/upload/status` 不校验 method**：GET/POST 都会进同一分支（既有风格，本切片未改）。副作用仅是可缓存性差，已在 `:1345` 注释中说明。
 6. **前端续传分支无自动化测试**：`uploadFingerprint` / `resumeStartIndex` 等是 `.tsx` 模块私有函数，`node --test` 无法 import；未引入浏览器测试依赖（约束禁止装包）。覆盖手段为 `tsc` + 代码审阅 + 服务端等价 HTTP E2E（init→chunk→status→补片→assemble）。这是本切片测试覆盖的真实缺口，不掩饰。
@@ -192,7 +192,7 @@ TSC_EXIT=0
 
 ## 7. 架构/接口变更建议
 
-1. **会话 GC**：给 `.uploads/` 加 TTL（例如按目录 mtime 超 24h 清理），在服务启动与 init 时各跑一次；否则 1–3GB 数据的放弃会话会把磁盘吃满。优先级最高。
+1. **会话 GC**：给 `.uploads/` 加 TTL（例如按目录 mtime 超 24h 清理），在服务启动与 init 时各跑一次；否则 1-3GB 数据的放弃会话会把磁盘吃满。优先级最高。
 2. **确定性 uploadId**：让客户端用 `sha256(project|line|name|size|lastModified)` 前缀作为 uploadId 提交给 `init`，服务端 `init` 做成幂等（目录已存在就复用）。这样可以彻底去掉 localStorage 依赖，续传变成跨浏览器/跨设备可用。需改 `init` 语义，建议单开切片。
 3. **complete 失败结构化返回**：scp 失败时返回 `{ok:false, canResume:true, error}`，前端不必靠「有 error 无 validation」推断是否保留 id。
 4. **status 加 `Cache-Control: no-store`** 并补 method 校验（GET only）。
@@ -207,7 +207,7 @@ TSC_EXIT=0
 
 ## 9. 建议下一步
 
-1. 下一轮（建议 S33）做「会话 GC + complete 失败结构化返回」——两者都不改既有对外形状，风险低、收益直接。
+1. 下一轮（建议 S33）做「会话 GC + complete 失败结构化返回」:两者都不改既有对外形状，风险低、收益直接。
 2. 再下一轮评估「确定性 uploadId + 幂等 init」，摘掉 localStorage 假设，同时天然解决跨浏览器续传。
 3. 若引入浏览器测试（playwright 等）需装包，属约束外，等主 Agent 决定后再排；在那之前前端续传分支只能靠 tsc + 审阅 + 服务端 HTTP E2E 兜底。
 4. 把 `uploadDir` 消毒与 `sanitizeFilename` 统一作为一次小的安全收敛，附路径穿越回归用例。

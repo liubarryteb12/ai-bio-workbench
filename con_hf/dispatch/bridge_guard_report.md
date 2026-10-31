@@ -56,7 +56,7 @@ gsva_pathways 的 python3 :162 与 Rscript :113 说明它是「先 Python 后 R�
 2. 输入非 .h5ad/.rds → 打印 [BRIDGE SKIP]，exit 0（引擎只认这两种）；
 3. 本机无 ssh 客户端 → [BRIDGE SKIP]，exit 0；
 4. ssh 连接失败/超时（退出码非 0 且输出不含 BRIDGE FAIL）→ [BRIDGE SKIP]，exit 0
-   —— K40 离线时母版仍可跑，这是可维护性红线；
+   : K40 离线时母版仍可跑，这是可维护性红线；
 5. 输出含 BRIDGE FAIL → 透传引擎退出码（至少 1），打印 [BRIDGE FAIL]；
 6. 否则 [BRIDGE OK]，exit 0。
 
@@ -159,7 +159,7 @@ base 对象与成功返回都加该字段；masterExists=false 时 guardWired=fa
 ## 七、重要发现：obsm 断言与中间产物存在真实口径冲突（未替用户掩盖）
 
 上面那次 FAIL 的根因：scrna_norm.h5ad 是 line2 步骤 3（归一化）的产物，
-**它本来就不该有 X_pca/X_umap/spatial**——那些是步骤 5+（scVI/降维/空间配准）
+**它本来就不该有 X_pca/X_umap/spatial**:那些是步骤 5+（scVI/降维/空间配准）
 才写入的。但引擎的 obsm 项无条件要求至少一个降维键存在。
 
 后果：**如果 gsva_pathways 真的拿 scrna_norm.h5ad 作为 Rscript 输入跑，
@@ -167,7 +167,7 @@ base 对象与成功返回都加该字段；masterExists=false 时 guardWired=fa
 
 - **A. 改引擎**：obsm 项改为「有 X_pca 或 X_umap 或 spatial 之一则 PASS，
   三者全无时看是否有 obsm 其它键，仍无则 WARN 而非 FAIL」
-  ——承认中间产物合法，只对「声称做过降维但没坐标」判死；
+  :承认中间产物合法，只对「声称做过降维但没坐标」判死；
 - **B. 改母版输入选择**：gsva_pathways 应挑选带降维坐标的 .h5ad
   （如步骤 5 的输出）作为桥接输入，而不是归一化产物。
 
@@ -190,13 +190,13 @@ base 对象与成功返回都加该字段；masterExists=false 时 guardWired=fa
 
 ### 8.2 git-bash 会重置 PATH，PATH 注入垫片不可靠
 实测把 shim 目录放 PATH 最前，type -a ssh 仍只列
-/usr/bin/ssh 与 /bin/ssh——/etc/profile 把 /mingw64/bin:/usr/bin prepend 了。
+/usr/bin/ssh 与 /bin/ssh:/etc/profile 把 /mingw64/bin:/usr/bin prepend 了。
 **解决方案是给 guard 加 BRIDGE_SSH_CMD 环境变量覆盖**，测试用绝对路径指向垫片，
 而不是改 PATH。这个变量同时服务排障和接 plink。
 
 ### 8.3 母版注释污染 bilingual 判定（真实缺陷）
 task.js 的语言正则在**所有行**上计数，包括注释。初版接线后测试报：
-guardIdx 531 > rIdx 522——但 522 行其实是注释里写的 Rscript。
+guardIdx 531 > rIdx 522:但 522 行其实是注释里写的 Rscript。
 
 解决：把三个母版注释中的 python /Rscript 改写为 Python /R 侧执行
 （大写 P 不匹配 PYTHON_CALL_RE）。

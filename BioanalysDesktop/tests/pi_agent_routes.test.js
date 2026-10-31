@@ -378,3 +378,41 @@ test('appendPiLedger 追加 JSONL，解析失败电池字段降级', () => {
     temperature: 'unavailable',
   });
 });
+
+test('POST /api/v1/a2a/heartbeat 接收遥测并返回 acked_step_ids', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pi-hb-'));
+  const captureSink = capture();
+  const heartbeatPayload = JSON.stringify({
+    node_id: 'k40-ubuntu-node01',
+    battery_temp_c: 39.2,
+    mem_available_mb: 4120.5,
+    thermal_state: 'NORMAL',
+    throttle_count: 0,
+    active_jobs_count: 1,
+    completed_triads: [
+      {
+        task_id: 'TASK-HB-01',
+        manifest_id: 'MAN-HB-01',
+        step_id: 'step_01_qc_norm',
+        exit_code: 0,
+      },
+    ],
+  });
+
+  const handled = await handlePiAgentRoutes(
+    makeRequest('POST', '/api/v1/a2a/heartbeat', heartbeatPayload),
+    {},
+    new URL('http://x/api/v1/a2a/heartbeat'),
+    {
+      json: captureSink.json,
+      runSshRaw: () => { throw new Error('must not run'); },
+      ledgerRoot: root,
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(captureSink.responses.length, 1);
+  assert.equal(captureSink.responses[0].status, 200);
+  assert.equal(captureSink.responses[0].payload.ok, true);
+  assert.deepEqual(captureSink.responses[0].payload.acked_step_ids, ['step_01_qc_norm']);
+});

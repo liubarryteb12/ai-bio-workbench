@@ -25,10 +25,10 @@
 
 【背景（主 Agent 已实测）】
 - aims §一.3 铁律要求"每次跨语言转换必须通过桥接四项断言检查点"，
-  但 58 个分析脚本 `grep verify_bridge_checkpoint` **0 命中**——铁律空转。
+  但 58 个分析脚本 `grep verify_bridge_checkpoint` **0 命中**:铁律空转。
 - 三线实际语言构成（实测 Rscript/python 调用数）：线1 = 23/10、线2 = 5/24、线3 = 2/17。
   即**每条线都有跨语言步骤**，每个任务都可能触发桥接。
-- 主 Agent 已裁决接线位置：**8787 任务提交层统一接**（不动 58 个脚本——
+- 主 Agent 已裁决接线位置：**8787 任务提交层统一接**（不动 58 个脚本:
   那会动三线隔离域且工作量巨大；且提交层是唯一能看到"这一步是跨语言步骤"的全知位置）。
 
 【主 Agent 已定死的接线规格（不许自行更改）】
@@ -40,7 +40,7 @@
      统计该脚本内 `Rscript` 调用数与 `python` 调用数（含 heredoc 内），
      **两者都 ≥1 才返回 true**（单语言步骤不过桥）。
    - 母版文件不存在 → 返回 false 并在调用方日志里 warn（不许因读不到就抛错阻断提交，
-    也不许静默当"不需要"——要可观测）。
+    也不许静默当"不需要":要可观测）。
 2. 新增**纯函数** `export function buildBridgeCheckCommand(lineId, stepName)` →
    `{ command, remoteScript }`：远端执行
    `python3 /mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py <参数>`。
@@ -58,13 +58,13 @@
    - 退出码 0 → 记一条日志 `[bridge] <line>/<step> 四项断言通过` 后继续下发；
    - **母版缺失（needsBridgeCheck 返回 false + warn）时不得阻断提交**
      （保持既有行为，只是不打 bridge 日志）。
-4. **性能红线**：这一步是同步 ssh，K40 不可达时**不许让提交挂死**——
+4. **性能红线**：这一步是同步 ssh，K40 不可达时**不许让提交挂死**:
    超时照既有 ssh 的 ConnectTimeout 处理，失败时返回 503 并明说
    "桥接校验无法执行（K40 不可达）"，**不许静默放过**（不放过的意思是明确失败，
    不是假装通过）。
 
 三、测试 `tests/bridge_checkpoint.test.js`（新建，≥6 条，全绿）：
-5. `needsBridgeCheck` 纯函数：构造/选取三类真实母版各一条——
+5. `needsBridgeCheck` 纯函数：构造/选取三类真实母版各一条:
    双语混合脚本（如线1 的某个既有脚本，贴你选它的行号证据）→ true；
    纯语言脚本 → false；不存在的 step → false。
    **断言前先贴出你统计的 Rscript/python 调用数**（用真实文件，不许 mock 内容）。

@@ -1,4 +1,4 @@
-# SPEC v0.2 — BioanalysDesktop 本地交互层（T2 阶段）
+# SPEC v0.2 : BioanalysDesktop 本地交互层（T2 阶段）
 
 > version 0.2 | 2026-10-12
 > 本规格覆盖第二阶段：**把 BioanalysDesktop 做成可用的本地交互终端**。

@@ -21,7 +21,7 @@
 **禁止碰**：`ops/`（引擎在另一会话域，只调用）、`portal/`、`src/` 三线、
 `server/run.js`、`server/figures.js`、其他 server 模块、`docs/`、真实 `projects/` 数据。
 【并行约束】S26 可能仍在跑（改 `server/run.js` + `tests/index.test.js` +
-`tests/run.test.js`）——**那三个文件你别碰**。
+`tests/run.test.js`）:**那三个文件你别碰**。
 
 【背景（主 Agent 已实测）】
 - 引擎在且健康：`python3 ops/build_client_report.py --self-test` 本机跑通，
@@ -64,7 +64,7 @@
 
 `server/index.js` 只加三个路由（其余一律不动）：
 6. `POST /api/report/build`：body `{ projectId }` → 校验（projectId 必填+消毒；
-   项目目录必须存在于远端——用一条只读 ssh `test -d` 判定，不存在 400 点名）
+   项目目录必须存在于远端:用一条只读 ssh `test -d` 判定，不存在 400 点名）
    → 同步执行 build + pull（本机算力任务可接受分钟级；前端显示"生成中…"）
    → 200 `{ ok:true, files:[{name, bytes, path}], report_md_bytes, report_html_bytes }`
    → 失败 500 `{ ok:false, error: <stderr 原文或缺失文件名> }`。
@@ -95,7 +95,7 @@
     - download 穿越/不在允许集合 → 400；
     - projectId 缺失/非法 → 400。
 14. **既有 22 个测试文件一条不许红**（`npm test` 全绿；注意 S26 可能同时在改
-    `tests/index.test.js` 端口——若你看到 index.test.js 的 8 条 FAIL 是
+    `tests/index.test.js` 端口:若你看到 index.test.js 的 8 条 FAIL 是
     EADDRINUSE 且 S26 未跑完，就等 S26 结束后再跑一次，不许改那两个文件）。
 
 【任务项】

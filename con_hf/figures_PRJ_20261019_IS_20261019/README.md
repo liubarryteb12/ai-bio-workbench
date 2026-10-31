@@ -13,13 +13,13 @@
 | l1_03_volcano_limma.png | DEG 火山图（母版 deg_limma 步骤级，R 图件） | 12 显著（9↑/3↓） |
 | l1_32_lrg_deg_heatmap.png | IS 相关 LRG-DEG 热图（Python 合规版） | 33 候选，敏感口径 basis 已标注 |
 | l1_33_ml_roc.png | **M1** ROC：LOOCV + 外部 GSE16561 | 0.9585 / **0.8237**（sens 0.590 / spec 1.000） |
-| l1_34_ml_calibration.png | **M1** 校准曲线（十分位） | — |
+| l1_34_ml_calibration.png | **M1** 校准曲线（十分位） | : |
 | l1_35_ml_overlap.png | **M1** 五方法筛选规模 | LASSO26/RF13/Boruta/XGBoost/单因素 |
 | l1_36_ml_importance.png | **M1** 重要性（RF Gini + GBDT Gini） | seed=20261013 |
 | l1_37_ml_roc_m2.png | **M2** ROC（候选池 45，含 line2 12） | 0.9579 / 0.7682（sens 1.000 / spec 0.625） |
-| l1_38_ml_calibration_m2.png | **M2** 校准曲线 | — |
-| l1_39_ml_overlap_m2.png | **M2** 五方法筛选规模 | — |
-| l1_40_ml_importance_m2.png | **M2** 重要性（6 基因） | — |
+| l1_38_ml_calibration_m2.png | **M2** 校准曲线 | : |
+| l1_39_ml_overlap_m2.png | **M2** 五方法筛选规模 | : |
+| l1_40_ml_importance_m2.png | **M2** 重要性（6 基因） | : |
 
 ## line2_scrna（7 张）
 

@@ -29,7 +29,7 @@ CLI 契约：
 
 计数口径：按行匹配「命令位 Rscript / python3? 调用」（行首或 `空格 ; & | "` 之后，
 后随空白/引号/行尾），注释里的普通提及不计为调用（如 `gsva_pathways:40` 的
-"# 1) python 侧…" 不算 python3 调用行——该行前缀是 `#`，`python` 前有空格会被计入，
+"# 1) python 侧…" 不算 python3 调用行:该行前缀是 `#`，`python` 前有空格会被计入，
 属已知宽松方向，只影响计数不影响双语布尔判定；见测试 T1 diagnostic 实测数字）。
 
 | 母版 | Rscript 调用行 | python 调用行 | 判定 |
@@ -38,7 +38,7 @@ CLI 契约：
 | src/line1_bulk/scripts/ml_diagnostics | :524 `BIOANALYS_SEED="$seed" Rscript - <<'RSCRIPT'` | :61 `python3 - <<'PYSCRIPT'` | 双语 → true |
 | src/line1_bulk/scripts/deg_limma | :62 `Rscript --vanilla - <<'RSCRIPT'` | 无 | 纯 R → false |
 | src/line2_scrna/scripts/scrna_figures | 无 | :1 处 python 调用 | 纯 Python → false |
-| 不存在 step（no_such_step_s28） | — | — | 母版缺失 → false + warn |
+| 不存在 step（no_such_step_s28） | : | : | 母版缺失 → false + warn |
 
 实测背景复核：grep 实测双语母版共 4 个分析脚本（ml_diagnostics / ml_hub_analysis /
 probe_env / gsva_pathways；README.md 非脚本不计），与派发单"三线都有跨语言步骤"一致。
@@ -87,7 +87,7 @@ default 项目共 41 个 .h5ad/.rds（find 实测），真链正路径输入选
     `[BRIDGE FAIL] var_names 超过半数为数字索引（10/10），疑似 Ensembl ID 未映射`
     （点名基因名断言）。临时文件已删（/tmp/s28_*.h5ad 已清理）。
   - 数据面不变性：验证前后 processed+figures 共 97 个文件的 md5 聚合值一致
-    （c4f0443efbab64f6868537ccfc31c9d0），且 find -newermt "15:00" 为 0——
+    （c4f0443efbab64f6868537ccfc31c9d0），且 find -newermt "15:00" 为 0:
     整个验证窗口 default 项目 processed/figures 零写入。
   - K40 不可达分支（503）无法在真链安全复现（需真断链），由测试垫片覆盖
     （exit 255 → 503「桥接校验无法执行（K40 不可达）」），标注：未在真链复现 503。

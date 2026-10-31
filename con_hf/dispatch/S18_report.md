@@ -12,9 +12,9 @@
   C=各空间域乳酸化评分差异（`l3_03_*`）；横版 GridSpec；共享域色码图例下方居中一次。
 - 派发单明文：「先读脚本确认这三个面板对应的真实图名……**若某面板在脚本里不存在，
   停下来上报，不要自己造一个等价物**」。
-- 跑场 `default` 项目，契约主体是 `con_hf/2026-10-19_figure_polish_plan.md` G1–G5，验收 A1–A8。
+- 跑场 `default` 项目，契约主体是 `con_hf/2026-10-19_figure_polish_plan.md` G1-G5，验收 A1-A8。
 
-## 1. 读码与面板映射确认（已完成 —— 这是本切片唯一完成的步骤）
+## 1. 读码与面板映射确认（已完成 : 这是本切片唯一完成的步骤）
 
 `src/line3_spatial/scripts/spatial_figures`（bash 包装 + 单块 PYSCRIPT heredoc，426 行，
 md5 `1fd7ab9107603775bae9c31f669e4019`，本地 = 远端 `bin/line3_spatial/` 逐字节一致）实际产图：
@@ -22,8 +22,8 @@ md5 `1fd7ab9107603775bae9c31f669e4019`，本地 = 远端 `bin/line3_spatial/` �
 | 脚本内图号 | 真实内容 | 与派发单面板的对应 |
 |---|---|---|
 | `l3_{sp}_01_domains_{sample}.png`（L252-272） | 逐样本空间域散点（域分类色，图例外置右侧） | **A 存在**；但是**逐样本**图（mouse 10 张 + human 5 张 = 15 张），不是单张 |
-| `l3_{sp}_02_target_gene_{sample}.png`（L274-291） | 逐样本 target gene 表达空间散点（viridis） | **不是 HE 形态学图** —— B 面板所指内容在脚本中不存在 |
-| `l3_{sp}_03_ko_dr_{sample}.png`（L309-324） | 逐样本 KO DR 表达空间散点（magma） | **不是评分箱线/小提琴** —— C 面板所指内容在脚本中不存在 |
+| `l3_{sp}_02_target_gene_{sample}.png`（L274-291） | 逐样本 target gene 表达空间散点（viridis） | **不是 HE 形态学图** : B 面板所指内容在脚本中不存在 |
+| `l3_{sp}_03_ko_dr_{sample}.png`（L309-324） | 逐样本 KO DR 表达空间散点（magma） | **不是评分箱线/小提琴** : C 面板所指内容在脚本中不存在 |
 | `l3_{sp}_08_target_gene_by_domain.png`（L293-307） | 各域 target gene 均值**横向条形图** | 域级统计视图，但非 score 分布图 |
 | `l3_{sp}_09_ko_dr_by_domain.png`（L326-338） | 各域 KO DR 均值横向条形图 | 同上 |
 | `04_morans_top` / `05_knockout_dr` / `06_umap_sample` / `07_domain_composition` | Moran's I top20 / KO DR top10 / 按样本 UMAP / 域组成堆叠条 | 与 A/B/C 规格无关 |
@@ -36,14 +36,14 @@ line3 其余出图脚本（全目录 grep `savefig`，只有 4 个脚本出图�
 证据（全部实测，非推断）：
 
 1. **无 H&E 图**：`grep -in "h&e\|he_image\|tissue_lowres\|hi_res"` 在 line3 全部脚本中只命中
-   `ingest_spatial` 的注释与装配逻辑——低倍组织图按 scanpy 约定存在
+   `ingest_spatial` 的注释与装配逻辑:低倍组织图按 scanpy 约定存在
    `uns['spatial'][sample_id]['images']`（远端读 h5ad 实测 entry keys = `['images','metadata','scalefactors']`），
    但**没有任何出图脚本渲染它**。
 2. **无乳酸化评分**：远端读 `spatial_knockout_mouse.h5ad` 的 obs 列为
    `barcode/sample_id/gsm/species/platform_id/strain/condition/condition_class/group/tissue/
    in_tissue/array_row/array_col/pxl_row_fullres/pxl_col_fullres/ncount/nfeature/total_counts/
    n_genes_by_counts/pct_mito/domain/domain_same_frac/domain_same_z/domain_rank/domain_prop/
-   lr_score_recv/target_gene_expr/ko_dr_expr` —— **没有乳酸化/评分字段**。
+   lr_score_recv/target_gene_expr/ko_dr_expr` : **没有乳酸化/评分字段**。
    唯一的 spot 级打分是 `lr_score_recv`（`spatial_communication:558` 写入的配体-受体接收分），
    grep 证实四个出图脚本无一绘制它；`celltype_annotation` 的 `score_genes` 是 NNLS
    解卷积的内部验证分，也不出图。
@@ -68,7 +68,7 @@ line3 其余出图脚本（全目录 grep `savefig`，只有 4 个脚本出图�
 连带待决（都属于契约级冲突，须主 Agent 裁决，不由子 Agent 自行选边）：
 
 1. **编号**：G3 要求"序号从该线当前最大号顺延"，实测 line3 最大 15 → 组合图应编 16；
-   派发单写死 `l3_20_domain_panel.png`（会留 16–19 空号）。二者只能取一。
+   派发单写死 `l3_20_domain_panel.png`（会留 16-19 空号）。二者只能取一。
 2. **物种约定**：line3 现存 69 张图全部带物种 token（`l3_mouse_*` / `l3_human_*`），
    派发单图名无物种 token。若沿用惯例应为 `l3_{sp}_20_domain_panel.png`（每物种一张）。
 3. **A 面板逐样本**：`l3_01_domains_*` 是 15 张逐样本图，组合图需要样本选取规则
@@ -86,7 +86,7 @@ line3 其余出图脚本（全目录 grep `savefig`，只有 4 个脚本出图�
 
 在保留三张既有单图的前提下，于 `spatial_figures` 新增 line3 首张组合图
 `l3_20_domain_panel.png`（A=空间域散点、B=HE 形态学图、C=各空间域乳酸化评分差异），
-满足 G1–G5 并跑通三件套审计。**实际执行结果：任务项 1 即触发派发单预设阻断条款，
+满足 G1-G5 并跑通三件套审计。**实际执行结果：任务项 1 即触发派发单预设阻断条款，
 未进入实现。**
 
 ### 3.2 实现摘要
@@ -128,12 +128,12 @@ line3 其余出图脚本（全目录 grep `savefig`，只有 4 个脚本出图�
 ### 3.6 假设与风险
 
 1. **假设（已证伪）**：派发单"line3 现到 19""line3 产物是 20261018 算的"
-   "`l3_02_*` 是 HE 图""`l3_03_*` 是 score 箱线"—— 四条均与仓库/远端实测不符
+   "`l3_02_*` 是 HE 图""`l3_03_*` 是 score 箱线": 四条均与仓库/远端实测不符
    （见 §1 证据 1-4）。推测来源：把 line2 的号段与 S17 语境套到了 line3 上。
 2. **风险（若强行实现）**：自造 H&E 面板需从 `uns['spatial']` 低倍图新起一张单图，
-   自造 score 面板需先定义"乳酸化评分"口径（数据中不存在该量）——两者都会
+   自造 score 面板需先定义"乳酸化评分"口径（数据中不存在该量）:两者都会
    违反派发单"不要自己造等价物"与"禁止改统计口径/评分算法"。
-3. **未验证**：组合图布局、G1/G2 探针、几何审计、打分 —— 全部未运行（无图可验）。
+3. **未验证**：组合图布局、G1/G2 探针、几何审计、打分 : 全部未运行（无图可验）。
 
 ### 3.7 架构/接口变更建议
 
@@ -148,18 +148,18 @@ line3 其余出图脚本（全目录 grep `savefig`，只有 4 个脚本出图�
      或 `l3_14_deconv_umap`），语义改为"域面板"，不动数据；
    - 方案乙：保留原语义，先立新切片补 H&E 单图（`uns['spatial']` 低倍图 + spot 叠加）
      与评分单图（需先定义评分口径，如 `lr_score_recv` 或 target gene 按域分布），
-     再组图 —— 属范围扩大，需用户拍板评分口径。
-2. **编号**：认 `l3_20`（G3 例外，留 16–19 空号）还是改顺延 `l3_16`？
+     再组图 : 属范围扩大，需用户拍板评分口径。
+2. **编号**：认 `l3_20`（G3 例外，留 16-19 空号）还是改顺延 `l3_16`？
 3. **物种**：单图名不带物种（与 line3 69 张存量不一致）还是每物种一张
    `l3_{sp}_20_domain_panel.png`？
 4. **A 面板样本选取规则**（逐样本图组图时必须定义）。
 5. **重跑种子口径**：`spatial_figures` 为纯渲染步骤，种子只进 stdout；
    若沿用"与磁盘同种子"纪律，磁盘证据指向 20261013（h5ad/report），
-   与派发单禁止项冲突 —— 请主 Agent 明确传哪个种子并说明理由。
+   与派发单禁止项冲突 : 请主 Agent 明确传哪个种子并说明理由。
 
 ### 3.9 建议下一步
 
 主 Agent 就 §3.8-1 拍板面板方案后重派 S18（或拆分 S18a 补单图 + S18b 组图）；
-在面板映射有脚本依据之前，不建议为了赶进度让子 Agent"先按最接近的图做着"——
+在面板映射有脚本依据之前，不建议为了赶进度让子 Agent"先按最接近的图做着":
 那正是派发单明令禁止的造等价物。
 

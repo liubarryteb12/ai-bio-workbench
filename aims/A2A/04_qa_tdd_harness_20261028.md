@@ -1,4 +1,4 @@
-# Codex（电脑）↔ Pi Agent（手机 Termux）A2A 协作工程 —— 04. 全生命周期缺陷审查、TDD 与 Test Harness 工程规范
+# Codex（电脑）↔ Pi Agent（手机 Termux）A2A 协作工程 : 04. 全生命周期缺陷审查、TDD 与 Test Harness 工程规范
 
 > **文档编号与时间戳**：`04_QA与TDD_Harness全维审查计划与缺陷根治规范_20261028.md`（生成时间：`2026-10-28 16:00:00 +08:00` / 配套版本：`v1.2.1-qa-hardened`）
 > **文档地位**：【1 + N×3 文档驱动工程体系】中的 **“质量保障、防崩审查与自动化验证总纲（QA & TDD Harness Charter）”**

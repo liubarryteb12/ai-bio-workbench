@@ -52,7 +52,7 @@ Max 400 words. For each finding give file/hunk evidence and a minimal fix direct
 - 做完自己 review 一遍再交付。
 
 === coding-standards ===
-# 工程规范 — 分析代码规范（Linux 运行面）
+# 工程规范 : 分析代码规范（Linux 运行面）
 
 > version 1 | 2026-10-13
 > 本规范规定 `src/` 下三条线分析代码怎么写。新步骤动工前先读本文件。
@@ -74,7 +74,7 @@ Max 400 words. For each finding give file/hunk evidence and a minimal fix direct
 - **路径与文件名纯英文**：Linux 系统内不出现中文字符（directories.md 命名红线，
   含"Linux 系统内一律英文路径与文件名"条）。中文只允许进注释与报告正文。
 - **可执行位**：脚本部署后必须 755（`ops/06_deploy_scripts.ps1` 已带 chmod + `test -x` 复核）。
-- **不用 em dash（—）**：注释与报告用逗号、冒号、句号、括号。
+- **不用 em dash（:）**：注释与报告用逗号、冒号、句号、括号。
 
 ops/ 下的 PowerShell 脚本跑在本地 PC 侧，只做链路运维与部署传输入口，
 **不是分析代码**，不受本条约束；但它们下发的远端命令整体用单引号包裹，
@@ -1592,7 +1592,7 @@ index 7712ef7..6354f5f 100644
   *
   * 存在的理由（踩坑台账 P-15）：宽松版丢弃退出码，链路断时 ssh 返回 255 且
   * stdout 为空，第 1 维会把空串判成"原生 ext4"、第 2 维会把空串算成 100% free，
-- * 自检出现假绿灯——而自检是提交门禁，假绿灯比红灯危险得多。
+- * 自检出现假绿灯:而自检是提交门禁，假绿灯比红灯危险得多。
 + * 自检出现假绿灯 -  - 而自检是提交门禁，假绿灯比红灯危险得多。
   */
  function runRemoteStrict(command) {
@@ -1601,7 +1601,7 @@ index 7712ef7..6354f5f 100644
   * 列出一个项目某条线 figures/ 下的图件（含中文说明），供 API 与后端预览页共用。
   *
   * 优先读本地回搬副本 outputs/<项目>/<线>/figures/（规范要求图件回搬本地），
-- * 本地没有时才回落远端实时读取，并用 source 字段标明来源 —— 不能让
+- * 本地没有时才回落远端实时读取，并用 source 字段标明来源 : 不能让
 + * 本地没有时才回落远端实时读取，并用 source 字段标明来源  -  -  不能让
   * "本地还没回搬"被误读成"这条线没出图"。
   */
@@ -2093,7 +2093,7 @@ index 7712ef7..6354f5f 100644
  
    if (url.pathname === '/api/tasks' && req.method === 'GET') {
      // 在跑任务列表：让界面知道有没有重复下发。
--    // 字段名与 /api/tasks/submit 的返回值统一为 taskId —— 两处用不同名字
+-    // 字段名与 /api/tasks/submit 的返回值统一为 taskId : 两处用不同名字
 +    // 字段名与 /api/tasks/submit 的返回值统一为 taskId  -  -  两处用不同名字
      // （这里曾叫 id）会让调用方按 submit 的字段去比对列表，永远匹配不上，
      // 长任务被误判成"已结束"（2026-10-19 端到端实测踩到）。
@@ -2161,7 +2161,7 @@ index 7712ef7..6354f5f 100644
  
        // 审计提前到提交前：越界就不给 taskId，不启动、不占任务位。
        // 整段包 try/catch：参数形态异常（如 inputs 传了对象）不能把服务打死，
--      // 必须是 400 返回 —— 一次崩溃会让所有在跑任务与 SSE 连接一起断。
+-      // 必须是 400 返回 : 一次崩溃会让所有在跑任务与 SSE 连接一起断。
 +      // 必须是 400 返回  -  -  一次崩溃会让所有在跑任务与 SSE 连接一起断。
        let script;
        try {
@@ -2170,7 +2170,7 @@ index 7712ef7..6354f5f 100644
  
        // ── 桥接四项断言检查点（S28 / 架构评审 D1）──────────────────────────
        // aims §一.3：每次跨语言转换必须过 ops/verify_bridge_checkpoint.py。
--      // 58 个分析脚本 0 调用（铁律空转），接线位置定为提交层——只有这里全知
+-      // 58 个分析脚本 0 调用（铁律空转），接线位置定为提交层:只有这里全知
 +      // 58 个分析脚本 0 调用（铁律空转），接线位置定为提交层 -  - 只有这里全知
        // "这一步是不是跨语言步骤"。母版缺失不阻断提交（保持既有行为），但必须
        // warn 可观测；K40 不可达时明确 503，绝不静默放过。
@@ -2579,7 +2579,7 @@ index f601fec..ecdaa84 100644
   * 构造桥接四项断言的远端执行命令。
   *
   * 引擎 CLI 契约（ops/verify_bridge_checkpoint.py）要求 --input 指向一个真实存在的
-- * .h5ad/.rds 文件，因此 inputs 必须参与构造——提交层拿到的就是本次任务声明的输入，
+- * .h5ad/.rds 文件，因此 inputs 必须参与构造:提交层拿到的就是本次任务声明的输入，
 + * .h5ad/.rds 文件，因此 inputs 必须参与构造：提交层拿到的就是本次任务声明的输入，
   * 不是编造：取第一个 .h5ad/.rds 输入；相对路径按该项目该线 processed/ 解析。
   * --from/--to 按引擎自身语义定：check_h5ad 用 anndata（Python 产物）、check_rds 用 R（R 产物）。
@@ -2832,7 +2832,7 @@ index f601fec..ecdaa84 100644
    if (throttled) {
      // 走 ops/run_throttled_task.sh：nice/ionice 降权 + 存储水位与跨线门禁 + 线程封顶（aims §六.3）。
      // 用**命令串模式**（BIO_EXEC_CMD），$5 只给门禁做跨线静态扫描，传母版绝对路径。
--    // 2026-10-21 之前这里把整条 rawCmd 当 $5 传，包装器随后执行 "$SCRIPT_PATH" —— 那是一个
+-    // 2026-10-21 之前这里把整条 rawCmd 当 $5 传，包装器随后执行 "$SCRIPT_PATH" : 那是一个
 +    // 2026-10-21 之前这里把整条 rawCmd 当 $5 传，包装器随后执行 "$SCRIPT_PATH"：那是一个
      // 含空格的文件名，必然 ENOENT，所以 throttled 分支长期不可用，引擎（run.js）只能
      // throttled=false 绕过包装器直跑，降权/门禁/线程封顶对工作台下发的任务全部失效（D-21）。
@@ -2908,7 +2908,7 @@ index 0000000..f209ecd
 +++ b/BioanalysDesktop/server/workflow_graph.js
 @@ -0,0 +1,370 @@
 +/**
-+ * workflow_graph.js —— mod 注册表的加载、校验与组合合法性判定。
++ * workflow_graph.js : mod 注册表的加载、校验与组合合法性判定。
 + *
 + * 单一事实源：`src/workflows.json`。客户端（portal）、服务台（BioanalysDesktop）、
 + 取证 runner（cn_debug/lib/chain_runner.mjs）三方共读同一份，避免依赖关系三处漂移。
@@ -3003,7 +3003,7 @@ index 0000000..f209ecd
 +      for (const mod of stage.mods) {
 +        const where = `${series.id}/${stage.id}/${mod.id}`;
 +        // 母版必须真实存在。mod.id 是注册表命名（<系列>_<工序>_<功能>），
-+        // 与磁盘上的母版文件名不同——母版名走 mod.script，两者不能混。
++        // 与磁盘上的母版文件名不同:母版名走 mod.script，两者不能混。
 +        const scriptName = mod.script || mod.id;
 +        const scriptPath = path.join(REPO, 'src', series.id, 'scripts', scriptName);
 +        if (!fs.existsSync(scriptPath)) {
@@ -5218,7 +5218,7 @@ index 9376219..0f5f6dd 100644
 +
 +  // 组合预检（与工作台 /api/workflows/resolve 同语义，本地实现）。
 +  // 为什么不在 portal 转发到工作台：本服务与工作台彻底解耦是既有设计，
-+  // 且工作台可能没起——预检是增强项，不该因为工作台不在就废掉客户勾选。
++  // 且工作台可能没起:预检是增强项，不该因为工作台不在就废掉客户勾选。
 +  // 合法性判定与工作台共用同一份注册表，结论不会分叉。
 +  if (url.pathname === '/api/workflows/resolve' && req.method === 'POST') {
 +    let body = '';

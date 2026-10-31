@@ -1,4 +1,4 @@
-# Codex（电脑）↔ Pi Agent（手机 Termux）A2A 协作工程 —— 01. 各模块 `aims-总目标`（What & Why 阶段性业务契约）全集（全量升级版 v1.1.0）
+# Codex（电脑）↔ Pi Agent（手机 Termux）A2A 协作工程 : 01. 各模块 `aims-总目标`（What & Why 阶段性业务契约）全集（全量升级版 v1.1.0）
 
 > **文档编号与时间戳**：`01_aims_Codex-Pi-A2A协作工程_20261028.md`（生成时间：`2026-10-28 15:00:00 +08:00`）
 > **文档角色**：【1 + N×3 体系】中的 **`[模块名]-aims-总目标-20261028.txt` 汇总卷**（定义每个模块的业务定位、负面清单、三阶段目标、边界规格 Specs & Edge Cases、完成定义 DoD 与验收台账）
@@ -146,24 +146,24 @@
 
 ---
 
-## 模块五：`mod-pi-observability-aims-总目标-20261028.txt`（BioanalysDesktop `18787` 手机 Pi 观测与模型管控卡带 —— 新增模块）
+## 模块五：`mod-pi-observability-aims-总目标-20261028.txt`（BioanalysDesktop `18787` 手机 Pi 观测与模型管控卡带 : 新增模块）
 
 ### 1. 模块定位（What & Why）
 在 **BioanalysDesktop (`127.0.0.1:18787`) 编排面服务端页面**中挂载可视化观测与管控中心，通过手机端 `:9911` 遥测 Sidecar（`ops/pi_telemetry_sidecar.py`）与 `18787` 后端代理路由（`BioanalysDesktop/server/pi_agent_routes.js`），让用户在 `18787` 网页上一屏实时掌控手机端 Pi Agent 的 **调用信息台账、实时运行日志（`daemon.log` + `childTranscripts`）、当前使用模型设定（支持热切换）以及 Token/成本/硬件使用情况**（彻底攻克缺口 G9）。
 
 ### 2. 负面清单（Anti-Goals）
-* **严禁前端浏览器直接跨域请求手机端或将 `A2A_CLIENT_BEARER_TOKEN` 暴露在前端 HTML/JS 中（禁区 6）**——所有请求必须经由 `18787` 后端 `/api/pi-agent/*` 路由代理并在服务端注入 Token。
-* **严禁允许通过网页任意输入未授权模型名称或上传明文第三方 API Key**——仅允许在手机端已配置好密钥的 `ALLOWED_MODELS` 白名单内切换 `defaultProvider`、`defaultModel`、`thinkingLevel` 与 `maxConcurrent`。
+* **严禁前端浏览器直接跨域请求手机端或将 `A2A_CLIENT_BEARER_TOKEN` 暴露在前端 HTML/JS 中（禁区 6）**:所有请求必须经由 `18787` 后端 `/api/pi-agent/*` 路由代理并在服务端注入 Token。
+* **严禁允许通过网页任意输入未授权模型名称或上传明文第三方 API Key**:仅允许在手机端已配置好密钥的 `ALLOWED_MODELS` 白名单内切换 `defaultProvider`、`defaultModel`、`thinkingLevel` 与 `maxConcurrent`。
 * 严禁 `18787` 后端请求手机 Tailscale IP 时走本地 `7890` 系统代理（必须显式设置 `agent: false`）。
 
 ### 3. 三阶段业务目标与边界规格（Specs & Edge Cases）
-* **阶段Ⅰ（基础落地 —— 手机端 `:9911` 遥测 Sidecar）**：
+* **阶段Ⅰ（基础落地 : 手机端 `:9911` 遥测 Sidecar）**：
   1. 在手机 Termux 部署 `ops/pi_telemetry_sidecar.py`（监听 `0.0.0.0:9911`），复用 `~/.pi/agent/settings.json` 中的 `peerTokens.codex` 进行 Bearer 鉴权；
   2. 提供 `GET /api/telemetry/overview`（汇总 Agent 配置、当前模型、硬件 RAM/电量/温度、累计 Token/费用、分模型统计与最近 40 条调用记录）、`GET /api/telemetry/logs`（读取 `pi_a2a_daemon.log` 或指定 `task_id.jsonl` 轨迹）及 `POST /api/telemetry/model`（原子更新 `settings.json` 默认模型与并发上限）。
-* **阶段Ⅱ（相关配套 —— `18787` 服务端代理路由与台账联动）**：
+* **阶段Ⅱ（相关配套 : `18787` 服务端代理路由与台账联动）**：
   1. 在 `BioanalysDesktop/server/pi_agent_routes.js` 实现 `/api/pi-agent/{ping,overview,calls,logs,model,dispatch}` 接口并挂载至 `18787` 主服务；
   2. 每次在网页上切换手机端模型或派发探针任务时，自动在电脑端 `con_hf/ledger/actions.jsonl` 追加审计记录。
-* **阶段Ⅲ（功能实现 —— `18787` 前端四联监控工作台插槽）**：
+* **阶段Ⅲ（功能实现 : `18787` 前端四联监控工作台插槽）**：
   1. 在 React `BioanalysDesktop/src/App.tsx` 的 `PiAgentMonitor` 集成视图中展示顶部状态卡（在线状态、当前模型、tmux、内存、A2A 可达性）；
   2. 在同一视图展示四联监控中心：① 调用信息与 Artifact 验收台账；② 守护日志与任务轨迹双流终端；③ 模型白名单热切换；④ 分模型 Token 消耗与费用统计；
   3. `mod-pi-observability` 的 `workbench.selfcheck-cards` 与 `workbench.studio-preview` 插槽声明由 `SlotManager` 契约测试覆盖，React 视图作为当前生产挂载适配器。

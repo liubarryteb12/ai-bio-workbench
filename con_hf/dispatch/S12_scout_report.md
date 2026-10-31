@@ -87,7 +87,7 @@ localhost
 Python 3.12.3
 ```
 
-### 5.2 A1 — 两线出图脚本清单（判据含行号）
+### 5.2 A1 : 两线出图脚本清单（判据含行号）
 
 「出图脚本」判据：bash 包装内嵌 Python heredoc 且含 `def caption(` + 有 `savefig`。
 line2 22 个脚本中 6 个符合，line3 18 个脚本中 4 个符合，其余 30 个 `savefig=0`（纯计算步骤，不出图）。
@@ -110,7 +110,7 @@ line2 22 个脚本中 6 个符合，line3 18 个脚本中 4 个符合，其余 3
 - line2 = 4 UMAP + 1 stack + 13 box + 1 marker + 7 volcano + 1 sig bar + 1 pca = **28**（scrna_figures）
   + 2（enrichment）+ 2（scenic）+ 1 + 1 + 3 = **37** ✔
 - line3 = 15 domains + 15 target_gene + 15 ko_dr（= 5 human + 10 mouse 逐样本，L253/278/313 三个 `for s in samples`）
-  + 6 组图 × 2 物种（04–09）= **57**（spatial_figures）+ 4 + 4 + 4 = **69** ✔
+  + 6 组图 × 2 物种（04-09）= **57**（spatial_figures）+ 4 + 4 + 4 = **69** ✔
 
 输入齐备性：两线 `processed/` 里 10 个脚本需要的输入**全部存在**。
 两种核法：① 有 `case "$path" in` 分流的脚本用 `derive_inputs()` 反推并 `os.path.exists` 校验
@@ -121,7 +121,7 @@ line2 22 个脚本中 6 个符合，line3 18 个脚本中 4 个符合，其余 3
 
 源码一致性（防止审的是远端旧版）：本地 `src/line{2,3}_*/scripts/*` 与远端 `bin/line{2,3}*/` **10/10 md5 相同**。
 
-### 5.3 A2 — 三态表
+### 5.3 A2 : 三态表
 
 | 态 | 脚本 | 图数 | 判据 |
 |---|---|---|---|
@@ -135,11 +135,11 @@ line2 22 个脚本中 6 个符合，line3 18 个脚本中 4 个符合，其余 3
 | | line2 `dr_post_analysis` | 3 | L270 GSEA(perm 1000, seed)、L292/347/424 写 tsv、L494 报告 |
 | | line3 `celltype_annotation` | 4 | L356/366 写 tsv、L373 `write_h5ad`、L475 报告 |
 | | line3 `dr_post_analysis` | 4 | L303 GSEA、L325/386 写 tsv、L439 报告 |
-| **不可审** | —— | 0 | 无 R 出图脚本；10 个出图脚本全部有 caption |
+| **不可审** | : | 0 | 无 R 出图脚本；10 个出图脚本全部有 caption |
 
 合计：可审 93 图（5 脚本）＋ 可审但重算 13 图（5 脚本）＝ 106 图（10 脚本），与本地 37+69 完全对齐。
 
-### 5.4 A3 — 试点审计（`line2_scrna/enrichment_figures`）
+### 5.4 A3 : 试点审计（`line2_scrna/enrichment_figures`）
 
 **md5 基线（审计前）**
 
@@ -211,26 +211,26 @@ real_file_after_write: REWRITTEN_BY_STAGE
 结论：`_stage_dir()` 的软链**只保护新建文件，不保护原地重写**。所以 5 个重算脚本走 bash 审计，
 其 `to_csv`/`open(...,"w")` 会直接改写真 `processed/` 里的 tsv 与报告。
 
-### 5.5 A4 — 全量审计耗时估算与风险点
+### 5.5 A4 : 全量审计耗时估算与风险点
 
 耗时（除标注「实测」外均为估算，依据写在括号里）：
 
 | 脚本 | 图数 | 预计墙钟 | 依据 |
 |---|---|---|---|
 | line2 `enrichment_figures` | 2 | **4.1s（实测）** | 试点 `real 0m4.094s` |
-| line2 `scenic_figures` | 2 | 4–6s | 输入仅 2 个 tsv（36KB/11KB），与试点同量级 |
-| line2 `scrna_figures` | 28 | 40–90s | import anndata+scanpy+mpl **实测 14.1s**；`scrna_deg.h5ad` 读取 **实测 0.28s**（4587×2000）；28 张图 |
-| line3 `enrichment_figures` | 4 | 6–10s | 输入 tsv 5.3/11.2/1.5/0.9MB，4 张图 |
-| line3 `spatial_figures` | 57 | 90–200s | import 14.1s + 两份 h5ad 读取**实测 2.40s/1.07s**（17283×18628 / 6877×19613）+ 57 张图（15 张逐样本点云） |
-| **小计（93 图纯渲染）** | 93 | **≈ 2.5–5.5 min** | |
+| line2 `scenic_figures` | 2 | 4-6s | 输入仅 2 个 tsv（36KB/11KB），与试点同量级 |
+| line2 `scrna_figures` | 28 | 40-90s | import anndata+scanpy+mpl **实测 14.1s**；`scrna_deg.h5ad` 读取 **实测 0.28s**（4587×2000）；28 张图 |
+| line3 `enrichment_figures` | 4 | 6-10s | 输入 tsv 5.3/11.2/1.5/0.9MB，4 张图 |
+| line3 `spatial_figures` | 57 | 90-200s | import 14.1s + 两份 h5ad 读取**实测 2.40s/1.07s**（17283×18628 / 6877×19613）+ 57 张图（15 张逐样本点云） |
+| **小计（93 图纯渲染）** | 93 | **≈ 2.5-5.5 min** | |
 | line2 `target_gene_localization` | 1 | 6.3s + import | 报告自记 `elapsed_seconds=6.3` |
 | line2 `gsva_pathways` | 1 | 2.2s + import | 报告自记 `elapsed_seconds=2.2`（含 R GSVA） |
 | line2 `dr_post_analysis` | 3 | 17.5s + import | 报告自记 `elapsed_seconds=17.5` |
 | line3 `celltype_annotation` | 4 | 43.5s + import | 报告自记 `elapsed_seconds=43.5` |
 | line3 `dr_post_analysis` | 4 | 12.9s + import | 报告自记 `elapsed_seconds=12.9` |
-| **小计（13 图重算）** | 13 | **≈ 2.5–4 min**（82.4s 计算 + 5×14s import + 审计开销） | |
+| **小计（13 图重算）** | 13 | **≈ 2.5-4 min**（82.4s 计算 + 5×14s import + 审计开销） | |
 
-**全量 106 图：约 5–10 min 墙钟**，另加每条线两次 md5 全量校验（37 图 3.5s / 59 文件含 1.5GB h5ad 约 3.5s）
+**全量 106 图：约 5-10 min 墙钟**，另加每条线两次 md5 全量校验（37 图 3.5s / 59 文件含 1.5GB h5ad 约 3.5s）
 与人工复核。相比 line1 的 27 图审计，量级可控。
 
 风险点（按严重度）：
@@ -245,12 +245,12 @@ real_file_after_write: REWRITTEN_BY_STAGE
 | **P2** | C1 缺失不致命：权重 6 分、非一票否决（`VETO = [A1,A2,B1,C2]`），满分 94 仍 > 75 PASS 线；但 D2/D3 缺失会直接 UNVERIFIED | `cn_debug/figure_score.py:67`、`WEIGHTS` L54-61 |
 | **P3** | 命名合规无风险：`NAME_RE = ^l[123]_(?:[a-z]+_)?[0-9]{2}[ab]?_[A-Za-z0-9_.]+\.png$` 能匹配 `l2_scenic_01_*`、`l3_human_01_*`、`l2_06_composition_box_T_cell` | `figure_score.py:76` 逐名核对 |
 
-### 5.6 A5 — R 出图脚本
+### 5.6 A5 : R 出图脚本
 
 **line2/line3 不存在 R 出图脚本。** 全量扫描 `grep -Hn "Rscript\|png(\|ggsave" bin/line2_scrna/* bin/line3_spatial/*`：
 
 - `ggsave`：0 处；R `png(` 设备：0 处；
-- `Rscript`：仅 1 处 —— `line2_scrna/gsva_pathways:98`，该块读 `_gsva_pseudobulk.tsv`、
+- `Rscript`：仅 1 处 : `line2_scrna/gsva_pathways:98`，该块读 `_gsva_pseudobulk.tsv`、
   调 `GSVA::gsva()`、`write.table(out, "gsva_scores.tsv")`（L142），**不产任何图**；
   `gsva_pathways` 的图 `l2_14_gsva_heatmap.png` 由第二个 Python heredoc 的 `savefig`（L354）产出。
 
@@ -262,7 +262,7 @@ real_file_after_write: REWRITTEN_BY_STAGE
 ## 六、视觉审查
 
 **未做。** 本轮为可行性侦察，未逐张查看 line2/line3 的 PNG，不对其美观性/规范性下任何结论。
-试点审计只给出几何判决（A–E 项），不等于目视通过。
+试点审计只给出几何判决（A-E 项），不等于目视通过。
 
 ---
 
@@ -270,9 +270,9 @@ real_file_after_write: REWRITTEN_BY_STAGE
 
 1. 「项目真种子 = 20261013」来自 `#190` 与派发单，并用 15+ 份 `seed=20261013` 的报告交叉验证；
    `projects/default/project.json` **不含** seed 字段（`lines`/`grouping_design` 里也没有），
-   种子只能从报告与派发单推定 —— 这一点建议主 Agent 确认一次权威来源。
+   种子只能从报告与派发单推定 : 这一点建议主 Agent 确认一次权威来源。
 2. 耗时估算里除试点 4.1s 与三次 import/read 实测外，其余按图数与输入体量外推，**未逐个实测**。
-   最不确定的是 `spatial_figures`（57 图，估 90–200s，误差可能 ±1 倍）。
+   最不确定的是 `spatial_figures`（57 图，估 90-200s，误差可能 ±1 倍）。
 3. 图数 28/57 是按脚本源码的循环结构 + 实际文件反推，**未实际重渲染验证**；
    若 `uns`/`obs` 缺键，脚本会走 `skip`/`continue` 分支，实际 figs 可能少于交付数。
 4. 5 份 `seed=20261018` 报告的成因是**推断**（时间戳连续 + 只影响「出图+重算」这 5 步）；
@@ -300,7 +300,7 @@ real_file_after_write: REWRITTEN_BY_STAGE
 1. **种子处置**：5 个重算脚本的报告已被写成 20261018。是
    （a）按真种子 20261013 重跑这 5 步以修复 provenance（会改 tsv/图件，需重扫重打分），
    （b）先只审 93 张纯渲染图，重算 5 步单独立项，
-   还是（c）先查清 2026-10-18 07:13–07:16 那批是谁跑的。
+   还是（c）先查清 2026-10-18 07:13-07:16 那批是谁跑的。
 2. **是否先修 `_stage_dir` 软链**再审重算类脚本；不修就必须接受「审计会改写真 processed」。
 3. **C1 登记缺口 87/106** 是否纳入本批（否则 line2/line3 打分最高 94 分，
    虽仍 PASS，但交付报告里 87 张图没有中文图注）。
@@ -310,11 +310,11 @@ real_file_after_write: REWRITTEN_BY_STAGE
 
 ## 十、建议下一步（实施切片 S12-impl 的最小可行范围）
 
-1. **第一批（零风险，建议立刻做）**：审 5 个纯渲染脚本的 93 张图 ——
+1. **第一批（零风险，建议立刻做）**：审 5 个纯渲染脚本的 93 张图 :
    `line2 {scrna_figures, enrichment_figures(已完成), scenic_figures}` +
    `line3 {spatial_figures, enrichment_figures}`，全部 `--runner bash --seed 20261013`，
    每条线前后各做一次 md5 基线，CSV 落 `cn_debug/figure_audit_sweep/`。
-   预计 3–6 min，副作用为零（试点已证）。
+   预计 3-6 min，副作用为零（试点已证）。
 2. **第二批（需先决策 §9.1/§9.2）**：5 个重算脚本的 13 张图。建议先改 `_stage_dir` 再跑，
    跑完按 `#190` 纪律用真种子重跑并核对 tsv/报告 md5，再重扫重打分。
 3. 两批完成后跑 `cn_debug/figure_score.py --dir outputs/default/line{2,3}_*/figures

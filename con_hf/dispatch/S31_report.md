@@ -33,7 +33,7 @@ portal 四个写端点（/api/submit、/api/datafiles、/api/references + /healt
    返回 `{"ok":true,"service":"user-portal","port":8080,"inbox":"...portal\\inbox\\"}`；
    `GET / -> 200`。现网进程仍为旧代码，响应**尚无** `auth_required` 字段（见 §5 风险 1）。
 4. 未启用态 `auth_required:false` 与全链路等价性：由 portal_auth.test.js 中
-   另起的未启用子进程实测（`PORTAL_TOKEN:''` 显式置空防 env 继承）——
+   另起的未启用子进程实测（`PORTAL_TOKEN:''` 显式置空防 env 继承）:
    无 token 上传/包归档/扁平提交全部 200，`auth_required=false` 断言通过。
 
 ## 4. 契约逐条对照
@@ -46,7 +46,7 @@ portal 四个写端点（/api/submit、/api/datafiles、/api/references + /healt
 - A4 既有 portal 契约测试零红 ✅（npm test 281 全绿）。
 - A5 npm test 全绿 ✅（尾行：tests 281 / pass 281 / fail 0）。
 - A6 index.html 两态行为 ✅（实现层：auth_required=false 时零渲染变化、零加头；
-  浏览器人工目检未做——无 UI 自动化，标注「未在真实浏览器目检」）。
+  浏览器人工目检未做:无 UI 自动化，标注「未在真实浏览器目检」）。
 - A7 日志 ✅（warn 行 `鉴权失败: POST /api/submit`，测试断言日志不含 token 明文）。
 
 ## 5. 假设与风险

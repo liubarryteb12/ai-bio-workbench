@@ -22,7 +22,7 @@ layout guard（`caption`/`wrap_label`/`fit_text_edges`/`legend_out`/`layout_fix`
 | C7 | R `png()` 未声明 `res=` → 判违规（R 默认 72dpi） | 负样本 1 处命中 |
 | C8 | Python `savefig` 无 `dpi=` 且无 `savefig.dpi` rcParams → 判违规 | 负样本 1 处命中 |
 | 三态判决 | 打分系统新增 UNVERIFIED：外部判决缺失时**不许 PASS**（FE-012 关闭） | 不喂 CSV → 33 图全 UNVERIFIED、exit 1 |
-| 判决导入 | `figure_score.py --audit-csv/--code-csv/--ledger-dir`；B1–B4 来自几何审计、D2/D3 来自源码扫描+台账反查 | 喂 CSV → 4 图 PASS、其余 UNVERIFIED |
+| 判决导入 | `figure_score.py --audit-csv/--code-csv/--ledger-dir`；B1-B4 来自几何审计、D2/D3 来自源码扫描+台账反查 | 喂 CSV → 4 图 PASS、其余 UNVERIFIED |
 | 审计 CSV | `ops/audit_figure_layout.py --csv` 逐图判决落盘；远端已同步（md5 613873da…） | 远端 4 图 PASS 导入成功 |
 
 **实测缺口（Step 2 的主攻方向）**：
@@ -37,13 +37,13 @@ layout guard（`caption`/`wrap_label`/`fit_text_edges`/`legend_out`/`layout_fix`
 3. **没有任何组图**：三线图件全是单图，无面板拼合、无 A/B/C 面板编号、无共享图例。
 4. 本地存档有 1 张陈旧图（`l1_27_wgcna_mm_gs.png`，远端已无此图，FE-017 未修）。
 
-## Step 1 — 出图格式框定（本步已完成）
+## Step 1 : 出图格式框定（本步已完成）
 
 - 交付：`figure_code_audit.py` 增 C7/C8 且三项对照全过（负样本 C4/C7/C8 齐响、正样本归零、
   真源码三线零误报）；`figure_score.py` 三态判决 + 外部判决导入；
   `audit_figure_layout.py --csv`。下一步把这些写回 `docs/figure_spec.md` §一/§七。
 
-## Step 2 — 按规范逐条落地（存量脚本与图件）
+## Step 2 : 按规范逐条落地（存量脚本与图件）
 
 - 输入：本地 `outputs/<项目>/<线>/figures` + `outputs/system_logs` + 远端 `bin/<line>/`。
 - 动作：① Python 图件逐个脚本跑几何审计收 CSV；② R 图件按"人工审查 + 登记"或补 R 审计；
@@ -52,21 +52,21 @@ layout guard（`caption`/`wrap_label`/`fit_text_edges`/`legend_out`/`layout_fix`
   负对照：回退任一 helper 后必须复现 FAIL。
 - **阻断项**：R 图件的机器判决方案需主 Agent 决策（见 §待决策）。
 
-## Step 3 — 布局与要素统一（SCI 主题层）
+## Step 3 : 布局与要素统一（SCI 主题层）
 
 - 产出共享主题（R：`theme_bioanalys()` + base R 的 `fig_par()`；Python：统一 rcParams 主题），
   经 `layout_autoload` 自动挂载，脚本零改动生效。
 - 验收：主题生效前后同一脚本产物**数值不变**（md5 对比仅限于纯样式变更；样式变更须逐张
   机器审计 + 目视登记），且 `figure_code_audit.py` 仍 no issue。
 
-## Step 4 — 套美化包（替换手搓实现）
+## Step 4 : 套美化包（替换手搓实现）
 
 - 候选（远端已装，零安装）：R `ggrepel`（标签避让）/ `ggsignif`（显著性括号）/
   `patchwork`（组图）/ `viridis`（连续色）/ `ComplexHeatmap`（热图）/ `enrichplot`（富集）；
   Python `seaborn`（箱线/小提琴/条形主题）/ `adjustText`（已在用）。
 - 纪律：每处替换先有 before/after 产物对比 + 数值一致性证明；一次只改一类。
 
-## Step 5 — 高级组图
+## Step 5 : 高级组图
 
 - 候选：line1 总览四联图（火山+MA+PCA+topvar）、line2 UMAP 网格（共享图例）、
   line3 逐样本空间组合图（域+目标基因+DR）。
@@ -98,7 +98,7 @@ cd <项目根> && HERMES_PROFILE=sw-engineer \
 
 - 为什么钉 `HERMES_PROFILE=sw-engineer`：子 Agent 因此能读到主 Agent 的 SOUL.md（含第八章
   派发契约）与 skills， persona 一致；不钉则落到默认 profile（根 config 的 `glm-5.3-flash`），
-  契约全靠派发单文字撑着——S2/S3 就是这样跑的（结论已由主 Agent 逐条复核，见 #191）
+  契约全靠派发单文字撑着:S2/S3 就是这样跑的（结论已由主 Agent 逐条复核，见 #191）
 - 为什么显式 `-m`：profile 的 config default 会被会话内切模覆盖，显式钉住可复现
 - 后台跑 + `< /dev/null`： Windows 后台进程 stdin 不是 /dev/null 时会报
   "stdin is not a tty" 直接退出（2026-10-19 实测，V9 harness 同款坑）
@@ -119,7 +119,7 @@ cd <项目根> && HERMES_PROFILE=sw-engineer \
 - **#190**：几何审计种子硬编码污染 provenance → 工具加 `--seed`、用真种子修复四份报告、
   同种子复跑验证字节级一致。**教训：bash 通道的审计是真跑，副作用含重写报告与图件。**
 - **#191**：D2/D3 归因依赖台账 outputs 声明 → 改源码静态映射（含动态名前缀模板）。
-- **#192/#193**：R/Python 主题层两轮设计返工——模板层已实现同套规则、rcParams 被显式参数绕过。
+- **#192/#193**：R/Python 主题层两轮设计返工:模板层已实现同套规则、rcParams 被显式参数绕过。
   **教训：动手前先读现有挂载点做了什么，并用真实脚本做开关前后 md5 空转验证。**
 - **#194**：C1 轴内图例判据加强（括号配平 + 裸调用识别），真源码 10 处违规现形。
 - **#195**：交付报告引擎 STEP_CATALOG 键无 line 维度 + 15 处产物名不符 → 派 S7 修。
@@ -196,9 +196,9 @@ cd <项目根> && HERMES_PROFILE=sw-engineer \
 ### G5 验收（组合图的机器判据）
 
 1. `figure_audit_scan.py`：DPI 300、最短边 ≥1200px、非空白、边缘无裁切。
-2. `audit_figure_layout.py --runner bash`：A–E 全 PASS（组合图属多轴图，
+2. `audit_figure_layout.py --runner bash`：A-E 全 PASS（组合图属多轴图，
    按既有规则**不搬图例**，只判文本收边与重叠）。
-3. `figure_score.py`：C1（caption 登记）与 C2（命名）必须命中——组合图登记进
+3. `figure_score.py`：C1（caption 登记）与 C2（命名）必须命中:组合图登记进
    `BioanalysDesktop/server/figures.js` 的 FIGURE_CAPTIONS 才算完。
 4. 组成成分可追溯：report 里列出成员单图号。
 

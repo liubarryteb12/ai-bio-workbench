@@ -40,10 +40,10 @@ def write_checksums(delivery_dir, skip=()):
 
 实现要点：
 - `os.walk` 递归，`dirnames.sort()` + `sorted(filenames)` 保证遍历顺序稳定；
-- `rel = os.path.relpath(full, delivery_dir).replace(os.sep, "/")` —— POSIX 分隔符，
+- `rel = os.path.relpath(full, delivery_dir).replace(os.sep, "/")` : POSIX 分隔符，
   这样 Linux/macOS/Windows 上生成的清单字节一致；
 - 逐 1MiB `fh.read()` 流式更新 digest，不把大文件整块读进内存（包里有 66MB 级 tar 和图）；
-- 行格式 `"%s  %s\n" % (digest, rel)` —— 64 位小写 hex + **两个空格** + 相对路径，
+- 行格式 `"%s  %s\n" % (digest, rel)` : 64 位小写 hex + **两个空格** + 相对路径，
   这是 GNU coreutils `sha256sum` 的标准输出格式，`sha256sum -c` 可直接吃；
 - 自身（`rel == CHECKSUMS_NAME`）与 `skip` 列表一律跳过，避免自指死循环；
 - 返回 `{"path", "files", "count"}`，供调用方与测试断言。
@@ -87,12 +87,12 @@ def write_checksums(delivery_dir, skip=()):
 
 插在"tar.gz 已生成且非空"之后（:2106 附近）：
 
-1. `CHECKSUMS.sha256 已生成` —— `os.path.isfile(result["checksums"])`；
-2. `清单非空（至少三大件都在）` —— `len(cks_lines) >= 3`；
-3. `每行形如 <64hex>+两空格+相对路径` —— 正则 `^[0-9a-f]{64}  [^\s].+$`；
+1. `CHECKSUMS.sha256 已生成` : `os.path.isfile(result["checksums"])`；
+2. `清单非空（至少三大件都在）` : `len(cks_lines) >= 3`；
+3. `每行形如 <64hex>+两空格+相对路径` : 正则 `^[0-9a-f]{64}  [^\s].+$`；
 4. `清单自身不在列内`；
 5. `清单按路径排序（便于 diff）`；
-6. `hashlib 逐文件复算全部一致（sha256sum -c 同口径）` —— 逐行 split，重新
+6. `hashlib 逐文件复算全部一致（sha256sum -c 同口径）` : 逐行 split，重新
    `hashlib.sha256(open(full,'rb').read()).hexdigest()` 比对。
 
 第 6 条是核心：它保证清单里的每个 digest 都是**当下真实字节**的哈希，不是占位符。
@@ -179,7 +179,7 @@ sha256sum: WARNING: 1 computed checksum did NOT match
 
 1. **清单不签章**。CHECKSUMS.sha256 能发现"文件被改过"，但不能证明"这个清单本身是官方产出的"。
    要防中间人篡改，需要 GPG 签名或至少把 digest 通过独立通道告知客户。这是设计选择，
-   不是疏漏——本项目的威胁模型是交付完整性，不是抗恶意投递。
+   不是疏漏:本项目的威胁模型是交付完整性，不是抗恶意投递。
 2. **`.sha256` 旁挂与 `CHECKSUMS.sha256` 并存**。本地回搬目录有逐文件旁挂，
    包内有单一清单，两套机制覆盖不同对象（本地 vs 交付）。没有合并，
    因为旁挂是"回搬后立刻校验"的即时工具，清单是"交付时随包核对"的凭证。

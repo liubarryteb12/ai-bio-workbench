@@ -14,7 +14,7 @@
 | 范围 | 方法 | 结果 |
 |---|---|---|
 | line1 交付图件 30 张 | 逐张目视 + `figure_audit_scan.py` + `figure_score.py` | **30/30 PASS，均分 100.0**（阈值 75） |
-| line2 / line3 出图代码 | `figure_code_audit.py --root src`（C1–C7 静态扫描） | **no issue found**（三线全部脚本） |
+| line2 / line3 出图代码 | `figure_code_audit.py --root src`（C1-C7 静态扫描） | **no issue found**（三线全部脚本） |
 | line2 / line3 交付图件 | 本项目 `outputs/` 仅有 line1，无该两线本地副本 | 未做交付侧扫描（无样本可扫），源码级已过 |
 
 用户点名的 6 张图逐张验收（复扫时额外发现 `l1_29` 图注被裁，一并修正）：
@@ -30,10 +30,10 @@
 | `l1_28_wgcna_softpower.png` | 阈值线不可见 | ylim 扩到 0.95 + 阈值线/选中 power 竖线/文字 | ✅ 阈值线与标注均可见 |
 | `l1_29_wgcna_module_trait.png` | 底部图注超出画布右缘被裁（`case=LS vs c...`） | 图注拆两行 + `outer=TRUE` 占满整幅宽度 | ✅ 两行完整 |
 
-> 打分口径说明：`figure_score.py` 的 B1–B4 / D2–D3 仍按默认满分计（FE-012 待修），
+> 打分口径说明：`figure_score.py` 的 B1-B4 / D2-D3 仍按默认满分计（FE-012 待修），
 > 这 6 张图的几何问题另由逐张目视验收覆盖；A/C 类为机器实测。
 
-**共同根因（已修）**：`ops/layout_helper.py`、`ops/layout_autoload/sitecustomize.py`、`ops/layout_autoload/Rprofile` 三端无条件用模板 16:9 覆盖脚本 figsize，把 14in 高的热图压到 4.05in。现统一改为 `max(脚本尺寸, 模板尺寸)`——**模板只能放大、不能缩小**。
+**共同根因（已修）**：`ops/layout_helper.py`、`ops/layout_autoload/sitecustomize.py`、`ops/layout_autoload/Rprofile` 三端无条件用模板 16:9 覆盖脚本 figsize，把 14in 高的热图压到 4.05in。现统一改为 `max(脚本尺寸, 模板尺寸)`:**模板只能放大、不能缩小**。
 
 ### 0.2 临时/冗余/缓存清理
 
@@ -57,13 +57,13 @@
 
 | # | 标准节点 | 实际执行 | 证据 | 状态 |
 |---|---|---|---|---|
-| 1 | 原始数据预处理（转置、样本/基因质量） | 转置 + `goodSamplesGenes` | 脚本 L84–98、L186–190 | ✅ 完成 |
+| 1 | 原始数据预处理（转置、样本/基因质量） | 转置 + `goodSamplesGenes` | 脚本 L84-98、L186-190 | ✅ 完成 |
 | 1a | 样本离群检测（样本聚类 / Z.k） | **未执行** | 脚本无 `hclust`/`Z.k`/离群判定 | ❌ 缺失 |
 | 2 | 方差前 5000 基因过滤（aims Step 3 设计） | **未执行**，全量 20019 基因入网 | `wgcna_report.txt: genes_used=20019`；脚本直接读全表 | ❌ 缺失 |
-| 3 | 软阈值自动选择 | `pickSoftThreshold`，powers 1–30 | `power=26`，`scale_free_R2_ok=FALSE`（最高 R²=0.75） | ✅ 完成（未达标，已注明） |
-| 4 | 共表达网络构建 | `blockwiseModules`，signed / signed TOM | 脚本 L236–241 | ✅ 完成（受默认 `maxBlockSize=5000` 分块） |
+| 3 | 软阈值自动选择 | `pickSoftThreshold`，powers 1-30 | `power=26`，`scale_free_R2_ok=FALSE`（最高 R²=0.75） | ✅ 完成（未达标，已注明） |
+| 4 | 共表达网络构建 | `blockwiseModules`，signed / signed TOM | 脚本 L236-241 | ✅ 完成（受默认 `maxBlockSize=5000` 分块） |
 | 5 | 模块划分与合并 | `minModuleSize=20`、`mergeCutHeight=0.25`、`deepSplit=2` | `modules=40`（含 grey） | ✅ 完成 |
-| 6 | 模块-性状关联 | Pearson `cor(MEs, trait)`，主对比对 + 各组指示列 | 脚本 L248–280；`LS_vs_NLS (case=LS vs ctrl=NLS)` | ✅ 完成（图仅展示主对比对，符合规范） |
+| 6 | 模块-性状关联 | Pearson `cor(MEs, trait)`，主对比对 + 各组指示列 | 脚本 L248-280；`LS_vs_NLS (case=LS vs ctrl=NLS)` | ✅ 完成（图仅展示主对比对，符合规范） |
 | 7 | 模块特征基因（MEs）导出 | **未导出** | `processed/` 无 `wgcna_module_eigengenes.tsv` | ❌ 缺失 |
 | 8 | 关键基因筛选（kME / GS / 模块内 hub） | **未执行** | 全仓无 `kME`/`moduleMembership`/`geneSignificance`；`key_genes` 直接取显著模块全部基因 | ❌ 缺失 |
 | 9 | 模块间关系（ME 相关 / 聚类） | **未执行** | 无对应产物 | ⚠️ 可选节点缺失 |
@@ -141,8 +141,8 @@
 
 - **无步骤跳过**：8 次均从软阈值一路跑到 `wgcna_modules_done`，产物时间戳与步骤顺序一致。
 - **无显性报错中断**：`error_log` 全为 `null`，`exit_code` 全 0。
-- **无资源不足证据**：耗时稳定在 5:44–6:34；运行峰值 RSS 约 0.6–0.8 GB，CPU 63%–75%，未见 OOM/被杀。
-- **隐性逻辑异常**：无异常退出，但存在"静默偏离设计"——全量基因入网、未做 kME/GS、未导出 MEs，脚本不会因此报错，台账也不会提示。
+- **无资源不足证据**：耗时稳定在 5:44-6:34；运行峰值 RSS 约 0.6-0.8 GB，CPU 63%-75%，未见 OOM/被杀。
+- **隐性逻辑异常**：无异常退出，但存在"静默偏离设计":全量基因入网、未做 kME/GS、未导出 MEs，脚本不会因此报错，台账也不会提示。
 - **可观测性缺口**：
   - `resource_usage.max_cpu_percent / max_memory_gb / disk_io_peak_mb_s` 全为 `null`，没有资源峰值证据。
   - 全量 stdout/stderr 不落盘（`run.js` 只在失败时保留 stderr 尾部 2 KB），事后无法逐行回溯。
@@ -359,7 +359,7 @@ writeLines(sprintf("sample=%s Z.k=%.3f%s", names(Z.k), as.numeric(Z.k),
 |---|---|---|---|
 | S1 | 落地 P0-1 ~ P0-4（脚本改造） | 无 | 静态语法检查 + 本地/远端试跑 |
 | S2 | 落地 P0-5（outputs 与命名） | S1 | 提交后台账 `io_files.output` 非空 |
-| S3 | 重跑 `wgcna_modules` + 下游 `key_genes` | S1/S2 | V1–V10 全过 |
+| S3 | 重跑 `wgcna_modules` + 下游 `key_genes` | S1/S2 | V1-V10 全过 |
 | S4 | 新增图件纳入规范与打分 | S1 | `l1_27`/`l1_30` 扫描 PASS |
 | S5 | 参数化 + 日志/资源采集（P1） | S3 | 配置可复现、日志可回溯 |
 | S6 | 全链回归（line1 全部 11 步） | S3 | 30+ 图全 PASS，227 测试全过 |
@@ -377,7 +377,7 @@ writeLines(sprintf("sample=%s Z.k=%.3f%s", names(Z.k), as.numeric(Z.k),
 ### 7.1 必读
 
 1. 本报告
-2. `con_hf/踩坑台账.md` #181（WGCNA 分组契约）、#183–#185（本轮新增）
+2. `con_hf/踩坑台账.md` #181（WGCNA 分组契约）、#183-#185（本轮新增）
 3. `con_hf/figure_error_ledger.md` FE-013 ~ FE-015（本轮新增）
 4. `docs/figure_spec.md` v2.2 §八（"vs" 契约）
 5. `aims/aims.txt` Step 3 与 §5.4
@@ -389,7 +389,7 @@ writeLines(sprintf("sample=%s Z.k=%.3f%s", names(Z.k), as.numeric(Z.k),
 - [ ] 任务提交模板：`outputs` 列全产物
 - [ ] `docs/figure_spec.md`：登记 `l1_27_wgcna_mm_gs`、`l1_30_wgcna_sample_tree`
 - [ ] `key_genes`：WGCNA 侧优先读 `wgcna_hub_genes.tsv`（回退到显著模块全量）
-- [ ] 重跑 + V1–V10 验证
+- [ ] 重跑 + V1-V10 验证
 - [ ] 更新 `con_hf/handoff.md`
 
 ### 7.3 关键路径与命令

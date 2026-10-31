@@ -1,4 +1,4 @@
-# Codex（电脑）↔ Pi Agent（手机 Termux）A2A 协作工程 —— 03. 各模块 `aims落地`（How & Architecture 持久态工程底座）全集（全量升级版 v1.1.0）
+# Codex（电脑）↔ Pi Agent（手机 Termux）A2A 协作工程 : 03. 各模块 `aims落地`（How & Architecture 持久态工程底座）全集（全量升级版 v1.1.0）
 
 > **文档编号与时间戳**：`03_aims落地_Codex-Pi-A2A协作工程_20261028.md`（生成时间：`2026-10-28 15:00:00 +08:00`）
 > **文档角色**：【1 + N×3 体系】中的 **`[模块名]-aims落地-20261028.txt` 汇总卷**（持久态工程底座：定义物理目录与插座映射、完整生产级配置文件、可直接落盘运行的守护与幂等防重跑执行脚本、手机端 `:9911` 遥测 Sidecar、`18787` 后端路由模块、A2A v1.0 JSON-RPC 2.0 全方法报文契约、断链续领轮询器以及 8 维自动化回归测试套件。即便 `aimstodolist` 归档销毁，任何工程师或 Agent 仅凭此文档即可 100% 重建整套系统）
@@ -293,7 +293,7 @@ log_msg "PASS: 双服务已在 tmux 会话 '$SESSION_NAME' 内就绪 (:9910 A2A 
 
 ---
 
-## 二、`mod-pi-observability-aims落地-20261028.txt`（BioanalysDesktop `18787` 手机 Pi 观测与模型管控底座 —— 攻克 G9）
+## 二、`mod-pi-observability-aims落地-20261028.txt`（BioanalysDesktop `18787` 手机 Pi 观测与模型管控底座 : 攻克 G9）
 
 ### 2.1 手机端 `:9911` 遥测与模型热切换服务（`ops/pi_telemetry_sidecar.py`）
 该服务运行在手机端 `tmux` 的 `telemetry` 窗口中，与 `:9910` 共用 `~/.pi/agent/settings.json` 中的 `peerTokens.codex` 密钥，向 `18787` 服务端提供调用历史、双流日志、模型热切换与 Token 账单：

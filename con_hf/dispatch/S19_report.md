@@ -83,7 +83,7 @@ bind ∈ 已填数据集列表、文件名 GSE/GPL 与 bind 一致、other ≤ 3
   PUBLIC_DB 快照逐字不变。
 - 上传会话 id 改为 `u` + 12 位十六进制（`newUploadSid()`，过服务端 SID_RE）。
   **参考文献与数据文件共用同一 sid**：服务端 `buildPackagePlan` 用 `payload.uploadSid` 推导
-  `refs/<sid>/` 来源路径，两边不一致会让参考文献报「缺失或越界」——已用 4.1 真链验证同包归档。
+  `refs/<sid>/` 来源路径，两边不一致会让参考文献报「缺失或越界」:已用 4.1 真链验证同包归档。
 - 包形态提交成功后置位拦截，避免同一 payload 二次提交换来一句难懂的服务端 400。
 
 ## 4. 文件变更清单
@@ -148,7 +148,7 @@ bind ∈ 已填数据集列表、文件名 GSE/GPL 与 bind 一致、other ≤ 3
    与落盘命名 `sanitizeFileName(name)`（无角色前缀）永远匹配不上，所以重复上传的旧文件不会被删。
    实测证据：2.2 中同 sid 同名重传返回 `GSE277173_series_matrix.txt_2.gz`，首个文件仍在
    `uploads/<sid>/`。影响：`uploads/<sid>/` 会留孤儿文件，提交后会话目录也因此不会被清空。
-   **包本身始终正确**（UI 只把最新 path 写进 payload）。本切片冻结服务端，未修——见 §9。
+   **包本身始终正确**（UI 只把最新 path 写进 payload）。本切片冻结服务端，未修:见 §9。
 2. UI「删除」只把条目从 payload 移除；服务端无删除 API，物理文件留在 inbox。
 3. IN_HOUSE 模式已传文件后切回 PUBLIC_DB：文件不进 payload（摘要与提示已明说），物理文件同上。
 4. `uploaded_files` 为 UI 自动派生；若将来加「手动填写文件名」输入框，须与服务端

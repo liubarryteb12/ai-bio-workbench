@@ -1,4 +1,4 @@
-# S22 回报 — portal 前端 4 处硬编码上限与 S20 新值对齐
+# S22 回报 : portal 前端 4 处硬编码上限与 S20 新值对齐
 
 日期：2026-10-20 ｜ 子 Agent 按 SUBAGENT_CONTRACT.md 输出契约回报
 
@@ -11,7 +11,7 @@ node --check）+ 生产 8080 页面冒烟；不碰 `serve.mjs`、`archive.mjs`�
 
 ## 2. 服务端实际值（任务项 1，A1）
 
-`portal/lib/archive.mjs` 第 31–36 行当时实际读到的原文：
+`portal/lib/archive.mjs` 第 31-36 行当时实际读到的原文：
 
 ```js
 export const MAX_DATA_BYTES = Number(process.env.PORTAL_MAX_DATA_BYTES) > 0
@@ -65,14 +65,14 @@ export const MAX_DATA_FILES_PER_ROLE = 5;
   新值表达式子串（非残留）。但 **1183 与 1209 仍有"最多 3 个"**（见 §7）。
 - B）`grep -c "5 GiB\|5 \* 1024 \* 1024 \* 1024\|最多 5 个" portal/index.html`
   = **4**（≥3 达标）。
-- C）参考文献文案未动：行 538–539「最多 5 篇 / 单篇上限 20MB」、1116、1123 原样。
+- C）参考文献文案未动：行 538-539「最多 5 篇 / 单篇上限 20MB」、1116、1123 原样。
 - D）内联 `<script>` 提取（1 个块）→ `$TMPDIR` 写盘 → `node --check`
   → **NODE_CHECK_OK**；临时文件（抽出 js + 提取脚本 + 生产页副本）均已删除，
   仓库内无新增文件（`git status` 仅 `portal/index.html` 与本报告变更）。
 - E）真链冒烟：`curl -s http://127.0.0.1:8080/`（未起服务，S20 的实例），
   生产 HTML 共 118506 字节，新值 grep 计数 = **4**，命中行 395 / 412 / 1186 /
   1188 与本地一致；`1 GiB` 在生产页 **0 命中**。未打任何写接口。
-- 未跑 npm test（派发单禁止）——标注：单元级回归未运行。
+- 未跑 npm test（派发单禁止）:标注：单元级回归未运行。
 
 ## 6. 假设与风险
 
@@ -90,7 +90,7 @@ export const MAX_DATA_FILES_PER_ROLE = 5;
 | 行 | 内容 | 影响 |
 |---|---|---|
 | 1183 | `['other', '其他补充文件（可不绑，最多 3 个）']` | 角色下拉选项文案过期 |
-| 1189 | `var MAX_DATA_FILES_PER_ROLE = 3;` | **功能性**：1241 禁用选项、1318-1319 拦截警告、1360-1361 dfPrecheck 拒绝——前端仍拒第 4/5 个 other 文件，服务端已收 5 个 |
+| 1189 | `var MAX_DATA_FILES_PER_ROLE = 3;` | **功能性**：1241 禁用选项、1318-1319 拦截警告、1360-1361 dfPrecheck 拒绝:前端仍拒第 4/5 个 other 文件，服务端已收 5 个 |
 | 1209 | `other: '可不绑定；……；最多 3 个。'` | other 角色 hint 文案过期 |
 
 建议：授权把这 3 处对齐（1189 → `5`，两处文案 `3 个` → `5 个`），改动模式

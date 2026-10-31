@@ -16,11 +16,11 @@
 S13 在 `l2/target_gene_localization` 上命中停止条件并上报。主 Agent 实测复核后裁决：
 **不是数据损坏，是 seed provenance 修复，接受**。证据链：
 - 原产物 `localization_report.txt` 的 `seed=20261018`（本地回搬副本实测），
-  而项目契约种子是 20261013（aims 铁律#3）——**原产物本身带错种子**；
+  而项目契约种子是 20261013（aims 铁律#3）:**原产物本身带错种子**；
 - 用真种子重跑后仅 `seed=` 行变为 20261013，`scrna_localization.h5ad` 的
   `uns.localization.seed` 字段随之修正；
 - 数值表 `target_gene_localization.tsv` / `_wide.tsv` 本地 vs 远端 md5 **逐字节一致**
-  （`41552c34…` / `26d95584…`）——数字零变化。
+  （`41552c34…` / `26d95584…`）:数字零变化。
 - 存量同类问题还有 4 份报告带错种子：`l2/dr_post_report.txt`、`l2/gsva_report.txt`、
   `l3/deconv_report.txt`、`l3/dr_post_report.txt`（20261018）。它们会在本轮被顺手修对，
   **这属于修复，不是破坏**，不要因此停审。

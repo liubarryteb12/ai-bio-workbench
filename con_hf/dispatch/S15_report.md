@@ -3,7 +3,7 @@
 > 状态：**完成**。7 图全部拿到机器判决（`figs=7 fail=0`），交付数值零变化
 > （3+4 张数值表逐字节一致，报告仅 `elapsed_seconds` 计时行变，`seed=` 行未变）。
 > 三线打分：line2 37/37、line3 69/69 PASS，UNVERIFIED 双双清零。
-> 口径：`--seed 20261018`（与磁盘版本同种子 → 产物逐字节不变 → 只取 A–E 几何判决）。
+> 口径：`--seed 20261018`（与磁盘版本同种子 → 产物逐字节不变 → 只取 A-E 几何判决）。
 > 数值 seed 合规问题（#199）单独挂账，见 §5.4；本切片**未改任何交付数值**。
 
 ## 一、任务理解
@@ -16,10 +16,10 @@ S14 因「20261013 重算会改 `dr_enrichment*.tsv` 数值」按停止条件未
 
 | 对象 | 允许 | 不允许（出现即停 → P0） |
 |---|---|---|
-| `dr_enrichment*.tsv` / `dr_overlap*.tsv` / `dr_regulatory_network.tsv` | — | **任何 md5 变化** |
+| `dr_enrichment*.tsv` / `dr_overlap*.tsv` / `dr_regulatory_network.tsv` | : | **任何 md5 变化** |
 | `dr_post_report.txt` | 仅 `elapsed_seconds=` 行；`seed=` 应**保持 20261018 不变** | 其他任何行变化 |
-| `figures/` DR 图件 | md5 变化（审计不带 `--write`，理论上不落盘） | — |
-| `.h5ad` | — | **任何 md5 变化** |
+| `figures/` DR 图件 | md5 变化（审计不带 `--write`，理论上不落盘） | : |
+| `.h5ad` | : | **任何 md5 变化** |
 
 ## 二、实现摘要
 
@@ -208,16 +208,16 @@ f563ec05851898436876b93fb3381f0e  processed/dr_post_report.txt
 
 | 对象 | 文件数（前/后） | 清单 md5（前/后） | 差异文件 | 差异行 | 归因 |
 |---|---|---|---|---|---|
-| `line2_scrna/figures` | 37 / 37 | `ebc69f01…` / 同左 | 0（`(no diff)`） | — | 无差异 |
+| `line2_scrna/figures` | 37 / 37 | `ebc69f01…` / 同左 | 0（`(no diff)`） | : | 无差异 |
 | `line2_scrna/processed` | 59 / 59 | `7be6ffce…` / 变（1 文件） | 1：`dr_post_report.txt` | `elapsed_seconds=17.5→17.4` | **计时行** |
 | `dr_enrichment.tsv` | 1 | `2b5f4863…` | **0** | 逐字节一致 | 无差异 |
 | `dr_overlap.tsv` | 1 | `fde93eba…` | **0** | 逐字节一致 | 无差异 |
 | `dr_regulatory_network.tsv` | 1 | `154a5ca2…` | **0** | 逐字节一致 | 无差异 |
-| `.h5ad`（16 个） | 16 | 全未出现在 diff | **0** | — | 无差异 |
-| 新增/消失文件 | 0 | — | — | — | — |
+| `.h5ad`（16 个） | 16 | 全未出现在 diff | **0** | : | 无差异 |
+| 新增/消失文件 | 0 | : | : | : | : |
 
 关键点：报告里 **`seed=` 行未变**（两侧都是 `seed=20261018`，diff 只命中第 34 行计时行），
-即本次审计对 provenance 也零改动 —— 这正是「传与磁盘同种子」的预期结果。
+即本次审计对 provenance 也零改动 : 这正是「传与磁盘同种子」的预期结果。
 
 **判定：PASS（3 图），唯一差异是 `elapsed_seconds` 计时行，零「其他」类。**
 
@@ -276,7 +276,7 @@ audit: figs=4 fail=0 write=False
 audit-csv: /tmp/s15_line3_spatial_dr_post_analysis.csv (4 图)
 ```
 
-（3 条 `INFO tick 标签越出画布` 是 E 项提示，按 figure_spec v2.2 只提示不判 FAIL —— 脚本统一
+（3 条 `INFO tick 标签越出画布` 是 E 项提示，按 figure_spec v2.2 只提示不判 FAIL : 脚本统一
 `savefig(bbox="tight")`，裁切边会扩进来；与 S14 对其它图的口径一致。）
 
 **基线对比**
@@ -309,14 +309,14 @@ d7b4cf51a8ccc8ce1417dc568ee7e42b  processed/dr_post_report.txt
 
 | 对象 | 文件数（前/后） | 清单 md5（前/后） | 差异文件 | 差异行 | 归因 |
 |---|---|---|---|---|---|
-| `line3_spatial/figures` | 69 / 69 | `28edda37…` / 同左 | 0（`(no diff)`） | — | 无差异 |
+| `line3_spatial/figures` | 69 / 69 | `28edda37…` / 同左 | 0（`(no diff)`） | : | 无差异 |
 | `line3_spatial/processed` | 101 / 101 | `6a3fd7a2…` / 变（1 文件） | 1：`dr_post_report.txt` | `elapsed_seconds=12.9→19.8` | **计时行** |
 | `dr_enrichment_mouse.tsv` | 1 | `b27ba8d6…` | **0** | 逐字节一致 | 无差异 |
 | `dr_enrichment_human.tsv` | 1 | `20187cbc…` | **0** | 逐字节一致 | 无差异 |
 | `dr_overlap_mouse.tsv` | 1 | `5198181e…` | **0** | 逐字节一致 | 无差异 |
 | `dr_overlap_human.tsv` | 1 | `65303524…` | **0** | 逐字节一致 | 无差异 |
-| `.h5ad`（27 个） | 27 | 全未出现在 diff | **0** | — | 无差异 |
-| 新增/消失文件 | 0 | — | — | — | — |
+| `.h5ad`（27 个） | 27 | 全未出现在 diff | **0** | : | 无差异 |
+| 新增/消失文件 | 0 | : | : | : | : |
 
 **重构校验**
 
@@ -331,7 +331,7 @@ l3 reconstructed: ee208b14f1d336afdb8506e13b6a8c6f  baseline: ee208b14f1d336afdb
 **CSV 落本地**：`cn_debug/figure_audit_sweep/s15_line3_spatial_dr_post_analysis.csv`，
 md5 `de5ea0d2e6722185e6226a81536995d3`，内容 4 行全 PASS。
 
-### 5.3 A3 — 7 张数值表 md5 前后对照（逐字节相同的证据）
+### 5.3 A3 : 7 张数值表 md5 前后对照（逐字节相同的证据）
 
 ```
 审计前（§4.3 基线）                审计后（§5.1/§5.2 实测）                              结论
@@ -356,23 +356,23 @@ line3 dr_overlap_human.tsv       653035241cc22f31253000a3dedbe816 → 653035241c
 > 1. 磁盘上的 DR 富集数值表（`dr_enrichment.tsv`、`dr_enrichment_{mouse,human}.tsv`）
 >    **是由 seed 20261018 算出的**：用 20261018 重算能逐字节复现磁盘表；用 20261013 重算则
 >    NES 1975/1975 行全变（max|ΔNES|=0.0734）、NOM p-val 1927/1975 行变、
->    FDR q-val 1752/1975 行变（max|Δ|=0.502）——见 #199 与 S14 报告 §5.3。
+>    FDR q-val 1752/1975 行变（max|Δ|=0.502）:见 #199 与 S14 报告 §5.3。
 > 2. 项目契约种子是 **20261013**（aims 铁律#3）。即磁盘这批 DR 富集数值**属于"用错种子算出的
 >    交付物"**，但按主 Agent 裁决，本轮**不擅自重算**：重算会改交付数值，属产品决策。
 > 3. 因此本切片传 20261018，目的是「用与磁盘版本相同的种子重跑 → 产物逐字节不变 → 只取
->    A–E 几何判决」。实测达成：7 张数值表 7/7 逐字节一致，报告仅计时行变、`seed=` 行未变。
+>    A-E 几何判决」。实测达成：7 张数值表 7/7 逐字节一致，报告仅计时行变、`seed=` 行未变。
 > 4. **本切片没有修改任何交付数值**：没有一张 `.tsv` 数值表、没有一个 `.h5ad`、没有一张 PNG 被改写；
 >    两份 `dr_post_report.txt` 的 `seed=` 仍为 `20261018`（未修，也未恶化）。
 >
 > **挂账（待用户拍板）**：是否用契约种子 20261013 重算这两个步骤。若重算，须连带重渲染
 > `l2_15/16/17`、`l3_{mouse,human}_10/11` 共 7 图并重扫重打分（否则交付物内部「图 vs 表不同种子」），
-> 且这 7 张图的几何判决需要按新图重新取一次。**判决本身（A–E 几何合规）与种子无关**——
+> 且这 7 张图的几何判决需要按新图重新取一次。**判决本身（A-E 几何合规）与种子无关**:
 > 几何判定只看图的布局不看数值，所以这 7 个 PASS 在 20261013 重算后大概率仍成立，
 > 但**那属于重算后必须重跑的事，本切片不预设结论**。
 >
 > 交付报告的方法学段须如实标注：**DR 富集数值由 seed 20261018 算出**（#199 处置要求）。
 
-### 5.5 A4 — 合并 `cn_debug/figure_audit_all.csv`
+### 5.5 A4 : 合并 `cn_debug/figure_audit_all.csv`
 
 ```
 $ cp cn_debug/figure_audit_all.csv cn_debug/figure_audit_sweep/figure_audit_all.before_S15.csv
@@ -414,7 +414,7 @@ b4ae65f2833e1a30c1fe50b0034d936f *cn_debug/figure_audit_all.csv
 | 总判决 | **133 图，PASS=133，FAIL=0，无其他判决** |
 | 同名图覆盖 | **0 次**（126 + 7 = 133） |
 
-### 5.6 A5 — 三线打分复跑（尾行原文）
+### 5.6 A5 : 三线打分复跑（尾行原文）
 
 ```
 $ python cn_debug/figure_score.py --dir outputs/PRJ_E2E_GSE277173/line1_bulk/figures \
@@ -480,7 +480,7 @@ $ find . -type f -newermt '-15 minutes' | sort
 
 ## 六、视觉审查
 
-未做，也不在本切片范围。本切片只做**几何/布局机器判决**（A–E 项），未逐张查看 PNG，
+未做，也不在本切片范围。本切片只做**几何/布局机器判决**（A-E 项），未逐张查看 PNG，
 不对美观性下结论。图件审美评价仍待人工复核环节。
 
 ## 七、假设与风险
@@ -493,7 +493,7 @@ $ find . -type f -newermt '-15 minutes' | sort
    「改回基线值 → md5 重构等于基线」证过，属纯计时行，与数值无关。l3 变大 6.9s 属机器负载波动，
    未做进一步性能分析（不在范围）。
 3. **`seed=` 行未变是预期而非巧合**：`--seed 20261018` 与磁盘产物同种子，脚本写入的
-   `seed=%d` 自然是同一个值。这恰好说明本切片**没有顺手修掉 #199 的 provenance 错误**——
+   `seed=%d` 自然是同一个值。这恰好说明本切片**没有顺手修掉 #199 的 provenance 错误**:
    `dr_post_report.txt` 仍写 20261018，是挂账项（§5.4）。
 4. **软链穿透仍在**：两个脚本的 `_stage_dir()` 仍会真写 `processed/`（#197）。本轮靠
    「同种子 + 跑前基线 + 跑后逐项比对」控住，但机制未修；下一个 seed-sensitive 步骤仍会踩同一个坑。
@@ -509,7 +509,7 @@ $ find . -type f -newermt '-15 minutes' | sort
 2. **`audit_figure_layout.py` 增 `--cwd-copy` / `--stage=copy`**（S14 §8.2 重申）：
    让「在副本上审计」成为一等公民，免去每次手工 `/tmp` 探针。
 3. **审计工具应把所用种子写进 CSV**（新增第 5 列 `seed`）：现在判决 CSV 只有
-   `figure,verdict,violations`，事后无法从 CSV 本身判断这批判决是在哪个种子下取的——
+   `figure,verdict,violations`，事后无法从 CSV 本身判断这批判决是在哪个种子下取的:
    本切片的挂账说明只能靠报告文字承载，属可观测性缺口。
 
 ## 九、待主 Agent / 用户决策事项
@@ -544,7 +544,7 @@ $ find . -type f -newermt '-15 minutes' | sort
 - 三线打分终态：line1 `35 图 PASS=27 UNVERIFIED=8 avg=95.4`；
   **line2 `37 图 PASS=37 UNVERIFIED=0 avg=100.0`**；**line3 `69 图 PASS=69 UNVERIFIED=0 avg=100.0`**
 - line1 剩余 8 个 UNVERIFIED = 6 张 R 图（#192：几何审计不覆盖 R）+ 2 张 PPI 图
-  （`ppi_string` 每次重取 STRING API 不可复现，禁跑）——按 `con_hf/figure_manual_review.md`
+  （`ppi_string` 每次重取 STRING API 不可复现，禁跑）:按 `con_hf/figure_manual_review.md`
   人工清单跟踪，不得改判 PASS。
 - **seed 合规挂账（#199）**：本轮 7 张图的判决是用 `--seed 20261018` 拿到的，
   磁盘 `dr_enrichment*.tsv` 数值由 20261018 算出；契约种子 20261013 的重算决策

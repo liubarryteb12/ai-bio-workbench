@@ -10,10 +10,10 @@
 - 组合图 `l2_20_composition_panel.png`：三面板 A=`l2_05_composition_stack`、
   B=`l2_06_composition_box_basal_keratinocyte`、C=`l2_01_umap_celltype`；横版；
   三张成员单图必须继续出且不变坏。
-- 契约主体是 `con_hf/2026-10-19_figure_polish_plan.md` 的「Step 5 组图契约」G1–G5。
+- 契约主体是 `con_hf/2026-10-19_figure_polish_plan.md` 的「Step 5 组图契约」G1-G5。
 - 跑场 `default` 项目（`projects/default/line2_scrna/processed` 有真实数据），
   **seed=20261018**（与磁盘版本同种子，#199 同族纪律；禁止 20261013）。
-- 验收：A1–A8（见派发单）。
+- 验收：A1-A8（见派发单）。
 
 ## 1. 读码与可复用性确认（已完成）
 

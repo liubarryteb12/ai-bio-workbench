@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FinalAcceptanceScorecard",
+  "type": "object",
+  "required": [
+    "manifest_id",
+    "audited_at",
+    "stage1_mechanical_passed",
+    "stage2_biological_score",
+    "final_decision",
+    "metrics_summary",
+    "blocking_issues"
+  ],
+  "properties": {
+    "manifest_id": { "type": "string" },
+    "audited_at": { "type": "string", "format": "date-time" },
+    "stage1_mechanical_passed": { "type": "boolean" },
+    "stage2_biological_score": { "type": "number", "minimum": 0, "maximum": 100 },
+    "final_decision": {
+      "type": "string",
+      "enum": ["APPROVED_FOR_DELIVERY", "NEEDS_AUTO_HEAL", "MANUAL_REVIEW_REQUIRED"]
+    },
+    "metrics_summary": {
+      "type": "object",
+      "properties": {
+        "deg_up_count": { "type": "integer" },
+        "deg_down_count": { "type": "integer" },
+        "top_enriched_pathway": { "type": "string" },
+        "min_fdr": { "type": "number" }
+      }
+    },
+    "blocking_issues": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

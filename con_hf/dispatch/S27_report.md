@@ -20,7 +20,7 @@
 - npm test：tests 281 / pass 281 / fail 0（含 22 个既有测试文件与 S26 域的
   index.test.js、run.test.js）。
 - npm run build：✓ built in 689ms（32 modules）。
-- K40 E2E（PRJ_E2E_GSE277173，真 ssh 跑远端引擎）：10/10 PASS——
+- K40 E2E（PRJ_E2E_GSE277173，真 ssh 跑远端引擎）：10/10 PASS:
   build 200 + 三大件（md 34296B / html 48230B / tar.gz 8758657B）；
   三件本地↔远端 md5 逐件一致；download html 200 + 48230B + <!doctype html 头；
   Analysis_Report.md 无 /mnt/ssd 泄漏（{{DATA_ROOT}} 占位正常）。

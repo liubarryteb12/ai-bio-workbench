@@ -145,7 +145,7 @@
 ## D-14 桥接守卫改为「本机优先，ssh 兜底」
 
 - **日期**：2026-10-21
-- **问题背景与冲突点**：src/bridge_guard.sh 原设计只走 `ssh k40-ubuntu python3 /mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py`。但母版本来就跑在计算容器里（任务引擎先 ssh 进 k40-ubuntu 再执行 step），容器内不解析 `k40-ubuntu` 这个主机名 —— 真机首跑 gsva_pathways 实测 `ssh: Could not resolve hostname k40-ubuntu` → exit 255 → `[BRIDGE SKIP]`，四项断言在真实主路径上 100% 空转（与 P-12 同类，只是从提交层搬到执行层）。
+- **问题背景与冲突点**：src/bridge_guard.sh 原设计只走 `ssh k40-ubuntu python3 /mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py`。但母版本来就跑在计算容器里（任务引擎先 ssh 进 k40-ubuntu 再执行 step），容器内不解析 `k40-ubuntu` 这个主机名 : 真机首跑 gsva_pathways 实测 `ssh: Could not resolve hostname k40-ubuntu` → exit 255 → `[BRIDGE SKIP]`，四项断言在真实主路径上 100% 空转（与 P-12 同类，只是从提交层搬到执行层）。
 - **备选方案对比**：① 给容器加 hosts 记录让它能 ssh 回宿主：改动落在环境侧，换机即失效，且多一跳 ssh；② 守卫改成「本机引擎存在就直接 python3 调用，否则 ssh 兜底」：容器内天然命中本机分支，PC 侧仍能远程校验；③ 干脆去掉 ssh 分支：PC 侧无法校验远端文件，退化为本机专用。
 - **最终拍板结论**：选 ②。新增 `BRIDGE_ENGINE_LOCAL`（默认 `/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py`，显式置空可强制 ssh）。MODE 判定顺序：本机引擎存在且 `command -v python3` → local；否则有 ssh → ssh；都没有 → SKIP。OK 文案带 `engine=local|ssh`，日志里能一眼看出走的是哪条路。
 - **受影响条款**：§一.2 铁律 2（跨语言桥接四项断言）、§三.3 第 4 维（桥接引擎在位）。
@@ -155,7 +155,7 @@
 ## D-15 五维自检第 4 维合并报灯 + 自检 ssh 严格化
 
 - **日期**：2026-10-21
-- **问题背景与冲突点**：aims §三.3 第 4 维原文是「跨线隔离、桥接引擎与远端版本一致性灯」—— 三件事共用一盏灯。P11 交付的 SHA256 比对若单独 push 一条 checks，界面会多出一盏 aims 里不存在的灯；反过来若只把哈希结果塞进 detail，判红时说不清是隔离门禁坏还是版本漂移。
+- **问题背景与冲突点**：aims §三.3 第 4 维原文是「跨线隔离、桥接引擎与远端版本一致性灯」: 三件事共用一盏灯。P11 交付的 SHA256 比对若单独 push 一条 checks，界面会多出一盏 aims 里不存在的灯；反过来若只把哈希结果塞进 detail，判红时说不清是隔离门禁坏还是版本漂移。
 - **备选方案对比**：① 新开第 6 盏灯：与条款冲突，前端灯位与文档对不上；② 只取最坏状态、detail 只留一句话：看不出是哪件事坏；③ 两盏子灯分开算、合并成一盏（状态取最坏，value 与 detail 并列）：既守住「一盏灯」，又能点名。
 - **最终拍板结论**：选 ③。新增 `worstStatus()`（fail > warn > unknown > pass，unknown 比 pass 重：自检是门禁，没测出来不能算过）与 `mergeIsolationChecks()`，由 server/index.js 第 4 维调用。
 - **同时修的既有缺陷（P-16）**：`runRemote` 丢弃 ssh 退出码，链路断时 stdout 为空 → 第 1 维把空串判成「原生 ext4」、第 2 维把空串算成 100% free，自检出现假绿灯。新增 `runSshStrict`（proc.js，退出码非 0 或输出为空即抛错），第 1~4 维全部改走严格版。
@@ -168,7 +168,7 @@
 - **日期**：2026-10-21
 - **问题背景与冲突点**：真机探针 `printf notah5ad > /tmp/bad.h5ad` 交给守卫，引擎抛 `OSError: Unable to synchronously open file` 的裸 traceback，守卫只看到「非 0 退出码 + 无结论」，按契约 3 归到「不可达」→ SKIP → exit 0，坏输入被静默放行（比不校验更危险）。
 - **备选方案对比**：① 只改守卫（本机模式非 0 即 FAIL）：能挡住，但引擎仍吐 traceback，调用方看不到人话；② 只改引擎（把异常折成 [BRIDGE FAIL]）：守卫仍可能因为别的崩溃形态走 SKIP；③ 两边都改。
-- **最终拍板结论**：选 ③。引擎侧：main 里先判 `os.path.exists`，再 `try/except` 包住校验，任何异常都折成 `[BRIDGE FAIL] 引擎无法校验输入（类型: 消息）` 并 exit 1；同时把 stdout/stderr 强制 UTF-8（Windows 宿主默认 cp936 会把中文结论写成乱码，调用方 grep 不到）。守卫侧：新增契约 3c —— 本机模式非 0 退出即 `[BRIDGE FAIL]` 并透传退出码；ssh 分支的 255/超时仍降级 SKIP（K40 离线时母版必须还能跑）。
+- **最终拍板结论**：选 ③。引擎侧：main 里先判 `os.path.exists`，再 `try/except` 包住校验，任何异常都折成 `[BRIDGE FAIL] 引擎无法校验输入（类型: 消息）` 并 exit 1；同时把 stdout/stderr 强制 UTF-8（Windows 宿主默认 cp936 会把中文结论写成乱码，调用方 grep 不到）。守卫侧：新增契约 3c : 本机模式非 0 退出即 `[BRIDGE FAIL]` 并透传退出码；ssh 分支的 255/超时仍降级 SKIP（K40 离线时母版必须还能跑）。
 - **受影响条款**：§一.2 铁律 2、§三.3 第 4 维。
 - **同步修改文件清单**：ops/verify_bridge_checkpoint.py（存在性检查 + 异常折行 + UTF-8 输出）、src/bridge_guard.sh（契约 3c 分支）、tests/bridge_stage.test.js（+2 条真跑引擎）、tests/bridge_guard_local.test.js（崩溃改判 FAIL，另加 ssh 255 仍 SKIP）。
 - **验证测试名**：tests/bridge_stage.test.js（13 条）、tests/bridge_guard_local.test.js（7 条）；真机验证：`bash /mnt/ssd/bio_data/ops/bridge_guard.sh --input /tmp/bad.h5ad ...` → `[BRIDGE FAIL] 引擎无法校验输入（OSError: ...）` + `GUARD_EXIT=1`。
@@ -181,11 +181,11 @@
   （保持仓库目录结构），而任务引擎是通过 PATH 执行 `$RemoteRoot/bin/<线>/<步骤名>`（由
   `ops/06_deploy_scripts.ps1` 部署）。两处各写各的：同步成功 ≠ 引擎跑的是新版本。
   2026-10-21 实测 `bin/` 里有 3 个母版落后于仓库（ml_diagnostics、ml_hub_analysis、virtual_knockout），
-  而自检第 4 维只比「仓库 vs 镜像」，一盏灯都没亮 —— 这是比哈希不一致更隐蔽的假绿灯。
-- **备选方案对比**：① 让同步脚本直接写 `bin/`（把两个落点合成一个）—— 会与 `06_deploy_scripts.ps1`
+  而自检第 4 维只比「仓库 vs 镜像」，一盏灯都没亮 : 这是比哈希不一致更隐蔽的假绿灯。
+- **备选方案对比**：① 让同步脚本直接写 `bin/`（把两个落点合成一个）: 会与 `06_deploy_scripts.ps1`
   的部署契约（同名拒绝、逐文件字节校验、可执行位复核）打架，且镜像就没人维护了；
   ② 在同步脚本末尾加「第 6 步 部署一致性」，只比对不写入，漂移就报出来（选中）；
-  ③ 改自检第 4 维去比 `bin/` —— 自检是只读探针，跑一次要对 55 个文件做哈希，代价高且语义混淆。
+  ③ 改自检第 4 维去比 `bin/` : 自检是只读探针，跑一次要对 55 个文件做哈希，代价高且语义混淆。
 - **最终拍板结论**：采用 ②。同步脚本第 6 步把「仓库哈希」与「远端 `bin/` 落点哈希」逐文件比对，
   输出 `[ OK ] 部署一致性：仓库与 bin/ 落点 N/N 一致` 或 `[WARN] 部署漂移 K/N`，并写进 manifest
   的 `deploy` 字段与台账的「部署」列；`-FailOnDrift` 时漂移即 exit 1。修复动作固定为
@@ -203,9 +203,9 @@
 - **问题背景与冲突点**：`ops/06_deploy_scripts.ps1` 原本对 58 个文件逐个 `ssh stat`（58 次）+ 逐个
   `ssh chmod`（58 次）。2026-10-21 真机部署时容器在窗口内重启一次，后半段 ssh 全部失败，
   脚本把**已经成功落盘**的文件报成 `MISSING` 并 exit 1（假红灯），而实际 55 个母版全部到位。
-- **备选方案对比**：① 加 `Start-Sleep` 重试整个部署 —— 治不了根，窗口还在；② 逐文件 ssh 改成一次
+- **备选方案对比**：① 加 `Start-Sleep` 重试整个部署 : 治不了根，窗口还在；② 逐文件 ssh 改成一次
   批量 ssh（选中），并给「ssh 连续两次非 0」单列一档 `校验链路失败`，与「远端明确回 MISSING」分开；
-  ③ 干脆去掉校验 —— 直接违背部署通道的存在意义。
+  ③ 干脆去掉校验 : 直接违背部署通道的存在意义。
 - **最终拍板结论**：采用 ②。校验用一条远端命令：`printf` 把路径喂给 `while IFS= read -r p`，
   逐个回 `FILE|<path>|<size>|<exec>` 或 `MISSING|<path>`，PS 侧解析成两张表（size / exec），
   再逐文件比对；可执行位也并入同一次 ssh。chmod 同样合并成一条 `chmod 755 p1 p2 ...`。
@@ -224,8 +224,8 @@
   -> 同日先收敛回 8 条。收敛后用户裁定「以 aims 为准，吸纳 27 条中可用的并对齐」。冲突点在于：27 条里哪些是
   "规格该有的"、哪些只是同义冗余；收敛过头会漏拦（英式拼写 `tumour`、`sarcoma` 等原本拦得住），
   收得太多则条款与实现再次脱钩。
-- **备选方案对比**：① 保持 8 条 —— 英式拼写与肉瘤/淋巴瘤/白血病/黑色素瘤等实体瘤会漏拦，违反铁律 1 的初衷；
-  ② 全盘恢复 27 条 —— 其中 8 条被父词完全覆盖（`adenocarcinoma` ⊂ `carcinoma`、`癌症` ⊂ `癌`），
+- **备选方案对比**：① 保持 8 条 : 英式拼写与肉瘤/淋巴瘤/白血病/黑色素瘤等实体瘤会漏拦，违反铁律 1 的初衷；
+  ② 全盘恢复 27 条 : 其中 8 条被父词完全覆盖（`adenocarcinoma` ⊂ `carcinoma`、`癌症` ⊂ `癌`），
   纯属清单噪音，且回到"实现侧单方面定规格"的老路；③ 按三条判据吸纳可用项（选中）。
 - **最终拍板结论**：采用 ③。**可用判据**：① 明确属肿瘤或免疫浸润语义；② 不被既有父词覆盖；③ 误伤风险可接受。
   据此吸纳 12 条：`tumour`、`sarcoma`、`lymphoma`、`leukemia`、`leukaemia`、`melanoma`、
@@ -254,7 +254,7 @@
 
 - **日期**：2026-10-21
 - **问题背景与冲突点**：`ops/run_throttled_task.sh` 只在任务结束时写台账。任务被容器 abort（P-23）、被 kill、
-  或被 OOM 时，`system_logs/` 里**什么都不留** —— 事后无法区分「根本没跑」「跑了被打断」「跑了但脚本崩了」，
+  或被 OOM 时，`system_logs/` 里**什么都不留** : 事后无法区分「根本没跑」「跑了被打断」「跑了但脚本崩了」，
   2026-10-21 的 SCENIC 就是这样：跑了 31 分钟被 proot abort，没有台账也没有日志，只能靠外部日志反推。
 - **备选方案对比**：① 不处理（现状）：台账语义干净，但中断无痕；② 任务开始就写一条 `status=running` 的正规台账、
   结束时覆盖成 completed/failed：可取证，但 `ops/03_check_logs_remote.sh` 会把 running 条目判成 VIOLATION

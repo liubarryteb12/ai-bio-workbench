@@ -1,4 +1,4 @@
-# handoff — 跨会话交接
+# handoff : 跨会话交接
 
 > 最后更新：2026-10-19（产物回搬：图件/结果表从手机端拉回本地 outputs/，工作台优先读本地）
 > **接任务先读本文件**，再看 `con_hf/SPEC.md`（阶段规格）与 `con_hf/踩坑台账.md`（排查前必搜）。
@@ -95,8 +95,8 @@
 
 **【2026-10-20 · K40 适配优化与效率实测（本轮，用户授权自主推进）】**：按
 `con_hf/2026-10-20_k40_linux_adaptation_plan.md` 完成阶段 0-2。核心实测结论（全部有命令输出）：
-① **CPU 拓扑与隔离语义**——`taskset -c 4,5,6` 完整生效（psr 证实 c5/c7 真实承载负载），
-但单绑 5/7 恒 EINVAL（部分核隔离，机制未定位）；② **绑核契约实测为净性能负担**——
+① **CPU 拓扑与隔离语义**:`taskset -c 4,5,6` 完整生效（psr 证实 c5/c7 真实承载负载），
+但单绑 5/7 恒 EINVAL（部分核隔离，机制未定位）；② **绑核契约实测为净性能负担**:
 交替验证 3 轮，「不绑核+3 线程」每轮全胜、均值比 aims 契约「4,5,6+3 线程」快 **~30%**
 （Python matmul）/ 6-11%（R 单线程），线程甜点=3；③ **R 链接 reference BLAS**
 （OPENBLAS_* 对 R 无效，2.94 vs 45.7 GFLOPS）；④ **taskset 失败真实发生过一次**
@@ -881,7 +881,7 @@ files/巡检/回搬）本轮未走**，下轮补。
    line3 spatial_figures 53 张 9.6s。远端图件数 15/28/53 与本地一致，
    已 07 回搬覆盖 `outputs/figures/`。
    line1 另有 4 个出图脚本同样统一（ppi_string / key_genes / ml_model /
-   external_validation，产出 l1_07–12），按依赖顺序重跑：PPI 669 边 188 hub、
+   external_validation，产出 l1_07-12），按依赖顺序重跑：PPI 669 边 188 hub、
    交集 25 基因、LR LOOCV AUC=0.797 / RF 0.680、holdout AUC=1.000（均与上轮一致），
    已回搬。**至此 7 个出图脚本全无 `set_title`/`suptitle` 残留**。
 6. 本地画廊 `outputs/figures/index.html` 引用同名文件，无需重建。
@@ -1067,7 +1067,7 @@ line3 57 张未改动（第一轮全 PASS）。**合计 102/102 合规。**
 
 ## 2026-10-14（续）：富集步骤补出图（line1 / line2）
 
-**背景**：全量审查遗留项——两线富集步骤只落 tsv 无图，规范"富集条形须 NES/富集比 + 校正 p
+**背景**：全量审查遗留项:两线富集步骤只落 tsv 无图，规范"富集条形须 NES/富集比 + 校正 p
 双标注"无图可审。用户拍板"补"。
 
 **新增脚本**：
@@ -1150,7 +1150,7 @@ series matrix 与 family.soft 的样本元数据只有 `tissue: lesion / periles
 
 **产物**：`ml_lasso_{path,cv,genes,summary}.tsv`、`ml_rfe_{curve,genes}.tsv`、`ml_univariate.tsv`、
 `ml_core_hub_genes.tsv`、`ml_importance.tsv`、`ml_shap.tsv`、`ml_cluster_samples.tsv`、
-`ml_corr_network.tsv`、`ml_hub_report.txt`；图 `l1_16`–`l1_24`（9 张）。
+`ml_corr_network.tsv`、`ml_hub_report.txt`；图 `l1_16`-`l1_24`（9 张）。
 
 **关键坑（#130）**：R 里把日志函数命名为 `log` 遮蔽了 base `log()`，`log(lam[j])` 调到日志函数
 返回 NULL，导致系数路径写表报 "differing number of rows"。改名 `say` 修复。
@@ -1198,7 +1198,7 @@ line3 GSEA 每域仅 top200 marker，NES 覆盖度低于全转录组 GSEA，作�
 **背景**：用户给出新分析方案（核心流程 + 进阶分析 + 可视化四件套）并指出
 "部分图配色差异性突出不够、部分图未按规范出图，请全量审核重绘"。
 
-**方案对照核查**：方案全部环节已落地——GEO 下载/DEG/富集/PPI/hub（步骤 1-9）、
+**方案对照核查**：方案全部环节已落地:GEO 下载/DEG/富集/PPI/hub（步骤 1-9）、
 LASSO（ml_hub_analysis）、RF 重要性（同）、共表达网络（l1_24）、SHAP（l1_22）、
 样本聚类（l1_23）、PPI 网络图（l1_07）、LASSO 路径图（l1_16）、重要性条形图（l1_21）。
 **唯一缺的实现项 = SHAP 瀑布图**。
@@ -1248,7 +1248,7 @@ line1 29 / line2 37 / line3 65 合计 **131 张**；`/api/figures/image` l1_26 2
 **用户裁决**："这个只是单纯让客户提交信息的，别和我的工作台联系上，这俩是通过我手动中转实现内容交接。"
 
 **上节方案作废**：用户入口不再挂在 8787、不再调用工作台任何接口、不再需要访问门禁。
-交接方式改为**人工中转**——客户本地生成需求 JSON，自己发给对接人，对接人在工作台手动建项。
+交接方式改为**人工中转**:客户本地生成需求 JSON，自己发给对接人，对接人在工作台手动建项。
 
 **改动**：
 1. 新增独立目录 `portal/`：
@@ -1280,14 +1280,14 @@ line1 29 / line2 37 / line3 65 合计 **131 张**；`/api/figures/image` l1_26 2
 
 ## 2026-10-14（续）：用户入口加本地收件箱（客户数据落点）
 
-**用户追问**："用户填的数据放哪里呢？"——解耦版原设计是客户在浏览器本地生成 JSON 自己发给对接人，
+**用户追问**："用户填的数据放哪里呢？":解耦版原设计是客户在浏览器本地生成 JSON 自己发给对接人，
 数据不落任何服务端，中转环节在客户手上、不可控。用户拍板选「portal 本地落盘」。
 
 **改动**：
 1. `portal/serve.mjs` 新增 `POST /api/submit`：收到需求 JSON 后落盘到 `portal/inbox/`，
    文件名 `YYYY-MM-DD_HHMMSS_需求_<项目名>.json`（本地时间戳，中文名保留，特殊字符折叠下划线）。
    同名不覆盖（追加 `_2`/`_3`）；单份上限 1MB；`/health` 增加返回 inbox 路径。
-   **仍不连工作台**——只写 portal 自己的 inbox 目录，不碰 `projects/` 数据面。
+   **仍不连工作台**:只写 portal 自己的 inbox 目录，不碰 `projects/` 数据面。
 2. `portal/index.html`：第五步由「生成并下载需求文件」改为「提交给对接人」
    （`generate()` → `collectManifest()` + `submit()` + `showResult()`），
    提交成功显示编号；失败降级提示用下载/复制。同步改文案（进度条第5步、header-note、
@@ -1307,9 +1307,9 @@ line1 29 / line2 37 / line3 65 合计 **131 张**；`/api/figures/image` l1_26 2
 ## 2026-10-14（续）：工作台 / 用户提交台 启动脚本（.bat）
 
 **交付**（项目根目录，双击即用）：
-- `start_workbench.bat` — 起管理员工作台（8787）
-- `start_portal.bat` — 起用户需求提交台（8080）
-- `start_all.bat` — 一次开两个独立窗口分别起上面两个
+- `start_workbench.bat` : 起管理员工作台（8787）
+- `start_portal.bat` : 起用户需求提交台（8080）
+- `start_all.bat` : 一次开两个独立窗口分别起上面两个
 
 **脚本内含**：Node 存在性检查；**端口占用预检查**（已占用则友好提示并退出，不再抛 EADDRINUSE 崩溃栈）；
 工作台脚本在 `dist/` 缺失时自动 `npm run build`；结束后 `pause` 便于看输出。
@@ -1418,7 +1418,7 @@ PowerShell 管道 UTF-8 化的显示假象）：
 | 黑名单 | 27 | 27 条正则（2026-10-21 收敛为规格正本 8 条，见 `aims/aims.txt` §三.1） | ✓ 已改判 |
 | 出图 DPI | 300 | 300（rcParams + savefig + 规范） | ✓ |
 | 出图规范版本 | v2.1 | 文件头已对齐 v2.1 | ✓ |
-| 图件数 | — | line1 29 / line2 37 / line3 69 = **135** | ✓ |
+| 图件数 | : | line1 29 / line2 37 / line3 69 = **135** | ✓ |
 | 文件系统/水位 | f2fs、≥20% | f2fs，Use 29%（free 71%） | ✓ |
 | seed 注入 | BIOANALYS_SEED | task.js L45 `export BIOANALYS_SEED` | ✓ |
 | R / Python | 4.3.3 / 3.12.3 | 容器实测 4.3.3 / 3.12.3 | ✓（此前未验证项已补验） |
@@ -1448,7 +1448,7 @@ line1 `probe_env` 口径说明；"四不改"条目同步。
 | 6 大类微调预案 / 5 步 SOP / 汇报模板 | 纯流程知识 | 已在 v3.0 文件 |
 
 **关键判断**：框架属「四不改」冻结区，**不能**为方案 A 改 task.js。方案 A 的正确落地路径是
-**ops 层直跑**——`run_throttled_task.sh` 接受任意 `<script_path>`，故项目内适配副本可直接绑核跑。
+**ops 层直跑**:`run_throttled_task.sh` 接受任意 `<script_path>`，故项目内适配副本可直接绑核跑。
 
 **吸收动作（纯文档，零代码改动）**：
 1. `docs/delivery_supervisor_prompt.md` 三.2 补「适配副本的执行路径（关键）」：明确适配副本
@@ -1596,7 +1596,7 @@ Termux 内不存在 → 恒失败 → 反复 `sv restart ubuntu-sshd`，日志�
 
 ## 2026-10-18 · 补「数据类型」字段（两端贯通，修选线缺口）
 
-**问题（用户指出）**：GSE 与 GPL 只能说明"数据从哪来、什么平台"，说明不了"这是什么数据"。用户端与服务端都没有数据类型字段，导致分析线只能靠 pipelineDag 的 stepId 命中数**反推**——间接、脆弱，且选错线就跑错流程。
+**问题（用户指出）**：GSE 与 GPL 只能说明"数据从哪来、什么平台"，说明不了"这是什么数据"。用户端与服务端都没有数据类型字段，导致分析线只能靠 pipelineDag 的 stepId 命中数**反推**:间接、脆弱，且选错线就跑错流程。
 
 **修法**：把数据类型提升为一等字段，两端贯通。
 
@@ -1679,7 +1679,7 @@ Termux 内不存在 → 恒失败 → 反复 `sv restart ubuntu-sshd`，日志�
 **改动清单**：
 1. `portal/serve.mjs`：新增 `POST /api/references?sid=&name=` 上传接口（请求体为文件原始二进制，**不解析 multipart**，零依赖）。上限：单批 ≤5 篇、单篇 ≤20MB、扩展名白名单 `.pdf/.doc/.docx/.txt/.md/.zip`；`safeRefName` 安全化时**保留扩展名**（原 `safeName` 会把 `.` 折叠成 `_`，扩展名会被吃掉，故另写一个）；`uniqueInDir` 同名追加 `_2`。`/api/submit` 加校验：`references` ≤5 条、`path` 必须匹配 `refs/<sid>/<文件名>` 且**解析后仍在 inbox/ 内、且 `statSync().isFile()`**（防伪造路径）；`notes` 必须 string 且 ≤4000 字。
 2. `portal/index.html`：第 5 步改名「补充材料与提交」，新增参考文献卡片（`#f-refs` 多选 + `#ref-list` 已上传列表 + `#e-refs` 反馈）与备注卡片（`#f-notes` textarea + `#notes-count` 计数）；`state.refs` / `state.uploadSid`（`crypto.randomUUID()` 起，同批归一个目录）；`uploadRefs()` 选中即刻逐篇串行上传（成功才 `push`，失败保留已成功的）；`renderRefs()` 带「移除」；`buildManifest` 写 `references` / `notes`；摘要加「参考文献 N 篇」；`bind()` 挂 `f-refs` change 与 `f-notes` input；文件输入框与 `.ref-del` 样式补齐；label 用 `.visually-hidden`。
-3. `BioanalysDesktop/server/tumor_blacklist.js`：`validateProjectFields` 的 `keys` 加 `notes` —— 客户备注是自由文本，必须一并走非肿瘤黑名单（否则改了 `project.js` 的 `fieldsToCheck` 也不会生效，因为该函数内部是硬编码白名单，这是本轮踩到的真实坑）。
+3. `BioanalysDesktop/server/tumor_blacklist.js`：`validateProjectFields` 的 `keys` 加 `notes` : 客户备注是自由文本，必须一并走非肿瘤黑名单（否则改了 `project.js` 的 `fieldsToCheck` 也不会生效，因为该函数内部是硬编码白名单，这是本轮踩到的真实坑）。
 4. `BioanalysDesktop/server/project.js`：`fieldsToCheck` 加 `notes`；meta 新增 `notes`（trim 后、非 string 归空串）与 `references`（非数组归 `[]`，避免下游 undefined 分叉）。
 5. `BioanalysDesktop/server/index.js`：收件箱摘要加 `refCount` / `notes`（列表只显示「参考文献 N 篇 · 备注 M 字」）。
 6. `BioanalysDesktop/src/App.tsx`：`ReferenceMeta` 类型；`PortalManifest` 加 `notes` / `references`；模块 A 加「备注 / 分析需求补充」textarea（绑定 `notes` state）与参考文献只读提示；`importFromInbox` 导入 `notes` / `references` 并加提示「客户上传了 N 篇参考文献，文件在用户端收件箱 refs/<sid>/ 下」；建项 payload 带 `notes` / `references`；重置同步。**同时把 `importFromInbox` 内的局部提示数组 `notes` 重命名 `notesList`**，避免与新增的 `notes` state 同名遮蔽。
@@ -1701,7 +1701,7 @@ Termux 内不存在 → 恒失败 → 反复 `sv restart ubuntu-sshd`，日志�
 
 **接任务先读这条**：本节的版式规则与工具是**长期资产**，以后任何出图改动都受它约束。
 
-**触发**：用户审图反馈四类版式问题（原话）——① "柱状图上标签内容超出图框，请设置换行（标签名过长造成的）"，
+**触发**：用户审图反馈四类版式问题（原话）:① "柱状图上标签内容超出图框，请设置换行（标签名过长造成的）"，
 点名 `l1_26_shap_waterfall.png`、`l2_scenic_02_top_regulons.png`；② "p阈值线（虚线）的p值标注请放置于左侧
 （类似的同类型图也有同样的问题），放中间会被图内容遮挡，影响美观"；③ "竖向的图图例图注放右上角，纵向排列，
 且不重叠，横向的图放下面纵向排列，不重合"；④ "并将上述处理问题的经验沉淀"。
@@ -1711,7 +1711,7 @@ Termux 内不存在 → 恒失败 → 反复 `sv restart ubuntu-sshd`，日志�
 
 **统一收口机制（核心）**：17 个出图脚本各内嵌同一份 canonical helper 块
 （`caption` / `wrap_label` / `fit_text_edges` / `legend_out` / `layout_fix` / `_install_layout_guard`），
-以 `src/line2_scrna/scripts/scenic_figures` 第 69–~190 行为**真源**。`_install_layout_guard()` 接管
+以 `src/line2_scrna/scripts/scenic_figures` 第 69-~190 行为**真源**。`_install_layout_guard()` 接管
 `Figure.savefig`，脚本内**任何** `fig.savefig` 落盘前自动先走 `layout_fix()`，新增出图代码不必手工调用。
 
 | 规则 | 落地 |
@@ -1733,7 +1733,7 @@ python3 /mnt/ssd/bio_data/bin/audit_figure_layout.py \
   --cwd /mnt/ssd/bio_data/projects/default/<line>/processed \
   --runner bash --write
 ```
-判定 A–E（容差 3px），FAIL 退出码 1；默认不落盘，`--write` 才写；`--runner bash` 用
+判定 A-E（容差 3px），FAIL 退出码 1；默认不落盘，`--write` 才写；`--runner bash` 用
 `sitecustomize` 注入审计并**软链副本目录**（真 processed 目录零改动）。
 
 **验证证据**：
@@ -1750,7 +1750,7 @@ python3 /mnt/ssd/bio_data/bin/audit_figure_layout.py \
   `l1_13_gsea_top`（tick 仍单行、无压字）、`l1_07_ppi_network`、`l2_16_dr_regulatory_network`（节点标签分离）→ 全合规。
 
 **未验证 / 遗留**：
-- 135 张**未**做全量逐张肉眼复核（只复核 6 张关键图；其余靠机器几何审计）。机器判据覆盖 A–D，
+- 135 张**未**做全量逐张肉眼复核（只复核 6 张关键图；其余靠机器几何审计）。机器判据覆盖 A-D，
   但"颜色语义、图例是否缺项"仍需人眼，下次审图可补。
 - `l2_08` 火山顶部 `log2FC=±1` 竖直标注与被标注虚线自身有极轻微重合（视觉可接受，未单独处理）。
 
@@ -1767,7 +1767,7 @@ python3 /mnt/ssd/bio_data/bin/audit_figure_layout.py \
 - 17 个出图脚本内嵌 canonical helper：`src/line1_bulk/scripts/{bulk_figures,enrichment_figures,external_validation,key_genes,ml_hub_analysis,ml_model,ppi_string}`、
   `src/line2_scrna/scripts/{dr_post_analysis,enrichment_figures,gsva_pathways,scenic_figures,scrna_figures,target_gene_localization}`、
   `src/line3_spatial/scripts/{celltype_annotation,dr_post_analysis,enrichment_figures,spatial_figures}`
-- `con_hf/踩坑台账.md`（#140–#143）、`con_hf/操作台账.md`、`con_hf/handoff.md`（本节）
+- `con_hf/踩坑台账.md`（#140-#143）、`con_hf/操作台账.md`、`con_hf/handoff.md`（本节）
 - 本地存档：`outputs/default/{line1_bulk,line2_scrna,line3_spatial}/figures/*.png`（135 张，最新版式）
 
 ---
@@ -1784,7 +1784,7 @@ python3 /mnt/ssd/bio_data/bin/audit_figure_layout.py \
 
 1. 屏幕上的表单页在打印时整体隐藏（`.site-header` / `.progress-wrap` / `#main-content` / `.site-footer` 全 `display:none`），
    打印只输出 `#print-report` 这个容器。**PDF 内容 = `#print-report` 的内容，不是屏幕上那一屏。**
-2. `#print-report` 的内容由 `buildPrintReport()` 在打印前重建，数据源是 **`buildManifest()`**——
+2. `#print-report` 的内容由 `buildPrintReport()` 在打印前重建，数据源是 **`buildManifest()`**:
    与「提交给对接人」落盘的 JSON 同一份数据源。所以 PDF 与提交内容结构上不会漂移；
    以后给需求单加字段，改 `buildManifest()` 后**必须同步在 `buildPrintReport()` 里加一行**。
 3. 当前八个章节：一、项目基本信息｜二、数据集 ↔ 平台配对｜三、分组与样本绑定｜
@@ -1806,7 +1806,7 @@ python3 /mnt/ssd/bio_data/bin/audit_figure_layout.py \
 - A4 视口 794x1123 + 打印可见性规则截图：128 单元格零溢出、`body.scrollWidth=794`、整单约 2 页 A4。
 - `node --check` 通过。
 
-**2026-10-18 复跑修正（探针自身两处 id 口径错误，见踩坑 #144）**：落盘的探针当时残留两个 bug——
+**2026-10-18 复跑修正（探针自身两处 id 口径错误，见踩坑 #144）**：落盘的探针当时残留两个 bug:
 步骤勾选用**裸 stepId**（真实 DOM id 是 `st-<stepId>`）、交付物勾选用 **manifest formats 口径**
 （真实 UI key 是 `web_preview/tsv_tables/pdf_vector/checkpoint_archive/audit_ledger`），两处都让勾选静默落空。
 已修（加 `checkStep` 补前缀、交付物改 UI key、补 `checkedSteps` 回读与三条回归断言），并在干净页面单次运行复验：
@@ -1820,7 +1820,7 @@ python3 /mnt/ssd/bio_data/bin/audit_figure_layout.py \
 `references: state.refs.map(r => ({name, path, size}))` 核对一致）。原生打印对话框无法自动化
 （CDP 无 `printToPDF`），`window.print()` 这一跳以桩验证调用与标题改写，出纸效果以 A4 视口截图近似判定。
 
-**未动（不可覆盖）**：`portal/inbox/` 保持原样——仍是 1 个真实样例 JSON
+**未动（不可覆盖）**：`portal/inbox/` 保持原样:仍是 1 个真实样例 JSON
 （`2026-10-15_233830_需求_缺血性卒中空间转录组分析.json`），**无 `refs/` 目录**；未提交任何测试需求。
 本地调试产物只落 `cn_debug/`（探针脚本 1 份 + 截图），临时 PDF 与抽取的临时 JS 已删。
 
@@ -2208,7 +2208,7 @@ Bulk RNA-seq 的 counts 矩阵进了引擎也无处落，line1_bulk 的 Bulk 分
 七章交付报告"整条链路，而不是只验服务端。
 
 **真实数据**：GSE277173 / GPL11532，银屑病皮损（LS）vs 非皮损（NLS），8 vs 8 同供体配对
-（13–21 供体），3 个文件：`GSE277173_series_matrix.txt.gz`、`GPL11532-32230.txt`、`分组情况.txt`。
+（13-21 供体），3 个文件：`GSE277173_series_matrix.txt.gz`、`GPL11532-32230.txt`、`分组情况.txt`。
 
 **三段验证脚本（cn_debug/，全部走真实 HTTP 契约）**
 1. `2026-10-19_e2e_client_submit.mjs` → **11/11 通过**：8080 上传 3 个文件 + `POST /api/submit`，
@@ -2219,7 +2219,7 @@ Bulk RNA-seq 的 counts 矩阵进了引擎也无处落，line1_bulk 的 Bulk 分
 3. `2026-10-19_e2e_run_pipeline.mjs` → **11/11 通过**：逐步 `POST /api/tasks/submit` 下发
    line1_bulk 11 个步骤，轮询 `/api/tasks` 判完成，读远端台账判 `status/exit_code`。
 
-**本轮修掉的链路断点（详见踩坑 #173–#177）**
+**本轮修掉的链路断点（详见踩坑 #173-#177）**
 - #173 `ledger.js` 路径整体 lowercase → 大写 project_id 的台账全部被拒落盘
 - #174 `/api/tasks` 返回 `id`、submit 返回 `taskId` → 长任务被误判"已结束"（409）
 - #175 母版写 `processed/`、报告引擎只扫 `results/` → "图 26 / 表 0"、DEG 结论空白
@@ -2228,7 +2228,7 @@ Bulk RNA-seq 的 counts 矩阵进了引擎也无处落，line1_bulk 的 Bulk 分
 
 **实测结果（远端 `/mnt/ssd/bio_data/projects/PRJ_E2E_GSE277173`）**
 - 11 步全部 `completed`，11 条台账合规落盘
-- `line1_bulk/figures/` 26 张 PNG（l1_01–l1_26，缺 ml_model / external_validation 相关图）
+- `line1_bulk/figures/` 26 张 PNG（l1_01-l1_26，缺 ml_model / external_validation 相关图）
 - `line1_bulk/processed/` 36 张结果表（DEG / WGCNA / 富集 / PPI / key genes / ML hub）
 - 交付包：七章齐全，`Analysis_Report.md` + `Analysis_Report.html`，
   `02_Figures_and_Tables` 26 图 / 36 表，`PRJ_E2E_GSE277173_Client_Delivery.tar.gz` 5.9 MB
@@ -2287,7 +2287,7 @@ Bulk RNA-seq 的 counts 矩阵进了引擎也无处落，line1_bulk 的 Bulk 分
 - `ProjectMeta` 类型补 `basic_info`
 
 **验证**
-- 浏览器实测（8787）：选择器两项——「GSE277173 银屑病皮损非皮损 Bulk 真实数据验证」「默认项目」
+- 浏览器实测（8787）：选择器两项:「GSE277173 银屑病皮损非皮损 Bulk 真实数据验证」「默认项目」
 - 切到 Studio 时 `fetch('/api/projects/list')` 计数 +1（说明会重拉，不是只靠首屏）
 - 选中 `PRJ_E2E_GSE277173` 后图廊显示「线1 / GEO bulk（26）」，26 张图正常渲染
 - `npx tsc --noEmit` 0 错；`npm run build` 通过；`npm test` 227/227
@@ -2321,7 +2321,7 @@ Bulk RNA-seq 的 counts 矩阵进了引擎也无处落，line1_bulk 的 Bulk 分
 - 4 张新 PNG 实测 **299.9994 DPI**（2160×1215 / 2100×1500 / 1800×4650）
 - `ops/audit_figure_layout.py`（已部署远端）真实数据重渲染：
   line1 `enrichment_figures` **4 图 fail=0**；`ml_hub_analysis` **10 图 fail=0**
-- 逐张目视复核：PCA/火山/软阈值/模块热图 —— 图注在轴框外、图例不压数据、阈值标注可见、
+- 逐张目视复核：PCA/火山/软阈值/模块热图 : 图注在轴框外、图例不压数据、阈值标注可见、
   colorbar 带 label、无裁字
 - 工作台 8787：图件列表 `source=local`、**30 张**，4 个新 caption 正确
 - 交付报告重跑：**30 图 / 36 表 / tar.gz 6.7 MB**，自检 22 条全过
@@ -2340,7 +2340,7 @@ WGCNA 模块-表型相关分组专项、统一错误台账。全部完成。
 
 - `con_hf/2026-10-19_figure_spec_audit_report.md`（规范核查报告：核查项清单 / 问题明细+等级+优先级 / 建议 / 验证）
 - `con_hf/figure_error_ledger.md`（出图错误台账 FE-001~FE-012，字段固定可机器读取）
-- `cn_debug/figure_code_audit.py`（源码 C1–C7 静态扫描）
+- `cn_debug/figure_code_audit.py`（源码 C1-C7 静态扫描）
 - `cn_debug/figure_audit_scan.py`（交付物 6 维逐张扫描）
 - `cn_debug/figure_score.py`（5 类 20 项百分制，75 达标 + 4 项一票否决）
 - `cn_debug/figure_score.csv` / `figure_audit_line1.csv` / `code_audit.csv`（本次结果留档）
@@ -2386,7 +2386,7 @@ WGCNA 模块-表型相关分组专项、统一错误台账。全部完成。
 **图件（6 张点名图全部验收）**
 
 - 共同根因：三端模板无条件覆盖脚本 figsize（`ops/layout_helper.py` / `sitecustomize.py` / `Rprofile`），
-  已统一改为 `max(脚本尺寸, 模板尺寸)`——模板只能放大、不能缩小。
+  已统一改为 `max(脚本尺寸, 模板尺寸)`:模板只能放大、不能缩小。
 - `l1_04` 恢复 4035×4219；`l1_13/14/15` 标注拆两行；`l1_26` x 右界留位 + 图例外置；
   `l1_23` colorbar 独立 cax；`l1_28` 阈值线/选中 power 标注重排（第二轮修掉两标注互压）；
   `l1_29` 底部图注改两行 + `outer=TRUE`（原右缘被裁）。
@@ -2401,35 +2401,35 @@ WGCNA 模块-表型相关分组专项、统一错误台账。全部完成。
 
 **WGCNA 排查结论（详见 `con_hf/2026-10-19_wgcna_audit_report.md`）**
 
-- 不是运行时崩溃：7 次执行全部 `completed / exit 0 / checkpoint passed`，耗时 5:44–6:34。
+- 不是运行时崩溃：7 次执行全部 `completed / exit 0 / checkpoint passed`，耗时 5:44-6:34。
 - 配置疏漏：设计要求方差前 5000 基因，脚本用全量 20019（默认 `maxBlockSize=5000` → 至少 5 块）；
   `outputs=[]`；`project.js` io 命名漂移；WGCNA 参数未入项目配置。
 - 工作流设计缺失：无 kME/GS、无模块内 hub 导出、无样本离群检测、无 MEs 导出、无模块间相关；
   `results/` 恒空。
-- 修复方案 P0-1~P0-5、验证标准 V1–V10 已写进报告 §5；台账 #183–#185。
+- 修复方案 P0-1~P0-5、验证标准 V1-V10 已写进报告 §5；台账 #183-#185。
 
 **下一步（交接给后续 AI）**
 
 1. 按报告 §5.2 改 `src/line1_bulk/scripts/wgcna_modules`（top-5000 + kME/GS + hub + MEs + Z.k）。
 2. 改 `BioanalysDesktop/server/project.js:205` 的 `io` 字段；任务提交补 `outputs`。
-3. 部署重跑，按 V1–V10 验收；`key_genes` 优先读 `wgcna_hub_genes.tsv`。
+3. 部署重跑，按 V1-V10 验收；`key_genes` 优先读 `wgcna_hub_genes.tsv`。
 4. `docs/figure_spec.md` 登记新增 `l1_27_wgcna_mm_gs`、`l1_30_wgcna_sample_tree`。
 
 
 ## 2026-10-19 · WGCNA P0 修复验收收口 + P1-1/P1-3 落地 + 回搬通道修复（主 Agent 框架：T1 收口 / T2 参数化）
 
 **背景**：上一轮交接的"下一步"四项（脚本改造 / io 改名 / outputs 声明 / figure_spec 登记）
-本轮先逐项核实——代码侧已全部落地并部署（本地与远端 `wgcna_modules` md5 均
+本轮先逐项核实:代码侧已全部落地并部署（本地与远端 `wgcna_modules` md5 均
 `ff2d9b22…` 系列、`project.js:205` io 已含新产物、台账 `io_files.output=12`），
-缺的是**量化验收**与**参数化/可观测性**。本轮把 V1–V10 做成可执行工具并跑通。
+缺的是**量化验收**与**参数化/可观测性**。本轮把 V1-V10 做成可执行工具并跑通。
 
-### 1. V1–V10 验收工具（新增，可重复执行）
+### 1. V1-V10 验收工具（新增，可重复执行）
 
 `cn_debug/2026-10-19_verification_wgcna_v1_v10.mjs`：读本地回搬存档 + system_logs 台账，
 V8 直接调 `figure_audit_scan.py` / `figure_score.py`，V9 走 `/api/tasks/submit` 同 seed 复跑并比对
 WGCNA 产物 md5。用法：`node cn_debug/2026-10-19_verification_wgcna_v1_v10.mjs [--rerun]`。
 
-**结果（全部真跑）**：V1–V8、V10 连续多轮 PASS；V9 同 seed 复跑前后 5 个 WGCNA 产物 md5
+**结果（全部真跑）**：V1-V8、V10 连续多轮 PASS；V9 同 seed 复跑前后 5 个 WGCNA 产物 md5
 **完全一致**（台账 `2269068a` completed / exit 0 / passed / outputs=12）。
 
 ### 2. P1-1 wgcna_config 参数化（C-04）
@@ -2479,7 +2479,7 @@ WGCNA 产物 md5。用法：`node cn_debug/2026-10-19_verification_wgcna_v1_v10.
 ## 2026-10-19 · WGCNA 模块-性状改为"一个组一列"（用户口径纠正，接上一节）
 
 **问题定位**：`l1_29` 只画一根名叫 `LS_vs_NLS` 的列（case=1/ctrl=0 的对比列），而它与
-`is_LS` 组指示列**数值完全相同**——等于把"case 组成员关系"用组间比对的名字展示，读者
+`is_LS` 组指示列**数值完全相同**:等于把"case 组成员关系"用组间比对的名字展示，读者
 自然理解成"在做差异基因比对"。输入侧无问题：输入 = `expr_genes.tsv` + `group_map.tsv`
 （原表达谱 20019 基因取方差前 5000），DEG 不是输入。
 
@@ -2572,20 +2572,20 @@ WGCNA 产物 md5。用法：`node cn_debug/2026-10-19_verification_wgcna_v1_v10.
 ## 踩坑记录（本轮新增）
 
 - BiocManager::install 对"Bioc 版本无此包"返回 exit 0（singScore/hdWGCNA/CellChat/spacexr
-  全部误报 OK）——**安装后必须 `requireNamespace` 真实验证**，不能信退出码。
-- 容器内大文件 `cp` Termux home→/mnt/ssd 可能 EINVAL（1.89GB 复现，263MB 同路径却成功）——
+  全部误报 OK）:**安装后必须 `requireNamespace` 真实验证**，不能信退出码。
+- 容器内大文件 `cp` Termux home→/mnt/ssd 可能 EINVAL（1.89GB 复现，263MB 同路径却成功）:
   用 `dd bs=4M` 绕过，已验证字节一致。
 - `run_throttled_task.sh` 直跑必须注入 `BIOANALYS_SEED=20261013`（exit 3）。
 - 母版 prep_matrix 输入参数只认 `--input <路径>`（裸路径 exit 2）。
 - 母版 deg_limma 只认 `expr_genes.tsv`/`group_map.tsv` 文件名（合并产物须用契约名）。
-- 母版 prep_matrix 芯片路径硬编码 `tissue: lesion` 分组与 [0,20] 非负值域——IS 用项目内
+- 母版 prep_matrix 芯片路径硬编码 `tissue: lesion` 分组与 [0,20] 非负值域:IS 用项目内
   适配版 `line1_bulk/scripts/prep_matrix_adapted`（GSE_ID 规则 + [-20,20] + Illumina null
   基因内中位数插补），适配点均写进脚本头注释。
 - Boruta 7.0.0 未导出 getSelectedAttributes，用 attStats(bw)$decision=="Confirmed"。
 - xgboost 3.2.1 的 seed 只能进 params 列表，顶层再传直接报错。
 - **WGCNA 加载失败链**：xfun 0.62 删了 `attr` 导出 + knitr 1.45 importFrom(xfun, attr) →
   Hmisc→WGCNA 全崩。修复=升级 knitr 到 1.52（rmarkdown/htmlTable 同步）。
-- CellChat GitHub 仓库自带预编译 .so（架构不符，invalid ELF）——删除后重装成功。
+- CellChat GitHub 仓库自带预编译 .so（架构不符，invalid ELF）:删除后重装成功。
 - singScore 包名是小写 `singscore`（GitHub repo DavisLaboratory/**singscore**）。
 - hdWGCNA GitHub 默认分支是 `dev`（master/main 均 404）；CellChat 仓库是 `sqjin/CellChat`（非 sqzhang）。
 
@@ -2632,7 +2632,7 @@ silhouette(sample) 0.493→0.0459；silhouette(condition) 0.0663→0.0182（cond
 macrophage 4649、pericyte 3844、ependymal 3525、astrocyte 3311、oligodendrocyte 1433、
 unknown 787(1.4%)、fibroblast 406、cycling 319。
 **重要数据事实**：该数据集虽为全脑 MCAO，但神经元 marker（Snap25/Rbfox3/Syt1/Grin1/Slc17a7）
-表达细胞仅 18-119 个（ID↔符号映射已抽验正确）——**该数据集神经元极少**，用户方案第六节
+表达细胞仅 18-119 个（ID↔符号映射已抽验正确）:**该数据集神经元极少**，用户方案第六节
 CellChat「LHS 与神经元通讯」在本数据集无对象，将如实记 N/A；LHS↔endothelial 等照常。
 
 **进行中**：L2-5 lr_score_iqr（五算法评分+IQR+DEG，脚本已部署 VERIFY_OK，LRG 人→鼠映射经
@@ -2749,7 +2749,7 @@ tar 内 **没有 tissue_positions / 坐标文件**（每样本仅 matrix.mtx + b
   **ssgsea 在本数据上有效值 0 → 剔除**，合成实际使用 `['score_genes','lrg_meanz']`，报告首部有
   `methods_attempted=...` + `WARNING: ...剔除 ['ssgsea']` 两条如实声明（不写成"三方法"）
 - 结果：按时间点 mean = 1d 0.5367 / 3d 0.5943 / 7d 0.5614 / control 0.5840；
-  Kruskal–Wallis：by condition H=197.3 p=1.6e-42、by cluster H=1790.3 p≈0
+  Kruskal-Wallis：by condition H=197.3 p=1.6e-42、by cluster H=1790.3 p≈0
   （簇间差异最大；最高簇 13/9/6，最低簇 12/4/8）
 - 产物：`spatial_lr_scores.tsv`、`lr_score_by_cluster.tsv`、`lr_score_by_condition.tsv`、
   `spatial_lr.h5ad`、`spatial_lr_report.txt`
@@ -2767,7 +2767,7 @@ tar 内 **没有 tissue_positions / 坐标文件**（每样本仅 matrix.mtx + b
 - 无空间坐标 → 不出图像空间特征图；改为按簇/时间点定量 + 簇×基因 z-score 热图（`l3_target_genes_heatmap.png`，300dpi）
 - 与乳酸化 composite 得分的 Spearman（全 spot）：正相关最强 **MAPK14 ρ=0.248、DNMT1 ρ=0.231、ORMDL3 ρ=0.205、
   ABCA1 ρ=0.203**，其余 0.06~0.19（全部 p<1e-10，显著但效应量小到中等）
-- pMCAO vs 对照（Mann–Whitney）：**HSP90AB1 p=6.5e-40、MAPK14 1.9e-14、ORMDL3 8.5e-16、DNMT1 3.5e-08、
+- pMCAO vs 对照（Mann-Whitney）：**HSP90AB1 p=6.5e-40、MAPK14 1.9e-14、ORMDL3 8.5e-16、DNMT1 3.5e-08、
   MDM2 2.2e-09、CASP1 8.9e-08** 差异显著；AKT1(0.50)、BCL2L1(0.75) 无显著差异
 - 只有 HSP90AB1 落在 LRG 集内（in_LRG=True）
 - 产物：`spatial_target_genes.tsv`、`target_gene_by_condition.tsv`、`target_gene_by_cluster.tsv`、
@@ -2821,13 +2821,13 @@ data.table 把短向量**循环重复**，导致 ml_hub_genes.tsv 出现 45 行/
    **按事实回填**（project_id=PRJ_20261019_IS_lactylation、random_seed=20261013，值即实际执行所用）。
    回填只补两字段，**不动 status/checkpoint_status/error_log 等任何判决字段**。
    结果：本项目台账 **27/27 全部合规**（抽样 is_l1_ml_m2 / is_l2_wgcna / is_l3_target 均显示项目与种子正确）。
-   审计全库仍报 1 条 VIOLATION：`test_006_ledger.json`——**默认项目的历史 E2E 夹具，不属于本项目，未改动**。
+   审计全库仍报 1 条 VIOLATION：`test_006_ledger.json`:**默认项目的历史 E2E 夹具，不属于本项目，未改动**。
 
 ### 交付物（草稿，待授权打包）
 - `con_hf/2026-10-20_IS_项目解读报告.md`：按 `docs/delivery_supervisor_prompt.md` Step 5 的三段式
   （核心结论 → 数据与统计依据 → 方法学与生物学限制）撰写，含 M1/M2 对比、无神经元/无坐标两条数据限制、
   hdWGCNA→metacell+WGCNA、CellChat 不可用、Cox→logistic、ssgsea 剔除等全部替换与限制。
-- 三本台账已同步：`踩坑台账.md`（#150–#160）、`操作台账.md`（21 个任务 ID 参数/产出表）、本文件。
+- 三本台账已同步：`踩坑台账.md`（#150-#160）、`操作台账.md`（21 个任务 ID 参数/产出表）、本文件。
 
 ---
 
@@ -2837,10 +2837,10 @@ data.table 把短向量**循环重复**，导致 ml_hub_genes.tsv 出现 45 行/
 「要与工作文件夹下另一个进行中的工作内容不重复/不撞车，不要和它冲突」。
 
 ### 另一条工作流实测是什么（只读盘查）
-1. `cn_debug/2026-10-20_k40_bench/` —— **K40 算力端绑核 vs 不绑核 A/B 基准测试**
+1. `cn_debug/2026-10-20_k40_bench/` : **K40 算力端绑核 vs 不绑核 A/B 基准测试**
    （`bench_ab.sh` 交替 3 轮消除温度顺序效应 + `watch_thermal.sh` 温度监控 + `bench_py.py/bench_r.R`）。
    基准在**精确测量 wall_time**，任何并发重型任务都会造成 CPU 争用与温度漂移 → **互相污染**。
-2. `cn_debug/2026-10-20_s16_dev/`、`cn_debug/figure_audit_sweep/` —— **default 项目的图件审计/评分与代码审计**
+2. `cn_debug/2026-10-20_s16_dev/`、`cn_debug/figure_audit_sweep/` : **default 项目的图件审计/评分与代码审计**
    （S13~S16 步骤；`figure_audit_all.csv`、`code_audit.csv`、`figure_score_line1_s16.*`）。
 
 ### 目录边界（我写的 vs 对方的，实测零重叠）
@@ -2866,7 +2866,7 @@ data.table 把短向量**循环重复**，导致 ml_hub_genes.tsv 出现 45 行/
 ### L2-8b 完成（liana 替换 CellChat，2026-10-20）
 
 用户确认配置已修好（子代理可用）。本轮先自查发现：我最后一次 var_names 补丁**并未写入**（当时该命令被
-阻断超时，本地与远端 md5 相同但都缺修复）——用 patch 工具正式补上后重跑，**liana 完成**：
+阻断超时，本地与远端 md5 相同但都缺修复）:用 patch 工具正式补上后重跑，**liana 完成**：
 - 17092 对 LR（每 celltype 抽 1000 细胞 → 8512 细胞），LHS 富集细胞类型（endothelial/microglia/macrophage）
   双方均为 LHS 富集类型的交互 **1460 对**；lrscore（rank 聚合分，越小越强）
 - **top LHS 交互**（lrscore 升序）：macrophage→microglia Vcan-Tlr1 0.501、macrophage→macrophage
@@ -2903,7 +2903,7 @@ data.table 把短向量**循环重复**，导致 ml_hub_genes.tsv 出现 45 行/
 - **训练集（132 样本）**：B_cells 显著低于对照（adjP=6.7e-06）；Macrophages 显著高于对照（p=1.58e-05）；
   Mast_cells 高（p=0.022）；Plasma_cells 低（p=2.2e-04）；T_CD4 低（p=0.012）
 - **外部 GSE16561（63 样本，冻结）**：B_cells 低（adjP 方向一致）、Macrophages 高（p=7e-06）、
-  Monocytes_CD14 高（p=0.024）、Neutrophils 高（p=1.8e-04）、T_CD8 低（p=1.1e-06）、T_CD4 低（p=3.6e-06）——
+  Monocytes_CD14 高（p=0.024）、Neutrophils 高（p=1.8e-04）、T_CD8 低（p=1.1e-06）、T_CD4 低（p=3.6e-06）:
   **方向与训练集一致，独立验证通过**
 - **hub-免疫相关**：SMARCA4 vs Macrophages rho=0.396；TST vs Macrophages rho=-0.304（方向相反）
 - 产物：`immune_ssgsea_train.tsv`、`immune_ssgsea_external.tsv`、`immune_celltype_comparison_train.tsv`、
@@ -2927,7 +2927,7 @@ data.table 把短向量**循环重复**，导致 ml_hub_genes.tsv 出现 45 行/
    - line2 各步骤脚本只落 tsv/report，从未出 PNG → `/api/figures/list` 对 line2/line3 返回
      `blocked=true`（工作台如实显示 blocked，不是 bug）
    - line3 的 3 张图在 `processed/GSE233814/` 下，未按规范放 `line3_spatial/figures/`
-2. 前端无缓存问题：API 与构建产物均正常（项目选择器问题同源——用户当时看的是
+2. 前端无缓存问题：API 与构建产物均正常（项目选择器问题同源:用户当时看的是
    portal 8080 提交入口，或未切项目）。
 
 修复（不重算任何分析结果，纯产物归位+补图）：
@@ -3058,7 +3058,7 @@ MAX_DATA_FILES_PER_ROLE 3→5）；`portal/serve.mjs` `handleDataFileUpload` 改
 流式写盘，超限/断传/写出错三路删半成品，等 finish 才回 200，超限文案 `单文件超过上限 5GiB`。
 
 **验证**：`npm test` 237/237（改前基线同值，改后 8 次全绿）；`node --check` ×2 通过；
-`node cn_debug/2026-10-20_verification_s20_upload_limit.mjs` 14/14 PASS ×2（幂等）——
+`node cn_debug/2026-10-20_verification_s20_upload_limit.mjs` 14/14 PASS ×2（幂等）:
 64MiB 上传 md5 逐字节一致、RSS 增量 11.86MB/-1.40MB（<64MiB，流式证据）、超限负路径
 400「单文件超过上限 1MiB」且无半成品、断传删半成品、全链路 PKG_ 包 md5 一致。
 生产 8080（PID 5968）只 /health 探活未重启：**生产实例仍跑旧代码，重启后才生效**。
@@ -3080,9 +3080,9 @@ S19 完成后请勿重复改 index.html 的 MAX_DATA_BYTES/MAX_DATA_FILES_PER_RO
 **交付**：`con_hf/2026-10-20_调研_三线定制数据集与实验设计.md`（调研报告 + 三线实验设计 + 流程适配清单 + 候选淘汰记录 + 证据出处）。
 
 **选型结论（全部有核实标注）**：
-- line1：GSE30528（GPL571，9 DN vs 13 control，`[GEO直核]`）+ 验证集 GSE104948（7v18）与 GSE96804（41v20，`[文献一致]`×4）——DKD 肾小球芯片挖掘，解锁 external_validation 真外部验证。
-- line2：GSE131882（snRNA-seq 3v3，`[GEO直核]`）——DKD 早期人肾；适配点 = ingest_counts 新增 RDS 分支（zUMIs 嵌套 list 须先探针）。备选 GSE211785 scRNA（16v13，合并 RDS 无 raw）。
-- line3：GSE287278（RIF 子宫内膜 Visium 4v4，`[GEO直核]`，逐样本 Space Ranger 标准产物）——适配点 = ingest_spatial 支持两层嵌套 tar。备选 GSE261545（单样本无对照，不推荐）。
+- line1：GSE30528（GPL571，9 DN vs 13 control，`[GEO直核]`）+ 验证集 GSE104948（7v18）与 GSE96804（41v20，`[文献一致]`×4）:DKD 肾小球芯片挖掘，解锁 external_validation 真外部验证。
+- line2：GSE131882（snRNA-seq 3v3，`[GEO直核]`）:DKD 早期人肾；适配点 = ingest_counts 新增 RDS 分支（zUMIs 嵌套 list 须先探针）。备选 GSE211785 scRNA（16v13，合并 RDS 无 raw）。
+- line3：GSE287278（RIF 子宫内膜 Visium 4v4，`[GEO直核]`，逐样本 Space Ranger 标准产物）:适配点 = ingest_spatial 支持两层嵌套 tar。备选 GSE261545（单样本无对照，不推荐）。
 
 **关键淘汰依据**：GSE211785 的 ST 是 7 样本合并 RDS、无图像无 raw（GSM6501016 页面实证），不能作 line3 主数据集。
 
@@ -3112,7 +3112,7 @@ S19 完成后请勿重复改 index.html 的 MAX_DATA_BYTES/MAX_DATA_FILES_PER_RO
 
 ## 2026-10-20（续）· SOP 升级 v2.0（用户提供完整结构化版，取代 v1）
 
-**触发**：用户发来完整第二版规范（LangGPT 结构化：Role/Background/Attention/Profile/Goals/Constrains/Workflow/OutputFormat/Suggestions/Initialization），拍板"我要的是一份规范"——v2 为正本。
+**触发**：用户发来完整第二版规范（LangGPT 结构化：Role/Background/Attention/Profile/Goals/Constrains/Workflow/OutputFormat/Suggestions/Initialization），拍板"我要的是一份规范":v2 为正本。
 
 **改动**：
 1. 新增 `docs/geo_mining_sop_v2.md`：用户 v2 全文**一字未改**落盘 + 附录 A（Stage↔工作台映射表，自 v1 迁移并更新）+ 附录 B（裁决 1-3 与口径来源文件登记）。
@@ -3127,7 +3127,7 @@ S19 完成后请勿重复改 index.html 的 MAX_DATA_BYTES/MAX_DATA_FILES_PER_RO
 
 **触发**：用户拍板"v2 写得好但没与工作台适配，在其基础上增量适配优化"。
 
-**改动**：`docs/geo_mining_sop_v2.md` 升 v2.1——正文一字未改，新增**附录 C**（7 个适配块）：适配 0 三线映射与隔离红线优先级；适配 1 portal 建项入口 + Stage 0-2 表格落 con_hf/；适配 2 数据面/母版执行/manifest 参数正本/每步验收链；适配 3 Stage 11 目录·图件·交付映射表；适配 4 算力与包硬边界（5GB、torch 不可行、禁用/易崩清单、oligo/sva 未验证）；适配 5 隔离冻结安全纪律；适配 6 Stage-by-Stage 增量执行注记表；适配 7 汇报交接与修订权限（正文改动须用户确认，附录随工程演进维护）。
+**改动**：`docs/geo_mining_sop_v2.md` 升 v2.1:正文一字未改，新增**附录 C**（7 个适配块）：适配 0 三线映射与隔离红线优先级；适配 1 portal 建项入口 + Stage 0-2 表格落 con_hf/；适配 2 数据面/母版执行/manifest 参数正本/每步验收链；适配 3 Stage 11 目录·图件·交付映射表；适配 4 算力与包硬边界（5GB、torch 不可行、禁用/易崩清单、oligo/sva 未验证）；适配 5 隔离冻结安全纪律；适配 6 Stage-by-Stage 增量执行注记表；适配 7 汇报交接与修订权限（正文改动须用户确认，附录随工程演进维护）。
 
 ### 2026-10-20（续）· SOP 缺口第一刀：ml_diagnostics 交付上线
 
@@ -3149,16 +3149,16 @@ S19 完成后请勿重复改 index.html 的 MAX_DATA_BYTES/MAX_DATA_FILES_PER_RO
 **停机原因**：用户原话「先暂停……我现在重新把我的想法整理一下弄好再告诉你……减少损失」。等用户重新下达方向，**不要自行续跑**。
 
 **已完成的（保留不动）**：
-- SOP v2.1 + 附录 A/B/C 决策表、`ml_diagnostics` 已交付上线（247/247 测试绿、K40 真数据实测过、3 图审计 fail=0、line1 13→14 步）——这部分是修好且验证过的成品，维持现状。
+- SOP v2.1 + 附录 A/B/C 决策表、`ml_diagnostics` 已交付上线（247/247 测试绿、K40 真数据实测过、3 图审计 fail=0、line1 13→14 步）:这部分是修好且验证过的成品，维持现状。
 - 服务器清理已完成：10 个开发期台账 + 26 个 line3 探针残留已删；`_probe_20261014/`（SCENIC 作业数据）与 `_bak_*`（回滚保险）判定保留。
 - 三个新项目已建：`PRJ_20261020_DKD_bulk`、`PRJ_20261020_DKD_scrna`、`PRJ_20261020_RIF_spatial`（注意：建项时名称中文经 curl 传输疑似乱码，待复核 `GET /api/projects/list`）。
 - `PRJ_20261020_DKD_bulk/line1_bulk/raw_data/` 已有 GSE30528_series_matrix.txt.gz + 本地合成的 GPL571.annot.gz（md5 559c7185…，由 cn_debug/build_gpl571.py 从 GSE30528_family.soft.gz 平台表合成，22277 行 95.3% 带 symbol）。
 
 **卡住待诊的 Bug（任务下发后秒退、无台账、SSE 无输出）**：
 - 现象：`POST /api/tasks/submit`（line1_bulk prep_matrix）返回 200 taskId，但任务瞬间消失、`/api/tasks` 为空、system_logs 无台账。
-- 已排查：引擎路径 runTask→spawn('ssh', [BatchMode, ConnectTimeout, 'k40-ubuntu', script])；台账由 persistEntry 经 base64 写远端；本地手动复现同一条 engine 脚本时 ssh 报 `Connection refused (127.0.0.1:10022)`——即 **K40 隧道当前处于断开态**（`adb forward tcp:10022 tcp:10022` 需重做）。
+- 已排查：引擎路径 runTask→spawn('ssh', [BatchMode, ConnectTimeout, 'k40-ubuntu', script])；台账由 persistEntry 经 base64 写远端；本地手动复现同一条 engine 脚本时 ssh 报 `Connection refused (127.0.0.1:10022)`:即 **K40 隧道当前处于断开态**（`adb forward tcp:10022 tcp:10022` 需重做）。
 - **下一步诊断顺序**：① `adb forward tcp:10022 tcp:10022` 重建隧道 → ② 重提一次任务并先挂 SSE 再提交抓实时输出 → ③ 若仍秒退，用 node 复现 spawn 环境差异（服务端 PID 26256 的 PATH/HOME 与 git-bash 不同，重点查 ssh.exe 是否可达）。
-- 本地下载的素材在 `cn_debug/`：GSE30528_family.soft.gz、GPL571.annot.tsv(.gz)、build_gpl571.py、GSE30528_sm.txt(.gz)——恢复时可直接复用，不必重下。
+- 本地下载的素材在 `cn_debug/`：GSE30528_family.soft.gz、GPL571.annot.tsv(.gz)、build_gpl571.py、GSE30528_sm.txt(.gz):恢复时可直接复用，不必重下。
 
 **恢复入口**：等用户整理完想法后的新指令；若继续 line1 开跑，按上面「卡住的 Bug」诊断顺序走。
 
@@ -3179,7 +3179,7 @@ S19 完成后请勿重复改 index.html 的 MAX_DATA_BYTES/MAX_DATA_FILES_PER_RO
 - **S31 只读审计**（报告 `con_hf/dispatch/S30_audit_report.md`）：3 条待归因 failed 台账已归因为多执行者并发跑同一验证脚本（每次自起临时 8787）的引擎形态，排除第二实例/计划任务/watchdog/远端 cron。D3 已修、D4 作废、D5/D6 已由本轮处理、D7 维持跳过。
 - **S32 断点续传**：`upload.js` 新增 `uploadStatus`（最小缺失 nextIndex）；`GET /api/upload/status` 重写（invalid→400、not_found→200 `{ok:false,reason:'not_found',nextIndex:0}`）；`App.tsx` 以「文件指纹→uploadId」localStorage 缓存实现真续传（init 每次新 UUID，只按字面 init 后查 status 续传恒为 0）。新增 `tests/upload_resume.test.js` 19 条；`aims/aims.txt:83` 的 D5 改为 4MB 断点续传已实现。
 - **D4 交付前置门禁（Lead）**：`server/report.js` 新增 `runReportPreflight`（四道闸：存储水位 ≥20% / 无 running 台账 / 失败台账需 force / 远端输出截断检测）与 `writeSha256Sidecars`（`<file>.sha256` 可被 sha256sum -c 直接复核）；已接线进 `POST /api/report/build`：!ok → 409 带 `{preflight}`，成功响应回传 `preflight` + `sidecars`。文档：`docs/delivery_package_spec.md` 新增「零、实现现状」并裁定 `ops/09_package_delivery.ps1` 作废；`docs/directories.md:62` 指向真实入口。新增 `tests/report_preflight.test.js` 15 条 + `tests/report.test.js` 扩 7 条 HTTP 用例。
-- **D6 五维自检（Lead）**：新增 `server/selfcheck.js` 纯函数模块——第 3 维从「读 /proc/meminfo 头行即 pass」改为 SoC 负载/温度/7.5GB 内存配额实判（fail: ≥95°C 或内存满；warn: ≥85°C 或内存 ≥90% 或 负载/核数 ≥1.5；缺 END 判 unknown）；第 4 维从硬编码 line1_bulk 改为三线逐线门禁 + 桥接脚本存在性（桥接缺失 → warn）。前端 `src/App.tsx` 的 dotClass/dotText 增 warn 档（`!` + `.selfcheck-dot-warn`），汇总徽标新增「存在告警项」。新增 `tests/selfcheck.test.js` 16 条。
+- **D6 五维自检（Lead）**：新增 `server/selfcheck.js` 纯函数模块:第 3 维从「读 /proc/meminfo 头行即 pass」改为 SoC 负载/温度/7.5GB 内存配额实判（fail: ≥95°C 或内存满；warn: ≥85°C 或内存 ≥90% 或 负载/核数 ≥1.5；缺 END 判 unknown）；第 4 维从硬编码 line1_bulk 改为三线逐线门禁 + 桥接脚本存在性（桥接缺失 → warn）。前端 `src/App.tsx` 的 dotClass/dotText 增 warn 档（`!` + `.selfcheck-dot-warn`），汇总徽标新增「存在告警项」。新增 `tests/selfcheck.test.js` 16 条。
 - **uploadDir 加固（Lead）**：`server/upload.js` 的 uploadId 消毒只剥非 `[A-Za-z0-9._-]` 字符，点号存活使 `'..'` 能跳出 `.uploads` 根；现显式拒绝点段与含 `..` 的 id，`tests/upload.test.js` 补回归用例。
 
 **验证（收口实测，2026-10-21 00:4x）**
@@ -3198,9 +3198,9 @@ S19 完成后请勿重复改 index.html 的 MAX_DATA_BYTES/MAX_DATA_FILES_PER_RO
 
 **改动文件清单（本轮）**：新增 `shared/data_formats.mjs`、`BioanalysDesktop/server/selfcheck.js`、`tests/{selfcheck,report_preflight,data_format_parity,task_submit_validation,upload_resume}.test.js`；改 `server/{index,task,report,upload}.js`、`src/App.tsx`、`src/app.css`、`portal/{index.html,lib/archive.mjs}`、`aims/aims.txt:83`、`docs/{delivery_package_spec,directories}.md`；报告 `con_hf/dispatch/S{28,29,30,31,32}*.md` + `con_hf/操作台账.md` 同日条目。
 
-## 2026-10-21（第二轮）— 用户授权七项落地：B1/B2/B3 + 上传会话可靠性 + ledger 口径对齐
+## 2026-10-21（第二轮）: 用户授权七项落地：B1/B2/B3 + 上传会话可靠性 + ledger 口径对齐
 
-**触发**：用户一句话全批七项——「B1 清理，B2 归档，B3 黑名单口径收敛到 8 条。.uploads 陈旧会话无 TTL；续传依赖 localStorage；前端续传分支无自动化测试；ledger.classifyPath 与 validateTaskPaths 的"合法根"口径差。采纳」。自主执行，不再回问。
+**触发**：用户一句话全批七项:「B1 清理，B2 归档，B3 黑名单口径收敛到 8 条。.uploads 陈旧会话无 TTL；续传依赖 localStorage；前端续传分支无自动化测试；ledger.classifyPath 与 validateTaskPaths 的"合法根"口径差。采纳」。自主执行，不再回问。
 
 **团队**：Lead + 3 名 teammate（blacklist-arch / upload-session / ledger-align），共享任务板 task-5..task-7 全部 completed；Lead 自办 B1/B2、跨文件副本同步（portal / docs / handoff）、集成与总验证。切片报告：`con_hf/dispatch/{B1_B2,B3_blacklist,ledger_align,upload_session}_report.md`。
 
@@ -3216,7 +3216,7 @@ S19 完成后请勿重复改 index.html 的 MAX_DATA_BYTES/MAX_DATA_FILES_PER_RO
 - `cd BioanalysDesktop && npm test` → **tests 445 / pass 445 / fail 0 / exit 0**（约 3.8s；上一轮 382）
 - `npx tsc --noEmit` → exit 0；`npm run build` → `✓ built in 698ms`（`dist/assets/index-eGcWQRjO.js` 221.62 kB / gzip 73.22 kB）
 - `node --check` 改动服务端文件 + `vite.config.js` 全 exit 0；dev server `/@fs` 冒烟 200
-- **真机冒烟**（`BAD_PORT=18899 node server/index.js`，链路通）：`/api/selfcheck` 200 且 `all_pass:true`——第 3 维实测 `CPU 0.12/0.07/0.02（6 核） · 32°C · 内存 4.0/7.5GB（54%）`，第 4 维实测 `line1_bulk:ok | line2_scrna:ok | line3_spatial:ok` + 桥接脚本已部署；`POST /api/upload/init` 带同一 fingerprint 两次都回 `up-214eaeb825121358`（`deterministic:true`），`GET /api/upload/status` 回 `nextIndex:0`（冒烟会话已删）
+- **真机冒烟**（`BAD_PORT=18899 node server/index.js`，链路通）：`/api/selfcheck` 200 且 `all_pass:true`:第 3 维实测 `CPU 0.12/0.07/0.02（6 核） · 32°C · 内存 4.0/7.5GB（54%）`，第 4 维实测 `line1_bulk:ok | line2_scrna:ok | line3_spatial:ok` + 桥接脚本已部署；`POST /api/upload/init` 带同一 fingerprint 两次都回 `up-214eaeb825121358`（`deterministic:true`），`GET /api/upload/status` 回 `nextIndex:0`（冒烟会话已删）
 - 未连 K40 真机（全部 ssh 垫片），未装包，未改 `package.json`
 
 **已知边界 / 下轮候选**
@@ -3229,7 +3229,7 @@ S19 完成后请勿重复改 index.html 的 MAX_DATA_BYTES/MAX_DATA_FILES_PER_RO
 
 **改动文件清单（第二轮）**：新增 `shared/upload_session.mjs`、`BioanalysDesktop/src/lib/uploadSession.ts`、`tests/{tumor_blacklist,tumor_blacklist_parity,upload_session}.test.js`、`_archive/README.md`、`cn_debug/README.md`；改 `server/{index,ledger,tumor_blacklist,upload}.js`、`src/App.tsx`、`vite.config.js`、`tests/ledger.test.js`、`aims/aims.txt`、`portal/index.html`、`ops/README.md`、`docs/{delivery_supervisor_prompt,geo_mining_sop_v2}.md`、`BioanalysDesktop/README.md`。
 
-## 2026-10-21（第三轮）— 把本轮完善回写进 aims 框架条款（用户指令：完善后在 aims 文件内更新对应的框架内容）
+## 2026-10-21（第三轮）: 把本轮完善回写进 aims 框架条款（用户指令：完善后在 aims 文件内更新对应的框架内容）
 
 **触发**：用户指令「完善后在aims文件内更新对应的框架内容」。目标不是写日记，而是把 S28-S32 / D4 / D5 / D6 与两轮七项授权的实现结果，回写进 `aims/aims.txt` 的框架条款，修掉事实性漂移并补上实现口径。
 
@@ -3237,13 +3237,13 @@ S19 完成后请勿重复改 index.html 的 MAX_DATA_BYTES/MAX_DATA_FILES_PER_RO
 1. **§一.2 铁律 1**：把「前端内置正则黑名单直接拦截」改为「建项时前后端各拦一次（前端即时提示 + 后端权威拦截）」，并点明规格正本 = §三.1 模块 A 的 8 条、权威实现 `server/tumor_blacklist.js`、`portal/index.html` 只是副本、由 `tests/tumor_blacklist_parity.test.js` 把守。
 2. **§二 目录结构（最大漂移）**：旧树是 `/mnt/ssd/bio_data/line1_bulk/` 顶层三线，与实现（`projects/<项目>/<线>/`）和 §四「独占目录」自相矛盾。现按 ssh 实测重画：`projects/<项目>/{project.json,line1_bulk,line2_scrna,line3_spatial}`，每线 `raw_data/processed/results/figures`，另 `bin/`、`envs/`、`ops/`、`public_references/`、`system_logs/`。
 3. **§二 新增「合法根与归属口径」**：单一事实源 `server/ledger.js` 的 `analyzePath` / `inspectTaskPath`；四种合法形态（`projects/<当前项目>/...`、`public_references/...` 只读仅作输入、历史三线形态仅台账兼容、裸相对文件名）；`system_logs/` 禁作输入输出；相对路径只接受裸文件名与 `projects/<项目>/...`；项目段大小写敏感；`..` 一律拒绝；提交层/台账审计/文件守卫三处共用。
-4. **§三.1 模块 B**：补「数据格式白名单与体积上限（单一事实源）」——14 类扩展名 + 5GiB 由 `shared/data_formats.mjs` 维护，8787 与 8080 共用，`PORTAL_MAX_DATA_BYTES` 可覆盖，parity 测试把守。
+4. **§三.1 模块 B**：补「数据格式白名单与体积上限（单一事实源）」:14 类扩展名 + 5GiB 由 `shared/data_formats.mjs` 维护，8787 与 8080 共用，`PORTAL_MAX_DATA_BYTES` 可覆盖，parity 测试把守。
 5. **§三.2 客户分析输入端**：补「任务提交三道闸」（路径归属预校验 400 / 命令审计 / 桥接四项断言 400）与「断点续跑契约」（`exit 0` + 产物存在性为检查点；台账落 `system_logs/`，`status` 取 `running`/`completed`/`failed`）。
-6. **§三.3 五维自检**：补「自检实现口径」——`GET /api/selfcheck` + `server/selfcheck.js`，四档 `pass/warn/fail/unknown`，`all_pass` 仅在无 warn/fail 时为真，缺 `END` 判 unknown；第 2 维 20%（与 `MIN_FREE_PERCENT=20` 同源）、第 3 维温度 85/95°C + 内存 90%/100% + 负载核比 1.5 + 配额 7.5GB、第 4 维三线逐线 + 桥接脚本存在性。
+6. **§三.3 五维自检**：补「自检实现口径」:`GET /api/selfcheck` + `server/selfcheck.js`，四档 `pass/warn/fail/unknown`，`all_pass` 仅在无 warn/fail 时为真，缺 `END` 判 unknown；第 2 维 20%（与 `MIN_FREE_PERCENT=20` 同源）、第 3 维温度 85/95°C + 内存 90%/100% + 负载核比 1.5 + 配额 7.5GB、第 4 维三线逐线 + 桥接脚本存在性。
 7. **§三.3 台账 + §三.4 交付**：台账补审计口径（`ledger.js` 与 `ops/03_check_logs_remote.sh` 同口径，字段 project_id/line_id/status/checkpoint_status/exit_code）；交付补四道闸（`runReportPreflight`，不过 409 不出包）、`writeSha256Sidecars` 旁挂、打包本体 `ops/build_client_report.py` 与 `09_package_delivery.ps1` 作废。
 8. **§六 + 新增 §八**：§六 `check_storage_and_isolation.sh` 后加「同口径要求」（8787 自检第 2/3/4 维共用阈值，避免界面绿脚本红）；文末新增 **§八 条款与实现落点对照**（15 行表格：条款 → 落点文件/接口 → 状态），并声明「改条款必须同步改落点与断言」。
 
-**新增把守**：`BioanalysDesktop/tests/aims_landing.test.js` 8 条——§八 表存在且 ≥12 行、表里点名的路径必须真实存在（唯一例外 `ops/09_package_delivery.ps1` 明知作废，列入 ALLOW_MISSING）、§二 树含 projects/三线/figures/bin/envs、§二 合法根点名 ledger.js 与 `..` 规则、§三.3 阈值与接口名、§三.4 四道闸与 sha256、§三.1 白名单指向、§六 同口径提示。防止回写型文档再次漂移。
+**新增把守**：`BioanalysDesktop/tests/aims_landing.test.js` 8 条:§八 表存在且 ≥12 行、表里点名的路径必须真实存在（唯一例外 `ops/09_package_delivery.ps1` 明知作废，列入 ALLOW_MISSING）、§二 树含 projects/三线/figures/bin/envs、§二 合法根点名 ledger.js 与 `..` 规则、§三.3 阈值与接口名、§三.4 四道闸与 sha256、§三.1 白名单指向、§六 同口径提示。防止回写型文档再次漂移。
 
 **验证**：`cd BioanalysDesktop && npm test` → **tests 453 / pass 453 / fail 0**（上一轮 445 + 本轮 8）；`npx tsc --noEmit` exit 0；`npm run build` → `✓ built in 641ms`（`dist/assets/index-eGcWQRjO.js` 221.62 kB / gzip 73.22 kB）。`grep /mnt/ssd/bio_data/line[123]_` 在 `docs/` 零命中（无残留旧树引用）。
 
@@ -3303,7 +3303,7 @@ ssh 连接失败 → SKIP exit 0（K40 离线母版仍可跑）；
 输出含 `BRIDGE FAIL` → 透传引擎退出码；否则 `BRIDGE OK` exit 0。
 
 关键实现：`output=$("$SSH_CMD" ... 2>&1) && ssh_rc=0 || ssh_rc=$?` 分开捕获输出与退出码，
-因为 **ssh 失败（255）与断言失败（3）语义相反**——前者是「校验没法做」，后者是「校验做了，没通过」。
+因为 **ssh 失败（255）与断言失败（3）语义相反**:前者是「校验没法做」，后者是「校验做了，没通过」。
 
 `server/task.js` 新增 `GUARD_CALL_RE`（:43），`inspectBridgeNeed` 返回值新增 `guardWired`；
 `server/index.js` 提交层补 `bilingual && !guardWired` 时 `console.warn`（只 warn 不阻断，
@@ -3396,7 +3396,7 @@ ssh 连接失败 → SKIP exit 0（K40 离线母版仍可跑）；
 
 - `server/upload.js`：`DEFAULT_UPLOAD_QUOTA_BYTES` = 20GiB、`uploadQuotaBytes(env)`
   （只认 `BIO_UPLOAD_QUOTA_BYTES`，不设 GB 别名避免双真相源；缺省/空串/非数字/负数回落默认，
-  `0` 是显式配置）；`gcStaleUploads` 两段式——TTL 段语义一字未改，配额段按
+  `0` 是显式配置）；`gcStaleUploads` 两段式:TTL 段语义一字未改，配额段按
   `sessionUsageBytes` 累加目录内**普通文件字节**（不用 `dir.size`：ext4 上恒 4096，与数据量无关），
   超配额按 mtime 最旧优先淘汰，**10 分钟内被写过的活跃会话一律不淘汰**（删正在传的等于丢用户数据），
   报告新增 `evicted` / `totalBytes` / `quotaBytes` / `overQuota` / `active` 五键。
@@ -3435,7 +3435,7 @@ ssh 连接失败 → SKIP exit 0（K40 离线母版仍可跑）；
 ### 待办（下一轮）
 
 1. **obsm 断言口径冲突需用户裁定**（A 改引擎 obsm 三者全无时 WARN / B 改母版输入挑带降维坐标的
-   `.h5ad`）——第四轮已上报，仍未决；
+   `.h5ad`）:第四轮已上报，仍未决；
 2. `inspectBridgeNeed` 应跳过注释行再计数（注释里的 Rscript/python 污染 bilingual 判定，
    本轮靠改写三个母版注释规避，未根治）；
 3. `src/bridge_guard.sh` 与三个母版尚未同步到远端 `/mnt/ssd/bio_data/`；
@@ -3447,7 +3447,7 @@ ssh 连接失败 → SKIP exit 0（K40 离线母版仍可跑）；
 用户追问「aims 文件内的内容对应更新了吗」，逐条核对发现 task-8/9/10 的落点虽然进了 §八 对照表，
 但框架条款正文有 1 处**过期论断**和 2 处**只写了一半**：
 
-- §三.4 原文「包内 `CHECKSUMS` 清单仍为已知缺口」——task-9 已实现，这句是文档骗人（已改为
+- §三.4 原文「包内 `CHECKSUMS` 清单仍为已知缺口」:task-9 已实现，这句是文档骗人（已改为
   「交付完整性双凭证」：包内 `CHECKSUMS.sha256` + 本地 `.sha256` 旁挂，并写明两者覆盖对象不同）；
 - §三.2 三道闸只写了提交层的桥接断言，没写母版内部的第二道守卫（已补 `src/bridge_guard.sh`、
   `[BRIDGE SKIP]` 放行条件、`bridge_guard_invariant.test.js` 不变量）；
@@ -3455,7 +3455,7 @@ ssh 连接失败 → SKIP exit 0（K40 离线母版仍可跑）；
 
 同时给 `tests/aims_landing.test.js` 补 2 条**防漂移**断言（原 8 → 10 条）：一是四项边界的机制必须
 写进条款正文而不只在 §八 表里，二是 aims 全文不得残留「仍为已知缺口」这类被实现取代的短语。
-理由：回写型文档最大的风险是再次漂移，只靠人记会漏——这次就是用户追问才发现的。
+理由：回写型文档最大的风险是再次漂移，只靠人记会漏:这次就是用户追问才发现的。
 
 验证：`npm test` 488/488 pass（486 + 2）。
 
@@ -3667,7 +3667,7 @@ ssh 连接失败 → SKIP exit 0（K40 离线母版仍可跑）；
 
 1. **D-21：任务下发改走「命令串模式」包装器**（commit `4ae8c7c`，21 files +1374/-84）。
    根因：`buildTaskScript` 的 throttled 分支把整条 `rawCmd` 当 `run_throttled_task.sh` 的第 5 参
-   `SCRIPT_PATH` 传，包装器再以 `bash "$SCRIPT_PATH"` 执行 —— 引号、`&&`、管道、重定向全被当成
+   `SCRIPT_PATH` 传，包装器再以 `bash "$SCRIPT_PATH"` 执行 : 引号、`&&`、管道、重定向全被当成
    脚本路径的一部分，母版根本起不来。而「走包装器」又必须保留：`/etc/profile.d/bio_limits.sh`
    只在登录 shell 生效，引擎直跑母版不经过登录 shell，OMP 会裸奔到 8 核触发降频（实测掉速约 30%）。
    拍板：新增命令串模式。三条不可回退契约：
@@ -3682,7 +3682,7 @@ ssh 连接失败 → SKIP exit 0（K40 离线母版仍可跑）；
    唯一可信判活四步：① SSE 日志 `GET /api/tasks/logs?id=` ② 该步临时产物 ③ `ls -t system_logs/*<PROJECT>*`
    ④ `ls -lt <项目>/<线>/processed`。`/api/tasks` 里任务消失只说明本机 ssh 子进程结束，不是任务结束。
 3. **P-25 proot 崩溃取证**：13:44:42 那次 `path.c:546 assertion "length1 > 0" failed` 发生时，
-   本机只跑了 PowerShell 与宿主侧 `ps`，**没有任何容器内递归命令** —— 所以 P-23 的「容器内跑 ps」
+   本机只跑了 PowerShell 与宿主侧 `ps`，**没有任何容器内递归命令** : 所以 P-23 的「容器内跑 ps」
    是充分条件不是必要条件。崩溃取证不再依赖「别跑 ps」，改依赖 D-20 的运行中标记残留。
 4. **line1 取证脚本台账定位改成「提交前快照 + 只认新增台账」**：原来用 `start_time >= 本地提交时刻`
    比较，踩两个坑（容器 UTC / 本地 CST 跨时区；`*_enrichment_*.json` 误命中 `enrichment_figures`）。
@@ -3694,7 +3694,7 @@ ssh 连接失败 → SKIP exit 0（K40 离线母版仍可跑）；
    命令串模式探针 `BIO_EXEC_CMD='echo PROBE_CMD_OK; printf X > /tmp/_probe_cmd_out.txt'` → RC=0 且产物落盘；
    失败透传 `BIO_EXEC_CMD='exit 7'` → RC=7 且台账 `status=failed` / `checkpoint_status=halted`。
    远端 `/etc/profile.d/bio_limits.sh` 与 `ops/bio_limits.sh` 同内容（585 字节，OMP/BLAS 封顶 3 线程），
-   包装器第 44-47 行会 source 它 —— 这就是「必须走包装器」的实证理由。
+   包装器第 44-47 行会 source 它 : 这就是「必须走包装器」的实证理由。
 7. **引擎翻牌**：杀掉跑旧代码的 8791 进程，用含 D-21 的新代码重启（后台常驻），line2 从 scenic_tf 续跑。
 
 #### 验证
@@ -3735,7 +3735,7 @@ abort 增量 0）；静默 180s 仍崩；tick.sh/watchdog 周期不匹配；双 
 全量 **777 tests / 777 pass / 0 fail / 0 skipped**。
 
 **重要边界**：第 515 次 abort 是**我自己的 `find` 命令触发**的（P-23 充分条件，`find` 即使带
-`-maxdepth 1` 也可能触发）。所以 GC 必须放在 **watchdog（宿主侧）** 而非容器内定时任务——
+`-maxdepth 1` 也可能触发）。所以 GC 必须放在 **watchdog（宿主侧）** 而非容器内定时任务:
 宿主侧 `find` 不经过 proot。排障时容器内仍应避免 `find`/`ps`/`grep -r`。
 
 **待办（第十八轮）**：
@@ -3799,7 +3799,7 @@ heredoc 必须闭合 / figures manifest。
 **结论：能修的都修了，剩下的必须重装。**
 
 **已修（无需重装）**：
-1. **链路四段本就完好**——`00_link_check.ps1` PASS。此前沙箱内 adb 起不来
+1. **链路四段本就完好**:`00_link_check.ps1` PASS。此前沙箱内 adb 起不来
    （`Cannot mkdir '\.android'`）与 SSH 主机名解析失败，**均为沙箱权限假象**，提权即通。
 2. **D-22 未部署已补**：6 个母版远端无 `BIO_GMT_CACHE`。已 `06_deploy_scripts.ps1 -Force`
    部署 line2（22+1）/ line3（17+1），字节校验 + 可执行位复核 PASS。
@@ -3812,12 +3812,12 @@ heredoc 必须闭合 / figures manifest。
 **必须重装的原因：proot 每 15 秒 abort 的自我维持循环，与服务层无关。**
 - `path/path.c:546 assertion "length1 > 0" failed` + `signal 6`，**严格 15 秒周期**，
   abort 进程号每次不同（runsv 每次重拉新 proot，新的活 15 秒即崩）；
-- **完全静默 180 秒不碰 adb/ssh/网络，abort 照旧**——排除我的探测与 `--kill-on-exit`；
-- 手机健康（up 2 天、7.0GB 可用、load 0.17）、Termux `sshd -D` 自 10:45 未动——只在容器层；
+- **完全静默 180 秒不碰 adb/ssh/网络，abort 照旧**:排除我的探测与 `--kill-on-exit`；
+- 手机健康（up 2 天、7.0GB 可用、load 0.17）、Termux `sshd -D` 自 10:45 未动:只在容器层；
 - 已排除 tick.sh / bio_watchdog.sh / termux-profile.sh；修好 runsvdir 后 abort 依旧；
 - scenic_tf 因此三次被杀，均刚起步即消失、无产物无台账（D-20 标记可取证）。
 
-**新线索**：我在容器内跑 `/proc/[0-9]*` 遍历时**当场触发 abort**——直接复现 P-23 机制
+**新线索**：我在容器内跑 `/proc/[0-9]*` 遍历时**当场触发 abort**:直接复现 P-23 机制
 （proot 路径比较收到空段）。但无任务运行却仍 15 秒一崩，PC 侧已无法继续定位。
 
 **第十六轮待办（需手机上操作）**：
@@ -3856,7 +3856,7 @@ heredoc 必须闭合 / figures manifest。
 严格 15 秒周期（05:07:27/42/57、05:08:12/28、05:12:59、05:13:15/30/45），abort 进程号每次不同
 （runsv 每次重启 sshd 都新建 proot，新 proot 活约 15 秒即 abort）；手机侧 adb 采样确认
 pid 14-20 秒递增一次；**abort 前无任何用户命令**；手机健康（up 2 天、MemAvailable 7.0GB、
-load 0.17）；Termux 四服务全 RUN 且 `sshd -D`（pid 12206）自 10:45 稳定未动——问题只在容器层。
+load 0.17）；Termux 四服务全 RUN 且 `sshd -D`（pid 12206）自 10:45 稳定未动:问题只在容器层。
 
 **已排除**：`tick.sh`（5 分钟周期且脚本干净）、`bio_watchdog.sh`（60 秒周期、不做容器探测）、
 我的高频探测（静默 90 秒后仍崩，`--kill-on-exit` 假设推翻）、`termux-profile.sh`（proot-distro
@@ -3887,7 +3887,7 @@ load 0.17）；Termux 四服务全 RUN 且 `sshd -D`（pid 12206）自 10:45 稳
    buildExecCmd / runStepHttp / runStepDetached / renderTable。
 2. **四份 runner 改为只留步骤表与日志格式**。line2 旧 runner 保留其私有逻辑
    （KO 基因现场探测、readUns 口径读取、processed/figures 快照 diff、markdown 渲染），
-   只把 ssh 与台账定位换成公共库——该文件被 `proot_probe_guard.test.js` 钉住
+   只把 ssh 与台账定位换成公共库:该文件被 `proot_probe_guard.test.js` 钉住
    （containerAlive / echo ALIVE / P-23），迁移后 13/13 仍绿。
 3. **新建 `BioanalysDesktop/tests/chain_runner_lib.test.js`（9 条）防再次分叉**：
    四份 runner 必须 import 公共库且不得自带 `function ssh(` 或台账正则；台账正则必须用
@@ -3914,7 +3914,7 @@ load 0.17）；Termux 四服务全 RUN 且 `sshd -D`（pid 12206）自 10:45 稳
 **已完成**：
 
 1. **`tests/bridge_guard_local.test.js` 三条假绿**（本轮最重要发现）。
-   单独跑该文件 7/7 绿，全量跑同 3 条红——RCA 是 `findBash()` 只要 bash 能解释守卫源码，
+   单独跑该文件 7/7 绿，全量跑同 3 条红:RCA 是 `findBash()` 只要 bash 能解释守卫源码，
    不要求 bash 内 `command -v python3` 命中。本机 Git for Windows 在位而 Python 不在 PATH，
    守卫 local 分支进不去、静默退化 ssh 分支，于是「本机引擎可用时不许再 ssh」被 ssh 分支
    满足、「引擎缺失回落到 ssh」也被满足，D-14（守卫本机优先）在无 Python 的 Windows 上
@@ -3979,7 +3979,7 @@ load 0.17）；Termux 四服务全 RUN 且 `sshd -D`（pid 12206）自 10:45 稳
 - K40 ssh 在 23:02-23:22 不可达（宿主与容器都 `banner exchange: Connection to UNKNOWN port -1: Connection refused`），23:22:36 自行恢复。守夜 job 确认 scenic_tf 的 wrapper 标记 `_running/task_1792594827_tvbhqb.json` 残留、日志只有头部 421 字节（被杀时刚起步），system_logs 无 scenic_tf 台账。
 - 清掉残留标记后重新下发 scenic_tf（wrapper `task_1792596284_e8pjbm`），runner 在跑。
 
-**测试基线**：全量 757 tests / 752 pass / 5 fail —— 5 条全部是 `tests/proc.test.js:41` 的真实链路探针在 ssh 中断窗口内采集，属「链路不通就红」的设计行为，非回归。ssh 恢复后需复跑确认。
+**测试基线**：全量 757 tests / 752 pass / 5 fail : 5 条全部是 `tests/proc.test.js:41` 的真实链路探针在 ssh 中断窗口内采集，属「链路不通就红」的设计行为，非回归。ssh 恢复后需复跑确认。
 
 **遗留（第十三轮待办）**：
 1. line2 剩余 9 步取证结果（scenic_tf 在跑，runner job `pwsh-47be9d12fe7b4939`）；

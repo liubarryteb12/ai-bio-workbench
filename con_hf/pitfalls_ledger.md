@@ -126,14 +126,14 @@
 
 - **所属域**：Line1/2/3 母版 / 桥接守卫
 - **现象与复现条件**：在 k40-ubuntu 容器内执行母版（真实主路径），日志出现 `ssh: Could not resolve hostname k40-ubuntu: Name or service not known` 紧跟 `[BRIDGE SKIP] ... 桥接引擎不可达（ssh 退出码 255）`，母版 exit 0。PC 侧直连跑则看不出问题。
-- **RCA**：守卫默认只实现了 ssh 通道，而它自己的运行位置就在远端计算容器里 —— 容器内没有 k40-ubuntu 这个主机名，于是「远程校验远端文件」这条设计在主路径上必然失败；失败又被契约 3 静默降级为 SKIP，无人报警。
+- **RCA**：守卫默认只实现了 ssh 通道，而它自己的运行位置就在远端计算容器里 : 容器内没有 k40-ubuntu 这个主机名，于是「远程校验远端文件」这条设计在主路径上必然失败；失败又被契约 3 静默降级为 SKIP，无人报警。
 - **永久修复方案**：本机优先 + ssh 兜底（D-14）。`BRIDGE_ENGINE_LOCAL` 默认指向容器内引擎落点；OK 文案带 `engine=local|ssh` 便于日志取证；母版侧守卫候选路径列表覆盖仓库布局与部署布局两种（`$(dirname $0)/../../bridge_guard.sh` → `/mnt/ssd/bio_data/ops/` → `/mnt/ssd/bio_data/`）。
 - **防回归单测用例路径**：BioanalysDesktop/tests/bridge_guard_local.test.js（本机优先、ssh 兜底、置空强制 ssh、契约 3b/3c 静态断言）；真机验收命令见 D-14。
 
 ## P-16 自检 runRemote 丢弃 ssh 退出码 → 断链时假绿灯
 
 - **所属域**：Server（自检）
-- **现象与复现条件**：拔掉 K40 或 ssh 配置错时，`GET /api/selfcheck` 第 1 维（fs_type）返回空串被判 pass，第 2 维（storage）空串算成 100% free 判 pass，只有第 5 维链路灯变红 —— 前两盏灯是假的。
+- **现象与复现条件**：拔掉 K40 或 ssh 配置错时，`GET /api/selfcheck` 第 1 维（fs_type）返回空串被判 pass，第 2 维（storage）空串算成 100% free 判 pass，只有第 5 维链路灯变红 : 前两盏灯是假的。
 - **RCA**：`runRemote` 只做 stdout+stderr 拼接并 `.trim()`，退出码被丢弃；调用方又都把空串当成「读到了但是空」，没有「没读到」这一态。
 - **永久修复方案**：proc.js 新增 `runSshRaw`（返回 code + text，统一滤 known_hosts 噪声）与 `runSshStrict`（非 0 或空输出抛错）；自检第 1~4 维改走严格版，异常一律落到各维既有的 `catch` 分支报 unknown。
 - **防回归单测用例路径**：BioanalysDesktop/tests/selfcheck_isolation_merge.test.js（255 + 空输出必须抛错、只有噪声行视同无输出、多行输出不被裁）+ index.js 静态断言（第 1~4 维不许再出现宽松调用）。
@@ -141,9 +141,9 @@
 ## P-17 引擎崩溃被当成「不可达」，坏输入静默放行
 
 - **所属域**：Ops / 桥接引擎
-- **现象与复现条件**：`printf notah5ad > /tmp/bad.h5ad` 后调守卫，引擎吐 `OSError: Unable to synchronously open file (file signature not found)` 的裸 traceback，守卫打印 `[BRIDGE SKIP] ... local 模式退出码 1` 并 exit 0 —— 损坏的矩阵被当成"没问题"放行。
+- **现象与复现条件**：`printf notah5ad > /tmp/bad.h5ad` 后调守卫，引擎吐 `OSError: Unable to synchronously open file (file signature not found)` 的裸 traceback，守卫打印 `[BRIDGE SKIP] ... local 模式退出码 1` 并 exit 0 : 损坏的矩阵被当成"没问题"放行。
 - **RCA**：守卫只按「输出里有没有 BRIDGE FAIL 字样」判失败，引擎抛未捕获异常时没有该字样，于是落进契约 3 的「不可达」分支；而本机引擎是否存在在解析阶段就已确认，本地非 0 退出不可能是"不可达"。
-- **永久修复方案**：D-16 两边都改 —— 引擎侧存在性检查 + 异常折成 [BRIDGE FAIL] + UTF-8 输出；守卫侧契约 3c：本机模式非 0 即 FAIL 并透传退出码，ssh 分支的 255 仍 SKIP。
+- **永久修复方案**：D-16 两边都改 : 引擎侧存在性检查 + 异常折成 [BRIDGE FAIL] + UTF-8 输出；守卫侧契约 3c：本机模式非 0 即 FAIL 并透传退出码，ssh 分支的 255 仍 SKIP。
 - **防回归单测用例路径**：BioanalysDesktop/tests/bridge_stage.test.js（损坏 h5ad、文件不存在两条真跑）、tests/bridge_guard_local.test.js（崩溃必须 FAIL、ssh 255 仍 SKIP）。
 
 ## P-18 引擎结论在 Windows 宿主变成乱码，grep 不到关键字
@@ -182,7 +182,7 @@
   发现这些文件全在，且哈希与仓库一致（55/55）。同时 `ssh k40-ubuntu uptime` 显示容器刚重启 2 分钟。
 - **RCA**：原实现「一个文件一次 ssh」共 58 次 stat + 58 次 chmod，整个窗口跨了十几秒；
   proot 容器在这段时间里重启，后半段 ssh 直接失败，`2>&1` 的输出里没有 `^\d+$` 行，
-  代码就落进 `if (-not $remoteBytes)` 分支判 MISSING —— 把「链路故障」误报成「文件缺失」。
+  代码就落进 `if (-not $remoteBytes)` 分支判 MISSING : 把「链路故障」误报成「文件缺失」。
 - **永久修复**：① 校验与 chmod 都合并成**单次 ssh**（printf 喂 while 循环，回 `FILE|path|size|exec` /
   `MISSING|path`）；② ssh 非 0 先重试一次，仍非 0 才报「校验链路失败（不是文件缺失）」；
   ③ 远端没回某路径结果时单列一档 `NO_RESULT`，不并入 MISSING（见 D-18）。
@@ -221,7 +221,7 @@
   永久修复（本机下载再 scp、单次 ssh 批量校验）仍然有效，因为它们消除的是「长连接 + 多次 ssh」
   这个放大器，与重启与否无关。
 - **防回归**：无单测（运维事实），本条目即取证结论；后续真机脚本一律用 etime 判活。
-  （**2026-10-21 更正**：容器内 `ps` 本身会 abort proot，见 P-23 —— etime 判活只能在 Termux 宿主侧跑。）
+  （**2026-10-21 更正**：容器内 `ps` 本身会 abort proot，见 P-23 : etime 判活只能在 Termux 宿主侧跑。）
 
 ### P-23 在容器内跑 ps / pgrep 会 abort 整个 proot（path.c 断言），杀掉所有在跑任务
 
@@ -249,7 +249,7 @@
   ③ 单点检查（确知 pid 时）：`ls /proc/<pid>`；
   ④ 判容器是否重启：Termux 宿主侧 `ssh k40 'ps -eo pid,etime,args | grep -i proot'`（宿主进程，不经过 proot，安全）。
   注意宿主侧 `ps` **看不到** guest 进程（实测 `ssh k40 'ps -eo ... | grep python3'` 输出为空），所以不能用它判任务存活。
-- **连带修正**：P-22 的「容器从不重启」结论作废 —— `uptime` 是静态假文件这一点仍然成立，
+- **连带修正**：P-22 的「容器从不重启」结论作废 : `uptime` 是静态假文件这一点仍然成立，
   但**真重启确实存在**，且触发者是我们自己的 `ps` 探针；P-19 / P-20 的「proot 长进程被打断」现象有了确切根因。
 - **防回归单测**：`BioanalysDesktop/tests/proot_probe_guard.test.js`（静态断言：所有可能通过 ssh 进容器的脚本里，
   凡出现 `k40-ubuntu` 的文件不得出现 guest 侧 `ps -eo/ps aux/ps -ef`、`pgrep`、`pkill`、`grep -r`/`grep -R`、`find`、`du`、`ls -R`；
@@ -336,7 +336,7 @@
 ### P-29 proot 每 15 秒 abort 的真正充分条件是 ssh 连接流（P-28 修订）
 
 - **所属域**：计算容器健康度 / proot 稳定性
-- **现象与复现条件**：与 P-28 完全同形——`ubuntu-sshd` 日志
+- **现象与复现条件**：与 P-28 完全同形:`ubuntu-sshd` 日志
   `./path/path.c:546: compare_paths2 ... assertion "length1 > 0" failed` + `signal 6`，
   **严格 15 秒周期**，runsv 每次重拉新 proot，新的活 15 秒即崩。
 - **RCA**（2026-10-23 全部实测依据）：
@@ -351,14 +351,14 @@
      （08:08:58-08:10:09）出现 **12 个并发 Accepted**。第二段 abort 第一个杀掉的
      正是那个已稳定 15 分钟的 proot（pid 22511）。
   4. **为什么以前查不出来**：P-28 的排除项「静默 180s abort 照旧」与「abort 前 Accepted
-     中位数 = 0」都是在**有另一个探测源在跑**的背景下采的——上一轮"静默"时轮询脚本
+     中位数 = 0」都是在**有另一个探测源在跑**的背景下采的:上一轮"静默"时轮询脚本
      没停，所以静默窗口并不干净。本轮先把 runner 进程停掉再计时，才拿到干净窗口。
   5. **机制解释**（推断，未在 proot 源码层证实）：高频/并发 ssh 让 sshd 反复解析
      `--link2symlink` 下的 bind 挂载链，`compare_paths2` 在某个并发时序上收到空段即断言
      失败；sshd 死后 runsv 立刻重拉，本机 runner 的重试又立刻接上，形成 15 秒自我维持环。
 - **永久修复方案**：
   1. **runner 不得对容器做高频轮询**：`cn_debug/lib/chain_runner.mjs` 的 `ssh()` 当前是
-     「3 次重试 + ServerAliveInterval=15」，`waitNewLedger()` 每 10s 一轮询——对 20-40 分钟
+     「3 次重试 + ServerAliveInterval=15」，`waitNewLedger()` 每 10s 一轮询:对 20-40 分钟
      的重步骤就是每分钟 6 次连接，正好喂饱循环。轮询间隔应拉到 60s 以上，重试改为 1-2 次。
   2. **判活改用"单次长连接"形态**：一次 ssh 里把「读标记 + 读日志字节 + 读台账列表」合并成
      一条命令，不要拆成三次往返（母版 md5 比对那次 9 次串行 ssh 就是典型反例）。

@@ -3,7 +3,7 @@
 【你是谁】项目实现型子 Agent。动手前必须完整阅读：
   1) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\con_hf\dispatch\SUBAGENT_CONTRACT.md
   2) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\con_hf\dispatch\S5_scout_report.md
-     （§7-F2 色值不统一、§7-F3 硬编码组名——本切片的输入）
+     （§7-F2 色值不统一、§7-F3 硬编码组名:本切片的输入）
   3) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\docs\figure_spec.md §三（配色基线）与 §八.2（禁止硬编码组名）
   4) D:\00.AIagent\codespace\AI辅助生信分析流程工作台\con_hf\踩坑台账.md 的 #190、#194
 以上是最高行为准则；本派发单只定义任务项。
@@ -21,7 +21,7 @@ line2 的 `scrna_figures`（S5-17 标 p 值 + F2 色值）留给下一切片，*
   规范 §三 / §八.5 的二分类标准色是 case=`#EE0000`、ctrl=`#3B4992`（R 侧 pca_matrix/deg_limma 已合规）。
 - **F3**：同行的组名 `"LS"`/`"NLS"` 硬编码；`365`、`393` 轴标签 `"log2FC (LS vs NLS)"` 硬编码。
   规范 §八.2 要求组名从 `group_map.tsv` 与 `project.json` 读。**实害**：换项目后
-  `GCOLOR.get(g, "gray")`（302 行）把所有组画成灰色且不报错——静默降级。
+  `GCOLOR.get(g, "gray")`（302 行）把所有组画成灰色且不报错:静默降级。
 
 【主 Agent 已定死的修法（不许自行更改）】
 1. **case/ctrl 方向来源**：按 §八.1，case/ctrl 优先取 `project.json` 的
@@ -53,7 +53,7 @@ line2 的 `scrna_figures`（S5-17 标 p 值 + F2 色值）留给下一切片，*
    断言 case 组 = `#EE0000`(238,0,0)、ctrl 组 = `#3B4992`(59,73,146)。
    写法自定（PIL 取样 + 阈值匹配即可），探针脚本可留在 `cn_debug/`。
    若取不到就明确写"未验证"，**不许推断**。
-8. 产出 `con_hf/dispatch/S9_report.md`（**每完成一步就写一次，不要等最后一次性写**——
+8. 产出 `con_hf/dispatch/S9_report.md`（**每完成一步就写一次，不要等最后一次性写**:
    前三个切片都在临门一脚被宿主掐断导致报告全丢）。
 
 【硬性禁止】

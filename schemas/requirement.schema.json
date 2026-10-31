@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BioWorkbenchRequirement",
+  "type": "object",
+  "required": [
+    "req_id",
+    "created_at",
+    "mode",
+    "isolation_line",
+    "species",
+    "project_metadata",
+    "_attribution"
+  ],
+  "properties": {
+    "req_id": {
+      "type": "string",
+      "pattern": "^REQ-[0-9]{8}-[A-Z0-9]{6}$"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["MODE_A_TOPIC_SURVEY", "MODE_B_CUSTOM_MATRIX"]
+    },
+    "isolation_line": {
+      "type": "string",
+      "enum": ["line1_bulk", "line2_scrna", "line3_spatial"]
+    },
+    "species": {
+      "type": "string",
+      "enum": ["Homo_sapiens", "Mus_musculus", "Rattus_norvegicus"]
+    },
+    "project_metadata": {
+      "type": "object",
+      "required": ["disease_or_trait", "target_genes", "sample_groups"],
+      "properties": {
+        "disease_or_trait": { "type": "string", "minLength": 2 },
+        "geo_accessions": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^GSE[0-9]+$" }
+        },
+        "target_genes": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" }
+        },
+        "sample_groups": {
+          "type": "object",
+          "required": ["control_samples", "treatment_samples"],
+          "properties": {
+            "control_samples": {
+              "type": "array",
+              "minItems": 3,
+              "items": { "type": "string", "pattern": "^[A-Za-z0-9_]+$" }
+            },
+            "treatment_samples": {
+              "type": "array",
+              "minItems": 3,
+              "items": { "type": "string", "pattern": "^[A-Za-z0-9_]+$" }
+            }
+          }
+        },
+        "input_matrix_relpath": { "type": "string" },
+        "input_matrix_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "estimated_cells_or_spots": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "_attribution": {
+      "type": "object",
+      "required": ["utm_source", "partner_id", "tier"],
+      "properties": {
+        "utm_source": { "type": "string" },
+        "utm_campaign": { "type": "string" },
+        "partner_id": { "type": "string" },
+        "tier": { "type": "string", "enum": ["TRIAL", "STANDARD", "PRO_URGENT"] }
+      }
+    }
+  }
+}

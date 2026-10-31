@@ -23,7 +23,7 @@
 |---|---|---|---|
 | F1 | 四大前端视图导航（aims §三，aims.txt:65-159） | 已实现 | `BioanalysDesktop/src/App.tsx:284-289`（VIEWS 四键），`:418-421` 挂载 OnboardingPortal / CustomerInputConsole / PreFlightDashboard / ResultPreviewStudio |
 | F2 | 本地零算力红线（aims.txt:9） | 已实现 | `server/proc.js:12`（白名单 ssh/scp/adb）、`:50-57`（assertAllowedProgram）；proc.test.js 6 例 |
-| F3 | HTTP/S + Token 鉴权支持外网建项/上传/预览（aims.txt:10） | 部分实现 | 8787 有 Basic auth：`server/index.js:51-79`，auth.test.js 7 例；**portal（8080）无任何鉴权**——`portal/serve.mjs` 全文（536 行）无 auth 代码，且文件头注释自述"可单独内网穿透给客户"（:5-8）。aims 要求的 Token 鉴权在 portal 侧缺失 |
+| F3 | HTTP/S + Token 鉴权支持外网建项/上传/预览（aims.txt:10） | 部分实现 | 8787 有 Basic auth：`server/index.js:51-79`，auth.test.js 7 例；**portal（8080）无任何鉴权**:`portal/serve.mjs` 全文（536 行）无 auth 代码，且文件头注释自述"可单独内网穿透给客户"（:5-8）。aims 要求的 Token 鉴权在 portal 侧缺失 |
 | F4 | 断链自动重连（00_link_check.ps1 心跳 + monkey 拉起 Termux）（aims.txt:10） | 部分实现 | `server/link.js:161-190` 四段探测（设备/forward/Termux/容器）+ runit 服务状态，link.test.js 4 例；但 **ps1 心跳状态与 tmux 守护会话 PID 无任何实现**（link.js 只探 runit `sv status`，不探 tmux） |
 | F5 | 长任务 nohup/tmux 守护 + exit 0 检查点断点续跑（aims.txt:14） | 部分实现 | 任务执行 `server/run.js:30-107`（spawn ssh 流式 + 退出码台账）；**无 tmux/nohup 包装**（`ops/bio_watchdog.sh`、`ops/run_throttled_task.sh` 存在但服务端不调用，task.js:89-97 的 throttled 分支无调用方传 `throttled=true`）；任务级 resume 无 API/UI |
 
@@ -39,16 +39,16 @@
 | F11 | 模块 B：组内样本编号录入 + 跨组防重（aims.txt:75） | 已实现（客户端）/ 部分实现（服务端） | 客户端查重 `App.tsx:611-628`、`:1488-1490`；服务端 `project.js:368-376`。**服务端防重规则无任何测试**（project.test.js 无用例） |
 | F12 | 模块 B：一键导入两列 Sample_ID,Group_Name（aims.txt:75） | 已实现 | `App.tsx:693-719`（applyBulkPaste）、UI `:1406-1422` |
 | F13 | 模块 B：≥3 组显式对比对 + 主对比（aims.txt:76） | 已实现 | `App.tsx:721-751`（自动生成两两对比）、`:1504-1526`（勾选 + 主对比单选）；服务端不做 contrasts 引用校验（见风险 R11） |
-| F14 | 模块 B：分片上传器 5MB 断点续传 + 格式校验（aims.txt:77） | 部分实现 | `server/upload.js`（init/chunk/status/complete，CHUNK_SIZE=**4MB**，:21）→ `server/index.js:1049-1171`；客户端 `App.tsx:2555-2668`。**不在向导模块 B 内**（在 Console 视图"数据导入"页）；**无断点续传**——`/api/upload/status` 存在但客户端从不调用，每次上传都新建 uploadId 从头传；分片大小与 aims 的 5MB 不一致 |
+| F14 | 模块 B：分片上传器 5MB 断点续传 + 格式校验（aims.txt:77） | 部分实现 | `server/upload.js`（init/chunk/status/complete，CHUNK_SIZE=**4MB**，:21）→ `server/index.js:1049-1171`；客户端 `App.tsx:2555-2668`。**不在向导模块 B 内**（在 Console 视图"数据导入"页）；**无断点续传**:`/api/upload/status` 存在但客户端从不调用，每次上传都新建 uploadId 从头传；分片大小与 aims 的 5MB 不一致 |
 | F15 | 模块 C：第一级分析线单选物理锁（aims.txt:81） | 已实现 | `App.tsx:1534-1545`（LINES chips 单选）；服务端 audit.js:38-66 兜底拒跨线命令，audit.test.js 9 例 |
 | F16 | 模块 C：第二级步骤勾选 + 4 项说明卡片（aims.txt:82） | 已实现 | `/api/projects/steps`（index.js:700-702）→ PIPELINE_STEP_META（project.js:258-310，含 desc/tool/io/note）；UI `App.tsx:1547-1592` |
 | F17 | 模块 C：下游模块勾选**排序**（aims.txt:82） | 缺失（有意） | UI 按母版固定顺序渲染，无排序控件；App.tsx:1094-1095 注释说明"母版顺序即验证过的依赖顺序"。规格要求"支持勾选与排序"，实现只做勾选 |
-| F18 | 模块 C：勾选虚拟敲除强制 target_ko_gene（aims.txt:82） | 部分实现 | 客户端强制（App.tsx:778、:1577-1583）；**服务端不强制**——project.js:100-116 normalizeBiologicalPriors 只归一化字符串，不检查 pipelineDag 是否含 knockout 步骤 |
+| F18 | 模块 C：勾选虚拟敲除强制 target_ko_gene（aims.txt:82） | 部分实现 | 客户端强制（App.tsx:778、:1577-1583）；**服务端不强制**:project.js:100-116 normalizeBiologicalPriors 只归一化字符串，不检查 pipelineDag 是否含 knockout 步骤 |
 | F19 | 模块 C：第三级算法/阈值参数设置（aims.txt:83） | 缺失（工作台侧） | 服务端有 ANALYSIS_CUTOFFS 三档 + WGCNA_CONFIG_DEFAULTS（project.js:27-97）且 v3_intake.test.js:22-46 覆盖，但**工作台无任何参数录入 UI**，只能经 portal 需求单导入透传（App.tsx:876） |
 | F20 | 模块 D：ACL owner/collaborator（aims.txt:87） | 部分实现 | UI `App.tsx:1601-1615` → aclAndOutput（:834-838）；服务端不校验 role 枚举、collaborators 格式（project.js 无 ACL 校验代码） |
 | F21 | 模块 D：算力削峰只读说明卡片（aims.txt:88） | 已实现 | `App.tsx:1617-1628`（nice/ionice、不绑核、3 线程、7.5GB 熔断、exit 0 检查点） |
 | F22 | 模块 D：预期交付物勾选（Web 图集/tsv/矢量/检查点/台账）（aims.txt:89） | 部分实现 | UI `App.tsx:1630-1680` → expectedFormats（:827-832）。**标签写 "150 DPI PNG"**（:1638），与 aims §五.2 的 300 DPI（aims.txt:229）及服务端 `dpi: 300`（project.js:150）矛盾；映射值本身是 `png_300dpi`（:828） |
-| F23 | 建项配置与 project_manifest.json 1:1 对齐（aims.txt:69、91-136） | 部分实现 | 四段式 + intake 四块均有落盘（project.js:409-457）；**缺 `line_id` 字段**——aims 示例（aims.txt:96）顶层有 `line_id`，服务端不存，改为按 pipelineDag/dataType 现推（index.js:663-664）；dataType/species/domain 不校验枚举（见疑点 c） |
+| F23 | 建项配置与 project_manifest.json 1:1 对齐（aims.txt:69、91-136） | 部分实现 | 四段式 + intake 四块均有落盘（project.js:409-457）；**缺 `line_id` 字段**:aims 示例（aims.txt:96）顶层有 `line_id`，服务端不存，改为按 pipelineDag/dataType 现推（index.js:663-664）；dataType/species/domain 不校验枚举（见疑点 c） |
 | F24 | 客户需求收件箱导入（portal/inbox → 表单） | 已实现 | `App.tsx:923-1137`（导入映射）、`:1141-1227`（列表 UI）；`server/index.js:733-788`；index.test.js:128-183（列表/单文件/穿越/404） |
 
 ### 3. 视图 2 · 客户分析输入控制台（aims §三.2，aims.txt:140-142）
@@ -71,7 +71,7 @@
 | F33 | 自检灯 1：路径与 FUSE 红线（df -T 只读）（aims.txt:147） | 已实现 | `server/index.js:794-800`（fs_type 检查，含 fuse/sdcardfs 阻断） |
 | F34 | 自检灯 2：F2FS 存储水位 <20% 告警（aims.txt:148） | 已实现 | `server/index.js:801-809`（freePct >= 20 判 pass） |
 | F35 | 自检灯 3：SoC 算力、**温度**与 **7.5G 内存配额水位**（aims.txt:149） | 部分实现 | `server/index.js:810-816` 只 `cat /proc/meminfo | head -1`（MemTotal 一行）；**无温度、无 7.5GB 配额水位**。算力数在 link 段（index.js:838 展示 cpus/mem） |
-| F36 | 自检灯 4：跨线隔离 **+ R/Python 桥接四项断言**（aims.txt:150） | 部分实现 | `server/index.js:817-823` 跑 `check_storage_and_isolation.sh line1_bulk`——**硬编码 line1**，line2/line3 的静态扫描没做；`ops/verify_bridge_checkpoint.py`（桥接四项断言）**不被服务端消费**，无任何代码引用 |
+| F36 | 自检灯 4：跨线隔离 **+ R/Python 桥接四项断言**（aims.txt:150） | 部分实现 | `server/index.js:817-823` 跑 `check_storage_and_isolation.sh line1_bulk`:**硬编码 line1**，line2/line3 的静态扫描没做；`ops/verify_bridge_checkpoint.py`（桥接四项断言）**不被服务端消费**，无任何代码引用 |
 | F37 | 自检灯 5：ADB/SSH 守护链路 + tmux PID（aims.txt:151） | 部分实现 | `server/index.js:824-842`（checkLink 四段 + runit 服务）；**tmux 会话 PID 未展示**（link.js 不探 tmux） |
 | F38 | `/api/link/check` 独立链路接口 | 部分实现 | `server/index.js:847-858` + link.test.js 4 例；**客户端无任何消费**（App.tsx 全文无 `/api/link/check` 引用，PreFlightDashboard 只调 `/api/selfcheck`，App.tsx:1738） |
 | F39 | 台账可视化检索 + 多维筛选（aims.txt:154） | 部分实现 | 同 F32 |
@@ -93,9 +93,9 @@
 
 ---
 
-## 疑点 a–h 逐条结论
+## 疑点 a-h 逐条结论
 
-### a. 客户交付报告 —— 引擎在、工作台整域缺失
+### a. 客户交付报告 : 引擎在、工作台整域缺失
 
 - `ops/build_client_report.py` 存在（2206 行，`--project/--no-tar/--dry-run/--self-test`，声称按 aims v3.0 §7.2 七章结构生成 `Analysis_Report.md/html` 并打 `<project_id>_Client_Delivery.tar.gz`）。
 - **8787 服务端不调用它**：`server/*.js` 16 个模块全文检索 `build_client_report` 零命中；23 个端点（index.js:579-1333）无 report/deliver/download 类接口（检索 `report|deliver|download` 仅命中 project.js 的步骤 io 说明文字）。
@@ -104,14 +104,14 @@
 - 附带事实：`docs/delivery_package_spec.md:37` 规定的打包入口 `ops/09_package_delivery.ps1` 在 ops/ 目录中不存在（该 spec §九还明确写"工作台前端：无交互入口，纯命令行工具"）。即交付域现状 = Python 引擎（default 会话域）+ 缺失的 PS 包装 + 工作台零集成。
 - 结论：**aims §七.3 与用户本轮八大功能域中的"客户交付报告"在工作台侧完全缺失**；引擎可用但入口全无。
 
-### b. 图表排版（4:3/16:9）—— 服务端消费链完整，工作台向导无选择 UI，Studio 标签过期
+### b. 图表排版（4:3/16:9）: 服务端消费链完整，工作台向导无选择 UI，Studio 标签过期
 
 - **portal → 8787 → project.json 链路已通**：portal/index.html:517-520 画幅下拉（template_4x3 / template_16x9）→ :1842-1843 写入 `plotLayoutConfig.templateId` → 收件箱导入透传（App.tsx:1014、876）→ `index.js:639` 传入 buildProjectMeta → `project.js:445` normalizePlotLayoutConfig 归一化（含旧 id 兼容映射，:133-137）→ `buildCreateProjectCommand`（project.js:499-506）base64 写入项目 project.json → 任务执行时 `task.js:68` 注入 `BIOANALYS_PROJECT_JSON`，`ops/layout_autoload/`（sitecustomize.py + Rprofile + Rscript 垫片）在解释器启动时套模板；layout_inject.test.js 9 例固化该注入。
-- **工作台客户端无排版选择 UI**：OnboardingPortal 全部表单 state（App.tsx:438-488）与 submit body（:840-877）都没有 plotLayoutConfig——手工建项只能用默认 template_4x3（project.js:127、146），客户在需求单上确认的 16:9 只在"从收件箱导入"路径能带进来。
+- **工作台客户端无排版选择 UI**：OnboardingPortal 全部表单 state（App.tsx:438-488）与 submit body（:840-877）都没有 plotLayoutConfig:手工建项只能用默认 template_4x3（project.js:127、146），客户在需求单上确认的 16:9 只在"从收件箱导入"路径能带进来。
 - **Studio 展示标签过期**：`App.tsx:203-207` 的 `LAYOUT_TEMPLATE_LABEL` 键还是收敛前的三套旧 id（template_1_nature_side 等），而服务端现在只产 template_4x3/template_16x9（project.js:123-126）。结果：所有新项目 Studio 顶部都显示"未指定（按默认 Nature 侧边型）"（App.tsx:1971），与实际生效模板不符。
 - 结论：**服务端消费 ✓、portal 选择 ✓、工作台向导录入 ✗、Studio 标签 ✗（过期映射）**。
 
-### c. 建项契约校验 —— 覆盖了什么、漏了什么
+### c. 建项契约校验 : 覆盖了什么、漏了什么
 
 `server/project.js` buildProjectMeta（:329-457）**有**校验的：
 1. projectId 消毒（:330-331，domain.js:329-336）
@@ -130,47 +130,47 @@
 6. **contrasts 不校验**：case/ctrl 可引用不存在的组名；不校验有且仅一个主对比。
 7. **knockout 与 target_ko_gene 不联动**：DAG 含 virtual_knockout 但 target_ko_gene 为空，服务端放行（project.js:111-114 只 trim）。
 8. **aclAndOutput.role / expectedFormats 不校验**枚举。
-9. **IN_HOUSE 模式在工作台不可达**（见 F8）：data_source_mode 无录入 UI，选了"自有数据"也落 PUBLIC_DB，非 GSM 样本被拒——这是"校验存在但入口缺失"的组合断链。
+9. **IN_HOUSE 模式在工作台不可达**（见 F8）：data_source_mode 无录入 UI，选了"自有数据"也落 PUBLIC_DB，非 GSM 样本被拒:这是"校验存在但入口缺失"的组合断链。
 
-### d. 上传 —— 两套并存、用途不同、互不知晓
+### d. 上传 : 两套并存、用途不同、互不知晓
 
 - **8787 `/api/upload/*`**：init/chunk/status/complete 四端点（index.js:1049-1171），4MB 分片、本地 `.uploads/` 暂存、magic bytes 校验（upload.js:58-76）、scp 直落 `projects/<id>/<line>/raw_data/`。客户端 **UploadPanel 用的就是这套**（App.tsx:2570-2590）。
 - **portal `/api/datafiles`（+`/api/references`）**：serve.mjs:142-262、:444-489，整文件裸流（非分片）、5GiB 上限、落 `inbox/uploads/<sid>/`，提交时归档进 `PKG_*` 包。客户用的是这套。
 - **两套不是共用，文件也不会丢，但有关联缺口**：
   1. UploadPanel 传上去的文件**不写进 project.json 的 data_files**（submit body 无 dataFiles，App.tsx:840-877），建项契约与上传状态无关联；
   2. portal 上传的文件只在"从收件箱导入建项"时由 `deployDataFiles`（index.js:527-574）scp 部署到远端，且 group_map 角色被改名成母版契约名 grouping.txt（upload.js:220-224）；手工建项不会部署；
-  3. 白名单两套不同：8787 允许 .h5/.loom/.soft/.tar/.rdata（upload.js:24-27），portal 允许 .xlsx 但不允许 .h5/.soft/.tar/.rdata/.loom（archive.mjs:23）——同一份数据走不同入口校验结论不同；
+  3. 白名单两套不同：8787 允许 .h5/.loom/.soft/.tar/.rdata（upload.js:24-27），portal 允许 .xlsx 但不允许 .h5/.soft/.tar/.rdata/.loom（archive.mjs:23）:同一份数据走不同入口校验结论不同；
   4. 8787 侧**无断点续传**（status 端点存在但客户端不调用）。
 - 结论：**两套独立系统，客户/管理员各一套；断点在"上传记录不进建项契约"和"无续传"**。
 
-### e. 任务执行 —— inputs/outputs 服务端只有类型校验；客户端是自由文本不是选择器
+### e. 任务执行 : inputs/outputs 服务端只有类型校验；客户端是自由文本不是选择器
 
 - 服务端校验（index.js:1201-1267）：lineId 枚举、projectId 消毒、step 必填 + `^[A-Za-z0-9._-]+$` 字符集（:1216-1220）、**inputs/outputs 只校验"字符串数组"类型**（:1226-1235）、同项目同线同步骤去重（:1237-1243）、buildTaskScript + auditCommand 审跨线（:1258-1267）。
-- **inputs/outputs 没有路径存在性/项目归属校验**：auditCommand 只扫脚本文本里的跨线字面量（audit.js:38-66）；指向**另一个项目**的同线路径（如 `/mnt/ssd/bio_data/projects/OTHER/line1_bulk/...`）提交时放行，要等任务跑完写台账时才被 ledger.js:105-108 判"跨项目"、run.js:91-94 拒绝落盘——任务已经真跑了。
-- 客户端 TaskPanel：**step 是自由文本输入框**（App.tsx:2266-2268，placeholder 提示字符集），**inputs/outputs 是多行自由文本域**（:2284-2294）——既不能从 LINE_STEPS 选步骤，也不能选文件；placeholder 还是旧路径形态 `/mnt/ssd/bio_data/<line>/processed/...`（缺 `projects/<项目>` 段，:2286、:2293），会误导用户填错。
+- **inputs/outputs 没有路径存在性/项目归属校验**：auditCommand 只扫脚本文本里的跨线字面量（audit.js:38-66）；指向**另一个项目**的同线路径（如 `/mnt/ssd/bio_data/projects/OTHER/line1_bulk/...`）提交时放行，要等任务跑完写台账时才被 ledger.js:105-108 判"跨项目"、run.js:91-94 拒绝落盘:任务已经真跑了。
+- 客户端 TaskPanel：**step 是自由文本输入框**（App.tsx:2266-2268，placeholder 提示字符集），**inputs/outputs 是多行自由文本域**（:2284-2294）:既不能从 LINE_STEPS 选步骤，也不能选文件；placeholder 还是旧路径形态 `/mnt/ssd/bio_data/<line>/processed/...`（缺 `projects/<项目>` 段，:2286、:2293），会误导用户填错。
 - 结论：**契约有类型级校验，无语义级校验；客户端全手工填写**。
 
-### f. 自检/审计台账 —— 三个接口各自职责与客户端消费情况
+### f. 自检/审计台账 : 三个接口各自职责与客户端消费情况
 
 - `/api/selfcheck`（index.js:791-845）：五灯 = fs_type / storage / memory / isolation / link。客户端 **PreFlightDashboard 完整消费**（App.tsx:1729-1798：all_pass 徽章 + 每灯状态点/value/detail）。缺维度见 F35-F37。
-- `/api/link/check`（index.js:847-858）：四段探测 + 服务状态 + 算力。**客户端零消费**——App.tsx 检索 `/api/link/check` 零命中；PreFlightDashboard 只走 /api/selfcheck（其内部 link 灯复用 checkLink）。
-- `/api/ledger/check`（index.js:860-888）：SSD 未挂载显式 blocked（:863-871），逐条 auditLedgerEntry + summarizeLedger。客户端 **LedgerPanel 完整消费**（App.tsx:2674-2812：总数/合法/违规、按线表、逐条明细、txt 导出）。**缺 aims.txt:154 要求的筛选**（状态/耗时/内存峰值），且 API 形状就不支持——ledger.js:112 只回 6 个字段，耗时（start/end_time）与 resource_usage 被丢弃。
+- `/api/link/check`（index.js:847-858）：四段探测 + 服务状态 + 算力。**客户端零消费**:App.tsx 检索 `/api/link/check` 零命中；PreFlightDashboard 只走 /api/selfcheck（其内部 link 灯复用 checkLink）。
+- `/api/ledger/check`（index.js:860-888）：SSD 未挂载显式 blocked（:863-871），逐条 auditLedgerEntry + summarizeLedger。客户端 **LedgerPanel 完整消费**（App.tsx:2674-2812：总数/合法/违规、按线表、逐条明细、txt 导出）。**缺 aims.txt:154 要求的筛选**（状态/耗时/内存峰值），且 API 形状就不支持:ledger.js:112 只回 6 个字段，耗时（start/end_time）与 resource_usage 被丢弃。
 - 结论：**selfcheck 消费完整但维度缺；link/check 有 API 无 UI；ledger 消费完整但无筛选**。
 
-### g. 结果预览/图表 —— API 面齐全，客户端一半齐全、一半缺失或死代码
+### g. 结果预览/图表 : API 面齐全，客户端一半齐全、一半缺失或死代码
 
 - `/api/figures/list`（index.js:926-952）：列图件 + caption + 来源标注（本地优先/远端回落）；`/api/figures/image`（:1014-1047）：取字节（本地副本优先）；`/api/figures/pull`（:954-990）：回搬；`/preview/figures`（:992-1012）：服务端渲染三线画廊（不依赖 React 构建，适合目视审核）。
 - 客户端 **ResultPreviewStudio 齐全部分**：列表（:1829-1851）、回搬（:1854-1881）、图廊 + 放大模态（:2020-2082、:2118-2129）、DEG/DR 标签（:1891-1905）、解读卡片（:2084-2115）、项目 meta strip（:1968-1988）。
 - **缺**：图件筛选（无关键字/步骤过滤）；TSV Top500 预览（占位，:2041-2045）；左树不是步骤树（:1993-2017）。
-- **FiguresPanel 是死代码**：定义于 App.tsx:2455-2549（列表 + 放大），但 CustomerInputConsole（:1707-1721）只挂 TaskPanel/UploadPanel/FilesPanel/LedgerPanel，全文件检索 `FiguresPanel` 仅命中定义处一行——从未被渲染。
+- **FiguresPanel 是死代码**：定义于 App.tsx:2455-2549（列表 + 放大），但 CustomerInputConsole（:1707-1721）只挂 TaskPanel/UploadPanel/FilesPanel/LedgerPanel，全文件检索 `FiguresPanel` 仅命中定义处一行:从未被渲染。
 - 结论：**API 能力齐全；Studio 缺筛选与 TSV 预览；FiguresPanel 死代码需处置（接入或删除）**。
 
-### h. 非肿瘤黑名单 —— 规则多于 aims 列举，属自行扩充，需用户确认
+### h. 非肿瘤黑名单 : 规则多于 aims 列举，属自行扩充，需用户确认
 
 - aims.txt:71 列举的词：`cancer, tumor, carcinoma, glioma, immune infiltration, 肿瘤, 癌, 免疫浸润`（8 个英文/中文词 + "等词汇"）。
 - `server/tumor_blacklist.js:10-38` 实际 29 条模式，除 aims 列举的外**自行增加了**：tumour、sarcoma、lymphoma、leukemia、leukaemia、melanoma、adenocarcinoma、squamous cell carcinoma、tumor/tumour microenvironment、immune checkpoint、PD-L1/PD1、CTLA-4、oncogene、tumor suppressor、癌细胞、免疫检查点、肿瘤微环境。
 - 按项目铁律（"只按规格中经确认的黑名单和校验规则实现拦截，不要自行扩充规则"），这份扩充**没有 aims 条文依据**，需要用户确认其规格来源；从代码注释（:4 "aims v2.3 铁律 1"）看是历史演进堆上去的。
-- 附带口径不一致：App.tsx:300 的领域下拉含"免疫"选项，而黑名单拦"免疫浸润/免疫检查点"——"免疫"作为非肿瘤研究领域是否合规，与"非免疫浸润专精"的边界需要用户口径。
+- 附带口径不一致：App.tsx:300 的领域下拉含"免疫"选项，而黑名单拦"免疫浸润/免疫检查点":"免疫"作为非肿瘤研究领域是否合规，与"非免疫浸润专精"的边界需要用户口径。
 - 误伤风险评估：单字 `/癌/`（:33）会命中任何含"癌"的文本（"癌变""致癌物"等仍属肿瘤语义，风险低）；`/PD-?L?1/i`（:27）理论可命中含 "PD1" 子串的标识符（罕见）。总体误伤风险低，但**规则 provenance 不合规**。
 - 结论：**实现强于 aims 列举，属自行扩充；建议由用户确认后把确认清单写回规格，否则按 aims 收敛**。
 

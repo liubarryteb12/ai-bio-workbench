@@ -16,7 +16,7 @@
 【背景（用户 2026-10-20 拍板，全盘采纳主 Agent 建议）】
 现行 `MAX_DATA_BYTES = 1 GiB` 已实测挡过真实客户数据（IS 项目 line3 的 tar 原始包
 1.89GB，见 `con_hf/handoff.md:2471`）；且 `handleDataFileUpload` 用
-`chunks.push()` 把整个文件攒在内存再 `Buffer.concat` 落盘——上限调大便等于
+`chunks.push()` 把整个文件攒在内存再 `Buffer.concat` 落盘:上限调大便等于
 把 OOM 风险同比放大。本次一并解决。
 
 【主 Agent 已定死的改动规格（不许自行更改）】
@@ -24,7 +24,7 @@
 1. `portal/lib/archive.mjs:29`
    `MAX_DATA_BYTES = 1024 * 1024 * 1024` → **`5 * 1024 * 1024 * 1024`（5 GiB）**。
    同步更新该行上的注释：删掉"留 1 GiB 余量"的旧描述，改为记录
-   "2026-10-20 用户拍板 5 GiB；依据：单细胞/空间 RAW tar 常见 1–3GB，
+   "2026-10-20 用户拍板 5 GiB；依据：单细胞/空间 RAW tar 常见 1-3GB，
    IS 项目 line3 实际 1.89GB"。
 2. `portal/lib/archive.mjs:32`
    `MAX_DATA_FILES_PER_ROLE = 3` → **`5`**。注释补明："仅约束 `other` 角色；
@@ -98,7 +98,7 @@
    的实测输出（打印常量即可）。
 7. 汇报时**单独列一条观察（不要修）**：`serve.mjs` 里"同 sid 下同角色只留一个"
    那段用 `n.startsWith(\`${role}__\`)` 找旧文件，但 `uniqueInDir(dir, name)`
-   落盘的文件名**不带 role 前缀**，所以该过滤实际匹配不到任何文件——
+   落盘的文件名**不带 role 前缀**，所以该过滤实际匹配不到任何文件:
    即"同角色重复上传先删旧的"目前是失效的（下游 `validateDataFiles`
    会在提交时以"角色只允许一个文件"拦住，所以不产生错误交付，只是上传目录会留垃圾）。
    这是既有 latent 问题，本切片不改，只上报给主 Agent。

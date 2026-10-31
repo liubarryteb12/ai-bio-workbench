@@ -13,7 +13,7 @@
 
 ## 1. 任务理解
 
-对 line2_scrna / line3_spatial 做**源码级**出图合规侦察，产出五张清单（A1–A5），
+对 line2_scrna / line3_spatial 做**源码级**出图合规侦察，产出五张清单（A1-A5），
 作为后续"真实数据重渲染 + 机器判决"的前置输入。不改代码、不连远端、不跑分析。
 判定口径只认 `docs/figure_spec.md` v2.2 的 §一 / §二 / §三 / §三之二 / §三之三，
 读不出的写"无法从源码判断"，不把"看着像"写成"是"。
@@ -41,7 +41,7 @@ code_audit: no issue found
 EXIT=0
 ```
 
-- 三线 `src/` 全树零命中（C1–C9 全过）。
+- 三线 `src/` 全树零命中（C1-C9 全过）。
 - **但 CSV 未落盘**：`main()` 在 `if not issues: print(...); return 0` 处提前返回
   （`cn_debug/figure_code_audit.py:158-160`），`--csv` 写入代码在 170 行之后，永远走不到。
   实测 mtime 未变：
@@ -137,7 +137,7 @@ EXIT=0
 | §二.1 嵌入类：颜色=分类标签 + 图例 + caption 注明来源步骤 | 符合 | `l2_01~04` caption 含 `X_umap from step5 cluster_umap`（`scrna_figures:300`）；`l3_06` caption 含 `X_umap from step4 dim_reduce`（`spatial_figures:389`） |
 | §二.1 不跨样本混色 | 符合 | 每图单一 obs 列着色 |
 | §二.2 空间类：逐样本画、标题注明坐标系 | 符合 | `l3_01/02/03` 按 `sample_id` 循环（`spatial_figures:253,278,313`），caption 写 `coords = sample-local (obsm['spatial'])` |
-| §二.2 连续量单色 ramp、禁彩虹 | 符合（有偏离） | `l3_02` 用 `viridis`（`:281`）；`l3_03` 用 `magma`（`:316`）——属感知均匀单色系 ramp，非 jet/rainbow，但偏离"viridis 默认" |
+| §二.2 连续量单色 ramp、禁彩虹 | 符合（有偏离） | `l3_02` 用 `viridis`（`:281`）；`l3_03` 用 `magma`（`:316`）:属感知均匀单色系 ramp，非 jet/rainbow，但偏离"viridis 默认" |
 | §二.2 目标基因/DR 映射给"表达值 + 域统计"双视图 | 符合 | `_08_target_gene_by_domain`（:307）、`_09_ko_dr_by_domain`（:338） |
 | §二.3 箱线显示个体点 + 标注 n | 符合 | `scrna_figures:356` 散点叠加；caption `n=%d/%d`（:359） |
 | §二.3 火山阈值线注明 + 位置合规 | 符合 | `adj p=0.05` 贴左内缘（`scrna_figures:431`），`log2FC=±1` 顶部竖排（:435-437） |
@@ -165,11 +165,11 @@ EXIT=0
 | caption 置轴框外（横版下方 / 竖版右上） | 符合 | 10/10 脚本 `caption()` 与规范代码逐字一致（横版 `(0.01,-0.02)`，竖版 `(1.02,1.0)`） |
 | caption 一条一行 | 符合 | `"\n".join(parts)` |
 | 调用处不用 `set_title`/`suptitle` | 符合 | `grep -nE "set_title|suptitle"` 在 line2/line3 **零命中** |
-| 图例一律移轴框外（源级也不得写轴内 loc） | **不符合（2 处）** | `scrna_figures:480:ax.legend(title="diagnosis")`、`spatial_figures:387:ax.legend(markerscale=3, fontsize=8, ncol=2, frameon=False)` —— 均未写 `loc`，matplotlib 默认 `best`（轴内）。源码扫描 C1 抓不到（见 §2.1 探针）。渲染时 `layout_fix` 会兜底外移，但规范明确"guard 只是兜底" |
+| 图例一律移轴框外（源级也不得写轴内 loc） | **不符合（2 处）** | `scrna_figures:480:ax.legend(title="diagnosis")`、`spatial_figures:387:ax.legend(markerscale=3, fontsize=8, ncol=2, frameon=False)` : 均未写 `loc`，matplotlib 默认 `best`（轴内）。源码扫描 C1 抓不到（见 §2.1 探针）。渲染时 `layout_fix` 会兜底外移，但规范明确"guard 只是兜底" |
 | 图例 `frameon=False` | **不符合（1 处）** | `scrna_figures:362-365` 箱线图例无 `frameon=False`（同脚本其它图例均有） |
 | colorbar 必须带 label | 符合 | `l2_07` `label="z"`（:401）、`l2_13` `mean expr (log-norm)`（:347）、`l2_14` `GSVA z-score`（:352）、`l2_scenic_01` `z`（:228）、`l3_02` `expr`（:290）、`l3_03` `KO DR expr`（:323） |
 | 任何颜色编码分类的图必须有图例 | **不符合（≥3 处，条件触发）** | 分类数 >20 时脚本主动放弃图例、只写图注：<br>`celltype_annotation:389-399`（`if n_ct_show <= 20:` 有图例，`else:` 只加 caption note）<br>`celltype_annotation:439-444`（composition 同款分支）<br>`line3/enrichment_figures:281-296`（`if 1 < len(uniq) <= 20:` 才有图例）<br>mouse 域数 57（规范 §六 自述），故 `l3_mouse_14_deconv_umap`、`l3_mouse_15_deconv_composition` **确定无图例** |
-| 分类数 >20 扩 60 色板 | 符合 / 无法判断 | `l2_05`/`l3_07`/`celltype_annotation`/`enrichment_figures` 均用 `tab20+tab20b+tab20c`；**但** `spatial_figures:235-238` 的 `cat_colors()` 只用 `tab20`（20 色）——用于 `_01_domains` 的**每样本域**着色，是否撞色取决于单样本域数（数据相关，源码不可判） |
+| 分类数 >20 扩 60 色板 | 符合 / 无法判断 | `l2_05`/`l3_07`/`celltype_annotation`/`enrichment_figures` 均用 `tab20+tab20b+tab20c`；**但** `spatial_figures:235-238` 的 `cat_colors()` 只用 `tab20`（20 色）:用于 `_01_domains` 的**每样本域**着色，是否撞色取决于单样本域数（数据相关，源码不可判） |
 
 #### §三之三 落盘前收口
 
@@ -180,11 +180,11 @@ EXIT=0
 | 阈值标注位置（p 贴左内缘、log2FC 顶部竖排） | 符合 | 见 §二.3 行 |
 | 网络节点标签自动避让 | 符合 | `dr_post_analysis:380-382` `adjust_text(ax.texts, expand=(1.4,1.6), arrowprops=...)` |
 | 轴内标注不出框 | **无法从源码判断** | 需 `ops/audit_figure_layout.py` 真渲染判决（本切片不跑分析，未做） |
-| 图注不与轴框相交、图例不压数据、条目互不重叠 | **无法从源码判断** | 同上，B1–B4 只能来自几何审计 |
+| 图注不与轴框相交、图例不压数据、条目互不重叠 | **无法从源码判断** | 同上，B1-B4 只能来自几何审计 |
 
 #### 额外发现（文档漂移，P2）
 
-- 11 个脚本的头注释写 `Agg/150dpi`，代码实际 `savefig.dpi=300`（如 `scrna_figures:12`、`spatial_figures:9`、`enrichment:20`）——注释陈旧，会误导后续审查。
+- 11 个脚本的头注释写 `Agg/150dpi`，代码实际 `savefig.dpi=300`（如 `scrna_figures:12`、`spatial_figures:9`、`enrichment:20`）:注释陈旧，会误导后续审查。
 - 规范 §六 表格写 line3 `spatial_figures` "每物种 11 张"，实际公式是 `3×样本数+6`（human 27 / mouse 42）。总数 69 与实测一致，是"每物种 11 张"这句写错了。
 
 ### 2.4 A3：caption 登记差距表（`BioanalysDesktop/server/figures.js`）
@@ -201,7 +201,7 @@ EXIT=0
 反向校验：
 
 - 登记表共 **74** 条 pattern（`figure_score.load_captions()` 解析同为 74 条，双引号 text 也能正确解析）。
-- 零命中的 pattern **7 条**，全部是 line1 的 R 图（`l1_02_pca_step3`、`l1_03_volcano_limma`、`l1_27_cox_forest`、`l1_28~l1_31`）——它们只存在于 `outputs/PRJ_E2E_GSE277173/line1_bulk/figures`，不在 `outputs/default/` 存档里，**属正常**，非死条目。
+- 零命中的 pattern **7 条**，全部是 line1 的 R 图（`l1_02_pca_step3`、`l1_03_volcano_limma`、`l1_27_cox_forest`、`l1_28~l1_31`）:它们只存在于 `outputs/PRJ_E2E_GSE277173/line1_bulk/figures`，不在 `outputs/default/` 存档里，**属正常**，非死条目。
 - 语义抽查无错配：`l3_human_08_target_gene_by_domain.png`→`target_gene_by_domain`（不是 `target_gene`）、`l3_human_09_ko_dr_by_domain.png`→`ko_dr_by_domain`（不是 `ko_dr`）、`l3_human_05_knockout_dr.png`→`knockout_dr`（不是 `ko_dr`）、`l3_human_07_domain_composition.png`→`domain_composition`（不是 `domains`）。
 
 **结论**：C1 项在 line2/line3 上**不会丢分**（6 分全拿）。真正会丢分/被否决的是 C2（见 §2.5）。
@@ -379,7 +379,7 @@ DUPES: [('enrichment', [225, 395])]
 | 9 | `grep -nE "savefig\("` / `"def caption("` / `"_install_layout_guard"` 两线脚本 | 10 个出图脚本全命中 guard；无 `png(`/`ggsave` |
 | 10 | 本地依赖探测（scratch 脚本 `import` 12 个包） | 仅 `numpy`、`PIL` 可用；`matplotlib`/`pandas`/`anndata`/`scanpy`/`scipy`/`networkx`/`adjustText`/`gseapy` 全缺 |
 
-未运行（本切片禁止）：`ops/audit_figure_layout.py` 几何审计（B1–B4）、`figure_score.py` 打分、任何分析脚本、任何远端命令。
+未运行（本切片禁止）：`ops/audit_figure_layout.py` 几何审计（B1-B4）、`figure_score.py` 打分、任何分析脚本、任何远端命令。
 
 ---
 
@@ -391,7 +391,7 @@ DUPES: [('enrichment', [225, 395])]
 | 2 | C2 一票否决的判定依赖 `figure_score.py` 当前正则；若主 Agent 改正则（允许大写），则 50 张图不丢分 | 这是**工具与命名契约冲突**，不是单纯代码缺陷，需主 Agent 定口径 |
 | 3 | "mouse 57 域"取自 `docs/figure_spec.md:260` 的自述，未用数据复核 | 若实际域数 ≤20，则 `l3_mouse_14/15` 的无图例分支不会触发，那 2 条不符合降级为"潜在风险" |
 | 4 | `l3_human_*` 的域数未知 | 决定 human 侧 `_14/_15/_12` 是否有图例，源码不可判 |
-| 5 | 图注/图例/标注的**几何合规**未验证 | 必须靠 `audit_figure_layout.py` 真渲染，本切片未跑；B1–B4 目前一律 UNVERIFIED |
+| 5 | 图注/图例/标注的**几何合规**未验证 | 必须靠 `audit_figure_layout.py` 真渲染，本切片未跑；B1-B4 目前一律 UNVERIFIED |
 | 6 | 图件序号存在历史冲突（`l2_10` 既是 `pca_diagnosis` 又是 STEP_CATALOG 里的 `cellchat`） | 不影响文件本身，但会让客户报告按名反查失败 |
 
 ---
@@ -432,5 +432,5 @@ DUPES: [('enrichment', [225, 395])]
 1. 主 Agent 先裁决 §8 的 1/2 两项（决定 line2/line3 的"判决口径"），否则重渲染出来的图会被自己的评分器判 FAIL。
 2. 派发"STEP_CATALOG 校正"切片（纯 ops/ 改动，可独立验收：`build_client_report.py --dry-run` 或单测）。
 3. 派发"line2/line3 重渲染 + 几何审计"切片：按 §2.6 顺序，先跑 4 个纯渲染脚本拿 `audit_figure_layout.py --csv`，
-   把 B1–B4 从 UNVERIFIED 打到 PASS/FAIL；再跑需重算的 6 个脚本。
+   把 B1-B4 从 UNVERIFIED 打到 PASS/FAIL；再跑需重算的 6 个脚本。
 4. 重渲染后回归：`figure_code_audit.py`（应仍 0 issue，且需先修 §7.1 的 CSV 落盘缺陷）+ `figure_audit_scan.py` + `figure_score.py` 三件套。

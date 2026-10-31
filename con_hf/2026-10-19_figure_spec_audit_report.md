@@ -22,13 +22,13 @@
 | 7 | colorbar label 要求 | PASS | §三之二 硬约束，已落实到 WGCNA 热图等 |
 | 8 | 二分类配色 | PASS | ctrl `#3B4992` / case `#EE0000`，v2.3 补充"角色不得脱钩" |
 | 9 | 虚拟敲除角标 | PASS | `[Virtual KO - DR Genes]` 强制 |
-| 10 | 机器验收命令 | PASS | `ops/audit_figure_layout.py`，A–E 判定 + 负对照纪律 |
+| 10 | 机器验收命令 | PASS | `ops/audit_figure_layout.py`，A-E 判定 + 负对照纪律 |
 | 11 | **SCI 期刊格式对应关系** | **原有缺口 → 已补齐** | 新增 §6.1 核对表，逐条映射期刊通用要求到本规范条款，并标明哪些不覆盖（投稿前需按目标期刊人工核对） |
 | 12 | **质量打分与达标阈值** | **原有缺口 → 已补齐** | 新增 §七：5 类 20 项、满分 100、>=75 达标、4 项一票否决 |
 | 13 | **"vs" 的语义** | **原有缺口 → 已补齐** | 新增 §八 分组与比对契约；aims 新增 §5.4 同口径 |
 | 14 | 分组/方向来源是否规定 | **原本缺失 → 已补齐** | 原规范未规定 case/ctrl 从哪来，导致 WGCNA 硬编码组名（见台账 FE-001） |
 | 15 | 与前端/客户端契约一致性 | PASS | `figures.js` caption 登记表与图件命名一一对应，新增 4 条 caption |
-| 16 | 与前期约定（`con_hf/`）一致性 | PASS | 本轮结论已回写踩坑台账 #180–#182、handoff、操作台账 |
+| 16 | 与前期约定（`con_hf/`）一致性 | PASS | 本轮结论已回写踩坑台账 #180-#182、handoff、操作台账 |
 
 ---
 
@@ -59,7 +59,7 @@
    - `aims/aims.txt`：§5.4 vs 契约、§8 表同步。
 3. **源码违规全清**：8 处轴内图例 → 轴框外；R `cex` 提至 >=0.75。
 4. **三个检查工具常驻**
-   - `cn_debug/figure_code_audit.py`：源码 C1–C7；
+   - `cn_debug/figure_code_audit.py`：源码 C1-C7；
    - `cn_debug/figure_audit_scan.py`：交付物 6 维；
    - `cn_debug/figure_score.py`：五维百分制 + 一票否决。
 5. **caption 与图件登记同步**：`server/figures.js` 补 4 条；报告 STEP_CATALOG 补新图声明。

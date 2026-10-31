@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BioWorkbenchExecutionManifest",
+  "type": "object",
+  "required": [
+    "manifest_id",
+    "req_id",
+    "isolation_line",
+    "global_constraints",
+    "compute_sieve_report",
+    "dag_steps"
+  ],
+  "properties": {
+    "manifest_id": { "type": "string", "pattern": "^MAN-[0-9]{8}-[A-Z0-9]{6}$" },
+    "req_id": { "type": "string" },
+    "isolation_line": {
+      "type": "string",
+      "enum": ["line1_bulk", "line2_scrna", "line3_spatial"]
+    },
+    "global_constraints": {
+      "type": "object",
+      "required": ["seed", "max_threads", "max_memory_mb", "forbid_sdcard"],
+      "properties": {
+        "seed": { "type": "integer", "const": 20261013 },
+        "max_threads": { "type": "integer", "maximum": 3, "default": 3 },
+        "max_memory_mb": { "type": "integer", "maximum": 5800, "default": 5500 },
+        "forbid_sdcard": { "type": "boolean", "const": true }
+      }
+    },
+    "compute_sieve_report": {
+      "type": "object",
+      "required": ["estimated_peak_mb", "downsampling_applied", "sieve_passed"],
+      "properties": {
+        "estimated_peak_mb": { "type": "number" },
+        "downsampling_applied": { "type": "boolean" },
+        "target_cell_cap": { "type": "integer" },
+        "sieve_passed": { "type": "boolean" }
+      }
+    },
+    "dag_steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "step_id",
+          "depends_on",
+          "runtime_env",
+          "script_relpath",
+          "script_sha256",
+          "args",
+          "expected_artifacts"
+        ],
+        "properties": {
+          "step_id": { "type": "string", "pattern": "^step_[0-9]{2}_[a-z0-9_]+$" },
+          "depends_on": { "type": "array", "items": { "type": "string" } },
+          "runtime_env": { "type": "string", "enum": ["R_4_3", "PY_SCANPY_3_10"] },
+          "script_relpath": { "type": "string" },
+          "script_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "args": { "type": "object" },
+          "expected_artifacts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["relpath", "format", "critical"],
+              "properties": {
+                "relpath": { "type": "string" },
+                "format": { "type": "string", "enum": ["PNG", "PDF", "TSV", "JSON", "RDS", "H5AD"] },
+                "critical": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

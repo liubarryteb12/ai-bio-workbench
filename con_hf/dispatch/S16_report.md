@@ -9,8 +9,8 @@
   （新增一条 caption 登记）。
 - 组合图 `l1_32_deg_overview.png`：2×2，A=`l1_03_volcano_fdr`、B=`l1_06_ma_fdr`、
   C=`l1_02_pca`、D=`l1_04_topvar_heatmap`；横版；四张单图必须继续出且不变坏。
-- 契约主体是 `con_hf/2026-10-19_figure_polish_plan.md` 的 G1–G5。
-- 验收：A1–A7（见派发单）。
+- 契约主体是 `con_hf/2026-10-19_figure_polish_plan.md` 的 G1-G5。
+- 验收：A1-A7（见派发单）。
 
 ## 1. 读码与可复用性确认（已完成）
 
@@ -111,7 +111,7 @@ pwsh -NoProfile ops/07_pull_outputs.ps1 -Project PRJ_E2E_GSE277173 -Line line1_b
 
 只改 `src/line1_bulk/scripts/bulk_figures` 与 `BioanalysDesktop/server/figures.js`：在保留
 四张既有单图的前提下，新增 2×2 组合图 `l1_32_deg_overview.png`（A=火山 FDR / B=MA FDR /
-C=PCA / D=top50 方差热图），逐条满足 Step 5 组图契约 G1–G5，并跑通"源码扫描 + 几何审计 +
+C=PCA / D=top50 方差热图），逐条满足 Step 5 组图契约 G1-G5，并跑通"源码扫描 + 几何审计 +
 五维打分"三件套。禁止改统计口径、阈值、种子；禁止删/弱化单图；禁止新依赖；禁止未建 md5
 基线就跑 `--runner bash` 审计。
 
@@ -255,6 +255,6 @@ C=PCA / D=top50 方差热图），逐条满足 Step 5 组图契约 G1–G5，并
 
 - S17 起做 line2/line3 组图前，先按 §7.9 定 helper 片段，再逐线实施；
 - 组图验收沿用本切片的机器判据（探针 + 负对照 + 几何审计 + 打分），把"探针留在 cn_debug/"
-  变成常规动作——这次证明它对"字母缺失 / 面板内重复图例"两类破坏都敏感。
+  变成常规动作:这次证明它对"字母缺失 / 面板内重复图例"两类破坏都敏感。
 
 

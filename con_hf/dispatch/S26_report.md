@@ -29,16 +29,16 @@
 
 脚本：`cn_debug/2026-10-20_s26_p0_repro.mjs`（复刻修复前 run.js:167 命令公式，remotePath 指向 /tmp 不碰 system_logs）+ `cn_debug/2026-10-20_s26_ssh_threshold_probe.mjs`。对真 K40 实测：
 
-- 梯度探测：命令长 8000 完整到达（`echo x*8000 | wc -c` → `wc=8001`）；**8231 起 `| wc -c` 被切掉**，`echo` 的 x 串直落 stdout 且 exit=0 —— 与 S18R §8-2「8,231 起截断」完全一致。
+- 梯度探测：命令长 8000 完整到达（`echo x*8000 | wc -c` → `wc=8001`）；**8231 起 `| wc -c` 被切掉**，`echo` 的 x 串直落 stdout 且 exit=0 : 与 S18R §8-2「8,231 起截断」完全一致。
 - 台账形态复现（71 outputs entry）：
   ```
   R1 | 命令长度 = 9114 字符（8KB=8192 阈值）
   R1 | payload base64 长度 = 9004，是否整段拼进 argv: 是（风险形态）
-  R3 | 旧命令公式含字节数校验(wc -c): 否 —— 无校验，exit 0 即当成功
+  R3 | 旧命令公式含字节数校验(wc -c): 否 : 无校验，exit 0 即当成功
   R2 | exit=0, stdout="ewogICJ0YXNrX2lkIjogInMyNi1yZXByby0wMDAwLTAwMDAtMDAwMDAwMDAwMDAwIiwK..."（半截 base64 直落 stdout，`| base64 -d` 已被截掉）
-  R2 | 远端文件缺失 —— 静默丢失坐实（exit 0 但什么都没写下来）
+  R2 | 远端文件缺失 : 静默丢失坐实（exit 0 但什么都没写下来）
   ```
-  即：exit 0、无 WROTE、无文件、旧 runSsh 会当成功 —— 与 S18R 现场一致。
+  即：exit 0、无 WROTE、无文件、旧 runSsh 会当成功 : 与 S18R 现场一致。
   （首跑曾出现一次 exit 255 Connection closed，重跑即复现静默截断，属链路抖动非稳定症状。）
 
 ## 3. 实现说明（任务项 2/4）
@@ -47,15 +47,15 @@
 
 1. `buildLedgerWriteCommand`：命令改为
    `mkdir -p '<SYSTEM_LOGS>' && base64 -d > '<remotePath>' && echo WROTE '<remotePath>' $(wc -c < '<remotePath>')`
-   —— payload **不再进 argv**（命令行长度恒定 ~150 字符，不随 outputs 增长）；base64 由 `runSsh` 经 ssh stdin 写入（stdin 无 8KB 限制）。引号规则不变（既有「重定向加引号」断言原样通过）。
-2. `persistEntry`（新导出）：payload = `JSON.stringify(entry, null, 2)` 的 UTF-8 字节；落盘后做**双硬校验**——stdout 必须含 `WROTE '<remotePath>' <bytes>` 标记，缺失即 reject；`bytes` 必须等于 `payload.length`，不符即 reject（错误信息含「疑似半截写入」）。成功路径返回值 `{path, output}` 形态不变；runTask 中 rejection 仍走 `.catch` 显式回报 stderr 的既有护栏（2026-10-13 性质保留，未改断言）。
+   : payload **不再进 argv**（命令行长度恒定 ~150 字符，不随 outputs 增长）；base64 由 `runSsh` 经 ssh stdin 写入（stdin 无 8KB 限制）。引号规则不变（既有「重定向加引号」断言原样通过）。
+2. `persistEntry`（新导出）：payload = `JSON.stringify(entry, null, 2)` 的 UTF-8 字节；落盘后做**双硬校验**:stdout 必须含 `WROTE '<remotePath>' <bytes>` 标记，缺失即 reject；`bytes` 必须等于 `payload.length`，不符即 reject（错误信息含「疑似半截写入」）。成功路径返回值 `{path, output}` 形态不变；runTask 中 rejection 仍走 `.catch` 显式回报 stderr 的既有护栏（2026-10-13 性质保留，未改断言）。
 3. `runSsh(command, stdinPayload = null)`：非 null 时 `child.stdin.end(payload,'utf8')` 并兜住 stdin `error` 事件（ssh 早退 EPIPE 不打死进程，退出码路径照旧 reject）。
 4. spawn 由具名导入改默认导入（`childProcess.spawn`）：实测 ESM 具名导入是链接期快照，改写 exports 对象对具名导入无效（探针：赋值后具名 `spawn` 仍走真实实现），node:test 的 `mock.method` 只能拦默认导入形态。行为无差异。
 
 **tests/index.test.js**：删硬编码 `PORT = 18787`，改 `freePort()`（`net.createServer()` listen(0) 取空闲端口再关，照 portal_submit.test.js 先例）。BAD_PORT 环境变量传递方式不变。
 
 **tests/run.test.js**：文件末尾**追加** 4 条用例（既有断言零改动，追加前内容逐字未动）：
-1. `S26: 长台账（71 outputs）payload 走 stdin，ssh argv 不含 payload` —— argv < 1024 字符且不含 payload 片段；假 ssh 垫片拦截 spawn，断言 stdin 收到完整 base64（与 `JSON.stringify(entry,null,2)` 的 base64 逐字符相等）、命令为最后一个 argv。
+1. `S26: 长台账（71 outputs）payload 走 stdin，ssh argv 不含 payload` : argv < 1024 字符且不含 payload 片段；假 ssh 垫片拦截 spawn，断言 stdin 收到完整 base64（与 `JSON.stringify(entry,null,2)` 的 base64 逐字符相等）、命令为最后一个 argv。
 2. `S26: 远端未回 WROTE 标记 → persistEntry 必须 reject`（模拟截断后 exit 0 无回执的真实症状）。
 3. `S26: 远端回执字节数与 payload 不符 → reject（疑似半截写入）`。
 4. `S26: 千级 outputs 命令行仍恒定短小`（1000 outputs，argv 仍 < 1024）。
@@ -74,7 +74,7 @@
 | 4 | `server/pull.js` scp 多文件（pull.map 拼 `SSH_TARGET:remoteDir/name`） | scp argv | 随文件数增长（71 张图 ≈ 8KB） | **低中**：scp 不经远端 shell 解析，限制是本地 Windows CreateProcess ~32KB；当前量级安全，超限时报错可见（非静默） | 暂不动；超 200 文件再考虑分批 |
 | 5 | `server/index.js` runRemote 各调用点（ls/stat/find/base64 读台账/df/meminfo 等） | 固定短命令，路径来自 sanitize 后参数 | 否 | **低** | 不动 |
 | 6 | `server/link.js` checkContainer / `server/ssh.js` | 固定命令 | 否 | **低** | 不动 |
-| 7 | `server/upload.js` | 无 ssh/scp 调用（本地分片落盘） | — | 无 | 不动 |
+| 7 | `server/upload.js` | 无 ssh/scp 调用（本地分片落盘） | : | 无 | 不动 |
 
 （#2/#3 是否立项由主 Agent 裁决；本切片未改这些文件。）
 
@@ -113,7 +113,7 @@ WROTE 标记证据口径：标记由 persistEntry 内部硬校验（缺失/bytes
 
 1. **文件域扩展（待追认）**：`tests/auth.test.js:18` 硬编码 18788 被无关进程（PID 6104）占用 → 7 条 FAIL，与 index.test.js 同一类 P1，且阻塞 A6 全绿。本切片已征询主 Agent 但无应答，按用户「工程取舍由我拍板」授权顺带修复（仅改端口来源为 freePort，鉴权断言零改动），在此记录请求追认。
 2. run.js spawn 具名导入改默认导入：行为无差异（探针证实具名导入对 exports 改写免疫），是为了让 mock.method 可拦截；无其他代码依赖该导入形态。
-3. E2E 台账里 7 个 `l2_e2e_pad_XX.png` 是透明占位声明（scrna_figures 忽略 --output 参数，声明不影响执行），default/line2 台账历史会留有一条含占位声明的记录——按派发单「outputs ≥ 40」口径执行，特此说明。
+3. E2E 台账里 7 个 `l2_e2e_pad_XX.png` 是透明占位声明（scrna_figures 忽略 --output 参数，声明不影响执行），default/line2 台账历史会留有一条含占位声明的记录:按派发单「outputs ≥ 40」口径执行，特此说明。
 4. 8787 常驻实例（PID 26256）**仍在跑旧代码**：重启服务才能让常驻面享受修复，属运维动作，未擅自执行，待主 Agent 安排。
 5. 项目根非 git 仓库，无 git diff 可附；改动文件清单见 §7。
 

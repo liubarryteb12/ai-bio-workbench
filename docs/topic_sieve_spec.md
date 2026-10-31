@@ -177,7 +177,7 @@ L0 疾病准入 ──→ L1 要素卡填写 ──→ L2 单数据集可用性�
 | GPL6246 | MoGene 1.0 ST | 鼠 | `mogene10sttranscriptcluster.db` |
 | GPL7202 | Agilent-014868 Whole Mouse Genome | 鼠 | 需自建或用 `org.Mm.eg.db` 按探针序列注释 |
 | GPL6480 | Agilent-014850 Whole Human Genome | 人 | 需自建或用 `org.Hs.eg.db` |
-| — | 通用基因级注释兜底 | 人 / 鼠 | `org.Hs.eg.db` / `org.Mm.eg.db` |
+| : | 通用基因级注释兜底 | 人 / 鼠 | `org.Hs.eg.db` / `org.Mm.eg.db` |
 
 > ⚠️ **Agilent 双通道芯片没有标准 Bioconductor 注释包**，通常需用 `org.Hs.eg.db` / `org.Mm.eg.db` 按探针 ID 自行映射，或依赖 `AnnotationDbi` + 平台 GPL 的 soft 文件。填卡时标注"需自建注释"。
 
@@ -351,7 +351,7 @@ L0 疾病准入 ──→ L1 要素卡填写 ──→ L2 单数据集可用性�
 | 关键基因-细胞-空间三级 | bulk + sc + ST | + 芯片验证 | + 跨物种 |
 | 细胞图谱/通讯类 | sc(发现) + ST(验证) | + bulk 佐证 | + 跨物种 |
 | 预后类 | bulk/芯片 **带随访** | + 独立随访验证队列 | + sc |
-| 描述性/机制假设类 | 任意一类 + 合理分组 | + 第二类佐证 | — |
+| 描述性/机制假设类 | 任意一类 + 合理分组 | + 第二类佐证 | : |
 
 ---
 

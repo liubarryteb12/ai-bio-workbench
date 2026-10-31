@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MobileRunnerArtifactTriad",
+  "type": "object",
+  "required": [
+    "task_id",
+    "manifest_id",
+    "step_id",
+    "node_id",
+    "exit_code",
+    "duration_sec",
+    "telemetry_snapshot",
+    "outputs_ledger",
+    "log_digest"
+  ],
+  "properties": {
+    "task_id": { "type": "string" },
+    "manifest_id": { "type": "string" },
+    "step_id": { "type": "string" },
+    "node_id": { "type": "string", "default": "k40-ubuntu-node01" },
+    "exit_code": { "type": "integer" },
+    "from_idempotent_cache": { "type": "boolean" },
+    "duration_sec": { "type": "number" },
+    "telemetry_snapshot": {
+      "type": "object",
+      "properties": {
+        "max_rss_mb": { "type": "number" },
+        "battery_temp_c": { "type": "number" },
+        "soc_temp_c": { "type": "number" },
+        "thermal_throttle_count": { "type": "integer" }
+      }
+    },
+    "outputs_ledger": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["relpath", "sha256", "size_bytes", "magic_valid"],
+        "properties": {
+          "relpath": { "type": "string" },
+          "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "size_bytes": { "type": "integer", "minimum": 1 },
+          "magic_valid": { "type": "boolean" }
+        }
+      }
+    },
+    "log_digest": {
+      "type": "object",
+      "required": ["stdout_head", "stdout_tail", "stderr_tail"],
+      "properties": {
+        "stdout_head": { "type": "string", "maxLength": 4096 },
+        "stdout_tail": { "type": "string", "maxLength": 4096 },
+        "stderr_tail": { "type": "string", "maxLength": 8192 }
+      }
+    }
+  }
+}

@@ -1,4 +1,4 @@
-# S24 · 建项向导补 v3 intake 录入 + IN_HOUSE 通道 + 服务端校验补齐（解 R2/R11/R12/R13）—— 实施报告
+# S24 · 建项向导补 v3 intake 录入 + IN_HOUSE 通道 + 服务端校验补齐（解 R2/R11/R12/R13）: 实施报告
 
 状态：**已完成**。npm test 247/247 全绿；npm run build + tsc --noEmit 通过；E2E 真链 25/25 通过（幂等复跑验证）。
 
@@ -34,7 +34,7 @@
 | 字段名 | 类型 | 默认 | 测试锚点 |
 |---|---|---|---|
 | templateId | 'template_4x3' \| 'template_16x9'（旧 id template_1_nature_side/template_2_cell_wide/template_3_clinical_note 兼容映射） | 'template_4x3'（非法回落并标 templateFallback） | :75-118 |
-| （dpi 恒 300，服务端写死，表单不提供） | — | 300 | :109-118 |
+| （dpi 恒 300，服务端写死，表单不提供） | : | 300 | :109-118 |
 
 ### 1.4 实验设计 experimentalDesign（→ meta.experimental_design）
 
@@ -51,7 +51,7 @@
 |---|---|---|---|
 | valControlSamples | string[] | []（非数组回落空并标 invalid） | :150-181 |
 | valTreatSamples | string[] | [] | 同上 |
-| （两侧重叠 → 服务端直接拒建项） | — | — | :183-188、:292-302 |
+| （两侧重叠 → 服务端直接拒建项） | : | : | :183-188、:292-302 |
 
 ## 2. dualmode.test.js 的 IN_HOUSE 契约要点
 
@@ -72,7 +72,7 @@
   - `server/index.js`（最小改动，偏差见 §5）：create 路由内 `buildProjectMeta` → `buildProjectMetaStrict`，
     并透传 `lineId: requested.lineId`。400 语义复用既有 catch（`return json(res, 400, { error: cause.message })`）。
   - 探针验证（scratch/s24_strict_probe.mjs）：strict happy path 通过、8 条负路径全部按预期抛错点名（species/domain/dataType/sampleCount/contrasts case/primary 数/R12/line_id），旧形态无 strict 仍宽松建项。
-- [x] App.tsx 表单（四块 + 模板选择 + IN_HOUSE 通道 + R13 标签修复）——详见 §3 后半与 §7。
+- [x] App.tsx 表单（四块 + 模板选择 + IN_HOUSE 通道 + R13 标签修复）:详见 §3 后半与 §7。
 - [x] project.test.js 新增 10 条用例。
 - [x] `npm test` 247/247 全绿（237 旧 + 10 新）；`npx tsc --noEmit` 0 错误；`npm run build` 成功。
 - [x] E2E 真链验证脚本 cn_debug/2026-10-20_verification_s24_intake_e2e.mjs：25/25 通过，复跑幂等。

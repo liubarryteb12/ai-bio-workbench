@@ -99,7 +99,7 @@
 |---|---|---|---|---|---|
 | WGCNA | line1_bulk | WGCNA: an R package for weighted correlation network analysis | Langfelder P, Horvath S | BMC Bioinformatics 9:559 · 2008 | 10.1186/1471-2105-9-559 |
 | scanpy | line2_scrna、line3_spatial | Scanpy for analysis of large-scale single-cell gene expression data | Wolf FA, Angerer P, Theis FJ | bioRxiv preprint（August 9, 2017） · 2017 | 10.1101/174029 |
-| harmonypy | line2_scrna | Package 'harmony' — Fast, Sensitive, and Accurate Integration of Single Cell Data | Patikas N, Yao H, Korsunsky I, Hemberg M, Millard N, Fan J, Slowikowski K 等（PDF 首页作者列表被截断） | R 包手册，Version 2.0.5，构建日期 June 13, 2026 · 2026 | 未获取 |
+| harmonypy | line2_scrna | Package 'harmony' : Fast, Sensitive, and Accurate Integration of Single Cell Data | Patikas N, Yao H, Korsunsky I, Hemberg M, Millard N, Fan J, Slowikowski K 等（PDF 首页作者列表被截断） | R 包手册，Version 2.0.5，构建日期 June 13, 2026 · 2026 | 未获取 |
 | （平台）Bioconductor | line1_bulk、line2_scrna | Bioconductor: open software development for computational biology and bioinformatics | Gentleman RC, Carey VJ, Bates DM, Bolstad B, Dettling M, Dudoit S, Ellis B, Gautier L, Ge Y, Gentry J, Hornik K, Hothorn T, Huber W, Iacus S, Irizarry R, Leisch F, Li C, Maechler M, Rossini AJ, Sawitzki G, Smith C, Smyth G, Tierney L, Yang JYH 等（PDF 首页作者列表在此处截断，其后作者未获取） | Genome Biology 5(10):R80 · 2004 | 10.1186/gb-2004-5-10-r80 |
 
 引用取自文献索引 `{{DATA_ROOT}}/reference_citations.json`（人读视图 `reference/生信分析可用参考文献/INDEX.md`）。只列本项目实际跑过的线用到的软件；未使用的文献不列入，避免「文献很多」被读成「已引用」。
@@ -565,44 +565,44 @@ Figure legend: Cell type annotation based on canonical marker expression.
 
 | task_id | 分析线 | 步骤 | 状态 | 检查点 | 耗时 | 内存峰值 | seed |
 |---|---|---|---|---|---|---|---|
-| is_l1_pr | line1_bulk | prep_matrix | completed | passed | 3 s | — | 20261013 |
-| is_l1_pr | line1_bulk | prep_matrix | completed | passed | 6 s | — | 20261013 |
-| is_l1_pr | line1_bulk | prep_matrix | completed | passed | 17 s | — | 20261013 |
-| is_l1_me | line1_bulk | merge_combat | completed | passed | 52 s | — | 20261013 |
-| is_l1_me | line1_bulk | merge_combat | completed | passed | 50 s | — | 20261013 |
-| is_l1_de | line1_bulk | deg_limma | completed | passed | 4 s | — | 20261013 |
-| is_l1_lr | line1_bulk | lrg_deg | completed | passed | 2 s | — | 20261013 |
-| is_l1_ml | line1_bulk | ml_hub_lrg | completed | passed | 26 s | — | 20261013 |
-| is_l2_in | line2_scrna | ingest_10x | completed | passed | 26 s | — | 20261013 |
-| is_l2_qc | line2_scrna | qc_cells | completed | passed | 22 s | — | 20261013 |
-| is_l2_an | line2_scrna | annotate_celltypes | completed | passed | 33 s | — | 20261013 |
-| is_l2_no | line2_scrna | normalize_integrate | completed | passed | 219 s | — | 20261013 |
-| is_l2_lr | line2_scrna | lr_score_iqr | failed | halted | 922 s | — | 20261013 |
-| is_l2_lr | line2_scrna | lr_score_final | completed | passed | 53 s | — | 20261013 |
-| is_l2_hd | line2_scrna | hdwgcna_hubs | failed | halted | 141 s | — | 20261013 |
-| is_l2_me | line2_scrna | metacells_l2 | completed | passed | 136 s | — | 20261013 |
-| is_l2_wg | line2_scrna | wgcna_l2 | completed | passed | 24 s | — | 20261013 |
-| is_l2_ca | line2_scrna | candidates_l2 | completed | passed | 2 s | — | 20261013 |
-| is_l2_mo | line2_scrna | monocle_cellchat | failed | halted | 25 s | — | 20261013 |
-| is_l2_su | line2_scrna | lhs_subset_export | completed | passed | 22 s | — | 20261013 |
-| is_l2_mo | line2_scrna | monocle2_lhs | completed | passed | 308 s | — | 20261013 |
-| is_l2_cc | line2_scrna | cellchat_l2 | failed | halted | 32 s | — | 20261013 |
-| is_l3_in | line3_spatial | ingest_visium | completed | passed | 37 s | — | 20261013 |
-| is_l3_qc | line3_spatial | spatial_qc_norm | completed | passed | 107 s | — | 20261013 |
-| is_l3_sc | line3_spatial | spatial_lr_score | completed | passed | 28 s | — | 20261013 |
-| is_l3_ta | line3_spatial | spatial_target_genes | completed | passed | 24 s | — | 20261013 |
-| is_l1_mk | line1_bulk | make_merged_candidates | completed | passed | 2 s | — | 20261013 |
-| is_l1_ml | line1_bulk | ml_hub_lrg | completed | passed | 26 s | — | 20261013 |
-| is_l1_en | line1_bulk | enrich_line1 | completed | passed | 226 s | — | 20261013 |
-| is_l1_ml | line1_bulk | ml_hub_lrg | completed | passed | 27 s | — | 20261013 |
-| is_l3_re | line3_spatial | spatial_regions | completed | passed | 16 s | — | 20261013 |
-| is_l2_co | line2_scrna | liana_comm | completed | passed | 67 s | — | 20261013 |
-| is_l1_im | line1_bulk | immune_ssgsea | completed | passed | 10 s | — | 20261013 |
-| is_l2_fi | line2_scrna | l2_figures | completed | passed | 10 s | — | 20261013 |
-| is_l1_lr | line1_bulk | l1_lrg_heatmap_spec | completed | passed | 6 s | — | 20261013 |
-| is_l3_fi | line3_spatial | l3_figures_spec | completed | passed | 18 s | — | 20261013 |
-| is_l1_ml | line1_bulk | l1_ml_figures_spec | completed | passed | 24 s | — | 20261013 |
-| is_l2_fi | line2_scrna | l2_figures_spec | completed | passed | 11 s | — | 20261013 |
+| is_l1_pr | line1_bulk | prep_matrix | completed | passed | 3 s | : | 20261013 |
+| is_l1_pr | line1_bulk | prep_matrix | completed | passed | 6 s | : | 20261013 |
+| is_l1_pr | line1_bulk | prep_matrix | completed | passed | 17 s | : | 20261013 |
+| is_l1_me | line1_bulk | merge_combat | completed | passed | 52 s | : | 20261013 |
+| is_l1_me | line1_bulk | merge_combat | completed | passed | 50 s | : | 20261013 |
+| is_l1_de | line1_bulk | deg_limma | completed | passed | 4 s | : | 20261013 |
+| is_l1_lr | line1_bulk | lrg_deg | completed | passed | 2 s | : | 20261013 |
+| is_l1_ml | line1_bulk | ml_hub_lrg | completed | passed | 26 s | : | 20261013 |
+| is_l2_in | line2_scrna | ingest_10x | completed | passed | 26 s | : | 20261013 |
+| is_l2_qc | line2_scrna | qc_cells | completed | passed | 22 s | : | 20261013 |
+| is_l2_an | line2_scrna | annotate_celltypes | completed | passed | 33 s | : | 20261013 |
+| is_l2_no | line2_scrna | normalize_integrate | completed | passed | 219 s | : | 20261013 |
+| is_l2_lr | line2_scrna | lr_score_iqr | failed | halted | 922 s | : | 20261013 |
+| is_l2_lr | line2_scrna | lr_score_final | completed | passed | 53 s | : | 20261013 |
+| is_l2_hd | line2_scrna | hdwgcna_hubs | failed | halted | 141 s | : | 20261013 |
+| is_l2_me | line2_scrna | metacells_l2 | completed | passed | 136 s | : | 20261013 |
+| is_l2_wg | line2_scrna | wgcna_l2 | completed | passed | 24 s | : | 20261013 |
+| is_l2_ca | line2_scrna | candidates_l2 | completed | passed | 2 s | : | 20261013 |
+| is_l2_mo | line2_scrna | monocle_cellchat | failed | halted | 25 s | : | 20261013 |
+| is_l2_su | line2_scrna | lhs_subset_export | completed | passed | 22 s | : | 20261013 |
+| is_l2_mo | line2_scrna | monocle2_lhs | completed | passed | 308 s | : | 20261013 |
+| is_l2_cc | line2_scrna | cellchat_l2 | failed | halted | 32 s | : | 20261013 |
+| is_l3_in | line3_spatial | ingest_visium | completed | passed | 37 s | : | 20261013 |
+| is_l3_qc | line3_spatial | spatial_qc_norm | completed | passed | 107 s | : | 20261013 |
+| is_l3_sc | line3_spatial | spatial_lr_score | completed | passed | 28 s | : | 20261013 |
+| is_l3_ta | line3_spatial | spatial_target_genes | completed | passed | 24 s | : | 20261013 |
+| is_l1_mk | line1_bulk | make_merged_candidates | completed | passed | 2 s | : | 20261013 |
+| is_l1_ml | line1_bulk | ml_hub_lrg | completed | passed | 26 s | : | 20261013 |
+| is_l1_en | line1_bulk | enrich_line1 | completed | passed | 226 s | : | 20261013 |
+| is_l1_ml | line1_bulk | ml_hub_lrg | completed | passed | 27 s | : | 20261013 |
+| is_l3_re | line3_spatial | spatial_regions | completed | passed | 16 s | : | 20261013 |
+| is_l2_co | line2_scrna | liana_comm | completed | passed | 67 s | : | 20261013 |
+| is_l1_im | line1_bulk | immune_ssgsea | completed | passed | 10 s | : | 20261013 |
+| is_l2_fi | line2_scrna | l2_figures | completed | passed | 10 s | : | 20261013 |
+| is_l1_lr | line1_bulk | l1_lrg_heatmap_spec | completed | passed | 6 s | : | 20261013 |
+| is_l3_fi | line3_spatial | l3_figures_spec | completed | passed | 18 s | : | 20261013 |
+| is_l1_ml | line1_bulk | l1_ml_figures_spec | completed | passed | 24 s | : | 20261013 |
+| is_l2_fi | line2_scrna | l2_figures_spec | completed | passed | 11 s | : | 20261013 |
 
 ### 五维环境自检
 

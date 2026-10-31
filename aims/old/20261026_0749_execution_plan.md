@@ -27,7 +27,7 @@
 
 ```text
 ====================================================================================================
-【第一阶段：基础落地 (Phase 1: Foundation Landing)】 —— 打牢契约、目录、算力防崩与容器环境底座
+【第一阶段：基础落地 (Phase 1: Foundation Landing)】 : 打牢契约、目录、算力防崩与容器环境底座
 ====================================================================================================
   [WP-1.1] 全局 SSOT 契约收口               [WP-1.2] 双平面物理目录落地
   (20条黑名单动态注入 / 14类格式 / 合法根) ──► (远端 /mnt/ssd + 本地 local_projects/ 脚手架)
@@ -39,7 +39,7 @@
   ==================== 【阶段门禁 Gate 1：底层底座 100% 绿灯，准入第二阶段】 ====================
                                                       ▼
 ====================================================================================================
-【第二阶段：相关配套 (Phase 2: Supporting Facilities)】 —— 搭建台账、守卫、注册表、Sync 通道与 CI
+【第二阶段：相关配套 (Phase 2: Supporting Facilities)】 : 搭建台账、守卫、注册表、Sync 通道与 CI
 ====================================================================================================
   [WP-2.1] JSONL 台账与索引器配套           [WP-2.2] 桥接守卫与上传硬配额配套
   (ledger_indexer / 存量迁移 / P-XX保留)   (去注释扫描 / --stage桥接 / 20GiB reservedBytes)
@@ -51,7 +51,7 @@
   ==================== 【阶段门禁 Gate 2：配套设施 100% 绿灯，准入第三阶段】 ====================
                                                       ▼
 ====================================================================================================
-【第三阶段：功能实现 (Phase 3: Feature Implementation)】 —— 业务流水线闭环、视图组装与商业交付
+【第三阶段：功能实现 (Phase 3: Feature Implementation)】 : 业务流水线闭环、视图组装与商业交付
 ====================================================================================================
   [WP-3.1] 三线 55 步生信闭环与内存削峰     [WP-3.2] 8080 门户与图级选择器功能实现
   (Line2 GSVA+GC削峰 / Line1 离线PPI+验证) ─► (选择器UI / 预览与真实图分区 / 12条 Playwright E2E)
@@ -66,7 +66,7 @@
 
 ## 二、 分阶段详细实施蓝图与排期（Execution Roadmap）
 
-### 第一阶段：基础落地（Phase 1: Foundation Landing）—— 预计周期：Day 1 ~ Day 5
+### 第一阶段：基础落地（Phase 1: Foundation Landing）: 预计周期：Day 1 ~ Day 5
 
 #### 1. 阶段目标
 在不改动上层业务流程的前提下，把单一事实源契约、本地/远端双平面目录、K40 容器长任务守护铁律、R 4.5.3 兼容性底数以及离线公共参考库彻底夯实。
@@ -75,7 +75,7 @@
 * **Batch 1.A（Day 1 ~ Day 2，本地编排面并行切片）**：
   * **切片 S1（执行 `WP-1.1`）**：改造 `portal/serve.mjs` 实现 `tumor_blacklist.js`（20 条正本）与 `data_formats.mjs`（14 类格式、`5GiB`）的 `__INJECT_SHARED_CONTRACTS__` 动态注入；复核 `server/ledger.js` 四类路径合法根单测。
   * **切片 S2（执行 `WP-1.2`）**：更新 `docs/directories.md` 增补 `local_projects/` 与 `con_hf/sync/` 条款；编写 `ops/init_project_scaffold.py` 脚手架并跑通 `tests/project_scaffold.test.js`。
-* **Batch 1.B（Day 3 ~ Day 5，K40 算力面串行执行——严守 P-29 禁并发 SSH 铁律）**：
+* **Batch 1.B（Day 3 ~ Day 5，K40 算力面串行执行:严守 P-29 禁并发 SSH 铁律）**：
   * **步骤 1（执行 `WP-1.3`）**：核验 `/etc/profile.d/bio_limits.sh` 与 `ops/run_throttled_task.sh`；固化 `setsid nohup`（P-26）、40 分钟/分钟级分档等待（P-27）及 $\ge 60$ 秒轮询 + 容器内禁 `find`/`ps`/`grep -r` 守卫（P-29）。
   * **步骤 2（执行 `WP-1.4` 之公共库部署）**：将离线 STRING v12.0 互作表（`9606`/`10090` min700）与 Line 1 独立验证基准集推送至 `/mnt/ssd/bio_data/public_references/{stringdb,benchmarks/line1}/` 并锁死只读权限。
   * **步骤 3（执行 `WP-1.4` 之 R 4.5.3 三层验证）**：在 K40 容器内对 `reference/05.可参考出图代码/` 下 17 个已采集图型逐一执行 L1（环境包与魔数）、L2（桥接与 17 位精度）、L3（端到端出图）验证，生成 `_meta/r453_verification_report.json` 并刷新 `_meta/bizard_index.csv`。
@@ -87,7 +87,7 @@
 
 ---
 
-### 第二阶段：相关配套（Phase 2: Supporting Facilities）—— 预计周期：Day 6 ~ Day 12
+### 第二阶段：相关配套（Phase 2: Supporting Facilities）: 预计周期：Day 6 ~ Day 12
 
 #### 1. 阶段目标
 基于第一阶段的目录与环境底数，完成存量项目与 JSONL 台账迁移、升级桥接与配额守卫、构建图级模板注册表与校验器、打通单向 Sync 传输骨架与远端双落点同步工具，并接入 CI 门禁。
@@ -107,22 +107,22 @@
 
 ---
 
-### 第三阶段：功能实现（Phase 3: Feature Implementation）—— 预计周期：Day 13 ~ Day 24
+### 第三阶段：功能实现（Phase 3: Feature Implementation）: 预计周期：Day 13 ~ Day 24
 
 #### 1. 阶段目标
 在底座与配套全部就位的前提下，完成三条生信分析线 55 个脚本 100% 真机闭环、上线 8080 门户图级选择器与 12 条 E2E 测试、实现 `figures/adapt/` 派生副本打包与单文件 HTML 交付报告、拔除 Sync 守护进程 seam 桩打通全链路，并完成真实非肿瘤客户数据商业交付与多节点高可用演练。
 
 #### 2. 详细执行步骤与批次编排
-* **Batch 3.A（Day 13 ~ Day 16，三线生信闭环与内存削峰——执行 `WP-3.1`）**：
+* **Batch 3.A（Day 13 ~ Day 16，三线生信闭环与内存削峰:执行 `WP-3.1`）**：
   * 修改 Line 2 `06_gsva_pathways.R`（切输入源为 `00_sc_harmony.h5ad` + Pseudo-bulk 聚合）与 `10_virtual_ko.R`（3 种子循环内显式 `rm(res); gc()`）；修改 Line 1 `04_enrich_ppi.R`（读离线 STRING）与 `09_external_val.R`（冻结系数验证外部集）。
   * 通过 `ops/sync_and_verify_remote.ps1` 同步至 K40，真机跑通 Line 1、Line 2、Line 3 全步骤 `exit 0`，产物回搬至 `local_projects/<项目>/{data,figures}/<line>/`。
-* **Batch 3.B（Day 17 ~ Day 20，门户选择器、工作台交付与 Sync 全链路贯通——执行 `WP-3.2` & `WP-3.3`）**：
+* **Batch 3.B（Day 17 ~ Day 20，门户选择器、工作台交付与 Sync 全链路贯通:执行 `WP-3.2` & `WP-3.3`）**：
   * **门户侧（`WP-3.2`）**：在 `portal/index.html` 上线图级模板选择器（`deps_status` 置灰、`preview_sha256` 校验、`adapt_vars` 表单）及「内置示例预览 vs 项目真实结果图」分区展示；编写并跑通 12 条 Playwright E2E 自动化测试。
   * **工作台与 Sync 侧（`WP-3.3`）**：实现 `figures/adapt/` 派生副本生成与 `01_Adapted_Code/` 打包对账；实现单文件出版级 HTML 项目交付报告渲染；拔除 `ops/sync_daemon.ps1` seam 桩，打通从门户提交到客户看到真实图件与 HTML 报告的端到端自动化闭环。
-* **Batch 3.C（Day 21 ~ Day 24，防伪签名、多节点高可用与真实数据商业签收——执行 `WP-3.4`）**：
+* **Batch 3.C（Day 21 ~ Day 24，防伪签名、多节点高可用与真实数据商业签收:执行 `WP-3.4`）**：
   * 升级交付包 `CHECKSUMS.sig` Ed25519 私钥签名与验签工具；在 `server/task.js` 实现主备 SSH 算力节点池 10 秒自动故障转移（Failover）；使用 1 套真实非肿瘤客户数据集完成端到端商业交付演练与全套台账归档。
 
-#### 3. 第三阶段终验判据（Final Acceptance Criteria —— 20 条全量核对表）
+#### 3. 第三阶段终验判据（Final Acceptance Criteria : 20 条全量核对表）
 
 | 验收域 | 序号 | 终验判据（100% 实测达标） |
 | :--- | :---: | :--- |
