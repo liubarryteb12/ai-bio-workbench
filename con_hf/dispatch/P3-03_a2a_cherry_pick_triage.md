@@ -81,13 +81,30 @@
 
 ### 第一批：幂等 runner 与远端长任务锁
 
-- 主体提交 `ce2d680`，伴生测试 `98a235b`（只取 runner 对应子集）。
-- 落盘目标：`ops/pi_idempotent_runner.sh` 单一真源。分支上另有
-  `01_mobile_compute/runtime/pi_idempotent_runner.sh` 与
-  `aims/A2A/pi_idempotent_runner.bash` 两份副本，master 已在 10-31 清理中删除
-  `01_mobile_compute/`，挑拣时必须只留 `ops/` 一份，三份并存即违单一真源。
-- 无设备可验：`bash -n`、LF 校验、`tests/test_pi_idempotent_runner.sh` 的纯逻辑段。
-- 必须等真机：锁的互斥与断链重连恢复语义。
+**本节结论已按实测改写。原写法（把 `ops/pi_idempotent_runner.sh` 整只挑进来）不可执行。**
+
+实测证据一：`git grep -l pi_idempotent_runner codex/a2a-v1` 命中 15 个路径，全是
+A2A 文档（`aims/A2A/*.md`）、A2A 编排器（`aims/A2A/a2a_master_harness.py`）、
+分支自己的 `AGENTS.md` 与台账，以及该脚本自身的三份副本。**没有任何生产调用方。**
+master 既没有 pi 运行时（那正是本核对判 skip 的 24 个提交），整只挑进来就是落一个没人调的孤儿脚本。
+
+实测证据二：master 真正在用的长任务包装器是 `ops/run_throttled_task.sh`，它的
+`RUNNING_DIR`（L102-117）只做**可观测性标记**，注释写得很明白：任务被 abort 或 kill 时
+没台账，只留标记，7 天后清理。它**不做互斥**，没有「同一步骤已在跑就拒绝」的判定。
+runner 侧靠 `wrapperId()` 随机后缀保证目录不撞，于是重复提交同一步骤会生成两个 wrapper
+并真的把重步骤跑两遍。handoff 第十二轮记的 scenic_tf 反复下发正踩这个。
+
+所以第一批该做成这样，与 D-11 幂等 runner 的本意一致但落在 master 真有调用方的地方：
+
+1. 给 `ops/run_throttled_task.sh` 加**按逻辑步骤键**（project + lineId + step，不是随机
+   task id）的幂等锁：已有存活锁则拒绝或复用并回明确退出码，锁与现有 `_running` 标记同生命周期回收。
+2. 测试放 `ops/tests/`（master 有该目录），走 Git Bash 实跑 bash 级用例，
+   仓库已有先例（`bridge_guard` 系列即在 Git Bash 下测 .sh）。
+   根 `tests/` 已被 10-31 清理删除，不得为塞分支测试把它重建回来。
+3. 分支那三份副本一份都不进：`ops/pi_idempotent_runner.sh`、
+   `01_mobile_compute/runtime/`（master 已删该目录）、`aims/A2A/pi_idempotent_runner.bash`。
+4. 无设备可验：锁的互斥、重复下发拒绝、过期锁回收（Git Bash 上可用假文件系统目录跑）。
+   必须等真机：断链重连后的锁恢复与远端真实并发行为。
 
 ### 第二批：本地容器容灾适配器（价值最高，K40 正离线）
 
