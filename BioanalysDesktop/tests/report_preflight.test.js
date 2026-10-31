@@ -15,10 +15,11 @@ import assert from 'node:assert/strict';
 import os from 'node:os';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createHash } from 'node:crypto';
+import { createHash, generateKeyPairSync } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { Readable, Writable } from 'node:stream';
 import childProcess from 'node:child_process';
+import { signDelivery, writeChecksums } from '../../ops/ed25519_tools.mjs';
 
 // report.js 在模块加载时读 BIO_LOCAL_DELIVERABLES，必须在 import 前设好
 const LOCAL_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 's33-preflight-root-'));
@@ -234,4 +235,78 @@ test('writeSha256Sidecars：为允许集合内的交付件写 sha256sum 可直�
 
 test('writeSha256Sidecars：目录不存在时回空数组而不是抛错', () => {
   assert.deepEqual(writeSha256Sidecars('PRJ_SIDECAR_ABSENT'), []);
+});
+
+// 08 号书第 6 项「先验后签」的负路径覆盖。
+// 只测 happy path 等于没测：08 号书第 2 项的教训就是「测试覆盖率为 0 的修复等于假修复」。
+// 这里要钉住的是「包被篡改时必须拒绝，并且绝不给坏文件补旁挂哈希（洗白）」。
+
+function signedDelivery(projectId) {
+  const dir = localDeliverDir(projectId);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'Analysis_Report.md'), '# 交付报告\n原始正文\n', 'utf8');
+  const { privateKey, publicKey } = generateKeyPairSync('ed25519');
+  const keys = {
+    privateKey: privateKey.export({ type: 'pkcs8', format: 'pem' }),
+    publicKey: publicKey.export({ type: 'spki', format: 'pem' }),
+  };
+  writeChecksums(dir);
+  signDelivery(dir, { privateKey: keys.privateKey });
+  // 公钥放包外：写进包里会被 writeChecksums 计入清单，改变被测语义
+  const keyDir = fs.mkdtempSync(path.join(os.tmpdir(), 's33-preflight-pub-'));
+  const publicKeyPath = path.join(keyDir, 'pub.pem');
+  fs.writeFileSync(publicKeyPath, keys.publicKey, 'utf8');
+  return { dir, publicKeyPath };
+}
+
+test('writeSha256Sidecars：签名完好时正常放行（证明下面的拦截不是恒失败）', () => {
+  const { dir, publicKeyPath } = signedDelivery('PRJ_SIDECAR_SIGNED_OK');
+  const saved = process.env.BIO_ED25519_PUBLIC_KEY_PATH;
+  process.env.BIO_ED25519_PUBLIC_KEY_PATH = publicKeyPath;
+  try {
+    const written = writeSha256Sidecars('PRJ_SIDECAR_SIGNED_OK');
+    assert.ok(written.some((item) => item.name === 'Analysis_Report.md'));
+  } finally {
+    if (saved === undefined) delete process.env.BIO_ED25519_PUBLIC_KEY_PATH;
+    else process.env.BIO_ED25519_PUBLIC_KEY_PATH = saved;
+  }
+  assert.ok(fs.existsSync(path.join(dir, 'Analysis_Report.md.sha256')));
+});
+
+test('writeSha256Sidecars：包体被篡改必须抛 REPORT_INTEGRITY_FAIL，且严禁补旁挂哈希', () => {
+  const { dir, publicKeyPath } = signedDelivery('PRJ_SIDECAR_TAMPERED');
+  // 篡改交付正文：签名与清单哈希都还是旧的，本地一验就该炸
+  fs.writeFileSync(path.join(dir, 'Analysis_Report.md'), '# 交付报告\n被注入的正文\n', 'utf8');
+  const saved = process.env.BIO_ED25519_PUBLIC_KEY_PATH;
+  process.env.BIO_ED25519_PUBLIC_KEY_PATH = publicKeyPath;
+  try {
+    assert.throws(
+      () => writeSha256Sidecars('PRJ_SIDECAR_TAMPERED'),
+      /REPORT_INTEGRITY_FAIL/,
+      '篡改包必须被验签拦下，不许走到重算哈希那一步',
+    );
+  } finally {
+    if (saved === undefined) delete process.env.BIO_ED25519_PUBLIC_KEY_PATH;
+    else process.env.BIO_ED25519_PUBLIC_KEY_PATH = saved;
+  }
+  // 关键反证：坏文件旁边不许出现「看起来合法」的 .sha256，否则等于给坏包洗白
+  assert.equal(fs.existsSync(path.join(dir, 'Analysis_Report.md.sha256')), false);
+});
+
+test('writeSha256Sidecars：签名对不上公钥（换包冒充）同样拦截', () => {
+  const { dir } = signedDelivery('PRJ_SIDECAR_WRONG_KEY');
+  // 用另一把密钥的公钥去验同一份签名：signature_mismatch
+  const { publicKey } = generateKeyPairSync('ed25519');
+  const keyDir = fs.mkdtempSync(path.join(os.tmpdir(), 's33-preflight-pub-'));
+  const publicKeyPath = path.join(keyDir, 'pub.pem');
+  fs.writeFileSync(publicKeyPath, publicKey.export({ type: 'spki', format: 'pem' }), 'utf8');
+  const saved = process.env.BIO_ED25519_PUBLIC_KEY_PATH;
+  process.env.BIO_ED25519_PUBLIC_KEY_PATH = publicKeyPath;
+  try {
+    assert.throws(() => writeSha256Sidecars('PRJ_SIDECAR_WRONG_KEY'), /REPORT_INTEGRITY_FAIL/);
+  } finally {
+    if (saved === undefined) delete process.env.BIO_ED25519_PUBLIC_KEY_PATH;
+    else process.env.BIO_ED25519_PUBLIC_KEY_PATH = saved;
+  }
+  assert.equal(fs.existsSync(path.join(dir, 'Analysis_Report.md.sha256')), false);
 });
