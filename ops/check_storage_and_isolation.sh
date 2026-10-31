@@ -2,7 +2,9 @@
 # check_storage_and_isolation.sh：容器侧存储水位门禁 + FUSE 红线 + 跨线隔离静态扫描
 # 用法: bash /mnt/ssd/bio_data/ops/check_storage_and_isolation.sh <line_id> <script_path>
 # 与本地 02_check_isolation.ps1 形成双保险：本地在提交前扫，容器在执行前再扫
-set -e
+# pipefail 是硬要求：df 失败时管道尾的 tr 仍回 0，只看 $? 的 set -e 不会触发，
+# 于是空测量往下走，被当成健康水位放过（P-15 假绿灯，真机 2026-11-01 复现）。
+set -eo pipefail
 
 LINE_ID="$1"
 SCRIPT_PATH="${2:-}"
@@ -29,6 +31,11 @@ fi
 
 # 3. ext4/f2fs 存储水位检查 (<20% 阻断防 F2FS 阻塞式 GC)
 USED_PERCENT=$(df -P "$TARGET_DIR" | awk 'NR==2 {print $5}' | tr -d '%')
+# 与第 2 维同口径：量不出来就是没过。空串进 $(( )) 会被当成 0，算出 100% 空闲的假绿灯。
+if [[ ! "$USED_PERCENT" =~ ^[0-9]+$ ]]; then
+    echo "[FATAL] 无法读取 $TARGET_DIR 存储使用率（df -P 无有效输出），按未通过处理"
+    exit 1
+fi
 FREE_PERCENT=$((100 - USED_PERCENT))
 if [ "$FREE_PERCENT" -lt "$MIN_FREE_PERCENT" ]; then
     echo "[ERROR] 原生存储剩余空间低于安全阈值：剩余 ${FREE_PERCENT}%, 要求 >= ${MIN_FREE_PERCENT}%."
