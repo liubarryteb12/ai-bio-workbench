@@ -21,6 +21,9 @@ const HERE = fileURLToPath(import.meta.url);
 const TESTS_DIR = path.dirname(HERE);
 const SERVER = path.resolve(TESTS_DIR, '..', 'server', 'index.js');
 const PROJECT = path.resolve(TESTS_DIR, '..', 'server', 'project.js');
+// P3-01 slice6：建项路由搬入 routes/projects.routes.js，守卫扫「index.js + 归属模块」并集，
+// 断言正则与字段字面量一字未改，只是把被扫文件集合加宽。
+const PROJECTS_ROUTES = path.resolve(TESTS_DIR, '..', 'server', 'routes', 'projects.routes.js');
 
 const L2_MIN = [
   'l2_ingest_counts', 'l2_qc_cells', 'l2_qc_normalize',
@@ -56,7 +59,7 @@ test('buildPipelineDag：未知 seriesId 必须抛错（不许静默产出空 da
 });
 
 test('静态守卫：建项路由必须透传 seriesId / modIds / koGene', async () => {
-  const src = await readFile(SERVER, 'utf8');
+  const src = [await readFile(SERVER, 'utf8'), await readFile(PROJECTS_ROUTES, 'utf8')].join('\n');
   for (const field of ['seriesId: requested.seriesId', 'modIds: requested.modIds', 'koGene: requested.koGene']) {
     assert.ok(src.includes(field), `建项路由缺少透传: ${field}`);
   }

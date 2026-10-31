@@ -91,7 +91,12 @@ function networkTest(name, fn) {
 }
 
 test('静态路由顺序：resolve 精确匹配必须先于 workflows 前缀匹配', async () => {
-  const source = await readFile(new URL('../server/index.js', import.meta.url), 'utf8');
+  // workflows 路由搬进 routes/projects.routes.js 后，守卫扫「入口 + 归属模块」并集；
+  // 相对先后关系在并集里仍成立（两段分支同在一个文件里，顺序未变）。
+  const source = [
+    await readFile(new URL('../server/index.js', import.meta.url), 'utf8'),
+    await readFile(new URL('../server/routes/projects.routes.js', import.meta.url), 'utf8'),
+  ].join('\n');
   const exactResolveAt = source.search(
     /url\.pathname\s*===\s*['"]\/api\/workflows\/resolve['"]/,
   );
