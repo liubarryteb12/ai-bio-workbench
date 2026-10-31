@@ -54,3 +54,13 @@ export const DATA_TYPE_OPTIONS: Array<{ id: string; label: string; line: string 
   { id: 'scrna', label: '单细胞转录组（scRNA-seq）', line: 'line2_scrna' },
   { id: 'spatial', label: '空间转录组（Visium 等）', line: 'line3_spatial' },
 ];
+
+// R13：键改为服务端现行两档 id（server/project.js PLOT_LAYOUT_TEMPLATES 同源）；
+// 收敛前旧 id 保留兼容映射（project.js LEGACY_TEMPLATE_IDS 同源），旧项目照新档显示
+export const LAYOUT_TEMPLATE_LABEL: Record<string, string> = {
+  template_4x3: '4:3 标准型（图例右侧 · 单栏插图）',
+  template_16x9: '16:9 宽幅型（图例底部 · 横向宽幅）',
+  template_1_nature_side: '4:3 标准型（图例右侧 · 单栏插图）',
+  template_2_cell_wide: '16:9 宽幅型（图例底部 · 横向宽幅）',
+  template_3_clinical_note: '4:3 标准型（图例右侧 · 单栏插图）',
+};
