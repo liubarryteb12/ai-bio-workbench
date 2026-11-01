@@ -30,9 +30,12 @@
 >   bundle 227.38 kB 与清理前完全一致，DOM 指纹无一条 `N 变 0`。顺带修好一处守卫退化：
 >   P17 只扫 `.tsx`，删掉死 import 后 `SelfCheckSubItem` 失配，扫描面放宽到 `.tsx + .ts`
 >   （只放宽，正则未动），18/18 绿。
-> ⑥ **基线**：本轮 K40 离线（`ssh: Could not resolve hostname k40-ubuntu`），adb 无 `3a3e1f52`。
->   全量 `npm test` = **tests 1013 / pass 952 / fail 5 / skipped 56**，5 条红全部是设备依赖，
->   与第 ④ 条改动无关。K40 恢复后需复跑确认这 5 条转绿。
+> ⑥ **基线（最终设备环境）**：沙箱内先出现 `tests 1013 / pass 952 / fail 5 / skipped 56`，
+>   失败原因是 `k40-ubuntu` DNS 不可解析与 `adb` 无法创建 `\.android`，均属环境假红。
+>   沙箱外真实设备复跑为 **tests 1013 / pass 1012 / fail 0 / skipped 1**，`duration_ms 93146.3019`。
+>   唯一 skip 是 `all ready templates have real project inputs with expected extensions`，原因是远端 SSD
+>   真实项目数据的本地副本已于 2026-10-31 裁剪。设备侧确认 `ssh k40-ubuntu` 返回 `CONTAINER_OK` 与
+>   `aarch64`，`adb devices -l` 见 `3a3e1f52`、`69b31964` 两台 device。
 > ⑦ **终验补强**：Spec 双轴复核发现两处覆盖边界。`writeSha256Sidecars` 原先只在 tar 在场时
 >   强制验签，只有 md/html 的文本交付仍可绕过；现改为任何允许集合内的交付件在场都要求
 >   `CHECKSUMS.sha256 + CHECKSUMS.sig`，缺一即 `REPORT_INTEGRITY_FAIL`。临时口令清理失败
