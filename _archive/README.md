@@ -11,6 +11,41 @@
 | `_archive/docs/geo_mining_sop_v1.md` | `docs/geo_mining_sop_v1.md` | 2026-10-21 | 已被 `docs/geo_mining_sop_v2.md` 取代（v1 自带取代横幅，:3-5 明写"不要基于本文件修订"） | `docs/geo_mining_sop_v2.md:3` 版本记录已改指本路径 |
 | `_archive/ops/01_fix_svlogger.ps1` | `ops/01_fix_svlogger.ps1` | 2026-10-21 | 一次性修复器（坑 #88 的 log 子服务 crash-loop），2026-10-20 reboot 后已执行完成并可回滚；不属日常链路 | `ops/README.md` 清单与"日常用法"已改指本路径 |
 
+### 2026-11-01 归档（用户裁定 3：旧计划、旧审计、根目录交付快照归档）
+
+只搬入链引用为零的 4 件。逐件 `git grep -l -F -- <名> -- ':(exclude)_archive'` 实扫，
+另 16 件候选被活文档按路径引用（详见下表），搬走会让引用指向空路径，故留在原位，
+待用户裁定是「改引用后再搬」还是「就地保留」。
+
+| 归档路径 | 理由 |
+|---|---|
+| `_archive/con_hf/2026-10-19_IS_lactylation_plan.md` | 课题计划已完结，产物在项目报告里；全仓零入链引用 |
+| `_archive/con_hf/2026-10-20_IS_全量流水线设计.md` | 设计已被三线母版与 P3 正本取代；全仓零入链引用 |
+| `_archive/con_hf/2026-10-25_master_plan_structure_sync_figures.md` | 计划已执行完并移交后续正本；全仓零入链引用 |
+| `_archive/con_hf/project_report_2026-10-21.md` | 阶段报告，已由 handoff.md 逐轮取代；全仓零入链引用 |
+
+候选但**未搬**的 16 件，及引用它们的活文档（引用数最多的两件）：
+
+数字是「引用该名的文件数」（`git grep -l -F`，排除 `_archive/`）：
+
+| 文件 | 入链文件数 | 主要引用方 |
+|---|---:|---|
+| `con_hf/2026-10-19_figure_polish_plan.md` | 22 | `docs/figure_spec.md:444`、`con_hf/figure_manual_review.md:3`、`con_hf/dispatch/` 18 份 |
+| `项目交付报告.html`（仓库根） | 11 | `con_hf/SPEC_DECISIONS.md`、`docs/delivery_supervisor_prompt.md`、`aims/old/` 4 份 |
+| `con_hf/architecture_review_2026-10-20.md` | 8 | `con_hf/SPEC_DECISIONS.md:18,28`、`ops/README.md:87`、`con_hf/dispatch/` 4 份 |
+
+余下 13 件各 1 到 4 处引用。
+
+其余 14 件（各 1 到 4 处引用）：`2026-10-13_plan_goal全量推进`（`ops/05_push_testdata.ps1:41` 是执行层注释）、
+`2026-10-19_figure_spec_audit_report`、`2026-10-19_wgcna_audit_report`（`cn_debug/2026-10-19_verification_wgcna_v1_v10.mjs:6` 是执行层依据）、
+`2026-10-20_调研_三线定制数据集与实验设计`、`2026-10-20_IS_项目解读报告`、`2026-10-20_reboot_test`（`ops/README.md:21`）、
+`2026-10-23_问题模块清单与处置建议`、`2026-10-23_mod化改造执行计划`、`2026-10-24_topic_sieve_landing_plan`（`docs/topic_survey_sop.md:6`）、
+`2026-10-25_project_structure_and_sync_plan`、`2026-10-25_shell_discipline_prompt`（`docs/coding-standards.md:54`）、
+`architecture_review_2026-10-20`（`con_hf/SPEC_DECISIONS.md:18,28`、`ops/README.md:87`）、`scratch-t2-tickets`、
+`项目情况汇总2026-10-31.md`（`aims/bio/07_master_6abbd50_a2a_20261031.md:4,11,146` 把它当对齐基线）。
+
+搬这 16 件的前置条件：先改上述引用路径（含 3 处执行层与 docs 正文引用），再 `git mv`。
+
 取回示例：
 
 ```
