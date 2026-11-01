@@ -156,6 +156,7 @@ BioanalysDesktop/.tmp/
 # ===== 临时与调试残留 =====
 *.log
 *.tmp
+.tmp*/
 .Temp/
 
 # ===== 系统文件 =====
@@ -180,4 +181,4 @@ outputs/default/
 .codex-a2a/
 
 # 工作台 Fail-Closed 自动生成的一次性凭证（D-29）
-BioanalysDesktop/.auth_runtime.json
+*.auth_runtime.json
