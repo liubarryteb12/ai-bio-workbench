@@ -30,10 +30,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import childProcess from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import { LINES } from './domain.js';
+import { runSync } from './proc.js';
 
 /** 容器内存配额（aims §六.4：7.5GB 软熔断）；cgroup 未给出数值上限时的兜底 */
 export const MEM_QUOTA_BYTES = 7.5 * 1024 * 1024 * 1024;
@@ -396,8 +396,9 @@ export function evaluateSha256Parity({
 /**
  * 第 4 维新增检查的入口：算本地哈希 + ssh 取远端哈希 + 判定。
  * 返回结构与 /api/selfcheck 的 checks 元素一致（id / label / status / value / detail）。
- * 注意：ssh 走默认导入的 childProcess.spawnSync（SPEC_DECISIONS D-08），
- * 测试才能用 mock.method 拦住，不会真连 K40。
+ * 注意：ssh 走 proc.js 的 runSync（SPEC_DECISIONS D-08 的单接缝口径）。测试既可用
+ * mock.method(childProcess,'spawnSync') 在接缝底层拦，也可用 BIO_COMPUTE_ADAPTER=mock
+ * 在接缝顶层短路，两种都不真连 K40。
  */
 /**
  * 四档严重度排序：fail > warn > unknown > pass（D-07 口径）。
@@ -466,12 +467,11 @@ export function runSha256ParityCheck(options = {}) {
   let exitCode = 1;
   let stdout = '';
   try {
-    const result = childProcess.spawnSync(
-      'ssh',
-      ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', options.sshTarget ?? SHA256_SSH_TARGET, command],
-      { encoding: 'utf8', timeout: options.timeoutMs ?? 30000 },
+    const result = runSync(
+      ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', options.sshTarget ?? SHA256_SSH_TARGET, command],
+      { timeoutMs: options.timeoutMs ?? 30000 },
     );
-    exitCode = typeof result?.status === 'number' ? result.status : 1;
+    exitCode = typeof result?.code === 'number' ? result.code : 1;
     stdout = String(result?.stdout ?? '');
   } catch {
     exitCode = 1;

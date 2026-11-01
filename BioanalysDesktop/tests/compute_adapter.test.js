@@ -4,6 +4,36 @@ import childProcess from 'node:child_process';
 
 import { runSync, runSshRaw, runSshStrict, runStream } from '../server/proc.js';
 import { probeNodeHealth, runBridgeCheckSync } from '../server/task.js';
+import { runSha256ParityCheck, collectLocalSha256, CORE_SYNC_FILES, SHA256_SENTINEL } from '../server/selfcheck.js';
+import { probeRemoteState, RECONCILE_PROBE_SENTINEL } from '../server/reconcile.js';
+
+/** 五个 MOCK_* 环境变量的统一设定，供每条接缝用例复用 */
+function useMockCompute(t, { stdout = '', stderr = '', exitCode = '0' } = {}) {
+  const keys = [
+    'BIO_COMPUTE_ADAPTER',
+    'BIO_ALLOW_MOCK_COMPUTE',
+    'BIO_COMPUTE_MOCK_STDOUT',
+    'BIO_COMPUTE_MOCK_STDERR',
+    'BIO_COMPUTE_MOCK_EXIT_CODE',
+  ];
+  const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  restoreEnv(t, previous, keys);
+  process.env.BIO_COMPUTE_ADAPTER = 'mock';
+  process.env.BIO_ALLOW_MOCK_COMPUTE = '1';
+  process.env.BIO_COMPUTE_MOCK_STDOUT = stdout;
+  process.env.BIO_COMPUTE_MOCK_STDERR = stderr;
+  process.env.BIO_COMPUTE_MOCK_EXIT_CODE = exitCode;
+}
+
+/** 起一个会抛错的 spawnSync 垫片，返回调用次数；接缝短路的用例靠它证明没起真进程 */
+function forbidSpawnSync(t) {
+  const box = { count: 0 };
+  t.mock.method(childProcess, 'spawnSync', () => {
+    box.count += 1;
+    throw new Error('mock 模式不得启动真实 ssh');
+  });
+  return box;
+}
 
 function restoreEnv(t, previous, keys) {
   t.after(() => {
@@ -201,6 +231,57 @@ test('task.js 桥接校验走 proc 接缝：mock 模式返回 mock 输出与退�
   assert.equal(result.code, 0);
   assert.match(result.stdout, /\[BRIDGE OK\]/);
   assert.equal(typeof result.durationMs, 'number');
+});
+
+test('selfcheck.js SHA256 比对走 proc 接缝：mock 模式不启动真实 ssh', (t) => {
+  const local = collectLocalSha256(CORE_SYNC_FILES);
+  const stdout = CORE_SYNC_FILES.map((item) => local.get(item.repo) + '  ' + item.remote).join('\n')
+    + '\n' + SHA256_SENTINEL + '\n';
+  useMockCompute(t, { stdout });
+  const spawned = forbidSpawnSync(t);
+
+  const light = runSha256ParityCheck();
+
+  assert.equal(spawned.count, 0, 'selfcheck 必须在进程接缝前短路');
+  assert.equal(light.id, 'isolation_sha256');
+  assert.equal(light.status, 'pass');
+  assert.equal(light.value, CORE_SYNC_FILES.length + '/' + CORE_SYNC_FILES.length + ' 一致');
+});
+
+test('reconcile.js 远端探针走 proc 接缝：mock 模式不启动真实 ssh', (t) => {
+  useMockCompute(t, { stdout: 'RUNNING\nPRESENT\n' + RECONCILE_PROBE_SENTINEL + '\n' });
+  const spawned = forbidSpawnSync(t);
+
+  const probe = probeRemoteState('task_probe_1', [
+    '/mnt/ssd/bio_data/projects/p/line1_bulk/results/x.tsv',
+  ]);
+
+  assert.equal(spawned.count, 0, 'reconcile 必须在进程接缝前短路');
+  assert.equal(probe.state, 'ok');
+  assert.deepEqual(probe.runningMarkers, ['task_probe_1.json']);
+  assert.deepEqual(probe.expectedOutputs, [
+    { path: '/mnt/ssd/bio_data/projects/p/line1_bulk/results/x.tsv', exists: true },
+  ]);
+});
+
+test('runSync 透传 input 到子进程 stdin，未传时不出现该键（reconcile 的 base64 载荷依赖它）', (t) => {
+  const keys = ['BIO_COMPUTE_ADAPTER', 'BIO_ALLOW_MOCK_COMPUTE'];
+  const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  restoreEnv(t, previous, keys);
+  delete process.env.BIO_COMPUTE_ADAPTER;
+  delete process.env.BIO_ALLOW_MOCK_COMPUTE;
+
+  const options = [];
+  t.mock.method(childProcess, 'spawnSync', (_program, _args, opts) => {
+    options.push(opts);
+    return { status: 0, stdout: 'OK\n', stderr: '' };
+  });
+
+  runSync(['ssh', 'k40-ubuntu', 'base64 -d'], { input: 'PAYLOAD_BASE64' });
+  assert.equal(options[0].input, 'PAYLOAD_BASE64');
+
+  runSync(['ssh', 'k40-ubuntu', 'true']);
+  assert.equal('input' in options[1], false, '未传 input 时不得把 stdin 语义改掉');
 });
 
 test('默认 BIO_COMPUTE_ADAPTER=ssh 保持既有真实子进程路径', (t) => {

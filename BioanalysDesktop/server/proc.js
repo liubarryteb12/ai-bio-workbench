@@ -94,8 +94,10 @@ export function assertAllowedProgram(argv) {
  *
  * error 字段是启动失败的原文（如 ssh 不存在时的 ENOENT）。任务层要把它当探活原因回传，
  * 只回 -1 会让"进程起不来"和"远端退出码 -1"在台账里长成同一个样子。
+ * input 透传给子进程 stdin：reconcile 的探针把产物路径清单 base64 后走 stdin，
+ * 不进 ssh argv（路径增多时 argv 会被截断，见 reconcile.js 头部注释）。
  * @param {string[]} argv
- * @param {{cwd?: string, timeoutMs?: number}} [options]
+ * @param {{cwd?: string, timeoutMs?: number, input?: string}} [options]
  * @returns {{code: number, stdout: string, stderr: string, error: string|null}}
  */
 export function runSync(argv, options = {}) {
@@ -108,6 +110,7 @@ export function runSync(argv, options = {}) {
     encoding: 'utf8',
     timeout: options.timeoutMs ?? 30000,
     windowsHide: true,
+    ...(options.input === undefined ? {} : { input: options.input }),
   });
   return {
     code: result.status ?? -1,

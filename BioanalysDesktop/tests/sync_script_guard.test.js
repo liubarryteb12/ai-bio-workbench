@@ -112,7 +112,7 @@ test('P-07 其它 server 模块也不许具名导入 child_process', () => {
 });
 
 /** P3-03 已迁入 proc.js 接缝的模块。每迁一个切片就往这里加一行。 */
-const SEAM_MIGRATED_MODULES = ['task.js'];
+const SEAM_MIGRATED_MODULES = ['task.js', 'selfcheck.js', 'reconcile.js'];
 
 test('P3-03 已迁移模块不得绕过 proc 接缝直接起子进程', () => {
   for (const name of SEAM_MIGRATED_MODULES) {

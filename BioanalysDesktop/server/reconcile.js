@@ -6,10 +6,7 @@
  * 探针不可用一律 unknown，保持原判，绝不把“探不到”升级成“已失败”。
  */
 
-// default 导入 + 属性调用是既有进程接缝，node:test 可以拦 spawnSync。
-import childProcess from 'node:child_process';
-
-import { assertAllowedProgram } from './proc.js';
+import { runSync } from './proc.js';
 import { SYSTEM_LOGS } from './domain.js';
 
 /** 远端标记目录：wrapper 已固定写入 system_logs/_running/<task_id>.json */
@@ -166,24 +163,18 @@ export function probeRemoteState(taskId, expectedOutputs, options = {}) {
     + `printf '${RECONCILE_PROBE_SENTINEL}\\n'`;
   const payload = Buffer.from(paths.map((path) => `${path}\0`).join(''), 'utf8').toString('base64');
 
-  assertAllowedProgram(['ssh']);
   let result;
   try {
-    result = childProcess.spawnSync(
-      'ssh',
-      ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', 'k40-ubuntu', command],
-      {
-        encoding: 'utf8',
-        input: payload,
-        timeout: options.timeoutMs ?? PROBE_TIMEOUT_MS,
-        windowsHide: true,
-      }
+    // 单接缝：白名单与 BIO_COMPUTE_ADAPTER 都在 proc.js 收口；payload 走 stdin，不进 ssh argv
+    result = runSync(
+      ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', 'k40-ubuntu', command],
+      { input: payload, timeoutMs: options.timeoutMs ?? PROBE_TIMEOUT_MS }
     );
   } catch (cause) {
     return fail(`探针启动失败: ${cause.message}`);
   }
 
-  const exitCode = result.status ?? -1;
+  const exitCode = result.code;
   if (exitCode !== 0) {
     const detail = String(result.stderr ?? '').trim().slice(-300);
     return fail(`探针退出码异常 exit=${exitCode}${detail ? `; ${detail}` : ''}`, exitCode);
