@@ -29,6 +29,10 @@ const ENTRY_SOURCE = [
   "import { OnboardingPortal, CustomerInputConsole } from '../../src/views/OnboardingView';",
   "import { PreFlightDashboard } from '../../src/views/SelfCheckAdminView';",
   "import { ResultPreviewStudio, FilesPanel } from '../../src/views/ResultStudioView';",
+  // P3-02 收尾：FigureGalleryView 与 LedgerAuditView 此前的渲染只经宿主视图的
+  // subTab 间接到达（SSR 首轮进不去 task/ledger 分支），这里直接渲染它们的导出组件。
+  "import { FigureAdaptCard, FiguresPanel } from '../../src/views/FigureGalleryView';",
+  "import { TaskPanel, LedgerPanel } from '../../src/views/LedgerAuditView';",
   '',
   'export function renderAll() {',
   '  const noop = () => Promise.resolve();',
@@ -39,6 +43,10 @@ const ENTRY_SOURCE = [
   "    ['PreFlightDashboard', createElement(PreFlightDashboard)],",
   "    ['ResultPreviewStudio', createElement(ResultPreviewStudio, { project: 'proj_smoke' })],",
   "    ['FilesPanel', createElement(FilesPanel, { project: 'proj_smoke' })],",
+  "    ['FigureAdaptCard', createElement(FigureAdaptCard, { project: 'proj_smoke' })],",
+  "    ['FiguresPanel', createElement(FiguresPanel, { project: 'proj_smoke' })],",
+  "    ['TaskPanel', createElement(TaskPanel, { project: 'proj_smoke' })],",
+  "    ['LedgerPanel', createElement(LedgerPanel)],",
   '  ];',
   '  return cases.map(([name, el]) => ({ name, html: renderToStaticMarkup(el) }));',
   '}',
@@ -81,7 +89,7 @@ test('视图打包与首轮静态渲染不抛错', async () => {
   const rows = await ensureBundle();
   assert.equal(buildError, null, `渲染冒烟打包/渲染失败：${buildError?.message}`);
   assert.ok(Array.isArray(rows), 'renderAll 必须返回数组');
-  assert.equal(rows.length, 6, `应覆盖 6 个视图，实际 ${rows.length}`);
+  assert.equal(rows.length, 10, `应覆盖 10 个渲染 case，实际 ${rows.length}`);
   for (const row of rows) {
     assert.ok(row.html.length > 200, `${row.name} 渲染产物过短（${row.html.length} 字符），疑似渲染成空壳`);
   }
@@ -116,6 +124,11 @@ test('各视图渲染出各自的真实骨架类名，防止搬成空壳或搬�
     PreFlightDashboard: ['view-container', 'card', 'card-head'],
     ResultPreviewStudio: ['view-container', 'card', 'badge badge-unknown'],
     FilesPanel: ['card', 'chip-row', 'chip chip-active'],
+    // 期望值取自 2026-11-01 实跑静态渲染（esbuild 打 bundle 后 renderToStaticMarkup），非猜写
+    FigureAdaptCard: ['card', 'card-head', 'form-grid-2', 'form-select', 'chip-row', 'btn btn-primary'],
+    FiguresPanel: ['card', 'card-title', 'chip-row', 'chip chip-active', 'hint'],
+    TaskPanel: ['card', 'btn btn-primary', 'chip-row', 'form-grid-2', 'form-input', 'subtle'],
+    LedgerPanel: ['card', 'card-head', 'card-title', 'btn', 'hint'],
   };
   for (const [name, markers] of Object.entries(expect)) {
     const row = rows.find((r) => r.name === name);
@@ -125,11 +138,11 @@ test('各视图渲染出各自的真实骨架类名，防止搬成空壳或搬�
   }
 });
 
-test('六个视图各自都渲染出实际结构，不是空壳', async () => {
+test('十个渲染 case 各自都渲染出实际结构，不是空壳', async () => {
   const rows = await ensureBundle();
   const names = rows.map((r) => r.name);
   for (const want of ['App', 'OnboardingPortal', 'CustomerInputConsole', 'PreFlightDashboard',
-    'ResultPreviewStudio', 'FilesPanel']) {
+    'ResultPreviewStudio', 'FilesPanel', 'FigureAdaptCard', 'FiguresPanel', 'TaskPanel', 'LedgerPanel']) {
     assert.ok(names.includes(want), `未渲染 ${want}`);
   }
   for (const row of rows) {
