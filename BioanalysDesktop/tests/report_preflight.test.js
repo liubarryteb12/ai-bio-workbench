@@ -15,7 +15,7 @@ import assert from 'node:assert/strict';
 import os from 'node:os';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createHash, generateKeyPairSync } from 'node:crypto';
+import { createHash, generateKeyPairSync, sign } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { Readable, Writable } from 'node:stream';
 import childProcess from 'node:child_process';
@@ -362,4 +362,36 @@ test('writeSha256Sidecars：交付包验签失败 → 删除污染 tar 且拒绝
   }
   assert.equal(fs.existsSync(tarPath), false, '污染包必须删除，不能留在本地等下一次补哈希');
   assert.equal(fs.existsSync(path.join(dir, 'Analysis_Report.md.sha256')), false);
+});
+
+// 真机布局回归：引擎的 CHECKSUMS.sha256 记的是包内嵌套相对路径
+// （03_Interpretation_Report/Analysis_Report.md、01_Adapted_Scripts/run.sh 等），
+// 而 pullDeliverables 按 basename 平铺回搬、只拉允许集合。若按整包逐行校验，
+// 正常包必然因缺 01_Adapted_Scripts/run.sh 被判成坏包，交付链路整体不可用。
+test('writeSha256Sidecars：嵌套清单里未回搬的包内文件不误杀，已回搬文件仍逐一对哈希', () => {
+  const projectId = 'PRJ_SIDECAR_NESTED';
+  const dir = localDeliverDir(projectId);
+  fs.mkdirSync(dir, { recursive: true });
+  const md = Buffer.from('# 交付报告\n嵌套布局\n', 'utf8');
+  fs.writeFileSync(path.join(dir, 'Analysis_Report.md'), md);
+  fs.writeFileSync(path.join(dir, `${projectId}_Client_Delivery.tar.gz`), Buffer.alloc(64, 0x74));
+  const mdDigest = createHash('sha256').update(md).digest('hex');
+  const manifest = `${mdDigest}  03_Interpretation_Report/Analysis_Report.md\n`
+    + `${'a'.repeat(64)}  01_Adapted_Scripts/run.sh\n`;
+  fs.writeFileSync(path.join(dir, 'CHECKSUMS.sha256'), manifest, 'utf8');
+  const { privateKey, publicKey } = generateKeyPairSync('ed25519');
+  fs.writeFileSync(path.join(dir, 'CHECKSUMS.sig'), sign(null, Buffer.from(manifest), privateKey));
+  const keyDir = fs.mkdtempSync(path.join(os.tmpdir(), 's33-preflight-pub-'));
+  const publicKeyPath = path.join(keyDir, 'pub.pem');
+  fs.writeFileSync(publicKeyPath, publicKey.export({ type: 'spki', format: 'pem' }), 'utf8');
+  const saved = process.env.BIO_ED25519_PUBLIC_KEY_PATH;
+  process.env.BIO_ED25519_PUBLIC_KEY_PATH = publicKeyPath;
+  try {
+    const written = writeSha256Sidecars(projectId);
+    assert.ok(written.some((item) => item.name === 'Analysis_Report.md'), '正常包必须放行');
+    assert.equal(fs.existsSync(path.join(dir, 'Analysis_Report.md.sha256')), true);
+  } finally {
+    if (saved === undefined) delete process.env.BIO_ED25519_PUBLIC_KEY_PATH;
+    else process.env.BIO_ED25519_PUBLIC_KEY_PATH = saved;
+  }
 });

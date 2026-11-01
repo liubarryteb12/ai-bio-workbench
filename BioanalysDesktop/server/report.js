@@ -20,13 +20,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createHash } from 'node:crypto';
+import { createHash, verify as cryptoVerify } from 'node:crypto';
 import childProcess from 'node:child_process';
 
 import { HOSTS, SSD_ROOT, PROJECTS_ROOT, SYSTEM_LOGS, LINES, sanitizeProjectId } from './domain.js';
 import { assertAllowedProgram } from './proc.js';
 import { stripSshNoise } from './run.js';
-import { verifyDelivery } from '../../ops/ed25519_tools.mjs';
+import { readPublicKey } from '../../ops/ed25519_tools.mjs';
 
 const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
@@ -124,6 +124,48 @@ function trustedPublicKeyPath() {
   if (process.env.BIO_ED25519_PUBLIC_KEY_PATH) return process.env.BIO_ED25519_PUBLIC_KEY_PATH;
   const localAnchor = path.join(REPO_ROOT, 'ops', 'secrets', 'ed25519_public.pem');
   return fs.existsSync(localAnchor) ? localAnchor : undefined;
+}
+
+/**
+ * 校验「本地实际回搬的那一部分」而不是整包。
+ *
+ * 为什么必须这样：引擎的 CHECKSUMS.sha256 记的是包内嵌套相对路径
+ * （03_Interpretation_Report/Analysis_Report.md、01_Adapted_Scripts/run.sh 等），
+ * 而 pullDeliverables 按 basename 平铺、只拉允许集合。按整包逐行校验时，
+ * 正常包必然因缺 01_Adapted_Scripts/run.sh 被判成坏包，交付链路整体不可用。
+ *
+ * 口径：签名必须过（证明清单本身没被改）；已回搬的每个文件必须在清单里且哈希一致。
+ * 未回搬的包内文件由 tar 包整体哈希与远端基准比对兜底（见 pullDeliverables）。
+ */
+function verifyPulledSubset(dir, names) {
+  const manifestFiles = new Set(['CHECKSUMS.sha256', 'CHECKSUMS.sig', 'ED25519_PUBLIC_KEY.pem']);
+  try {
+    const manifest = fs.readFileSync(path.join(dir, 'CHECKSUMS.sha256'));
+    const signature = fs.readFileSync(path.join(dir, 'CHECKSUMS.sig'));
+    const publicKey = readPublicKey({ publicKeyPath: trustedPublicKeyPath() });
+    if (!cryptoVerify(null, manifest, publicKey, signature)) {
+      return { ok: false, reason: 'signature_mismatch' };
+    }
+    const byBasename = new Map();
+    for (const line of manifest.toString('utf8').split('\n').filter(Boolean)) {
+      const match = /^([0-9a-f]{64})  (.+)$/.exec(line);
+      if (!match) return { ok: false, reason: `bad_manifest_line:${line.slice(0, 40)}` };
+      byBasename.set(match[2].split('/').pop(), match[1]);
+    }
+    let checked = 0;
+    for (const name of names) {
+      // tar 在清单生成之后才打，本来就不在 CHECKSUMS 里，它靠远端基准哈希兜底
+      if (!isAllowedDeliverableName(name) || manifestFiles.has(name) || TAR_DELIVERY_RE.test(name)) continue;
+      const expected = byBasename.get(name);
+      if (!expected) return { ok: false, reason: `not_in_manifest:${name}` };
+      const actual = sha256OfFile(path.join(dir, name));
+      if (actual !== expected) return { ok: false, reason: `hash_mismatch:${name}` };
+      checked += 1;
+    }
+    return { ok: true, checked };
+  } catch (cause) {
+    return { ok: false, reason: `invalid_delivery:${cause.message}` };
+  }
 }
 
 /** 读取项目派生副本清单；目录不存在是空清单，不是故障 */
@@ -558,7 +600,7 @@ export function writeSha256Sidecars(projectId) {
     );
   }
   if (hasManifest) {
-    const verdict = verifyDelivery(dir, { publicKeyPath: trustedPublicKeyPath() });
+    const verdict = verifyPulledSubset(dir, names);
     if (!verdict.ok) {
       for (const tar of tars) fs.rmSync(path.join(dir, tar), { force: true });
       const cleaned = tars.length > 0 ? '；已删除污染包' : '';
