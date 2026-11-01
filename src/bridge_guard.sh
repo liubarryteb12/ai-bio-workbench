@@ -23,6 +23,9 @@
 #      本机引擎是否存在已在解析阶段确认过，非 0 只可能是输入不可读或引擎自身
 #      结论为失败。真机实测（2026-10-21，/tmp/bad.h5ad 损坏文件）早期版本把这
 #      种情况归到"不可达"而 exit 0，等于把坏输入静默放行：比不校验更危险；
+#   3d. 运行态由 BIO_BRIDGE_MODE=local|ssh|auto 选择（默认 auto）。auto 在计算面
+#      （/mnt/ssd/bio_data 存在）按 local 处理：容器内 ssh 自己是反模式，且引擎
+#      缺失必须 exit 2，不许降级成 SKIP 让四项断言在真实主路径上再次空转；
 #   3b. 引擎解析顺序是「本机优先，ssh 兜底」：母版通常就跑在计算节点上（任务引擎
 #      ssh 进 k40-ubuntu 再执行 step），此时从容器里再 ssh 到 k40-ubuntu 是反模式
 #      （容器内不解析该主机名，2026-10-21 真机实测：exit 255 + "Could not resolve
@@ -78,19 +81,51 @@ case "$INPUT" in
   *) echo "[BRIDGE SKIP] $WHERE 输入非 h5ad/rds（${INPUT:-空}），无桥接断言可做"; exit 0 ;;
 esac
 
-# 引擎解析：本机优先，ssh 兜底（契约 3b）。
-MODE=""
-if [ -n "$BRIDGE_ENGINE_LOCAL" ] && [ -f "$BRIDGE_ENGINE_LOCAL" ] && command -v python3 >/dev/null 2>&1; then
-  MODE="local"
-elif command -v "$SSH_CMD" >/dev/null 2>&1; then
-  MODE="ssh"
-else
-  if [ "${BIO_ALLOW_BRIDGE_SKIP:-0}" = "1" ]; then
-    echo "[BRIDGE SKIP] $WHERE 本机无引擎且无 $SSH_CMD，无法触达桥接引擎（显式允许 skip）"; exit 0
-  fi
-  echo "[BRIDGE FAIL] $WHERE 本机无引擎且无 $SSH_CMD，无法触达桥接引擎（strict 模式；离线干跑请设 BIO_ALLOW_BRIDGE_SKIP=1）" >&2
-  exit 2
+# 运行态选择（契约 3d）：local 硬阻断 / ssh 只走远端 / auto 本机优先。
+# auto 在计算面按 local 处理：母版就在容器里跑时，ssh 到同一台机器必然解析失败，
+# 一旦降级成 SKIP，四项断言在真实主路径上等于空转。
+BRIDGE_MODE="${BIO_BRIDGE_MODE:-auto}"
+case "$BRIDGE_MODE" in
+  local|ssh|auto) ;;
+  *)
+    echo "[BRIDGE FAIL] $WHERE 未知 BIO_BRIDGE_MODE: $BRIDGE_MODE（仅 local / ssh / auto）" >&2
+    exit 2
+    ;;
+esac
+if [ "$BRIDGE_MODE" = "auto" ] && [ -d /mnt/ssd/bio_data ]; then
+  BRIDGE_MODE="local"
 fi
+
+# 引擎解析：本机优先，ssh 兜底（契约 3b），local 模式不许降级（契约 3d）。
+MODE=""
+case "$BRIDGE_MODE" in
+  local)
+    if [ -z "$BRIDGE_ENGINE_LOCAL" ] || [ ! -f "$BRIDGE_ENGINE_LOCAL" ] || ! command -v python3 >/dev/null 2>&1; then
+      echo "[BRIDGE FAIL] $WHERE 本机模式要求本机引擎在位（BRIDGE_ENGINE_LOCAL=${BRIDGE_ENGINE_LOCAL:-空}，python3 需可用），拒绝降级成 ssh 空转" >&2
+      exit 2
+    fi
+    MODE="local"
+    ;;
+  ssh)
+    if ! command -v "$SSH_CMD" >/dev/null 2>&1; then
+      echo "[BRIDGE FAIL] $WHERE 显式 ssh 模式但找不到 $SSH_CMD" >&2
+      exit 2
+    fi
+    MODE="ssh"
+    ;;
+  *)
+    if [ -n "$BRIDGE_ENGINE_LOCAL" ] && [ -f "$BRIDGE_ENGINE_LOCAL" ] && command -v python3 >/dev/null 2>&1; then
+      MODE="local"
+    elif command -v "$SSH_CMD" >/dev/null 2>&1; then
+      MODE="ssh"
+    elif [ "${BIO_ALLOW_BRIDGE_SKIP:-0}" = "1" ]; then
+      echo "[BRIDGE SKIP] $WHERE 本机无引擎且无 $SSH_CMD，无法触达桥接引擎（显式允许 skip）"; exit 0
+    else
+      echo "[BRIDGE FAIL] $WHERE 本机无引擎且无 $SSH_CMD，无法触达桥接引擎（strict 模式；离线干跑请设 BIO_ALLOW_BRIDGE_SKIP=1）" >&2
+      exit 2
+    fi
+    ;;
+esac
 
 # 分开捕获输出与退出码：连接失败的退出码（如 255）与引擎断言失败的退出码
 # （如 1/3）必须区别对待，否则一次断言失败会被误判成"引擎不可达"而静默放行。

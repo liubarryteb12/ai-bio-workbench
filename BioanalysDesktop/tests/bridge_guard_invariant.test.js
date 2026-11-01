@@ -255,6 +255,13 @@ test('引擎断言失败（3）→ 守卫透传同码且含 BRIDGE FAIL', { skip
 
 
 
+test('ssh 可达但引擎返回 1（无 BRIDGE FAIL 文本）→ 阻断 exit 2，不冒充不可达', { skip: BASH === null ? '宿主无 bash 解释器' : false }, () => {
+  const res = runGuard({ sshScript: '#!/bin/sh\nexit 1\n' }, ['--input', 'x.h5ad', '--from', 'Python', '--to', 'R', '--script', 'gsva_pathways']);
+  assert.equal(res.code, 2, `rc=1 必须按校验失败阻断，实际 ${res.code}`);
+  assert.match(res.stdout + res.stderr, /BRIDGE FAIL/);
+  assert.doesNotMatch(res.stdout + res.stderr, /BRIDGE SKIP/);
+});
+
 test('ssh 不可达（255）→ 默认 SKIP exit 0（K40 离线母版仍可跑）', { skip: BASH === null ? '宿主无 bash 解释器' : false }, () => {
   const res = runGuard({ sshScript: '#!/bin/sh\nexit 255\n' }, ['--input', 'x.h5ad', '--from', 'Python', '--to', 'R', '--script', 'gsva_pathways']);
   assert.equal(res.code, 0, res.stderr);

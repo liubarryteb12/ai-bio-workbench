@@ -202,10 +202,57 @@ test('BRIDGE_ENGINE_LOCAL 显式置空可强制走 ssh 分支', { skip: NEED_BAS
   }
 });
 
+// 08 号书第 5 项：容器内本机执行时引擎缺失必须硬阻断，不许回落 ssh 再降级成 SKIP。
+// 真机风险：容器里 ssh k40-ubuntu 必然 255，回落一次就把四项断言整段跳过。
+test('BIO_BRIDGE_MODE=local 且本机引擎缺失 → exit 2，且不调用 ssh', { skip: NEED_BASH }, () => {
+  const world = makeWorld({ engine: null });
+  try {
+    const res = runGuard(world, { extraEnv: { BIO_BRIDGE_MODE: 'local' } });
+    assert.equal(res.code, 2, '本机模式缺引擎必须硬阻断; out=' + res.out);
+    assert.match(res.out, /\[BRIDGE FAIL\]/);
+    assert.match(res.out, /本机模式要求本机引擎在位/);
+    assert.equal(res.sshCalled, false, '本机模式不许降级成 ssh');
+    assert.doesNotMatch(res.out, /\[BRIDGE SKIP\]/);
+  } finally {
+    fs.rmSync(world.dir, { recursive: true, force: true });
+  }
+});
+
+test('BIO_BRIDGE_MODE=ssh 且本机引擎在位 → 只走 ssh，本机引擎不执行', { skip: NEED_BASH }, () => {
+  const world = makeWorld({
+    engine: 'import sys\nprint("[BRIDGE OK] should not run")\nsys.exit(0)\n',
+  });
+  try {
+    const res = runGuard(world, { extraEnv: { BIO_BRIDGE_MODE: 'ssh' } });
+    assert.equal(res.code, 0, res.out);
+    assert.equal(res.sshCalled, true, '显式 ssh 模式必须走 ssh');
+    assert.doesNotMatch(res.out, /should not run/);
+    assert.match(res.out, /engine=ssh/);
+  } finally {
+    fs.rmSync(world.dir, { recursive: true, force: true });
+  }
+});
+
+test('BIO_BRIDGE_MODE=local 且本机引擎判失败 → 非 0 且含 BRIDGE FAIL', { skip: NEED_BASH || NEED_PY3 }, () => {
+  const world = makeWorld({
+    engine: 'import sys\nsys.stderr.write("[BRIDGE FAIL] obsm missing\\n")\nsys.exit(1)\n',
+  });
+  try {
+    const res = runGuard(world, { extraEnv: { BIO_BRIDGE_MODE: 'local' } });
+    assert.notEqual(res.code, 0, '本机模式校验失败不许放行');
+    assert.match(res.out, /\[BRIDGE FAIL\]/);
+    assert.equal(res.sshCalled, false);
+  } finally {
+    fs.rmSync(world.dir, { recursive: true, force: true });
+  }
+});
+
 test('守卫源码保留本机优先解析块与契约 3b 说明', () => {
   const text = fs.readFileSync(GUARD, 'utf8');
   assert.ok(text.includes('BRIDGE_ENGINE_LOCAL'), '缺本机引擎变量');
   assert.ok(text.includes('MODE="local"'), '缺 local 分支判定');
+  assert.ok(text.includes('BIO_BRIDGE_MODE'), '缺显式运行态选择（local / ssh / auto）');
+  assert.ok(text.includes('3d.'), '缺契约 3d（容器内按 local 硬阻断，引擎缺失 exit 2）');
   assert.ok(text.includes('3b.'), '缺契约 3b 的成文说明（改回去必须有人看见）');
   assert.ok(text.includes('3c.'), '缺契约 3c（本机引擎非 0 即 FAIL）的成文说明');
   assert.match(text, /python3 "\$BRIDGE_ENGINE_LOCAL"[^\n]*--stage/);
