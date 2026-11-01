@@ -13,6 +13,7 @@ import net from 'node:net';
 // 端口改为测试自有：自己起服务，避免连到外部早已启动的旧版本服务而假绿
 // （2026-10-23 实测踩坑：HTTP 用例连外部服务时，即使刚改坏的代码也能全绿）。
 let activeBaseUrl = '';
+let lastSpawnStderr = '';
 
 const L2_MIN = [
   'l2_ingest_counts', 'l2_qc_cells', 'l2_qc_normalize',
@@ -40,9 +41,11 @@ async function spawnServer(port) {
   activeBaseUrl = `http://127.0.0.1:${port}`;
   const child = spawn(process.execPath, [entry], {
     env: { ...process.env, BAD_PORT: String(port) },
-    stdio: 'ignore',
+    stdio: ['ignore', 'ignore', 'pipe'],
   });
-  const deadline = Date.now() + 15000;
+  let stderrText = '';
+  child.stderr.on('data', (chunk) => { stderrText += chunk.toString(); });
+  const deadline = Date.now() + 10000;
   while (Date.now() < deadline) {
     if (child.exitCode !== null) return null;
     try {
@@ -52,6 +55,7 @@ async function spawnServer(port) {
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
   child.kill();
+  lastSpawnStderr = stderrText;
   return null;
 }
 
@@ -82,8 +86,9 @@ function networkTest(name, fn) {
     const port = await findFreePort();
     const child = await spawnServer(port);
     if (!child) {
-      t.skip(`无法启动本地服务 ${activeBaseUrl}`);
-      return;
+      // 08 号书第 7 项：启动失败转 skip 等于把「服务起不来」伪装成「本机不跑这条用例」，
+      // 超时回退到 10s 后必须让启动失败直接变红，并带上子进程 stderr 便于定位。
+      assert.fail(`无法在 10s 内启动本地服务 ${activeBaseUrl}；stderr=${lastSpawnStderr.slice(-800) || '（空）'}`);
     }
     t.after(() => { child.kill(); });
     await fn(t);

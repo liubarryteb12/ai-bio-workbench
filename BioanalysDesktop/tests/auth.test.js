@@ -18,6 +18,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { cleanupAuthRuntimeFile } from '../server/auth_runtime.js';
 
 /**
  * 端口动态化（S26 顺带修，主 Agent 追加授权）：曾硬编码 PORT = 18788，与本机
@@ -129,13 +130,19 @@ test('静态页同样受口令保护（不能靠改路径绕过）', async () =>
 test('Fail-Closed：无凭证配置时自动生成随机凭证并强制 401/200', async () => {
   const port2 = await freePort();
   const runtimeFile = path.join(os.tmpdir(), `auth-runtime-${port2}.json`);
+  // 父进程环境整体展开会带入宿主已有的鉴权变量，把「未配置」测成「已配置」。
+  // 这里显式清空全部鉴权开关，确保真的走「生成随机口令」分支。
+  const cleanEnv = { ...process.env };
+  for (const key of [
+    'BAD_AUTH_USER', 'BAD_AUTH_PASS', 'WORKBENCH_AUTH_USER', 'WORKBENCH_AUTH_PASS',
+    'BIO_ALLOW_DEV_NOAUTH', 'NODE_TEST_CONTEXT',
+  ]) {
+    delete cleanEnv[key];
+  }
   const child2 = spawn(process.execPath, ['server/index.js'], {
     env: {
-      ...process.env,
+      ...cleanEnv,
       BAD_PORT: String(port2),
-      BAD_AUTH_USER: '',
-      BAD_AUTH_PASS: '',
-      NODE_TEST_CONTEXT: '', // 显式压过测试豁免
       BIO_TEST_FORCE_FAIL_CLOSED: '1',
       BIO_AUTH_RUNTIME_FILE: runtimeFile,
     },
@@ -159,10 +166,20 @@ test('Fail-Closed：无凭证配置时自动生成随机凭证并强制 401/200'
     // 1) 无凭证 → 401（若此处放行，说明 AUTH_ENABLED 未置 true 的假修复复发）
     const noAuth = await fetch(`${base2}/api/projects/list`, { signal: AbortSignal.timeout(5000) });
     assert.equal(noAuth.status, 401, 'Fail-Closed 下无凭证必须 401');
+    // 1b) 写入口同样拦住：GET 拦而 POST 放行等于整站鉴权只做了一半
+    const noAuthWrite = await fetch(`${base2}/api/projects/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId: 'PRJ_AUTH_NEGATIVE' }),
+      signal: AbortSignal.timeout(5000),
+    });
+    assert.equal(noAuthWrite.status, 401, 'Fail-Closed 下写入口无凭证必须 401');
 
     // 2) 运行时文件回读凭证 → 200
     const runtime = JSON.parse(fs.readFileSync(runtimeFile, 'utf8'));
     assert.ok(runtime.user && runtime.pass, 'BIO_AUTH_RUNTIME_FILE 必须写出生成凭证');
+    assert.equal(runtime.enabled, true, 'AUTH_ENABLED 必须在生成口令后置为 true');
+    assert.ok(runtime.pass.length >= 16, '随机口令长度必须足够');
     const withAuth = await fetch(`${base2}/api/projects/list`, {
       headers: { Authorization: basic(runtime.user, runtime.pass) },
       signal: AbortSignal.timeout(5000),
@@ -172,4 +189,13 @@ test('Fail-Closed：无凭证配置时自动生成随机凭证并强制 401/200'
     child2.kill();
     fs.rmSync(runtimeFile, { force: true });
   }
+});
+
+test('临时口令文件必须可销毁（BIO_AUTH_RUNTIME_FILE 退出即焚的测试面）', () => {
+  const file = path.join(os.tmpdir(), `auth-runtime-cleanup-${Date.now()}.json`);
+  fs.writeFileSync(file, '{"user":"admin","pass":"x"}', 'utf8');
+  assert.equal(fs.existsSync(file), true);
+  assert.equal(cleanupAuthRuntimeFile(file), true);
+  assert.equal(fs.existsSync(file), false, '退出清理后不许残留明文口令');
+  assert.equal(cleanupAuthRuntimeFile(''), false, '未指定路径时是空操作');
 });

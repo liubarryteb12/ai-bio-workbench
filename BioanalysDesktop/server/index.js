@@ -13,6 +13,7 @@ import path from 'node:path';
 import { timingSafeEqual, randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
+import { cleanupAuthRuntimeFile } from './auth_runtime.js';
 import {
   DEFAULT_SERIAL, SYSTEM_LOGS, LINES, DEFAULT_PROJECT, sanitizeProjectId, projectLineDir,
   PROJECTS_ROOT, resolveLineFromDataType, normalizeDatasets, normalizeDataSource,
@@ -79,7 +80,8 @@ const REPO_ROOT = path.resolve(fileURLToPath(new URL('../../', import.meta.url))
  * 所以只能整站鉴权。安全口径（D-29 Fail-Closed）：
  *   1. 环境变量给了账号口令就强制校验（正式常驻由 ops/serve_guard.ps1 注入）；
  *   2. 非测试环境且未显式 BIO_ALLOW_DEV_NOAUTH=1 时，若未配置口令，自动生成随机强口令
- *      并打印到控制台（同时落 server/.auth_runtime.json，权限限本机），消灭免密裸奔；
+ *      并打印到控制台（仅在显式传入 BIO_AUTH_RUNTIME_FILE 时写该临时文件，退出即删），
+ *      消灭免密裸奔；Windows 的 0o600 不生效，所以默认不落盘明文口令；
  *   3. node:test 运行环境（NODE_TEST_CONTEXT 存在）与显式豁免保持免密，测试零改动。
  */
 let AUTH_USER = process.env.BAD_AUTH_USER || process.env.WORKBENCH_AUTH_USER || '';
@@ -98,6 +100,9 @@ if (!AUTH_ENABLED && !IS_TEST_RUNTIME && !DEV_NOAUTH) {
     fs.writeFileSync(process.env.BIO_AUTH_RUNTIME_FILE, JSON.stringify({
       user: AUTH_USER, pass: AUTH_PASS, enabled: true, generatedAt: new Date().toISOString(),
     }), 'utf8');
+    process.once('exit', () => cleanupAuthRuntimeFile());
+    process.once('SIGINT', () => { cleanupAuthRuntimeFile(); process.exit(130); });
+    process.once('SIGTERM', () => { cleanupAuthRuntimeFile(); process.exit(143); });
   }
 }
 
@@ -279,18 +284,22 @@ const server = http.createServer(async (req, res) => {
   return json(res, 404, { error: `未知接口: ${url.pathname}` });
 });
 
-// 启动时清一次陈旧上传会话：TTL 24h（BIO_UPLOAD_TTL_HOURS 可覆盖），只删 .uploads 下
+// 清一次陈旧上传会话：TTL 24h（BIO_UPLOAD_TTL_HOURS 可覆盖），只删 .uploads 下
 // 合法 id 且长期没动过的会话目录。旁路动作，失败只记日志，不能影响服务启动。
-try {
-  const gcReport = gcStaleUploads();
-  if (gcReport.removed.length > 0) {
-    console.log(`[bioanalys-desktop] 启动清理陈旧上传会话 ${gcReport.removed.length} 个`);
+// 08 号书第 7 项：这段同步目录扫描原本压在 listen 之前，冷启动被它拖住；
+// 现在挪到 listen 回调里用 setImmediate 执行，端口先开，扫描随后跑。
+function runStartupUploadGc() {
+  try {
+    const gcReport = gcStaleUploads();
+    if (gcReport.removed.length > 0) {
+      console.log(`[bioanalys-desktop] 启动清理陈旧上传会话 ${gcReport.removed.length} 个`);
+    }
+    for (const err of gcReport.errors) {
+      console.warn(`[bioanalys-desktop] 启动清理上传会话出错（已忽略）: ${err.name || '<root>'}: ${err.message}`);
+    }
+  } catch (cause) {
+    console.warn(`[bioanalys-desktop] 启动清理上传会话异常（已忽略）: ${cause.message}`);
   }
-  for (const err of gcReport.errors) {
-    console.warn(`[bioanalys-desktop] 启动清理上传会话出错（已忽略）: ${err.name || '<root>'}: ${err.message}`);
-  }
-} catch (cause) {
-  console.warn(`[bioanalys-desktop] 启动清理上传会话异常（已忽略）: ${cause.message}`);
 }
 
 // 探针出口：LINE_INFER_PROBE=<JSON> 时只跑纯函数并打印结果，不监听端口。
@@ -304,6 +313,7 @@ if (process.env.LINE_INFER_PROBE) {
   server.listen(PORT, '127.0.0.1', () => {
     console.log(`[bioanalys-desktop] backend listening on http://127.0.0.1:${PORT}`);
     console.log(`[bioanalys-desktop] adb = ${adb}`);
+    setImmediate(runStartupUploadGc);
   });
 }
 

@@ -39,7 +39,7 @@ function freePort() {
  * healthPath 必须按服务传：工作台是 /api/health，portal 是 /health
  * （2026-10-23 踩坑：拿 /api/health 探 portal 会一直拿到 404，误判成"起不来"）。
  */
-async function waitUp(base, child, healthPath = '/api/health', timeoutMs = 20000) {
+async function waitUp(base, child, healthPath = '/api/health', timeoutMs = 10000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     if (child.exitCode !== null) return false;
