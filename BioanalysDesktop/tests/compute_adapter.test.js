@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import childProcess from 'node:child_process';
 
 import { runSync, runSshRaw, runSshStrict, runStream } from '../server/proc.js';
+import { probeNodeHealth, runBridgeCheckSync } from '../server/task.js';
 
 function restoreEnv(t, previous, keys) {
   t.after(() => {
@@ -136,6 +137,70 @@ test('runStream 对 ssh mock 异步回调输出与退出码，kill 为 no-op', a
     ['stderr', 'STREAM_ERR\n'],
     ['exit', 0],
   ]);
+});
+
+test('task.js 节点健康探针走 proc 接缝：mock 模式不启动真实 ssh', (t) => {
+  const keys = [
+    'BIO_COMPUTE_ADAPTER',
+    'BIO_ALLOW_MOCK_COMPUTE',
+    'BIO_COMPUTE_MOCK_STDOUT',
+    'BIO_COMPUTE_MOCK_STDERR',
+    'BIO_COMPUTE_MOCK_EXIT_CODE',
+  ];
+  const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  restoreEnv(t, previous, keys);
+  process.env.BIO_COMPUTE_ADAPTER = 'mock';
+  process.env.BIO_ALLOW_MOCK_COMPUTE = '1';
+  process.env.BIO_COMPUTE_MOCK_STDOUT = 'TEMP|48000\nNODE_HEALTH_END\n';
+  process.env.BIO_COMPUTE_MOCK_STDERR = '';
+  process.env.BIO_COMPUTE_MOCK_EXIT_CODE = '0';
+
+  let spawned = 0;
+  t.mock.method(childProcess, 'spawnSync', () => {
+    spawned += 1;
+    throw new Error('mock 模式不得启动真实 ssh');
+  });
+
+  const health = probeNodeHealth(
+    { id: 'k40-ubuntu', host: 'k40-ubuntu', primary: true },
+    { timeoutMs: 1000 },
+  );
+
+  assert.equal(spawned, 0, 'task.js 探针必须在进程接缝前短路');
+  assert.equal(health.reachable, true, 'mock 输出应判为可达');
+  assert.equal(health.tempC, 48);
+  assert.equal(health.sawEnd, true);
+  assert.equal(health.reason, null);
+});
+
+test('task.js 桥接校验走 proc 接缝：mock 模式返回 mock 输出与退出码', (t) => {
+  const keys = [
+    'BIO_COMPUTE_ADAPTER',
+    'BIO_ALLOW_MOCK_COMPUTE',
+    'BIO_COMPUTE_MOCK_STDOUT',
+    'BIO_COMPUTE_MOCK_STDERR',
+    'BIO_COMPUTE_MOCK_EXIT_CODE',
+  ];
+  const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  restoreEnv(t, previous, keys);
+  process.env.BIO_COMPUTE_ADAPTER = 'mock';
+  process.env.BIO_ALLOW_MOCK_COMPUTE = '1';
+  process.env.BIO_COMPUTE_MOCK_STDOUT = '[BRIDGE OK] line=line1_bulk\n';
+  process.env.BIO_COMPUTE_MOCK_STDERR = '';
+  process.env.BIO_COMPUTE_MOCK_EXIT_CODE = '0';
+
+  let spawned = 0;
+  t.mock.method(childProcess, 'spawnSync', () => {
+    spawned += 1;
+    throw new Error('mock 模式不得启动真实 ssh');
+  });
+
+  const result = runBridgeCheckSync({ remoteScript: 'checkpoint_bulk_bridge.py --input x' });
+
+  assert.equal(spawned, 0, 'task.js 桥接校验必须在进程接缝前短路');
+  assert.equal(result.code, 0);
+  assert.match(result.stdout, /\[BRIDGE OK\]/);
+  assert.equal(typeof result.durationMs, 'number');
 });
 
 test('默认 BIO_COMPUTE_ADAPTER=ssh 保持既有真实子进程路径', (t) => {

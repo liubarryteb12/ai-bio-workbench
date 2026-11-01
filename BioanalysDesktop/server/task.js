@@ -7,9 +7,6 @@
  */
 
 import { randomUUID, createHash } from 'node:crypto';
-// default 导入而非具名导入：ESM 具名导入是链接期快照，测试拦截不到（见 run.js 同款注释）。
-// 桥接校验的同步 ssh 执行必须可在进程内被测试垫片替换。
-import childProcess from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import {
   LINES, DEFAULT_PROJECT, projectLineDir, binDir, sanitizeProjectId, SYSTEM_LOGS,
 } from './domain.js';
-import { assertAllowedProgram } from './proc.js';
+import { runSync } from './proc.js';
 import { modToScriptMap, scriptToModMap } from './workflow_graph.js';
 import { buildAdaptedFigureSource } from './figure_adapters.js';
 
@@ -131,28 +128,24 @@ export function probeNodeHealth(node, options = {}) {
   const timeoutMs = Math.max(1, Number(options.timeoutMs || 4500));
   let result;
   try {
-    result = childProcess.spawnSync(
-      'ssh',
+    result = runSync(
       [
+        'ssh',
         '-o', 'BatchMode=yes',
         '-o', `ConnectTimeout=${Math.max(1, Math.ceil(timeoutMs / 1000))}`,
         node.host,
         buildNodeHealthCommand(),
       ],
-      {
-        encoding: 'utf8',
-        timeout: timeoutMs,
-        windowsHide: true,
-      },
+      { timeoutMs },
     );
   } catch (cause) {
     return { reachable: false, tempC: null, reason: cause.message };
   }
-  if (result.error || result.status !== 0) {
+  if (result.error || result.code !== 0) {
     return {
       reachable: false,
       tempC: null,
-      reason: result.error?.message || String(result.stderr || 'ssh_offline').trim(),
+      reason: result.error || String(result.stderr || 'ssh_offline').trim(),
     };
   }
   return {
@@ -516,17 +509,17 @@ export function buildBridgeCheckCommand(lineId, stepName, { inputs = [], project
  * 只在 index.js 提交层调用（同步阻塞在请求回调里，失败必须有明确 HTTP 回应）。
  */
 export function runBridgeCheckSync(plan) {
-  assertAllowedProgram(['ssh']);
   const startedAt = Date.now();
-  const result = childProcess.spawnSync(
-    'ssh',
-    ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', 'k40-ubuntu', plan.remoteScript],
-    { encoding: 'utf8', timeout: BRIDGE_SSH_TIMEOUT_MS, windowsHide: true },
+  // 走 proc.js 单 seam：白名单与 BIO_COMPUTE_ADAPTER 都在那一层收口，
+  // 本地此处不再自带 ssh 直连分支（2026-11-01 P3-03 第一刀）。
+  const result = runSync(
+    ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', 'k40-ubuntu', plan.remoteScript],
+    { timeoutMs: BRIDGE_SSH_TIMEOUT_MS },
   );
   return {
-    code: result.status ?? -1,
-    stdout: result.stdout ?? '',
-    stderr: result.stderr ?? '',
+    code: result.code,
+    stdout: result.stdout,
+    stderr: result.stderr,
     durationMs: Date.now() - startedAt,
   };
 }

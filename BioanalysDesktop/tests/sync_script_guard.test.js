@@ -111,6 +111,19 @@ test('P-07 其它 server 模块也不许具名导入 child_process', () => {
   }
 });
 
+/** P3-03 已迁入 proc.js 接缝的模块。每迁一个切片就往这里加一行。 */
+const SEAM_MIGRATED_MODULES = ['task.js'];
+
+test('P3-03 已迁移模块不得绕过 proc 接缝直接起子进程', () => {
+  for (const name of SEAM_MIGRATED_MODULES) {
+    const text = fs.readFileSync(path.join(ROOT, 'BioanalysDesktop', 'server', name), 'utf8');
+    assert.ok(
+      !/\bchildProcess\.(spawnSync|spawn)\(/.test(text),
+      name + ' 仍在直接起子进程，BIO_COMPUTE_ADAPTER=mock 罩不住它'
+    );
+  }
+});
+
 test('P-07 所有用 childProcess 垫片的测试文件都走默认导入', () => {
   const dir = path.join(ROOT, 'BioanalysDesktop', 'tests');
   let shimFiles = 0;

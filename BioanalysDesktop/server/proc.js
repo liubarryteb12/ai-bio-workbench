@@ -71,6 +71,7 @@ function mockSshResult() {
     code: Number(process.env.BIO_COMPUTE_MOCK_EXIT_CODE ?? '0'),
     stdout: process.env.BIO_COMPUTE_MOCK_STDOUT ?? '',
     stderr: process.env.BIO_COMPUTE_MOCK_STDERR ?? '',
+    error: null,
   };
 }
 
@@ -90,9 +91,12 @@ export function assertAllowedProgram(argv) {
 
 /**
  * 同步执行并收集全部输出。
+ *
+ * error 字段是启动失败的原文（如 ssh 不存在时的 ENOENT）。任务层要把它当探活原因回传，
+ * 只回 -1 会让"进程起不来"和"远端退出码 -1"在台账里长成同一个样子。
  * @param {string[]} argv
  * @param {{cwd?: string, timeoutMs?: number}} [options]
- * @returns {{code: number, stdout: string, stderr: string}}
+ * @returns {{code: number, stdout: string, stderr: string, error: string|null}}
  */
 export function runSync(argv, options = {}) {
   assertAllowedProgram(argv);
@@ -109,6 +113,7 @@ export function runSync(argv, options = {}) {
     code: result.status ?? -1,
     stdout: result.stdout ?? '',
     stderr: result.stderr ?? '',
+    error: result.error ? String(result.error.message || result.error) : null,
   };
 }
 
