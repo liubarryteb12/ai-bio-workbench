@@ -11,6 +11,9 @@
 >   基准，缺失 `REPORT_HASH_MISSING`、不一致 `REPORT_HASH_MISMATCH`，两种都先删本地坏包；
 >   交付 tar 在场时清单/签名缺一即 `REPORT_INTEGRITY_FAIL`，验签失败删除污染 tar；
 >   公钥默认取 `ops/secrets/ed25519_public.pem` 本地信任锚。报告三文件 51/51 绿。
+>   跟进 `8198d46`：引擎清单记的是包内嵌套路径，而回搬按 basename 平铺且只拉允许集合，
+>   整包逐行校验会把每个正常包判成 `invalid_delivery`；改成 `verifyPulledSubset`（签名必须过，
+>   已回搬文件逐个对哈希，tar 由远端基准哈希兜底），报告三文件终验 54/54 绿。
 > ③ **第 5 项真缺口**：本机引擎缺失会回落 ssh，容器里 ssh 自己必然 255，再按契约 3 降级 SKIP，
 >   四项断言在真实主路径上整段空转。修复 `5ceeb30`：新增 `BIO_BRIDGE_MODE=local|ssh|auto`，
 >   auto 在 `/mnt/ssd/bio_data` 存在时按 local，local 缺引擎或 python3 不可用一律 exit 2，
@@ -28,8 +31,14 @@
 >   P17 只扫 `.tsx`，删掉死 import 后 `SelfCheckSubItem` 失配，扫描面放宽到 `.tsx + .ts`
 >   （只放宽，正则未动），18/18 绿。
 > ⑥ **基线**：本轮 K40 离线（`ssh: Could not resolve hostname k40-ubuntu`），adb 无 `3a3e1f52`。
->   全量 `npm test` = **tests 1010 / pass 949 / fail 5 / skipped 56**，5 条红全部是设备依赖，
+>   全量 `npm test` = **tests 1013 / pass 952 / fail 5 / skipped 56**，5 条红全部是设备依赖，
 >   与第 ④ 条改动无关。K40 恢复后需复跑确认这 5 条转绿。
+> ⑦ **终验补强**：Spec 双轴复核发现两处覆盖边界。`writeSha256Sidecars` 原先只在 tar 在场时
+>   强制验签，只有 md/html 的文本交付仍可绕过；现改为任何允许集合内的交付件在场都要求
+>   `CHECKSUMS.sha256 + CHECKSUMS.sig`，缺一即 `REPORT_INTEGRITY_FAIL`。临时口令清理失败
+>   不再静默，按 `[SECURITY][D-29]` 写 stderr。新增 `server_startup.test.js`，用 3 次中位数
+>   钉住冷启动 `< 500ms`，独立探针 5 次为 117 / 127 / 143 / 117 / 149 ms。`preview_mods`
+>   改为先探远端再启本地服务并缓存探测结果，离线全量不再把环境等待算进 10s 启动窗口。
 
 > **2026-11-01 第二十八轮（阻塞解除、算力面上线、真机抓出假绿灯）**：
 > ① **`.git` 的 NTFS DENY 阻塞解除**：连续三轮报 GIT-LOCKED 的根因是 `.git` 上有两条显式 DENY ACE
