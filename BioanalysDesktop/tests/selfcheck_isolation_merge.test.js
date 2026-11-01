@@ -188,7 +188,9 @@ test('P17：App.tsx 渲染 sub_checks 子灯', () => {
       .flatMap((entry) => {
         const fullPath = path.join(dir, entry.name);
         if (entry.isDirectory()) return readViewTsx(fullPath);
-        return entry.isFile() && entry.name.endsWith('.tsx')
+        // 扫描面只许放宽：子灯类型定义在 views/shared/types.ts，只看 .tsx 会让
+        // 「前端要有子灯类型」退化成「App.tsx 必须保留一条未被使用的 type import」。
+        return entry.isFile() && (entry.name.endsWith('.tsx') || entry.name.endsWith('.ts'))
           ? [fs.readFileSync(fullPath, 'utf8')]
           : [];
       });

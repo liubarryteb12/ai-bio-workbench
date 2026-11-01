@@ -14,18 +14,18 @@ import {
 } from '../lib/uploadSession';
 import type { UploadStatus } from '../lib/uploadSession';
 import {
-  SUBDIRS, SPECIES_OPTIONS, DOMAIN_OPTIONS, DATA_SOURCES, ID_TYPE_OPTIONS, VALUE_SCALE_OPTIONS, LAYOUT_TEMPLATE_OPTIONS, CUTOFF_PROFILE_OPTIONS, KO_FALLBACK_OPTIONS, DATA_TYPE_OPTIONS,
+  SPECIES_OPTIONS,
+  DOMAIN_OPTIONS,
+  DATA_SOURCES,
+  ID_TYPE_OPTIONS,
+  VALUE_SCALE_OPTIONS,
+  LAYOUT_TEMPLATE_OPTIONS,
+  CUTOFF_PROFILE_OPTIONS,
+  KO_FALLBACK_OPTIONS,
+  DATA_TYPE_OPTIONS,
 } from './shared/constants';
-import { lineFromDataType, projectDisplayName, readApiState } from './shared/helpers';
+import { lineFromDataType } from './shared/helpers';
 import type {
-  Compute,
-  Segment,
-  Service,
-  LinkResult,
-  LinkResponse,
-  ProjectMeta,
-  ProjectEntry,
-  ProjectsResponse,
   BlacklistResult,
   StepMeta,
   StepsResponse,
@@ -35,34 +35,13 @@ import type {
   Contrast,
   DatasetRow,
   ReferenceMeta,
-  InboxSummary,
-  InboxItem,
   InboxResponse,
   PortalManifest,
   IntakeExtras,
-  SelfCheckSubItem,
-  SelfCheckItem,
-  SelfCheckResponse,
-  FigureEntry,
-  ProjectMetaBrief,
-  FiguresResponse,
-  FigureTemplateItem,
-  FigureTemplateResponse,
-  FigureAdaptResponse,
-  TreeNode,
-  FilesResponse,
-  TaskEntry,
-  LogLine,
-  LedgerEntry,
-  LedgerSummary,
-  LedgerResponse,
-  UploadValidation,
   UploadResult,
-  ApiState,
 } from './shared/types';
 import { LedgerPanel, TaskPanel } from './LedgerAuditView';
-import { ResultPreviewStudio, FilesPanel } from './ResultStudioView';
-import { PreFlightDashboard } from './SelfCheckAdminView';
+import { FilesPanel } from './ResultStudioView';
 
 // 数据来源双模态（aims v2.8，与 server/domain.js DATA_SOURCE_MODES 同值）
 type DataSourceMode = 'PUBLIC_DB' | 'IN_HOUSE_UPLOAD';
@@ -1714,7 +1693,6 @@ export function CustomerInputConsole({ project }: { project: string }) {
     </div>
   );
 }
-
 
 // ============================================================
 // 上传面板

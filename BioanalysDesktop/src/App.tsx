@@ -1,65 +1,11 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import './app.css';
 
-import { LINES, LINE_LABELS } from '../server/domain.js';
-import {
-  fileFingerprint, forgetUploadId, readStoredUploadId, resumeStartIndex, storeUploadId,
-  uploadIdFromFingerprint,
-} from './lib/uploadSession';
-import type { UploadStatus } from './lib/uploadSession';
-import {
-  SUBDIRS, SPECIES_OPTIONS, DOMAIN_OPTIONS, DATA_SOURCES, ID_TYPE_OPTIONS, VALUE_SCALE_OPTIONS, LAYOUT_TEMPLATE_OPTIONS, CUTOFF_PROFILE_OPTIONS, KO_FALLBACK_OPTIONS, DATA_TYPE_OPTIONS,
-} from './views/shared/constants';
-import { lineFromDataType, projectDisplayName, readApiState } from './views/shared/helpers';
-import type {
-  Compute,
-  Segment,
-  Service,
-  LinkResult,
-  LinkResponse,
-  ProjectMeta,
-  ProjectEntry,
-  ProjectsResponse,
-  BlacklistResult,
-  StepMeta,
-  StepsResponse,
-  GroupMode,
-  GroupRole,
-  GroupEntry,
-  Contrast,
-  DatasetRow,
-  ReferenceMeta,
-  InboxSummary,
-  InboxItem,
-  InboxResponse,
-  PortalManifest,
-  IntakeExtras,
-  SelfCheckSubItem,
-  SelfCheckItem,
-  SelfCheckResponse,
-  FigureEntry,
-  ProjectMetaBrief,
-  FiguresResponse,
-  FigureTemplateItem,
-  FigureTemplateResponse,
-  FigureAdaptResponse,
-  TreeNode,
-  FilesResponse,
-  TaskEntry,
-  LogLine,
-  LedgerEntry,
-  LedgerSummary,
-  LedgerResponse,
-  UploadValidation,
-  UploadResult,
-  ApiState,
-} from './views/shared/types';
-import { LedgerPanel, TaskPanel } from './views/LedgerAuditView';
-import { ResultPreviewStudio, FilesPanel } from './views/ResultStudioView';
+import { projectDisplayName } from './views/shared/helpers';
+import type { ProjectEntry, ProjectsResponse } from './views/shared/types';
+import { ResultPreviewStudio } from './views/ResultStudioView';
 import { PreFlightDashboard } from './views/SelfCheckAdminView';
 import { OnboardingPortal, CustomerInputConsole } from './views/OnboardingView';
-
-
 
 // ============================================================
 // 视图枚举
@@ -73,8 +19,6 @@ const VIEWS: Array<{ key: ViewKey; label: string }> = [
   { key: 'preflight', label: '五维自检' },
   { key: 'studio', label: '结果预览 Studio' },
 ];
-
-
 
 // ============================================================
 // App 主组件
