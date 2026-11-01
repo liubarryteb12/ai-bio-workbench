@@ -587,16 +587,18 @@ export function writeSha256Sidecars(projectId) {
   } catch {
     return [];
   }
-  // Verify-before-sidecar（08 号书第 6 项）：交付包在场时必须先验签再补旁挂哈希。
+  // Verify-before-sidecar（08 号书第 6 项）：交付件在场时必须先验签再补旁挂哈希。
   // 「缺清单或缺签名就跳过验签」等于给攻击者留一条删掉 CHECKSUMS.sig 就洗白的路，
-  // 所以 tar 包在场而清单/签名不全时按完整性失败处理；验签失败则删除污染包。
+  // 所以任何允许集合内的交付件在场而清单/签名不全时都按完整性失败处理；
+  // 验签失败则删除污染包。只有空目录或仅剩历史 sidecar 时才允许返回空数组。
   const checksumsPath = path.join(dir, 'CHECKSUMS.sha256');
   const sigPath = path.join(dir, 'CHECKSUMS.sig');
   const hasManifest = fs.existsSync(checksumsPath) && fs.existsSync(sigPath);
+  const deliverables = names.filter((name) => isAllowedDeliverableName(name));
   const tars = names.filter((name) => TAR_DELIVERY_RE.test(name));
-  if (tars.length > 0 && !hasManifest) {
+  if (deliverables.length > 0 && !hasManifest) {
     throw new Error(
-      '[REPORT_INTEGRITY_FAIL] 交付包缺少 CHECKSUMS.sha256 或 CHECKSUMS.sig，拒绝补旁挂哈希（删签名不能成为绕过验签的口子）',
+      '[REPORT_INTEGRITY_FAIL] 交付件缺少 CHECKSUMS.sha256 或 CHECKSUMS.sig，拒绝补旁挂哈希（删签名不能成为绕过验签的口子）',
     );
   }
   if (hasManifest) {

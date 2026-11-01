@@ -70,10 +70,16 @@ async function remoteReachable() {
   }
 }
 
+let remoteState;
+function remoteReachableCached() {
+  remoteState ??= remoteReachable();
+  return remoteState;
+}
+
 test('按 mod 分组：只返回勾选的 mod，未勾选的不出现', async (t) => {
+  if (!(await remoteReachableCached())) { t.skip('远端 k40-ubuntu 不可达'); return; }
   const { child, base } = await startServer();
   t.after(() => child.kill());
-  if (!(await remoteReachable())) { t.skip('远端 k40-ubuntu 不可达'); return; }
 
   const picked = 'l2_ingest_counts,l2_qc_cells';
   const body = await (await fetch(`${base}/api/preview/mods?project=default&line=line2_scrna&modIds=${picked}`, {
@@ -88,9 +94,9 @@ test('按 mod 分组：只返回勾选的 mod，未勾选的不出现', async (t
 });
 
 test('每个 mod 带产物清单与完整性状态', async (t) => {
+  if (!(await remoteReachableCached())) { t.skip('远端 k40-ubuntu 不可达'); return; }
   const { child, base } = await startServer();
   t.after(() => child.kill());
-  if (!(await remoteReachable())) { t.skip('远端 k40-ubuntu 不可达'); return; }
 
   const body = await (await fetch(`${base}/api/preview/mods?project=default&line=line2_scrna&modIds=l2_ingest_counts,l2_tf_scenic`, {
     signal: AbortSignal.timeout(30000),
@@ -109,9 +115,9 @@ test('每个 mod 带产物清单与完整性状态', async (t) => {
 });
 
 test('missing 与 complete 要能区分（不是所有缺失都叫文件丢失）', async (t) => {
+  if (!(await remoteReachableCached())) { t.skip('远端 k40-ubuntu 不可达'); return; }
   const { child, base } = await startServer();
   t.after(() => child.kill());
-  if (!(await remoteReachable())) { t.skip('远端 k40-ubuntu 不可达'); return; }
 
   const project = `preview_mods_test_${process.pid}`;
   const remoteDir = `/mnt/ssd/bio_data/projects/${project}/line3_spatial`;
@@ -136,9 +142,9 @@ test('missing 与 complete 要能区分（不是所有缺失都叫文件丢失�
 });
 
 test('未知系列 404，非法 project 400', async (t) => {
+  if (!(await remoteReachableCached())) { t.skip('远端 k40-ubuntu 不可达'); return; }
   const { child, base } = await startServer();
   t.after(() => child.kill());
-  if (!(await remoteReachable())) { t.skip('远端 k40-ubuntu 不可达'); return; }
 
   const bad = await fetch(`${base}/api/preview/mods?project=default&line=no_such_line`, {
     signal: AbortSignal.timeout(30000),

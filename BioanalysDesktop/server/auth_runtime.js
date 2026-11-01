@@ -12,7 +12,8 @@ export function cleanupAuthRuntimeFile(filePath = process.env.BIO_AUTH_RUNTIME_F
   try {
     fs.rmSync(filePath, { force: true });
     return true;
-  } catch {
+  } catch (cause) {
+    console.error(`[SECURITY][D-29] 临时口令文件清理失败: ${cause.message}`);
     return false;
   }
 }

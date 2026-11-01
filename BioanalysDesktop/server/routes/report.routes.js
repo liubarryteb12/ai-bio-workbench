@@ -83,7 +83,7 @@ export function handleReportRoutes(req, res, url, { json, runRemoteRaw }) {
       try {
         await runReportBuild(projectId);
         const pulled = await pullDeliverables(projectId);
-        // 旁挂 sha256：包内 CHECKSUMS 尚未生成，先在本地交付目录落 .sha256 便于复核
+        // 旁挂 sha256：先验证包内 CHECKSUMS 与签名，再在本地交付目录补 .sha256 便于复核
         const sidecars = writeSha256Sidecars(projectId);
         return json(res, 200, {
           ok: true,

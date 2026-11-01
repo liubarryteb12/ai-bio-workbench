@@ -214,7 +214,7 @@ test('runReportPreflight：非法 projectId 直接抛错（不触达远端）', 
 // 4. writeSha256Sidecars
 // ------------------------------------------------------------
 
-test('writeSha256Sidecars：为允许集合内的交付件写 sha256sum 可直接复核的旁挂文件', () => {
+test('writeSha256Sidecars：文本交付件缺 CHECKSUMS 清单 → 拒绝补旁挂哈希', () => {
   const projectId = 'PRJ_SIDECAR_OK';
   const dir = localDeliverDir(projectId);
   fs.mkdirSync(dir, { recursive: true });
@@ -223,14 +223,9 @@ test('writeSha256Sidecars：为允许集合内的交付件写 sha256sum 可直�
   fs.writeFileSync(path.join(dir, 'Analysis_Report.md'), md);
   fs.writeFileSync(path.join(dir, 'Analysis_Report.html'), html);
 
-  const written = writeSha256Sidecars(projectId);
-  assert.equal(written.length, 2);
-
-  const expectedMd = createHash('sha256').update(md).digest('hex');
-  const sidecarPath = path.join(dir, 'Analysis_Report.md.sha256');
-  const sidecarText = fs.readFileSync(sidecarPath, 'utf8');
-  assert.equal(sidecarText, `${expectedMd}  Analysis_Report.md\n`);
-  assert.ok(written.some((item) => item.name === 'Analysis_Report.md' && item.sha256 === expectedMd));
+  assert.throws(() => writeSha256Sidecars(projectId), /REPORT_INTEGRITY_FAIL/);
+  assert.equal(fs.existsSync(path.join(dir, 'Analysis_Report.md.sha256')), false);
+  assert.equal(fs.existsSync(path.join(dir, 'Analysis_Report.html.sha256')), false);
 });
 
 test('writeSha256Sidecars：目录不存在时回空数组而不是抛错', () => {
@@ -245,6 +240,7 @@ function signedDelivery(projectId) {
   const dir = localDeliverDir(projectId);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'Analysis_Report.md'), '# 交付报告\n原始正文\n', 'utf8');
+  fs.writeFileSync(path.join(dir, 'Analysis_Report.html'), '<html><body>原始正文</body></html>', 'utf8');
   const { privateKey, publicKey } = generateKeyPairSync('ed25519');
   const keys = {
     privateKey: privateKey.export({ type: 'pkcs8', format: 'pem' }),
@@ -258,6 +254,25 @@ function signedDelivery(projectId) {
   fs.writeFileSync(publicKeyPath, keys.publicKey, 'utf8');
   return { dir, publicKeyPath };
 }
+
+test('writeSha256Sidecars：验签通过后为全部交付件写 sha256sum 可直接复核的旁挂文件', () => {
+  const projectId = 'PRJ_SIDECAR_SIGNED_FILES';
+  const { dir, publicKeyPath } = signedDelivery(projectId);
+  const saved = process.env.BIO_ED25519_PUBLIC_KEY_PATH;
+  process.env.BIO_ED25519_PUBLIC_KEY_PATH = publicKeyPath;
+  try {
+    const written = writeSha256Sidecars(projectId);
+    assert.equal(written.length, 4, '报告两件、清单与签名都要有本地旁挂哈希');
+    const md = fs.readFileSync(path.join(dir, 'Analysis_Report.md'));
+    const expectedMd = createHash('sha256').update(md).digest('hex');
+    const sidecarText = fs.readFileSync(path.join(dir, 'Analysis_Report.md.sha256'), 'utf8');
+    assert.equal(sidecarText, `${expectedMd}  Analysis_Report.md\n`);
+    assert.ok(written.some((item) => item.name === 'Analysis_Report.md' && item.sha256 === expectedMd));
+  } finally {
+    if (saved === undefined) delete process.env.BIO_ED25519_PUBLIC_KEY_PATH;
+    else process.env.BIO_ED25519_PUBLIC_KEY_PATH = saved;
+  }
+});
 
 test('writeSha256Sidecars：签名完好时正常放行（证明下面的拦截不是恒失败）', () => {
   const { dir, publicKeyPath } = signedDelivery('PRJ_SIDECAR_SIGNED_OK');
