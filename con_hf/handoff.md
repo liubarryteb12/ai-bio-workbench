@@ -1,6 +1,27 @@
 # handoff — 跨会话交接
 
-> 最后更新：2026-11-01（08 号书七项独立复核，抓出三处残余并补齐，见下节第二十九轮）
+> 最后更新：2026-11-01（08 复核与 P3 mock 计算面接缝，见下节第三十轮）
+
+> **2026-11-01 第三十轮（08 复核与 P3 mock 计算面接缝）**：
+> ① **08 号书七项复核**：主代理与 `glm-5.3-flash` 子代理分别核查，七项在 `HEAD 2ce59ae`
+>   均已满足。定向实跑 `auth`、`bridge_guard_local`、`bridge_guard_invariant`、
+>   `report_preflight`、`report`、`server_startup`，结果 **81 pass / 0 fail / 0 skipped**；
+>   测试目录无 `25000ms` 残留，冷启动量化门禁仍为 `< 500ms`。
+> ② **P3-03 第二批替代路线**：按用户全量采纳，不引入 A2A 44 文件 TS 引擎层，在既有
+>   `server/proc.js` 单 seam 增加 `BIO_COMPUTE_ADAPTER=mock|ssh`。默认 `ssh`，未知值
+>   fail-closed，mock 仅在 `NODE_TEST_CONTEXT` 或 `BIO_ALLOW_MOCK_COMPUTE=1` 时允许，
+>   不启动真实 ssh；`runSshStrict` 语义不变，`runStream` 支持异步 mock 回调。
+> ③ **P3 切片测试**：`node --test tests/compute_adapter.test.js` 为 **6 pass / 0 fail**；
+>   沙箱内全量为 **1019 tests / 958 pass / 5 fail / 56 skipped**。5 条红与既有基线逐条同名：
+>   `consistency` 的 K40 DNS、`link` 的 adb/forward/四段自检、`proc` 的真实链路。
+>   沙箱外全量复跑被审批审查超时拦下，未执行；不能用 mock 冒充真机绿。
+>   `npx tsc --noEmit` 与 `npm run build` 均 exit 0。
+> ④ **双轴复核**：Standards 轴无硬违规，抓到 mock 判定重复与未知适配器校验面偏窄，已修；
+>   Spec 轴抓到挑拣溯源、handoff 与原子提交未落账，本文件与 P3-03 核对文档已补齐，
+>   提交待 `.git` 写权限恢复后执行。
+> ⑤ **清理阻塞**：工作区内 `.auth_runtime.json`、`.nafld_portal.log`、根 `.tmp` 与
+>   `BioanalysDesktop/.tmp/bio-*` 运行残留已盘点；删除命令两次被审批审查超时拦下，
+>   未执行任何删除。`cn_debug` 含 263 个已跟踪文件，按既定裁定保留，不纳入本轮清理。
 
 > **2026-11-01 第二十九轮（08 号书七项独立复核，三处残余已补）**：
 > ① **复核口径**：08 号书七项在 `ae24710` / `31db860` / `3160fd2` 已落地，本轮不复述旧结论，

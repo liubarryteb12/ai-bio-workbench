@@ -118,6 +118,21 @@ runner 侧靠 `wrapperId()` 随机后缀保证目录不撞，于是重复提交�
 - 无设备可验：mock adapter 下的全量 `npm test`、`node_failover.test.js` 扩展断言。
 - 冲突预判：`server/proc.js` 若被 P3-01 搬进 `server/remote_exec.js`，本批必须等 P3-01 合入后开工。
 
+#### 第二批实做记录（2026-11-01，用户已全量采纳替代路线）
+
+- **picked 提交号**：`0`。本批不 cherry-pick `codex/a2a-v1` 的 TS 引擎层，改为在 master
+  既有 `server/proc.js` 单 seam 增加 `BIO_COMPUTE_ADAPTER=mock|ssh`。这是用户对
+  「不引入 44 文件引擎层」建议的全量采纳，不是静默丢弃分支提交。
+- **未合入提交与理由**：`0e3e161`、`c5a80a8`、`0465169`、`3782bb3` 随微内核底座整体暂缓，
+  `f0b63b4` 仅作接缝参考。理由是 master 已有 `server/proc.js` 与 `node_failover.test.js`，
+  直接引入会形成第二套计算面真源，并突破本轮只拆既有接缝的边界。
+- **落盘文件**：`BioanalysDesktop/server/proc.js`、`BioanalysDesktop/tests/compute_adapter.test.js`。
+- **验证命令与结果**：`node --test tests/compute_adapter.test.js`，6 pass / 0 fail。
+  覆盖默认 ssh、显式 mock、未知适配器 fail-closed、非测试环境门禁、strict 非 0/空输出、
+  runStream 异步回调和 kill no-op。
+- **剩余门禁**：全量 `npm test` 需在真实设备环境复跑；mock adapter 尚未接管
+  `run.js`、`task.js`、`report.js` 等直接 SSH 调用点，后续切片按调用面逐块迁移。
+
 ### 第三批：PiAgentChat 观测插槽
 
 - 提交 `2c4c0ba`、`55b9585`、`8e862ae`、`72a8394`、`f07f2d9`。

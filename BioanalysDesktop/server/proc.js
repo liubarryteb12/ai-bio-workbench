@@ -46,6 +46,35 @@ function programBaseName(program) {
 }
 
 /**
+ * 计算面适配器：默认 ssh。未知值 fail-closed，mock 只允许在测试环境
+ * 或显式 BIO_ALLOW_MOCK_COMPUTE=1 时生效，防止生产进程静默走假算力。
+ */
+function resolveComputeAdapter() {
+  const adapter = process.env.BIO_COMPUTE_ADAPTER || 'ssh';
+  if (adapter !== 'ssh' && adapter !== 'mock') {
+    throw new Error(`BIO_COMPUTE_ADAPTER 仅接受 ssh / mock，当前为 ${adapter}`);
+  }
+  if (adapter === 'mock'
+    && process.env.NODE_TEST_CONTEXT === undefined
+    && process.env.BIO_ALLOW_MOCK_COMPUTE !== '1') {
+    throw new Error('mock 计算面仅在测试环境或 BIO_ALLOW_MOCK_COMPUTE=1 时允许');
+  }
+  return adapter;
+}
+
+function resolveMockSsh(program) {
+  return resolveComputeAdapter() === 'mock' && programBaseName(program) === 'ssh';
+}
+
+function mockSshResult() {
+  return {
+    code: Number(process.env.BIO_COMPUTE_MOCK_EXIT_CODE ?? '0'),
+    stdout: process.env.BIO_COMPUTE_MOCK_STDOUT ?? '',
+    stderr: process.env.BIO_COMPUTE_MOCK_STDERR ?? '',
+  };
+}
+
+/**
  * 断言命令只使用白名单程序。
  * @param {string[]} argv 形如 ['ssh', '-o', '...']
  * @throws {Error} 非白名单程序
@@ -67,6 +96,9 @@ export function assertAllowedProgram(argv) {
  */
 export function runSync(argv, options = {}) {
   assertAllowedProgram(argv);
+  if (resolveMockSsh(argv[0] || '')) {
+    return mockSshResult();
+  }
   const result = childProcess.spawnSync(argv[0], argv.slice(1), {
     cwd: options.cwd,
     encoding: 'utf8',
@@ -125,6 +157,15 @@ export function runSshStrict(target, command, options = {}) {
  */
 export function runStream(argv, handlers = {}) {
   assertAllowedProgram(argv);
+  if (resolveMockSsh(argv[0] || '')) {
+    const result = mockSshResult();
+    queueMicrotask(() => {
+      handlers.onStdout?.(result.stdout);
+      handlers.onStderr?.(result.stderr);
+      handlers.onExit?.(result.code);
+    });
+    return { kill: () => {} };
+  }
   const child = childProcess.spawn(argv[0], argv.slice(1), {
     cwd: handlers.cwd,
     windowsHide: true,
