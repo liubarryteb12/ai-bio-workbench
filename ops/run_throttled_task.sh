@@ -44,6 +44,62 @@ SCRIPT_PATH="$5"
 shift 5
 SCRIPT_ARGS="$*"
 
+# --- 幂等锁（P3-03 第一批，2026-11-01）：同逻辑步骤键的重复执行互斥 ---
+# 逻辑键默认 <line_id>_<step_name>（如 line2_scrna_scenic_tf）。不用 task_id 派生：
+# 引擎 id 形如 task_<epoch>_<rand>，重发必然换 epoch 与尾段，按 id 判重挡不住真重复。
+# 需要项目维度时引擎侧导出 BIO_LOCK_KEY='<project>:<line>:<step>' 覆盖默认键。
+# 跨项目同步骤会互斥串行（键不含项目时的保守代价，不产生错账）。
+# 同键撞锁先排队（最长 BIO_LOCK_WAIT_SECONDS），等满了仍被占才拒（exit 4），
+# 双击提交这类自然串行化，不误伤合法排队。
+# 持锁主死活用 kill -0 判：pid 已死 = 崩溃残留的死锁，回收接管；pid 复用概率
+# 在本场景可接受（误判死锁的代价是排队互斥退化为并发，不会双写台账）。
+# 释放走 EXIT trap：set -e 中途失败也要放，靠顺序代码会在门禁/热节流出口漏锁。
+# 抢占用 noclobber 重定向原子创建，不依赖 flock/util-linux（Termux proot 不保证有）。
+# 紧急回滚：BIO_IDEMPOTENT_LOCK=0 整体跳过。exit 4 是锁互斥专用码，与母版
+# 0/1/2/3 约定（docs/coding-standards.md 退出码表）不冲突。
+BIO_IDEMPOTENT_LOCK="${BIO_IDEMPOTENT_LOCK:-1}"
+BIO_LOCK_WAIT_SECONDS="${BIO_LOCK_WAIT_SECONDS:-1200}"
+BIO_LOCK_POLL_SECONDS="${BIO_LOCK_POLL_SECONDS:-10}"
+LOCK_KEY_RAW="${BIO_LOCK_KEY:-${LINE_ID}_${STEP_NAME}}"
+LOCK_KEY=$(printf '%s' "$LOCK_KEY_RAW" | tr -c 'A-Za-z0-9._-' '_')
+LOCK_DIR="/mnt/ssd/bio_data/system_logs/_locks"
+LOCK_FILE=""
+cleanup_wrapper_lock() {
+    # 只删自己持有的锁：死锁回收后锁属主已换人，trap 不能把人家的锁删掉
+    if [ -n "$LOCK_FILE" ] && [ -f "$LOCK_FILE" ] && grep -q "^$$\$" "$LOCK_FILE" 2>/dev/null; then
+        rm -f -- "$LOCK_FILE"
+    fi
+}
+if [ "$BIO_IDEMPOTENT_LOCK" = "1" ]; then
+    mkdir -p "$LOCK_DIR"
+    LOCK_FILE="$LOCK_DIR/${LOCK_KEY}.lock"
+    LOCK_WAITED=0
+    while :; do
+        if ( set -o noclobber; echo "$$" > "$LOCK_FILE" ) 2>/dev/null; then
+            echo "[wrapper] $(date -u +%Y-%m-%dT%H:%M:%SZ) LOCK_ACQUIRED key=$LOCK_KEY pid=$$"
+            break
+        fi
+        holder_pid=$(tr -d '[:space:]' < "$LOCK_FILE" 2>/dev/null || echo "")
+        case "$holder_pid" in
+            ""|*[!0-9]*) holder_pid="" ;;
+        esac
+        if [ -n "$holder_pid" ] && ! kill -0 "$holder_pid" 2>/dev/null; then
+            echo "[wrapper] $(date -u +%Y-%m-%dT%H:%M:%SZ) STALE_LOCK key=$LOCK_KEY holder=$holder_pid 已退出，回收接管"
+            rm -f -- "$LOCK_FILE"
+            continue
+        fi
+        if [ "$LOCK_WAITED" -ge "$BIO_LOCK_WAIT_SECONDS" ]; then
+            echo "[wrapper] $(date -u +%Y-%m-%dT%H:%M:%SZ) ALREADY_RUNNING key=$LOCK_KEY holder=${holder_pid:-unknown} waited=${LOCK_WAITED}s，拒绝重复执行"
+            LOCK_FILE=""
+            exit 4
+        fi
+        echo "[wrapper] $(date -u +%Y-%m-%dT%H:%M:%SZ) LOCK_WAIT key=$LOCK_KEY holder=${holder_pid:-unknown} waited=${LOCK_WAITED}s poll=${BIO_LOCK_POLL_SECONDS}s"
+        sleep "$BIO_LOCK_POLL_SECONDS"
+        LOCK_WAITED=$((LOCK_WAITED + BIO_LOCK_POLL_SECONDS))
+    done
+    trap cleanup_wrapper_lock EXIT
+fi
+
 # 前置门禁
 bash "${BIO_STORAGE_GUARD:-/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh}" "$LINE_ID" "$SCRIPT_PATH"
 
