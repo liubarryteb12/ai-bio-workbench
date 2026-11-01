@@ -1,6 +1,49 @@
 # handoff — 跨会话交接
 
-> 最后更新：2026-11-01（第三十二轮：P3-03 四刀接缝全合入、幂等锁真机验证、清理执行完毕）
+> 最后更新：2026-11-01（第三十三轮：P3-03 第三批 PiAgentChat 合入，P3 三批全部收官）
+
+> **2026-11-01 第三十三轮（第三批 PiAgentChat 观测插槽合入）**：
+> ① **状态快照**：分支 `master`，HEAD `e21e021`。起点为第三十二轮的 `075be6e`，
+>   本轮一条原子提交合入第三批（16 文件，+3,260/-2）。
+> ② **第三批合入形态**：`2c4c0ba`→`55b9585`→`8e862ae`→`72a8394` 四提交在分支 tip
+>   已收敛进独立模块，按 tip 逐 blob `git show` 抽取（hash-object 与 rev-parse 逐文件
+>   identical=True），不逐个 cherry-pick（它们全触碰旧 index.js 与巨型 App.tsx，
+>   master 已拆分，逐个必冲突）。落点：`server/{a2a_state,pi_agent,pi_agent_routes}.js`、
+>   `src/{pi_chat_state.js,PiAgentChat.tsx}`、`src/views/PiAgentView.tsx`（分支 App 的
+>   Pi 类型 + PiAgentMonitor 逐字搬出，仅改挂点）、App.tsx 挂 `pi-agent`/`pi-chat` 两条目、
+>   app.css 追加分支 :1281 至尾部 Pi 样式、index.js 诊断路由后挂 `handlePiAgentRoutes`
+>   （注入 `{ json, runSshRaw }`，pi 走 `k40` 别名 Termux 宿主面，与 `k40-ubuntu` 容器
+>   执行面分离）、三个单测、两个 pi e2e case、`ops/pi_seed_settings.sh`（pi_agent.test.js
+>   的静态断言对象）。
+> ③ **未取项（逐项理由在 `con_hf/dispatch/P3-03_a2a_cherry_pick_triage.md` 第三批段）**：
+>   `src/mods/mod-pi-observability/*`（mod 注册制依附未准入的分支 `core/types` 体系，
+>   合入即孤儿）；`tests/e2e/pi_chat.spec.ts`（与 portal.spec 追加 case 同源重复）；
+>   `3439950` 其余 83 文件；`f07f2d9` 的 actions.jsonl 污染增量；A2A 运行时 ops 脚本
+>   （census 三批外 rejected 维持）。A2A 运行时整体准入仍是另行议题，待用户裁定。
+> ④ **测试卫生修复**：`pi_agent_routes.test.js` 的 GET task 与 POST cancel 两条在分支
+>   原版漏传 `ledgerRoot`，实跑把 8 条假台账（task-456/task-789）写进真实
+>   `con_hf/ledger/actions.jsonl`。已补 mkdtemp 注入并 `git checkout --` 回滚正本。
+>   教训：伴随测试移植必须查写盘副作用，绿了不等于没污染。
+> ⑤ **e2e 既有断口修复（重要）**：08 号书 D-29 Fail-Closed 合入后 admin 面（9322）
+>   无凭据即 401，`tests/e2e/portal.spec.ts` 的 admin 面 case（chunk upload 等）自那次
+>   合入起从未跑绿，此前无人发现（交接只盯 npm test）。修法在环境侧不动断言：
+>   `playwright.config.ts` webServer env 注入 `BAD_AUTH_USER/BAD_AUTH_PASS` 固定测试
+>   凭据（仅本地回环测试端口），spec 顶部 `test.use({ httpCredentials })` 同源带上。
+>   完整 e2e 首次全绿：**18 passed / 0 failed（44s）**，含两条新 pi 对话 case。
+> ⑥ **app.css 教训**：追加样式时从分支截 :1281–:1514 恰好切在 `@media` 块中部，
+>   vite 报 css-syntax-error 警告且工作树混入 CRLF。重建为「HEAD 版本 + 分支 :1281 至
+>   文件尾」整段，大括号 251/251 配对，警告消除。截 CSS/JS 区块要以语法边界收口，
+>   不能按行号硬切。
+> ⑦ **测试基线（本轮实跑）**：全量 `node --test --test-concurrency=1 tests/*.test.js`
+>   **1071 tests / 1070 pass / 0 fail / 1 skipped**（88s，+46 条恰为三个 pi 测试文件）；
+>   e2e 18/18；`npx tsc --noEmit` 与 `npm run build` exit 0。K40 容器链路可达，
+>   真机全量口径仍待 `ops/00_link_check.ps1` 四项全绿后刷新。
+> ⑧ **P3 收官状态**：P3-01 结构达成待宽 import 审计；P3-02 结构达成、渲染覆盖已关闭；
+>   P3-03 三批全部合入（mock adapter `a590dd6`、幂等锁 `7e79599` 真机验证、
+>   PiAgentChat `e21e021`），四刀单接缝 `3f637c9`/`5095663`/`feb9cce` 全部落地。
+> ⑨ **下一步顺序**：`run.js` 两处直连（:208/:380）裁定是否入缝 → P3-01 宽 import
+>   静态审计（逐条 `rg -w`）→ 真机全量复跑 → `Python/` 与 `BioanalysDesktop/Python/`
+>   两个便携发行版（合计约 350MB，未跟踪）处置裁定。
 
 > **2026-11-01 第三十二轮（清理 + P3-03 幂等锁 + 单接缝四刀全部合入）**：
 > ① **状态快照**：分支 `master`，HEAD `7e79599`。本轮 6 条原子提交：
