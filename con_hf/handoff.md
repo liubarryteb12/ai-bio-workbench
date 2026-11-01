@@ -1,6 +1,105 @@
 # handoff — 跨会话交接
 
-> 最后更新：2026-11-01（08 复核与 P3 mock 计算面接缝，见下节第三十轮）
+> 最后更新：2026-11-01（第三十二轮：P3-03 四刀接缝全合入、幂等锁真机验证、清理执行完毕）
+
+> **2026-11-01 第三十二轮（清理 + P3-03 幂等锁 + 单接缝四刀全部合入）**：
+> ① **状态快照**：分支 `master`，HEAD `7e79599`。本轮 6 条原子提交：
+>   `3f637c9`（task.js 入缝）、`5095663`（selfcheck+reconcile 入缝）、`10289e9`（清理与归档）、
+>   `feb9cce`（report.js ssh+scp 入缝）、`40e5a86`（P3-02 渲染覆盖收尾）、`7e79599`（幂等锁）。
+> ② **P3-03 单接缝四刀全部完成**：`task.js`、`selfcheck.js`、`reconcile.js`、`report.js` 的
+>   全部 ssh/scp 直连已迁入 `server/proc.js` 单 seam；`SEAM_MIGRATED_MODULES` 守卫钉住四文件
+>   不得再出现 `childProcess.(spawnSync|spawn)`。mock 覆盖从 ssh 扩到 ssh+scp。
+>   `runSync` 新增 `error`（启动失败原文）与 `input`（stdin 透传）；`runStream` 新增 `onError`。
+>   剩余直连点仅 `run.js`（:208/:380，引擎下发主路径）与 `task_input.js`（已走 runSync）。
+>   `run.js` 两处是否入缝未列入交接刀口清单，**待用户裁定**。
+> ③ **P3-03 第一批幂等锁已落地并真机验证**：`ops/run_throttled_task.sh` 加逻辑步骤键
+>   （默认 `<line_id>_<step_name>`，`BIO_LOCK_KEY` 可注入项目维度）互斥锁：noclobber 原子抢占、
+>   撞锁排队（默认等 1200s、poll 10s）、等满才 `exit 4`、死锁主 `kill -0` 判死回收、
+>   EXIT trap 释放并验属主、`BIO_IDEMPOTENT_LOCK=0` 回滚开关。测试落 `ops/tests/`：
+>   静态 7 条 + Git-Bash 行为 3 条全绿；经 `sync_and_verify_remote.ps1` 正门同步 K40
+>   （SHA256 一致），真机三场景验证：活锁主下 B 等满 exit 4、C 排队 8s 后接管、锁文件与
+>   标记零残留。这是本轮唯一的真机绿灯，其余为 mock/沙箱结果。
+> ④ **清理执行完毕（上轮阻塞解除）**：批准通道变化后删除已裁定运行残留
+>   （`BioanalysDesktop/.tmp` 5271 文件、根 `.tmp`、`.tmp_and`、`.nafld_portal.log`、
+>   `BioanalysDesktop/.auth_runtime.json`<REDACTED 口令文件>）；14 个审计工具 + `launch.ps1`
+>   + `run-suite.mjs` 提交入 `BioanalysDesktop/tools/audit/`（7 个 baseline/probe 残留日志已清）。
+>   `.gitignore` 的 `.tmp*/` 继续兜住测试重建的 `.tmp`。
+> ⑤ **归档部分执行（有方法论纠错）**：第一轮 `git grep -- ':!_archive'` 的 exclude 简写不被
+>   git grep 支持，命令 fatal 退出被误读为零引用，误搬 20 件；改用 `':(exclude)_archive'` 重扫
+>   后回退 16 件有活引用的（引用方含 `docs/`、`ops/`、`aims/`、`cn_debug` 探针）。最终仅搬
+>   入链为零的 4 件入 `_archive/con_hf/`。`_archive/README.md` 登记了 4 件归档、16 件未搬与
+>   各自引用方、搬动前置条件（先改引用再 git mv）。教训：pathspec 魔法串必须带正对照验证。
+> ⑥ **P3-02 渲染覆盖缺口关闭**：`ui_render_smoke.test.js` 从 6 case 扩到 10 case，新增
+>   `FigureAdaptCard`、`FiguresPanel`、`TaskPanel`、`LedgerPanel` 直接渲染断言（骨架类名期望值
+>   取自实跑产物）。`PipelineDAGView` 无独立文件的现实已写进 P3 正本（DAG 归 `OnboardingView`
+>   :490/:862）。P3 正本五之二进度表重写；08 号书 `<300ms` 目标与 `<500ms` 门禁口径统一。
+> ⑦ **测试基线（本轮实跑，设备环境 = K40 经 10022 端口可达）**：全量
+>   `npm test` **1025 tests / 1024 pass / 0 fail / 1 skipped**（约 90s）；幂等锁后 wrapper
+>   四套件 31/31；`npx tsc --noEmit` 与 `npm run build` exit 0。真机全量 1019 复跑仍欠
+>   （本轮 K40 链路可用但 adb 侧未核，全量真机口径以 `ops/00_link_check.ps1` 先行）。
+> ⑧ **第三批 PiAgentChat 前置已满足**（P3-02 已合入），本轮未开工，按
+>   `con_hf/dispatch/P3-03_a2a_cherry_pick_triage.md` 第三批清单执行：`2c4c0ba`、`55b9585`、
+>   `8e862ae`、`72a8394`、`f07f2d9`，落点 `server/pi_agent*.js`、`src/PiAgentChat.tsx`、
+>   `src/mods/mod-pi-observability/`；`3439950` 必须按文件拆不能整提交挑拣。
+> ⑨ **未跟踪大块**：根 `Python/`（2384 文件 174MB）与 `BioanalysDesktop/Python/`（2418 文件
+>   175MB）是 2026-11-01 16:55 起装入的便携 Python 3.15 发行版（行为测试曾借其跑过），
+>   未进 `.gitignore` 也未跟踪，**处置待用户裁定**（删/忽略/入库）。
+> ⑩ **下一步顺序**：第三批 PiAgentChat 挑拣 → `run.js` 直连点裁定是否入缝 →
+>   P3-01 宽 import 静态审计 → 真机全量复跑刷新基线。
+
+> **2026-11-01 第三十一轮（用户清空目标后的交接）**：
+> ① **状态快照**：分支 `master`，HEAD `7e88671`。本轮修改前已跟踪工作树干净；当前新增
+>   `con_hf/handoff.md` 修改、未跟踪的
+>   `con_hf/2026-11-01_综合汇报_清理阻塞_P3目标与提示词.md`，以及未跟踪的
+>   `BioanalysDesktop/tools/audit/` 审计残留。用户已清空活动目标，当前没有新的
+>   active goal，等待重新设定。
+> ② **08 号书七项**：当前 HEAD 全部满足，定向实跑 **81 pass / 0 fail / 0 skipped**。
+>   文档实际路径是 `aims/bio/08_ai_20261031.md`。七项分别覆盖 Fail-Closed 鉴权、
+>   负向鉴权单测、静态 crypto 导入与临时凭证退出即焚、bridge 未知参数 `exit 2`、
+>   local/ssh 离线契约、交付先验后签、10s 测试标准与冷启动门禁。
+>   发现一处文档内部口径不一致：第一节写 `<300ms`，第三节写 `<500ms`，当前自动门禁按
+>   `<500ms`，实测约 117 到 149ms。
+> ③ **P3-01 已完成结构目标**：`server/index.js` 当前 **291 行**，目标 `<400` 已达成。
+>   36 个 REST 端点已搬入 `server/routes/`，鉴权、dispatch、健康检查、静态兜底、
+>   探针和 `export { server }` 留在入口。剩余是宽 import 与 `routeCtx` 注入的静态审计，
+>   删任何符号前必须逐条 `rg -w` 核对守卫，不能盲删。
+> ④ **P3-02 已完成结构目标**：`src/App.tsx` 当前 **115 行**，目标 `<350` 已达成。
+>   已落位 `OnboardingView`、`FigureGalleryView`、`SelfCheckAdminView`、
+>   `ResultStudioView`、`LedgerAuditView`。相关提交为 `de8dad5`、`e5a62e8`、
+>   `9a8a61a`、`f9c6281`、`b68fd6c`、`aba1b09`、`6192aae`。
+>   残留缺口：渲染冒烟测试有 6 个 case，覆盖 `App`、`OnboardingPortal`、
+>   `CustomerInputConsole`、`PreFlightDashboard`、`ResultPreviewStudio`、`FilesPanel`，
+>   没有直接渲染 `FigureGalleryView` 与 `LedgerAuditView`。P3 正本列出的
+>   `PipelineDAGView` 当前没有独立文件，需补直接渲染断言或更新视图映射。
+> ⑤ **P3-03 第二批已完成**：按用户“全量采纳”不引入 A2A 44 文件 TS 引擎层，
+>   在 `server/proc.js` 单 seam 增加 `BIO_COMPUTE_ADAPTER=mock|ssh`，提交 `a590dd6`。
+>   默认 `ssh`，未知值 fail-closed，mock 仅允许 `NODE_TEST_CONTEXT` 或
+>   `BIO_ALLOW_MOCK_COMPUTE=1`，`runStream` 支持异步 mock 回调。
+>   专项测试 `node --test tests/compute_adapter.test.js` 为 **6 pass / 0 fail**。
+> ⑥ **P3-03 未完成**：第一刀是把 `server/task.js` 两处
+>   `childProcess.spawnSync('ssh')` 迁到 `proc.js` 的 `runSync`，先写会红的测试。
+>   之后迁移 `selfcheck.js`、`reconcile.js`，再扩展 `proc.js` 的 mock 覆盖到 scp，
+>   最后处理 `report.js`。第一批幂等锁落在 `ops/run_throttled_task.sh`，
+>   测试放 `ops/tests/`。第三批 PiAgentChat 等 P3-02 渲染覆盖收尾后开工。
+> ⑦ **测试基线**：沙箱内全量为 **1019 tests / 958 pass / 5 fail / 56 skipped**。
+>   5 条红全部是既有设备环境红：`consistency` 的 K40 DNS、`link` 的 adb 设备探测、
+>   adb forward、四段自检，以及 `proc` 的真实 SSH 链路。`npx tsc --noEmit` 与
+>   `npm run build` 均 exit 0。真实设备基线仍是 **1013 / 1012 pass / 0 fail / 1 skipped**，
+>   本轮没有复跑，不能把 mock 或沙箱结果写成真机绿灯。
+> ⑧ **清理阻塞**：`BioanalysDesktop/.tmp` 仍有 5271 文件、约 26.96 MiB；
+>   根 `.tmp`、`.tmp_and`、`.nafld_portal.log`、`BioanalysDesktop/.auth_runtime.json`
+>   也仍在。删除动作两次被权限审批审查超时拦截，没有执行任何删除。
+>   这不是 `.git` ACL 阻塞。`git update-index --refresh` 返回 0，`.git` 写入路径可用。
+>   `cn_debug` 366 文件、约 721 MiB、263 个已跟踪，按用户裁定保留。
+>   删除 `BioanalysDesktop/.tmp` 前保留 14 个审计工具，建议移到 `tools/audit/`。
+>   另发现未跟踪的 `BioanalysDesktop/tools/audit/`，含 `run-suite.mjs`、`launch.ps1`
+>   和若干测试日志。`baseline-02.log` 为空且没有对应 `.code`，判断为一次未收尾的
+>   后台全量测试残留。脚本可评估后保留，日志应清理，不要直接当成已提交工具。
+> ⑨ **下一步顺序**：先完成清理审批或归档，再做 `task.js` 单 seam tracer bullet，
+>   然后依次处理 `selfcheck.js`、`reconcile.js`、scp mock、`report.js`，
+>   最后做幂等锁与 PiAgentChat。每步一条原子提交，提交信息写验证命令与结果。
+> ⑩ **详细材料**：`con_hf/2026-11-01_综合汇报_清理阻塞_P3目标与提示词.md`
+>   已把事实、证据、阻塞和目标提示词整理在一起，可作为本轮交接的展开版。
 
 > **2026-11-01 第三十轮（08 复核与 P3 mock 计算面接缝）**：
 > ① **08 号书七项复核**：主代理与 `glm-5.3-flash` 子代理分别核查，七项在 `HEAD 2ce59ae`
