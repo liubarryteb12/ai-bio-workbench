@@ -62,11 +62,17 @@ function resolveComputeAdapter() {
   return adapter;
 }
 
-function resolveMockSsh(program) {
-  return resolveComputeAdapter() === 'mock' && programBaseName(program) === 'ssh';
+/**
+ * mock 覆盖远端传输类程序 ssh 与 scp：两者都是"把活儿交给 K40"的动作，
+ * 假算力面必须同时罩住，否则 report.js 的 scp 拉包在 mock 下仍会真连远端。
+ * adb 是本地链路工具，不归计算面适配器管。
+ */
+function resolveMockRemote(program) {
+  return resolveComputeAdapter() === 'mock'
+    && ['ssh', 'scp'].includes(programBaseName(program));
 }
 
-function mockSshResult() {
+function mockRemoteResult() {
   return {
     code: Number(process.env.BIO_COMPUTE_MOCK_EXIT_CODE ?? '0'),
     stdout: process.env.BIO_COMPUTE_MOCK_STDOUT ?? '',
@@ -102,8 +108,8 @@ export function assertAllowedProgram(argv) {
  */
 export function runSync(argv, options = {}) {
   assertAllowedProgram(argv);
-  if (resolveMockSsh(argv[0] || '')) {
-    return mockSshResult();
+  if (resolveMockRemote(argv[0] || '')) {
+    return mockRemoteResult();
   }
   const result = childProcess.spawnSync(argv[0], argv.slice(1), {
     cwd: options.cwd,
@@ -159,14 +165,16 @@ export function runSshStrict(target, command, options = {}) {
 
 /**
  * 流式执行：stdout/stderr 逐块回调，用于任务下发时的实时日志。
+ * onError 只在真实子进程路径挂：mock 短路没有进程，也就没有启动失败可报。
+ * report.js 的门禁靠它把"ssh/scp 起不来"和"远端退出码非 0"分开处理。
  * @param {string[]} argv
- * @param {{cwd?: string, onStdout?: Function, onStderr?: Function, onExit?: Function}} handlers
+ * @param {{cwd?: string, onStdout?: Function, onStderr?: Function, onExit?: Function, onError?: Function}} handlers
  * @returns {{kill: Function}} 可用于中止任务
  */
 export function runStream(argv, handlers = {}) {
   assertAllowedProgram(argv);
-  if (resolveMockSsh(argv[0] || '')) {
-    const result = mockSshResult();
+  if (resolveMockRemote(argv[0] || '')) {
+    const result = mockRemoteResult();
     queueMicrotask(() => {
       handlers.onStdout?.(result.stdout);
       handlers.onStderr?.(result.stderr);
@@ -181,5 +189,6 @@ export function runStream(argv, handlers = {}) {
   child.stdout.on('data', (chunk) => handlers.onStdout?.(chunk.toString()));
   child.stderr.on('data', (chunk) => handlers.onStderr?.(chunk.toString()));
   child.on('exit', (code) => handlers.onExit?.(code));
+  child.on('error', (error) => handlers.onError?.(error));
   return { kill: () => child.kill() };
 }

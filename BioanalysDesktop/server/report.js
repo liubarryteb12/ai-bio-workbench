@@ -9,22 +9,22 @@
  *   不编造数字 / 不重写母版 / 交付包脱敏真实路径（{{DATA_ROOT}} 占位）。
  *   退出码 0=成功 1=参数或数据错误 2=环境错误 -  - 非 0 一律如实 reject，不吞。
  *
- * 执行接缝说明：run.js（本仓既定范式）执行远端命令用的是 childProcess 默认导入
- * 的 spawn('ssh', [...argv])，而不是把 buildRemoteCommand 的整串命令交给 shell -  -
- * Windows 本地 shell 是 cmd.exe，单引号不是引用字符，远端命令里的 && 会被 cmd
- * 当成本地命令分隔符拆开。所以这里照 run.js 的 spawn 用法走 argv 数组；scp 拉取
- * 照 pull.js 的 argv 范式。childProcess 用默认导入是为了 node:test 的
- * mock.method 能拦截（ESM 具名导入是链接期快照，拦不到，run.js 注释已实证）。
+ * 执行接缝说明：远端命令一律走 proc.js 的 runStream 单接缝（2026-11-01 P3-03 迁入），
+ * 本模块不再自带 childProcess 导入。两条理由：
+ *   1. argv 数组而非整串命令交 shell：Windows 本地 shell 是 cmd.exe，单引号不是引用
+ *      字符，远端命令里的 && 会被 cmd 当本地分隔符拆开（run.js 同款坑）。
+ *   2. 白名单与 BIO_COMPUTE_ADAPTER=mock 短路都在接缝收口：交付门禁测试用 mock 计算面
+ *      就能验 build+pull+验签全链路，既不真连 K40，也不会漏 scp 直连（scp 也在 mock 覆盖内）。
+ * 底层 childProcess 是默认导入（ESM 具名导入是链接期快照，mock.method 拦不到，run.js 已实证）。
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash, verify as cryptoVerify } from 'node:crypto';
-import childProcess from 'node:child_process';
 
 import { HOSTS, SSD_ROOT, PROJECTS_ROOT, SYSTEM_LOGS, LINES, sanitizeProjectId } from './domain.js';
-import { assertAllowedProgram } from './proc.js';
+import { runStream } from './proc.js';
 import { stripSshNoise } from './run.js';
 import { readPublicKey } from '../../ops/ed25519_tools.mjs';
 
@@ -256,37 +256,44 @@ export function localDeliverFilePath(projectId, name) {
  * stderr 原文（引擎 1=数据错误 2=环境错误都要如实带回，不许吞成成功）。
  */
 function runSsh(command, handlers = {}) {
-  assertAllowedProgram(['ssh']);
+  return streamRemote(
+    ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', HOSTS.compute, command],
+    handlers,
+    'ssh'
+  ).then(({ stdout, stderr, code }) => {
+    const cleanOut = stripSshNoise(stdout);
+    const cleanErr = stripSshNoise(stderr);
+    if (code === 0) return { stdout: cleanOut, stderr: cleanErr };
+    throw new Error(`exit ${code}: ${cleanErr.trim() || cleanOut.trim() || 'stderr 为空'}`);
+  });
+}
+
+/**
+ * 远端传输类命令（ssh / scp）的流式执行，走 proc.js 单接缝：白名单与
+ * BIO_COMPUTE_ADAPTER 都在那一层收口，report 门禁在 mock 下不会真连 K40。
+ * 启动失败与退出码非 0 分开报（前 08 号书复核要求"起不来"不能被吞成"跑失败"）。
+ */
+function streamRemote(argv, handlers, label) {
   return new Promise((resolve, reject) => {
-    const child = childProcess.spawn(
-      'ssh',
-      ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', HOSTS.compute, command],
-      { windowsHide: true }
-    );
     let out = '';
     let err = '';
     let settled = false;
-    // ssh 早退（连接失败）时后续 stdin/stdout 操作会 EPIPE，这里只兜事件本身
-    child.on('error', () => {});
-    child.stdout.on('data', (chunk) => {
-      const text = chunk.toString();
-      out += text;
-      handlers.onStdout?.(text);
-    });
-    child.stderr.on('data', (chunk) => {
-      const text = chunk.toString();
-      err += text;
-      handlers.onStderr?.(text);
-    });
-    child.on('exit', (code) => {
-      settled = true;
-      const cleanOut = stripSshNoise(out);
-      const cleanErr = stripSshNoise(err);
-      if (code === 0) return resolve({ stdout: cleanOut, stderr: cleanErr });
-      reject(new Error(`exit ${code}: ${cleanErr.trim() || cleanOut.trim() || 'stderr 为空'}`));
-    });
-    child.on('error', () => {
-      if (!settled) reject(new Error(`ssh 启动失败: ${err.trim() || 'unknown error'}`));
+    runStream(argv, {
+      onStdout: (text) => {
+        out += text;
+        handlers.onStdout?.(text);
+      },
+      onStderr: (text) => {
+        err += text;
+        handlers.onStderr?.(text);
+      },
+      onExit: (code) => {
+        settled = true;
+        resolve({ stdout: out, stderr: err, code });
+      },
+      onError: () => {
+        if (!settled) reject(new Error(`${label} 启动失败: ${err.trim() || 'unknown error'}`));
+      },
     });
   });
 }
@@ -317,25 +324,13 @@ export async function runReportBuild(projectId, handlers = {}) {
 /** scp 拉单文件回本地（pull.js 范式的 argv 数组；buildFetchCommand 的整串形式
  * 在 Windows cmd 下同样受单引号/特殊字符限制，故统一走 argv） */
 function scpFetch(remotePath, localPath) {
-  assertAllowedProgram(['scp']);
-  return new Promise((resolve, reject) => {
-    const child = childProcess.spawn(
-      'scp',
-      ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', `${HOSTS.compute}:${remotePath}`, localPath],
-      { windowsHide: true }
-    );
-    let err = '';
-    let settled = false;
-    child.on('error', () => {});
-    child.stderr.on('data', (chunk) => { err += chunk.toString(); });
-    child.on('exit', (code) => {
-      settled = true;
-      if (code === 0) return resolve();
-      reject(new Error(`scp 拉取失败 (exit ${code}): ${stripSshNoise(err).trim() || 'stderr 为空'}`));
-    });
-    child.on('error', () => {
-      if (!settled) reject(new Error(`scp 启动失败: ${err.trim() || 'unknown error'}`));
-    });
+  return streamRemote(
+    ['scp', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', `${HOSTS.compute}:${remotePath}`, localPath],
+    {},
+    'scp'
+  ).then(({ stderr, code }) => {
+    if (code === 0) return;
+    throw new Error(`scp 拉取失败 (exit ${code}): ${stripSshNoise(stderr).trim() || 'stderr 为空'}`);
   });
 }
 

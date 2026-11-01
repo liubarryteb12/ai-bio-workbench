@@ -284,6 +284,25 @@ test('runSync 透传 input 到子进程 stdin，未传时不出现该键（recon
   assert.equal('input' in options[1], false, '未传 input 时不得把 stdin 语义改掉');
 });
 
+test('mock 覆盖 scp：runStream 对 scp argv 同样短路（report.js 拉包依赖）', async (t) => {
+  useMockCompute(t, { stdout: '', stderr: '', exitCode: '0' });
+  const spawned = [];
+  t.mock.method(childProcess, 'spawn', (program) => {
+    spawned.push(program);
+    throw new Error('mock 模式不得启动真实 scp');
+  });
+
+  const events = [];
+  const stream = runStream(['scp', '-o', 'BatchMode=yes', 'k40-ubuntu:/tmp/a.tar.gz', 'C:/tmp/a.tar.gz'], {
+    onExit: (code) => events.push(code),
+  });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(spawned.length, 0, 'scp 必须在接缝前短路');
+  assert.deepEqual(events, [0]);
+  assert.doesNotThrow(() => stream.kill());
+});
+
 test('默认 BIO_COMPUTE_ADAPTER=ssh 保持既有真实子进程路径', (t) => {
   const keys = ['BIO_COMPUTE_ADAPTER', 'BIO_ALLOW_MOCK_COMPUTE'];
   const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
