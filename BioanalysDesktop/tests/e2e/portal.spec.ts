@@ -6,6 +6,10 @@ import { fileURLToPath } from 'node:url';
 const PORTAL_BASE = 'http://127.0.0.1:9321';
 const ADMIN_BASE = 'http://127.0.0.1:9322';
 const CLIENT_TOKEN = 'e2e-client-token';
+
+// admin 面（9322）在 D-29 Fail-Closed 下强制 Basic 鉴权；凭据与 playwright.config.ts
+// 的 webServer env 同源。portal 面（9321）走 Bearer client token，不受影响。
+test.use({ httpCredentials: { username: 'e2e-admin', password: 'e2e-admin-pass' } });
 const CHUNK_SIZE = 4 * 1024 * 1024;
 const UPLOAD_ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -605,4 +609,112 @@ test('client sync trigger enforces the 60 second per-ticket cooldown', async ({ 
   expect(body.retry_after).toBeGreaterThan(0);
   expect(body.retry_after).toBeLessThanOrEqual(60);
   expect(body.error).toContain('稍后重试');
+});
+
+test('pi agent chat dispatches, polls, shows the real reply and clears history', async ({ page }) => {
+  let dispatchBody: Record<string, unknown> | null = null;
+  await page.route('**/api/pi-agent/overview', async (route) => {
+    await route.fulfill({
+      json: {
+        ok: true,
+        online: true,
+        current_model: { provider: 'zai', model: 'glm-5.3-flash' },
+        a2a_card: { name: 'pi-termux-executor', version: '1.0.0', url: 'http://127.0.0.1:9910' },
+      },
+    });
+  });
+  await page.route('**/api/pi-agent/dispatch', async (route) => {
+    dispatchBody = route.request().postDataJSON() as Record<string, unknown>;
+    await route.fulfill({
+      json: {
+        ok: true,
+        task: { id: 'task-e2e-chat', status: { state: 'TASK_STATE_WORKING' } },
+        poll_url: '/api/pi-agent/task?id=task-e2e-chat',
+      },
+    });
+  });
+  let pollCount = 0;
+  await page.route(/\/api\/pi-agent\/task\?id=task-e2e-chat$/, async (route) => {
+    pollCount += 1;
+    await route.fulfill({
+      json: {
+        ok: true,
+        task: {
+          id: 'task-e2e-chat',
+          status: { state: pollCount >= 2 ? 'TASK_STATE_COMPLETED' : 'TASK_STATE_WORKING' },
+          artifacts: pollCount >= 2
+            ? [{ artifactId: 'reply', parts: [{ text: 'Pi 已收到 GPD1 调研任务', mediaType: 'text/plain' }] }]
+            : undefined,
+        },
+      },
+    });
+  });
+  await page.route(/\/api\/pi-agent\/calls\?limit=50$/, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await route.fulfill({
+      json: {
+        ok: true,
+        calls: [
+          { task_id: 'task-other', last_text: 'wrong call' },
+          { task_id: 'e2e-chat', last_text: 'Pi 已收到 GPD1 调研任务' },
+        ],
+      },
+    });
+  });
+
+  await page.addInitScript(() => localStorage.clear());
+  await page.goto(ADMIN_BASE);
+  await page.locator('.tab-nav-item', { hasText: 'Pi Agent 对话' }).click();
+  await expect(page.getByTestId('pi-chat-status')).toContainText('在线');
+  await expect(page.getByTestId('pi-chat-status')).toContainText('glm-5.3-flash');
+
+  await page.getByTestId('pi-chat-input').fill('请总结 GPD1 相关证据');
+  await page.getByTestId('pi-chat-input').press('Enter');
+  await expect(page.getByTestId('pi-chat-message-user')).toHaveCount(1);
+  await expect(page.getByTestId('pi-chat-message-assistant')).toHaveCount(0);
+  expect(dispatchBody).toMatchObject({
+    message: '请总结 GPD1 相关证据',
+    returnImmediately: true,
+  });
+
+  await expect(page.getByTestId('pi-chat-message-assistant')).toHaveCount(1, { timeout: 20_000 });
+  await expect(page.getByTestId('pi-chat-message-assistant')).toContainText('Pi 已收到 GPD1 调研任务');
+  await expect(page.getByTestId('pi-chat-status')).toContainText('completed');
+
+  await page.locator('button[title="清空本地对话历史"]').click();
+  await expect(page.getByTestId('pi-chat-empty')).toBeVisible();
+  await expect(page.getByTestId('pi-chat-message-user')).toHaveCount(0);
+});
+
+test('pi agent chat survives reload without duplicating terminal messages and cancel retries after failure', async ({ page }) => {
+  await page.route('**/api/pi-agent/overview', async (route) => {
+    await route.fulfill({
+      json: {
+        ok: true,
+        online: true,
+        current_model: { provider: 'zai', model: 'glm-5.3-flash' },
+        a2a_card: { name: 'pi-termux-executor', version: '1.0.0', url: 'http://127.0.0.1:9910' },
+      },
+    });
+  });
+  await page.addInitScript(() => {
+    localStorage.setItem('bioanalys-desktop:pi-agent-chat-history', JSON.stringify([
+      { id: 'user-1', role: 'user', text: '取消重试任务', ts: 1, taskId: 'task-e2e-cancel', status: 'working' },
+      { id: 'user-2', role: 'user', text: '刷新去重任务', ts: 2, taskId: 'task-e2e-dup', status: 'completed' },
+      { id: 'as-1', role: 'assistant', text: '已有回复', ts: 3, taskId: 'task-e2e-dup', status: 'completed' },
+      { id: 'sys-1', role: 'system', text: '任务 completed。', ts: 4, taskId: 'task-e2e-cancel', status: 'completed' },
+    ]));
+  });
+  await page.goto(ADMIN_BASE);
+  await page.locator('.tab-nav-item', { hasText: 'Pi Agent 对话' }).click();
+
+  await expect(page.getByTestId('pi-chat-message-system')).toHaveCount(1);
+  await expect(page.getByTestId('pi-chat-message-assistant')).toHaveCount(1);
+  await expect(page.getByTestId('pi-chat-message-user')).toHaveCount(2);
+
+  await page.reload();
+  await page.locator('.tab-nav-item', { hasText: 'Pi Agent 对话' }).click();
+  await expect(page.getByTestId('pi-chat-message-system')).toHaveCount(1);
+  await expect(page.getByTestId('pi-chat-message-assistant')).toHaveCount(1);
+  await expect(page.getByTestId('pi-chat-message-user')).toHaveCount(2);
 });

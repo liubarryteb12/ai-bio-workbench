@@ -6,18 +6,22 @@ import type { ProjectEntry, ProjectsResponse } from './views/shared/types';
 import { ResultPreviewStudio } from './views/ResultStudioView';
 import { PreFlightDashboard } from './views/SelfCheckAdminView';
 import { OnboardingPortal, CustomerInputConsole } from './views/OnboardingView';
+import { PiAgentMonitor } from './views/PiAgentView';
+import { PiAgentChat } from './PiAgentChat';
 
 // ============================================================
 // 视图枚举
 // ============================================================
 
-type ViewKey = 'onboarding' | 'console' | 'preflight' | 'studio';
+type ViewKey = 'onboarding' | 'console' | 'preflight' | 'studio' | 'pi-agent' | 'pi-chat';
 
 const VIEWS: Array<{ key: ViewKey; label: string }> = [
   { key: 'onboarding', label: '新建项目向导' },
   { key: 'console', label: '分析输入控制台' },
   { key: 'preflight', label: '五维自检' },
   { key: 'studio', label: '结果预览 Studio' },
+  { key: 'pi-agent', label: 'Pi Agent 监控' },
+  { key: 'pi-chat', label: 'Pi Agent 对话' },
 ];
 
 // ============================================================
@@ -122,6 +126,8 @@ export function App() {
       {view === 'console' && <CustomerInputConsole project={project} />}
       {view === 'preflight' && <PreFlightDashboard />}
       {view === 'studio' && <ResultPreviewStudio project={project} />}
+      {view === 'pi-agent' && <PiAgentMonitor />}
+      {view === 'pi-chat' && <PiAgentChat />}
     </div>
   );
 }

@@ -57,6 +57,7 @@ import { handleReportRoutes } from './routes/report.routes.js';
 import { handleFiguresRoutes } from './routes/figures.routes.js';
 import { handleTasksRoutes } from './routes/tasks.routes.js';
 import { handleProjectRoutes } from './routes/projects.routes.js';
+import { handlePiAgentRoutes } from './pi_agent_routes.js';
 import { createSink, dropSink, sendEvent, closeSink } from './sinks.js';
 import { fetchLedgerFromServer } from './ledger_fetch.js';
 import { renderFiguresPreview } from './portal_page.js';
@@ -237,6 +238,13 @@ const server = http.createServer(async (req, res) => {
 
   // 诊断路由（自检 / 链路 / 台账 / 文件树），处理体在 routes/diagnostics.routes.js
   if (await handleDiagnosticsRoutes(req, res, url, { ...routeCtx, adb })) {
+    return;
+  }
+
+  // Pi Agent 观测插槽（第三批择优合入）：处理体在 pi_agent_routes.js。
+  // runSshRaw 直引 proc.js：pi 模块的 ssh 走 k40 别名（Termux 宿主），不是
+  // k40-ubuntu 容器执行面，语义与 remote_exec 的 runRemote 不同，注入接缝本体。
+  if (await handlePiAgentRoutes(req, res, url, { json, runSshRaw })) {
     return;
   }
 

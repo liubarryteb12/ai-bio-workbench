@@ -43,6 +43,10 @@ export default defineConfig({
       cwd: path.join(rootDir, 'BioanalysDesktop'),
       env: {
         BAD_PORT: String(adminPort),
+        // 08 号书 D-29 Fail-Closed 后 admin 面无凭据即 401。e2e 固定测试凭据
+        // （仅本地 127.0.0.1 测试端口，非生产口令），spec 侧经 httpCredentials 带上。
+        BAD_AUTH_USER: 'e2e-admin',
+        BAD_AUTH_PASS: 'e2e-admin-pass',
         BIO_UPLOAD_QUOTA_BYTES: String(64 * 1024 * 1024),
         NO_PROXY: '127.0.0.1,localhost',
       },

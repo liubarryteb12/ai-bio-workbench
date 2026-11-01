@@ -134,12 +134,52 @@ runner 侧靠 `wrapperId()` 随机后缀保证目录不撞，于是重复提交�
 - **剩余门禁**：全量 `npm test` 需在真实设备环境复跑；mock adapter 尚未接管
   `run.js`、`task.js`、`report.js` 等直接 SSH 调用点，后续切片按调用面逐块迁移。
 
-### 第三批：PiAgentChat 观测插槽
+### 第三批：PiAgentChat 观测插槽（已合入，2026-11-01）
 
 - 提交 `2c4c0ba`、`55b9585`、`8e862ae`、`72a8394`、`f07f2d9`。
 - 落点 `server/pi_agent.js`、`server/pi_agent_routes.js`、`src/PiAgentChat.tsx`、
   `src/mods/mod-pi-observability/*`。
 - 硬顺序：这批要动 `src/App.tsx`，必须排在 P3-02 拆分合入之后，否则与视图拆分正面撞车。
+
+**合入执行记录（主代理实做，P3-02 合入后开工）**：
+
+- **移植形态**：四个功能提交（`2c4c0ba`→`55b9585`→`8e862ae`→`72a8394`）在分支 tip 已把
+  内联实现收敛进独立模块，按 tip 版本逐 blob 抽取（`git hash-object` 与
+  `git rev-parse` 逐文件比对 identical=True），不按提交逐个 cherry-pick
+  （它们全数触碰 `index.js` 与旧巨型 `App.tsx`，master 已拆分，逐个 pick 必冲突）。
+- **picked 落盘**：
+  - `server/a2a_state.js`、`server/pi_agent.js`、`server/pi_agent_routes.js`（分支 tip 原样）
+  - `src/pi_chat_state.js`、`src/PiAgentChat.tsx`（`3439950` 的 pi 三文件之一二，只抽这三个，
+    该提交其余 83 文件不取，见下"未取"）
+  - `src/views/PiAgentView.tsx`：分支 `App.tsx` 的 `PiOverview` 等 6 个类型与
+    `PiAgentMonitor`（:2332–:2622）逐字搬出，仅改挂点与 import（拆分纪律）
+  - `src/App.tsx`：VIEWS 增 `pi-agent`/`pi-chat` 两条目 + 两视图渲染挂载点（+8 行）
+  - `src/app.css`：分支 :1281 至文件尾的 Pi 监控与对话样式整段追加（含 @media 收尾，
+    一次截段曾切掉 @media 闭括号导致 build 警告，重建后大括号 251/251 配对）
+  - `server/index.js`：`handlePiAgentRoutes` 挂诊断路由之后，注入 `{ json, runSshRaw }`；
+    pi 的 ssh 走 `k40` 别名（Termux 宿主面），与 `k40-ubuntu` 容器执行面分离，
+    直引 proc.js 的 `runSshRaw` 而非 remote_exec（注释写明）
+  - `tests/pi_agent.test.js`、`tests/pi_agent_routes.test.js`、`tests/pi_chat_state.test.js`
+    （`42c429e`/`b5b46f9` 的目标测试文件，逐文件抽取）
+  - `tests/e2e/portal.spec.ts`：追加 `f07f2d9` 对齐后的两个 pi 对话 case（:796 起至文件尾）
+  - `ops/pi_seed_settings.sh`：`pi_agent.test.js` 的静态断言对象，缺它该测试必然 ENOENT 红
+- **测试卫生修复（断言语义不变）**：`pi_agent_routes.test.js` 的 GET task 与 POST cancel 两条
+  在分支原版漏传 `ledgerRoot`，实跑把 8 条测试假台账（task-456/task-789）写进真实
+  `con_hf/ledger/actions.jsonl`。本批补临时目录注入并回滚正本。教训：伴随测试移植后
+  必须查写盘副作用，不能只跑绿就算过。
+- **未取（逐项理由）**：
+  - `src/mods/mod-pi-observability/manifest.ts` 与 `slots/*`：mod 注册制依附分支的
+    `src/core/types` 体系（分支上该文件仅 1 行占位，注册制整体未准入），合入即孤儿。
+    A2A 运行时与 mod 体系整体准入是另行议题（本文第四节 6）。
+  - `tests/e2e/pi_chat.spec.ts`（`3439950`）：与 portal.spec.ts 已追加的两个 pi case 同源重复。
+  - `3439950` 其余 83 文件（mods 全集、K40 图源、A2A runtime routes）：非第三批范围。
+  - `f07f2d9` 的 `con_hf/ledger/actions.jsonl` 增量：分支测试污染产物，非交付内容。
+  - `ops/pi_a2a_daemon.sh`、`pi_a2a_launch.sh`、`pi_idempotent_runner.sh` 等 A2A 运行时脚本：
+    census 已按"三批外 rejected"登记（#4、#13、#16、#17、#19），本轮不变。
+- **验证命令与结果**：`node --test tests/pi_agent*.test.js tests/pi_chat_state.test.js` 45/45；
+  守卫与挂点（index/sync_script_guard/ui_render_smoke）复跑全绿；mock 计算面进程内冒烟
+  `/api/pi-agent/overview` 200、字段齐全（online=false 符合 mock 语义）；鉴权 401 先行
+  拦下未授权探测（Fail-Closed 正常）。全量基线与提交号见 con_hf/handoff.md 第三十三轮。
 
 ## 四、建议执行顺序
 
