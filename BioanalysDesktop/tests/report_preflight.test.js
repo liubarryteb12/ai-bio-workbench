@@ -310,3 +310,56 @@ test('writeSha256Sidecars：签名对不上公钥（换包冒充）同样拦截'
   }
   assert.equal(fs.existsSync(path.join(dir, 'Analysis_Report.md.sha256')), false);
 });
+
+// 08 号书第 6 项的残余缺口：只有「清单与签名同时存在」才验签，等于告诉攻击者
+// 删掉 CHECKSUMS.sig 就能让本地给坏包重算哈希洗白。交付包（tar.gz）在场时，
+// 缺清单或缺签名一律按完整性失败处理。
+function tarDeliveryWithSignature(projectId, { withSignature = true } = {}) {
+  const dir = localDeliverDir(projectId);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'Analysis_Report.md'), '# 交付报告\n原始正文\n', 'utf8');
+  fs.writeFileSync(path.join(dir, `${projectId}_Client_Delivery.tar.gz`), Buffer.alloc(64, 0x74));
+  const { privateKey, publicKey } = generateKeyPairSync('ed25519');
+  writeChecksums(dir);
+  if (withSignature) {
+    signDelivery(dir, { privateKey: privateKey.export({ type: 'pkcs8', format: 'pem' }) });
+  }
+  const keyDir = fs.mkdtempSync(path.join(os.tmpdir(), 's33-preflight-pub-'));
+  const publicKeyPath = path.join(keyDir, 'pub.pem');
+  fs.writeFileSync(publicKeyPath, publicKey.export({ type: 'spki', format: 'pem' }), 'utf8');
+  return { dir, publicKeyPath, tarPath: path.join(dir, `${projectId}_Client_Delivery.tar.gz`) };
+}
+
+test('writeSha256Sidecars：交付包缺 CHECKSUMS.sig → 拒绝补旁挂哈希（不许删签名绕过验签）', () => {
+  const projectId = 'PRJ_SIDECAR_TAR_NOSIG';
+  const { dir, publicKeyPath } = tarDeliveryWithSignature(projectId, { withSignature: false });
+  const saved = process.env.BIO_ED25519_PUBLIC_KEY_PATH;
+  process.env.BIO_ED25519_PUBLIC_KEY_PATH = publicKeyPath;
+  try {
+    assert.throws(
+      () => writeSha256Sidecars(projectId),
+      /REPORT_INTEGRITY_FAIL/,
+      '有交付 tar 却没有签名，必须按完整性失败阻断',
+    );
+  } finally {
+    if (saved === undefined) delete process.env.BIO_ED25519_PUBLIC_KEY_PATH;
+    else process.env.BIO_ED25519_PUBLIC_KEY_PATH = saved;
+  }
+  assert.equal(fs.existsSync(path.join(dir, 'Analysis_Report.md.sha256')), false);
+});
+
+test('writeSha256Sidecars：交付包验签失败 → 删除污染 tar 且拒绝补旁挂哈希', () => {
+  const projectId = 'PRJ_SIDECAR_TAR_TAMPERED';
+  const { dir, publicKeyPath, tarPath } = tarDeliveryWithSignature(projectId);
+  fs.writeFileSync(path.join(dir, 'Analysis_Report.md'), '# 交付报告\n被注入的正文\n', 'utf8');
+  const saved = process.env.BIO_ED25519_PUBLIC_KEY_PATH;
+  process.env.BIO_ED25519_PUBLIC_KEY_PATH = publicKeyPath;
+  try {
+    assert.throws(() => writeSha256Sidecars(projectId), /REPORT_INTEGRITY_FAIL/);
+  } finally {
+    if (saved === undefined) delete process.env.BIO_ED25519_PUBLIC_KEY_PATH;
+    else process.env.BIO_ED25519_PUBLIC_KEY_PATH = saved;
+  }
+  assert.equal(fs.existsSync(tarPath), false, '污染包必须删除，不能留在本地等下一次补哈希');
+  assert.equal(fs.existsSync(path.join(dir, 'Analysis_Report.md.sha256')), false);
+});

@@ -94,6 +94,38 @@ export function isAllowedDeliverableName(name) {
   return DELIVERABLE_NAME_PATTERNS.some((pattern) => pattern.test(raw));
 }
 
+/** 交付 tar 包名字：只有它带包级基准哈希，文本件靠包内 CHECKSUMS.sha256 */
+const TAR_DELIVERY_RE = /^[A-Za-z0-9._-]+_Client_Delivery\.tar\.gz$/;
+
+function sha256OfFile(file) {
+  return createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+}
+
+/**
+ * 远端基准 SHA256：只认 sha256sum 明确打出的 64 位 hex。
+ * 拿不到（ssh 失败、远端没有 sha256sum、输出不可解析）返回 null，
+ * 由调用方按「无基准即拒绝」处理，绝不拿本地重算值当基准。
+ */
+async function remoteFileSha256(remotePath) {
+  try {
+    const result = await runSsh(`sha256sum '${remotePath}' 2>/dev/null`);
+    const match = /^([0-9a-f]{64})\s/m.exec(result.stdout || '');
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 验签用的受信公钥：环境变量显式指定优先，否则用仓库内 ops/secrets 的本地信任锚。
+ * 两者都没有时返回 undefined，verifyDelivery 会按「公钥不可用」失败，保持 fail-closed。
+ */
+function trustedPublicKeyPath() {
+  if (process.env.BIO_ED25519_PUBLIC_KEY_PATH) return process.env.BIO_ED25519_PUBLIC_KEY_PATH;
+  const localAnchor = path.join(REPO_ROOT, 'ops', 'secrets', 'ed25519_public.pem');
+  return fs.existsSync(localAnchor) ? localAnchor : undefined;
+}
+
 /** 读取项目派生副本清单；目录不存在是空清单，不是故障 */
 export function readAdaptManifest(root, projectId) {
   const safe = sanitizeProjectId(projectId);
@@ -329,6 +361,24 @@ export async function pullDeliverables(projectId) {
     if (bytes <= 0) {
       throw new Error(`交付文件拉取后为空或不存在: ${file.name}（远端 ${file.size} 字节）`);
     }
+    // 08 号书第 6 项：tar 包回搬后先比对远端基准哈希，本地重算只用于比对，
+    // 不匹配或无基准一律删本地坏包并阻断，严禁留着重算一个「合法」哈希洗白。
+    if (TAR_DELIVERY_RE.test(file.name)) {
+      const expected = await remoteFileSha256(`${remoteDeliverDir}/${file.relPath}`);
+      if (!expected) {
+        fs.rmSync(localPath, { force: true });
+        throw new Error(
+          `[REPORT_HASH_MISSING] 远端未给出 ${file.name} 的基准 SHA256，拒绝在无基准时落盘交付包`,
+        );
+      }
+      const actual = sha256OfFile(localPath);
+      if (actual !== expected) {
+        fs.rmSync(localPath, { force: true });
+        throw new Error(
+          `[REPORT_HASH_MISMATCH] 回搬文件哈希与远端不一致 (expected=${expected}, actual=${actual})，已删除本地坏包`,
+        );
+      }
+    }
     files.push({ name: file.name, bytes, path: file.name });
   }
 
@@ -489,21 +539,33 @@ export function writeSha256Sidecars(projectId) {
   const safe = sanitizeProjectId(projectId);
   if (!safe) throw new Error(`projectId 非法: ${projectId}`);
   const dir = localDeliverDir(safe);
-  // Verify-before-sidecar（v3.3 审查返工）：已回搬的包若带 CHECKSUMS.sha256 + CHECKSUMS.sig，
-  // 必须先公钥验签并逐文件比对清单哈希；任一不符立即抛错，严禁对可能被篡改的文件重算哈希洗白。
-  const checksumsPath = path.join(dir, 'CHECKSUMS.sha256');
-  const sigPath = path.join(dir, 'CHECKSUMS.sig');
-  if (fs.existsSync(checksumsPath) && fs.existsSync(sigPath)) {
-    const verdict = verifyDelivery(dir, { publicKeyPath: process.env.BIO_ED25519_PUBLIC_KEY_PATH });
-    if (!verdict.ok) {
-      throw new Error(`[REPORT_INTEGRITY_FAIL] 回搬交付包验签失败: ${verdict.reason}；已拒绝生成 sidecar`);
-    }
-  }
   let names;
   try {
     names = fs.readdirSync(dir);
   } catch {
     return [];
+  }
+  // Verify-before-sidecar（08 号书第 6 项）：交付包在场时必须先验签再补旁挂哈希。
+  // 「缺清单或缺签名就跳过验签」等于给攻击者留一条删掉 CHECKSUMS.sig 就洗白的路，
+  // 所以 tar 包在场而清单/签名不全时按完整性失败处理；验签失败则删除污染包。
+  const checksumsPath = path.join(dir, 'CHECKSUMS.sha256');
+  const sigPath = path.join(dir, 'CHECKSUMS.sig');
+  const hasManifest = fs.existsSync(checksumsPath) && fs.existsSync(sigPath);
+  const tars = names.filter((name) => TAR_DELIVERY_RE.test(name));
+  if (tars.length > 0 && !hasManifest) {
+    throw new Error(
+      '[REPORT_INTEGRITY_FAIL] 交付包缺少 CHECKSUMS.sha256 或 CHECKSUMS.sig，拒绝补旁挂哈希（删签名不能成为绕过验签的口子）',
+    );
+  }
+  if (hasManifest) {
+    const verdict = verifyDelivery(dir, { publicKeyPath: trustedPublicKeyPath() });
+    if (!verdict.ok) {
+      for (const tar of tars) fs.rmSync(path.join(dir, tar), { force: true });
+      const cleaned = tars.length > 0 ? '；已删除污染包' : '';
+      throw new Error(
+        `[REPORT_INTEGRITY_FAIL] 回搬交付包验签失败: ${verdict.reason}${cleaned}；已拒绝生成 sidecar`,
+      );
+    }
   }
   const written = [];
   for (const name of names.sort()) {

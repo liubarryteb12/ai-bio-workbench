@@ -21,10 +21,30 @@ import path from 'node:path';
 import { EventEmitter } from 'node:events';
 import { Readable, Writable } from 'node:stream';
 import childProcess from 'node:child_process';
+import { createHash, generateKeyPairSync } from 'node:crypto';
+import { signDelivery, writeChecksums } from '../../ops/ed25519_tools.mjs';
 
 // 环境变量必须在 import 服务端模块之前设好（report.js / index.js 在模块加载时读）
 const LOCAL_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 's27-report-root-'));
 process.env.BIO_LOCAL_DELIVERABLES = LOCAL_ROOT;
+
+// 08 号书第 6 项之后，带 tar 的交付包必须带可验签的 CHECKSUMS，否则一律拒绝补旁挂哈希。
+// 端点测试的假 scp 因此要能造出「真签名」的包：这里放一对临时测试密钥，
+// 供 dispatchSpawn 在拉取 CHECKSUMS.sha256 / CHECKSUMS.sig 时就地生成并签名。
+const TEST_KEY_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 's27-report-key-'));
+const TEST_KEY_PAIR = generateKeyPairSync('ed25519');
+const TEST_PRIVATE_KEY_PATH = path.join(TEST_KEY_DIR, 'ed25519_private.pem');
+const TEST_PUBLIC_KEY_PATH = path.join(TEST_KEY_DIR, 'ed25519_public.pem');
+fs.writeFileSync(
+  TEST_PRIVATE_KEY_PATH,
+  TEST_KEY_PAIR.privateKey.export({ type: 'pkcs8', format: 'pem' }),
+);
+fs.writeFileSync(
+  TEST_PUBLIC_KEY_PATH,
+  TEST_KEY_PAIR.publicKey.export({ type: 'spki', format: 'pem' }),
+);
+process.env.BIO_ED25519_PRIVATE_KEY_PATH = TEST_PRIVATE_KEY_PATH;
+process.env.BIO_ED25519_PUBLIC_KEY_PATH = TEST_PUBLIC_KEY_PATH;
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -126,17 +146,41 @@ function dispatchSpawn(program, args) {
         stdoutText: 'Warning: Permanently added \'[127.0.0.1]:10022\' (ED25519) to the list of known hosts.\nREPORT BUILD OK\n',
       });
     }
+    if (remoteCmd.includes('sha256sum')) {
+      // 08 号书第 6 项：回搬必须先拿远端基准哈希，本地复算后比对。
+      // PRJ_PULL_BADHASH 模拟「传输后本地内容与远端基准不一致」，PRJ_PULL_NOHASH 模拟
+      // 「远端给不出基准」，两种都必须阻断，不许本地重算洗白。
+      if (remoteCmd.includes('PRJ_PULL_NOHASH')) {
+        return fakeChild({ exitCode: 1, stderrText: 'sha256sum: command not found\n' });
+      }
+      const quotedPath = /'([^']+)'/.exec(remoteCmd);
+      const remoteName = quotedPath ? quotedPath[1].split('/').pop() : '';
+      const bytes = fixtureBytes(remoteName);
+      if (!bytes) return fakeChild({ exitCode: 1, stderrText: 'No such file or directory\n' });
+      const digest = remoteCmd.includes('PRJ_PULL_BADHASH')
+        ? '0'.repeat(64)
+        : createHash('sha256').update(bytes).digest('hex');
+      return fakeChild({ exitCode: 0, stdoutText: `${digest}  ${remoteName}\n` });
+    }
     if (remoteCmd.includes("-printf '%P|%s")) {
-      if (remoteCmd.includes('PRJ_TEST_OK') || remoteCmd.includes('PRJ_PULL_OK')) {
+      const listed = ['PRJ_TEST_OK', 'PRJ_PULL_OK', 'PRJ_PULL_BADHASH', 'PRJ_PULL_NOHASH']
+        .find((id) => remoteCmd.includes(id));
+      if (listed) {
         // 照 K40 实测布局：报告嵌在 <pid>_Client_Delivery/03_Interpretation_Report/ 下，
         // tar.gz 在 deliverables 根
         return fakeChild({
           exitCode: 0,
-          stdoutText: 'PRJ_TEST_OK_Client_Delivery/01_Adapted_Scripts/run.sh|512\n'
-            + 'PRJ_TEST_OK_Client_Delivery/03_Interpretation_Report/Analysis_Report.md|1024\n'
-            + 'PRJ_TEST_OK_Client_Delivery/03_Interpretation_Report/Analysis_Report.html|2048\n'
-            + 'PRJ_TEST_OK_Client_Delivery/delivery_manifest.json|256\n'
-            + 'PRJ_TEST_OK_Client_Delivery.tar.gz|4096\n',
+          stdoutText: `${listed}_Client_Delivery/01_Adapted_Scripts/run.sh|512\n`
+            + `${listed}_Client_Delivery/03_Interpretation_Report/Analysis_Report.md|1024\n`
+            + `${listed}_Client_Delivery/03_Interpretation_Report/Analysis_Report.html|2048\n`
+            + `${listed}_Client_Delivery/delivery_manifest.json|256\n`
+            + `${listed}_Client_Delivery.tar.gz|4096\n`
+            // 端点链路会跑 writeSha256Sidecars，带 tar 的包必须有可验签的清单与签名
+            + (listed === 'PRJ_TEST_OK'
+              ? `${listed}_Client_Delivery/CHECKSUMS.sha256|512\n`
+                + `${listed}_Client_Delivery/CHECKSUMS.sig|64\n`
+                + `${listed}_Client_Delivery/ED25519_PUBLIC_KEY.pem|451\n`
+              : ''),
         });
       }
       if (remoteCmd.includes('PRJ_PULL_MISS')) {
@@ -153,6 +197,18 @@ function dispatchSpawn(program, args) {
     const remoteSpec = args.find((a) => a.startsWith('k40-ubuntu:')) || '';
     const localPath = args[args.length - 1];
     const name = remoteSpec.split('/').pop();
+    if (name === 'CHECKSUMS.sha256') {
+      writeChecksums(path.dirname(localPath));
+      return fakeChild({ exitCode: 0 });
+    }
+    if (name === 'CHECKSUMS.sig') {
+      signDelivery(path.dirname(localPath));
+      return fakeChild({ exitCode: 0 });
+    }
+    if (name === 'ED25519_PUBLIC_KEY.pem') {
+      fs.writeFileSync(localPath, fs.readFileSync(TEST_PUBLIC_KEY_PATH));
+      return fakeChild({ exitCode: 0 });
+    }
     const bytes = fixtureBytes(name);
     if (bytes === null) {
       return fakeChild({ exitCode: 1, stderrText: 'scp: fixture missing\n' });
@@ -247,6 +303,34 @@ test('pullDeliverables：成功拉回三大件，字节数与远端一致且 pat
   assert.equal(fs.statSync(localFile).size, 1024);
 });
 
+// 08 号书第 6 项后半：回搬必须先拿远端基准哈希再比对，本地重算只能用于比对，
+// 绝不能拿重算结果当基准给坏包洗白。
+test('pullDeliverables：本地 tar 与远端基准哈希不一致 → REPORT_HASH_MISMATCH 且删除坏包', async () => {
+  const projectId = 'PRJ_PULL_BADHASH';
+  const dir = localDeliverDir(projectId);
+  await assert.rejects(
+    () => pullDeliverables(projectId),
+    /REPORT_HASH_MISMATCH/,
+    '哈希不一致必须阻断',
+  );
+  assert.equal(
+    fs.existsSync(path.join(dir, `${projectId}_Client_Delivery.tar.gz`)),
+    false,
+    '被污染的 tar 包必须就地删除，不能留在本地等后续补哈希',
+  );
+});
+
+test('pullDeliverables：远端给不出基准哈希 → 拒绝放行并删除本地 tar', async () => {
+  const projectId = 'PRJ_PULL_NOHASH';
+  const dir = localDeliverDir(projectId);
+  await assert.rejects(
+    () => pullDeliverables(projectId),
+    /REPORT_HASH_MISSING/,
+    '没有远端基准时不许静默跳过比对',
+  );
+  assert.equal(fs.existsSync(path.join(dir, `${projectId}_Client_Delivery.tar.gz`)), false);
+});
+
 // ------------------------------------------------------------
 // 3. 三端点契约（in-process 真服务 + 真 HTTP）
 // ------------------------------------------------------------
@@ -264,7 +348,15 @@ test('POST /api/report/build：成功 → 200 且 files 形状正确、无绝对
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.equal(body.ok, true);
-  assert.equal(body.files.length, 3);
+  // 三大件 + 完整性三件（CHECKSUMS.sha256 / CHECKSUMS.sig / ED25519_PUBLIC_KEY.pem）
+  const names = body.files.map((file) => file.name).sort();
+  for (const required of [
+    'Analysis_Report.md', 'Analysis_Report.html', 'PRJ_TEST_OK_Client_Delivery.tar.gz',
+    'CHECKSUMS.sha256', 'CHECKSUMS.sig', 'ED25519_PUBLIC_KEY.pem',
+  ]) {
+    assert.ok(names.includes(required), `必须拉回 ${required}`);
+  }
+  assert.equal(body.files.length, 6);
   assert.equal(body.report_md_bytes, 1024);
   assert.equal(body.report_html_bytes, 2048);
   for (const file of body.files) {
