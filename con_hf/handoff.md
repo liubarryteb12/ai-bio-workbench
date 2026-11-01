@@ -1,6 +1,35 @@
 # handoff — 跨会话交接
 
-> 最后更新：2026-11-01（ACL 阻塞解除 + K40 上线，真机抓出一处提交门禁假绿灯，见下节第二十八轮）
+> 最后更新：2026-11-01（08 号书七项独立复核，抓出三处残余并补齐，见下节第二十九轮）
+
+> **2026-11-01 第二十九轮（08 号书七项独立复核，三处残余已补）**：
+> ① **复核口径**：08 号书七项在 `ae24710` / `31db860` / `3160fd2` 已落地，本轮不复述旧结论，
+>   派三个子代理按「测试能不能抓到假修复复发」重审，主代理逐条读码复核并补红测。抓出三处残余。
+> ② **第 6 项真缺口（最高风险）**：`writeSha256Sidecars` 只在 `CHECKSUMS.sha256` 与
+>   `CHECKSUMS.sig` 同时存在时才验签，删掉 sig 就让本地对坏包重算哈希并补旁挂，洗白路径仍成立；
+>   `pullDeliverables` 也从未比对远端 tar 基准哈希。修复 `1cc7257`：tar 回搬后取远端 `sha256sum`
+>   基准，缺失 `REPORT_HASH_MISSING`、不一致 `REPORT_HASH_MISMATCH`，两种都先删本地坏包；
+>   交付 tar 在场时清单/签名缺一即 `REPORT_INTEGRITY_FAIL`，验签失败删除污染 tar；
+>   公钥默认取 `ops/secrets/ed25519_public.pem` 本地信任锚。报告三文件 51/51 绿。
+> ③ **第 5 项真缺口**：本机引擎缺失会回落 ssh，容器里 ssh 自己必然 255，再按契约 3 降级 SKIP，
+>   四项断言在真实主路径上整段空转。修复 `5ceeb30`：新增 `BIO_BRIDGE_MODE=local|ssh|auto`，
+>   auto 在 `/mnt/ssd/bio_data` 存在时按 local，local 缺引擎或 python3 不可用一律 exit 2，
+>   ssh 模式强制远端；头部补契约 3d。守卫两文件 24/24 绿。
+> ④ **第 2/3/7 项残余**：鉴权负路径测试用 `...process.env` 展开，宿主已有的 `WORKBENCH_AUTH_*`
+>   或 `BIO_ALLOW_DEV_NOAUTH` 会把「未配置」测成「已配置」；临时口令文件没有退出清理；
+>   启动探针还残留 3 处 15000 与 1 处 20000，`workflow_api` 启动失败转 skip。修复 `bcf3ef7`：
+>   清洗 env 后启动子进程并补 `POST /api/projects/create` 401 与 `runtime.enabled` 断言；
+>   新增 `server/auth_runtime.js`，exit/SIGINT/SIGTERM 清理；启动探针统一 10000，启动失败改
+>   `assert.fail` 并带 stderr；陈旧上传 GC 从 `listen` 前挪到回调 `setImmediate`。
+>   冷启动实测 **122 / 127 / 122 / 141 ms**（Node 自身时钟，spawn 到端口可连），
+>   PowerShell `ProcessStartInfo` 口径 302 到 329 ms 含 harness 开销。
+> ⑤ **死 import 清理 `aba1b09`**：`App.tsx` 183 → **127 行**，`OnboardingView.tsx` 1907 → 1885，
+>   bundle 227.38 kB 与清理前完全一致，DOM 指纹无一条 `N 变 0`。顺带修好一处守卫退化：
+>   P17 只扫 `.tsx`，删掉死 import 后 `SelfCheckSubItem` 失配，扫描面放宽到 `.tsx + .ts`
+>   （只放宽，正则未动），18/18 绿。
+> ⑥ **基线**：本轮 K40 离线（`ssh: Could not resolve hostname k40-ubuntu`），adb 无 `3a3e1f52`。
+>   全量 `npm test` = **tests 1010 / pass 949 / fail 5 / skipped 56**，5 条红全部是设备依赖，
+>   与第 ④ 条改动无关。K40 恢复后需复跑确认这 5 条转绿。
 
 > **2026-11-01 第二十八轮（阻塞解除、算力面上线、真机抓出假绿灯）**：
 > ① **`.git` 的 NTFS DENY 阻塞解除**：连续三轮报 GIT-LOCKED 的根因是 `.git` 上有两条显式 DENY ACE
