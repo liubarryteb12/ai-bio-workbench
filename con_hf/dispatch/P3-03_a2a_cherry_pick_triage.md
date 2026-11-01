@@ -123,6 +123,7 @@ runner 侧靠 `wrapperId()` 随机后缀保证目录不撞，于是重复提交�
 - **picked 提交号**：`0`。本批不 cherry-pick `codex/a2a-v1` 的 TS 引擎层，改为在 master
   既有 `server/proc.js` 单 seam 增加 `BIO_COMPUTE_ADAPTER=mock|ssh`。这是用户对
   「不引入 44 文件引擎层」建议的全量采纳，不是静默丢弃分支提交。
+- **本批原子提交**：`a590dd6`。
 - **未合入提交与理由**：`0e3e161`、`c5a80a8`、`0465169`、`3782bb3` 随微内核底座整体暂缓，
   `f0b63b4` 仅作接缝参考。理由是 master 已有 `server/proc.js` 与 `node_failover.test.js`，
   直接引入会形成第二套计算面真源，并突破本轮只拆既有接缝的边界。
