@@ -157,6 +157,8 @@ export function computeSystemLedger() {
     let entries = [];
     try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
     for (const entry of entries) {
+      // 构建产物/缓存不是受控资产：不收录，否则跑一次探针脚本就会让台账门禁假红
+      if (entry.name === '__pycache__' || entry.name === 'node_modules') continue;
       const rel = prefix ? prefix + '/' + entry.name : entry.name;
       if (entry.isDirectory()) walk(path.join(dir, entry.name), rel);
       else trackedFiles.push('ops/k40/' + rel);
