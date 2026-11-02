@@ -1,8 +1,13 @@
 # 图件准入专项封板记录（2026-11-02，第 34~35 轮）
 
+> **本文件已随第十五轮更新**：第十四轮那次「封板 28」是账号配额用尽时
+> **Flash-Lite** 给出的裁定，不算 Argon 的正式裁定。配额恢复后，Argon 本人
+> 在第十五轮逐条推翻了前三条，改判**封板 30**，并指明两条落地路径。
+> 下面按 30 记录。
+
 ## 封板裁定
 
-与 4 Argon 第十轮至第十四轮讨论后的最终结论：**readyCount 锁定 28，专项封板。**
+与 4 Argon 第十轮至第十五轮讨论后的最终结论：**readyCount 锁定 30，专项封板。**
 
 - 冻结其余 33 个真待办，不再为凑数开发新母版
 - 不再改动 builder 契约（`ops/build_figure_templates.cjs` 的映射与基线）
@@ -23,6 +28,16 @@ fig_l2_volcano、fig_l2_umap
 
 ### Line 3（空间转录组，2 个）
 fig_l3_multipanel、fig_l3_sankey
+
+### 第 29/30 张（第十五轮新增，槽位复用不破 82 不变量）
+
+| 模板 id | 承载 | 绑 step | 消费表 | 母版 |
+|---|---|---|---|---|
+| fig_l3_chorddiagram | Line 2 细胞通讯弦图 | l2_branches_cellcomm | cellcomm_interactions.tsv（57,281 行） | L2p_cellcomm_autocorr_code.py |
+| fig_l1_connectedscatter | Line 3 空间自相关双指标 | l3_stats_autocorr | gene_autocorr_human.tsv（19,613 基因） | 同上 |
+
+两者 language=python + linked_mods 覆盖到本线出图 mod，因为 line2/line3 的出图 mod
+都是 Python，写 R 母版会被语言亲和性校验判红。
 
 ### 跨线通用（2 个）
 fig_l2_pca、fig_l2p_umap
