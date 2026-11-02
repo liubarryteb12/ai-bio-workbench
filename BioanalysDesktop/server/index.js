@@ -10,6 +10,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { timingSafeEqual, randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
@@ -91,20 +92,52 @@ let AUTH_ENABLED = Boolean(AUTH_USER && AUTH_PASS);
 
 const IS_TEST_RUNTIME = Boolean(process.env.NODE_TEST_CONTEXT) && process.env.BIO_TEST_FORCE_FAIL_CLOSED !== '1';
 const DEV_NOAUTH = process.env.BIO_ALLOW_DEV_NOAUTH === '1';
+/**
+ * 5.6 加固（2026-11-01）：清理上一个已死进程留下的明文口令文件。
+ *
+ * 为什么需要：退出即焚只覆盖正常 exit / SIGINT / SIGTERM。遇到 Windows 的
+ * taskkill /F、掉电或宿主强杀，exit 钩子不会跑，明文 JSON 就会永久留在磁盘上。
+ * 所以每次启动先校验文件里记录的 pid：进程已死即判废并删除，再写新的。
+ */
+function purgeStaleRuntimeAuthFile(filePath) {
+  if (!filePath || !fs.existsSync(filePath)) return false;
+  try {
+    const previous = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const pid = Number(previous.pid);
+    let alive = false;
+    if (Number.isInteger(pid) && pid > 0) {
+      try { process.kill(pid, 0); alive = true; } catch { alive = false; }
+    }
+    if (alive && pid === process.pid) return false;
+    if (alive) return false; // 别的实例还活着，不动它的口令文件
+    fs.rmSync(filePath, { force: true });
+    return true;
+  } catch {
+    // 文件损坏同样判废：读不出 pid 的明文口令不该继续留在盘上
+    try { fs.rmSync(filePath, { force: true }); } catch { /* 忽略 */ }
+    return true;
+  }
+}
 if (!AUTH_ENABLED && !IS_TEST_RUNTIME && !DEV_NOAUTH) {
   AUTH_USER = 'admin';
   AUTH_PASS = randomBytes(18).toString('base64url');
   AUTH_ENABLED = true;
-  console.error('[SECURITY][D-29 Fail-Closed] 未检测到 BAD_AUTH_USER/BAD_AUTH_PASS，已启用临时会话强鉴权。');
-  console.error(`[SECURITY] 账号 ${AUTH_USER} 口令 ${AUTH_PASS}（重启重新生成；正式部署用 serve_guard 注入固定口令）`);
-  if (process.env.BIO_AUTH_RUNTIME_FILE) {
-    fs.writeFileSync(process.env.BIO_AUTH_RUNTIME_FILE, JSON.stringify({
-      user: AUTH_USER, pass: AUTH_PASS, enabled: true, generatedAt: new Date().toISOString(),
-    }), 'utf8');
-    process.once('exit', () => cleanupAuthRuntimeFile());
-    process.once('SIGINT', () => { cleanupAuthRuntimeFile(); process.exit(130); });
-    process.once('SIGTERM', () => { cleanupAuthRuntimeFile(); process.exit(143); });
+  // 5.6（2026-11-01）：明文口令不再进 stderr。ops/serve_guard.ps1 用
+  // -RedirectStandardError 持久化 stderr，口令打 stderr 等于落盘 cn_debug/workbench_err.log。
+  // 改为一律写运行时口令文件（退出即焚），人读口令走 node server/print_runtime_auth.js。
+  if (!process.env.BIO_AUTH_RUNTIME_FILE) {
+    process.env.BIO_AUTH_RUNTIME_FILE = path.join(os.homedir(), '.bioanalys', 'workbench_failclosed.json');
   }
+  console.error('[SECURITY][D-29 Fail-Closed] 未检测到 BAD_AUTH_USER/BAD_AUTH_PASS，已启用临时会话强鉴权。');
+  console.error(`[SECURITY] 随机口令已写入运行时文件（退出即焚）：${process.env.BIO_AUTH_RUNTIME_FILE}；查看口令用 node server/print_runtime_auth.js；正式部署用 serve_guard 注入固定口令。`);
+  fs.mkdirSync(path.dirname(process.env.BIO_AUTH_RUNTIME_FILE), { recursive: true });
+  purgeStaleRuntimeAuthFile(process.env.BIO_AUTH_RUNTIME_FILE);
+  fs.writeFileSync(process.env.BIO_AUTH_RUNTIME_FILE, JSON.stringify({
+    user: AUTH_USER, pass: AUTH_PASS, enabled: true, pid: process.pid, generatedAt: new Date().toISOString(),
+  }), 'utf8');
+  process.once('exit', () => cleanupAuthRuntimeFile());
+  process.once('SIGINT', () => { cleanupAuthRuntimeFile(); process.exit(130); });
+  process.once('SIGTERM', () => { cleanupAuthRuntimeFile(); process.exit(143); });
 }
 
 /** 定长比较，避免按字节提前返回泄露口令前缀 */
