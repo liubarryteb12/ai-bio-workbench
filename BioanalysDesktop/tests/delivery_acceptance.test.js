@@ -1,0 +1,44 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const REPO = path.resolve(HERE, '..', '..');
+const SCRIPT = path.join(REPO, 'ops', 'delivery_acceptance.ps1');
+
+// ── 交付验收脚本的静态契约（2026-11-02，4 Argon 第十六轮 Priority 1）──
+//
+// 客户买到的是 tar 包（报告 + 图 + 表 + .sig），不是仓库里的中间产物。
+// 这条断言钉住「验收必须覆盖的四道关」，防止后来人把某一道偷偷删掉：
+//   1. tar 本体 SHA256 与侧车一致
+//   2. 解包成功且交付根目录存在三件套
+//   3. 清单哈希 + Ed25519 验签返回 VERIFIED
+//   4. 清单计数与磁盘实际文件数核对
+
+test('delivery acceptance script exists and covers all four gates', () => {
+  assert.ok(fs.existsSync(SCRIPT), 'ops/delivery_acceptance.ps1 缺失');
+  const text = fs.readFileSync(SCRIPT, 'utf8');
+  assert.ok(text.includes('tar_sha256_sidecar.txt'), '关 1 缺失：未校验 tar 侧车哈希');
+  assert.ok(text.includes('CHECKSUMS.sig'), '关 2 缺失：未校验签名文件存在');
+  assert.ok(text.includes('verify_delivery_signature.mjs'), '关 3 缺失：未调用验签核');
+  assert.ok(text.includes('VERIFIED'), '关 3 判据缺失：未断言 VERIFIED 输出');
+  assert.ok(text.includes('delivery_manifest.json'), '关 4 缺失：未读交付清单');
+  assert.ok(text.includes('DELIVERY_ACCEPTANCE_OK'), '缺成功哨兵，无法从日志判定全绿');
+  assert.ok(text.includes('ACCEPTANCE_FAILED'), '缺失败哨兵，失败时无法区分「没跑」与「跑挂了」');
+});
+
+test('delivery acceptance script declares a public key parameter with a repo default', () => {
+  const text = fs.readFileSync(SCRIPT, 'utf8');
+  assert.ok(text.includes('$PublicKeyPath'), '未把公钥路径参数化');
+  assert.match(text, /ops[/\\]secrets[/\\]ed25519_public\.pem/, '默认公钥路径未指向 ops/secrets');
+});
+
+test('the reference drill package still carries its sidecar and signature', () => {
+  const drill = path.join(REPO, 'con_hf', 'runs', '2026-10-31_phase3_delivery_drill');
+  if (!fs.existsSync(drill)) return; // 演练目录是运行产物，缺失时该测试不主张
+  for (const need of ['tar_sha256_sidecar.txt', 'CHECKSUMS.sha256', 'CHECKSUMS.sig', 'delivery_manifest.json']) {
+    assert.ok(fs.existsSync(path.join(drill, need)), '演练包缺 ' + need);
+  }
+});
