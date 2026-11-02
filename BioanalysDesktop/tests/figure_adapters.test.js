@@ -36,6 +36,9 @@ const SUPPORTED_IDS = [
   'fig_l2p_barplot',
   'fig_l2p_boxplot',
   'fig_l2p_heatmap',
+  'fig_l1_ridgeline',
+  'fig_l1_upsetplot',
+  'fig_l1_vennplot',
 ];
 
 const PROJECT_ID = 'PRJ_AIMS_V3_20261027';
@@ -96,6 +99,24 @@ const CASES = {
     },
     inputPath: 'data/line3_spatial/processed/spatial_dimred_human.h5ad',
     truth: { extension: '.h5ad', language: 'python' },
+  },
+  fig_l1_ridgeline: {
+    lineId: 'line1_bulk',
+    adaptVars: { input_data: 'data/line1_bulk/processed/enrichment_gsea_go.tsv' },
+    inputPath: 'data/line1_bulk/processed/enrichment_gsea_go.tsv',
+    truth: { columns: ['NES', 'qvalue'], language: 'r' },
+  },
+  fig_l1_upsetplot: {
+    lineId: 'line1_bulk',
+    adaptVars: { input_data: 'data/line1_bulk/processed/deg_all.tsv' },
+    inputPath: 'data/line1_bulk/processed/deg_all.tsv',
+    truth: { columns: ['gene', 'log2FC', 'adj_P_Val'], language: 'r' },
+  },
+  fig_l1_vennplot: {
+    lineId: 'line1_bulk',
+    adaptVars: { input_data: 'data/line1_bulk/processed/deg_all.tsv' },
+    inputPath: 'data/line1_bulk/processed/deg_all.tsv',
+    truth: { columns: ['gene', 'log2FC', 'adj_P_Val'], language: 'r' },
   },
   fig_l1_groupedbar: {
     lineId: 'line1_bulk',
@@ -167,6 +188,33 @@ const CASES = {
     },
     inputPath: 'data/line1_bulk/processed/external_validation_preds.tsv',
     truth: { columns: ['true', 'pred', 'prob_LS'], language: 'r' },
+  },
+  fig_l1_ridgeline: {
+    source: 'reference/05.可参考出图代码/_meta/R453_compat/L1_p0_gallery_code.R',
+    language: 'r',
+    lineId: 'line1_bulk',
+    inputPath: 'data/line1_bulk/processed/enrichment_gsea_go.tsv',
+    canonicalOutput: 'L1_ridgeline_verified.png',
+    adaptVars: { input_data: 'data/line1_bulk/processed/enrichment_gsea_go.tsv' },
+    marker: 'ridgeline',
+  },
+  fig_l1_upsetplot: {
+    source: 'reference/05.可参考出图代码/_meta/R453_compat/L1_p0_gallery_code.R',
+    language: 'r',
+    lineId: 'line1_bulk',
+    inputPath: 'data/line1_bulk/processed/deg_all.tsv',
+    canonicalOutput: 'L1_upset_verified.png',
+    adaptVars: { input_data: 'data/line1_bulk/processed/deg_all.tsv' },
+    marker: 'upset',
+  },
+  fig_l1_vennplot: {
+    source: 'reference/05.可参考出图代码/_meta/R453_compat/L1_p0_gallery_code.R',
+    language: 'r',
+    lineId: 'line1_bulk',
+    inputPath: 'data/line1_bulk/processed/deg_all.tsv',
+    canonicalOutput: 'L1_venn_verified.png',
+    adaptVars: { input_data: 'data/line1_bulk/processed/deg_all.tsv' },
+    marker: 'venn',
   },
   fig_l2p_violin: {
     lineId: 'line2_scrna',
@@ -315,7 +363,9 @@ test('real-data adapter exits before the retained master source can execute', ()
 
 test('R adapted sources declare the BIOANALYS_SEED contract', () => {
   const rIds = SUPPORTED_IDS.filter((templateId) => registryById.get(templateId).language === 'r');
-  assert.equal(rIds.length, 11);
+  // 水位线而非相等：每准入一个 R 模板都要改一次魔数，等于把准入成本抬到最高。
+  // 这里只守「R 模板不许从 11 条倒退」，新增模板由 parity 的 ready 断言负责。
+  assert.ok(rIds.length >= 11, `R 模板数从 11 倒退：${rIds.length}`);
   for (const templateId of rIds) {
     const source = buildSource(templateId);
     assert.match(source, /BIOANALYS_SEED/);

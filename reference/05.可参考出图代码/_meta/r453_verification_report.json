@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-02T13:06:42+08:00",
+  "generated_at": "2026-11-02T17:54:04+08:00",
   "l1": {
     "missing_packages": [],
     "packages": {
@@ -378,6 +378,45 @@
         "verified": true
       },
       {
+        "artifacts": [
+          {
+            "file": "L1_ridgeline_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l1_p0_gallery"
+          }
+        ],
+        "id": "fig_l1_ridgeline",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
+            "file": "L1_upset_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l1_p0_gallery"
+          }
+        ],
+        "id": "fig_l1_upsetplot",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
+            "file": "L1_venn_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l1_p0_gallery"
+          }
+        ],
+        "id": "fig_l1_vennplot",
+        "status": "ready",
+        "verified": true
+      },
+      {
         "artifacts": [],
         "id": "fig_kegg_pathway",
         "reason": "本库尚无 pathview KEGG 通路图母版，历史 L2_enrichment_verified.png 是富集气泡图",
@@ -385,7 +424,7 @@
         "verified": false
       }
     ],
-    "ready": 20,
+    "ready": 23,
     "runners": {
       "py_l2p_more": {
         "command": "nice -n 10 ionice -c 2 -n 4 /root/venvs/bio-py/bin/python3 /mnt/ssd/bio_data/validation/r453_figures_20261102/runs/py_l2p_more/L2p_more_code.py",
@@ -414,6 +453,13 @@
         "ok": true,
         "source": "_meta/R453_compat/L1_boxplot_code.R",
         "source_sha256": "dfc6a22b7585849c1c4d11bec312d654b9af63bf20dd2e42876c28834f8b0b0d"
+      },
+      "r_l1_p0_gallery": {
+        "command": "nice -n 10 ionice -c 2 -n 4 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ /mnt/ssd/bio_data/validation/r453_figures_20261102/runs/r_l1_p0_gallery/L1_p0_gallery_code.R",
+        "exit_code": 0,
+        "ok": true,
+        "source": "_meta/R453_compat/L1_p0_gallery_code.R",
+        "source_sha256": "b18618864a05ba95b47aee42ce8d75400dccf62420f4125e716c1d154c8699f4"
       },
       "r_l1_rest": {
         "command": "nice -n 10 ionice -c 2 -n 4 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ /mnt/ssd/bio_data/validation/r453_figures_20261102/runs/r_l1_rest/L1_rest_code.R",

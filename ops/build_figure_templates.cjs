@@ -140,6 +140,41 @@ const TEMPLATE_MAPPINGS = {
     canonical_output: "L2p_scatter_verified.png",
     sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_scatterplot.png",
   },
+  // r_l1_p0_gallery 三合一 runner 准入（2026-11-02，k40 真机验证 seed=20261013，
+  // 两次实跑 PNG sha256 逐字节一致；4 Argon 第十一轮批次 A 裁定）
+  fig_l1_ridgeline: {
+    lines: ['line1_bulk'],
+    analysis_step: "l1_enrich_bulk",
+    input_tables: ["enrichment_gsea_go.tsv"],
+    produces: ["L1_ridgeline_verified.png"],
+    output_glob: "figures/line1_bulk/L1_ridgeline_verified.png",
+    canonical_output: "L1_ridgeline_verified.png",
+    source_runner_id: "r_l1_p0_gallery",
+    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_ridgeline.png",
+  },
+  fig_l1_upsetplot: {
+    lines: ['line1_bulk'],
+    analysis_step: "l1_de_limma",
+    // 用 deg_all.tsv 而不是 deg_sig.tsv：示例项目里 deg_sig 是空表（adj_P_Val 最小 0.45，
+    // 无基因过 0.05），按 Argon 原话「多阈值/多子集交集」本就该从全表切阈值。
+    // 两者都是 l1_de_limma 自己声明的产物，step 绑定不变。
+    input_tables: ["deg_all.tsv"],
+    produces: ["L1_upset_verified.png"],
+    output_glob: "figures/line1_bulk/L1_upset_verified.png",
+    canonical_output: "L1_upset_verified.png",
+    source_runner_id: "r_l1_p0_gallery",
+    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_upsetplot.png",
+  },
+  fig_l1_vennplot: {
+    lines: ['line1_bulk'],
+    analysis_step: "l1_de_limma",
+    input_tables: ["deg_all.tsv"],
+    produces: ["L1_venn_verified.png"],
+    output_glob: "figures/line1_bulk/L1_venn_verified.png",
+    canonical_output: "L1_venn_verified.png",
+    source_runner_id: "r_l1_p0_gallery",
+    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_vennplot.png",
+  },
   fig_l2p_barplot: {
     lines: ['line2_scrna'],
     analysis_step: "l2_profile_composition",
@@ -481,7 +516,7 @@ function buildRegistry() {
    *   - pending_mapping 必须为 0（CSV 标 ready 但映射不全 = 真缺陷）；
    *   - blocked_r453 固定 1（只有 fig_kegg_pathway 一条被裁定的阻塞）。
    */
-  const READY_BASELINE = 16;
+  const READY_BASELINE = 23;
   const statusSum = Object.values(counts).reduce((acc, n) => acc + n, 0);
   if (statusSum !== 82) fail(`状态计数之和不是 82：${statusSum}`);
   if ((counts.ready || 0) < READY_BASELINE) fail(`ready 从基线 ${READY_BASELINE} 倒退：${counts.ready || 0}`);

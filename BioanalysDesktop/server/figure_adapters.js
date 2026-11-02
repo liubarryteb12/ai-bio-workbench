@@ -24,6 +24,9 @@ const SUPPORTED_TEMPLATE_IDS = new Set([
   'fig_l2p_barplot',
   'fig_l2p_heatmap',
   'fig_l2p_boxplot',
+  'fig_l1_ridgeline',
+  'fig_l1_upsetplot',
+  'fig_l1_vennplot',
 ]);
 
 function normalizeRelativePath(value, fieldName) {
@@ -437,6 +440,159 @@ dev.off()
 cat("ADAPT_REAL_INPUT_OK sankey modules=", nrow(flow), "\n", sep = "")
 `,
 };
+
+R_OVERLAYS.fig_l1_ridgeline = `# Real-data GSEA NES ridge overlay
+suppressPackageStartupMessages({library(ggplot2); library(ggridges)})
+gsea_df <- read.delim(input_data, check.names = FALSE, quote = "")
+pick_column <- function(candidates) {
+  hit <- candidates[candidates %in% names(gsea_df)]
+  if (!length(hit)) stop(paste("ridgeline input columns missing:", paste(candidates, collapse = " / ")))
+  hit[[1]]
+}
+nes_col <- pick_column(c("NES", "nes", "enrichmentScore"))
+ont_col <- if ("ont" %in% names(gsea_df)) "ont" else if ("library" %in% names(gsea_df)) "library" else NA
+padj_col <- pick_column(c("qvalue", "p.adjust", "p_adjust", "padj"))
+if (is.na(ont_col)) {
+  gsea_df$.facet <- "all"
+  facet_var <- ".facet"
+} else {
+  facet_var <- ont_col
+}
+gsea_df$.nes <- suppressWarnings(as.numeric(gsea_df[[nes_col]]))
+gsea_df$.padj <- suppressWarnings(as.numeric(gsea_df[[padj_col]]))
+gsea_df <- gsea_df[is.finite(gsea_df$.nes) & is.finite(gsea_df$.padj), , drop = FALSE]
+if (!nrow(gsea_df)) stop("ridgeline input has no finite NES rows")
+gsea_df$.group <- as.factor(gsea_df[[facet_var]])
+ridge_plot <- ggplot(gsea_df, aes(x = .nes, y = .group, fill = .group)) +
+  geom_density_ridges(scale = 1.4, rel_min_height = 0.01, alpha = 0.72,
+                      colour = "grey25", linewidth = 0.35) +
+  geom_vline(xintercept = 0, linetype = "dashed", linewidth = 0.4, colour = "grey40") +
+  labs(x = "Normalized enrichment score (NES)", y = NULL,
+       subtitle = paste("gene sets =", nrow(gsea_df))) +
+  theme_classic(base_size = 8) +
+  theme(legend.position = "none")
+ggsave(output_file, ridge_plot, width = 89, height = 75, units = "mm", dpi = 300,
+       device = png, type = "cairo", bg = "white")
+cat("ADAPT_REAL_INPUT_OK ridgeline sets=", nrow(gsea_df), "\\n", sep = "")
+`;
+
+R_OVERLAYS.fig_l1_upsetplot = `# Real-data DEG subset intersection UpSet overlay
+suppressPackageStartupMessages({library(UpSetR)})
+deg_df <- read.delim(input_data, check.names = FALSE, quote = "")
+pick_column <- function(candidates) {
+  hit <- candidates[candidates %in% names(deg_df)]
+  if (!length(hit)) stop(paste("upset input columns missing:", paste(candidates, collapse = " / ")))
+  hit[[1]]
+}
+
+pick_threshold <- function(frame, padj_name, pval_name) {
+  # 优先用 BH 校正后的 padj<0.05；该数据集零命中时降级到未校正 P_Value<0.05。
+  # 实测依据：PRJ_AIMS_V3_20261027 最小 adj_P_Val=0.4524（padj<0.05 共 0 个），
+  # 而未校正 P_Value<0.05 有 1121 个、<0.01 有 151 个。集合全空会让图形退化。
+  for (candidate in c(padj_name, pval_name)) {
+    if (is.na(candidate) || !nzchar(candidate) || !candidate %in% names(frame)) next
+    values <- suppressWarnings(as.numeric(frame[[candidate]]))
+    finite <- values[is.finite(values)]
+    if (!length(finite)) next
+    if (sum(finite < 0.05) >= 2) {
+      return(list(column = candidate, adjusted = identical(candidate, padj_name)))
+    }
+  }
+  stop("neither padj nor p-value yields at least 2 genes below 0.05")
+}
+gene_col <- pick_column(c("gene", "gene_symbol", "symbol"))
+padj_col <- pick_column(c("adj_P_Val", "adj.P.Val", "p.adjust", "padj", "qvalue"))
+pval_col <- pick_column(c("P_Value", "P.Value", "pvalue", "p_value", "pval"))
+fc_col <- pick_column(c("log2FC", "log2fc", "logFC"))
+deg_df$.fc <- suppressWarnings(as.numeric(deg_df[[fc_col]]))
+deg_df$.gene <- as.character(deg_df[[gene_col]])
+sig_choice <- pick_threshold(deg_df, padj_col, pval_col)
+deg_df$.padj <- as.numeric(deg_df[[sig_choice$column]])
+deg_df <- deg_df[is.finite(deg_df$.padj) & is.finite(deg_df$.fc) & nzchar(deg_df$.gene), , drop = FALSE]
+if (!nrow(deg_df)) stop("upset input has no usable DEG rows")
+deg_df$.rank <- rank(deg_df$.padj, ties.method = "first")
+fc_abs <- abs(deg_df$.fc)
+sets <- list(
+  sig = deg_df$.gene[deg_df$.padj < 0.05],
+  padj_lt_0.01_or_rank = deg_df$.gene[deg_df$.rank <= max(2L, ceiling(sum(deg_df$.padj < 0.05) * 0.5))],
+  top_ranked_5pct = deg_df$.gene[deg_df$.rank <= max(2L, ceiling(nrow(deg_df) * 0.05))],
+  top_ranked_10pct = deg_df$.gene[deg_df$.rank <= max(2L, ceiling(nrow(deg_df) * 0.10))],
+  abs_fc_top_10pct = deg_df$.gene[fc_abs >= stats::quantile(fc_abs, 0.90, na.rm = TRUE)],
+  abs_fc_top_25pct = deg_df$.gene[fc_abs >= stats::quantile(fc_abs, 0.75, na.rm = TRUE)],
+  up_regulated = deg_df$.gene[deg_df$.fc > 0],
+  down_regulated = deg_df$.gene[deg_df$.fc < 0]
+)
+sets <- sets[vapply(sets, length, integer(1)) > 0]
+if (length(sets) < 2) stop(paste("upset needs at least 2 non-empty sets, got", length(sets)))
+png(output_file, width = 89, height = 75, units = "mm", res = 300, type = "cairo")
+up <- upset(fromList(sets), nsets = length(sets), nintersects = 20,
+            order.by = "freq", keep.order = TRUE,
+            main.bar.color = "#0072B2", sets.bar.color = "#D55E00",
+            matrix.color = "#333333", shade.color = "#EEEEEE",
+            mainbar.y.label = "Intersection size", sets.x.label = "Genes per subset")
+print(up)
+dev.off()
+cat("ADAPT_REAL_INPUT_OK upset sets=", length(sets), " genes=", nrow(deg_df),
+    " threshold=", sig_choice$column, " adjusted=", sig_choice$adjusted, "\\n", sep = "")
+`;
+
+R_OVERLAYS.fig_l1_vennplot = `# Real-data DEG subset Venn overlay
+suppressPackageStartupMessages({library(VennDiagram); library(futile.logger)})
+flog.threshold(ERROR, name = "VennDiagramLogger")
+deg_df <- read.delim(input_data, check.names = FALSE, quote = "")
+pick_column <- function(candidates) {
+  hit <- candidates[candidates %in% names(deg_df)]
+  if (!length(hit)) stop(paste("venn input columns missing:", paste(candidates, collapse = " / ")))
+  hit[[1]]
+}
+
+pick_threshold <- function(frame, padj_name, pval_name) {
+  # 优先 padj<0.05；零命中时降级到未校正 P_Value<0.05（实测本库 padj 最小 0.4524，
+  # 未校正 p<0.05 有 1121 个），避免集合全空。
+  for (candidate in c(padj_name, pval_name)) {
+    if (is.na(candidate) || !nzchar(candidate) || !candidate %in% names(frame)) next
+    values <- suppressWarnings(as.numeric(frame[[candidate]]))
+    finite <- values[is.finite(values)]
+    if (!length(finite)) next
+    if (sum(finite < 0.05) >= 2) {
+      return(list(column = candidate, adjusted = identical(candidate, padj_name)))
+    }
+  }
+  stop("neither padj nor p-value yields at least 2 genes below 0.05")
+}
+gene_col <- pick_column(c("gene", "gene_symbol", "symbol"))
+padj_col <- pick_column(c("adj_P_Val", "adj.P.Val", "p.adjust", "padj", "qvalue"))
+pval_col <- pick_column(c("P_Value", "P.Value", "pvalue", "p_value", "pval"))
+fc_col <- pick_column(c("log2FC", "log2fc", "logFC"))
+deg_df$.fc <- suppressWarnings(as.numeric(deg_df[[fc_col]]))
+deg_df$.gene <- as.character(deg_df[[gene_col]])
+sig_choice <- pick_threshold(deg_df, padj_col, pval_col)
+deg_df$.padj <- suppressWarnings(as.numeric(deg_df[[sig_choice$column]]))
+deg_df <- deg_df[is.finite(deg_df$.padj) & is.finite(deg_df$.fc) & nzchar(deg_df$.gene), , drop = FALSE]
+if (!nrow(deg_df)) stop("venn input has no usable DEG rows")
+sig_genes <- unique(deg_df$.gene[deg_df$.padj < 0.05])
+g1 <- sig_genes
+g2 <- unique(deg_df$.gene[abs(deg_df$.fc) >= stats::quantile(abs(deg_df$.fc), 0.9, na.rm = TRUE)])
+g3 <- unique(deg_df$.gene[abs(deg_df$.fc) >= stats::quantile(abs(deg_df$.fc), 0.75, na.rm = TRUE)])
+if (length(g1) < 2 || length(g2) < 2 || length(g3) < 2) {
+  stop(paste("venn needs non-degenerate sets:", length(g1), length(g2), length(g3)))
+}
+png(output_file, width = 89, height = 75, units = "mm", res = 300, type = "cairo")
+grid::grid.newpage()
+venn_plot <- venn.diagram(
+  x = list(significant = g1, abs_fc_top_10pct = g2, abs_fc_top_25pct = g3),
+  filename = NULL,
+  fill = c("#0072B2", "#D55E00", "#009E73"),
+  alpha = 0.55, cex = 1.0, cat.cex = 0.8,
+  cat.col = c("#0072B2", "#D55E00", "#009E73"),
+  margin = 0.08, disable.logging = TRUE
+)
+grid::grid.draw(venn_plot)
+dev.off()
+junk <- list.files(pattern = "^VennDiagram_.*\\\\.log$")
+if (length(junk)) file.remove(junk)
+cat("ADAPT_REAL_INPUT_OK venn sets=", length(g1), "/", length(g2), "/", length(g3), "\\n", sep = "")
+`;
 
 const PYTHON_OVERLAYS = {
   fig_l2p_dotplot: `# Real-data target localization dot plot overlay

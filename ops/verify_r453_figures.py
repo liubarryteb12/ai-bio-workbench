@@ -35,6 +35,11 @@ RUNNERS = [
     {"id": "py_l2p_umap", "lang": "python", "script": "L2_组学常用图/L2p_umap_code.py"},
     {"id": "py_l2p_more", "lang": "python", "script": "L2_组学常用图/L2p_more_code.py"},
     {"id": "py_l2p_stats", "lang": "python", "script": "L2_组学常用图/L2p_stats_code.py"},
+    {
+        "id": "r_l1_p0_gallery",
+        "lang": "r",
+        "script": "_meta/R453_compat/L1_p0_gallery_code.R",
+    },
 ]
 
 FIGURE_ARTIFACTS = {
@@ -58,6 +63,9 @@ FIGURE_ARTIFACTS = {
     "fig_l2p_barplot": "py_l2p_stats:L2p_bar_verified.png",
     "fig_l2p_boxplot": "py_l2p_stats:L2p_box_verified.png",
     "fig_l2p_heatmap": "py_l2p_stats:L2p_heatmap_verified.png",
+    "fig_l1_ridgeline": "r_l1_p0_gallery:L1_ridgeline_verified.png",
+    "fig_l1_upsetplot": "r_l1_p0_gallery:L1_upset_verified.png",
+    "fig_l1_vennplot": "r_l1_p0_gallery:L1_venn_verified.png",
 }
 BLOCKED_FIGURES = [
     {

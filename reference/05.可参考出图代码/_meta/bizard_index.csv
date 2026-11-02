@@ -31,12 +31,12 @@ L1,密度图,Distribution,Density,r,14,0,cowplot;dplyr;geomtextpath;ggExtra;ggpl
 L1,直方图,Distribution,Histogram,r,12,0,cowplot;ggExtra;ggplot2;ggpmisc;ggpubr;readr;tidyverse;viridis,ready,L1_基础统计图/L1_histogram_verified.png
 L1,径向柱状图,Distribution,RadialColumnChart,r,7,0,dplyr;ggforce;ggplot2;scales,待采集,
 L1,云雨图,Distribution,RaincloudPlot,r,6,0,tidyverse`；`ggbeeswarm`；`palmerpenguins,待采集,
-L1,山脊线图,Distribution,Ridgeline,r,9,0,ggplot2;ggridges;hrbrthemes;readr;viridis,待采集,
+L1,山脊线图,Distribution,Ridgeline,r,9,0,ggplot2;ggridges;hrbrthemes;readr;viridis,ready,_meta/R453_compat/L1_ridgeline_verified.png
 L1,小提琴图,Distribution,ViolinPlot,r,13,0,dplyr;forcats;gghalves;ggplot2;ggstatsplot;hrbrthemes;palmerpenguins;readr;tidyr;viridis,ready,L1_基础统计图/L1_violin_verified.png
 L1,条形图,Ranking,BarPlot,r,17,0,cowplot;dplyr;forcats;ggpattern;ggplot2;ggpubr;hrbrthemes;magrittr;rstatix;tidyr,待采集,
 L1,圆形条形图,Ranking,CircularBarplot,r,9,0,tidyverse,待采集,
-L1,Upset图,Ranking,UpsetPlot,r,19,0,UpSetR;ggupset,待采集,
-L1,韦恩图,Ranking,VennPlot,r,15,0,VennDiagram;ggVennDiagram;ggplot2,待采集,
+L1,Upset图,Ranking,UpsetPlot,r,19,0,UpSetR;ggupset,ready,_meta/R453_compat/L1_upset_verified.png
+L1,韦恩图,Ranking,VennPlot,r,15,0,VennDiagram;ggVennDiagram;ggplot2,ready,_meta/R453_compat/L1_venn_verified.png
 L3,柱状图+蜂群点图+折线图组合,Clinics,CombinationPanel,r,6,0,tidyverse`；`ggbeeswarm`；`patchwork,待采集,
 L2,KM 曲线,Clinics,KaplanMeierPlot,r,6,0,-,待采集,
 L2,棒棒糖图,Clinics,LollipopPlot,r,9,0,dplyr;ggplot2;ggpubr;patchwork,待采集,

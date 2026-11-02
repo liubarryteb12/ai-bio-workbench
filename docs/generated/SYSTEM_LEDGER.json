@@ -1,6 +1,6 @@
 {
   "figureTemplates": {
-    "pendingCount": 62,
+    "pendingCount": 59,
     "pendingDetails": [
       {
         "depsPending": true,
@@ -172,13 +172,6 @@
       },
       {
         "depsPending": true,
-        "id": "fig_l1_ridgeline",
-        "missingAdapter": false,
-        "missingSample": true,
-        "unboundStep": false
-      },
-      {
-        "depsPending": true,
         "id": "fig_l1_barplot",
         "missingAdapter": false,
         "missingSample": true,
@@ -187,20 +180,6 @@
       {
         "depsPending": true,
         "id": "fig_l1_circularbarplot",
-        "missingAdapter": false,
-        "missingSample": true,
-        "unboundStep": false
-      },
-      {
-        "depsPending": true,
-        "id": "fig_l1_upsetplot",
-        "missingAdapter": false,
-        "missingSample": true,
-        "unboundStep": false
-      },
-      {
-        "depsPending": true,
-        "id": "fig_l1_vennplot",
         "missingAdapter": false,
         "missingSample": true,
         "unboundStep": false
@@ -437,7 +416,7 @@
         "unboundStep": false
       }
     ],
-    "readyCount": 20,
+    "readyCount": 23,
     "total": 82
   },
   "k40HostAssets": {

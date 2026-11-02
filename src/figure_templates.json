@@ -1220,12 +1220,12 @@
       "level": "L1",
       "category": "Distribution",
       "language": "r",
-      "source": null,
-      "source_sha256": null,
-      "preview": null,
-      "preview_sha256": null,
-      "verified": false,
-      "deps_status": "pending",
+      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_p0_gallery_code.R",
+      "source_sha256": "b18618864a05ba95b47aee42ce8d75400dccf62420f4125e716c1d154c8699f4",
+      "preview": "reference/05.可参考出图代码/_meta/R453_compat/L1_ridgeline_verified.png",
+      "preview_sha256": "1027955bc1d6b4496b45dbe281bf6a12cd414ae714b371d407978d567ae51eba",
+      "verified": true,
+      "deps_status": "ready",
       "deps": [
         "ggplot2",
         "ggridges",
@@ -1240,13 +1240,19 @@
         "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
         "group_col": "分组列名"
       },
-      "lines": [],
-      "analysis_step": null,
-      "input_tables": [],
-      "produces": [],
-      "output_glob": null,
-      "canonical_output": null,
-      "sample_project_output": null,
+      "lines": [
+        "line1_bulk"
+      ],
+      "analysis_step": "l1_enrich_bulk",
+      "input_tables": [
+        "enrichment_gsea_go.tsv"
+      ],
+      "produces": [
+        "L1_ridgeline_verified.png"
+      ],
+      "output_glob": "figures/line1_bulk/L1_ridgeline_verified.png",
+      "canonical_output": "L1_ridgeline_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_ridgeline.png",
       "deprecated": false
     },
     {
@@ -1378,12 +1384,12 @@
       "level": "L1",
       "category": "Ranking",
       "language": "r",
-      "source": null,
-      "source_sha256": null,
-      "preview": null,
-      "preview_sha256": null,
-      "verified": false,
-      "deps_status": "pending",
+      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_p0_gallery_code.R",
+      "source_sha256": "b18618864a05ba95b47aee42ce8d75400dccf62420f4125e716c1d154c8699f4",
+      "preview": "reference/05.可参考出图代码/_meta/R453_compat/L1_upset_verified.png",
+      "preview_sha256": "f59bf2a34409224b14db24d9e8ce8e93b975d10855815ddffbef4c3e917c31a7",
+      "verified": true,
+      "deps_status": "ready",
       "deps": [
         "UpSetR",
         "ggupset"
@@ -1395,13 +1401,19 @@
         "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
         "group_col": "分组列名"
       },
-      "lines": [],
-      "analysis_step": null,
-      "input_tables": [],
-      "produces": [],
-      "output_glob": null,
-      "canonical_output": null,
-      "sample_project_output": null,
+      "lines": [
+        "line1_bulk"
+      ],
+      "analysis_step": "l1_de_limma",
+      "input_tables": [
+        "deg_all.tsv"
+      ],
+      "produces": [
+        "L1_upset_verified.png"
+      ],
+      "output_glob": "figures/line1_bulk/L1_upset_verified.png",
+      "canonical_output": "L1_upset_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_upsetplot.png",
       "deprecated": false
     },
     {
@@ -1410,12 +1422,12 @@
       "level": "L1",
       "category": "Ranking",
       "language": "r",
-      "source": null,
-      "source_sha256": null,
-      "preview": null,
-      "preview_sha256": null,
-      "verified": false,
-      "deps_status": "pending",
+      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_p0_gallery_code.R",
+      "source_sha256": "b18618864a05ba95b47aee42ce8d75400dccf62420f4125e716c1d154c8699f4",
+      "preview": "reference/05.可参考出图代码/_meta/R453_compat/L1_venn_verified.png",
+      "preview_sha256": "0b7df8fd012e21e7d6ecaf0b51fe08e1301d1ae7603e35e55453272d5a3778b0",
+      "verified": true,
+      "deps_status": "ready",
       "deps": [
         "VennDiagram",
         "ggVennDiagram",
@@ -1428,13 +1440,19 @@
         "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
         "group_col": "分组列名"
       },
-      "lines": [],
-      "analysis_step": null,
-      "input_tables": [],
-      "produces": [],
-      "output_glob": null,
-      "canonical_output": null,
-      "sample_project_output": null,
+      "lines": [
+        "line1_bulk"
+      ],
+      "analysis_step": "l1_de_limma",
+      "input_tables": [
+        "deg_all.tsv"
+      ],
+      "produces": [
+        "L1_venn_verified.png"
+      ],
+      "output_glob": "figures/line1_bulk/L1_venn_verified.png",
+      "canonical_output": "L1_venn_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_vennplot.png",
       "deprecated": false
     },
     {

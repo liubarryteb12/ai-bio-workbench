@@ -54,6 +54,9 @@ local_projects/PRJ_20261019_IS_lactylation/
 !local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_04_topvar_heatmap.png
 !local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_02_pca.png
 !local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_03_volcano_limma.png
+!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_ridgeline.png
+!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_upsetplot.png
+!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_vennplot.png
 !local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/
 !local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_dotplot.png
 !local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_volcano.png
@@ -140,6 +143,10 @@ reference/05.可参考出图代码/**
 !reference/05.可参考出图代码/_meta/R453_compat/L2_core_code.R
 !reference/05.可参考出图代码/_meta/R453_compat/L2_more_code.R
 !reference/05.可参考出图代码/_meta/R453_compat/L3_sankey_code.R
+!reference/05.可参考出图代码/_meta/R453_compat/L1_p0_gallery_code.R
+!reference/05.可参考出图代码/_meta/R453_compat/L1_ridgeline_verified.png
+!reference/05.可参考出图代码/_meta/R453_compat/L1_upset_verified.png
+!reference/05.可参考出图代码/_meta/R453_compat/L1_venn_verified.png
 !reference/05.可参考出图代码/library/
 !reference/05.可参考出图代码/library/README.md
 !reference/05.可参考出图代码/library/catalog.json
