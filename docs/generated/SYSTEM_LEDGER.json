@@ -17,21 +17,21 @@
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l1_donut",
         "missingAdapter": false,
         "missingSample": true,
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l1_partpiechart",
         "missingAdapter": false,
         "missingSample": true,
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l1_piechart",
         "missingAdapter": false,
         "missingSample": true,
@@ -80,14 +80,14 @@
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l2_complexheatmap",
         "missingAdapter": false,
         "missingSample": true,
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l1_connectedscatter",
         "missingAdapter": false,
         "missingSample": true,
@@ -143,7 +143,7 @@
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l1_timeseries",
         "missingAdapter": false,
         "missingSample": true,
@@ -157,7 +157,7 @@
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l1_radialcolumnchart",
         "missingAdapter": false,
         "missingSample": true,
@@ -213,14 +213,14 @@
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l2_kaplanmeierplot",
         "missingAdapter": false,
         "missingSample": true,
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l2_lollipopplot",
         "missingAdapter": false,
         "missingSample": true,
@@ -262,7 +262,7 @@
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l2_chromosomeplot",
         "missingAdapter": false,
         "missingSample": true,
@@ -311,14 +311,14 @@
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l3_sankeybubbleplot",
         "missingAdapter": false,
         "missingSample": true,
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l2_textenrichmentbarplot",
         "missingAdapter": false,
         "missingSample": true,
@@ -332,14 +332,14 @@
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l2p_barplot",
         "missingAdapter": false,
         "missingSample": true,
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l2p_boxplot",
         "missingAdapter": false,
         "missingSample": true,
@@ -353,42 +353,42 @@
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l2p_confusionmatrixplot",
         "missingAdapter": false,
         "missingSample": true,
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l2p_enrichmentplot",
         "missingAdapter": false,
         "missingSample": true,
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l3p_facetgridplot",
         "missingAdapter": false,
         "missingSample": true,
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l2p_gseaplot",
         "missingAdapter": false,
         "missingSample": true,
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l2p_heatmap",
         "missingAdapter": false,
         "missingSample": true,
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l2p_pcaplot",
         "missingAdapter": false,
         "missingSample": true,
@@ -402,7 +402,7 @@
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l2p_rocprplot",
         "missingAdapter": false,
         "missingSample": true,
@@ -416,14 +416,14 @@
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l2p_scatterplot",
         "missingAdapter": false,
         "missingSample": true,
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l2p_scrnastackedviolin",
         "missingAdapter": false,
         "missingSample": true,
@@ -437,7 +437,7 @@
         "unboundStep": false
       },
       {
-        "depsPending": false,
+        "depsPending": true,
         "id": "fig_l2p_upsetplot",
         "missingAdapter": false,
         "missingSample": true,
