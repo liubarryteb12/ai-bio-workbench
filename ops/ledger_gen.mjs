@@ -151,18 +151,23 @@ export function computeSystemLedger() {
   // excluded_out_of_scope：图型语义与转录组三线交付无关，永久冻结，不再是待办
   // blocked_upstream    ：语义相关但上游 Step 尚未声明对应产物表，等算法开发
   // actionable          ：有上游表支撑、可按单逐模板准入的真待办
+  // 解冻（2026-11-02，4 Argon 第十三轮第 3 节）：桑基/冲积图与三元图曾被归入
+  // 「商业信息图」，但 R 4.5.3 已装 ggalluvial（纯静态 ggplot2 扩展，非 htmlwidget），
+  // 且 cellcomm_interactions.tsv 与 dr_regulatory_network.tsv 都能支撑三级调控流向；
+  // 三元图在三个亚群/三个 Domain 的相对归属对比上是经典静态统计图。
+  // 故这两类回到 actionablePending，只保留真正依赖网页交互组件的条目在冻结池。
   const EXCLUDED_IDS = new Set([
     // 商业信息图 / 交互组件：无法表达误差与统计显著性，或依赖 htmlwidgets
     'fig_l1_circularpacking', 'fig_l1_donut', 'fig_l1_partpiechart', 'fig_l1_piechart',
     'fig_l1_treemap', 'fig_l1_waffle', 'fig_l1_streamgraph', 'fig_l1_radialstackedbar',
     'fig_l1_radialcolumnchart', 'fig_l1_circularbarplot', 'fig_l3_sankeybubbleplot',
-    'fig_l3p_sankeydiagram', 'fig_l2_mosaicplot',
+    'fig_l2_mosaicplot',
     // 跨组学专有图型：转录组上游不产出 SNP 坐标 / VCF 突变 / CNV 区段
     'fig_l2_manhattanplot', 'fig_l2_mutationoncoplot', 'fig_l2_chromosomeplot',
     'fig_l2_genestructureplot',
     // 时间序列 / 地理类：GEO bulk 样本没有等间隔时间轴，也没有地理坐标
     'fig_l1_areachart', 'fig_l1_linechart', 'fig_l1_stackedarea', 'fig_l1_timeseries',
-    'fig_l1_ternaryplot', 'fig_l1_breakplot',
+    'fig_l1_breakplot',
     // 网页交互式
     'fig_l2_ivolcanoplot',
   ]);

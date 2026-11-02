@@ -3,12 +3,11 @@
     "actionablePending": [
       "fig_l1_dendrogram",
       "fig_l1_biplot",
-      "fig_l1_bubble",
       "fig_l2_bubbleheatmap",
       "fig_l2_complexheatmap",
       "fig_l1_connectedscatter",
-      "fig_l1_correlogram",
       "fig_l1_density2d",
+      "fig_l1_ternaryplot",
       "fig_l1_raincloudplot",
       "fig_l1_barplot",
       "fig_l3_combinationpanel",
@@ -26,6 +25,7 @@
       "fig_l2p_pcaplot",
       "fig_l3p_publicationstyle",
       "fig_l2p_rocprplot",
+      "fig_l3p_sankeydiagram",
       "fig_l2p_scrnastackedviolin",
       "fig_l2p_survivalplot",
       "fig_l2p_upsetplot",
@@ -46,7 +46,6 @@
       "fig_l1_radialstackedbar",
       "fig_l1_treemap",
       "fig_l1_waffle",
-      "fig_l1_ternaryplot",
       "fig_l1_areachart",
       "fig_l1_linechart",
       "fig_l1_stackedarea",
@@ -61,11 +60,10 @@
       "fig_l2_manhattanplot",
       "fig_l2_mutationoncoplot",
       "fig_l3_sankeybubbleplot",
-      "fig_l2_ivolcanoplot",
-      "fig_l3p_sankeydiagram"
+      "fig_l2_ivolcanoplot"
     ],
-    "frozenOutOfScopeCount": 24,
-    "pendingCount": 56,
+    "frozenOutOfScopeCount": 22,
+    "pendingCount": 54,
     "pendingDetails": [
       {
         "depsPending": true,
@@ -132,13 +130,6 @@
       },
       {
         "depsPending": true,
-        "id": "fig_l1_bubble",
-        "missingAdapter": false,
-        "missingSample": true,
-        "unboundStep": false
-      },
-      {
-        "depsPending": true,
         "id": "fig_l2_bubbleheatmap",
         "missingAdapter": false,
         "missingSample": true,
@@ -154,13 +145,6 @@
       {
         "depsPending": true,
         "id": "fig_l1_connectedscatter",
-        "missingAdapter": false,
-        "missingSample": true,
-        "unboundStep": false
-      },
-      {
-        "depsPending": true,
-        "id": "fig_l1_correlogram",
         "missingAdapter": false,
         "missingSample": true,
         "unboundStep": false
@@ -460,7 +444,7 @@
         "unboundStep": false
       }
     ],
-    "readyCount": 26,
+    "readyCount": 28,
     "total": 82
   },
   "k40HostAssets": {

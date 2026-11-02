@@ -42,6 +42,8 @@ const SUPPORTED_IDS = [
   'fig_l2p_gseaplot',
   'fig_l2p_enrichmentplot',
   'fig_l2_networkplot',
+  'fig_l1_correlogram',
+  'fig_l1_bubble',
 ];
 
 const PROJECT_ID = 'PRJ_AIMS_V3_20261027';
@@ -102,6 +104,18 @@ const CASES = {
     },
     inputPath: 'data/line3_spatial/processed/spatial_dimred_human.h5ad',
     truth: { extension: '.h5ad', language: 'python' },
+  },
+  fig_l1_correlogram: {
+    lineId: 'line1_bulk',
+    adaptVars: { input_data: 'data/line1_bulk/processed/expr_genes.tsv' },
+    inputPath: 'data/line1_bulk/processed/expr_genes.tsv',
+    truth: { columns: ['gene'], language: 'r' },
+  },
+  fig_l1_bubble: {
+    lineId: 'line1_bulk',
+    adaptVars: { input_data: 'data/line1_bulk/processed/deg_all.tsv' },
+    inputPath: 'data/line1_bulk/processed/deg_all.tsv',
+    truth: { columns: ['gene', 'log2FC', 'P_Value'], language: 'r' },
   },
   fig_l2p_gseaplot: {
     lineId: 'line2_scrna',
@@ -209,6 +223,24 @@ const CASES = {
     },
     inputPath: 'data/line1_bulk/processed/external_validation_preds.tsv',
     truth: { columns: ['true', 'pred', 'prob_LS'], language: 'r' },
+  },
+  fig_l1_correlogram: {
+    source: 'reference/05.可参考出图代码/_meta/R453_compat/L1_p0_gallery_code.R',
+    language: 'r',
+    lineId: 'line1_bulk',
+    inputPath: 'data/line1_bulk/processed/expr_genes.tsv',
+    canonicalOutput: 'L1_correlogram_verified.png',
+    adaptVars: { input_data: 'data/line1_bulk/processed/expr_genes.tsv' },
+    marker: 'correlogram',
+  },
+  fig_l1_bubble: {
+    source: 'reference/05.可参考出图代码/_meta/R453_compat/L1_p0_gallery_code.R',
+    language: 'r',
+    lineId: 'line1_bulk',
+    inputPath: 'data/line1_bulk/processed/deg_all.tsv',
+    canonicalOutput: 'L1_bubble_verified.png',
+    adaptVars: { input_data: 'data/line1_bulk/processed/deg_all.tsv' },
+    marker: 'bubble',
   },
   fig_l2p_gseaplot: {
     source: 'reference/05.可参考出图代码/L2_组学常用图/L2p_enrich_ko_code.py',

@@ -142,6 +142,29 @@ const TEMPLATE_MAPPINGS = {
   },
   // r_l1_p0_gallery 三合一 runner 准入（2026-11-02，k40 真机验证 seed=20261013，
   // 两次实跑 PNG sha256 逐字节一致；4 Argon 第十一轮批次 A 裁定）
+  // 收官批（2026-11-02，4 Argon 第十三轮第 2 节）
+  fig_l1_correlogram: {
+    lines: ['line1_bulk'],
+    // expr_genes.tsv 的声明产出者是 l1_ingest_prep（不是 l1_qc_matrix）。
+    // 图件消费「样本间表达量相关性」，语义上也属于接入后的表达矩阵，绑定一致。
+    analysis_step: "l1_ingest_prep",
+    input_tables: ["expr_genes.tsv"],
+    produces: ["L1_correlogram_verified.png"],
+    output_glob: "figures/line1_bulk/L1_correlogram_verified.png",
+    canonical_output: "L1_correlogram_verified.png",
+    source_runner_id: "r_l1_p0_gallery",
+    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_correlogram.png",
+  },
+  fig_l1_bubble: {
+    lines: ['line1_bulk'],
+    analysis_step: "l1_de_limma",
+    input_tables: ["deg_all.tsv"],
+    produces: ["L1_bubble_verified.png"],
+    output_glob: "figures/line1_bulk/L1_bubble_verified.png",
+    canonical_output: "L1_bubble_verified.png",
+    source_runner_id: "r_l1_p0_gallery",
+    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_bubble.png",
+  },
   fig_l1_ridgeline: {
     lines: ['line1_bulk'],
     analysis_step: "l1_enrich_bulk",
@@ -554,7 +577,7 @@ function buildRegistry() {
    *   - pending_mapping 必须为 0（CSV 标 ready 但映射不全 = 真缺陷）；
    *   - blocked_r453 固定 1（只有 fig_kegg_pathway 一条被裁定的阻塞）。
    */
-  const READY_BASELINE = 26;
+  const READY_BASELINE = 28;
   const statusSum = Object.values(counts).reduce((acc, n) => acc + n, 0);
   if (statusSum !== 82) fail(`状态计数之和不是 82：${statusSum}`);
   if ((counts.ready || 0) < READY_BASELINE) fail(`ready 从基线 ${READY_BASELINE} 倒退：${counts.ready || 0}`);

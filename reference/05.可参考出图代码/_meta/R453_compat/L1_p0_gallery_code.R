@@ -126,10 +126,54 @@ render_venn <- function(out) {
   check_artifact(out, "venn")
 }
 
+# ── 图 4：样本相关性矩阵（合成版，供 verified preview；真实版在适配器里）──
+render_correlogram <- function(out) {
+  suppressPackageStartupMessages({library(corrplot)})
+  n_sample <- 16
+  n_gene <- 400
+  base <- matrix(rnorm(n_gene * n_sample), nrow = n_gene)
+  group_shift <- rep(seq(-1.2, 1.2, length.out = n_sample), each = 1)
+  base <- base + matrix(rep(group_shift, each = n_gene), nrow = n_gene)
+  colnames(base) <- sprintf("S%02d", 1:n_sample)
+  cor_mat <- stats::cor(base)
+  png(out, width = 120, height = 110, units = "mm", res = 300, type = "cairo")
+  corrplot::corrplot(cor_mat, method = "color", type = "upper", order = "hclust",
+                     hclust.method = "ward.D2", addrect = 3, rect.col = "#333333",
+                     tl.col = "#333333", tl.cex = 0.5, tl.srt = 45,
+                     col = colorRampPalette(c("#0072B2", "white", "#D55E00"))(200))
+  invisible(grDevices::dev.off())
+  check_artifact(out, "correlogram")
+}
+
+# ── 图 5：DEG 多维气泡图（合成版，供 verified preview）──
+render_bubble <- function(out) {
+  suppressPackageStartupMessages({library(ggplot2); library(ggrepel)})
+  n_gene <- 300
+  fc <- rng_fc <- stats::rnorm(n_gene, 0, 1.4)
+  pval <- stats::runif(n_gene, 1e-6, 0.9)
+  expr <- stats::runif(n_gene, 4, 12)
+  df <- data.frame(gene = sprintf("GENE%03d", 1:n_gene), fc = fc, p = pval, expr = expr)
+  df$tier <- ifelse(df$fc < -1 | df$fc > 1, "significant", "ns")
+  lab <- head(df[order(abs(df$fc), decreasing = TRUE), ], 12)
+  p <- ggplot(df, aes(x = fc, y = -log10(p))) +
+    geom_point(aes(size = expr, colour = tier), alpha = 0.6) +
+    geom_text_repel(data = lab, aes(label = gene), size = 1.8, max.overlaps = 20,
+                    min.segment.length = 0.2, segment.size = 0.2) +
+    scale_colour_manual(values = c(significant = "#D55E00", ns = "#9E9E9E")) +
+    scale_size_continuous(range = c(0.3, 3.2), guide = "none") +
+    labs(x = "log2(fold change)", y = "-log10(p)", colour = NULL) +
+    theme_classic(base_size = 8) + theme(legend.position = "none")
+  ggsave(out, p, width = 89, height = 75, units = "mm", dpi = 300,
+         device = png, type = "cairo", bg = "white")
+  check_artifact(out, "bubble")
+}
+
 JOBS <- list(
   list("ridgeline", "L1_ridgeline_verified.png", render_ridgeline),
   list("upset", "L1_upset_verified.png", render_upset),
-  list("venn", "L1_venn_verified.png", render_venn)
+  list("venn", "L1_venn_verified.png", render_venn),
+  list("correlogram", "L1_correlogram_verified.png", render_correlogram),
+  list("bubble", "L1_bubble_verified.png", render_bubble)
 )
 
 main <- function() {

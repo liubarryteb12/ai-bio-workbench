@@ -30,6 +30,8 @@ const SUPPORTED_TEMPLATE_IDS = new Set([
   'fig_l2p_gseaplot',
   'fig_l2p_enrichmentplot',
   'fig_l2_networkplot',
+  'fig_l1_correlogram',
+  'fig_l1_bubble',
 ]);
 
 function normalizeRelativePath(value, fieldName) {
@@ -444,6 +446,82 @@ dev.off()
 cat("ADAPT_REAL_INPUT_OK sankey modules=", nrow(flow), "\n", sep = "")
 `,
 };
+
+R_OVERLAYS.fig_l1_bubble = `# Real-data DEG multi-dimensional bubble overlay
+suppressPackageStartupMessages({library(ggplot2); library(ggrepel)})
+deg_df <- read.delim(input_data, check.names = FALSE, quote = "")
+pick_column <- function(candidates) {
+  hit <- candidates[candidates %in% names(deg_df)]
+  if (!length(hit)) stop(paste("bubble input columns missing:", paste(candidates, collapse = " / ")))
+  hit[[1]]
+}
+gene_col <- pick_column(c("gene", "gene_symbol", "symbol"))
+fc_col <- pick_column(c("log2FC", "log2fc", "logFC"))
+pval_col <- pick_column(c("P_Value", "P.Value", "pvalue", "p_value", "pval"))
+padj_col <- tryCatch(pick_column(c("adj_P_Val", "adj.P.Val", "p.adjust", "padj")), error = function(e) NA_character_)
+expr_col <- tryCatch(pick_column(c("AveExpr", "baseMean", "mean_expr")), error = function(e) NA_character_)
+deg_df$.fc <- suppressWarnings(as.numeric(deg_df[[fc_col]]))
+deg_df$.p <- suppressWarnings(as.numeric(deg_df[[pval_col]]))
+deg_df$.gene <- as.character(deg_df[[gene_col]])
+deg_df$.padj <- if (!is.na(padj_col)) suppressWarnings(as.numeric(deg_df[[padj_col]])) else NA_real_
+deg_df$.expr <- if (!is.na(expr_col)) suppressWarnings(as.numeric(deg_df[[expr_col]])) else NA_real_
+deg_df <- deg_df[is.finite(deg_df$.fc) & is.finite(deg_df$.p) & deg_df$.p > 0 & nzchar(deg_df$.gene), , drop = FALSE]
+if (!nrow(deg_df)) stop("bubble input has no usable DEG rows")
+# 气泡大小不能含 NA：AveExpr 缺失时回退到 |logFC|，保证每个点都有可映射的第三个维度
+if (all(!is.finite(deg_df$.expr))) deg_df$.expr <- abs(deg_df$.fc)
+deg_df$.expr[!is.finite(deg_df$.expr)] <- stats::median(deg_df$.expr, na.rm = TRUE)
+# 显著性分级：优先 padj；若整表 padj 均不达标则回退未校正 p（与批次 A 同一套降级判据）
+sig_ok <- if (any(is.finite(deg_df$.padj))) sum(deg_df$.padj < 0.05, na.rm = TRUE) >= 2 else FALSE
+deg_df$.score <- if (sig_ok) deg_df$.padj else deg_df$.p
+deg_df$.tier <- ifelse(deg_df$.score < 0.05, "significant", "ns")
+label_df <- deg_df[order(abs(deg_df$.fc), decreasing = TRUE), , drop = FALSE]
+label_df <- head(label_df, 12)
+bubble_plot <- ggplot(deg_df, aes(x = .fc, y = -log10(.p))) +
+  geom_point(aes(size = .expr, colour = .tier), alpha = 0.6) +
+  geom_text_repel(data = label_df, aes(label = .gene), size = 1.8, max.overlaps = 20,
+                  min.segment.length = 0.2, segment.size = 0.2) +
+  scale_colour_manual(values = c(significant = "#D55E00", ns = "#9E9E9E")) +
+  scale_size_continuous(range = c(0.3, 3.2), guide = "none") +
+  labs(x = "log2(fold change)", y = "-log10(p)", colour = NULL,
+       subtitle = paste("genes =", nrow(deg_df), "| size = mean expression")) +
+  theme_classic(base_size = 8) +
+  theme(legend.position = "none")
+ggsave(output_file, bubble_plot, width = 89, height = 75, units = "mm", dpi = 300,
+       device = png, type = "cairo", bg = "white")
+cat("ADAPT_REAL_INPUT_OK bubble genes=", nrow(deg_df), " labels=", nrow(label_df), "\\n", sep = "")
+`;
+
+R_OVERLAYS.fig_l1_correlogram = `# Real-data sample correlation matrix overlay
+suppressPackageStartupMessages({library(corrplot)})
+expr <- read.delim(input_data, check.names = FALSE, quote = "")
+sample_mat <- as.matrix(expr[, -1, drop = FALSE])
+storage.mode(sample_mat) <- "numeric"
+if (ncol(sample_mat) < 2) stop(paste("correlogram needs >= 2 sample columns, got", ncol(sample_mat)))
+if (anyNA(sample_mat)) {
+  # 低表达基因在部分样本里可能是空值：先按行剔除，避免相关性算成 NA
+  keep <- stats::complete.cases(sample_mat)
+  sample_mat <- sample_mat[keep, , drop = FALSE]
+}
+if (!nrow(sample_mat)) stop("correlogram input has no complete rows")
+# 样本数多时相关性图会糊成一团：超过 40 个样本先取方差最大的 40 列
+if (ncol(sample_mat) > 40) {
+  top <- order(apply(sample_mat, 2, stats::var), decreasing = TRUE)[1:40]
+  sample_mat <- sample_mat[, top, drop = FALSE]
+}
+cor_mat <- stats::cor(sample_mat, use = "pairwise.complete.obs", method = "pearson")
+p_mat <- tryCatch(corrplot::cor.mtest(sample_mat, conf.level = 0.95)$p, error = function(e) NULL)
+png(output_file, width = 120, height = 110, units = "mm", res = 300, type = "cairo")
+corrplot::corrplot(cor_mat,
+                   method = "color", type = "upper", order = "hclust",
+                   hclust.method = "ward.D2", addrect = 3, rect.col = "#333333",
+                   tl.col = "#333333", tl.cex = 0.5, tl.srt = 45,
+                   col = colorRampPalette(c("#0072B2", "white", "#D55E00"))(200),
+                   p.mat = p_mat, sig.level = c(0.001, 0.01, 0.05),
+                   insig = "label_sig", pch.cex = 0.5)
+dev.off()
+cat("ADAPT_REAL_INPUT_OK correlogram samples=", ncol(sample_mat), " genes=", nrow(sample_mat), "\\n", sep = "")
+`;
+
 
 R_OVERLAYS.fig_l1_ridgeline = `# Real-data GSEA NES ridge overlay
 suppressPackageStartupMessages({library(ggplot2); library(ggridges)})

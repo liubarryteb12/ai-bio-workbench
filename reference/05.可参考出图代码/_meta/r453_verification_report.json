@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-02T18:14:37+08:00",
+  "generated_at": "2026-11-02T18:48:57+08:00",
   "l1": {
     "missing_packages": [],
     "packages": {
@@ -419,6 +419,32 @@
       {
         "artifacts": [
           {
+            "file": "L1_correlogram_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l1_p0_gallery"
+          }
+        ],
+        "id": "fig_l1_correlogram",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
+            "file": "L1_bubble_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "r_l1_p0_gallery"
+          }
+        ],
+        "id": "fig_l1_bubble",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
             "file": "L2p_gsea_verified.png",
             "ok": true,
             "reason": "ok",
@@ -463,7 +489,7 @@
         "verified": false
       }
     ],
-    "ready": 26,
+    "ready": 28,
     "runners": {
       "py_l2p_enrich_ko": {
         "command": "nice -n 10 ionice -c 2 -n 4 /root/venvs/bio-py/bin/python3 /mnt/ssd/bio_data/validation/r453_figures_20261102/runs/py_l2p_enrich_ko/L2p_enrich_ko_code.py",
@@ -505,7 +531,7 @@
         "exit_code": 0,
         "ok": true,
         "source": "_meta/R453_compat/L1_p0_gallery_code.R",
-        "source_sha256": "b18618864a05ba95b47aee42ce8d75400dccf62420f4125e716c1d154c8699f4"
+        "source_sha256": "c1ef9f6e9232ab0b220f3b61e26c6d7545a0f5fa833d23fdd7278ea42ccef2b6"
       },
       "r_l1_rest": {
         "command": "nice -n 10 ionice -c 2 -n 4 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ /mnt/ssd/bio_data/validation/r453_figures_20261102/runs/r_l1_rest/L1_rest_code.R",
