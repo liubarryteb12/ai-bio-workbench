@@ -2082,12 +2082,12 @@
       "level": "L2",
       "category": "Python",
       "language": "python",
-      "source": null,
-      "source_sha256": null,
-      "preview": null,
-      "preview_sha256": null,
-      "verified": false,
-      "deps_status": "pending",
+      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_stats_code.py",
+      "source_sha256": "14fdabea4a6f896d4c168f080d50d2800bbe7dca20903ea3318a0579d15f71a5",
+      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_bar_verified.png",
+      "preview_sha256": "0ef1c020ff22a6b0b337ba71110186dcd546f156d7a331ddb7a54f6ad4a2bfd3",
+      "verified": true,
+      "deps_status": "ready",
       "deps": [
         "matplotlib",
         "seaborn",
@@ -2105,13 +2105,19 @@
         "value_col": "均值或计数列名",
         "error_col": "误差列名，可为空"
       },
-      "lines": [],
-      "analysis_step": null,
-      "input_tables": [],
-      "produces": [],
-      "output_glob": null,
-      "canonical_output": null,
-      "sample_project_output": null,
+      "lines": [
+        "line2_scrna"
+      ],
+      "analysis_step": "l2_profile_composition",
+      "input_tables": [
+        "celltype_composition.tsv"
+      ],
+      "produces": [
+        "custom_fig_l2p_barplot.png"
+      ],
+      "output_glob": "figures/line2_scrna/custom_fig_l2p_barplot.png",
+      "canonical_output": "L2p_bar_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_barplot.png",
       "deprecated": false
     },
     {
@@ -2120,12 +2126,12 @@
       "level": "L2",
       "category": "Python",
       "language": "python",
-      "source": null,
-      "source_sha256": null,
-      "preview": null,
-      "preview_sha256": null,
-      "verified": false,
-      "deps_status": "pending",
+      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_stats_code.py",
+      "source_sha256": "14fdabea4a6f896d4c168f080d50d2800bbe7dca20903ea3318a0579d15f71a5",
+      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_box_verified.png",
+      "preview_sha256": "12610d317a28018cccf1257e47d7ad7908ead0d3ecfe5976c0dd52d18d790e70",
+      "verified": true,
+      "deps_status": "ready",
       "deps": [
         "matplotlib",
         "seaborn",
@@ -2141,13 +2147,19 @@
         "group_col": "分组列名",
         "value_col": "表达或测量值列名"
       },
-      "lines": [],
-      "analysis_step": null,
-      "input_tables": [],
-      "produces": [],
-      "output_glob": null,
-      "canonical_output": null,
-      "sample_project_output": null,
+      "lines": [
+        "line2_scrna"
+      ],
+      "analysis_step": "l2_qc_cells",
+      "input_tables": [
+        "qc_cell_metrics.tsv"
+      ],
+      "produces": [
+        "custom_fig_l2p_boxplot.png"
+      ],
+      "output_glob": "figures/line2_scrna/custom_fig_l2p_boxplot.png",
+      "canonical_output": "L2p_box_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_boxplot.png",
       "deprecated": false
     },
     {
@@ -2334,12 +2346,12 @@
       "level": "L2",
       "category": "Python",
       "language": "python",
-      "source": null,
-      "source_sha256": null,
-      "preview": null,
-      "preview_sha256": null,
-      "verified": false,
-      "deps_status": "pending",
+      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_stats_code.py",
+      "source_sha256": "14fdabea4a6f896d4c168f080d50d2800bbe7dca20903ea3318a0579d15f71a5",
+      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_heatmap_verified.png",
+      "preview_sha256": "7c686a8f3d69036d2ff427ca0c6c9d2d2df3e85a19836045005494e2d6dc5d7d",
+      "verified": true,
+      "deps_status": "ready",
       "deps": [
         "matplotlib",
         "seaborn",
@@ -2358,13 +2370,19 @@
         "value_col": "表达或差异数值列",
         "group_col": "样本分组列名"
       },
-      "lines": [],
-      "analysis_step": null,
-      "input_tables": [],
-      "produces": [],
-      "output_glob": null,
-      "canonical_output": null,
-      "sample_project_output": null,
+      "lines": [
+        "line2_scrna"
+      ],
+      "analysis_step": "l2_branches_gsva",
+      "input_tables": [
+        "gsva_scores.tsv"
+      ],
+      "produces": [
+        "custom_fig_l2p_heatmap.png"
+      ],
+      "output_glob": "figures/line2_scrna/custom_fig_l2p_heatmap.png",
+      "canonical_output": "L2p_heatmap_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_heatmap.png",
       "deprecated": false
     },
     {
@@ -2556,12 +2574,12 @@
       "level": "L2",
       "category": "Python",
       "language": "python",
-      "source": null,
-      "source_sha256": null,
-      "preview": null,
-      "preview_sha256": null,
-      "verified": false,
-      "deps_status": "pending",
+      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_stats_code.py",
+      "source_sha256": "14fdabea4a6f896d4c168f080d50d2800bbe7dca20903ea3318a0579d15f71a5",
+      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_scatter_verified.png",
+      "preview_sha256": "c32d839b503517b7ab0a3435939e59b08d102de39bed9d650fb13c41431265e7",
+      "verified": true,
+      "deps_status": "ready",
       "deps": [
         "matplotlib",
         "seaborn",
@@ -2579,13 +2597,19 @@
         "y_col": "纵轴列名",
         "label_genes": "需要标注的基因清单，可为空"
       },
-      "lines": [],
-      "analysis_step": null,
-      "input_tables": [],
-      "produces": [],
-      "output_glob": null,
-      "canonical_output": null,
-      "sample_project_output": null,
+      "lines": [
+        "line2_scrna"
+      ],
+      "analysis_step": "l2_integrate_annotate",
+      "input_tables": [
+        "cluster_markers.tsv"
+      ],
+      "produces": [
+        "custom_fig_l2p_scatterplot.png"
+      ],
+      "output_glob": "figures/line2_scrna/custom_fig_l2p_scatterplot.png",
+      "canonical_output": "L2p_scatter_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_scatterplot.png",
       "deprecated": false
     },
     {

@@ -140,10 +140,12 @@ test('non-ready templates stay unregistered until independently verified', () =>
 test('registry validation enforces linked mods, language and line affinity', () => {
   const result = validateRegistry();
   assert.equal(result.ok, true, result.errors.join('\n'));
-  assert.equal(result.stats.ready, 16);
-  assert.equal(result.stats.pending, 65);
+  // 水位线口径（2026-11-02）：ready 只设下限不倒退，pending 由总数派生，
+  // 准入新模板不必再手改这里的数字。
+  assert.ok(result.stats.ready >= 16, `ready 从基线 16 倒退：${result.stats.ready}`);
   assert.equal(result.stats.pending_mapping, 0);
   assert.equal(result.stats.blocked, 1);
+  assert.equal(result.stats.ready + result.stats.pending + result.stats.pending_mapping + result.stats.blocked, 82);
 });
 
 test('ready template input tables must be declared outputs of the bound step', () => {

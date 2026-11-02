@@ -56,20 +56,20 @@ L3,组合桑基气泡图,Omics,SankeyBubblePlot,r,6,0,-,待采集,
 L2,文字叠加的富集分析柱状图,Omics,TextEnrichmentBarPlot,r,6,0,-,待采集,
 L2,火山图,Omics,VolcanoPlot,r,5,0,ggrepel;readxl;tidyverse,ready,L2_组学常用图/L2_volcano_verified.png
 L2,交互式火山图,Omics,iVolcanoPlot,r,11,0,ivolcano`、`fanyi`、`clusterProfiler`、`org.Hs.eg.db,待采集,
-L2,条形图（Python）,Python,BarPlot,python,0,6,matplotlib`、`seaborn`、`pandas`、`numpy,待采集,
-L2,箱线图（Python）,Python,BoxPlot,python,0,6,matplotlib`、`seaborn`、`pandas`、`numpy,待采集,
+L2,条形图（Python）,Python,BarPlot,python,0,6,matplotlib`、`seaborn`、`pandas`、`numpy,ready,L2_组学常用图/L2p_bar_verified.png
+L2,箱线图（Python）,Python,BoxPlot,python,0,6,matplotlib`、`seaborn`、`pandas`、`numpy,ready,L2_组学常用图/L2p_box_verified.png
 L2,复杂热图（Python）,Python,ComplexHeatmap,python,0,4,matplotlib`、`pandas`、`numpy`、`PyComplexHeatmap,待采集,
 L2,混淆矩阵（Python）,Python,ConfusionMatrixPlot,python,0,4,matplotlib`、`seaborn`、`numpy`、`scikit-learn,待采集,
 L2,富集分析图（Python）,Python,EnrichmentPlot,python,0,4,matplotlib`、`seaborn`、`pandas`、`numpy,待采集,
 L3,分面图（Python）,Python,FacetGridPlot,python,0,5,matplotlib`、`seaborn`、`pandas`、`numpy,待采集,
 L2,GSEA 运行分数图（Python）,Python,GseaPlot,python,0,4,matplotlib`、`seaborn`、`pandas`、`numpy,待采集,
-L2,热力图（Python）,Python,Heatmap,python,0,5,matplotlib`、`seaborn`、`pandas`、`numpy`、`scipy,待采集,
+L2,热力图（Python）,Python,Heatmap,python,0,5,matplotlib`、`seaborn`、`pandas`、`numpy`、`scipy,ready,L2_组学常用图/L2p_heatmap_verified.png
 L3,多面板组合图,R,MultiPanelPlot,r,6,0,ggplot2;patchwork,ready,L3_高级组合图/L3_multipanel_verified.png
 L2,PCA 图（Python）,Python,PcaPlot,python,0,5,matplotlib`、`seaborn`、`pandas`、`numpy`、`scikit-learn,待采集,
 L3,出版级样式与导出（Python）,Python,PublicationStyle,python,0,4,matplotlib`、`seaborn`、`pandas`、`numpy`、`SciencePlots,待采集,
 L2,ROC 与 PR 曲线（Python）,Python,RocPrPlot,python,0,4,matplotlib`、`seaborn`、`pandas`、`numpy`、`scikit-learn,待采集,
 L3,桑基图（Python）,Python,SankeyDiagram,python,0,3,pandas`、`numpy`、`plotly,待采集,
-L2,散点图（Python）,Python,ScatterPlot,python,0,5,matplotlib`、`seaborn`、`pandas`、`numpy`、`scipy,待采集,
+L2,散点图（Python）,Python,ScatterPlot,python,0,5,matplotlib`、`seaborn`、`pandas`、`numpy`、`scipy,ready,L2_组学常用图/L2p_scatter_verified.png
 L2,单细胞点图（Python）,Python,ScrnaDotPlot,python,0,4,scanpy`、`anndata`、`pandas`、`numpy`、`matplotlib,ready,L2_组学常用图/L2p_dotplot_verified.png
 L2,单细胞堆叠小提琴图（Python）,Python,ScrnaStackedViolin,python,0,4,scanpy`、`anndata`、`pandas`、`numpy`、`matplotlib,待采集,
 L2,单细胞 UMAP 图（Python）,Python,ScrnaUmapPlot,python,0,4,scanpy`、`anndata`、`pandas`、`numpy`、`umap-learn`、`matplotlib,ready,L2_组学常用图/L2p_umap_verified.png

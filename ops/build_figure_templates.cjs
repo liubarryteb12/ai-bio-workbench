@@ -130,6 +130,43 @@ function adaptVars(row) {
 }
 
 const TEMPLATE_MAPPINGS = {
+  // py_l2p_stats 四合一 runner 准入（2026-11-02，k40 真机验证 seed=20261013）
+  fig_l2p_scatterplot: {
+    lines: ['line2_scrna'],
+    analysis_step: "l2_integrate_annotate",
+    input_tables: ["cluster_markers.tsv"],
+    produces: ["custom_fig_l2p_scatterplot.png"],
+    output_glob: "figures/line2_scrna/custom_fig_l2p_scatterplot.png",
+    canonical_output: "L2p_scatter_verified.png",
+    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_scatterplot.png",
+  },
+  fig_l2p_barplot: {
+    lines: ['line2_scrna'],
+    analysis_step: "l2_profile_composition",
+    input_tables: ["celltype_composition.tsv"],
+    produces: ["custom_fig_l2p_barplot.png"],
+    output_glob: "figures/line2_scrna/custom_fig_l2p_barplot.png",
+    canonical_output: "L2p_bar_verified.png",
+    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_barplot.png",
+  },
+  fig_l2p_boxplot: {
+    lines: ['line2_scrna'],
+    analysis_step: "l2_qc_cells",
+    input_tables: ["qc_cell_metrics.tsv"],
+    produces: ["custom_fig_l2p_boxplot.png"],
+    output_glob: "figures/line2_scrna/custom_fig_l2p_boxplot.png",
+    canonical_output: "L2p_box_verified.png",
+    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_boxplot.png",
+  },
+  fig_l2p_heatmap: {
+    lines: ['line2_scrna'],
+    analysis_step: "l2_branches_gsva",
+    input_tables: ["gsva_scores.tsv"],
+    produces: ["custom_fig_l2p_heatmap.png"],
+    output_glob: "figures/line2_scrna/custom_fig_l2p_heatmap.png",
+    canonical_output: "L2p_heatmap_verified.png",
+    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_heatmap.png",
+  },
   fig_l2_heatmap: {
     lines: ['line1_bulk'],
     analysis_step: 'l1_ingest_prep',

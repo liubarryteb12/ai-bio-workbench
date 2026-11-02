@@ -20,6 +20,10 @@ const SUPPORTED_TEMPLATE_IDS = new Set([
   'fig_l3_multipanel',
   'fig_l2p_violin',
   'fig_l3_sankey',
+  'fig_l2p_scatterplot',
+  'fig_l2p_barplot',
+  'fig_l2p_heatmap',
+  'fig_l2p_boxplot',
 ]);
 
 function normalizeRelativePath(value, fieldName) {
@@ -585,6 +589,99 @@ fig.tight_layout()
 fig.savefig(output_file, dpi=300, bbox_inches="tight")
 plt.close(fig)
 print(f"ADAPT_REAL_INPUT_OK violin groups={len(order)} rows={len(comp)}")
+`,
+  fig_l2p_scatterplot: `# Real-data cluster marker score scatter overlay
+mk = pd.read_csv(input_data, sep="\t")
+x_col = str(ADAPT_VARS.get("x_col") or "rank")
+y_col = str(ADAPT_VARS.get("y_col") or "score")
+required = {"cluster", x_col, y_col}
+missing = sorted(required.difference(mk.columns))
+if missing:
+    raise ValueError(f"scatter input columns missing: {missing}")
+mk[y_col] = pd.to_numeric(mk[y_col], errors="coerce")
+mk = mk.dropna(subset=[x_col, y_col])
+groups = sorted(mk["cluster"].astype(str).unique(), key=lambda s: (len(s), s))[:12]
+cmap = plt.get_cmap("tab20")
+fig, ax = plt.subplots(figsize=(183 / 25.4, 120 / 25.4))
+for i, g in enumerate(groups):
+    sub = mk[mk["cluster"].astype(str) == g]
+    ax.scatter(sub[x_col], sub[y_col], s=6, alpha=0.7, linewidths=0, color=cmap(i % 20), label=str(g))
+ax.set_xlabel(x_col); ax.set_ylabel(y_col)
+ax.legend(fontsize=5, markerscale=2, frameon=False, ncol=2)
+for spine in ("top", "right"):
+    ax.spines[spine].set_visible(False)
+fig.tight_layout()
+fig.savefig(output_file, dpi=300, bbox_inches="tight")
+plt.close(fig)
+print(f"ADAPT_REAL_INPUT_OK scatter rows={len(mk)} groups={len(groups)}")
+`,
+  fig_l2p_barplot: `# Real-data celltype proportion bar overlay
+comp = pd.read_csv(input_data, sep="\t")
+x_col = str(ADAPT_VARS.get("x_col") or "celltype")
+value_col = str(ADAPT_VARS.get("value_col") or "prop")
+required = {x_col, value_col}
+missing = sorted(required.difference(comp.columns))
+if missing:
+    raise ValueError(f"bar input columns missing: {missing}")
+comp[value_col] = pd.to_numeric(comp[value_col], errors="coerce")
+comp = comp.dropna(subset=[x_col, value_col])
+agg = comp.groupby(x_col, observed=True)[value_col].mean().sort_values(ascending=False).head(15)
+fig, ax = plt.subplots(figsize=(183 / 25.4, 100 / 25.4))
+ax.bar(range(len(agg)), agg.to_numpy(), color="#56B4E9", edgecolor="#333333", linewidth=0.4)
+ax.set_xticks(range(len(agg)), agg.index.tolist(), rotation=45, ha="right", fontsize=6)
+ax.set_ylabel(value_col); ax.set_xlabel(x_col)
+for spine in ("top", "right"):
+    ax.spines[spine].set_visible(False)
+fig.tight_layout()
+fig.savefig(output_file, dpi=300, bbox_inches="tight")
+plt.close(fig)
+print(f"ADAPT_REAL_INPUT_OK bar bars={len(agg)}")
+`,
+  fig_l2p_heatmap: `# Real-data GSVA pathway heatmap overlay
+gs = pd.read_csv(input_data, sep="\t", index_col=0)
+row_col = str(ADAPT_VARS.get("row_col") or "pathway")
+if gs.index.name != row_col and row_col in gs.columns:
+    gs = gs.set_index(row_col)
+num = gs.select_dtypes(include=["number"])
+if num.shape[1] < 2 or num.shape[0] < 2:
+    raise ValueError("heatmap needs >=2 numeric columns and rows")
+keep = num.loc[num.var(axis=1, ddof=0) > 0].abs().mean(axis=1).sort_values(ascending=False).head(25).index
+mat = num.loc[keep].to_numpy(float)
+fig, ax = plt.subplots(figsize=(183 / 25.4, 150 / 25.4))
+im = ax.imshow(mat, aspect="auto", cmap="coolwarm")
+ax.set_yticks(np.arange(mat.shape[0]), [str(i)[:34] for i in keep], fontsize=5)
+ax.set_xticks(np.arange(mat.shape[1]), [str(c)[:22] for c in num.columns], rotation=90, fontsize=5)
+fig.colorbar(im, ax=ax, fraction=0.035, pad=0.02)
+ax.set_title(row_col + " x samples", fontsize=7)
+fig.tight_layout()
+fig.savefig(output_file, dpi=300, bbox_inches="tight")
+plt.close(fig)
+print(f"ADAPT_REAL_INPUT_OK heatmap shape={mat.shape}")
+`,
+  fig_l2p_boxplot: `# Real-data per-group metric boxplot overlay
+qc = pd.read_csv(input_data, sep="\t")
+group_col = str(ADAPT_VARS.get("group_col") or "diagnosis")
+value_col = str(ADAPT_VARS.get("value_col") or "nfeature_total")
+required = {group_col, value_col}
+missing = sorted(required.difference(qc.columns))
+if missing:
+    raise ValueError(f"boxplot input columns missing: {missing}")
+qc[value_col] = pd.to_numeric(qc[value_col], errors="coerce")
+qc = qc.dropna(subset=[group_col, value_col])
+order = qc.groupby(group_col, observed=True).size().sort_values(ascending=False).head(10).index.tolist()
+data = [qc.loc[qc[group_col] == g, value_col].to_numpy() for g in order]
+fig, ax = plt.subplots(figsize=(183 / 25.4, 100 / 25.4))
+bp = ax.boxplot(data, tick_labels=[str(g) for g in order], patch_artist=True, showfliers=False)
+for patch in bp["boxes"]:
+    patch.set_facecolor("#E69F00"); patch.set_alpha(0.65)
+ax.set_yscale("log"); ax.set_ylabel(value_col); ax.set_xlabel(group_col)
+plt.setp(ax.get_xticklabels(), rotation=45, ha="right", fontsize=6)
+for spine in ("top", "right"):
+    ax.spines[spine].set_visible(False)
+fig.tight_layout()
+fig.savefig(output_file, dpi=300, bbox_inches="tight")
+plt.close(fig)
+print(f"ADAPT_REAL_INPUT_OK boxplot groups={len(order)}")
 `,
 };
 

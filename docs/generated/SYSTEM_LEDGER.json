@@ -1,6 +1,6 @@
 {
   "figureTemplates": {
-    "pendingCount": 66,
+    "pendingCount": 62,
     "pendingDetails": [
       {
         "depsPending": true,
@@ -333,20 +333,6 @@
       },
       {
         "depsPending": true,
-        "id": "fig_l2p_barplot",
-        "missingAdapter": false,
-        "missingSample": true,
-        "unboundStep": false
-      },
-      {
-        "depsPending": true,
-        "id": "fig_l2p_boxplot",
-        "missingAdapter": false,
-        "missingSample": true,
-        "unboundStep": false
-      },
-      {
-        "depsPending": true,
         "id": "fig_l2p_complexheatmap",
         "missingAdapter": false,
         "missingSample": true,
@@ -382,13 +368,6 @@
       },
       {
         "depsPending": true,
-        "id": "fig_l2p_heatmap",
-        "missingAdapter": false,
-        "missingSample": true,
-        "unboundStep": false
-      },
-      {
-        "depsPending": true,
         "id": "fig_l2p_pcaplot",
         "missingAdapter": false,
         "missingSample": true,
@@ -411,13 +390,6 @@
       {
         "depsPending": true,
         "id": "fig_l3p_sankeydiagram",
-        "missingAdapter": false,
-        "missingSample": true,
-        "unboundStep": false
-      },
-      {
-        "depsPending": true,
-        "id": "fig_l2p_scatterplot",
         "missingAdapter": false,
         "missingSample": true,
         "unboundStep": false
@@ -465,7 +437,7 @@
         "unboundStep": false
       }
     ],
-    "readyCount": 16,
+    "readyCount": 20,
     "total": 82
   },
   "k40HostAssets": {

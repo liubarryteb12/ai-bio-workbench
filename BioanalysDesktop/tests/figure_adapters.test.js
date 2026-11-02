@@ -32,6 +32,10 @@ const SUPPORTED_IDS = [
   'fig_l3_multipanel',
   'fig_l2p_violin',
   'fig_l3_sankey',
+  'fig_l2p_scatterplot',
+  'fig_l2p_barplot',
+  'fig_l2p_boxplot',
+  'fig_l2p_heatmap',
 ];
 
 const PROJECT_ID = 'PRJ_AIMS_V3_20261027';
@@ -182,6 +186,51 @@ const CASES = {
     },
     inputPath: 'data/line1_bulk/processed/wgcna_modules.tsv',
     truth: { columns: ['gene', 'module'], language: 'r' },
+  },
+  fig_l2p_scatterplot: {
+    lineId: 'line2_scrna',
+    adaptVars: {
+      input_data: 'data/line2_scrna/processed/cluster_markers.tsv',
+      x_col: 'rank',
+      y_col: 'score',
+      label_genes: '',
+    },
+    inputPath: 'data/line2_scrna/processed/cluster_markers.tsv',
+    truth: { columns: ['cluster', 'rank', 'score'], language: 'python' },
+  },
+  fig_l2p_barplot: {
+    lineId: 'line2_scrna',
+    adaptVars: {
+      input_data: 'data/line2_scrna/processed/celltype_composition.tsv',
+      group_col: 'celltype',
+      x_col: 'celltype',
+      value_col: 'prop',
+      error_col: '',
+    },
+    inputPath: 'data/line2_scrna/processed/celltype_composition.tsv',
+    truth: { columns: ['celltype', 'prop'], language: 'python' },
+  },
+  fig_l2p_boxplot: {
+    lineId: 'line2_scrna',
+    adaptVars: {
+      input_data: 'data/line2_scrna/processed/qc_cell_metrics.tsv',
+      group_col: 'diagnosis',
+      value_col: 'nfeature_total',
+    },
+    inputPath: 'data/line2_scrna/processed/qc_cell_metrics.tsv',
+    truth: { columns: ['diagnosis', 'nfeature_total'], language: 'python' },
+  },
+  fig_l2p_heatmap: {
+    lineId: 'line2_scrna',
+    adaptVars: {
+      input_data: 'data/line2_scrna/processed/gsva_scores.tsv',
+      row_col: 'pathway',
+      column_col: '',
+      value_col: '',
+      group_col: '',
+    },
+    inputPath: 'data/line2_scrna/processed/gsva_scores.tsv',
+    truth: { columns: ['pathway'], language: 'python' },
   },
 };
 

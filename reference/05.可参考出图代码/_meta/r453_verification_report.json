@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-27T02:27:05+08:00",
+  "generated_at": "2026-11-02T13:06:42+08:00",
   "l1": {
     "missing_packages": [],
     "packages": {
@@ -28,103 +28,13 @@
     },
     "python": {
       "exit_code": 0,
-      "output": "<string>:6: FutureWarning: `__version__` is deprecated, use `importlib.metadata.version('scanpy')` instead\n<string>:6: FutureWarning: `__version__` is deprecated, use `importlib.metadata.version('anndata')` instead.\npython=3.12.3\nscanpy=1.12.4\nanndata=0.13.4\npandas=3.1.0\nnumpy=2.5.4\nmatplotlib=3.11.2\n"
+      "output": "<string>:6: FutureWarning: `__version__` is deprecated, use `importlib.metadata.version('scanpy')` instead\n<string>:6: FutureWarning: `__version__` is deprecated, use `importlib.metadata.version('anndata')` instead.\npython=3.12.3\nscanpy=1.12.4\nanndata=0.13.4\npandas=2.3.3\nnumpy=2.5.4\nmatplotlib=3.11.2\n"
     },
     "rscript_exit": 0,
     "status": "pass"
   },
   "l2": {
-    "checks": [
-      {
-        "command": "/root/venvs/bio-py/bin/python3 /mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py --input /mnt/ssd/bio_data/validation/r453_l2_20261027/good.h5ad --from Python --to R --stage post-dimred",
-        "exit_code": 0,
-        "expected_exit": 0,
-        "expected_marker": "[BRIDGE PASS]",
-        "file": "/mnt/ssd/bio_data/validation/r453_l2_20261027/good.h5ad",
-        "id": "h5ad_good",
-        "output": "[BRIDGE] Python -> R, file=/mnt/ssd/bio_data/validation/r453_l2_20261027/good.h5ad, stage=post-dimred\n[BRIDGE OK] gene names: 30, numeric < 50% (0)\n[BRIDGE OK] matrix shape: obs=12 x var=30, nnz=360, density=1.0000\n[BRIDGE OK] obs names: 12, numeric < 80% (0), sample: ['SAMPLE000', 'SAMPLE001', 'SAMPLE002']\n[BRIDGE OK] embeddings: X_pca, X_umap\n[BRIDGE PASS] all 4 assertions passed for /mnt/ssd/bio_data/validation/r453_l2_20261027/good.h5ad\n",
-        "passed": true,
-        "stage": "post-dimred"
-      },
-      {
-        "command": "/root/venvs/bio-py/bin/python3 /mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py --input /mnt/ssd/bio_data/validation/r453_l2_20261027/numeric_genes.h5ad --from Python --to R --stage post-dimred",
-        "exit_code": 1,
-        "expected_exit": 1,
-        "expected_marker": "[BRIDGE FAIL]",
-        "file": "/mnt/ssd/bio_data/validation/r453_l2_20261027/numeric_genes.h5ad",
-        "id": "h5ad_numeric_genes",
-        "output": "[BRIDGE FAIL] var_names 超过半数为数字索引（30/30），疑似 Ensembl ID 未映射\n[BRIDGE] Python -> R, file=/mnt/ssd/bio_data/validation/r453_l2_20261027/numeric_genes.h5ad, stage=post-dimred\n",
-        "passed": true,
-        "stage": "post-dimred"
-      },
-      {
-        "command": "/root/venvs/bio-py/bin/python3 /mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py --input /mnt/ssd/bio_data/validation/r453_l2_20261027/no_embedding.h5ad --from Python --to R --stage post-dimred",
-        "exit_code": 1,
-        "expected_exit": 1,
-        "expected_marker": "[BRIDGE FAIL]",
-        "file": "/mnt/ssd/bio_data/validation/r453_l2_20261027/no_embedding.h5ad",
-        "id": "h5ad_missing_obsm_post",
-        "output": "[BRIDGE FAIL] obsm 无 X_pca / X_umap / spatial，降维/空间坐标可能丢失\n[BRIDGE] Python -> R, file=/mnt/ssd/bio_data/validation/r453_l2_20261027/no_embedding.h5ad, stage=post-dimred\n[BRIDGE OK] gene names: 30, numeric < 50% (0)\n[BRIDGE OK] matrix shape: obs=12 x var=30, nnz=360, density=1.0000\n[BRIDGE OK] obs names: 12, numeric < 80% (0), sample: ['SAMPLE000', 'SAMPLE001', 'SAMPLE002']\n",
-        "passed": true,
-        "stage": "post-dimred"
-      },
-      {
-        "command": "/root/venvs/bio-py/bin/python3 /mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py --input /mnt/ssd/bio_data/validation/r453_l2_20261027/no_embedding.h5ad --from Python --to R --stage pre-dimred",
-        "exit_code": 0,
-        "expected_exit": 0,
-        "expected_marker": "[BRIDGE WARN]",
-        "file": "/mnt/ssd/bio_data/validation/r453_l2_20261027/no_embedding.h5ad",
-        "id": "h5ad_missing_obsm_pre",
-        "output": "[BRIDGE] Python -> R, file=/mnt/ssd/bio_data/validation/r453_l2_20261027/no_embedding.h5ad, stage=pre-dimred\n[BRIDGE OK] gene names: 30, numeric < 50% (0)\n[BRIDGE OK] matrix shape: obs=12 x var=30, nnz=360, density=1.0000\n[BRIDGE OK] obs names: 12, numeric < 80% (0), sample: ['SAMPLE000', 'SAMPLE001', 'SAMPLE002']\n[BRIDGE WARN] obsm 无 X_pca / X_umap / spatial（stage=pre-dimred，早期矩阵降级为告警，下游消费该文件时必须重新跑 post-dimred 断言）\n[BRIDGE PASS] all 4 assertions passed for /mnt/ssd/bio_data/validation/r453_l2_20261027/no_embedding.h5ad\n",
-        "passed": true,
-        "stage": "pre-dimred"
-      },
-      {
-        "actual": [
-          "基因",
-          "样本",
-          "表达量"
-        ],
-        "command": "/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ -e args <- commandArgs(trailingOnly=TRUE); d <- read.csv(args[1], check.names=FALSE, fileEncoding='UTF-8'); write.csv(d, args[2], row.names=FALSE, quote=FALSE, fileEncoding='UTF-8') /mnt/ssd/bio_data/validation/r453_l2_20261027/中文输入.csv /mnt/ssd/bio_data/validation/r453_l2_20261027/中文回写.csv",
-        "exit_code": 0,
-        "expected": [
-          "基因",
-          "样本",
-          "表达量"
-        ],
-        "id": "csv_utf8_headers",
-        "output": "",
-        "passed": true
-      },
-      {
-        "actual": [
-          "0.10000000000000001",
-          "0.33333333333333331",
-          "3.1415926535897931",
-          "1e-300",
-          "1.2345678901234567",
-          "-0",
-          "1.0000000000000002"
-        ],
-        "command": "/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ -e args <- commandArgs(trailingOnly=TRUE); x <- scan(args[1], quiet=TRUE); writeLines(sprintf('%.17g', x), args[2], useBytes=TRUE) /mnt/ssd/bio_data/validation/r453_l2_20261027/float_values.txt /mnt/ssd/bio_data/validation/r453_l2_20261027/float_roundtrip.txt",
-        "exit_code": 0,
-        "expected": [
-          "0.10000000000000001",
-          "0.33333333333333331",
-          "3.1415926535897931",
-          "1e-300",
-          "1.2345678901234567",
-          "-0",
-          "1.0000000000000002"
-        ],
-        "id": "float17_bit_exact",
-        "output": "",
-        "passed": true
-      }
-    ],
-    "generated_at": "2026-10-27T02:09:38+08:00",
-    "schema_version": 1,
-    "status": "pass"
+    "status": "not_run"
   },
   "l3": {
     "blocked": 1,
@@ -416,6 +326,58 @@
         "verified": true
       },
       {
+        "artifacts": [
+          {
+            "file": "L2p_scatter_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "py_l2p_stats"
+          }
+        ],
+        "id": "fig_l2p_scatterplot",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
+            "file": "L2p_bar_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "py_l2p_stats"
+          }
+        ],
+        "id": "fig_l2p_barplot",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
+            "file": "L2p_box_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "py_l2p_stats"
+          }
+        ],
+        "id": "fig_l2p_boxplot",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
+            "file": "L2p_heatmap_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "py_l2p_stats"
+          }
+        ],
+        "id": "fig_l2p_heatmap",
+        "status": "ready",
+        "verified": true
+      },
+      {
         "artifacts": [],
         "id": "fig_kegg_pathway",
         "reason": "本库尚无 pathview KEGG 通路图母版，历史 L2_enrichment_verified.png 是富集气泡图",
@@ -423,68 +385,73 @@
         "verified": false
       }
     ],
-    "ready": 16,
+    "ready": 20,
     "runners": {
       "py_l2p_more": {
-        "command": "nice -n 10 ionice -c 2 -n 4 /root/venvs/bio-py/bin/python3 /mnt/ssd/bio_data/validation/r453_figures_20261027/runs/py_l2p_more/L2p_more_code.py",
+        "command": "nice -n 10 ionice -c 2 -n 4 /root/venvs/bio-py/bin/python3 /mnt/ssd/bio_data/validation/r453_figures_20261102/runs/py_l2p_more/L2p_more_code.py",
         "exit_code": 0,
         "ok": true,
         "source": "L2_组学常用图/L2p_more_code.py",
         "source_sha256": "79cf20cbfffbd90e016abef003845540de71948ae8e6031587c420a05038af76"
       },
+      "py_l2p_stats": {
+        "command": "nice -n 10 ionice -c 2 -n 4 /root/venvs/bio-py/bin/python3 /mnt/ssd/bio_data/validation/r453_figures_20261102/runs/py_l2p_stats/L2p_stats_code.py",
+        "exit_code": 0,
+        "ok": true,
+        "source": "L2_组学常用图/L2p_stats_code.py",
+        "source_sha256": "14fdabea4a6f896d4c168f080d50d2800bbe7dca20903ea3318a0579d15f71a5"
+      },
       "py_l2p_umap": {
-        "command": "nice -n 10 ionice -c 2 -n 4 /root/venvs/bio-py/bin/python3 /mnt/ssd/bio_data/validation/r453_figures_20261027/runs/py_l2p_umap/L2p_umap_code.py",
+        "command": "nice -n 10 ionice -c 2 -n 4 /root/venvs/bio-py/bin/python3 /mnt/ssd/bio_data/validation/r453_figures_20261102/runs/py_l2p_umap/L2p_umap_code.py",
         "exit_code": 0,
         "ok": true,
         "source": "L2_组学常用图/L2p_umap_code.py",
         "source_sha256": "34b79c4febb105c93cd31d80b6d6ebdde4fc7870ad3f8a15e16ad098d8c2ee7d"
       },
       "r_l1_boxplot": {
-        "command": "cd /mnt/ssd/bio_data/validation/aims_v31_boxplot_20261028_0025/run && env R453_OUT_DIR=/mnt/ssd/bio_data/validation/aims_v31_boxplot_20261028_0025/out BIOANALYS_SEED=20261013 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --vanilla L1_boxplot_code.R",
+        "command": "nice -n 10 ionice -c 2 -n 4 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ /mnt/ssd/bio_data/validation/r453_figures_20261102/runs/r_l1_boxplot/L1_boxplot_code.R",
         "exit_code": 0,
         "ok": true,
-        "revalidated_at": "2026-10-28T00:23:00+08:00",
-        "revalidation": "D-23 pure horizontal significance line",
         "source": "_meta/R453_compat/L1_boxplot_code.R",
         "source_sha256": "dfc6a22b7585849c1c4d11bec312d654b9af63bf20dd2e42876c28834f8b0b0d"
       },
       "r_l1_rest": {
-        "command": "nice -n 10 ionice -c 2 -n 4 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ /mnt/ssd/bio_data/validation/r453_figures_20261027/runs/r_l1_rest/L1_rest_code.R",
+        "command": "nice -n 10 ionice -c 2 -n 4 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ /mnt/ssd/bio_data/validation/r453_figures_20261102/runs/r_l1_rest/L1_rest_code.R",
         "exit_code": 0,
         "ok": true,
         "source": "_meta/R453_compat/L1_rest_code.R",
         "source_sha256": "da21074542cef95ffa7c033a5b6bb291b49384f034b2ef9eb79e3322d98213e8"
       },
       "r_l1_violin": {
-        "command": "nice -n 10 ionice -c 2 -n 4 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ /mnt/ssd/bio_data/validation/r453_figures_20261027/runs/r_l1_violin/L1_violin_code.R",
+        "command": "nice -n 10 ionice -c 2 -n 4 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ /mnt/ssd/bio_data/validation/r453_figures_20261102/runs/r_l1_violin/L1_violin_code.R",
         "exit_code": 0,
         "ok": true,
         "source": "_meta/R453_compat/L1_violin_code.R",
         "source_sha256": "9470bc63b49396ee5fc0fe0725063254849047e37e2482799db7ba54979e259a"
       },
       "r_l2_core": {
-        "command": "nice -n 10 ionice -c 2 -n 4 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ /mnt/ssd/bio_data/validation/r453_figures_20261027/runs/r_l2_core/L2_core_code.R",
+        "command": "nice -n 10 ionice -c 2 -n 4 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ /mnt/ssd/bio_data/validation/r453_figures_20261102/runs/r_l2_core/L2_core_code.R",
         "exit_code": 0,
         "ok": true,
         "source": "_meta/R453_compat/L2_core_code.R",
         "source_sha256": "d60ecbf24668aacf3498168ac4d7279bb9347f26c1e6106c548e87eba9bcc07b"
       },
       "r_l2_more": {
-        "command": "nice -n 10 ionice -c 2 -n 4 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ /mnt/ssd/bio_data/validation/r453_figures_20261027/runs/r_l2_more/L2_more_code.R",
+        "command": "nice -n 10 ionice -c 2 -n 4 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ /mnt/ssd/bio_data/validation/r453_figures_20261102/runs/r_l2_more/L2_more_code.R",
         "exit_code": 0,
         "ok": true,
         "source": "_meta/R453_compat/L2_more_code.R",
         "source_sha256": "0b5342dd0cac39eb87615aa1220d44c09c440b8801e93af288d9ab778f0c6c1d"
       },
       "r_l3_multipanel": {
-        "command": "nice -n 10 ionice -c 2 -n 4 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ /mnt/ssd/bio_data/validation/r453_figures_20261027/runs/r_l3_multipanel/L3_multipanel_code.R",
+        "command": "nice -n 10 ionice -c 2 -n 4 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ /mnt/ssd/bio_data/validation/r453_figures_20261102/runs/r_l3_multipanel/L3_multipanel_code.R",
         "exit_code": 0,
         "ok": true,
         "source": "L3_高级组合图/L3_multipanel_code.R",
         "source_sha256": "2d57dfd823386971dfdd423af101da48a4c3db6d100729e428e4190e080213c1"
       },
       "r_l3_sankey": {
-        "command": "nice -n 10 ionice -c 2 -n 4 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ /mnt/ssd/bio_data/validation/r453_figures_20261027/runs/r_l3_sankey/L3_sankey_code.R",
+        "command": "nice -n 10 ionice -c 2 -n 4 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --no-save --no-restore --no-site-file --no-environ /mnt/ssd/bio_data/validation/r453_figures_20261102/runs/r_l3_sankey/L3_sankey_code.R",
         "exit_code": 0,
         "ok": true,
         "source": "_meta/R453_compat/L3_sankey_code.R",
@@ -493,7 +460,7 @@
     },
     "status": "pass_with_blocked"
   },
-  "overall_status": "complete_with_blocked",
+  "overall_status": "fail",
   "r_version_raw": "Rscript (R) version 4.5.3 (2026-03-11)",
   "schema_version": 1,
   "site_library": "/opt/R/4.5.3-site-library"
