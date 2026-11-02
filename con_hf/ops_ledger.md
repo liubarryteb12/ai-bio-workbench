@@ -74,3 +74,4 @@ manifest entries=3
 - 2026-10-28T11:20:44+08:00 | OK | k40-ubuntu:/mnt/ssd/bio_data | 1/1 一致 | 漂移 0 | 未执行 | reference/05.可参考出图代码/L3_高级组合图/L3_multippanel_code.R | manifest: manifest entries=50 | 部署: 未执行
 - 2026-11-01T06:44:03+08:00 | OK | k40-ubuntu:/mnt/ssd/bio_data | 1/1 一致 | 漂移 1 | 未执行 | ops/check_storage_and_isolation.sh | manifest: manifest entries=50 | 部署: 未执行
 - 2026-11-01T18:51:39+08:00 | OK | k40-ubuntu:/mnt/ssd/bio_data | 1/1 一致 | 漂移 1 | 未执行 | ops/run_throttled_task.sh | manifest: manifest entries=50 | 部署: 未执行
+- 2026-11-01T22:50:18+08:00 | OK | k40-ubuntu:/mnt/ssd/bio_data | 1/1 一致 | 漂移 1 | 未执行 | ops/run_throttled_task.sh | manifest: manifest entries=50 | 部署: 未执行

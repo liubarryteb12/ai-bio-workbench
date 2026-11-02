@@ -4394,3 +4394,73 @@ load 0.17）；Termux 四服务全 RUN 且 `sshd -D`（pid 12206）自 10:45 稳
 4. ssh 恢复后复跑全量测试确认 5 条红转绿；
 5. git 提交本轮全部改动；
 6. 向用户汇报 M1 DoD 四项达成 + 本轮成果 + B 批已完结（B1/B2/B3 均已执行）。
+
+---
+
+### 第三十四轮（2026-11-01 深夜，与 4 Argon 模型评审 + 第二批次净仓）
+
+**背景**：按用户要求，把项目现状全量交给 Gemini 4 Argon 模型评审，按它的裁定逐项落地。
+全程四轮对话（21,000+ 字），纪要见 `con_hf/argon_review_journal.md`，原始答复见 `.tmp/gemini_argon_reply_round*.md`。
+
+**已完成（第一批，Argon 裁定为「无条件补齐」的项）**：
+
+1. **5.1 proc.js 单接缝收口**：run.js 彻底移除 `node:child_process`（5 处直连），全部改走 proc.js 的
+   `runExecFile` / `runExecStream` / `sshArgv`。新增 `tests/proc_seam_guard.test.js`（3 条，扫描 6 个运行时目录）。
+2. **5.9 scp 拓扑真源化**：domain.js 新增 `COMPUTE_SCP_TARGET` / `COMPUTE_SSH_PORT`，
+   task_input.js 与 routes/upload.routes.js 两处硬编码 `-P 10022 root@127.0.0.1` 全部改为 `scpArgv()`。
+3. **5.6 口令不进 stderr**：index.js Fail-Closed 分支改写入 `~/.bioanalys/workbench_failclosed.json`，
+   并记录 pid；新增 `purgeStaleRuntimeAuthFile()` 清理死进程残留；新增 `server/print_runtime_auth.js` 供人读取。
+4. **5.10 便携 Python**：`.gitignore` 增加 `Python/`、`BioanalysDesktop/Python/`。
+5. **5.11 TEMP 假红**：新增 `tests/support/test_tmp.js`（BIO_TEST_TMP → 工作区 .tmp → os.tmpdir 三级回退 + realpath），
+   8 个真跑类测试文件接入。README 前提条目同步改写。
+6. **5.2 Pi 启动器纳管**：`ops/k40/pi_a2a_launch.sh` 从设备抓回；pi_agent.js 新增 `ERR_LAUNCHER_MISSING` 在位校验。
+7. **盲点一 孤儿进程树**：run_throttled_task.sh 幂等锁升级为「pid + pgid」两行；死锁回收时按旧 PGID 收尾；
+   detached 场景（BIO_DETACHED=1）包装器退出时组自清。pgid 读取用 `/proc/$$/stat` 剥离前缀后取 `$3`。
+8. **K40 宿主面纳管**：`ops/k40/sv/{sshd,crond,ssh-agent,ubuntu-sshd}/{run,log/run}` 共 8 个文件；
+   log/run 改为追加写 + 10MB 轮转（避开 svlogd 的目录锁失败）；新增 `ops/k40/ensure_runsvdir.sh`。
+9. **新增 `docs/k40_runit_recovery.md`**：Termux runit 故障根因与恢复手册（含已实测的四条根因链）。
+10. **新增 `ops/metrics_sync.mjs`**：统一 5.4 + 5.12 口径。**用例数必须实测 node --test 汇总行**
+    （静态正则数出 1069，实测 1077，差额是 t.test 子用例）；`--check` 只校验用例数与 pass/fail，
+    **不校验 SLOC**（统计脚本自身被计入会导致写完 README 再测就变，形成循环依赖）。
+
+**第二批次（Argon 第三/四轮清单）**：
+
+11. **净仓（5.8 + 5.14）**：7 个被跟踪的 `.bak`/`.before` 已 `git rm --cached` 解除跟踪（历史都在 git 里，
+    逐个 `git log -1 -- <file>` 确认过）；`.gitignore` 封禁 `*.bak` / `*.bak_*` / `*.before`。
+    删除前排雷发现 `figure_audit_all.csv.before` 有 2 处引用，核实后确认引用的是 `..._before_s16`（不同文件），安全。
+    根目录 `项目交付报告.html` 已 `git mv docs/archive/snapshots/`（历史保留），`_archive/README.md` 索引同步更新。
+    其余 5 处引用均为历史交接/dispatch 文档，按「历史文档追加不重写」纪律保留原文。
+12. **僵分/中文分支（5.13）**：`框架更新后10.31` 与 `codex/a2a-pi-server-config` 先打 archive tag
+    （`archive/framework-update-1031`、`archive/a2a-pi-server-config`）后 `git branch -D` 删除。
+    剩余本地分支全为英文名。
+13. **台账自省最小切块（5.7 收口）**：新增 `ops/ledger_gen.mjs`（纯 node:fs 只读扫描，导出纯函数
+    `computeSystemLedger()`）+ `docs/generated/SYSTEM_LEDGER.json` + `tests/ledger_sync.test.js`（4 条断言）。
+    **台账不含时间戳/SHA/SLOC**（吸取 metrics_sync 的循环依赖教训）。
+    实测结果：3 系列 / 54 Mod / 54 有母版 / 断链 0；82 模板 / 16 就绪 / 66 pending；K40 宿主资产 19 个。
+    **红绿验证通过**：故意把台账 totalMods 改成 53，门禁 exit 1 精准报红；恢复后 exit 0。
+
+**验收判据修正（经 Argon 裁定同意）**：
+- `link.js` 的 overall 判定：硬失败只认四段探测不通过；主服务 down 仍算 fail（业务真不可用）；
+- **日志子服务异常降级为 warn**：K40 上 runsv 对 log 子进程监督不稳（svlogd 目录锁必失败、log/supervise 会整个缺失），
+  实测常见「主服务 run + log down + 端口与业务完全正常」。用 FIFO 状态一票否决健康的计算通道属于「探针过敏」。
+
+**设备侧实战（Argon 三套破坏性运维保护模式验证）**：
+- 金丝雀旁路（`adb forward tcp:18022` + 备用 sshd）：**成功**，在旁路通道内杀旧 sshd 时主通道零中断；
+- 控制面/数据面解耦（只杀 runsvdir/runsv，绝不 pkill sshd）：**成功**，改后 8022 全程可用；
+- 15 秒死人开关：已内置，未触发。
+- 额外踩到的坑：`ubuntu-sshd/log/supervise/` 会整个缺失（补建 control/ok FIFO + lock 后重启 runsvdir 可恢复）；
+  `pkill runsv` 会让 dropbear 成为孤儿仍占 10022（必须显式 kill）；`/proc` 遍历期间 pid 会被回收（读 cmdline 必须 `|| continue`）。
+
+**当前基线**：
+- `npm test`：**1081 tests / 1080 pass / 0 fail / 1 skipped**
+- `npx tsc --noEmit` exit 0；`npm run build` exit 0
+- 接缝门禁 3/3（6 个运行时目录）；台账门禁 4/4；`metrics_sync --check` 基线一致
+- 设备：4 个 runit 主服务全部 run，runsvdir 实例数 = 1，BASE_OK + CONTAINER_OK
+
+**待办（第三十四轮之后）**：
+1. **未提交**：本轮所有改动尚未 commit（git 写权限在部分路径受限，需确认后提交）。
+2. 5.5 CI 四语种静态门禁（`ops/static_gate.mjs` + `.github/workflows/ci.yml`）尚未落地，
+   Argon 给出方案：pwsh `[Parser]::ParseFile` 校 .ps1（动态绑定语言，Ubuntu runner 无需 Windows 模块）、
+   `bash -n` 校 .sh + CRLF 字节检查、`python3 -m py_compile`、`Rscript parse()`。
+3. 66 个 pending 图件模板按业务订单垂直补齐（5.7 剩余部分）。
+4. K40 重启后仍需人工执行 `run-as bash start-sshd.sh`（Termux:Boot 未验证）。
