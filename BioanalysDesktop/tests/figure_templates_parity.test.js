@@ -383,3 +383,28 @@ test('r453 report runner hashes match the masters on disk', () => {
       runnerId + ': 母版已改但未在 k40 重跑 verify_r453_figures.py（报告哈希与磁盘不一致，证据链失效）');
   }
 });
+
+// ── 防伪断言 C：适配器实证图与母版自证图哈希互斥（2026-11-02，4 Argon 第十二轮第 3 节）──
+//
+// 语义：preview（*_verified.png）是 verify_r453_figures.py 在容器里用母版自带的
+// 合成基准数据跑出来的「母版自证图」；sample_project_output（custom_fig_*.png）是
+// figure_adapters.js 消费真实项目中间表跑出来的「适配器实证图」。
+// 两者输入数据完全不同，SHA256 物理上不可能相等。若相等，只有一种可能：
+// 没有真跑适配器，而是把 *_verified.png 改名复制成了 custom_fig_*.png。
+// 重跑覆盖不会误伤：适配器无论重跑多少次，消费的始终是项目表，哈希撞不上合成图。
+test('sample_project_output never equals the verified preview hash', () => {
+  const registry = reloadFigureTemplates();
+  let checked = 0;
+  for (const item of registry.templates.filter((row) => row.deps_status === 'ready')) {
+    const previewPath = resolveRepoFile(item.preview);
+    const samplePath = resolveRepoFile(item.sample_project_output);
+    if (!fs.existsSync(previewPath) || !fs.existsSync(samplePath)) continue;
+    const previewSha = sha256(previewPath);
+    const sampleSha = sha256(samplePath);
+    assert.notEqual(previewSha, sampleSha,
+      item.id + ': sample_project_output 与 verified preview 哈希完全相同，'
+      + '疑似直接拷贝母版自证图伪造适配器产物');
+    checked += 1;
+  }
+  assert.ok(checked >= 26, '参与哈希互斥比对的就绪模板不足 26 个，断言覆盖面失真：' + checked);
+});

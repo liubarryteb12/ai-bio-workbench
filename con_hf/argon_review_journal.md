@@ -180,3 +180,42 @@ projects 21G 是业务数据不在冷备射程）。
 
 两个实测坑已写进脚本注释：tar --exclude 在 -C 下不生效；/mnt/ssd 是容器内路径，
 adb exec-out 看不到，必须走 scp -P 10022。
+
+## 第九轮（体积与准入的真实约束）
+
+- 三卷冷备 RESTORE_DRILL_OK 实测闭环；env_lock 补 apt/dpkg/ldd 系统层清单
+- 我方要求 Argon 复核 cp -al 的硬链接可行性，他给出 /sdcard 等共享挂载点的边界说明
+
+## 第十轮（我方发送 + Argon 裁定）
+
+我方：恢复演练闭环、cp -al 同 inode 872540 实测、py_l2p_stats 四合一六步链路、
+溯源自审三条独立证据、1086/1085/0、五个待裁定问题。
+
+Argon 五项裁定：
+1. cp -al 接受 100%（边界只在 /sdcard 与跨挂载点）
+2. 下一批分两批：r_l1_p0_gallery（R 三图）+ py_l2p_enrich_ko（Python 三图）
+3. Tier 1 清单 13 包，upgrade='never'，清华镜像，装前 cp -al 到 .bak_tier1
+4. 防伪断言：严禁 git 历史断言，改「哈希互斥 + 报告与磁盘咬合」两条无状态断言
+5. 架构层无新结构风险
+
+## 第十一轮（我方发送 + Argon 裁定）
+
+我方：基线 1088/1087/0；两条防伪断言落地（红绿双向验证）；Tier1 实缺 4 包已装
+（ggridges/ggbeeswarm/UpSetR/VennDiagram + beeswarm/vipor，305→311 行）；
+cp -al 体积矛盾提请复核；System32 OpenSSH exit 255 报备；
+批次 A/B 共 5 模板提案（经仓库契约复核，纠正 Argon 两处臆想：line3 无 spatial_moran、
+line1 DEG step 实际 id 是 l1_de_limma 且产物是 .tsv）。
+
+Argon 五项裁定：
+1. cp -al 体积台账改为「单命令双路径 du + df 增量」双口径
+2. 批次 A/B 五模板 100% 照单全收，不做凭空增删
+3. 放弃 fig_l1_barplot 跨线改绑，启用 fig_l2_networkplot 绑 l2_ko_drpost
+4. 剩余 pending 转按单孵化池，readyCount 26 是商业交付主干覆盖度
+5. 架构无新风险；另给 proc.js SystemRoot 保底的一行根治方案
+
+## 第十二轮起点（待发送）
+
+已落地：proc.js childEnv 保底（09fe45e，红绿验证）、
+cp -al 台账口径文档（d51ca43，实测推翻 Argon 的 5MB 阈值）、
+批次 A（855e731，20→23）、批次 B（9deb98a，23→26）。
+待裁定：三处对 Argon 数字的实测修正、第二批 pending 是否继续、「首次出现」断言替代方案。

@@ -143,10 +143,55 @@ export function computeSystemLedger() {
       readyCount += 1;
     }
   }
+  // 待办瘦身定性（2026-11-02，4 Argon 第十二轮第 4 节 / docs/figure_pending_triage.md）：
+  // 55 个 pending 里有相当一部分永远不该准入（地理地图、商业信息图、跨组学 GWAS/突变图），
+  // 继续挂在 pending 里会把技术债的数字虚高。这里按图型语义做一次显式定性，
+  // 骨架判据写在 docs/figure_pending_triage.md，名单只在这里维护（一个含义一个真源）。
+  //
+  // excluded_out_of_scope：图型语义与转录组三线交付无关，永久冻结，不再是待办
+  // blocked_upstream    ：语义相关但上游 Step 尚未声明对应产物表，等算法开发
+  // actionable          ：有上游表支撑、可按单逐模板准入的真待办
+  const EXCLUDED_IDS = new Set([
+    // 商业信息图 / 交互组件：无法表达误差与统计显著性，或依赖 htmlwidgets
+    'fig_l1_circularpacking', 'fig_l1_donut', 'fig_l1_partpiechart', 'fig_l1_piechart',
+    'fig_l1_treemap', 'fig_l1_waffle', 'fig_l1_streamgraph', 'fig_l1_radialstackedbar',
+    'fig_l1_radialcolumnchart', 'fig_l1_circularbarplot', 'fig_l3_sankeybubbleplot',
+    'fig_l3p_sankeydiagram', 'fig_l2_mosaicplot',
+    // 跨组学专有图型：转录组上游不产出 SNP 坐标 / VCF 突变 / CNV 区段
+    'fig_l2_manhattanplot', 'fig_l2_mutationoncoplot', 'fig_l2_chromosomeplot',
+    'fig_l2_genestructureplot',
+    // 时间序列 / 地理类：GEO bulk 样本没有等间隔时间轴，也没有地理坐标
+    'fig_l1_areachart', 'fig_l1_linechart', 'fig_l1_stackedarea', 'fig_l1_timeseries',
+    'fig_l1_ternaryplot', 'fig_l1_breakplot',
+    // 网页交互式
+    'fig_l2_ivolcanoplot',
+  ]);
+  const BLOCKED_UPSTREAM_IDS = new Set([
+    // 上游确实声明了产物，但当前示例项目里没有这些表的行数证据，先挂账等真机复核
+  ]);
+  const actionablePending = [];
+  const blockedUpstream = [];
+  const frozenOutOfScope = [];
+  // blocked_r453（只有 fig_kegg_pathway 一条，交接已裁定）既不是真待办也不是冻结：
+  // 它等的是一个尚不存在的母版，语义上属于 blocked_upstream 家族。
+  const BLOCKED_R453_IDS = new Set(['fig_kegg_pathway']);
+  for (const item of pendingDetails) {
+    if (BLOCKED_R453_IDS.has(item.id)) blockedUpstream.push(item.id);
+    else if (EXCLUDED_IDS.has(item.id)) frozenOutOfScope.push(item.id);
+    else if (BLOCKED_UPSTREAM_IDS.has(item.id)) blockedUpstream.push(item.id);
+    else actionablePending.push(item.id);
+  }
   const figureLedger = {
     total: list.length,
     readyCount,
     pendingCount: pendingDetails.length,
+    // 瘦身后的三分类：pendingCount 仍是物理总数，另两个才是「还剩多少真活」
+    actionablePendingCount: actionablePending.length,
+    blockedUpstreamCount: blockedUpstream.length,
+    frozenOutOfScopeCount: frozenOutOfScope.length,
+    actionablePending,
+    blockedUpstream,
+    frozenOutOfScope,
     pendingDetails,
   };
 
