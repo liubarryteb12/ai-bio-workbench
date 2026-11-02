@@ -335,3 +335,51 @@ test('masters referenced by more than three projects reject in-place overwrite',
   });
   assert.equal(allowed.ok, true);
 });
+
+// ── 防伪溯源断言（2026-11-02，4 Argon 第十轮第 4 节）──
+//
+// 风险：有人把 library/ 下的外部网站原图（catalog 的 pgg_*.png）改名拷进 reference，
+// 冒充「k40 真机跑出的验证产物」。曾考虑「产物首次出现于本次 commit」的 git 历史断言，
+// 被裁定否决：常驻门禁下重跑验证会覆盖同名 artifact、rebase 也改变历史，必然误伤。
+// 改用两条无状态断言：哈希集合互斥 + 报告与磁盘实时咬合。
+const CATALOG_FIGURE_DIR = path.join(REPO, 'reference', '05.可参考出图代码', 'library', 'figures');
+const R453_REPORT = path.join(REPO, 'reference', '05.可参考出图代码', '_meta', 'r453_verification_report.json');
+
+test('ready artifacts never collide with catalog website images', () => {
+  if (!fs.existsSync(CATALOG_FIGURE_DIR)) return;
+  const catalogSha = new Map();
+  for (const name of fs.readdirSync(CATALOG_FIGURE_DIR)) {
+    const file = path.join(CATALOG_FIGURE_DIR, name);
+    if (!fs.statSync(file).isFile()) continue;
+    catalogSha.set(sha256(file), name);
+  }
+  assert.ok(catalogSha.size > 0, 'catalog 图集为空，断言失去意义');
+  const registry = reloadFigureTemplates();
+  for (const item of registry.templates.filter((row) => row.deps_status === 'ready')) {
+    const candidates = [[item.id + '.preview_sha256', item.preview_sha256]];
+    if (item.sample_project_output && fs.existsSync(resolveRepoFile(item.sample_project_output))) {
+      candidates.push([item.id + '.sample_project_output', sha256(resolveRepoFile(item.sample_project_output))]);
+    }
+    for (const [label, digest] of candidates) {
+      assert.ok(!digest || !catalogSha.has(digest),
+        label + ' 与 catalog 外部图 ' + catalogSha.get(digest) + ' 同哈希：疑似用网站原图冒充 k40 验证产物');
+    }
+  }
+});
+
+test('r453 report runner hashes match the masters on disk', () => {
+  const report = JSON.parse(fs.readFileSync(R453_REPORT, 'utf8'));
+  const runners = (report.l3 && report.l3.runners) || {};
+  const ids = Object.keys(runners);
+  assert.ok(ids.length > 0, 'r453 报告缺 l3.runners');
+  for (const runnerId of ids) {
+    const runner = runners[runnerId];
+    assert.ok(runner.source, runnerId + ': 报告缺 source');
+    assert.match(String(runner.source_sha256 || ''), /^[0-9a-f]{64}$/, runnerId + ': 报告缺合法 source_sha256');
+    const parts = String(runner.source).split('/');
+    const source = path.join(REPO, 'reference', '05.可参考出图代码', ...parts);
+    assert.ok(fs.existsSync(source), runnerId + ': 母版缺失 ' + runner.source);
+    assert.equal(sha256(source), runner.source_sha256,
+      runnerId + ': 母版已改但未在 k40 重跑 verify_r453_figures.py（报告哈希与磁盘不一致，证据链失效）');
+  }
+});
