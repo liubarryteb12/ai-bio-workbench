@@ -31,7 +31,7 @@
 | 文件 | 入链文件数 | 主要引用方 |
 |---|---:|---|
 | `con_hf/2026-10-19_figure_polish_plan.md` | 22 | `docs/figure_spec.md:444`、`con_hf/figure_manual_review.md:3`、`con_hf/dispatch/` 18 份 |
-| `项目交付报告.html`（仓库根） | 11 | `con_hf/SPEC_DECISIONS.md`、`docs/delivery_supervisor_prompt.md`、`aims/old/` 4 份 |
+| `项目交付报告.html`（仓库根，**2026-11-01 已归档至 `docs/archive/snapshots/`**） | 11 | `con_hf/SPEC_DECISIONS.md`、`docs/delivery_supervisor_prompt.md`、`aims/old/` 4 份 |
 | `con_hf/architecture_review_2026-10-20.md` | 8 | `con_hf/SPEC_DECISIONS.md:18,28`、`ops/README.md:87`、`con_hf/dispatch/` 4 份 |
 
 余下 13 件各 1 到 4 处引用。
