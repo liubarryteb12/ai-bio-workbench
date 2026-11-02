@@ -35,6 +35,23 @@ import { fileURLToPath } from 'node:url';
 import { LINES } from './domain.js';
 import { runSync } from './proc.js';
 
+/**
+ * 宿主机工作区污染检查（2026-11-02，D-30 防线）
+ *
+ * 事故：本地探针在 D:\Git\mnt\ssd\bio_data 建了目录，Git-bash 里 /mnt/ssd 从此存在，
+ * bridge_guard.sh 的 auto 模式据此误判「已在计算面」走 local 硬阻断，7 条测试成片红。
+ * 这类污染不会自己消失，且每次全仓扫描都被误导，必须在自检里显式报警。
+ * 判据：Git 安装根（GIT_ROOT 或 D:/Git）下出现 mnt/ssd 即返回告警路径列表。
+ */
+export function detectHostMntPollution(gitRoot = process.env.GIT_ROOT || 'D:/Git') {
+  if (process.platform !== 'win32') return [];
+  const suspects = [
+    path.join(gitRoot, 'mnt', 'ssd'),
+    path.join(gitRoot, 'mnt', 'ssd', 'bio_data'),
+  ];
+  return suspects.filter((dir) => { try { return fs.existsSync(dir); } catch { return false; } });
+}
+
 /** 项目 R 垫片绝对路径（layout_autoload 零重写外挂；母版实际执行的就是它） */
 export const RSCRIPT_PROJECT_BIN = '/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript';
 

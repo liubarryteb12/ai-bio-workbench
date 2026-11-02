@@ -131,6 +131,24 @@ function gateBareRscript(shFiles) {
   return { name: 'rscript-bare', total: shFiles.length, failures, skipped: [] };
 }
 
+// ── 门禁 0.6：宿主机 /mnt/ssd 污染检查（2026-11-02，D:\Git\mnt 误触事故防线）──
+// Git-bash 把 /mnt 映射到 <Git根>/mnt，一旦那里出现 ssd/bio_data，
+// bridge_guard.sh 的 auto 模式就会误判「已在计算面」走 local 硬阻断（实测 7 条测试假红）。
+function gateHostPollution() {
+  if (process.platform !== 'win32') return { name: 'host-pollution', total: 1, failures: [], skipped: [] };
+  const roots = [process.env.GIT_ROOT, 'D:/Git', 'C:/Program Files/Git'].filter(Boolean);
+  const hits = [];
+  for (const root of roots) {
+    const suspect = path.join(root, 'mnt', 'ssd');
+    if (fs.existsSync(suspect)) hits.push(suspect);
+  }
+  return {
+    name: 'host-pollution', total: 1,
+    failures: hits.map((h) => ({ file: h, reason: '宿主机 Git 目录下出现 mnt/ssd，会让 bridge_guard auto 模式误判在计算面；确认是探针残留后删除' })),
+    skipped: [],
+  };
+}
+
 // ── 门禁 1：Shell ──
 function gateShell(files, bash) {
   const failures = [];
@@ -230,6 +248,7 @@ function main() {
   const allFiles = SCAN_DIRS.flatMap((dir) => walk(path.join(REPO, dir), []));
   const results = [];
   results.push(gateShebang(allFiles));
+  results.push(gateHostPollution());
   if (!only || only === 'sh') {
     results.push(gateBareRscript(collect('.sh')));
     results.push(gateShell(collect('.sh'), bash));
