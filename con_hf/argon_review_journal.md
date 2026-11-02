@@ -108,3 +108,62 @@ runsvdir 实例数: 1
 | 接缝门禁 | 3/3，扫描 6 个运行时目录 |
 | `metrics_sync --check` | 基线一致 |
 | `tsc --noEmit` / `build` | exit 0 |
+## 第七轮（2026-11-02）：黄金冒烟落地 + 模板准入的真实约束
+
+### 已完成并验证
+- 三线黄金冒烟全绿（commit e69f628）：run_throttled_task.sh + BIO_LOCK_NAMESPACE=smoke、
+  方向性锚点、图件魔数即焚 + expected/smoke_summary.json 进 Git；连跑两次 compare 确定性一致
+- 双 R 三重锁死前两重（commit 2f5db48）：static_gate rscript-bare 门禁 + selfcheck RVER 强校验
+- pip 锁改用项目 venv 导出（commit de2d712）：此前用系统 python3，scanpy 所在的 venv 整棵没进来
+- 宿主污染防线（commit 2d781c2）：D:\Git\mnt\ssd 误触事故的机器化免疫
+
+### 被 parity 测试抓回的错误（教训）
+按「包已装」批量翻转 24 个模板 deps_status → figure_templates_parity 立刻 6 条红。
+该字段语义是**准入状态**（ready 要求 verified+source+preview+12 字段齐备），不是「包已装」。
+已回滚（a0b55fb）。
+
+### 模板准入的真实约束（对 Argon 第七轮方案的事实修正）
+Argon 判断「单次容器批处理即可让 readyCount 从 16 跃升至 41」。实测：
+1. 24 个「包已齐」模板的 12 个准入字段**全部为空**（source/preview/双 sha/verified/lines/
+   analysis_step/input_tables/produces/output_glob/canonical_output/sample_project_output），
+   不是「只欠翻转」，是从未做过准入登记；
+2. catalog 772 条素材里只有 1 条 suggested_template_id 命中 figure_templates，
+   按图表类型模糊匹配仅 4 个模板有现成 code+preview（SHA 已核对匹配）：
+   fig_l2p_scatterplot/pgg_0619、fig_l2p_barplot/pgg_0353、fig_l2p_heatmap/pgg_0579__f01、
+   fig_l2p_boxplot/pgg_0429__f01；
+3. **ready 与适配器实现强绑定**：figure_adapters.test.js 断言 ready 集合 === SUPPORTED_IDS（16 个），
+   且每个 ready 模板都要有 CASES 条目（lineId/adaptVars/inputPath）+ input_tables 必须是
+   绑定 step 的声明产物（parity validateFigureStepInputs）。
+   → 每准入 1 个模板 = 登记 12 字段 + 写适配器 CASES + 过两条校验测试 + 真机出样例图。
+
+结论：模板补齐是**逐模板的完整业务切块**，不是批量翻转。已把此约束回给 Argon 重排。
+## 第八轮：Argon 的「4 个有素材模板」前提被证伪（我差点照做，及时回滚）
+
+Argon 第八轮裁定「4 个模板有现成 code+preview 素材，直接准入，readyCount 16→20」。
+我按此动手后在落盘前发现**溯源不成立**，全部回滚：
+
+1. **registry 是生成物，不是可编辑真源**。`src/figure_templates.json` 由
+   `ops/build_figure_templates.cjs` 从 `bizard_index.csv` + `r453_verification_report.json`
+   生成，并有硬计数断言（ready 必须 16 / pending 65 / blocked 1）。我直接改 JSON 后
+   `figure_templates_parity` 立刻 8 条红（`registry is generated from ... 不同步`）。
+   正规准入必须走：verify_r453_figures.py 产出 runner+artifact 证据 → 更新 CSV 行状态
+   → 重跑 builder。
+
+2. **catalog 的 PNG 不是验证产物，是网站下载图**。命名约定 `*_verified.png` 在 registry 里
+   指「k40 上 runner 实跑产出的 artifact」（见 r453 报告 l3.figures[].artifacts[].runner）。
+   而 library/catalog.json 的 preview_path 是 `figures/pgg_*.png`，site=Python Graph Gallery，
+   即**外部网站原图**。把它拷成 `L2p_*_verified.png` 等于伪造验证证据。
+   library/README.md 自己也写明：「This directory is the project-owned candidate catalog.
+   It is not the active figure registry.」
+
+3. **4 个素材的图型语义也不匹配**：pgg_0619 实为 Manhattan 图（catalog 自己的
+   suggested_template_id 就是 fig_l2p_manhattanplot，不是 scatterplot）；
+   pgg_0353 是 Stacked Barplot；pgg_0579__f01 / pgg_0429__f01 是**代码片段**
+   （无 seed 守卫、无 savefig，不能独立跑）。
+
+教训：Argon 的裁定即使具体到「4 个模板 + SHA256 已核对」，仍可能建立在它没看到的
+仓库约定上。**外部评审给的是方向，落地前必须用仓库自己的契约（生成物/命名约定/测试断言）
+复核**。这次是 parity 测试和 library/README 一句话救了我。
+
+已回滚：figure_adapters.js 的 4 个 overlay、SUPPORTED_TEMPLATE_IDS 扩容、8 个拷贝素材、
+.gitignore 例外。全量测试回到 1086/1085/0 红基线。
