@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { TEST_TMP } from './support/test_tmp.js';
 
 // P14 契约在 line3 侧的真落地：spatial_knockout 必须真的读 BIO_KO_GENE。
 // 背景：P14 在提交层给 virtual_knockout / spatial_knockout 加了 target_ko_gene
@@ -51,7 +52,7 @@ function extractBlock() {
 }
 
 function runBlock({ env = {}, prefix = '' } = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ko-gene-'));
+  const dir = fs.mkdtempSync(path.join(TEST_TMP, 'ko-gene-'));
   const file = path.join(dir, 'block.sh');
   fs.writeFileSync(file, prefix + extractBlock(), 'utf8');
   const res = spawnSync(BASH, [file], {
@@ -128,7 +129,7 @@ test('真跑：参数优先于环境变量（cli:--ko-gene）', { skip: NEED_BAS
 });
 
 test('真跑：project.json 的 biological_priors.target_ko_gene 可用', { skip: NEED_BASH || NEED_PY }, () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ko-gene-meta-'));
+  const dir = fs.mkdtempSync(path.join(TEST_TMP, 'ko-gene-meta-'));
   const meta = path.join(dir, 'project.json');
   fs.writeFileSync(meta, JSON.stringify({ biological_priors: { target_ko_gene: 'Spp1' } }), 'utf8');
   const { res, out } = runBlock({ env: { BIO_KO_GENE: '', BIOANALYS_PROJECT_JSON: meta } });
@@ -137,7 +138,7 @@ test('真跑：project.json 的 biological_priors.target_ko_gene 可用', { skip
 });
 
 test('真跑：project.json 损坏或字段为空都当没指定，不把整步打挂', { skip: NEED_BASH || NEED_PY }, () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ko-gene-meta-'));
+  const dir = fs.mkdtempSync(path.join(TEST_TMP, 'ko-gene-meta-'));
   const broken = path.join(dir, 'broken.json');
   fs.writeFileSync(broken, '{not json', 'utf8');
   const empty = path.join(dir, 'empty.json');

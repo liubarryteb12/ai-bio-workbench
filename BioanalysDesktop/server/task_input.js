@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { PROJECTS_ROOT, projectLineDir } from './domain.js';
-import { runSync } from './proc.js';
+import { runSync, scpArgv } from './proc.js';
 import { remoteRawPath, deployedRawName } from './upload.js';
 import { PORTAL_INBOX } from './portal_inbox.js';
 import { runRemoteRaw, runRemote } from './remote_exec.js';
@@ -77,11 +77,7 @@ export function deployDataFiles(projectId, lineId, dataFiles) {
       continue;
     }
     const localSize = fs.statSync(src).size;
-    const scp = runSync(
-      ['scp', '-o', 'StrictHostKeyChecking=no', '-o', 'BatchMode=yes',
-        '-P', '10022', src, `root@127.0.0.1:${remote}`],
-      { timeoutMs: 900000 }
-    );
+    const scp = runSync(scpArgv(src, remote), { timeoutMs: 900000 });
     if (scp.code !== 0) {
       results.push({ name: file.name, ok: false, error: `scp 失败: ${scp.stderr || scp.stdout}` });
       continue;

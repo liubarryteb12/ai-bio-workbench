@@ -6,17 +6,15 @@
  */
 
 import { randomUUID } from 'node:crypto';
-// 用默认导入 + childProcess.spawn(...) 调用形态：ESM 具名导入是链接期快照，
-// node:test 的 mock.method 拦不到（实测具名导入改写 exports 无效），默认导入走
-// exports 对象本身，测试可以用假 ssh 垫片拦截 spawn 验证 stdin 传输。
-import childProcess from 'node:child_process';
 
 import { auditCommand } from './audit.js';
 import { auditLedgerEntry } from './ledger.js';
 import { buildLedgerEntry, buildTaskScript, isLongRunningStep, routeTask } from './task.js';
 import { readEnvironmentManifest } from './manifest.js';
 import { SYSTEM_LOGS } from './domain.js';
-import { assertAllowedProgram } from './proc.js';
+// 5.1（2026-11-01）：本模块不再直连 node:child_process。ssh/scp 一律走 proc.js 接缝
+// （白名单 + BIO_COMPUTE_ADAPTER=mock 罩护 + 可测垫片），"唯一出口"从此没有例外。
+import { runExecFile, runExecStream, sshArgv } from './proc.js';
 import { probeRemoteState, reconcileTask } from './reconcile.js';
 
 const DETACHED_POLL_INTERVAL_MS = Math.max(
@@ -154,11 +152,9 @@ export function runTask(task, handlers = {}) {
       `  tail -c 400 '${wrapperLogPath}' 2>/dev/null || true`,
       'fi',
     ].join('\n');
-    childProcess.execFile(
-      'ssh',
-      ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', selectedNode?.host || 'k40-ubuntu', probe],
-      { encoding: 'utf8', timeout: 30000, maxBuffer: 2 * 1024 * 1024 },
-      (error, stdout, stderr) => {
+    runExecFile(
+      sshArgv(selectedNode?.host || 'k40-ubuntu', probe),
+      { timeoutMs: 30000, maxBuffer: 2 * 1024 * 1024, callback: (error, stdout, stderr) => {
         if (settled) return;
         if (error) {
           probeFailures += 1;
@@ -184,10 +180,10 @@ export function runTask(task, handlers = {}) {
               checkpointStatus: code === 0 ? 'passed' : 'failed',
               errorLog: wrappedError,
             });
-            childProcess.execFile('ssh', [
-              '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', selectedNode?.host || 'k40-ubuntu',
-              `rm -f '${wrapperLedgerPath}'`,
-            ], { timeout: 10000 }, () => {});
+            runExecFile(
+              sshArgv(selectedNode?.host || 'k40-ubuntu', `rm -f '${wrapperLedgerPath}'`),
+              { timeoutMs: 10000 },
+            );
           } catch (cause) {
             finishTask(-1, {
               skipReconcile: true,
@@ -198,47 +194,36 @@ export function runTask(task, handlers = {}) {
         }
         handlers.onStdout?.(`[detached] ${text.replace('__PENDING__', '任务运行中').replace('__WAITING__', '等待包装器就绪')}\n`);
         scheduleDetachedProbe();
-      },
+      } },
     );
   };
 
   const launchOnNode = (_routedTask, node) => {
     selectedNode = node;
     if (stopped) return { id: taskId, launched: false };
-    child = childProcess.spawn(
-      'ssh',
-      ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', node.host, script],
+    child = runExecStream(
+      sshArgv(node.host, script),
       {
         cwd: handlers.cwd,
-        windowsHide: true,
+        onStdout: (text) => handlers.onStdout?.(text),
+        onStderr: (text) => {
+          stderrTail = (stderrTail + text).slice(-2000);
+          handlers.onStderr?.(text);
+        },
+        onExit: (code) => {
+          if (detached && code === 0) {
+            handlers.onStdout?.(`[detached] 已脱离本机进程树，wrapper=${wrapperTaskId}，node=${node.id}\n`);
+            scheduleDetachedProbe();
+            return;
+          }
+          finishTask(code, { skipReconcile: detached || node.id !== 'k40-ubuntu' });
+        },
+        onError: (cause) => finishTask(-1, {
+          skipReconcile: detached || node.id !== 'k40-ubuntu',
+          errorLog: cause.message,
+        }),
       },
     );
-
-    child.stdout.on('data', (chunk) => {
-      handlers.onStdout?.(chunk.toString());
-    });
-
-    child.stderr.on('data', (chunk) => {
-      const text = chunk.toString();
-      stderrTail = (stderrTail + text).slice(-2000);
-      handlers.onStderr?.(text);
-    });
-
-    child.on('exit', (code) => {
-      if (detached && code === 0) {
-        handlers.onStdout?.(`[detached] 已脱离本机进程树，wrapper=${wrapperTaskId}，node=${node.id}\n`);
-        scheduleDetachedProbe();
-        return;
-      }
-      finishTask(code, { skipReconcile: detached || node.id !== 'k40-ubuntu' });
-    });
-
-    child.on('error', (cause) => {
-      finishTask(-1, {
-        skipReconcile: detached || node.id !== 'k40-ubuntu',
-        errorLog: cause.message,
-      });
-    });
 
     return { id: taskId, launched: true };
   };
@@ -263,11 +248,9 @@ export function runTask(task, handlers = {}) {
       'rm -f "$marker"',
       'echo STOPPED',
     ].join('\n');
-    childProcess.execFile(
-      'ssh',
-      ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', selectedNode?.host || 'k40-ubuntu', stop],
-      { timeout: 20000 },
-      () => finishTask(143, { skipReconcile: true, errorLog: '用户中止 detached 长任务' }),
+    runExecFile(
+      sshArgv(selectedNode?.host || 'k40-ubuntu', stop),
+      { timeoutMs: 20000, callback: () => finishTask(143, { skipReconcile: true, errorLog: '用户中止 detached 长任务' }) },
     );
   };
 
@@ -375,29 +358,24 @@ export async function persistEntry(entry, lineId, options = {}) {
  * ssh 执行远端命令；stdinPayload 非 null 时经 stdin 传给远端命令（base64 台账 payload）。
  */
 function runSsh(command, stdinPayload = null, sshTarget = 'k40-ubuntu') {
-  assertAllowedProgram(['ssh']);
   return new Promise((resolve, reject) => {
-    const child = childProcess.spawn('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', sshTarget, command], {
-      windowsHide: true,
-    });
-    if (stdinPayload !== null) {
-      // ssh 早退（连接失败）时 stdin 写入会 EPIPE：exit 回调负责按退出码 reject，
-      // 这里只兜住 error 事件本身，不让它变成 unhandled 'error' 打死进程
-      child.stdin.on('error', () => {});
-      child.stdin.end(stdinPayload, 'utf8');
-    }
     let out = '';
     let err = '';
-    child.stdout.on('data', (chunk) => { out += chunk.toString(); });
-    child.stderr.on('data', (chunk) => { err += chunk.toString(); });
-    child.on('exit', (code) => {
-      const text = (out + '\n' + err)
-        .split(/\r?\n/)
-        .filter((line) => !line.startsWith('Warning: Permanently added'))
-        .join('\n')
-        .trim();
-      if (code === 0) resolve(text);
-      else reject(new Error(`写台账失败 (exit ${code}): ${text}`));
+    const child = runExecStream(sshArgv(sshTarget, command), {
+      onStdout: (text) => { out += text; },
+      onStderr: (text) => { err += text; },
+      onExit: (code) => {
+        const text = (out + '\n' + err)
+          .split(/\r?\n/)
+          .filter((line) => !line.startsWith('Warning: Permanently added'))
+          .join('\n')
+          .trim();
+        if (code === 0) resolve(text);
+        else reject(new Error(`写台账失败 (exit ${code}): ${text}`));
+      },
     });
+    if (stdinPayload !== null) {
+      child.stdin?.end?.(stdinPayload, 'utf8');
+    }
   });
 }

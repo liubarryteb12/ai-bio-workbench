@@ -812,6 +812,9 @@ export function buildTaskScript(task) {
     // 引擎自己有权威台账（server/run.js persistEntry，字段含 project_id/seed），
     // 包装器再写一份精简台账就成了双账，故关掉包装器台账（D-21）
     lines.push(`export BIO_WRAPPER_LEDGER=${detached ? '1' : '0'}`);
+    // 盲点一（2026-11-01）：detached 任务里包装器经 setsid 成为组长，置位标记让
+    // 包装器退出时对整个进程组收尾（防孤儿 R/Python 吃满算力，见 run_throttled_task.sh）。
+    lines.push(`export BIO_DETACHED=${detached ? '1' : '0'}`);
     if (detached) {
       lines.push(`export BIO_WRAPPER_LEDGER_PATH="/tmp/${resolvedWrapperTaskId}_ledger.json"`);
     }

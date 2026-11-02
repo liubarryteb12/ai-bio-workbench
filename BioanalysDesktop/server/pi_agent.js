@@ -11,7 +11,10 @@
  *     proc.js 的白名单接缝，测试可整体换掉；
  *   - API Key 与 peer token 永不出手机，本模块所有输出都经过脱敏；
  *   - 只读优先，唯一写动作是模型切换（改白名单 pin 文件 + 重启 tmux），
- *     且只接受本地白名单内的组合。
+ *     且只接受本地白名单内的组合；
+ *   - 5.2 纳管（2026-11-01）：tmux 起的是远端 $HOME/bin/pi_a2a_launch.sh，
+ *     仓库镜像在 ops/k40/pi_a2a_launch.sh（Termux 宿主落点，不进容器 ops 同步面）；
+ *     切换前用 ERR_LAUNCHER_MISSING 校验在位，缺文件 exit 3 明确报错，不再踩空。
  */
 
 import http from 'node:http';
@@ -153,6 +156,7 @@ export function buildSwitchModelCommand(provider, model) {
     '    ;;',
     'esac',
     "LAUNCHER_MODEL=\"$PIN_MODEL\"",
+    'if [ ! -f "$HOME/bin/pi_a2a_launch.sh" ]; then echo ERR_LAUNCHER_MISSING path=$HOME/bin/pi_a2a_launch.sh; exit 3; fi',
     'tmux new-session -d -s pi-a2a -n a2a-server -c "$HOME/workspace/projects" \\',
     "  \"exec bash '$HOME/bin/pi_a2a_launch.sh' '$LAUNCHER_MODEL' high\"",
     'if ! curl --noproxy "*" -fsS --max-time 4 http://127.0.0.1:9910/.well-known/agent-card.json >/dev/null 2>&1; then',

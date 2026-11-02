@@ -55,10 +55,11 @@ function findPython3() {
 const PY3 = findPython3();
 /** local branch is testable only when python3 is present; skip with a reason, never invert. */
 const NEED_PY3 = PY3 ? false : '宿主日 python3';
+import { TEST_TMP } from './support/test_tmp.js';
 
 /** 造一套工作区：dummy 输入 + 可控的本机引擎 + 会被记录的 ssh 垫片。 */
 function makeWorld({ engine }) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bridge-local-'));
+  const dir = fs.mkdtempSync(path.join(TEST_TMP, 'bridge-local-'));
   const input = path.join(dir, 'matrix.h5ad');
   fs.writeFileSync(input, 'dummy', 'utf8');
   const sshMark = path.join(dir, 'ssh-called.txt');

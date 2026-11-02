@@ -6,10 +6,11 @@
  */
 
 // 必须走默认导入 + 属性调用：具名导入在链接期就固化了绑定，
-// 测试用 mock.method(childProcess, 'spawn'|'spawnSync') 拦不住（2026-10-21 实测：
+// 测试用 mock.method(childProcess, 'spawn'|'spawnSync'|'execFile') 拦不住（2026-10-21 实测：
 // P4 切片因此真跑了 scp/ssh，往 K40 raw_data 写了两个探针文件）。
 import childProcess from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { COMPUTE_SCP_TARGET, COMPUTE_SSH_PORT } from './domain.js';
 
 /** 本地允许执行的程序白名单：除此之外一律拒绝 */
 export const ALLOWED_LOCAL_PROGRAMS = ['ssh', 'scp', 'adb'];
@@ -70,6 +71,17 @@ function resolveComputeAdapter() {
 function resolveMockRemote(program) {
   return resolveComputeAdapter() === 'mock'
     && ['ssh', 'scp'].includes(programBaseName(program));
+}
+
+/** ssh 的固定参数段：调用点不再各自拼 '-o BatchMode=yes -o ConnectTimeout=10'。 */
+export function sshArgv(target, command) {
+  return ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', target, command];
+}
+
+/** scp 直连 adb forward 端口的固定参数段；目标与端口来自 domain.js 拓扑真源（5.9）。 */
+export function scpArgv(localPath, remotePath) {
+  return ['scp', '-o', 'StrictHostKeyChecking=no', '-o', 'BatchMode=yes',
+    '-P', String(COMPUTE_SSH_PORT), localPath, `${COMPUTE_SCP_TARGET}:${remotePath}`];
 }
 
 function mockRemoteResult() {
@@ -161,6 +173,61 @@ export function runSshStrict(target, command, options = {}) {
   if (code !== 0) throw new Error(`远端命令退出码 ${code}`);
   if (!text) throw new Error('远端命令无输出');
   return text;
+}
+
+/**
+ * execFile 版远端执行（一次性收集 + 超时兜底），同样过白名单与 mock 短路。
+ *
+ * 存在的理由（5.1）：run.js 原来直接 childProcess.execFile('ssh', ...) 发 detached
+ * 状态探针与停任务命令，主路径不在 BIO_COMPUTE_ADAPTER=mock 罩护范围内。
+ * mock 分支必须在这里也生效，「唯一出口」才成立。
+ */
+export function runExecFile(argv, options = {}) {
+  assertAllowedProgram(argv);
+  if (resolveMockRemote(argv[0] || '')) {
+    const result = mockRemoteResult();
+    const text = [result.stdout, result.stderr].filter(Boolean).join('\n');
+    queueMicrotask(() => options.callback?.(result.code === 0 ? null : new Error(`mock exit ${result.code}`), result.stdout, result.stderr));
+    return text;
+  }
+  childProcess.execFile(argv[0], argv.slice(1), {
+    encoding: 'utf8',
+    timeout: options.timeoutMs ?? 30000,
+    maxBuffer: options.maxBuffer ?? 2 * 1024 * 1024,
+    windowsHide: true,
+  }, options.callback ?? (() => {}));
+}
+
+/**
+ * 流式执行（可写 stdin）：任务下发主路径专用。
+ *
+ * 与 runStream 的分工：runStream 不暴露 stdin（report.js 拉包用），runExecStream 给
+ * 台账 base64 payload 与 detached 包装器 stdin（5.1：run.js 两处直连 spawn 收口到这里）。
+ * mock 短路：不起进程，按 BIO_COMPUTE_MOCK_* 回放回调；kill 为 no-op。
+ */
+export function runExecStream(argv, handlers = {}) {
+  assertAllowedProgram(argv);
+  if (resolveMockRemote(argv[0] || '')) {
+    const result = mockRemoteResult();
+    queueMicrotask(() => {
+      handlers.onStdout?.(result.stdout);
+      handlers.onStderr?.(result.stderr);
+      handlers.onExit?.(result.code);
+    });
+    return { kill: () => {}, stdin: { write() {}, end() {}, on() {} } };
+  }
+  const child = childProcess.spawn(argv[0], argv.slice(1), {
+    cwd: handlers.cwd,
+    windowsHide: true,
+  });
+  child.stdout?.on?.('data', (chunk) => handlers.onStdout?.(chunk.toString()));
+  child.stderr?.on?.('data', (chunk) => handlers.onStderr?.(chunk.toString()));
+  child.on?.('exit', (code) => handlers.onExit?.(code));
+  child.on?.('error', (error) => handlers.onError?.(error));
+  // ssh 早退（连接失败）时 stdin 写入会 EPIPE：exit 回调负责按退出码收敛，
+  // 这里只兜住 error 事件本身，不让它变成 unhandled 'error' 打死进程
+  child.stdin?.on?.('error', () => {});
+  return { kill: () => child.kill(), stdin: child.stdin };
 }
 
 /**

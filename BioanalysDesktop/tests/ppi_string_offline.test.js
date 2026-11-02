@@ -53,6 +53,7 @@ const LINKS_ROWS = [
   '9606.ENSP00000000001 9606.ENSP00000000009 860',
 ];
 const INFO_HEADER = '#string_protein_id\tpreferred_name\tprotein_size\tannotation';
+import { TEST_TMP } from './support/test_tmp.js';
 const INFO_ROWS = [
   '9606.ENSP00000000001\tTP53\t393\tNA',
   '9606.ENSP00000000002\tEGFR\t1210\tNA',
@@ -99,7 +100,7 @@ function readIf(dir, name) {
  */
 function buildTree(opts) {
   const o = opts || {};
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ppi12-'));
+  const root = fs.mkdtempSync(path.join(TEST_TMP, 'ppi12-'));
   const processed = path.join(root, 'processed');
   const figures = path.join(root, 'figures');
   const stringdb = path.join(root, 'stringdb');

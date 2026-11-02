@@ -19,6 +19,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { TEST_TMP } from './support/test_tmp.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
@@ -49,7 +50,7 @@ const PY = findPython();
 
 /** 造一个 h5ad fixture：barcode 样 obs_names + 基因符号 var_names + 可选 obsm。 */
 function makeFixture({ withEmbedding }) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bridge-stage-'));
+  const dir = fs.mkdtempSync(path.join(TEST_TMP, 'bridge-stage-'));
   const file = path.join(dir, withEmbedding ? 'with_emb.h5ad' : 'no_emb.h5ad');
   const py = [
     'import sys',
@@ -79,7 +80,7 @@ function runEngine(args) {
 
 /** 用 BRIDGE_SSH_CMD 垫片捕获守卫实际下发的远端命令，完全隔离真实 ssh。 */
 function runGuardCapture(args) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bs-shim-'));
+  const dir = fs.mkdtempSync(path.join(TEST_TMP, 'bs-shim-'));
   const capture = path.join(dir, 'cmd.txt');
   const sshPath = path.join(dir, 'ssh');
   fs.writeFileSync(sshPath, '#!/bin/sh\nprintf "%s\\n" "$@" > "' + capture.replace(/\\/g, '/') + '"\necho "[BRIDGE OK] shim"\nexit 0\n', { mode: 0o755 });
@@ -203,7 +204,7 @@ test('gsva_pathways 的输入源解析在各种目录状态下行为正确（候
     { name: '全都没有', files: [], expectCode: 1 },
   ];
   for (const c of cases) {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gsva-input-'));
+    const dir = fs.mkdtempSync(path.join(TEST_TMP, 'gsva-input-'));
     try {
       for (const f of c.files) fs.writeFileSync(path.join(dir, f), '');
       const res = spawnSync(BASH, ['-c', block + '\nprintf "NORM=%s STAGE=%s\\n" "$NORM" "$BRIDGE_STAGE"'], {
@@ -234,7 +235,7 @@ test('引擎源码里降级分支排在硬失败之前（WARN 不被 FAIL 抢先
 // ---------- 引擎自身的失败口径（真机 /tmp/bad.h5ad 事故，契约 3c） ----------
 
 test('引擎：损坏的 h5ad 必须给出 [BRIDGE FAIL] 结论而不是裸 traceback', { skip: PY === null ? '宿主无 python+anndata' : false }, () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bridge-bad-'));
+  const dir = fs.mkdtempSync(path.join(TEST_TMP, 'bridge-bad-'));
   const bad = path.join(dir, 'bad.h5ad');
   fs.writeFileSync(bad, 'not-an-h5ad', 'utf8');
   try {

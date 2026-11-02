@@ -15,6 +15,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
+import { TEST_TMP } from './support/test_tmp.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -40,7 +41,7 @@ const BASH = findBash();
  *   3. bio_limits.sh -> 不存在的路径（source 失败被兜住）
  */
 function makeHarness() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'wrapper-modes-')).replace(/\\/g, '/');
+  const root = fs.mkdtempSync(path.join(TEST_TMP, 'wrapper-modes-')).replace(/\\/g, '/');
   fs.mkdirSync(path.join(root, 'ops'), { recursive: true });
   fs.mkdirSync(path.join(root, 'system_logs'), { recursive: true });
   const src = fs.readFileSync(WRAPPER, 'utf8');

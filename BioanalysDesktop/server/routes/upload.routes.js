@@ -10,7 +10,7 @@
 import fs from 'node:fs';
 
 import { LINES, DEFAULT_PROJECT, sanitizeProjectId } from '../domain.js';
-import { runSync } from '../proc.js';
+import { runSync, scpArgv } from '../proc.js';
 import {
   CHUNK_SIZE, initUpload, writeChunk, listChunks, assembleChunks,
   readHeader, validateUpload, remoteRawPath, cleanupUpload, sanitizeFilename,
@@ -196,11 +196,7 @@ export function handleUploadRoutes(req, res, url, { json, uploadError, runRemote
       }
       const remote = remoteRawPath(projectId, lineId, filename);
       const localSize = fs.statSync(localPath).size;
-      const scp = runSync(
-        ['scp', '-o', 'StrictHostKeyChecking=no', '-o', 'BatchMode=yes',
-          '-P', '10022', localPath, `root@127.0.0.1:${remote}`],
-        { timeoutMs: 900000 }
-      );
+      const scp = runSync(scpArgv(localPath, remote), { timeoutMs: 900000 });
       if (scp.code !== 0) {
         return uploadError(res, 500, `scp 上传失败（code=${scp.code}）: ${scp.stderr || scp.stdout}`);
       }

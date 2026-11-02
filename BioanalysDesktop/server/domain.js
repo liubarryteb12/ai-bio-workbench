@@ -291,6 +291,16 @@ export function normalizeDataSource(dataSource, projectId = '') {
   return { mode, datasets: base.datasets, inferred: base.inferred, accession };
 }
 
+/**
+ * 容器计算面的 scp 直连目标（adb forward 拓扑）。
+ *
+ * 为什么存在：~/.ssh/config 的 Host 别名只覆盖 ssh，scp 的 -P 端口与 user@host 是
+ * 独立口径（task_input.js / upload.routes.js 两处直连点共用，2026-11-01 前各写一份
+ * 字面量）。环境变量可覆盖：换 forward 端口或换设备只改这里，不改调用点。
+ */
+export const COMPUTE_SCP_TARGET = process.env.BIO_COMPUTE_SCP_TARGET || 'root@127.0.0.1';
+export const COMPUTE_SSH_PORT = Number(process.env.BIO_COMPUTE_SSH_PORT || 10022);
+
 /** 执行面术语到 ssh 别名的映射 */
 export const HOSTS = {
   /** 底座面：Termux，编排/传文件/服务管理，不跑分析 */

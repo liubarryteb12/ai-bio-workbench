@@ -35,6 +35,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { fileURLToPath } from 'node:url';
+import { TEST_TMP } from './support/test_tmp.js';
 
 
 
@@ -209,7 +210,7 @@ const BASH = findBash();
  * PATH 前缀注入在 Windows 宿主上不可靠（实测 /usr/bin/ssh 仍胜出）。
  */
 function runGuard(env, args) {
-  const shimDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bg-shim-'));
+  const shimDir = fs.mkdtempSync(path.join(TEST_TMP, 'bg-shim-'));
   const sshPath = path.join(shimDir, 'ssh');
   fs.writeFileSync(sshPath, env.sshScript, { mode: 0o755 });
   const msysPath = sshPath.replace(/\\/g, '/');
