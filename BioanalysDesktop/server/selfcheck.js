@@ -35,6 +35,16 @@ import { fileURLToPath } from 'node:url';
 import { LINES } from './domain.js';
 import { runSync } from './proc.js';
 
+/** 项目 R 垫片绝对路径（layout_autoload 零重写外挂；母版实际执行的就是它） */
+export const RSCRIPT_PROJECT_BIN = '/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript';
+
+/**
+ * 期望 R 版本。真源是 docs/software_versions.json 的 interpreters[name=R].version；
+ * 这里写常量是为了自检热路径不读文件，由 tests/selfcheck.test.js 断言两处一致
+ * （改 json 不改这里，测试判红——账实分离的口子从测试侧焊死）。
+ */
+export const EXPECTED_R_VERSION = '4.5.3';
+
 /** 容器内存配额（aims §六.4：7.5GB 软熔断）；cgroup 未给出数值上限时的兜底 */
 export const MEM_QUOTA_BYTES = 7.5 * 1024 * 1024 * 1024;
 
@@ -67,6 +77,9 @@ export function buildHardwareCommand() {
     `awk '/^MemTotal:|^MemAvailable:/ {print "MEM|" $1 "|" $2}' /proc/meminfo`,
     `(cat /sys/fs/cgroup/memory.max 2>/dev/null | sed 's/^/MEMMAX|/')`,
     `(cat /sys/fs/cgroup/memory.current 2>/dev/null | sed 's/^/MEMCUR|/')`,
+    // RVER：用项目 R 垫片绝对路径取版本（不是裸 Rscript——那正是被防的漂移源）。
+    // 容器里系统 R 4.3.3 与项目 4.5.3 并存（2026-11-02 实测），非交互 SSH 裸调必中 4.3.3。
+    `(${RSCRIPT_PROJECT_BIN} --version 2>&1 | head -1 | sed 's/^/RVER|/')`,
     `echo 'END|'`,
   ].join('; ');
 }
@@ -86,6 +99,7 @@ export function parseHardwareOutput(text) {
   let memAvailKb = null;
   let memMaxBytes = null;
   let memCurBytes = null;
+  let rVersion = null;
   let sawEnd = false;
 
   for (const line of lines) {
@@ -115,6 +129,11 @@ export function parseHardwareOutput(text) {
       else if (parts[1].startsWith('MemAvailable')) memAvailKb = kb;
       continue;
     }
+    if (tag === 'RVER') {
+      const m = String(parts[1] || '').match(/(\d+\.\d+\.\d+)/);
+      if (m) rVersion = m[1];
+      continue;
+    }
     if (tag === 'MEMMAX') {
       const n = Number(parts[1]);
       if (Number.isFinite(n) && n > 0) memMaxBytes = n; // 'max' 字样自然被过滤
@@ -131,7 +150,7 @@ export function parseHardwareOutput(text) {
     ? null
     : (tempMilli > 1000 ? Math.round(tempMilli / 1000) : Math.round(tempMilli));
 
-  return { load, cpus, tempC, memTotalKb, memAvailKb, memMaxBytes, memCurBytes, sawEnd };
+  return { load, cpus, tempC, memTotalKb, memAvailKb, memMaxBytes, memCurBytes, rVersion, sawEnd };
 }
 
 /** 把解析结果折算成灯：{status, value, detail} */
@@ -159,14 +178,28 @@ export function evaluateHardware(parsed) {
   valueParts.push(memRatio === null
     ? '内存 不可读'
     : `内存 ${gb(usedBytes)}/${gb(quotaBytes)}GB（${Math.round(memRatio * 100)}%）`);
+  valueParts.push(parsed.rVersion === null
+    ? 'R 版本 未探测'
+    : `R ${parsed.rVersion}`);
 
   const detailParts = [];
   detailParts.push(`温度告警 ${TEMP_WARN_C}°C / 阻断 ${TEMP_FAIL_C}°C`);
   detailParts.push(`内存配额 ${gb(quotaBytes)}GB，告警 ${Math.round(MEM_WARN_RATIO * 100)}%`);
   if (loadRatio !== null) detailParts.push(`负载 ${loadRatio.toFixed(2)} 核当量（告警 ${LOAD_WARN_RATIO}）`);
+  detailParts.push(parsed.rVersion === null
+    ? `R 版本探针无输出（期望 ${EXPECTED_R_VERSION}，走 ${RSCRIPT_PROJECT_BIN}）`
+    : `R 版本钉 ${EXPECTED_R_VERSION}（真源 docs/software_versions.json），实测 ${parsed.rVersion}${parsed.rVersion === EXPECTED_R_VERSION ? '' : ' ← 漂移，判失败'}`);
 
+  /**
+   * R 版本漂移 = fail（2026-11-02，Argon 双 R 锁死第二重）。
+   * 判据：RVER 缺失（探针没跑出来/被截断）不判 fail 判 unknown 语义并入 detail——
+   * 但读到非 EXPECTED_R_VERSION（如系统 4.3.3）必须 fail：跑错 R 意味着
+   * 整棵包库都错，产出的统计结果不可信，比温度高更隐蔽也更致命。
+   */
+  const rVersionMismatch = parsed.rVersion !== null && parsed.rVersion !== EXPECTED_R_VERSION;
   const fail = (parsed.tempC !== null && parsed.tempC >= TEMP_FAIL_C)
-    || (memRatio !== null && memRatio >= 1);
+    || (memRatio !== null && memRatio >= 1)
+    || rVersionMismatch;
   const warn = (parsed.tempC !== null && parsed.tempC >= TEMP_WARN_C)
     || (memRatio !== null && memRatio >= MEM_WARN_RATIO)
     || (loadRatio !== null && loadRatio >= LOAD_WARN_RATIO);

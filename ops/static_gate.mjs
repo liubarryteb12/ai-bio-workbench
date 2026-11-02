@@ -104,6 +104,33 @@ function gateShebang(allFiles) {
   return { name: 'shebang', total: candidates.length, failures, skipped: [] };
 }
 
+// ── 门禁 0.5：Rscript 裸调拦截（2026-11-02，Argon 双 R 三重锁死第一重）──
+//
+// 容器里系统 R 4.3.3（/usr/bin）与项目 R 4.5.3（layout_autoload 垫片）并存。
+// 非交互 SSH 不加载 profile，PATH 退化为 /usr/bin 优先——脚本里裸写 Rscript
+// 会 100% 掉进 4.3.3，且结果「看起来正常」，属静默版本漂移（盲点二活例）。
+// 规则：.sh 文件里出现 `Rscript --xxx` / `Rscript 某.R` 形态的调用，
+// 但调用名不是 ${RSCRIPT_BIN} / ${R_PREFIX}... / 绝对路径，即判红。
+const BARE_RSCRIPT_RE = /(^|[\s;&|(`$])(Rscript)\s+--/;
+
+function gateBareRscript(shFiles) {
+  const failures = [];
+  for (const file of shFiles) {
+    const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/);
+    lines.forEach((line, idx) => {
+      const trimmed = line.trim();
+      // 注释与垫片自身（含 REAL_RSCRIPT 赋值/说明）不判
+      if (trimmed.startsWith('#')) return;
+      // 合法形态：${RSCRIPT_BIN} / $RSCRIPT_BIN / 绝对路径 / ${R_PREFIX} 派生路径
+      if (/\$\{?RSCRIPT_BIN|\/bin\/Rscript|\$\{?R_PREFIX|REAL_RSCRIPT/.test(line)) return;
+      if (BARE_RSCRIPT_RE.test(line)) {
+        failures.push({ file: rel(file) + ':' + (idx + 1), reason: '裸调 Rscript 会命中系统 4.3.3，必须走 ${RSCRIPT_BIN} 或绝对路径' });
+      }
+    });
+  }
+  return { name: 'rscript-bare', total: shFiles.length, failures, skipped: [] };
+}
+
 // ── 门禁 1：Shell ──
 function gateShell(files, bash) {
   const failures = [];
@@ -203,7 +230,10 @@ function main() {
   const allFiles = SCAN_DIRS.flatMap((dir) => walk(path.join(REPO, dir), []));
   const results = [];
   results.push(gateShebang(allFiles));
-  if (!only || only === 'sh') results.push(gateShell(collect('.sh'), bash));
+  if (!only || only === 'sh') {
+    results.push(gateBareRscript(collect('.sh')));
+    results.push(gateShell(collect('.sh'), bash));
+  }
   if (!only || only === 'ps1') results.push(gatePwsh(collect('.ps1'), pwsh));
   if (!only || only === 'py') results.push(gatePython(collect('.py'), python));
   if (!only || only === 'r') results.push(gateR(collect('.R'), rscript));

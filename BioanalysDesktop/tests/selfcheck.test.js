@@ -15,9 +15,14 @@ import assert from 'node:assert/strict';
 
 import {
   MEM_QUOTA_BYTES, TEMP_WARN_C, TEMP_FAIL_C,
-  buildHardwareCommand, parseHardwareOutput, evaluateHardware,
+  buildHardwareCommand, parseHardwareOutput, evaluateHardware, EXPECTED_R_VERSION, RSCRIPT_PROJECT_BIN,
   buildIsolationCommand, parseIsolationOutput, evaluateIsolation,
 } from '../server/selfcheck.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 const HARDWARE_OK = [
   'LOAD|0.52|0.61|0.70',
@@ -27,6 +32,7 @@ const HARDWARE_OK = [
   'MEM|MemAvailable:|12000000',
   'MEMMAX|8053063680',
   'MEMCUR|3221225472',
+  'RVER|Rscript (R) version 4.5.3 (2026-03-11)',
   'END|',
 ].join('\n');
 
@@ -176,4 +182,44 @@ test('evaluateIsolation：无任何逐线结果（脚本未部署）→ unknown 
 test('evaluateIsolation：缺 END 标记 → unknown', () => {
   const light = evaluateIsolation(parseIsolationOutput('LINE|line1_bulk|0'));
   assert.equal(light.status, 'unknown');
+});
+
+// ------------------------------------------------------------
+// R 版本漂移锁死（2026-11-02，Argon 双 R 三重锁死第二重）
+// 容器里系统 R 4.3.3（/usr/bin）与项目 4.5.3（layout_autoload 垫片）并存；
+// 非交互 SSH 裸调 Rscript 必中 4.3.3，包库整棵错掉且结果看似正常，属静默漂移。
+// ------------------------------------------------------------
+
+test('buildHardwareCommand：RVER 探针必须走项目垫片绝对路径（不裸调 Rscript）', () => {
+  const command = buildHardwareCommand();
+  assert.ok(command.includes('RVER|'), '命令缺少 RVER 探针');
+  assert.ok(command.includes(RSCRIPT_PROJECT_BIN),
+    'RVER 必须用 layout_autoload 垫片绝对路径，裸 Rscript 会命中系统 4.3.3');
+});
+
+test('parseHardwareOutput：RVER 行解析出三段版本号', () => {
+  const parsed = parseHardwareOutput(HARDWARE_OK);
+  assert.equal(parsed.rVersion, '4.5.3');
+});
+
+test('evaluateHardware：R 版本回退到系统 4.3.3 → fail（漂移即失败，不许看似正常）', () => {
+  const drift = ['CPUS|8', 'RVER|Rscript (R) version 4.3.3 (2024-02-29)', 'END|'].join('\n');
+  const light = evaluateHardware(parseHardwareOutput(drift));
+  assert.equal(light.status, 'fail');
+  assert.match(light.detail, /漂移/);
+});
+
+test('evaluateHardware：RVER 无输出 → 不判 fail（探针缺失≠漂移），value 如实标未探测', () => {
+  const light = evaluateHardware(parseHardwareOutput(['CPUS|8', 'END|'].join('\n')));
+  assert.equal(light.status, 'pass');
+  assert.match(light.value, /R 版本 未探测/);
+});
+
+test('EXPECTED_R_VERSION 与 software_versions.json 真源一致（账实分离从测试侧焊死）', () => {
+  const svPath = path.resolve(HERE, '..', '..', 'docs', 'software_versions.json');
+  const sv = JSON.parse(fs.readFileSync(svPath, 'utf8'));
+  const rEntry = (sv.interpreters || []).find((i) => i.name === 'R');
+  assert.ok(rEntry, 'software_versions.json 缺 R 条目');
+  assert.equal(EXPECTED_R_VERSION, rEntry.version,
+    'selfcheck 常量与 docs/software_versions.json 不一致：改真源必须同步这里');
 });

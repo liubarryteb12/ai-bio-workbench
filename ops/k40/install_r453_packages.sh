@@ -49,4 +49,6 @@ export MKL_NUM_THREADS=3
 export VECLIB_MAXIMUM_THREADS=3
 export NUMEXPR_NUM_THREADS=3
 
-Rscript --vanilla "${R_SCRIPT}" --output "${REPORT}"
+# 必须走绝对路径：非交互 SSH 不加载 profile，PATH 退化为 /usr/bin 优先，
+# 裸调 Rscript 会命中系统 R 4.3.3（容器里 4.3.3 与 4.5.3 并存，2026-11-02 实测）。
+"${R_PREFIX}/bin/Rscript" --vanilla "${R_SCRIPT}" --output "${REPORT}"
