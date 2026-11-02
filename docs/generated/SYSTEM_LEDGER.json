@@ -471,6 +471,11 @@
   "k40HostAssets": {
     "trackedFiles": [
       "ops/k40/ensure_runsvdir.sh",
+      "ops/k40/env_lock/pip_freeze.txt",
+      "ops/k40/env_lock/py_version.txt",
+      "ops/k40/env_lock/r_packages.csv",
+      "ops/k40/env_lock/r_version.txt",
+      "ops/k40/env_lock/uname.txt",
       "ops/k40/install_r453.sh",
       "ops/k40/install_r453_packages.R",
       "ops/k40/install_r453_packages.sh",
