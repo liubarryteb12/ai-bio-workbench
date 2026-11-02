@@ -219,3 +219,33 @@ Argon 五项裁定：
 cp -al 台账口径文档（d51ca43，实测推翻 Argon 的 5MB 阈值）、
 批次 A（855e731，20→23）、批次 B（9deb98a，23→26）。
 待裁定：三处对 Argon 数字的实测修正、第二批 pending 是否继续、「首次出现」断言替代方案。
+
+## 第十三轮（我方发送 + Argon 裁定）
+
+我方纠正两处自己说错的话（line3 其实有 Moran 表与配体-受体表，设备实测 57,282 行
+cellcomm / 19,614 行 gene_autocorr），并报警「MA plot 在 pending 里不存在」。
+
+Argon 裁定：解冻桑基/冲积图与三元图（ggalluvial 是静态扩展）、
+收官批用 fig_l1_correlogram + fig_l1_bubble、放弃 fig_l2_lollipopplot（临床突变语义）、
+readyCount 定 30。
+
+## 第十四轮（我方发送 + Argon 裁定）—— 封板
+
+我方如实报：第四节两张收官图做不了。细胞通讯图的候选 id
+（fig_l2_chord / fig_l2_circos / fig_l2p_chord / fig_l2_cellcomm）**一个都不存在**；
+空间自相关图也没有对应模板 id，新增 `fig_l3_autocorr` 属于结构性 Schema 变更。
+另证伪「l1_gsva_bulk 存在」——line1 线上没有 GSVA mod，gsva_scores.tsv 由 line2 产出。
+
+Argon 五项裁定：
+1. 第四节两项**全部不做**（新母版开发属非必要边际成本；Schema 变更破坏契约闭环）
+2. **readyCount 锁定 28 封板**
+3. 33 个真待办：无任何必须先做项，保留作长尾订单驱动池
+4. 架构层维持终局裁定
+5. 宣告第 34~35 轮整固专项封板，工作区定格在 1091 全绿基线
+
+## 封板状态（第 35 轮交付基线）
+
+- npm test 1091 tests / 1090 pass / 0 fail / 1 skipped
+- ledger：82 模板 / 28 ready / 33 真待办 / 22 冻结 / 1 上游阻塞
+- 防伪断言 A/B/C 三剑合璧，证据链闭环
+- 封板正本：docs/figure_admission_sealed.md
