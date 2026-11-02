@@ -143,6 +143,35 @@ const TEMPLATE_MAPPINGS = {
   // r_l1_p0_gallery 三合一 runner 准入（2026-11-02，k40 真机验证 seed=20261013，
   // 两次实跑 PNG sha256 逐字节一致；4 Argon 第十一轮批次 A 裁定）
   // 收官批（2026-11-02，4 Argon 第十三轮第 2 节）
+  // 第 29/30 张（2026-11-02，4 Argon 第十五轮裁定，Argon 本人而非 Flash-Lite）
+  fig_l3_chorddiagram: {
+    // 复用 L3 弦图槽位承载 Line 2 的细胞通讯：CSV 语言列本就是 r，
+    // 母版用 circlize（已在库 0.4.18），所以只需把线与 mod 指到 Line 2 的 Python 侧出图 mod。
+    language: "python",
+    lines: ['line2_scrna'],
+    linked_mods: ["l2_figures_scrna"],
+    analysis_step: "l2_branches_cellcomm",
+    input_tables: ["cellcomm_interactions.tsv"],
+    produces: ["L3_cellcomm_chord_verified.png"],
+    output_glob: "figures/line2_scrna/L3_cellcomm_chord_verified.png",
+    canonical_output: "L3_cellcomm_chord_verified.png",
+    source_runner_id: "py_l2p_cellcomm_autocorr",
+    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l3_cellcomm_chord.png",
+  },
+  fig_l1_connectedscatter: {
+    // 用 L1 的连接散点槽位承载 Line 3 的空间自相关：Moran's I × -Geary's C 正是双变量关系图，
+    // 不新增 ID，保持 total === 82 的不变量。
+    language: "python",
+    lines: ['line3_spatial'],
+    linked_mods: ["l3_figures_spatial"],
+    analysis_step: "l3_stats_autocorr",
+    input_tables: ["gene_autocorr_human.tsv"],
+    produces: ["L3_spatial_autocorr_verified.png"],
+    output_glob: "figures/line3_spatial/L3_spatial_autocorr_verified.png",
+    canonical_output: "L3_spatial_autocorr_verified.png",
+    source_runner_id: "py_l2p_cellcomm_autocorr",
+    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/custom_fig_l1_connectedscatter.png",
+  },
   fig_l1_correlogram: {
     lines: ['line1_bulk'],
     // expr_genes.tsv 的声明产出者是 l1_ingest_prep（不是 l1_qc_matrix）。
@@ -577,7 +606,7 @@ function buildRegistry() {
    *   - pending_mapping 必须为 0（CSV 标 ready 但映射不全 = 真缺陷）；
    *   - blocked_r453 固定 1（只有 fig_kegg_pathway 一条被裁定的阻塞）。
    */
-  const READY_BASELINE = 28;
+  const READY_BASELINE = 30;
   const statusSum = Object.values(counts).reduce((acc, n) => acc + n, 0);
   if (statusSum !== 82) fail(`状态计数之和不是 82：${statusSum}`);
   if ((counts.ready || 0) < READY_BASELINE) fail(`ready 从基线 ${READY_BASELINE} 倒退：${counts.ready || 0}`);

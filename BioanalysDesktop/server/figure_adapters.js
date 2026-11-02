@@ -32,6 +32,8 @@ const SUPPORTED_TEMPLATE_IDS = new Set([
   'fig_l2_networkplot',
   'fig_l1_correlogram',
   'fig_l1_bubble',
+  'fig_l3_chorddiagram',
+  'fig_l1_connectedscatter',
 ]);
 
 function normalizeRelativePath(value, fieldName) {
@@ -149,6 +151,11 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import networkx as nx
+# 别名必须避开 pathlib.Path：prelude 用 Path(input_data).exists() 做输入存在性检查，
+# 直接 import Path 会被 matplotlib 的 Path 覆盖，导致把文件路径当贝塞尔控制点解析
+# （实测报 ValueError: could not convert string to float）。
+from matplotlib.path import Path as MplPath
+import matplotlib.patches as patches
 
 seed_value = os.environ.get("BIOANALYS_SEED", "")
 if not seed_value:
@@ -491,6 +498,8 @@ ggsave(output_file, bubble_plot, width = 89, height = 75, units = "mm", dpi = 30
 cat("ADAPT_REAL_INPUT_OK bubble genes=", nrow(deg_df), " labels=", nrow(label_df), "\\n", sep = "")
 `;
 
+
+
 R_OVERLAYS.fig_l1_correlogram = `# Real-data sample correlation matrix overlay
 suppressPackageStartupMessages({library(corrplot)})
 expr <- read.delim(input_data, check.names = FALSE, quote = "")
@@ -675,6 +684,8 @@ junk <- list.files(pattern = "^VennDiagram_.*\\\\.log$")
 if (length(junk)) file.remove(junk)
 cat("ADAPT_REAL_INPUT_OK venn sets=", length(g1), "/", length(g2), "/", length(g3), "\\n", sep = "")
 `;
+
+
 
 const PYTHON_OVERLAYS = {
   fig_l2p_dotplot: `# Real-data target localization dot plot overlay
@@ -1018,6 +1029,110 @@ fig.tight_layout()
 fig.savefig(output_file, dpi=300, bbox_inches="tight")
 plt.close(fig)
 print(f"ADAPT_REAL_INPUT_OK network nodes={graph.number_of_nodes()} edges={graph.number_of_edges()}")
+`;
+
+PYTHON_OVERLAYS.fig_l3_chorddiagram = `# Real-data LIANA cell-cell communication chord overlay
+inter = pd.read_csv(input_data, sep="\\t")
+required = {"source", "target"}
+missing = sorted(required.difference(inter.columns))
+if missing:
+    raise ValueError(f"chord input columns missing: {missing}")
+weight_col = next((c for c in ("scaled_weight", "lr_means", "expr_prod") if c in inter.columns), None)
+rank_col = next((c for c in ("magnitude_rank", "specificity_rank", "lrscore") if c in inter.columns), None)
+# 权重列缺失时必须整列置 1，绝不能把字符串（比如 input 路径）当数值转
+if weight_col is None:
+    weight_col = None
+key = inter[["source", "target"]].copy()
+key["source"] = key["source"].astype(str)
+key["target"] = key["target"].astype(str)
+key["weight"] = pd.to_numeric(inter[weight_col], errors="coerce") if weight_col else 1.0
+if rank_col:
+    key["rank"] = pd.to_numeric(inter[rank_col], errors="coerce")
+else:
+    key["rank"] = np.nan
+key = key.dropna(subset=["source", "target", "weight"])
+key = key[(key["source"] != "") & (key["target"] != "")]
+if key.empty:
+    raise ValueError("chord input has no usable rows")
+# 57,282 行原始 LR 对直接画会把画布涂成黑团：先筛显著对，不足 20 条降级 Top 200
+sig = key[key["rank"] <= 0.05] if key["rank"].notna().any() else key.iloc[0:0]
+if len(sig) < 20:
+    sig = key.sort_values("rank", na_position="last").head(200)
+# 聚合键是细胞对，权重累加（同一对可能有几十个配体-受体组合）
+agg = sig.groupby(["source", "target"], observed=True)["weight"].sum().reset_index()
+agg = agg[agg["weight"] > 0]
+if agg.empty:
+    raise ValueError("chord aggregation produced no weighted cell pairs")
+agg = agg.sort_values("weight", ascending=False).head(300)
+cells = sorted(set(agg["source"]) | set(agg["target"]))
+n = len(cells)
+fig, ax = plt.subplots(figsize=(120 / 25.4, 120 / 25.4))
+ax.set_xlim(-1.35, 1.35); ax.set_ylim(-1.35, 1.35); ax.set_aspect("equal"); ax.axis("off")
+ang = np.linspace(90, 90 - 360, n, endpoint=False)
+rad = np.deg2rad(ang)
+xs, ys = np.cos(rad), np.sin(rad)
+idx = {c: i for i, c in enumerate(cells)}
+cmap = plt.cm.coolwarm
+vmax = float(agg["weight"].max()) or 1.0
+for _, row in agg.iterrows():
+    i, j = idx[row["source"]], idx[row["target"]]
+    p0 = (xs[i] * 0.98, ys[i] * 0.98)
+    p3 = (xs[j] * 0.98, ys[j] * 0.98)
+    p1 = (xs[i] * 0.35, ys[i] * 0.35)
+    p2 = (xs[j] * 0.35, ys[j] * 0.35)
+    path = MplPath([p0, p1, p2, p3],
+                   [MplPath.MOVETO, MplPath.CURVE4, MplPath.CURVE4, MplPath.CURVE4])
+    ax.add_patch(patches.PathPatch(path, facecolor="none",
+                                   edgecolor=cmap(float(row["weight"]) / vmax),
+                                   lw=0.7, alpha=0.42, capstyle="round"))
+ax.scatter(xs, ys, s=26, c="#56B4E9", edgecolors="#333333", linewidths=0.4, zorder=3)
+for xi, yi, name in zip(xs, ys, cells):
+    ax.text(xi * 1.09, yi * 1.09, name, fontsize=5.2,
+            ha="left" if xi >= 0 else "right", va="center")
+ax.set_title(f"Cell-cell communication | pairs = {len(agg)}", fontsize=7.5)
+fig.savefig(output_file, bbox_inches="tight")
+plt.close(fig)
+print(f"ADAPT_REAL_INPUT_OK chord pairs={len(agg)} cells={len(cells)} from_rows={len(inter)}")
+`;
+
+PYTHON_OVERLAYS.fig_l1_connectedscatter = `# Real-data spatial autocorrelation scatter overlay
+auto = pd.read_csv(input_data, sep="\\t")
+gene_col = next((c for c in ("gene_symbol", "gene", "var_index") if c in auto.columns), None)
+if gene_col is None:
+    raise ValueError(f"autocorr input missing gene column; columns = {list(auto.columns)[:12]}")
+morans_col = next((c for c in ("morans_i_mean", "morans_i", "moran_i") if c in auto.columns), None)
+geary_col = next((c for c in ("gearys_c_mean", "gearys_c", "geary_c") if c in auto.columns), None)
+if morans_col is None or geary_col is None:
+    raise ValueError(f"autocorr input missing Moran/Geary columns; columns = {list(auto.columns)[:12]}")
+auto["gene"] = auto[gene_col].astype(str)
+auto["morans"] = pd.to_numeric(auto[morans_col], errors="coerce")
+auto["geary"] = pd.to_numeric(auto[geary_col], errors="coerce")
+# 空间转录组里低表达基因的 Moran's I 常算成 NaN/Inf，绘图前必须剔除
+auto = auto.dropna(subset=["morans", "geary"])
+auto = auto[auto["gene"].str.len() > 0]
+if auto.empty:
+    raise ValueError("autocorr input has no finite Moran/Geary rows")
+auto["neg_geary"] = -auto["geary"]
+# 1.9 万个点直接散会糊成一坨：按 |Moran's I| 取 Top 500 做主体，Top 30 高亮，Top 10 标注
+top500 = auto.reindex(auto["morans"].abs().sort_values(ascending=False).index).head(500)
+top30 = top500.head(30)
+label = top30.head(10)
+fig, ax = plt.subplots(figsize=(89 / 25.4, 80 / 25.4))
+ax.scatter(top500["morans"], top500["neg_geary"], s=1.2, c="#9E9E9E", alpha=0.45, linewidths=0)
+ax.plot(top30["morans"], top30["neg_geary"], color="#0072B2", lw=0.35, alpha=0.55)
+ax.scatter(top30["morans"], top30["neg_geary"], s=7, c="#D55E00", alpha=0.85, linewidths=0)
+for _, row in label.iterrows():
+    ax.annotate(row["gene"], (row["morans"], row["neg_geary"]),
+                fontsize=4.2, xytext=(2, 2), textcoords="offset points")
+ax.set_xlabel("Moran's I (spatial autocorrelation)")
+ax.set_ylabel("-Geary's C (spatial gradient)")
+ax.set_title(f"genes = {len(auto)} | shown = top 500", fontsize=7)
+for side in ("top", "right"):
+    ax.spines[side].set_visible(False)
+fig.tight_layout()
+fig.savefig(output_file, bbox_inches="tight")
+plt.close(fig)
+print(f"ADAPT_REAL_INPUT_OK autocorr genes={len(auto)} shown={len(top500)}")
 `;
 
 PYTHON_OVERLAYS.fig_l2_umap = PYTHON_OVERLAYS.fig_l2p_umap;

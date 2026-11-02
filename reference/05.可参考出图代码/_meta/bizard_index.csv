@@ -12,7 +12,7 @@ L1,载荷图,Correlation,Biplot,r,8,0,dplyr;ggbiplot,待采集,
 L1,气泡图,Correlation,Bubble,r,7,0,dplyr;gapminder;ggplot2;hrbrthemes;viridis,ready,_meta/R453_compat/L1_bubble_verified.png
 L2,气泡热图,Correlation,BubbleHeatmap,r,5,0,tidyverse`；`scRNAtoolVis,待采集,
 L2,复杂热图,Correlation,ComplexHeatmap,r,20,0,ComplexHeatmap;circlize;dendextend;gridExtra;pheatmap;tidyr,待采集,
-L1,连接散点图,Correlation,ConnectedScatter,r,10,0,dplyr;ggplot2,待采集,
+L1,连接散点图,Correlation,ConnectedScatter,r,10,0,dplyr;ggplot2,ready,L3_高级组合图/L3_spatial_autocorr_verified.png
 L1,相关图,Correlation,Correlogram,r,17,0,GGally;corrgram;corrplot;ggcorrplot,ready,_meta/R453_compat/L1_correlogram_verified.png
 L1,二维密度图,Correlation,Density2D,r,14,0,MASS;RColorBrewer;ggplot2;hexbin;mvtnorm;patchwork;plotly,待采集,
 L2,热图,Correlation,Heatmap,r,36,0,ComplexHeatmap;RColorBrewer;circlize;cowplot;d3heatmap;dplyr;ggplot2;gridExtra;heatmaply;hrbrthemes;htmlwidgets;lattice;pheatmap;plotly;readr;remotes;tibble;tidyr;viridis,ready,L2_组学常用图/L2_heatmap_verified.png
@@ -78,6 +78,6 @@ L2,UpSet 图（Python）,Python,UpSetPlot,python,0,4,matplotlib`、`pandas`、`n
 L2,维恩图（Python）,Python,VennPlot,python,0,4,matplotlib`、`matplotlib-venn,待采集,
 L2,小提琴图（Python）,Python,ViolinPlot,python,0,5,matplotlib`、`seaborn`、`pandas`、`numpy,ready,L2_组学常用图/L2p_violin_verified.png
 L2,火山图（Python）,Python,VolcanoPlot,python,0,5,matplotlib`、`pandas`、`numpy,ready,L2_组学常用图/L2p_volcano_verified.png
-L3,和弦图,Proportion,ChordDiagram,r,17,0,chorddiag;circlize;dplyr;ggraph;igraph;readr;readxl;tidygraph;tidyverse;viridis,待采集,
+L3,和弦图,Proportion,ChordDiagram,r,17,0,chorddiag;circlize;dplyr;ggraph;igraph;readr;readxl;tidygraph;tidyverse;viridis,ready,L3_高级组合图/L3_cellcomm_chord_verified.png
 L3,网络图,Proportion,Network,r,12,0,RColorBrewer;cowplot;igraph;networkD3,待采集,
 L3,桑基图,Proportion,Sankey,r,9,0,dplyr;ggalluvial;ggplot2;networkD3;openxlsx;readxl;tidyverse;webshot,ready,L3_高级组合图/L3_sankey_verified.png

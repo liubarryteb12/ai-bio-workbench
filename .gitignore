@@ -234,3 +234,12 @@ BioanalysDesktop/Python/
 !reference/05.可参考出图代码/_meta/R453_compat/L1_bubble_verified.png
 !local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_correlogram.png
 !local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_bubble.png
+
+# 第 29/30 张（第十五轮）
+!reference/05.可参考出图代码/L3_高级组合图/L3_cellcomm_chord_code.R
+!reference/05.可参考出图代码/L3_高级组合图/L3_cellcomm_chord_verified.png
+!reference/05.可参考出图代码/L3_高级组合图/L3_spatial_autocorr_code.R
+!reference/05.可参考出图代码/L3_高级组合图/L3_spatial_autocorr_verified.png
+!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l3_cellcomm_chord.png
+!local_projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/custom_fig_l1_connectedscatter.png
+!reference/05.可参考出图代码/L2_组学常用图/L2p_cellcomm_autocorr_code.py

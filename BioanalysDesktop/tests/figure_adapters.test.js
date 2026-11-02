@@ -44,6 +44,7 @@ const SUPPORTED_IDS = [
   'fig_l2_networkplot',
   'fig_l1_correlogram',
   'fig_l1_bubble',
+  'fig_l3_chorddiagram',
 ];
 
 const PROJECT_ID = 'PRJ_AIMS_V3_20261027';
@@ -104,6 +105,18 @@ const CASES = {
     },
     inputPath: 'data/line3_spatial/processed/spatial_dimred_human.h5ad',
     truth: { extension: '.h5ad', language: 'python' },
+  },
+  fig_l3_chorddiagram: {
+    lineId: 'line2_scrna',
+    adaptVars: { input_data: 'data/line2_scrna/processed/cellcomm_interactions.tsv' },
+    inputPath: 'data/line2_scrna/processed/cellcomm_interactions.tsv',
+    truth: { columns: ['source', 'target', 'scaled_weight'], language: 'r' },
+  },
+  fig_l1_connectedscatter: {
+    lineId: 'line3_spatial',
+    adaptVars: { input_data: 'data/line3_spatial/processed/gene_autocorr_human.tsv' },
+    inputPath: 'data/line3_spatial/processed/gene_autocorr_human.tsv',
+    truth: { columns: ['gene_symbol', 'morans_i_mean', 'gearys_c_mean'], language: 'r' },
   },
   fig_l1_correlogram: {
     lineId: 'line1_bulk',
@@ -223,6 +236,24 @@ const CASES = {
     },
     inputPath: 'data/line1_bulk/processed/external_validation_preds.tsv',
     truth: { columns: ['true', 'pred', 'prob_LS'], language: 'r' },
+  },
+  fig_l3_chorddiagram: {
+    source: 'reference/05.可参考出图代码/L3_高级组合图/L3_cellcomm_chord_code.R',
+    language: 'r',
+    lineId: 'line2_scrna',
+    inputPath: 'data/line2_scrna/processed/cellcomm_interactions.tsv',
+    canonicalOutput: 'L3_cellcomm_chord_verified.png',
+    adaptVars: { input_data: 'data/line2_scrna/processed/cellcomm_interactions.tsv' },
+    marker: 'chord',
+  },
+  fig_l1_connectedscatter: {
+    source: 'reference/05.可参考出图代码/L3_高级组合图/L3_spatial_autocorr_code.R',
+    language: 'r',
+    lineId: 'line3_spatial',
+    inputPath: 'data/line3_spatial/processed/gene_autocorr_human.tsv',
+    canonicalOutput: 'L3_spatial_autocorr_verified.png',
+    adaptVars: { input_data: 'data/line3_spatial/processed/gene_autocorr_human.tsv' },
+    marker: 'autocorr',
   },
   fig_l1_correlogram: {
     source: 'reference/05.可参考出图代码/_meta/R453_compat/L1_p0_gallery_code.R',
