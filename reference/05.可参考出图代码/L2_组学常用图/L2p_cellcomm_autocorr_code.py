@@ -13,7 +13,10 @@ import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from matplotlib.path import Path
+# 别名必须避开 pathlib.Path：本文件不做 prelude 的输入存在性检查，但同名 import
+# 一旦被复制进适配器 overlay 就会覆盖 prelude 里的 pathlib.Path，
+# 导致 Path(input_data).exists() 被当图形路径解析（实测 ValueError）。
+from matplotlib.path import Path as MplPath
 import matplotlib.patches as patches
 
 SEED = int(os.environ.get('BIOANALYS_SEED', '20261013'))
@@ -33,8 +36,8 @@ def _out(name):
 
 def _bezier_chord(ax, p0, p1, p2, p3, color, alpha):
     """三次贝塞尔曲线：从 src 弧段到 tgt 弧段的弦。"""
-    path = Path([p0, p1, p2, p3],
-                [Path.MOVETO, Path.CURVE4, Path.CURVE4, Path.CURVE4])
+    path = MplPath([p0, p1, p2, p3],
+                   [MplPath.MOVETO, MplPath.CURVE4, MplPath.CURVE4, MplPath.CURVE4])
     ax.add_patch(patches.PathPatch(path, facecolor='none', edgecolor=color,
                                    lw=0.7, alpha=alpha, capstyle='round'))
 

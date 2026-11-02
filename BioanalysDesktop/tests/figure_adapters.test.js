@@ -678,6 +678,43 @@ const CANDIDATE_ADAPTERS = {
   },
 };
 
+// ── Prelude 符号防覆盖（2026-11-02，4 Argon 第十六轮 Priority 2）──
+//
+// 适配器是「Prelude 头部 + Overlay 代码体」的模板拼接。Prelude 已 import pathlib.Path
+// （用于 Path(input_data).exists() 的输入存在性检查）、os、np、pd 等。若某个 Overlay
+// 再写 from matplotlib.path import Path 而没有别名，会把这些符号覆盖掉——实测踩过一次：
+// 弦图母版开头的 Path(input_data).exists() 被当成图形路径解析，报
+// ValueError: could not convert string to float。
+// 这条断言把那次排雷固化成永久免疫力：Python Overlay 禁止无条件覆盖 Prelude 核心符号。
+const PRELUDE_GUARDED = ['Path', 'os', 'np', 'pd', 'plt', 'nx', 'patches'];
+
+test('python overlays never shadow prelude symbols without an alias', () => {
+  const pythonIds = SUPPORTED_IDS.filter((id) => registryById.get(id).language === 'python');
+  assert.ok(pythonIds.length >= 11, 'Python 模板数异常：' + pythonIds.length);
+  for (const templateId of pythonIds) {
+    const source = buildSource(templateId);
+    // Overlay 段起点：Prelude 尾部的那行 Path(output_file).parent.mkdir(...)
+    const mark = 'Path(output_file).parent.mkdir';
+    const cut = source.indexOf(mark);
+    const overlay = cut >= 0 ? source.slice(cut) : source;
+    for (const symbol of PRELUDE_GUARDED) {
+      const bareFrom = 'from matplotlib.path import ' + symbol;
+      if (symbol === 'Path') {
+        const aliased = overlay.indexOf(bareFrom + ' as ');
+        const bare = overlay.indexOf(bareFrom);
+        assert.ok(
+          bare < 0 || aliased >= 0,
+          templateId + ': overlay 直接 from matplotlib.path import Path 会覆盖 prelude 的 pathlib.Path，必须加 as 别名',
+        );
+      }
+      const shadow = 'import ' + symbol + ' as ' + symbol;
+      assert.equal(
+        overlay.indexOf(shadow), -1,
+        templateId + ': overlay 顶层 import ... as ' + symbol + ' 会覆盖 prelude 同名符号',
+      );
+    }
+  }
+});
 test('remaining figure templates build real-data adapters before promotion', () => {
   for (const [templateId, candidate] of Object.entries(CANDIDATE_ADAPTERS)) {
     const base = registryById.get(templateId);
