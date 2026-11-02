@@ -325,3 +325,48 @@ test('默认 BIO_COMPUTE_ADAPTER=ssh 保持既有真实子进程路径', (t) => 
     'k40-ubuntu', 'echo SSH_DEFAULT_OK',
   ]]);
 });
+
+// ───────── 5.1 收尾新增（2026-11-01）：execFile/流式接缝的 mock 覆盖 ─────────
+import { runExecFile, runExecStream, sshArgv, scpArgv } from '../server/proc.js';
+import { COMPUTE_SCP_TARGET, COMPUTE_SSH_PORT } from '../server/domain.js';
+
+test('runExecFile 在 mock 下走假算力，不碰 childProcess.execFile', async (t) => {
+  useMockCompute(t, { stdout: 'SEAM_EXEC_OK\n' });
+  let execCalls = 0;
+  t.mock.method(childProcess, 'execFile', () => { execCalls += 1; throw new Error('mock 模式不得启动真实 execFile'); });
+  const reply = await new Promise((resolve, reject) => {
+    runExecFile(sshArgv('k40-ubuntu', 'echo hi'), {
+      callback: (error, stdout) => (error ? reject(error) : resolve(stdout)),
+    });
+  });
+  assert.match(reply, /SEAM_EXEC_OK/);
+  assert.equal(execCalls, 0);
+});
+
+test('runExecStream 在 mock 下回放输出与退出码，stdin/kill 为 no-op', async (t) => {
+  useMockCompute(t, { stdout: 'SEAM_STREAM_OK\n', exitCode: '0' });
+  let spawnCalls = 0;
+  t.mock.method(childProcess, 'spawn', () => { spawnCalls += 1; throw new Error('mock 模式不得启动真实 spawn'); });
+  const seen = [];
+  await new Promise((resolve) => {
+    const handle = runExecStream(sshArgv('k40-ubuntu', 'task'), {
+      onStdout: (text) => seen.push(text),
+      onExit: (code) => { seen.push('EXIT:' + code); resolve(); },
+    });
+    handle.stdin.end('payload');
+    handle.kill();
+  });
+  assert.match(seen.join(''), /SEAM_STREAM_OK/);
+  assert.ok(seen.includes('EXIT:0'));
+  assert.equal(spawnCalls, 0);
+});
+
+test('sshArgv/scpArgv 组装固定参数段（5.9 拓扑真源）', () => {
+  const argv = sshArgv('k40-ubuntu', 'echo hi');
+  assert.deepEqual(argv, ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', 'k40-ubuntu', 'echo hi']);
+  const scp = scpArgv('C:/tmp/a.tsv', '/mnt/ssd/bio_data/x.tsv');
+  assert.equal(scp[0], 'scp');
+  assert.ok(scp.includes('-P'), 'scp argv 必须带端口段');
+  assert.equal(scp[scp.indexOf('-P') + 1], String(COMPUTE_SSH_PORT), '端口必须来自 domain.js 真源');
+  assert.match(scp.at(-1), new RegExp('^' + COMPUTE_SCP_TARGET.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ':/mnt/ssd/bio_data/x\\.tsv$'), '远端目标必须拼在最后一个 argv');
+});
