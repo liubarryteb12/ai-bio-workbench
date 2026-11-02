@@ -167,3 +167,16 @@ Argon 第八轮裁定「4 个模板有现成 code+preview 素材，直接准入�
 
 已回滚：figure_adapters.js 的 4 个 overlay、SUPPORTED_TEMPLATE_IDS 扩容、8 个拷贝素材、
 .gitignore 例外。全量测试回到 1086/1085/0 红基线。
+## K40 不可再生资产冷备（已完成并校验）
+
+| 卷 | 内容 | 大小 | SHA256 前 12 | 可解压 |
+|---|---|---|---|---|
+| v1_opt_R.tar.gz | /opt（R 4.5.3 编译产物 + site-library） | 1,328,292,071 | a17925f2b4da | 43,228 条目 |
+| v2_venvs.tar.gz | /root/venvs（bio-py Python 环境） | 352,288,008 | f5a20c58d9b4 | 32,480 条目 |
+| v3_ops_bin_src.tar.gz | ops/bin/src/validation/a2a-* | 31,228,904 | 9dc4a7df31e9 | 1,502 条目 |
+
+落点 `D:\Backup\k40_cold\`，含 SHA256SUMS.txt。rootfs 全量 32G 不备（apt 基座可重建，
+projects 21G 是业务数据不在冷备射程）。
+
+两个实测坑已写进脚本注释：tar --exclude 在 -C 下不生效；/mnt/ssd 是容器内路径，
+adb exec-out 看不到，必须走 scp -P 10022。

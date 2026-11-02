@@ -1,0 +1,15 @@
+# bio-py key extension .so deps
+## /root/venvs/bio-py/lib/python3.12/site-packages/scipy/_cyutility.cpython-312-aarch64-linux-gnu.so
+	libc.so.6 => /lib/aarch64-linux-gnu/libc.so.6 (0x0000007b2cf80000)
+	/lib/ld-linux-aarch64.so.1 (0x0000005500000000)
+## /root/venvs/bio-py/lib/python3.12/site-packages/h5py/_conv.cpython-312-aarch64-linux-gnu.so
+	libhdf5-38ea51e7.so.320.0.0 => /root/venvs/bio-py/lib/python3.12/site-packages/h5py/../h5py.libs/libhdf5-38ea51e7.so.320.0.0 (0x0000007382340000)
+	libhdf5_hl-f1de5819.so.320.0.0 => /root/venvs/bio-py/lib/python3.12/site-packages/h5py/../h5py.libs/libhdf5_hl-f1de5819.so.320.0.0 (0x00000073822b0000)
+	libpthread.so.0 => /lib/aarch64-linux-gnu/libpthread.so.0 (0x0000007382280000)
+	libc.so.6 => /lib/aarch64-linux-gnu/libc.so.6 (0x00000073820c0000)
+	libm.so.6 => /lib/aarch64-linux-gnu/libm.so.6 (0x0000007382010000)
+	libdl.so.2 => /lib/aarch64-linux-gnu/libdl.so.2 (0x0000007381fe0000)
+	libz.so.1 => /lib/aarch64-linux-gnu/libz.so.1 (0x0000007381fa0000)
+	libsz-015a534a.so.2.0.1 => /root/venvs/bio-py/lib/python3.12/site-packages/h5py/../h5py.libs/libsz-015a534a.so.2.0.1 (0x0000007381f40000)
+	libaec-be321ae2.so.0.1.4 => /root/venvs/bio-py/lib/python3.12/site-packages/h5py/../h5py.libs/libaec-be321ae2.so.0.1.4 (0x0000007381ee0000)
+	/lib/ld-linux-aarch64.so.1 (0x0000005500000000)
