@@ -195,3 +195,6 @@ BioanalysDesktop/Python/
 *.bak
 *.bak_*
 *.before
+
+# pwsh 重定向事故产物防复发（$f 展开失败时字面量落盘）
+%SystemDrive%/

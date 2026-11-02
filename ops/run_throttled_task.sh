@@ -62,7 +62,17 @@ BIO_LOCK_WAIT_SECONDS="${BIO_LOCK_WAIT_SECONDS:-1200}"
 BIO_LOCK_POLL_SECONDS="${BIO_LOCK_POLL_SECONDS:-10}"
 LOCK_KEY_RAW="${BIO_LOCK_KEY:-${LINE_ID}_${STEP_NAME}}"
 LOCK_KEY=$(printf '%s' "$LOCK_KEY_RAW" | tr -c 'A-Za-z0-9._-' '_')
-LOCK_DIR="/mnt/ssd/bio_data/system_logs/_locks"
+# 锁命名空间（2026-11-02，黄金冒烟隔离设计）：生产锁在 _locks/，smoke 命名空间
+# 落 _locks_smoke/——冒烟与生产队列物理隔离，互不撞锁；同时跳过启动热节流冷却
+# （冒烟是秒级只读小任务，不该吃 60s 降温等待）。锁语义本身（幂等/回收/PGID）
+# 两边完全一致：冒烟测的就是包装器真链路，不许旁路。
+BIO_LOCK_NAMESPACE="${BIO_LOCK_NAMESPACE:-prod}"
+if [ "$BIO_LOCK_NAMESPACE" = "prod" ]; then
+    LOCK_DIR="/mnt/ssd/bio_data/system_logs/_locks"
+else
+    NS=$(printf '%s' "$BIO_LOCK_NAMESPACE" | tr -c 'A-Za-z0-9._-' '_')
+    LOCK_DIR="/mnt/ssd/bio_data/system_logs/_locks_${NS}"
+fi
 LOCK_FILE=""
 cleanup_wrapper_lock() {
     # 只删自己持有的锁：死锁回收后锁属主已换人，trap 不能把人家的锁删掉
@@ -175,6 +185,9 @@ POST_COOLDOWN_TEMP_C="$INITIAL_TEMP_C"
 THERMAL_WAIT_SECONDS=0
 if [ -z "$INITIAL_TEMP_C" ]; then
     echo "[wrapper] $(date -u +%Y-%m-%dT%H:%M:%SZ) THERMAL_UNKNOWN root=$THERMAL_ROOT 温度不可读，跳过冷却门禁"
+elif [ "${BIO_LOCK_NAMESPACE:-prod}" != "prod" ]; then
+    # 冒烟命名空间跳过热冷却（秒级只读小任务，撞不上生产负载），但温度照记进台账
+    echo "[wrapper] $(date -u +%Y-%m-%dT%H:%M:%SZ) THERMAL_SKIP namespace=${BIO_LOCK_NAMESPACE} current=${INITIAL_TEMP_C}C"
 elif awk -v current="$INITIAL_TEMP_C" -v hot="$THERMAL_HOT_C" 'BEGIN { exit !(current >= hot) }'; then
     echo "[wrapper] $(date -u +%Y-%m-%dT%H:%M:%SZ) THERMAL_COOLDOWN start=${INITIAL_TEMP_C}C hot=${THERMAL_HOT_C}C target_below=${THERMAL_COOL_C}C poll=${THERMAL_POLL_SECONDS}s"
     while [ -n "$POST_COOLDOWN_TEMP_C" ] && awk -v current="$POST_COOLDOWN_TEMP_C" -v cool="$THERMAL_COOL_C" 'BEGIN { exit !(current >= cool) }'; do
