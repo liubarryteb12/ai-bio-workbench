@@ -5,6 +5,56 @@ on:
   pull_request:
 
 jobs:
+  static-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # 四语种静态语法门禁（2026-11-01，技术债 5.5 收口）：
+      # 覆盖 55 个生信母版（bash/R/Python）与 26 个 Windows 运维 .ps1。
+      # pwsh 7 是 ubuntu-latest 预装的；PowerShell 是动态绑定语言，
+      # ParseFile 只做语法树解析，不会去查 Get-WmiObject 或 HKLM: 是否存在，
+      # 所以无需任何 Windows 模块即可在 Linux 上完成语法看护。
+      - name: Install R for parse() gate
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends r-base-core
+      - name: Static syntax gate (sh / ps1 / py / r)
+        run: node ops/static_gate.mjs
+
+  ledger:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # 台账自省一致性（技术债 5.7 收口）：改了 workflows.json / figure_templates.json
+      # 却忘了重跑生成器，这里直接判红。
+      - name: System ledger is in sync with code
+        run: |
+          node ops/ledger_gen.mjs --write
+          git diff --exit-code docs/generated/SYSTEM_LEDGER.json
+
+  metrics:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: BioanalysDesktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: BioanalysDesktop/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      # README 基线口径（技术债 5.4 + 5.12）：用例数与 pass/fail 必须与实测一致。
+      # 刻意不校验 SLOC——统计脚本自身被计入会导致循环依赖（metrics_sync 注释里有详细说明）。
+      - name: README baseline matches measured tests
+        run: node ../ops/metrics_sync.mjs --check
+
   hygiene:
     runs-on: ubuntu-latest
     steps:

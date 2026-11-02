@@ -1,0 +1,502 @@
+{
+  "figureTemplates": {
+    "pendingCount": 66,
+    "pendingDetails": [
+      {
+        "depsPending": true,
+        "id": "fig_l1_circularpacking",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_dendrogram",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_donut",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_partpiechart",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_piechart",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_radialstackedbar",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_treemap",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_waffle",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_biplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_bubble",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2_bubbleheatmap",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2_complexheatmap",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_connectedscatter",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_correlogram",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_density2d",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_ternaryplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_areachart",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_linechart",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_stackedarea",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_streamgraph",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_timeseries",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_breakplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_radialcolumnchart",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_raincloudplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_ridgeline",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_barplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_circularbarplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_upsetplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l1_vennplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l3_combinationpanel",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2_kaplanmeierplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2_lollipopplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2_metaforestplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2_mosaicplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2_nomogram",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2_regressiontable",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2_cellchatcircleplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2_chromosomeplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2_genestructureplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_kegg_pathway",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2_manhattanplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2_multivolcanoplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2_mutationoncoplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2_networkplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l3_sankeybubbleplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2_textenrichmentbarplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2_ivolcanoplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2p_barplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2p_boxplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2p_complexheatmap",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2p_confusionmatrixplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2p_enrichmentplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l3p_facetgridplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2p_gseaplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2p_heatmap",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2p_pcaplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l3p_publicationstyle",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2p_rocprplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l3p_sankeydiagram",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2p_scatterplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2p_scrnastackedviolin",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2p_survivalplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2p_upsetplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l2p_vennplot",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l3_chorddiagram",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
+        "id": "fig_l3_network",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      }
+    ],
+    "readyCount": 16,
+    "total": 82
+  },
+  "k40HostAssets": {
+    "trackedFiles": [
+      "ops/k40/__pycache__/phase5_sample.cpython-314.pyc",
+      "ops/k40/__pycache__/phase7_capacity.cpython-314.pyc",
+      "ops/k40/ensure_runsvdir.sh",
+      "ops/k40/install_r453.sh",
+      "ops/k40/install_r453_packages.R",
+      "ops/k40/install_r453_packages.sh",
+      "ops/k40/phase5_sample.py",
+      "ops/k40/phase6_install_clusterprofiler.R",
+      "ops/k40/phase6_sample.R",
+      "ops/k40/phase7_capacity.py",
+      "ops/k40/pi_a2a_launch.sh",
+      "ops/k40/sv/crond/log/run",
+      "ops/k40/sv/crond/run",
+      "ops/k40/sv/ssh-agent/log/run",
+      "ops/k40/sv/ssh-agent/run",
+      "ops/k40/sv/sshd/log/run",
+      "ops/k40/sv/sshd/run",
+      "ops/k40/sv/ubuntu-sshd/log/run",
+      "ops/k40/sv/ubuntu-sshd/run",
+      "ops/k40/ubuntu-sshd.log.run",
+      "ops/k40/ubuntu-sshd.run"
+    ]
+  },
+  "workflows": {
+    "boundScriptsCount": 54,
+    "missingScripts": [],
+    "totalMods": 54,
+    "totalSeries": 3
+  }
+}

@@ -81,12 +81,15 @@ npm run dev        # 后端 18787 + 前端 5173 同时起
 npm test
 ```
 
-当前基线 **848 tests / 848 pass / 0 fail / 0 skipped**（2026-10-24 提权实测，连续三次复跑稳定）。
-沙箱内跑会是 `848 / 797 / 5 / 46`：那 5 条红与 46 条 skip 全是权限假象，见下面第 3 条。
+当前基线 **1081 tests / 1080 pass / 0 fail / 1 skipped**（100 个测试文件；口径由 ops/metrics_sync.mjs 实测 node --test 汇总行）｜代码规模 18628 SLOC（非空行，64 个文件）（99 个测试文件；口径由 ops/metrics_sync.mjs 实测 node --test 汇总行）｜代码规模 18628 SLOC（非空行，64 个文件）（2026-11-01 实测，K40 链路在位）。
+唯一 skip 是条件跳过（宿主缺 python+anndata 时 `bridge_stage` 的坏 h5ad 用例），属设计行为。
+链路断开时会是 `1077 / 1073 / 3+ / 1+`：那几条红来自 `proc.test.js` 真连、`consistency.test.js` 远端目录、`link.test.js` 四段自检，全是链路信号，见下面第 2 条。
 
 跑之前先知道三件事，否则会把环境问题误读成代码回归：
 
-1. **`TEMP` / `TMP` 要指到工作区内**。`wrapper_exec_modes` / `wrapper_running_marker`
+1. **临时区已自带兜底，无需手动设 `TEMP`**（2026-11-01 起）。`tests/support/test_tmp.js` 按
+   `BIO_TEST_TMP` → 工作区 `.tmp` → `os.tmpdir()` 依次挑可写目录并 realpath 归一，
+   全部真跑类用例都经它落临时区。仍想强制指定就设 `BIO_TEST_TMP`。原前提供对照：`wrapper_exec_modes` / `wrapper_running_marker`
    等 7 条会在临时目录里真跑包装器，沙箱外临时目录会让他们全红（实测：指到工作区内后
    这 16/16 全绿）。PowerShell 里可以这样跑：
    `$env:TEMP=$env:TMP="$PWD\.tmp"; node --test tests/*.test.js`
