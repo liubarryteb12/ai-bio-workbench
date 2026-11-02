@@ -47,6 +47,24 @@ function programBaseName(program) {
 }
 
 /**
+ * 子进程环境保底：Windows 原生 ssh.exe 在缺少 SystemRoot 时，连参数都不解析就
+ * 静默 exit 255（WSAStartup 找不到 %SystemRoot%/System32/mswsock.dll 与
+ * Winsock 传输提供程序）。2026-11-02 实测：调用方传精简 env 后 ssh -V 亦 255，
+ * 而同一个二进制在完整环境下正常。把保底放在单接缝出口，调用方怎么传都不会踩雷。
+ * @param {Record<string,string>|undefined} overrides 调用点自定义的增量变量
+ * @returns {Record<string,string|undefined>} 合并后的环境
+ */
+export function childEnv(overrides = {}) {
+  const systemRoot = process.env.SystemRoot || process.env.windir || 'C:\\Windows';
+  return {
+    ...process.env,
+    SystemRoot: systemRoot,
+    windir: process.env.windir || systemRoot,
+    ...overrides,
+  };
+}
+
+/**
  * 计算面适配器：默认 ssh。未知值 fail-closed，mock 只允许在测试环境
  * 或显式 BIO_ALLOW_MOCK_COMPUTE=1 时生效，防止生产进程静默走假算力。
  */
@@ -128,6 +146,7 @@ export function runSync(argv, options = {}) {
     encoding: 'utf8',
     timeout: options.timeoutMs ?? 30000,
     windowsHide: true,
+    env: childEnv(options.env),
     ...(options.input === undefined ? {} : { input: options.input }),
   });
   return {
@@ -195,6 +214,7 @@ export function runExecFile(argv, options = {}) {
     timeout: options.timeoutMs ?? 30000,
     maxBuffer: options.maxBuffer ?? 2 * 1024 * 1024,
     windowsHide: true,
+    env: childEnv(options.env),
   }, options.callback ?? (() => {}));
 }
 
@@ -219,6 +239,7 @@ export function runExecStream(argv, handlers = {}) {
   const child = childProcess.spawn(argv[0], argv.slice(1), {
     cwd: handlers.cwd,
     windowsHide: true,
+    env: childEnv(handlers.env),
   });
   child.stdout?.on?.('data', (chunk) => handlers.onStdout?.(chunk.toString()));
   child.stderr?.on?.('data', (chunk) => handlers.onStderr?.(chunk.toString()));
@@ -252,6 +273,7 @@ export function runStream(argv, handlers = {}) {
   const child = childProcess.spawn(argv[0], argv.slice(1), {
     cwd: handlers.cwd,
     windowsHide: true,
+    env: childEnv(handlers.env),
   });
   child.stdout.on('data', (chunk) => handlers.onStdout?.(chunk.toString()));
   child.stderr.on('data', (chunk) => handlers.onStderr?.(chunk.toString()));

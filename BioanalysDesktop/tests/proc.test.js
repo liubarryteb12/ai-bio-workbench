@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { assertAllowedProgram, runSync } from '../server/proc.js';
+import { assertAllowedProgram, childEnv, runSync } from '../server/proc.js';
 import { buildRemoteCommand } from '../server/ssh.js';
 
 test('白名单：ssh / scp / adb 放行', () => {
@@ -51,4 +51,39 @@ test('真实链路：经接缝 ssh 到容器应返回 CONTAINER_OK', () => {
     .join('\n');
   assert.match(noiseStripped, /CONTAINER_OK/, `链路应通。remote=${remote}`);
   assert.equal(result.code, 0);
+});
+
+// ── Winsock 环境保底（2026-11-02，4 Argon 第十一轮第 6 节第 1 项）──
+//
+// 事故形态：调用方传精简 env（只有 PATH 等少数变量）时，Windows 原生
+// System32/OpenSSH/ssh.exe 连 -V 都不解析就静默 exit 255。原因是 WSAStartup
+// 要靠 SystemRoot 定位 mswsock.dll 与 Winsock 传输提供程序。
+//
+// 判据必须是"进程环境残缺"这一真实故障条件，所以测试临时把 SystemRoot 与
+// windir 从 process.env 里摘掉，再断言 childEnv 仍能产出可用的 SystemRoot。
+// 若主体只用 ...process.env 而不补保底，这条必红（已实测反证，见提交信息）。
+function withoutSystemRoot(fn) {
+  const saved = { SystemRoot: process.env.SystemRoot, windir: process.env.windir };
+  delete process.env.SystemRoot;
+  delete process.env.windir;
+  try {
+    return fn();
+  } finally {
+    if (saved.SystemRoot !== undefined) process.env.SystemRoot = saved.SystemRoot;
+    if (saved.windir !== undefined) process.env.windir = saved.windir;
+  }
+}
+
+test('childEnv：进程环境缺 SystemRoot 时仍补出可用值（Winsock 根因防线）', () => {
+  const env = withoutSystemRoot(() => childEnv({ PATH: 'C:\\fake', BIO_CUSTOM: '1' }));
+  assert.match(String(env.SystemRoot), /^[A-Za-z]:\\/,
+    'SystemRoot 必须是盘符路径，否则 ssh 的 WSAStartup 找不到 mswsock.dll');
+  assert.equal(env.windir, env.SystemRoot, 'windir 与 SystemRoot 必须同源');
+  assert.equal(env.PATH, 'C:\\fake', '调用方的增量变量不能被吞掉');
+  assert.equal(env.BIO_CUSTOM, '1');
+});
+
+test('childEnv：环境完整时调用方自定义 SystemRoot 优先（保底不是强改）', () => {
+  const env = childEnv({ SystemRoot: 'D:\\WinAlt' });
+  assert.equal(env.SystemRoot, 'D:\\WinAlt');
 });
