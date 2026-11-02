@@ -95,7 +95,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [
         "ggplot2"
       ],
@@ -172,7 +172,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [
         "dplyr",
         "ggplot2",
@@ -206,7 +206,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [
         "ggplot2"
       ],
@@ -444,7 +444,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [
         "ComplexHeatmap",
         "circlize",
@@ -483,7 +483,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [
         "dplyr",
         "ggplot2"
@@ -952,7 +952,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [
         "dplyr",
         "ggplot2",
@@ -1155,7 +1155,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [
         "dplyr",
         "ggforce",
@@ -1483,7 +1483,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [],
       "linked_mods": [
         "l1_figures_bulk"
@@ -1512,7 +1512,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [
         "dplyr",
         "ggplot2",
@@ -1721,7 +1721,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [],
       "linked_mods": [
         "l1_figures_bulk"
@@ -1949,7 +1949,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [],
       "linked_mods": [
         "l1_figures_bulk"
@@ -1980,7 +1980,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [],
       "linked_mods": [
         "l1_figures_bulk"
@@ -2087,7 +2087,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [
         "matplotlib",
         "seaborn",
@@ -2125,7 +2125,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [
         "matplotlib",
         "seaborn",
@@ -2199,7 +2199,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [
         "matplotlib",
         "seaborn",
@@ -2234,7 +2234,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [
         "matplotlib",
         "seaborn",
@@ -2269,7 +2269,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [
         "matplotlib",
         "seaborn",
@@ -2304,7 +2304,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [
         "matplotlib",
         "seaborn",
@@ -2339,7 +2339,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [
         "matplotlib",
         "seaborn",
@@ -2417,7 +2417,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [
         "matplotlib",
         "seaborn",
@@ -2489,7 +2489,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [
         "matplotlib",
         "seaborn",
@@ -2561,7 +2561,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [
         "matplotlib",
         "seaborn",
@@ -2641,7 +2641,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [
         "scanpy",
         "anndata",
@@ -2757,7 +2757,7 @@
       "preview": null,
       "preview_sha256": null,
       "verified": false,
-      "deps_status": "pending",
+      "deps_status": "ready",
       "deps": [
         "matplotlib",
         "pandas",
