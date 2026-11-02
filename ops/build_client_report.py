@@ -2007,8 +2007,15 @@ def assemble(ctx, out_dir, no_tar=False):
             except OSError:
                 pass
 
+    # 图级适配脚本在每条线的 adapted 列表里都会出现一次（同一份 figures/adapt/*.R）。
+    # 不去重会让清单登记 3 遍、counts 也多计 2 遍，实测 51 条只对应 17 个唯一文件。
+    # 用已写集合保证「一个文件登记一次、计数一次」。
+    _adapted_written = set()
     for line, entry in ctx["lines"].items():
         for rel in entry.get("adapted", []):
+            if rel in _adapted_written:
+                continue
+            _adapted_written.add(rel)
             src = os.path.join(entry["dir"], rel)
             dst = os.path.join(d_code, rel)
             os.makedirs(os.path.dirname(dst), exist_ok=True)
@@ -2093,9 +2100,11 @@ def assemble(ctx, out_dir, no_tar=False):
         "files": {
             "scripts": ["%s/%s" % (line, os.path.basename(rel))
                         for line, e in ctx["lines"].items() for rel in e["scripts"]],
-            "adapted_code": [rel
+            "adapted_code": list(dict.fromkeys(
+                             rel
                              for line, e in ctx["lines"].items()
-                             for rel in e.get("adapted", [])],
+                             for rel in e.get("adapted", [])
+                         )),
             "figures": ["figures/%s/%s" % (line, os.path.basename(rel))
                         for line, e in ctx["lines"].items() for rel in e["figures"]],
             "tables": ["tables/%s/%s" % (line, os.path.basename(rel))
