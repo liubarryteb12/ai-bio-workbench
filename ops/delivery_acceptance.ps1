@@ -145,6 +145,48 @@ if (Test-Path $manifestPath) {
     Fail ("清单有 " + $missingFiles.Count + " 条在磁盘缺失：" + ($missingFiles -join ', '))
   }
 
+  # CHECKSUMS 覆盖完备性（2026-11-02，第 4 关补充）
+  #
+  # manifest 只登记四类业务件（scripts/adapted_code/figures/tables），但交付包里还有
+  # 解读报告、对账说明等「必需但不入清单」的文件。CHECKSUMS.sha256 是另一套口径：
+  # 它应当覆盖除签名元数据之外的**全部**业务文件。两者都能证明「文件没少」，
+  # 但它们回答的问题不同：manifest 答「登记的东西在不在」，CHECKSUMS 答「磁盘的东西
+  # 有没有被哈希保护」。只验前者会放过「存在但未被签名保护」的文件。
+  # 覆盖检查的文件集合与幽灵检查不同：幽灵检查要排除「登记表不识别的元数据」，
+  # 而覆盖检查要回答「磁盘上每一个业务文件是否都被哈希保护」，所以只排除
+  # 真正不进 CHECKSUMS 的三件（清单自身 / 它的签名 / 客户公钥）。
+  # delivery_manifest.json 是被哈希保护的普通文件，排除它会误判成幽灵登记（实测踩过）。
+  $coverageMeta = @('CHECKSUMS.sha256', 'CHECKSUMS.sig', 'ED25519_PUBLIC_KEY.pem')
+  $coverageDisk = @($diskAll | Where-Object { $coverageMeta -notcontains $_ })
+  $checksumsPath = Join-Path $delivery.FullName 'CHECKSUMS.sha256'
+  if (Test-Path $checksumsPath) {
+    $protected = @()
+    foreach ($line in (Get-Content $checksumsPath)) {
+      if ([string]::IsNullOrWhiteSpace($line)) { continue }
+      $parts = $line.Trim() -split '\s+', 2
+      if ($parts.Count -ge 2) {
+        $entryPath = ($parts[1] -replace '\\', '/').TrimStart('*').Trim()
+        # sha256sum 输出的路径可能带 "./" 或前导斜杠，统一成相对路径再比对
+        $entryPath = $entryPath -replace '^\./', '' -replace '^/', ''
+        $protected += $entryPath
+      }
+    }
+    $uncovered = @()
+    foreach ($f in $coverageDisk) { if ($protected -notcontains $f) { $uncovered += $f } }
+    $phantom = @()
+    foreach ($p2 in $protected) {
+      if (-not ($coverageDisk -contains $p2)) { $phantom += $p2 }
+    }
+    if ($uncovered.Count -eq 0 -and $phantom.Count -eq 0) {
+      Ok ("CHECKSUMS 覆盖全部 " + $protected.Count + " 个业务文件，无漏保护、无幽灵登记")
+    } else {
+      if ($uncovered.Count) { Fail ("有 " + $uncovered.Count + " 个业务文件未被 CHECKSUMS 保护：" + ($uncovered -join ', ')) }
+      if ($phantom.Count) { Fail ("CHECKSUMS 登记了 " + $phantom.Count + " 个磁盘不存在的文件：" + ($phantom -join ', ')) }
+    }
+  } else {
+    Fail "缺 CHECKSUMS.sha256，无法校验哈希覆盖完备性"
+  }
+
   # counts 内部自洽：分项之和必须等于清单条目数（排除不受 counts 管理的分类）
   $sumCounted = 0
   $mismatch = @()
