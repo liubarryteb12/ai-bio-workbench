@@ -46,10 +46,19 @@ test('registry contains the exact 82 figure inventory and verification counts', 
   assert.equal(registry.schema_version, 1);
   assert.equal(registry.templates.length, 82);
   assert.equal(new Set(registry.templates.map((item) => item.id)).size, 82);
-  assert.equal(registry.templates.filter((item) => item.deps_status === 'ready').length, 16);
-  assert.equal(registry.templates.filter((item) => item.deps_status === 'pending').length, 65);
-  assert.equal(registry.templates.filter((item) => item.deps_status === 'pending_mapping').length, 0);
-  assert.equal(registry.templates.filter((item) => item.deps_status === 'blocked_r453').length, 1);
+  // 水位线口径（2026-11-02）：ready 只设下限不倒退，pending 由总数派生，
+  // 准入新模板不必再手改这里的数字；结构性不变量（和为 82、blocked 为 1）照旧钉死。
+  const READY_BASELINE = 16;
+  const byStatus = (status) => registry.templates.filter((item) => item.deps_status === status).length;
+  assert.ok(byStatus('ready') >= READY_BASELINE,
+    `ready 从基线 ${READY_BASELINE} 倒退：${byStatus('ready')}`);
+  assert.equal(byStatus('pending_mapping'), 0);
+  assert.equal(byStatus('blocked_r453'), 1);
+  assert.equal(
+    byStatus('ready') + byStatus('pending') + byStatus('pending_mapping') + byStatus('blocked_r453'),
+    82,
+    '四类状态之和必须等于 82',
+  );
 
   const required = [
     'id', 'name', 'level', 'category', 'language', 'source', 'source_sha256',

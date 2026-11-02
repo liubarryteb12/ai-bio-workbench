@@ -471,6 +471,10 @@
   "k40HostAssets": {
     "trackedFiles": [
       "ops/k40/ensure_runsvdir.sh",
+      "ops/k40/env_lock/apt_manual.txt",
+      "ops/k40/env_lock/dpkg_selections.txt",
+      "ops/k40/env_lock/ldd_R.txt",
+      "ops/k40/env_lock/ldd_py.txt",
       "ops/k40/env_lock/pip_freeze.txt",
       "ops/k40/env_lock/py_version.txt",
       "ops/k40/env_lock/r_packages.csv",
@@ -479,6 +483,8 @@
       "ops/k40/install_r453.sh",
       "ops/k40/install_r453_packages.R",
       "ops/k40/install_r453_packages.sh",
+      "ops/k40/k40_cold_backup.sh",
+      "ops/k40/k40_restore_drill.sh",
       "ops/k40/phase5_sample.py",
       "ops/k40/phase6_install_clusterprofiler.R",
       "ops/k40/phase6_sample.R",

@@ -435,8 +435,19 @@ function buildRegistry() {
     acc[item.deps_status] = (acc[item.deps_status] || 0) + 1;
     return acc;
   }, {});
-  if (counts.ready !== 16) fail(`ready 数不是 16：${counts.ready}`);
-  if (counts.pending !== 65) fail(`pending 数不是 65：${counts.pending}`);
+  /**
+   * 计数口径（2026-11-02 按 4 Argon 第九轮裁定，相等断言改水位线）：
+   * 准入新模板时不再需要手改这里的魔数——那是每轮重复摩擦的来源。
+   * 保留的不变量都是结构性的，不随准入增长而变：
+   *   - 四类状态之和必须等于 82（防漏计/重复计）；
+   *   - ready 只许 >= 基线，倒退即失败（防准入成果被误删）；
+   *   - pending_mapping 必须为 0（CSV 标 ready 但映射不全 = 真缺陷）；
+   *   - blocked_r453 固定 1（只有 fig_kegg_pathway 一条被裁定的阻塞）。
+   */
+  const READY_BASELINE = 16;
+  const statusSum = Object.values(counts).reduce((acc, n) => acc + n, 0);
+  if (statusSum !== 82) fail(`状态计数之和不是 82：${statusSum}`);
+  if ((counts.ready || 0) < READY_BASELINE) fail(`ready 从基线 ${READY_BASELINE} 倒退：${counts.ready || 0}`);
   if ((counts.pending_mapping || 0) !== 0) fail(`pending_mapping 数不是 0：${counts.pending_mapping || 0}`);
   if (counts.blocked_r453 !== 1) fail(`blocked_r453 数不是 1：${counts.blocked_r453}`);
 
