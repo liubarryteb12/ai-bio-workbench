@@ -1,0 +1,36 @@
+{
+  "line1": {
+    "exit0": true,
+    "anchorUp": true,
+    "anchorDown": true,
+    "rows": "120",
+    "columns": "logFC,AveExpr,t,P.Value,adj.P.Val,B ",
+    "figure": {
+      "name": "volcano.pdf",
+      "bytes": 10835,
+      "magicOk": true
+    }
+  },
+  "line2": {
+    "exit0": true,
+    "shape": [
+      80,
+      150
+    ],
+    "leidenClusters": 3,
+    "anchorStat3": true,
+    "stat3Means": [
+      "94.333",
+      "14.267"
+    ]
+  },
+  "line3": {
+    "exit0": true,
+    "shape": [
+      64,
+      100
+    ],
+    "moranSignificant": true,
+    "anchorDomain": true
+  }
+}

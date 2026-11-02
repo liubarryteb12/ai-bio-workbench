@@ -48,6 +48,7 @@ const EXEMPT_RELPATHS = new Set([
   'BioanalysDesktop/tests/proc_seam_guard.test.js', // 本测试自身
   'ops/metrics_sync.mjs',                  // 离线统计工具（手工跑，不进服务运行时）
   'ops/static_gate.mjs',                   // 离线静态门禁（手工/CI 跑，不进服务运行时）
+  'ops/smoke_golden.mjs',                   // 离线真机冒烟驱动（手工/CI 跑，经 ssh 下发生产包装器）
   'ops/ledger_gen.mjs',                    // 离线台账生成（纯 node:fs，无子进程；列入以防将来引入）
 ]);
 
