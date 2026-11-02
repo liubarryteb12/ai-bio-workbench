@@ -30,6 +30,8 @@ test('delivery acceptance script exists and covers all four gates', () => {
   assert.ok(text.includes('missingFiles'), '关 4 缺失：未做清单漂移（清单有、磁盘无）检测');
   assert.ok(text.includes('$metaFiles'), '关 4 缺失：未定义签名元数据白名单');
   assert.ok(text.includes('$sectionDir'), '关 4 缺失：未按小节拼装磁盘相对路径（清单路径不带目录前缀）');
+  assert.ok(text.includes('$allowedUnlistedFiles'), '关 4 缺失：未把打包器写的说明文件纳入白名单');
+  assert.ok(text.includes('.sha256'), '关 1 缺失：未兼容 <name>.tar.gz.sha256 这种侧车命名');
   assert.ok(text.includes('DELIVERY_ACCEPTANCE_OK'), '缺成功哨兵，无法从日志判定全绿');
   assert.ok(text.includes('ACCEPTANCE_FAILED'), '缺失败哨兵，失败时无法区分「没跑」与「跑挂了」');
 });

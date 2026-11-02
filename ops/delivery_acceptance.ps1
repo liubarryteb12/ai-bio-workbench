@@ -36,7 +36,13 @@ if (-not $tar) {
   Fail "找不到 *Client_Delivery.tar.gz"
   exit 1
 }
+# 侧车有两种历史命名：tar_sha256_sidecar.txt（演练包）与 <name>.tar.gz.sha256（打包器产物）。
+# 两者格式相同（"<sha256>  <文件名>"），一并接受，避免命名差异被误判成缺校验。
 $sidecar = Join-Path $dir 'tar_sha256_sidecar.txt'
+if (-not (Test-Path $sidecar)) {
+  $alt = Join-Path $dir ($tar.Name + '.sha256')
+  if (Test-Path $alt) { $sidecar = $alt }
+}
 if (Test-Path $sidecar) {
   $expected = (Get-Content $sidecar -Raw).Trim().Split(' ')[0].ToLower()
   $actual = (Get-FileHash $tar.FullName -Algorithm SHA256).Hash.ToLower()
@@ -85,7 +91,10 @@ if (-not (Test-Path $PublicKeyPath)) {
 # 求双向差集，两侧都必须为空。多出即幽灵文件，缺失即清单漂移。
 $metaFiles = @('CHECKSUMS.sha256', 'CHECKSUMS.sig', 'delivery_manifest.json', 'ED25519_PUBLIC_KEY.pem')
 # 清单按分类登记业务文件；解读报告不在该登记表内，属交付必需但不入哈希清单
+# 打包器会额外写这些说明性文件：它们不参与哈希清单（清单只管受保护业务件），
+# 但属交付必需，不能算幽灵私货。
 $allowedUnlistedPrefixes = @('03_Interpretation_Report/')
+$allowedUnlistedFiles = @('01_Adapted_Code/_report.txt')
 
 $manifestPath = Join-Path $delivery.FullName 'delivery_manifest.json'
 if (Test-Path $manifestPath) {
@@ -117,7 +126,10 @@ if (Test-Path $manifestPath) {
   foreach ($f in $diskBusiness) {
     if ($declared.Contains($f)) { continue }
     $allowed = $false
-    foreach ($p in $allowedUnlistedPrefixes) { if ($f.StartsWith($p)) { $allowed = $true; break } }
+    if ($allowedUnlistedFiles -contains $f) { $allowed = $true }
+    if (-not $allowed) {
+      foreach ($p in $allowedUnlistedPrefixes) { if ($f.StartsWith($p)) { $allowed = $true; break } }
+    }
     if (-not $allowed) { $ghosts += $f }
   }
   $missingFiles = @($declared | Where-Object { -not (Test-Path (Join-Path $delivery.FullName $_)) })
