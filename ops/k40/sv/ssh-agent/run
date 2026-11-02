@@ -1,0 +1,26 @@
+#!/data/data/com.termux/files/usr/bin/sh
+# ops/k40/sv/ssh-agent/run 与 log/run —— K40 Termux 宿主面 runit 服务定义（仓库镜像，2026-11-01 纳管）
+# 落点：k40:$PREFIX/var/service/<service>/{run,log/run}
+# 同步：bash ops/k40/ensure_runsvdir.sh 会把本目录镜像到设备并幂等点火（见下一节）。
+
+# Run `sv-enable ssh-agent` and add the following to your bashrc (or
+# equivalent) to use ssh-agent:
+#   export SSH_AUTH_SOCK="$PREFIX"/var/run/ssh-agent.socket
+# After that you can add your key to the agent with `ssh-add`, and
+# then make use of the credentials across all terminal sessions
+
+service_agent() {
+	# 设备重启或 Termux 被强停后 socket 残留会让 ssh-agent 起不来
+	if [ -S "$1" ]; then
+		unlink "$1"
+	fi
+	exec ssh-agent -D -a "$1" 2>&1
+}
+
+if [ -r "${TERMUX__PREFIX:-"${PREFIX}"}"/etc/ssh/start_agent.sh ]; then
+	. "${TERMUX__PREFIX:-"${PREFIX}"}"/etc/ssh/start_agent.sh
+fi
+
+export SSH_AUTH_SOCK="${XDG_RUNTIME_DIR:-"${TERMUX__PREFIX:-"${PREFIX}"}/var/run"}"/ssh-agent.socket
+
+service_agent "${SSH_AUTH_SOCK}"

@@ -1,0 +1,5 @@
+#!/data/data/com.termux/files/usr/bin/sh
+# ops/k40/sv/sshd/run 与 log/run —— K40 Termux 宿主面 runit 服务定义（仓库镜像，2026-11-01 纳管）
+# 落点：k40:$PREFIX/var/service/<service>/{run,log/run}
+# 同步：bash ops/k40/ensure_runsvdir.sh 会把本目录镜像到设备并幂等点火（见下一节）。
+exec sshd -D -e 2>&1

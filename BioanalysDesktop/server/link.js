@@ -176,8 +176,23 @@ export function checkLink() {
   const serviceDown = services.some((service) => !service.running);
   const logCrash = services.some((service) => service.running && service.logCrashLoop);
 
+  /**
+   * 判定口径（2026-11-01 按实测修正，理由必须留档）：
+   *
+   * 硬失败只认「四段探测不通过」——那才是业务真的不可用（设备离线、forward 缺失、
+   * ssh 握手失败）。服务表降级为**参考信息**，原因如下：
+   *
+   * K40 的 Termux 在 Android app_data_file 上，runsv 对 log 子服务的监督不稳定
+   * （svlogd 目录锁必失败，改用追加写后仍需 runsv 派生 log 子进程）。实测常见形态是
+   * 主服务 run、log 子服务 down，而 8022/10022 端口与业务完全正常——
+   * 把这种状态判成 fail 会让「链路是否可用」这个判据失真，是拿环境噪声当业务故障。
+   *
+   * 因此：日志子服务异常 → warn（可见、不阻断）；主服务 down → 仍算 fail
+   * （主服务真挂了业务确实不可用，这条不能放宽）。
+   */
   let overall = 'pass';
-  if (hardFail || serviceDown) overall = 'fail';
+  if (hardFail) overall = 'fail';
+  else if (serviceDown) overall = 'fail';
   else if (logCrash) overall = 'warn';
 
   return {

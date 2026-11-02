@@ -75,16 +75,29 @@ if [ "$BIO_IDEMPOTENT_LOCK" = "1" ]; then
     LOCK_FILE="$LOCK_DIR/${LOCK_KEY}.lock"
     LOCK_WAITED=0
     while :; do
-        if ( set -o noclobber; echo "$$" > "$LOCK_FILE" ) 2>/dev/null; then
+        if ( set -o noclobber; printf '%s\n%s\n' "$$" "$(awk '{ sub(/^[0-9]+ \([^)]*\) /, ""); print $3 }' /proc/$$/stat 2>/dev/null)" > "$LOCK_FILE" ) 2>/dev/null; then
             echo "[wrapper] $(date -u +%Y-%m-%dT%H:%M:%SZ) LOCK_ACQUIRED key=$LOCK_KEY pid=$$"
             break
         fi
-        holder_pid=$(tr -d '[:space:]' < "$LOCK_FILE" 2>/dev/null || echo "")
+        holder_pid=$(head -n 1 "$LOCK_FILE" 2>/dev/null | tr -d '[:space:]' || echo "")
+        holder_pgid=$(sed -n '2p' "$LOCK_FILE" 2>/dev/null | tr -d '[:space:]' || echo "")
         case "$holder_pid" in
             ""|*[!0-9]*) holder_pid="" ;;
         esac
         if [ -n "$holder_pid" ] && ! kill -0 "$holder_pid" 2>/dev/null; then
             echo "[wrapper] $(date -u +%Y-%m-%dT%H:%M:%SZ) STALE_LOCK key=$LOCK_KEY holder=$holder_pid 已退出，回收接管"
+            # 盲点一修复（2026-11-01）：包装器死了，其派生的 R/Python 进程组可能还活着
+            # （ssh 断连未广播 SIGHUP / 宿主机超时只杀了本机 ssh 客户端）。锁失效但算力
+            # 仍被孤儿占用：按锁里记录的 PGID 收尾。pgid != 当前候选主自己的组才动手，
+            # 且 TERM 后 2 秒 KILL 兜底；杀不动就放弃（组可能已散或 pid 已复用）。
+            # 代价口径：不探测组内存活（ps/遍历 /proc 都撞 P-29 禁令），直接对旧 PGID 发
+            # TERM→2s→KILL；打到空组是 no-op，pgid 恰被复用的概率与 pid 复用同级（上文已论证可接受）。
+            if [ -n "$holder_pgid" ] && [ "$holder_pgid" -gt 0 ] 2>/dev/null && [ "$holder_pgid" != "$$" ]; then
+                echo "[wrapper] $(date -u +%Y-%m-%dT%H:%M:%SZ) STALE_LOCK key=$LOCK_KEY 收尾残留进程组 pgid=$holder_pgid"
+                kill -TERM -"$holder_pgid" 2>/dev/null || true
+                sleep 2
+                kill -KILL -"$holder_pgid" 2>/dev/null || true
+            fi
             rm -f -- "$LOCK_FILE"
             continue
         fi
@@ -97,8 +110,34 @@ if [ "$BIO_IDEMPOTENT_LOCK" = "1" ]; then
         sleep "$BIO_LOCK_POLL_SECONDS"
         LOCK_WAITED=$((LOCK_WAITED + BIO_LOCK_POLL_SECONDS))
     done
-    trap cleanup_wrapper_lock EXIT
 fi
+# --- 进程组自清（盲点一，2026-11-01）---
+# setsid 起来的 detached 包装器自己是组长：退出时把整组（bash -c -> nice/ionice ->
+# Rscript/python3 及其线程组）一起收尾，杜绝「包装器已死、R 还在后台吃满 CPU」的孤儿态。
+# 前台模式（非组长）绝不做组杀：那时 $$ 的组属于 sshd 会话，误杀会掀掉连接本身。
+cleanup_wrapper_pgroup() {
+    # 组杀只在显式 detached 场景做（引擎 setsid nohup 下发时置 BIO_DETACHED=1）：
+    # 那时包装器是组长，退出时把整组（bash -c -> nice/ionice -> R/Python）收尾，
+    # 杜绝「包装器已死、R 还在后台吃满 CPU」的孤儿态。
+    # 双保险判据=置位标记+组长：测试 harness 里 $$ 可能恰好也是组长（不同 spawn
+    # 上下文的进程组归属不一致），单靠 $$==pgid 会误杀自己的会话组，把 EXIT trap
+    # 打成自信号循环（2026-11-01 实测：wrapper_exec_modes 5 条 60s 卡死）。
+    [ "${BIO_DETACHED:-0}" = "1" ] || return 0
+    my_pgid=$(awk '{ sub(/^[0-9]+ \([^)]*\) /, ""); print $3 }' /proc/$$/stat 2>/dev/null)
+    if [ -n "$my_pgid" ] && [ "$my_pgid" = "$$" ]; then
+        # 组杀命中自己：先对 TERM/INT/HUP 置忽略，防自信号重入 trap
+        trap '' TERM INT HUP
+        kill -TERM -"$$" 2>/dev/null || true
+        sleep 2
+        kill -KILL -"$$" 2>/dev/null || true
+    fi
+    return 0
+}
+# 两段收尾都必须跑：先放锁（cleanup_wrapper_lock 自带 LOCK_FILE 空值保护，
+# BIO_IDEMPOTENT_LOCK=0 时是 no-op），再组自清。内联成一条 EXIT trap——
+# ops/tests/test_run_throttled_task_lock.py 钉的就是"释放走 trap .*cleanup_wrapper_lock.* EXIT"。
+trap 'cleanup_wrapper_lock || true; cleanup_wrapper_pgroup || true' EXIT
+trap 'cleanup_wrapper_lock || true; cleanup_wrapper_pgroup || true; exit 143' HUP INT TERM
 
 # 前置门禁
 bash "${BIO_STORAGE_GUARD:-/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh}" "$LINE_ID" "$SCRIPT_PATH"
@@ -177,6 +216,7 @@ cat <<RUNEOF > "$RUNNING_JSON"
   "status": "running",
   "start_time": "$START_TIME",
   "wrapper_pid": $$,
+  "wrapper_pgid": "$(awk '{ sub(/^[0-9]+ \([^)]*\) /, ""); print $3 }' /proc/$$/stat 2>/dev/null)",
   "note": "运行中标记：正常结束会删除；若残留说明任务被中断（容器 abort / kill），见 con_hf/pitfalls_ledger.md P-23"
 }
 RUNEOF

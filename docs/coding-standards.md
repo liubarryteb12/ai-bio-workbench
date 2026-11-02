@@ -95,3 +95,23 @@ shell 母版写完用 `bash -n <脚本>` 查语法（bash 位于 `D:\Git\bin\bas
   供 SSE 日志流与巡检解析。
 - 跨线引用（输入/输出路径指向本线目录外）由审计前置拒绝，脚本自身不绕过：
   输入路径出现他线字符串即非零退出并说明，不"帮忙"找文件。
+
+## 扩展名必须与解释器声明一致（2026-11-02 新增，机器可判定）
+
+文件扩展名是**给工具看的执行器约定**，不是备注。首行 shebang 与扩展名不一致，会让三处同时出错：
+静态门禁按扩展名把文件送进错误的语法检查器、编辑器 LSP 挂错语言服务、
+`bridge_guard.sh` 按扩展名推断执行器。这类错误不会在运行时立刻炸，而是静默跑偏。
+
+实测案例：`src/*/checkpoint/checkpoint_*_bridge.py` 三个文件首行是 `#!/usr/bin/env bash`，
+内容是合法 bash（316 行），却被命名为 `.py`。`python -m py_compile` 报 `SyntaxError: unmatched ')'`。
+已改名 `.sh`。
+
+| 首行声明 | 允许的扩展名 |
+|---|---|
+| `#!/usr/bin/env bash` / `sh` / `zsh` | `.sh` |
+| `#!/usr/bin/env python` / `python3` | `.py` |
+| `#!/usr/bin/env Rscript` | `.R` |
+| `#!/usr/bin/env node` | `.js` / `.mjs` / `.cjs` |
+
+判据：`node ops/static_gate.mjs` 的 `shebang` 门禁（读前 128 字节，逐文件比对）。
+新增脚本时若扩展名写错，这条门禁会在 CI 与本地同时拦下。
