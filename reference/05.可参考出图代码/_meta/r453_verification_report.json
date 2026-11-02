@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-02T17:54:04+08:00",
+  "generated_at": "2026-11-02T18:14:37+08:00",
   "l1": {
     "missing_packages": [],
     "packages": {
@@ -417,6 +417,45 @@
         "verified": true
       },
       {
+        "artifacts": [
+          {
+            "file": "L2p_gsea_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "py_l2p_enrich_ko"
+          }
+        ],
+        "id": "fig_l2p_gseaplot",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
+            "file": "L2p_enrichment_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "py_l2p_enrich_ko"
+          }
+        ],
+        "id": "fig_l2p_enrichmentplot",
+        "status": "ready",
+        "verified": true
+      },
+      {
+        "artifacts": [
+          {
+            "file": "L2p_konetwork_verified.png",
+            "ok": true,
+            "reason": "ok",
+            "runner": "py_l2p_enrich_ko"
+          }
+        ],
+        "id": "fig_l2_networkplot",
+        "status": "ready",
+        "verified": true
+      },
+      {
         "artifacts": [],
         "id": "fig_kegg_pathway",
         "reason": "本库尚无 pathview KEGG 通路图母版，历史 L2_enrichment_verified.png 是富集气泡图",
@@ -424,8 +463,15 @@
         "verified": false
       }
     ],
-    "ready": 23,
+    "ready": 26,
     "runners": {
+      "py_l2p_enrich_ko": {
+        "command": "nice -n 10 ionice -c 2 -n 4 /root/venvs/bio-py/bin/python3 /mnt/ssd/bio_data/validation/r453_figures_20261102/runs/py_l2p_enrich_ko/L2p_enrich_ko_code.py",
+        "exit_code": 0,
+        "ok": true,
+        "source": "L2_组学常用图/L2p_enrich_ko_code.py",
+        "source_sha256": "6112e679203775cbbdc748883716fb687f4e0e25b55c6e1771d221adffbc7ad7"
+      },
       "py_l2p_more": {
         "command": "nice -n 10 ionice -c 2 -n 4 /root/venvs/bio-py/bin/python3 /mnt/ssd/bio_data/validation/r453_figures_20261102/runs/py_l2p_more/L2p_more_code.py",
         "exit_code": 0,

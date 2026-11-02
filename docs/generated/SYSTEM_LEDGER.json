@@ -1,6 +1,6 @@
 {
   "figureTemplates": {
-    "pendingCount": 59,
+    "pendingCount": 56,
     "pendingDetails": [
       {
         "depsPending": true,
@@ -284,13 +284,6 @@
       },
       {
         "depsPending": true,
-        "id": "fig_l2_networkplot",
-        "missingAdapter": false,
-        "missingSample": true,
-        "unboundStep": false
-      },
-      {
-        "depsPending": true,
         "id": "fig_l3_sankeybubbleplot",
         "missingAdapter": false,
         "missingSample": true,
@@ -326,21 +319,7 @@
       },
       {
         "depsPending": true,
-        "id": "fig_l2p_enrichmentplot",
-        "missingAdapter": false,
-        "missingSample": true,
-        "unboundStep": false
-      },
-      {
-        "depsPending": true,
         "id": "fig_l3p_facetgridplot",
-        "missingAdapter": false,
-        "missingSample": true,
-        "unboundStep": false
-      },
-      {
-        "depsPending": true,
-        "id": "fig_l2p_gseaplot",
         "missingAdapter": false,
         "missingSample": true,
         "unboundStep": false
@@ -416,7 +395,7 @@
         "unboundStep": false
       }
     ],
-    "readyCount": 23,
+    "readyCount": 26,
     "total": 82
   },
   "k40HostAssets": {

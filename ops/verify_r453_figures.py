@@ -40,6 +40,7 @@ RUNNERS = [
         "lang": "r",
         "script": "_meta/R453_compat/L1_p0_gallery_code.R",
     },
+    {"id": "py_l2p_enrich_ko", "lang": "python", "script": "L2_组学常用图/L2p_enrich_ko_code.py"},
 ]
 
 FIGURE_ARTIFACTS = {
@@ -66,6 +67,9 @@ FIGURE_ARTIFACTS = {
     "fig_l1_ridgeline": "r_l1_p0_gallery:L1_ridgeline_verified.png",
     "fig_l1_upsetplot": "r_l1_p0_gallery:L1_upset_verified.png",
     "fig_l1_vennplot": "r_l1_p0_gallery:L1_venn_verified.png",
+    "fig_l2p_gseaplot": "py_l2p_enrich_ko:L2p_gsea_verified.png",
+    "fig_l2p_enrichmentplot": "py_l2p_enrich_ko:L2p_enrichment_verified.png",
+    "fig_l2_networkplot": "py_l2p_enrich_ko:L2p_konetwork_verified.png",
 }
 BLOCKED_FIGURES = [
     {

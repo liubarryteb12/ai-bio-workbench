@@ -175,6 +175,44 @@ const TEMPLATE_MAPPINGS = {
     source_runner_id: "r_l1_p0_gallery",
     sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_vennplot.png",
   },
+  // py_l2p_enrich_ko 三合一 runner 准入（2026-11-02，k40 真机实跑两次 sha256 一致）
+  fig_l2p_gseaplot: {
+    lines: ['line2_scrna'],
+    analysis_step: "l2_branches_enrich",
+    input_tables: ["enrichment_gsea.tsv"],
+    produces: ["L2p_gsea_verified.png"],
+    output_glob: "figures/line2_scrna/L2p_gsea_verified.png",
+    canonical_output: "L2p_gsea_verified.png",
+    source_runner_id: "py_l2p_enrich_ko",
+    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_gseaplot.png",
+  },
+  fig_l2p_enrichmentplot: {
+    lines: ['line2_scrna'],
+    analysis_step: "l2_branches_enrich",
+    input_tables: ["enrichment_ora.tsv"],
+    produces: ["L2p_enrichment_verified.png"],
+    output_glob: "figures/line2_scrna/L2p_enrichment_verified.png",
+    canonical_output: "L2p_enrichment_verified.png",
+    source_runner_id: "py_l2p_enrich_ko",
+    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_enrichmentplot.png",
+  },
+  fig_l2_networkplot: {
+    // 母版是 L2p_enrich_ko_code.py（Python 三合一 runner）。CSV 的语言列写的是 r，
+    // 那是历史「网络图多用 R 包」的登记口径；这里是 mapping.language 覆盖的真源，
+    // 不覆盖会让 parity 的 R seed 断言去检 Python 模板而误红（实测踩过）。
+    language: "python",
+    // linked_mods 也要显式覆盖：CSV 语言列是 r，默认会绑到 l1_figures_bulk（R），
+    // 与 Python 母版语言冲突，registry 校验会判红。绑到本线真实的 Python 出图 mod。
+    linked_mods: ["l2_figures_scrna"],
+    lines: ['line2_scrna'],
+    analysis_step: "l2_ko_drpost",
+    input_tables: ["dr_regulatory_network.tsv"],
+    produces: ["L2p_konetwork_verified.png"],
+    output_glob: "figures/line2_scrna/L2p_konetwork_verified.png",
+    canonical_output: "L2p_konetwork_verified.png",
+    source_runner_id: "py_l2p_enrich_ko",
+    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2_networkplot.png",
+  },
   fig_l2p_barplot: {
     lines: ['line2_scrna'],
     analysis_step: "l2_profile_composition",
@@ -516,7 +554,7 @@ function buildRegistry() {
    *   - pending_mapping 必须为 0（CSV 标 ready 但映射不全 = 真缺陷）；
    *   - blocked_r453 固定 1（只有 fig_kegg_pathway 一条被裁定的阻塞）。
    */
-  const READY_BASELINE = 23;
+  const READY_BASELINE = 26;
   const statusSum = Object.values(counts).reduce((acc, n) => acc + n, 0);
   if (statusSum !== 82) fail(`状态计数之和不是 82：${statusSum}`);
   if ((counts.ready || 0) < READY_BASELINE) fail(`ready 从基线 ${READY_BASELINE} 倒退：${counts.ready || 0}`);

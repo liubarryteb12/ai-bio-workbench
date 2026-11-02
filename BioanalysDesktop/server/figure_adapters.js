@@ -27,6 +27,9 @@ const SUPPORTED_TEMPLATE_IDS = new Set([
   'fig_l1_ridgeline',
   'fig_l1_upsetplot',
   'fig_l1_vennplot',
+  'fig_l2p_gseaplot',
+  'fig_l2p_enrichmentplot',
+  'fig_l2_networkplot',
 ]);
 
 function normalizeRelativePath(value, fieldName) {
@@ -143,6 +146,7 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import networkx as nx
 
 seed_value = os.environ.get("BIOANALYS_SEED", "")
 if not seed_value:
@@ -843,6 +847,101 @@ print(f"ADAPT_REAL_INPUT_OK boxplot groups={len(order)}")
 
 // The line2 registry entry uses the verified Python UMAP source so it can stay
 // inside line2's Python module graph while keeping its original figure id.
+PYTHON_OVERLAYS.fig_l2p_gseaplot = `# Real-data GSEA ridge overlay
+gsea = pd.read_csv(input_data, sep="\\t")
+required = {"celltype", "Term", "NES"}
+missing = sorted(required.difference(gsea.columns))
+if missing:
+    raise ValueError(f"gsea input columns missing: {missing}")
+gsea["NES"] = pd.to_numeric(gsea["NES"], errors="coerce")
+gsea = gsea.dropna(subset=["celltype", "Term", "NES"])
+if gsea.empty:
+    raise ValueError("gsea input has no numeric NES rows")
+order = gsea.groupby("celltype", observed=True)["NES"].median().sort_values().index.tolist()
+fig, ax = plt.subplots(figsize=(89 / 25.4, 75 / 25.4))
+for idx, celltype in enumerate(order):
+    values = np.sort(gsea.loc[gsea["celltype"] == celltype, "NES"].to_numpy())
+    ax.fill_between(values, idx, idx + np.linspace(0, 0.28, values.size),
+                    color=plt.cm.tab10(idx % 10), alpha=0.55, lw=0)
+    ax.plot(values, np.repeat(idx, values.size), color="#4d4d4d", lw=0.6)
+ax.set_yticks(range(len(order)), order, fontsize=5.5)
+ax.axvline(0, ls="--", lw=0.4, c="#737373")
+ax.set_xlabel("Normalized enrichment score (NES)")
+ax.set_title("GSEA NES by cell type", fontsize=7.5)
+for side in ("top", "right"):
+    ax.spines[side].set_visible(False)
+fig.tight_layout()
+fig.savefig(output_file, dpi=300, bbox_inches="tight")
+plt.close(fig)
+print(f"ADAPT_REAL_INPUT_OK gsea rows={len(gsea)} celltypes={len(order)}")
+`;
+
+PYTHON_OVERLAYS.fig_l2p_enrichmentplot = `# Real-data ORA bubble overlay
+ora = pd.read_csv(input_data, sep="\\t")
+required = {"Term", "Overlap", "Adjusted P-value"}
+missing = sorted(required.difference(ora.columns))
+if missing:
+    raise ValueError(f"ora input columns missing: {missing}")
+ora["padj"] = pd.to_numeric(ora["Adjusted P-value"], errors="coerce")
+ora["overlap"] = pd.to_numeric(ora["Overlap"].astype(str).str.split("/").str[0], errors="coerce")
+ora = ora.dropna(subset=["padj", "overlap"])
+ora = ora[ora["padj"] > 0]
+if ora.empty:
+    raise ValueError("ora input has no usable rows")
+top = ora.nsmallest(15, "padj").copy()
+top["neglog"] = -np.log10(top["padj"])
+fig, ax = plt.subplots(figsize=(100 / 25.4, 75 / 25.4))
+sizes = top["overlap"] / max(top["overlap"].max(), 1) * 110 + 10
+scatter = ax.scatter(top["neglog"], top["overlap"], s=sizes,
+                     c=top["neglog"], cmap="viridis", alpha=0.82,
+                     linewidths=0.4, edgecolors="#333333")
+for _, row in top.head(4).iterrows():
+    label = str(row["Term"])
+    ax.annotate(label[:42], (row["neglog"], row["overlap"]), fontsize=4.5,
+                xytext=(3, 3), textcoords="offset points")
+ax.set_xlabel("-log10(adjusted p)")
+ax.set_ylabel("overlap genes")
+ax.set_title("Over-representation analysis (top 15)", fontsize=7.5)
+fig.colorbar(scatter, ax=ax, fraction=0.046, pad=0.04, label="-log10(padj)")
+for side in ("top", "right"):
+    ax.spines[side].set_visible(False)
+fig.tight_layout()
+fig.savefig(output_file, dpi=300, bbox_inches="tight")
+plt.close(fig)
+print(f"ADAPT_REAL_INPUT_OK ora terms={len(top)}")
+`;
+
+PYTHON_OVERLAYS.fig_l2_networkplot = `# Real-data differential-regulation network overlay
+net = pd.read_csv(input_data, sep="\\t")
+required = {"tf", "target"}
+missing = sorted(required.difference(net.columns))
+if missing:
+    raise ValueError(f"network input columns missing: {missing}")
+sig_col = "target_is_significant_dr" if "target_is_significant_dr" in net.columns else None
+edges = net.dropna(subset=["tf", "target"]).copy()
+if edges.empty:
+    raise ValueError("network input has no usable edges")
+graph = nx.DiGraph()
+for _, row in edges.iterrows():
+    graph.add_edge(str(row["tf"]), str(row["target"]))
+if graph.number_of_nodes() < 2:
+    raise ValueError("network needs at least 2 nodes")
+pos = nx.spring_layout(graph, seed=seed, k=0.5)
+degree_rank = sorted(graph.degree, key=lambda item: item[1], reverse=True)
+hubs = {node for node, _ in degree_rank[:5]}
+fig, ax = plt.subplots(figsize=(89 / 25.4, 75 / 25.4))
+colors = ["#D55E00" if node in hubs else "#0072B2" for node in graph.nodes]
+nx.draw_networkx_edges(graph, pos, ax=ax, alpha=0.45, width=0.6, arrows=False)
+nx.draw_networkx_nodes(graph, pos, ax=ax, node_size=70, node_color=colors, linewidths=0.3)
+nx.draw_networkx_labels(graph, pos, ax=ax, font_size=4.2)
+ax.set_title("Differential regulation network (knockout)", fontsize=7.5)
+ax.axis("off")
+fig.tight_layout()
+fig.savefig(output_file, dpi=300, bbox_inches="tight")
+plt.close(fig)
+print(f"ADAPT_REAL_INPUT_OK network nodes={graph.number_of_nodes()} edges={graph.number_of_edges()}")
+`;
+
 PYTHON_OVERLAYS.fig_l2_umap = PYTHON_OVERLAYS.fig_l2p_umap;
 
 export function buildAdaptedFigureSource({

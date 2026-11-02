@@ -51,7 +51,7 @@ L2,KEGG通路图,Omics,KeggPathwayPlot,r,19,0,dbplyr;pathview,blocked_r453,
 L2,曼哈顿图,Omics,ManhattanPlot,r,11,0,aplot;qqman;tidyverse,待采集,
 L2,多组火山图,Omics,MultiVolcanoPlot,r,9,0,corrplot;scRNAtoolVis,待采集,
 L2,基因突变全景瀑布图,Omics,MutationOncoplot,r,9,0,ComplexHeatmap`；`tidyverse`；`maftools,待采集,
-L2,网络图,Omics,NetworkPlot,r,12,0,MetaNet;dplyr;igraph;pcutils,待采集,
+L2,网络图,Omics,NetworkPlot,r,12,0,MetaNet;dplyr;igraph;pcutils,ready,L2_组学常用图/L2p_konetwork_verified.png
 L3,组合桑基气泡图,Omics,SankeyBubblePlot,r,6,0,-,待采集,
 L2,文字叠加的富集分析柱状图,Omics,TextEnrichmentBarPlot,r,6,0,-,待采集,
 L2,火山图,Omics,VolcanoPlot,r,5,0,ggrepel;readxl;tidyverse,ready,L2_组学常用图/L2_volcano_verified.png
@@ -60,9 +60,9 @@ L2,条形图（Python）,Python,BarPlot,python,0,6,matplotlib`、`seaborn`、`pa
 L2,箱线图（Python）,Python,BoxPlot,python,0,6,matplotlib`、`seaborn`、`pandas`、`numpy,ready,L2_组学常用图/L2p_box_verified.png
 L2,复杂热图（Python）,Python,ComplexHeatmap,python,0,4,matplotlib`、`pandas`、`numpy`、`PyComplexHeatmap,待采集,
 L2,混淆矩阵（Python）,Python,ConfusionMatrixPlot,python,0,4,matplotlib`、`seaborn`、`numpy`、`scikit-learn,待采集,
-L2,富集分析图（Python）,Python,EnrichmentPlot,python,0,4,matplotlib`、`seaborn`、`pandas`、`numpy,待采集,
+L2,富集分析图（Python）,Python,EnrichmentPlot,python,0,4,matplotlib`、`seaborn`、`pandas`、`numpy,ready,L2_组学常用图/L2p_enrichment_verified.png
 L3,分面图（Python）,Python,FacetGridPlot,python,0,5,matplotlib`、`seaborn`、`pandas`、`numpy,待采集,
-L2,GSEA 运行分数图（Python）,Python,GseaPlot,python,0,4,matplotlib`、`seaborn`、`pandas`、`numpy,待采集,
+L2,GSEA 运行分数图（Python）,Python,GseaPlot,python,0,4,matplotlib`、`seaborn`、`pandas`、`numpy,ready,L2_组学常用图/L2p_gsea_verified.png
 L2,热力图（Python）,Python,Heatmap,python,0,5,matplotlib`、`seaborn`、`pandas`、`numpy`、`scipy,ready,L2_组学常用图/L2p_heatmap_verified.png
 L3,多面板组合图,R,MultiPanelPlot,r,6,0,ggplot2;patchwork,ready,L3_高级组合图/L3_multipanel_verified.png
 L2,PCA 图（Python）,Python,PcaPlot,python,0,5,matplotlib`、`seaborn`、`pandas`、`numpy`、`scikit-learn,待采集,

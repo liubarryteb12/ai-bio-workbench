@@ -219,3 +219,12 @@ BioanalysDesktop/Python/
 
 # pwsh 重定向事故产物防复发（$f 展开失败时字面量落盘）
 %SystemDrive%/
+
+# 批次 B（py_l2p_enrich_ko 三合一 runner）
+!reference/05.可参考出图代码/L2_组学常用图/L2p_enrich_ko_code.py
+!reference/05.可参考出图代码/L2_组学常用图/L2p_gsea_verified.png
+!reference/05.可参考出图代码/L2_组学常用图/L2p_enrichment_verified.png
+!reference/05.可参考出图代码/L2_组学常用图/L2p_konetwork_verified.png
+!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_gseaplot.png
+!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_enrichmentplot.png
+!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2_networkplot.png

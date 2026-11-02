@@ -1927,13 +1927,13 @@
       "name": "网络图",
       "level": "L2",
       "category": "Omics",
-      "language": "r",
-      "source": null,
-      "source_sha256": null,
-      "preview": null,
-      "preview_sha256": null,
-      "verified": false,
-      "deps_status": "pending",
+      "language": "python",
+      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_enrich_ko_code.py",
+      "source_sha256": "6112e679203775cbbdc748883716fb687f4e0e25b55c6e1771d221adffbc7ad7",
+      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_konetwork_verified.png",
+      "preview_sha256": "8cc635808ff926fa9b2b7cadafa48a93aed6fc85bfe8d13f42514b738dc67294",
+      "verified": true,
+      "deps_status": "ready",
       "deps": [
         "MetaNet",
         "dplyr",
@@ -1941,19 +1941,25 @@
         "pcutils"
       ],
       "linked_mods": [
-        "l1_figures_bulk"
+        "l2_figures_scrna"
       ],
       "adapt_vars": {
         "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
         "group_col": "分组列名"
       },
-      "lines": [],
-      "analysis_step": null,
-      "input_tables": [],
-      "produces": [],
-      "output_glob": null,
-      "canonical_output": null,
-      "sample_project_output": null,
+      "lines": [
+        "line2_scrna"
+      ],
+      "analysis_step": "l2_ko_drpost",
+      "input_tables": [
+        "dr_regulatory_network.tsv"
+      ],
+      "produces": [
+        "L2p_konetwork_verified.png"
+      ],
+      "output_glob": "figures/line2_scrna/L2p_konetwork_verified.png",
+      "canonical_output": "L2p_konetwork_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2_networkplot.png",
       "deprecated": false
     },
     {
@@ -2259,12 +2265,12 @@
       "level": "L2",
       "category": "Python",
       "language": "python",
-      "source": null,
-      "source_sha256": null,
-      "preview": null,
-      "preview_sha256": null,
-      "verified": false,
-      "deps_status": "pending",
+      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_enrich_ko_code.py",
+      "source_sha256": "6112e679203775cbbdc748883716fb687f4e0e25b55c6e1771d221adffbc7ad7",
+      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_enrichment_verified.png",
+      "preview_sha256": "f61359c27354710a50613a811904b7c3a9f8baddb86b79e591b086eb3e56e7b9",
+      "verified": true,
+      "deps_status": "ready",
       "deps": [
         "matplotlib",
         "seaborn",
@@ -2279,13 +2285,19 @@
         "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
         "group_col": "分组列名"
       },
-      "lines": [],
-      "analysis_step": null,
-      "input_tables": [],
-      "produces": [],
-      "output_glob": null,
-      "canonical_output": null,
-      "sample_project_output": null,
+      "lines": [
+        "line2_scrna"
+      ],
+      "analysis_step": "l2_branches_enrich",
+      "input_tables": [
+        "enrichment_ora.tsv"
+      ],
+      "produces": [
+        "L2p_enrichment_verified.png"
+      ],
+      "output_glob": "figures/line2_scrna/L2p_enrichment_verified.png",
+      "canonical_output": "L2p_enrichment_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_enrichmentplot.png",
       "deprecated": false
     },
     {
@@ -2329,12 +2341,12 @@
       "level": "L2",
       "category": "Python",
       "language": "python",
-      "source": null,
-      "source_sha256": null,
-      "preview": null,
-      "preview_sha256": null,
-      "verified": false,
-      "deps_status": "pending",
+      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_enrich_ko_code.py",
+      "source_sha256": "6112e679203775cbbdc748883716fb687f4e0e25b55c6e1771d221adffbc7ad7",
+      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_gsea_verified.png",
+      "preview_sha256": "e492e7f80235297e1782146ac6cf2a272c703cf4e023c07d7e23001d0034e32e",
+      "verified": true,
+      "deps_status": "ready",
       "deps": [
         "matplotlib",
         "seaborn",
@@ -2349,13 +2361,19 @@
         "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
         "group_col": "分组列名"
       },
-      "lines": [],
-      "analysis_step": null,
-      "input_tables": [],
-      "produces": [],
-      "output_glob": null,
-      "canonical_output": null,
-      "sample_project_output": null,
+      "lines": [
+        "line2_scrna"
+      ],
+      "analysis_step": "l2_branches_enrich",
+      "input_tables": [
+        "enrichment_gsea.tsv"
+      ],
+      "produces": [
+        "L2p_gsea_verified.png"
+      ],
+      "output_glob": "figures/line2_scrna/L2p_gsea_verified.png",
+      "canonical_output": "L2p_gsea_verified.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_gseaplot.png",
       "deprecated": false
     },
     {

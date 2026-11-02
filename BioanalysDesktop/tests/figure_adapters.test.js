@@ -39,6 +39,9 @@ const SUPPORTED_IDS = [
   'fig_l1_ridgeline',
   'fig_l1_upsetplot',
   'fig_l1_vennplot',
+  'fig_l2p_gseaplot',
+  'fig_l2p_enrichmentplot',
+  'fig_l2_networkplot',
 ];
 
 const PROJECT_ID = 'PRJ_AIMS_V3_20261027';
@@ -99,6 +102,24 @@ const CASES = {
     },
     inputPath: 'data/line3_spatial/processed/spatial_dimred_human.h5ad',
     truth: { extension: '.h5ad', language: 'python' },
+  },
+  fig_l2p_gseaplot: {
+    lineId: 'line2_scrna',
+    adaptVars: { input_data: 'data/line2_scrna/processed/enrichment_gsea.tsv' },
+    inputPath: 'data/line2_scrna/processed/enrichment_gsea.tsv',
+    truth: { columns: ['celltype', 'Term', 'NES'], language: 'python' },
+  },
+  fig_l2p_enrichmentplot: {
+    lineId: 'line2_scrna',
+    adaptVars: { input_data: 'data/line2_scrna/processed/enrichment_ora.tsv' },
+    inputPath: 'data/line2_scrna/processed/enrichment_ora.tsv',
+    truth: { columns: ['Term', 'Overlap', 'Adjusted P-value'], language: 'python' },
+  },
+  fig_l2_networkplot: {
+    lineId: 'line2_scrna',
+    adaptVars: { input_data: 'data/line2_scrna/processed/dr_regulatory_network.tsv' },
+    inputPath: 'data/line2_scrna/processed/dr_regulatory_network.tsv',
+    truth: { columns: ['tf', 'target'], language: 'python' },
   },
   fig_l1_ridgeline: {
     lineId: 'line1_bulk',
@@ -188,6 +209,33 @@ const CASES = {
     },
     inputPath: 'data/line1_bulk/processed/external_validation_preds.tsv',
     truth: { columns: ['true', 'pred', 'prob_LS'], language: 'r' },
+  },
+  fig_l2p_gseaplot: {
+    source: 'reference/05.可参考出图代码/L2_组学常用图/L2p_enrich_ko_code.py',
+    language: 'python',
+    lineId: 'line2_scrna',
+    inputPath: 'data/line2_scrna/processed/enrichment_gsea.tsv',
+    canonicalOutput: 'L2p_gsea_verified.png',
+    adaptVars: { input_data: 'data/line2_scrna/processed/enrichment_gsea.tsv' },
+    marker: 'gsea',
+  },
+  fig_l2p_enrichmentplot: {
+    source: 'reference/05.可参考出图代码/L2_组学常用图/L2p_enrich_ko_code.py',
+    language: 'python',
+    lineId: 'line2_scrna',
+    inputPath: 'data/line2_scrna/processed/enrichment_ora.tsv',
+    canonicalOutput: 'L2p_enrichment_verified.png',
+    adaptVars: { input_data: 'data/line2_scrna/processed/enrichment_ora.tsv' },
+    marker: 'ora',
+  },
+  fig_l2_networkplot: {
+    source: 'reference/05.可参考出图代码/L2_组学常用图/L2p_enrich_ko_code.py',
+    language: 'python',
+    lineId: 'line2_scrna',
+    inputPath: 'data/line2_scrna/processed/dr_regulatory_network.tsv',
+    canonicalOutput: 'L2p_konetwork_verified.png',
+    adaptVars: { input_data: 'data/line2_scrna/processed/dr_regulatory_network.tsv' },
+    marker: 'network',
   },
   fig_l1_ridgeline: {
     source: 'reference/05.可参考出图代码/_meta/R453_compat/L1_p0_gallery_code.R',
