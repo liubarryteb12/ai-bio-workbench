@@ -26,14 +26,20 @@ if [ ! -s "$STAGE/v2_venvs.tar.gz" ]; then
   tar -C /root -zcf "$STAGE/v2_venvs.tar.gz" venvs
 fi
 
-# 卷 3：SSD 上的运维/母版/工具链（含 layout_autoload 垫片）
-if [ ! -s "$STAGE/v3_bio_data.tar.gz" ]; then
-  echo "[backup] v3 /mnt/ssd/bio_data 打包中…"
-  tar -C /mnt/ssd --exclude='./bio_data/_coldbackup' --exclude='./bio_data/projects' \
-      --exclude='./bio_data/public_references' -zcf "$STAGE/v3_bio_data.tar.gz" bio_data
+# 卷 3：SSD 上的运维/母版/工具链/验证证据（白名单，不用 exclude）
+# 踩过的坑：--exclude='./bio_data/projects' 在 tar -C /mnt/ssd 下不生效，
+# 21G 项目数据全被收进 v3 且持续增长（实测 8 分钟到 3.5G 未完）。
+# 白名单语义明确：只备 ops（含 layout_autoload 垫片）/ bin（母版部署区）/
+# src（母版真源镜像）/ validation（r453 图件验证证据链）/ a2a-core / a2a-gate。
+# projects 与 public_references 不备：前者是业务数据（远端 SSD 为唯一真源，
+# 丢了要重跑分析，冷备不解决），后者是可重新下载的大型参考库。
+if [ ! -s "$STAGE/v3_ops_bin_src.tar.gz" ]; then
+  echo "[backup] v3 工具链与母版白名单打包中…"
+  tar -C /mnt/ssd/bio_data -zcf "$STAGE/v3_ops_bin_src.tar.gz" \
+      ops bin src validation a2a-core a2a-gate
 fi
 
 echo "[backup] 容器侧产物："
 ls -la "$STAGE"
 echo "[backup] 校验和："
-cd "$STAGE" && sha256sum v1_opt_R.tar.gz v2_venvs.tar.gz v3_bio_data.tar.gz
+cd "$STAGE" && sha256sum v1_opt_R.tar.gz v2_venvs.tar.gz v3_ops_bin_src.tar.gz
