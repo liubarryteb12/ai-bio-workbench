@@ -74,27 +74,77 @@ if (-not (Test-Path $PublicKeyPath)) {
   }
 }
 
-# 关 4：计数核对
+# 关 4：清单与磁盘的集合双向差集（2026-11-02，4 Argon 第十七轮第 1 节）
+#
+# 为什么不能只做「总数相减」：磁盘 115 含 4 个签名元数据自身 + 111 个业务文件，
+# 清单 117 条是不带小节前缀的相对路径。两个维度硬比只会得到假阳性。
+# 为什么也不能只看第 3 关：第 3 关是单向检查（遍历清单查磁盘），
+# 磁盘上多出的未登记「幽灵文件」（临时调试物、.bak、未脱敏配置）它 100% 放行。
+#
+# 判据：把清单每条按所属小节拼成磁盘相对路径，与「磁盘集合扣除元数据白名单」
+# 求双向差集，两侧都必须为空。多出即幽灵文件，缺失即清单漂移。
+$metaFiles = @('CHECKSUMS.sha256', 'CHECKSUMS.sig', 'delivery_manifest.json', 'ED25519_PUBLIC_KEY.pem')
+# 清单按分类登记业务文件；解读报告不在该登记表内，属交付必需但不入哈希清单
+$allowedUnlistedPrefixes = @('03_Interpretation_Report/')
+
 $manifestPath = Join-Path $delivery.FullName 'delivery_manifest.json'
 if (Test-Path $manifestPath) {
   $mf = Get-Content $manifestPath -Raw | ConvertFrom-Json
-  $counted = @()
+  # 小节 -> 磁盘目录前缀（实测:两个目录，01 放代码，02 放图表）
+  $sectionDir = @{
+    scripts = '01_Adapted_Code'
+    adapted_code = '01_Adapted_Code'
+    figures = '02_Figures_and_Tables'
+    tables = '02_Figures_and_Tables'
+  }
+  $declared = New-Object System.Collections.Generic.HashSet[string]
   foreach ($prop in $mf.files.PSObject.Properties) {
-    $counted += [pscustomobject]@{ section = $prop.Name; declared = @($prop.Value).Count }
-  }
-  foreach ($row in $counted) {
-    $declaredTotal = 0
-    if ($mf.counts.PSObject.Properties.Name -contains $row.section) {
-      $declaredTotal = [int]$mf.counts.($row.section)
-    }
-    # 清单里登记的条数必须与 counts 一致（两侧都是声明值，防清单被裁剪）
-    if ($declaredTotal -ne 0 -and $row.declared -ne 0 -and $declaredTotal -ne $row.declared) {
-      # figures/tables 的 counts 与条目数口径不同时只告警，不算红
-      Write-Host ("[ WARN] " + $row.section + "：counts=" + $declaredTotal + " 条目=" + $row.declared) -ForegroundColor Yellow
+    $prefix = $sectionDir[$prop.Name]
+    foreach ($rel in @($prop.Value)) {
+      if ($null -eq $rel) { continue }
+      $full = if ($prefix) { "$prefix/$rel" } else { "$rel" }
+      [void]$declared.Add(($full -replace '\\', '/'))
     }
   }
-  $diskFiles = (Get-ChildItem $delivery.FullName -Recurse -File | Measure-Object).Count
-  Ok "清单计数：$($counted | ForEach-Object { $_.section + '=' + $_.declared } | Out-String -NoNewline)；磁盘文件 $diskFiles"
+
+  $diskAll = Get-ChildItem $delivery.FullName -Recurse -File | ForEach-Object {
+    $_.FullName.Substring($delivery.FullName.Length + 1).Replace('\', '/')
+  }
+  $diskBusiness = $diskAll | Where-Object { $metaFiles -notcontains $_ }
+
+  # 双向差集：(磁盘 - 白名单前缀) 与 清单
+  $ghosts = @()
+  foreach ($f in $diskBusiness) {
+    if ($declared.Contains($f)) { continue }
+    $allowed = $false
+    foreach ($p in $allowedUnlistedPrefixes) { if ($f.StartsWith($p)) { $allowed = $true; break } }
+    if (-not $allowed) { $ghosts += $f }
+  }
+  $missingFiles = @($declared | Where-Object { -not (Test-Path (Join-Path $delivery.FullName $_)) })
+
+  if ($ghosts.Count -eq 0) {
+    Ok ("无幽灵文件：磁盘业务文件 " + $diskBusiness.Count + " 个，全部在清单或白名单内")
+  } else {
+    Fail ("发现 " + $ghosts.Count + " 个未登记文件（幽灵私货）：" + ($ghosts -join ', '))
+  }
+  if ($missingFiles.Count -eq 0) {
+    Ok ("清单 " + $declared.Count + " 条全部落到磁盘")
+  } else {
+    Fail ("清单有 " + $missingFiles.Count + " 条在磁盘缺失：" + ($missingFiles -join ', '))
+  }
+
+  # counts 内部自洽：分项之和必须等于清单条目数（排除不受 counts 管理的分类）
+  $sumCounted = 0
+  $mismatch = @()
+  foreach ($row in $mf.counts.PSObject.Properties) {
+    $sumCounted += [int]$row.Value
+    $declaredInSection = @($mf.files.($row.Name)).Count
+    if ($declaredInSection -ne 0 -and [int]$row.Value -ne $declaredInSection) {
+      $mismatch += ($row.Name + '：counts=' + $row.Value + ' 条目=' + $declaredInSection)
+    }
+  }
+  if ($mismatch.Count -eq 0) { Ok ("counts 分项与清单条目逐类一致，合计 " + $sumCounted) }
+  else { Fail ("counts 与清单条目不一致：" + ($mismatch -join '；')) }
 }
 
 Write-Host ''

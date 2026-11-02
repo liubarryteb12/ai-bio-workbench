@@ -25,6 +25,11 @@ test('delivery acceptance script exists and covers all four gates', () => {
   assert.ok(text.includes('verify_delivery_signature.mjs'), '关 3 缺失：未调用验签核');
   assert.ok(text.includes('VERIFIED'), '关 3 判据缺失：未断言 VERIFIED 输出');
   assert.ok(text.includes('delivery_manifest.json'), '关 4 缺失：未读交付清单');
+  // 关 4 必须是集合双向差集，不能退化成总数相减（后者放行磁盘夹带的幽灵文件）
+  assert.ok(text.includes('ghosts'), '关 4 缺失：未做幽灵文件（磁盘多出未登记文件）检测');
+  assert.ok(text.includes('missingFiles'), '关 4 缺失：未做清单漂移（清单有、磁盘无）检测');
+  assert.ok(text.includes('$metaFiles'), '关 4 缺失：未定义签名元数据白名单');
+  assert.ok(text.includes('$sectionDir'), '关 4 缺失：未按小节拼装磁盘相对路径（清单路径不带目录前缀）');
   assert.ok(text.includes('DELIVERY_ACCEPTANCE_OK'), '缺成功哨兵，无法从日志判定全绿');
   assert.ok(text.includes('ACCEPTANCE_FAILED'), '缺失败哨兵，失败时无法区分「没跑」与「跑挂了」');
 });
