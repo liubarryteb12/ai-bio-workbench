@@ -14,13 +14,26 @@ import {
 } from '../server/figure_catalog.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = path.resolve(HERE, '..', '..');
+
+/**
+ * 目录导入的 materialized 产物（library/figures 与 con_hf/runs/2026-10-27_figure_catalog_adaptation
+ * 的 600+ 文件）全部被 gitignore——catalog.json 登记的是本机导入现场。
+ * 便携包与新克隆没有这些数据，pilot 解析与逐项校验必须如实跳过，
+ * 而不是把「数据缺失」报成「代码错误」。
+ */
+function materializedPresent() {
+  const probe = path.join(REPO_ROOT, 'reference', '05.可参考出图代码', 'library', 'figures');
+  try { return fs.existsSync(probe) && fs.readdirSync(probe).length > 0; } catch { return false; }
+}
 const REPO = path.resolve(HERE, '..', '..');
 
 function sha256(file) {
   return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 }
 
-test('catalog searches and resolves the Manhattan single-figure pilot', () => {
+test('catalog searches and resolves the Manhattan single-figure pilot', (testContext) => {
+  if (!materializedPresent()) { testContext.skip('HOST_MISSING_LOCAL_DATA: 图录 materialized 产物未在本机（catalog 导入现场数据，gitignore）'); return; }
   const catalog = loadFigureCatalog();
   assert.equal(catalog.schema_version, 1);
   assert.equal(catalog.entries.length, 772);
@@ -57,6 +70,7 @@ test('catalog searches and resolves the Manhattan single-figure pilot', () => {
 });
 
 test('catalog API exposes search and single-image preview', async (t) => {
+  if (!materializedPresent()) { t.skip('HOST_MISSING_LOCAL_DATA: 图录 materialized 产物未在本机（catalog 导入现场数据，gitignore）'); return; }
   const port = await new Promise((resolve, reject) => {
     const probe = net.createServer();
     probe.on('error', reject);

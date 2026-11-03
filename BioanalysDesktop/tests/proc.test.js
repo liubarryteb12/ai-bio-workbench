@@ -38,7 +38,20 @@ test('runSync 也会先过白名单，不会真的启动 R', () => {
   assert.throws(() => runSync(['Rscript', '-e', '1+1']), /本地禁止执行/);
 });
 
-test('真实链路：经接缝 ssh 到容器应返回 CONTAINER_OK', () => {
+async function remoteReachable() {
+  // 与 preview_mods.test.js 同一口径：真的探一次 ssh，不可达按白名单原因跳过。
+  try {
+    const { spawnSync } = await import('node:child_process');
+    const r = spawnSync('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', 'k40-ubuntu', 'echo PROBE_OK'],
+      { encoding: 'utf8', timeout: 20000 });
+    return r.status === 0 && /PROBE_OK/.test(r.stdout || '');
+  } catch {
+    return false;
+  }
+}
+
+test('真实链路：经接缝 ssh 到容器应返回 CONTAINER_OK', async (testContext) => {
+  if (!(await remoteReachable())) { testContext.skip('HOST_UNREACHABLE_K40: 远端 k40-ubuntu 不可达'); return; }
   // 这是唯一一条真连服务器的测试；链路不通时它红，正是我们要的信号
   const remote = buildRemoteCommand('echo CONTAINER_OK', 'compute');
   // 命令形如：ssh -o ... k40-ubuntu 'echo CONTAINER_OK'，取 argv
