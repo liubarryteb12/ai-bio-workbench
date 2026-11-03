@@ -78,7 +78,7 @@ sh ops/k40/hostkey_guard_selftest.sh "$PREFIX/var/service"
 # 末行 SELFTEST_PASS 即全绿，exit 0；任一断言失败则 SELFTEST_FAIL，exit 1
 ```
 
-做法：把两个 `run` 脚本复制到 `mktemp -d` 出来的临时目录，密钥路径换成临时路径、末尾 `exec` 换成 `echo EXEC_REACHED`，再用 PATH shim 冒充 `ssh-keygen` 与 `proot-distro`。覆盖七类断言 x 两个服务：
+做法：把两个 `run` 脚本复制到 `mktemp -d` 出来的临时目录，密钥路径换成临时路径、段4 的 `exec` 换成 `echo EXEC_REACHED`，再用 PATH shim 冒充 `ssh-keygen` 与 `proot-distro`。共 21 条断言（sshd 11 条、ubuntu-sshd 10 条），覆盖七类 x 两个服务：
 
 1. 缺 key 打印告警
 2. 缺 key 调用生成命令（并核对参数：`dropbearkey -t ed25519 -f /etc/dropbear/dropbear_ed25519_host_key`）
@@ -86,10 +86,17 @@ sh ops/k40/hostkey_guard_selftest.sh "$PREFIX/var/service"
 4. 缺 key 之后密钥文件确实出现
 5. 有 key 时**不**调用生成命令
 6. 有 key 时仍继续启动
-7. 生成失败（shim 返回 1 且不落文件）时打印失败行
+7. 生成失败（shim 返回 1 且不落文件）时打印层代号且 `exit 1`
+
+四段式模板上线（2026-11-03）后，自测暴露出两处假绿，都已修掉并补成契约断言：
+
+- **哨兵替换误命中段2**：旧写法 `awk '/^exec /{...}'` 会把段2 的 `exec 2>&1` 一起换成哨兵，脚本第 3 行就退出，守卫段一次也没跑到。改成只替换「最后一行以 exec 开头」。
+- **`PREFIX` 没重定向**：sshd 守卫用 `$PREFIX` 拼密钥路径，不替换 `^PREFIX=` 就会去读生产密钥，在真机上恒命中「有 key」分支，同样是看不见的假绿。
+
+设备上跑完：21 条全 ok、末行 `SELFTEST_PASS`、exit 0。模板与两个陷阱的完整说明见 [k40_service_contract.md](k40_service_contract.md)。
 
 ## 6. 代价与边界
 
 - **生成即轮换**：新 host key 会改指纹，客户端 `known_hosts` 要同步更新。这是恢复可达性应付的代价，脚本只在文件缺失时动手，正常运行与重启不碰密钥。
 - **`ssh-keygen -A` 会顺带补齐新算法密钥**：本机 OpenSSH 10 会额外生成 `ssh_host_mldsa44_ed25519_key`。守卫只要求 ed25519 存在，所以「只缺 MLDSA」不会触发生成，sshd 照常起。演练后把这类顺带产物删掉，保持设备状态与演练前一致。
-- **契约由测试钉住**：`BioanalysDesktop/tests/hostkey_guard.test.js` 四条断言，覆盖两个脚本的守卫位置顺序、`-r` 与生成路径一致、以及「诊断不许写 stderr」。五条变异全部判红（守卫条件取反、`-r` 路径改成 other_key、告警改走 stderr、生成命令换成 `true`、ubuntu 守卫条件取反）。
+- **契约由测试钉住**：`BioanalysDesktop/tests/hostkey_guard.test.js` 与 `runit_sv_contract.test.js`，覆盖两个脚本的守卫顺序、`-r` 与生成路径一致、诊断不许写 stderr、四段式模板与 `exec 2>&1` 位置。八条变异全部判红（去掉/挪走 `exec 2>&1`、告警改走 stderr、丢掉层代号、`set -eu` 退化、去掉 PREFIX 兜底、`-r` 换路径、crond 丢 `-n`）。

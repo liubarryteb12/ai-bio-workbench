@@ -10,73 +10,82 @@ const SSHD = path.join(REPO, 'ops', 'k40', 'sv', 'sshd', 'run');
 const UBU = path.join(REPO, 'ops', 'k40', 'sv', 'ubuntu-sshd', 'run');
 const SELFTEST = path.join(REPO, 'ops', 'k40', 'hostkey_guard_selftest.sh');
 
-// ── runit host key 守卫的静态契约（2026-11-03，4 Argon 第十八轮）──
+// ── host key 守卫的静态契约（2026-11-03，4 Argon 第十八/十九轮）──
 //
-// 故障形态（实测）：host key 文件缺失时 sshd 打印 "no hostkeys available"、dropbear 打印
+// 故障形态（实测）：host key 缺失时 sshd 打印 "no hostkeys available"、dropbear 打印
 // "No hostkeys available" 后立即退出（exit 1），runit 反复重启，8022 / 10022 永不监听，
-// 服务状态显示 run 但连不上。守卫必须在「缺 key 时生成」，且只在缺 key 时生成。
+// 服务状态显示 run 但连不上。守卫只在缺 key 时生成；生成失败或生成后仍缺，必须打层代号
+// 并 exit 1（禁止「告警后照常启动」，那会让 runit 用无 key 的 sshd 空转）。
 //
-// 另一个实测事实决定写法：本机 runit 的 log/run 只接 fd1（exec cat >>），run 脚本写到
-// stderr 的诊断会丢。所以守卫的诊断一律走 stdout，任何一处 >&2 都会让故障看不见。
+// 诊断只走 stdout 的理由（runit 只接 fd1）写在 tests/runit_sv_contract.test.js。
 
 const read = (p) => fs.readFileSync(p, 'utf8');
-const idx = (text, needle) => {
-  const i = text.indexOf(needle);
+// 只数代码行里的 exit：注释里也会写「exit 1」，混进来会让计数断言失真
+const codeText = (text) => text.split('\n').filter((l) => !l.trim().startsWith('#')).join('\n');
+const idx = (text, needle, from = 0) => {
+  const i = text.indexOf(needle, from);
   assert.ok(i >= 0, '缺片段：' + needle);
   return i;
 };
 
-test('sshd/run 只在 host key 缺失时生成，且生成后仍 exec sshd', () => {
-  assert.ok(fs.existsSync(SSHD), 'ops/k40/sv/sshd/run 缺失');
+test('sshd 守卫：生成失败与「生成后仍缺」都打 8022 层代号并退出', () => {
   const text = read(SSHD);
-  const keyDecl = idx(text, 'HOST_KEY=/data/data/com.termux/files/usr/etc/ssh/ssh_host_ed25519_key');
-  const guard = idx(text, 'if [ ! -f "$HOST_KEY" ]; then');
-  // 钉整行命令：只认 echo 文案里的 ssh-keygen -A 会让「命令被换成 true」蒙混过关（变异 M5 实证）
-  const gen = idx(text, '/data/data/com.termux/files/usr/bin/ssh-keygen -A 2>&1');
-  const post = idx(text, '[ -f "$HOST_KEY" ] || echo "[sshd] ssh-keygen -A failed');
-  const exec = idx(text, 'exec sshd -D -e 2>&1');
-  assert.ok(keyDecl < guard, 'HOST_KEY 必须在守卫之前定义');
-  assert.ok(guard < gen, 'ssh-keygen -A 必须在「缺 key」分支内');
-  assert.ok(gen < post, '生成后必须复查，否则失败会被静默');
-  assert.ok(post < exec, '守卫必须在 exec sshd 之前');
-  assert.ok(text.trimEnd().endsWith('exec sshd -D -e 2>&1'), 'run 脚本末行必须是 exec sshd');
+  const gen = idx(text, 'if ! "$PREFIX/bin/ssh-keygen" -A; then');
+  const codeGen = idx(text, '[guard:sshd] ERR_STAGE_HOSTKEY_8022 ssh-keygen -A 退出码非零');
+  const verify = idx(text, '[ -f "$HOST_KEY" ] || { echo', codeGen);
+  const codeVerify = idx(text, '[guard:sshd] ERR_STAGE_HOSTKEY_8022 ssh-keygen -A 未产出');
+  const exec = idx(text, 'exec sshd -D -e');
+  assert.ok(gen < codeGen, '生成失败的错误码必须在生成调用之后');
+  assert.ok(codeGen < verify, '复查必须排在「生成失败」之后，两条分支各自独立可见');
+  assert.ok(verify < codeVerify, '复查行的错误码必须写在同一行上');
+  assert.ok(codeVerify < exec, '守卫必须在段4 之前');
+  assert.equal((codeText(text).match(/exit 1/g) || []).length, 2, 'sshd 代码里必须恰好两处 exit 1');
 });
 
-test('ubuntu-sshd/run 用宿主侧 rootfs 路径判断，再进容器 dropbearkey 生成', () => {
-  assert.ok(fs.existsSync(UBU), 'ops/k40/sv/ubuntu-sshd/run 缺失');
+test('ubuntu-sshd 守卫：同样两条失败分支都打 10022 层代号并退出', () => {
   const text = read(UBU);
-  const rootfs = idx(text, 'ROOTFS="$PREFIX/var/lib/proot-distro/containers/ubuntu/rootfs"');
-  const keyDecl = idx(text, 'HOST_KEY="$ROOTFS/etc/dropbear/dropbear_ed25519_host_key"');
-  const guard = idx(text, 'if [ ! -f "$HOST_KEY" ]; then');
-  // 钉整行命令，理由同上
-  const gen = idx(text, '/usr/bin/dropbearkey -t ed25519 -f /etc/dropbear/dropbear_ed25519_host_key 2>&1');
-  const post = idx(text, '[ -f "$HOST_KEY" ] || echo "[ubuntu-sshd] dropbearkey failed');
+  const gen = idx(text, 'if ! "$PREFIX/bin/proot-distro" login ubuntu --');
+  const codeGen = idx(text, '[guard:ubuntu-sshd] ERR_STAGE_HOSTKEY_10022 dropbearkey 退出码非零');
+  const verify = idx(text, '[ -f "$HOST_KEY" ] || { echo', codeGen);
+  const codeVerify = idx(text, '[guard:ubuntu-sshd] ERR_STAGE_HOSTKEY_10022 宿主侧仍看不到');
   const exec = idx(text, 'exec "$PREFIX/bin/proot-distro" login ubuntu --');
-  assert.ok(rootfs < keyDecl, 'ROOTFS 必须先定义');
-  assert.ok(keyDecl < guard, 'HOST_KEY 必须在守卫之前定义');
-  assert.ok(guard < gen, 'dropbearkey 必须在「缺 key」分支内');
-  assert.ok(gen < post, '生成后必须复查');
-  assert.ok(post < exec, '守卫必须在 exec proot-distro 之前');
-  assert.ok(!text.includes('installed-rootfs'), 'proot 容器根路径写错：installed-rootfs 在本机不存在');
-  assert.ok(text.includes('-r /etc/dropbear/dropbear_ed25519_host_key -s 2>&1'), '-r 路径与生成路径必须一致');
+  assert.ok(gen < codeGen, '生成失败的错误码必须在生成调用之后');
+  assert.ok(codeGen < verify, '复查必须排在「生成失败」之后');
+  assert.ok(verify < codeVerify, '复查行的错误码必须写在同一行上');
+  assert.ok(codeVerify < exec, '守卫必须在段4 之前');
+  assert.equal((codeText(text).match(/exit 1/g) || []).length, 2, 'ubuntu-sshd 代码里必须恰好两处 exit 1');
 });
 
-test('两个 run 脚本的诊断只走 stdout（runit log/run 只收 fd1）', () => {
-  for (const f of [SSHD, UBU]) {
-    const lines = read(f).split('\n').filter((l) => !l.trim().startsWith('#'));
-    const bad = lines.filter((l) => l.includes('>&2'));
-    assert.deepEqual(bad, [], path.basename(path.dirname(f)) + '/run 有 stderr 重定向，日志里会看不到：' + bad.join(' | '));
+test('守卫入口唯一：只在缺 key 时触发一次，key 由同一个变量表达', () => {
+  for (const [p, keyVar] of [
+    [SSHD, 'HOST_KEY="$PREFIX/etc/ssh/ssh_host_ed25519_key"'],
+    [UBU, 'HOST_KEY="$ROOTFS/etc/dropbear/dropbear_ed25519_host_key"'],
+  ]) {
+    const text = read(p);
+    const svc = path.basename(path.dirname(p));
+    assert.ok(text.includes(keyVar), svc + ' 的 HOST_KEY 定义变了：' + keyVar);
+    assert.equal((text.match(/if \[ ! -f "\$HOST_KEY" \]; then/g) || []).length, 1, svc + ' 守卫入口必须唯一');
+    // 守卫必须在段2 之后：exec 2>&1 是全局 fd 合并，守卫的 echo 才进得了日志
+    assert.ok(idx(text, 'exec 2>&1') < idx(text, 'if [ ! -f "$HOST_KEY" ]; then'), svc + ' 守卫必须排在 exec 2>&1 之后');
   }
 });
 
-test('守卫自测脚本覆盖三条分支并带哨兵', () => {
+test('自测脚本覆盖三条分支并带哨兵与清理', () => {
   assert.ok(fs.existsSync(SELFTEST), 'ops/k40/hostkey_guard_selftest.sh 缺失');
   const text = read(SELFTEST);
   assert.ok(text.includes('SELFTEST_PASS'), '缺成功哨兵');
   assert.ok(text.includes('SELFTEST_FAIL'), '缺失败哨兵');
   assert.ok(text.includes('MODE=fail'), '缺「生成失败」分支');
   assert.ok(text.includes('check_absent'), '缺「有 key 不生成」断言');
+  assert.ok(text.includes('check_exit'), '缺退出码断言（守卫失败必须 exit 1）');
+  assert.ok(text.includes('ERR_STAGE_HOSTKEY_8022') && text.includes('ERR_STAGE_HOSTKEY_10022'), '缺层代号断言');
   assert.ok(text.includes('proot-distro'), '缺容器侧 shim');
   assert.ok(text.includes('mktemp -d'), '自测未用临时目录，会碰到生产密钥');
+  // 段2 也是 exec 开头：自测的哨兵替换必须只命中最后一行 exec，否则守卫段被跳过（假绿）
+  assert.ok(text.includes('if (i == last)'), '自测必须只替换最后一处 exec（段2 exec 2>&1 不能一起换）');
+  assert.ok(!text.includes("awk '/^exec /{"), '自测不能退回「凡 exec 开头一律替换」的旧写法');
+  // sshd 的守卫用 $PREFIX 拼密钥路径：不把 PREFIX 重定向到临时目录，自测就会去读生产密钥，
+  // 在生产设备上恒命中「有 key」分支，守卫段全部变成看不见的假绿（2026-11-03 实测踩到）
+  assert.ok(text.includes('s#^PREFIX=.*#PREFIX='), '自测必须把 PREFIX 重定向到临时目录');
   assert.ok(text.includes('trap') && text.includes('rm -rf "$T"'), '自测缺清理');
 });

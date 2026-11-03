@@ -1,16 +1,31 @@
 #!/data/data/com.termux/files/usr/bin/sh
-# ops/k40/sv/sshd/run 与 log/run —— K40 Termux 宿主面 runit 服务定义（仓库镜像，2026-11-01 纳管）
+set -eu
+exec 2>&1
+# ops/k40/sv/sshd/run —— K40 Termux 宿主面 runit 服务定义（四段式模板，2026-11-03 起）
 # 落点：k40:$PREFIX/var/service/<service>/{run,log/run}
-# 同步：bash ops/k40/ensure_runsvdir.sh 会把本目录镜像到设备并幂等点火（见下一节）。
+# 同步：bash ops/k40/ensure_runsvdir.sh 会把本目录镜像到设备并幂等点火。
 #
-# host key 守卫（2026-11-03）：密钥缺失时先补生成。
-# 缺 key 时 sshd 立即退出（no hostkeys available），runit 反复重启，8022 永不监听，
-# 表现为「服务显示 run 但连不上」。生成即轮换指纹，客户端 known_hosts 需同步更新。
-# 诊断只走 stdout：实测本机 runit 的 log/run 只收 fd1，>&2 的日志会丢（hktest 探针实证）。
-HOST_KEY=/data/data/com.termux/files/usr/etc/ssh/ssh_host_ed25519_key
+# 四段式（tests/runit_sv_contract.test.js 逐段断言，新增服务照抄）：
+#   段1 shebang + set -eu
+#   段2 exec 2>&1  —— 本机实测 runsv 只把 run 的 fd1 接到 log/run 的 stdin，
+#       不做这一步，daemon 与守卫写 stderr 的内容全部丢进黑洞（hktest 探针实证）
+#   段3 幂等守卫  —— 只补缺失项，诊断统一【 stdout + [guard:<svc>] 前缀】，
+#       失败时打出精确故障层代号并 exit 1，绝不静默降级
+#   段4 原位替换  —— exec 守护进程前台运行，让 runsv 直接监督它
+#
+# 段3 守卫：host key 缺失时先补生成。缺 key 时 sshd 立即退出（no hostkeys available），
+# runit 反复重启、8022 永不监听，表现为「服务显示 run 但连不上」。
+# 生成即轮换指纹，客户端 known_hosts 需同步更新（诊断码见 docs/k40_hostkey_guard.md）。
+PREFIX=/data/data/com.termux/files/usr
+HOST_KEY="$PREFIX/etc/ssh/ssh_host_ed25519_key"
 if [ ! -f "$HOST_KEY" ]; then
-  echo "[sshd] host key missing -> ssh-keygen -A"
-  /data/data/com.termux/files/usr/bin/ssh-keygen -A 2>&1
-  [ -f "$HOST_KEY" ] || echo "[sshd] ssh-keygen -A failed, 8022 将不可达"
+  echo "[guard:sshd] host key missing -> ssh-keygen -A"
+  if ! "$PREFIX/bin/ssh-keygen" -A; then
+    echo "[guard:sshd] ERR_STAGE_HOSTKEY_8022 ssh-keygen -A 退出码非零，8022 将不可达"
+    exit 1
+  fi
+  [ -f "$HOST_KEY" ] || { echo "[guard:sshd] ERR_STAGE_HOSTKEY_8022 ssh-keygen -A 未产出 $HOST_KEY"; exit 1; }
+  echo "[guard:sshd] host key 已重建，指纹变更需同步 known_hosts"
 fi
-exec sshd -D -e 2>&1
+
+exec sshd -D -e
