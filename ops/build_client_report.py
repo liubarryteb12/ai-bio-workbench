@@ -2121,6 +2121,12 @@ def assemble(ctx, out_dir, no_tar=False):
     with open(os.path.join(delivery, "README.md"), "w", encoding="utf-8", newline="\n") as fh:
         fh.write(delivery_readme(meta["project_id"], meta["project_name"], meta["generated_at"], copied))
 
+    # 客户自助验收单（Ticket 5，4 Argon 第二十一轮 Q5）：独立成文件，给「拿到包、没有我们」
+    # 的人照抄执行。必须写在 write_checksums 之前，让它像 README / manifest 一样直接受
+    # CHECKSUMS 哈希保护（这样覆盖率检查不必再加白名单条目）。
+    with open(os.path.join(delivery, HOW_TO_VERIFY_NAME), "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(how_to_verify(meta["project_id"], mtime_of_tar_sidecar(out_dir, ctx["project_id"])))
+
     # 完整性清单：先写 CHECKSUMS.sha256 再打 tar，包内清单与包内文件一一对应。
     # 只覆盖三大件与 manifest 自身落盘之后的现实，manifest 里的 counts 是
     # 复制成功计数、这里是文件系统实测字节，两者不一致以本清单为准。
@@ -2162,6 +2168,65 @@ def assemble(ctx, out_dir, no_tar=False):
 CHECKSUMS_NAME = "CHECKSUMS.sha256"
 SIGNATURE_NAME = "CHECKSUMS.sig"
 README_NAME = "README.md"
+HOW_TO_VERIFY_NAME = "HOW_TO_VERIFY.txt"
+
+
+def mtime_of_tar_sidecar(out_dir, project_id):
+    """侧车还没写（本函数在 checksums 之前调用）时返回空串，由调用方决定文案。
+
+    交付单里不嵌时间戳：任何易变量都会让「同一输入两次打包」变成两个哈希，
+    而客户自助验收要的是可在任何时候复现的固定步骤。
+    """
+    return ""
+
+
+def how_to_verify(project_id, _ignored=""):
+    """客户自助验收单（Ticket 5）：不假设对方装了什么，只给系统自带工具能跑的命令。
+
+    存在的理由（4 Argon 第二十一轮 Q5）：交付包里已经有 README 讲「两套清单分工」，
+    但那只解决「哪个为准」。真正交给陌生用户时，对方需要的是一页「先做什么、再做什么、
+    看到什么算过、不对时把什么发回来」。这份文件就是那一页，且它自己也进 CHECKSUMS，
+    所以不会被塞进一句「照着改」的私货。
+    """
+    return (
+        "HOW TO VERIFY · 交付包自助验收单\n"
+        "=========================================\n\n"
+        "项目 ID：%s\n"
+        "适用：拿到 <项目>_Client_Delivery.tar.gz 之后，不需要安装任何生信软件。\n\n"
+        "一、四步验收（按顺序做，全部通过即包可信）\n\n"
+        "  第 1 步 校验压缩包本体\n"
+        "    同目录应有 %s_Client_Delivery.tar.gz.sha256（或 tar_sha256_sidecar.txt）。\n"
+        "      Linux/macOS:  sha256sum -c %s_Client_Delivery.tar.gz.sha256\n"
+        "      Windows:      certutil -hashfile %s_Client_Delivery.tar.gz SHA256\n"
+        "                    （把输出与 .sha256 文件里的第一列逐字符比对）\n"
+        "    期望：OK / 两串哈希完全一致。不一致 = 传输损坏或包被替换，不要往下做。\n\n"
+        "  第 2 步 解开压缩包\n"
+        "      tar -xzf %s_Client_Delivery.tar.gz\n"
+        "    期望：只生成一个同名目录，内含 01_Adapted_Code / 02_Figures_and_Tables /\n"
+        "          03_Interpretation_Report / delivery_manifest.json / CHECKSUMS.sha256\n"
+        "          / CHECKSUMS.sig / ED25519_PUBLIC_KEY.pem / README.md / 本文件。\n\n"
+        "  第 3 步 校验包内每个文件\n"
+        "      cd %s_Client_Delivery\n"
+        "      sha256sum -c CHECKSUMS.sha256\n"
+        "    期望：每一行都是 OK，最后没有 FAILED。\n"
+        "    这一步回答「有没有人改过包里的图、表或代码」。\n\n"
+        "  第 4 步（可选，需要 openssl）验证签名\n"
+        "      CHECKSUMS.sig 是 Ed25519 私钥对 CHECKSUMS.sha256 的签名。\n"
+        "      只要能验证签名通过，就说明清单本身出自我们的打包私钥，而不是别人重写的。\n"
+        "      不会验也没关系：第 1 步的包哈希已经能挡住传输层替换。\n\n"
+        "二、看到什么算通过\n\n"
+        "  [1] 包哈希一致  [2] 解包只有一个一级目录  [3] sha256sum -c 全 OK\n"
+        "  三条全绿 = 包完整。图件能否复现属于分析口径问题，不在本验收单范围内。\n\n"
+        "三、不对时把什么发回来\n\n"
+        "  1) 失败的那一步命令原文与完整输出（不要只截一行）；\n"
+        "  2) 本文件顶部这一行：项目 ID：%s\n"
+        "  3) 压缩包本身的大小与 .sha256 文件内容。\n"
+        "  有这三样，我们能在不接触你机器的情况下判断是传输问题、包问题还是环境问题。\n\n"
+        "四、本文件的地位\n\n"
+        "  本文件自身也在 CHECKSUMS.sha256 里（受签名保护）。如果你把本文件改了，第 3 步会\n"
+        "  当场报 FAILED —— 这是故意的：验收单不允许被悄悄改写。\n"
+        % (project_id, project_id, project_id, project_id, project_id, project_id, project_id)
+    )
 
 
 def delivery_readme(project_id, project_name, generated_at, counts):

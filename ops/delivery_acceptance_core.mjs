@@ -152,7 +152,7 @@ export function extractTarGz(tarPath, destDir) {
 const metaFiles = ['CHECKSUMS.sha256', 'CHECKSUMS.sig', 'delivery_manifest.json', 'ED25519_PUBLIC_KEY.pem'];
 // 解读报告不在 manifest 登记表内：交付必需但不入哈希清单
 const allowedUnlistedPrefixes = ['03_Interpretation_Report/'];
-const allowedUnlistedFiles = ['01_Adapted_Code/_report.txt', 'README.md'];
+const allowedUnlistedFiles = ['01_Adapted_Code/_report.txt', 'README.md', 'HOW_TO_VERIFY.txt'];
 const sectionDir = {
   scripts: '01_Adapted_Code',
   adapted_code: '01_Adapted_Code',
