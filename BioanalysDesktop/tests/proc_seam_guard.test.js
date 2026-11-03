@@ -54,6 +54,9 @@ const EXEMPT_RELPATHS = new Set([
   // 才能把八道门禁一道道跑起来；与 metrics_sync/static_gate 同属「手工/CI 跑、
   // 不进服务运行时」的离线工具类。它起的每个子进程都走白名单脚本，不碰远端算力。
   'ops/run_all_gates.mjs',
+  // 便携包构建器：必须起 git（列跟踪清单）与包内 node（自检），与 run_all_gates
+  // 同类——离线手工/CI 工具，不进服务运行时。
+  'ops/build_portable_package.mjs',
 ]);
 
 // 豁免清单：接缝本体。加名字进这份清单需要人裁定，不许顺手扩。
