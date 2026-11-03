@@ -4,6 +4,11 @@ import { fileURLToPath } from 'node:url';
 import { normalizeDatasets, resolveLineFromDataType } from './domain.js';
 const PORTAL_INBOX = fileURLToPath(new URL('../../portal/inbox/', import.meta.url));
 
+// inbox/ 是 gitignore 的运行目录（.gitignore 的 inbox/ 规则），新克隆与便携包里
+// 都不存在。消费方（含 portal/serve.mjs 与各测试）默认它可写；在模块加载处
+ // recursive 建目录，缺目录不再让写入方各自踩 ENOENT。
+fs.mkdirSync(PORTAL_INBOX, { recursive: true });
+
 /**
  * 需求文件名校验：只允许两种形态，禁止任何穿越。
  *   - 旧格式：收件箱根目录的单个 `<时间戳>_需求_<项目名>.json`
