@@ -26,6 +26,35 @@ const BOXPLOT_MASTERS = [
   path.join(REPO, 'reference', '05.可参考出图代码', '_meta', 'R453_compat', 'L1_boxplot_code.R'),
 ];
 const PLOT_MATRIX = path.join(REPO, 'reference', '05.可参考出图代码', '_meta', 'script_plot_matrix.json');
+// git 经工具链解析（净化 PATH 下 spawnSync('git') 直接 ENOENT）；解析不到时整类断言跳过
+import { resolveTool } from '../../ops/toolchain.mjs';
+const GIT = resolveTool('git').path;
+
+/**
+ * check-ignore 断言验的是「开发仓的 .gitignore 反向白名单让证据文件可跟踪」。
+ * 两个前提在别处不成立，必须如实跳过而不是判红：
+ *   1) 便携包/客户机根本没有 git 工作树（本机虽有 git 二进制，rev-parse 会失败）；
+ *   2) 包本身落在父仓的 /dist/ 忽略区里 —— 那时 check-ignore 报「被忽略」是
+ *      父仓规则的正确行为，不是证据文件被吞。净化 PATH 实测正是踩到这一条。
+ */
+let gitAtDevRoot;
+function gitUsable() {
+  if (gitAtDevRoot === undefined) {
+    gitAtDevRoot = false;
+    if (GIT) {
+      try {
+        const probe = spawnSync(GIT, ['rev-parse', '--show-toplevel'], { cwd: REPO, encoding: 'utf8', windowsHide: true });
+        gitAtDevRoot = probe.status === 0 && path.resolve(String(probe.stdout || '').trim()) === REPO;
+      } catch { gitAtDevRoot = false; }
+    }
+  }
+  return gitAtDevRoot;
+}
+function needGit(testContext) {
+  if (!GIT) { testContext.skip('HOST_MISSING_GIT: 本机无 git，check-ignore 断言不可执行'); return false; }
+  if (!gitUsable()) { testContext.skip('HOST_MISSING_GIT: 不在开发仓工作树根（如便携包/客户机），check-ignore 断言只属于开发仓'); return false; }
+  return true;
+}
 const READY_ALLOWLIST = path.join(REPO, 'ops', 'figure_ready_allowlist.json');
 
 /**
@@ -140,11 +169,12 @@ test('ready templates point to verified source and preview bytes', () => {
   }
 });
 
-test('ready template source, preview and sample files are git-trackable', () => {
+test('ready template source, preview and sample files are git-trackable', (testContext) => {
+  if (!needGit(testContext)) return;
   const registry = reloadFigureTemplates();
   for (const item of registry.templates.filter((row) => row.deps_status === 'ready')) {
     for (const relative of [item.source, item.preview, item.sample_project_output]) {
-      const result = spawnSync('git', ['check-ignore', '-q', relative], {
+      const result = spawnSync(GIT, ['check-ignore', '-q', relative], {
         cwd: REPO,
         windowsHide: true,
       });
@@ -216,23 +246,27 @@ test('formal script plot matrix contains 27 passing exact-source entries', () =>
     const source = path.join(REPO, 'reference', '05.可参考出图代码', entry.script_path);
     assert.ok(fs.existsSync(source), `${entry.entry_id}: source missing`);
     assert.equal(sha256(source), entry.source_sha256);
-    const relative = path.relative(REPO, source).split(path.sep).join('/');
-    const ignored = spawnSync('git', ['check-ignore', '-q', relative], {
-      cwd: REPO,
-      windowsHide: true,
-    });
-    assert.equal(ignored.status, 1, `${entry.entry_id}: source is still ignored`);
+    // 不在开发仓工作树根时只跳过这一段（存在性与 sha256 仍要全查）
+    if (gitUsable()) {
+      const relative = path.relative(REPO, source).split(path.sep).join('/');
+      const ignored = spawnSync(GIT, ['check-ignore', '-q', relative], {
+        cwd: REPO,
+        windowsHide: true,
+      });
+      assert.equal(ignored.status, 1, `${entry.entry_id}: source is still ignored`);
+    }
   }
 });
 
-test('figure registry inputs and boxplot masters are git-trackable', () => {
+test('figure registry inputs and boxplot masters are git-trackable', (testContext) => {
+  if (!needGit(testContext)) return;
   const paths = [
     'reference/05.可参考出图代码/_meta/bizard_index.csv',
     'reference/05.可参考出图代码/_meta/r453_verification_report.json',
     ...BOXPLOT_MASTERS.map((file) => path.relative(REPO, file).split(path.sep).join('/')),
   ];
   for (const relative of paths) {
-    const result = spawnSync('git', ['check-ignore', '-q', relative], {
+    const result = spawnSync(GIT, ['check-ignore', '-q', relative], {
       cwd: REPO,
       windowsHide: true,
     });

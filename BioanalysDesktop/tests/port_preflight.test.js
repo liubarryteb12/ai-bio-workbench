@@ -9,11 +9,23 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
 const SCRIPT = path.join(REPO, 'ops', 'port_preflight.ps1');
 
+// pwsh 在多数 Windows 机器上不存在（PowerShell 7 不是系统自带），净化 PATH 下
+// spawnSync('pwsh') 直接 ENOENT。走工具链解析器：pwsh 7 优先，退回 Windows PowerShell。
+import { resolveTool } from '../../ops/toolchain.mjs';
+const POWERSHELL = resolveTool('pwsh').path;
+
+function needShell(testContext) {
+  if (!POWERSHELL) { testContext.skip('HOST_MISSING_SHELL: 本机无可解析的 PowerShell（pwsh/5.1 都没找到）'); return false; }
+  return true;
+}
+
 function runPreflight(port, expectedPattern, connections, processes) {
   const result = childProcess.spawnSync(
-    'pwsh',
+    POWERSHELL,
     [
-      '-NoProfile', '-File', SCRIPT,
+      // 便携包路径不在受信任位置时，5.1 默认执行策略会直接拒绝 -File 脚本
+      // （实测 UnauthorizedAccess）；预检脚本只读，Bypass 安全。
+      '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', SCRIPT,
       '-Port', String(port),
       '-ExpectedPattern', expectedPattern,
       '-ConnectionsJson', JSON.stringify(connections),
@@ -26,7 +38,8 @@ function runPreflight(port, expectedPattern, connections, processes) {
   return JSON.parse(result.stdout.trim());
 }
 
-test('port preflight distinguishes a Bound foreign owner from a free port', () => {
+test('port preflight distinguishes a Bound foreign owner from a free port', (testContext) => {
+  if (!needShell(testContext)) return;
   const bound = runPreflight(
     18787,
     'server[\\\\/]index\\.js',
@@ -53,7 +66,8 @@ test('port preflight distinguishes a Bound foreign owner from a free port', () =
   assert.equal(expected.safe_to_stop, true);
 });
 
-test('guard refuses to kill foreign owners and launchers detect all TCP states', () => {
+test('guard refuses to kill foreign owners and launchers detect all TCP states', (testContext) => {
+  if (!needShell(testContext)) return;
   const guard = fs.readFileSync(path.join(REPO, 'ops', 'serve_guard.ps1'), 'utf8');
   assert.match(guard, /port_preflight\.ps1/);
   assert.match(guard, /status\s+-eq\s+'foreign'/);

@@ -43,6 +43,10 @@ export const ALLOWED_SKIP_REASONS = Object.freeze([
   'HOST_MISSING_RSCRIPT',
   'HOST_UNREACHABLE_K40',
   'HOST_MISSING_LOCAL_DATA',
+  // 便携包/干净 Windows 机器实测需要的两类：PowerShell 完全缺失、git 完全缺失。
+  // 这两项在开发机永远存在，在纯目标机可能整体不存在，属环境形态而非偷懒跳过。
+  'HOST_MISSING_SHELL',
+  'HOST_MISSING_GIT',
 ]);
 
 /** 跳过原因必须长这样：<TAG>: <非空说明>。冒号后空字符串不算理由。 */
