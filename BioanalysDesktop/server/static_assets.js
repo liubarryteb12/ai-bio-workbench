@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { json } from './http_response.js';
 const DIST_DIR = new URL('../dist/', import.meta.url);
@@ -23,8 +24,16 @@ const STATIC_MIME = {
 
 export function serveStatic(res, pathname) {
   const rel = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
-  // 防目录穿越
-  if (rel.includes('..')) {
+  // 防目录穿越。只查字面 '..' 是不够的：WHATWG URL 会把 %2E%2E 规范化成真实的上跳段
+  // （实测 /%2E%2E/package.json 绕过字面检查后读到了 dist 之外的文件）。
+  // 所以先解码再查，最后还要对解析结果做包含性校验（resolve 后必须仍在 dist 根内）。
+  let decoded = rel;
+  try {
+    decoded = decodeURIComponent(rel);
+  } catch {
+    return json(res, 400, { error: '非法路径' });
+  }
+  if (decoded.includes('..') || decoded.includes('\0')) {
     return json(res, 400, { error: '非法路径' });
   }
   const lastSlash = rel.lastIndexOf('/');
@@ -36,7 +45,13 @@ export function serveStatic(res, pathname) {
 
   for (const candidate of candidates) {
     try {
-      const filePath = fileURLToPath(new URL(candidate, DIST_DIR));
+      const url = new URL(candidate, DIST_DIR);
+      const filePath = fileURLToPath(url);
+      // 兜底包含性校验：resolve 后必须仍位于 dist 根目录内（防任何未预见的规范化逃逸）
+      const distRoot = path.resolve(fileURLToPath(DIST_DIR));
+      if (path.resolve(filePath) !== distRoot && !path.resolve(filePath).startsWith(distRoot + path.sep)) {
+        continue;
+      }
       if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
         res.writeHead(200, {
           'Content-Type': STATIC_MIME[ext] || 'application/octet-stream',
