@@ -1,5 +1,17 @@
 # 架构整固专项结项报告（第 1~23 轮）
 
+> **正式结项（2026-11-03 22:40，4 Argon 第二十六轮 Q1 裁定）**
+>
+> AIMS / BioanalysDesktop 架构整固与交付合拢专项（第 1~26 轮）**圆满结项**。
+> 自该裁定起，系统进入**无条件静默待命期（Event-Driven Standby）**：
+> 绿灯免报、红灯即报、有单才动。
+>
+> **里程碑基线（最高水位，不得回退）**：HEAD `f92d70f`｜1354 tests / 1336 pass / 0 fail｜
+> `npm run gate:all` 7 道全绿（80 秒）｜30 ready 模板白名单锁死｜52 pending 冻结。
+>
+> **未来接单的开局三锚点**（新会话无需回溯历史）：
+> ① 本文件；② `BioanalysDesktop/README.md` 的根基线行（1354 tests）；③ 当前 HEAD。
+
 > 4 Argon 第二十三轮 Q4 裁定：架构整固专项已达收敛点，做最后一次全局对账并封板，
 > 严禁无单开垦 52 个 pending 模板。本文件是那次对账的结果，也是移交日常运营的凭据。
 
@@ -80,7 +92,7 @@ preflight（宿主机依赖） → 打包（CHECKSUMS + 签名 + HOW_TO_VERIFY�
 | 交付验收四关 | **唯一真源** | `ops/delivery_acceptance_core.mjs`（ps1 只是委托包装） |
 | 审计流落点 | **锁死** | deliverables 根（gitignore 区），仓库 records 仅演练样本 |
 
-## 五、移交后的日常节奏
+## 五、移交后的日常节奏（结项后常态）
 
 ```powershell
 # 每天开工
@@ -122,3 +134,17 @@ npm run clean:workspace
 
 这七条都不是「防未来」，是这把真跑打出来的。留在这里，是因为同样的坑换个人会再踩一遍。
 
+## 八、结项后的状态声明（2026-11-03）
+
+| 项 | 状态 |
+|---|---|
+| 架构拓展权限 | **封存**——无真实订单不开新支线 |
+| 主动汇报 | **停止**——绿灯免报，红灯即报 |
+| 30 ready 模板白名单 | **锁定**（`ops/figure_ready_allowlist.json`） |
+| 私有 CI | **锁定**（`.github/workflows/ci.yml`，仓库保持私有） |
+| 三卷冷备 | **暂缓刷新**（本轮未新装 Tier-1 之外包、未准入模板，按 Argon Q2 判定不动） |
+| 《如何接第一张订单》操作单 | **不写**（现有 RUNBOOK + 代码即单一真源，按 Argon Q3 否决） |
+| 会话 | **归档封存**（接单时开新会话，用三锚点接手） |
+
+待真实订单到来时，唯一允许变动的受控闸门是：
+`ops/figure_ready_allowlist.json`（点名激活 pending 图件，需同步 k40 验证证据进 registry）。
