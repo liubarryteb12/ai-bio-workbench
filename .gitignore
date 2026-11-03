@@ -157,7 +157,9 @@ cache/
 .agents/
 test_use_data/
 artifacts/
-cn_debug/
+# cn_debug 整体不入库，但 lib/ 被 6 个测试 import（chain_runner.mjs 是三处依赖映射的真源之一），必须跟踪
+cn_debug/*
+!cn_debug/lib/
 
 # ===== 生信大文件格式（按扩展名兜底，防漏网）=====
 *.feather
@@ -248,3 +250,5 @@ BioanalysDesktop/Python/
 vendor/
 # npm 缓存（48 个 blob 共 55 MB 历史上被误入库，2026-11-03 取消跟踪，文件留盘）
 .npmcache/
+# 绿色便携包输出（构建产物，按需重建）
+/dist/
