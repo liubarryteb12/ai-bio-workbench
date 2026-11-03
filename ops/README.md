@@ -51,6 +51,7 @@
 | `skip_reason_gate.mjs` | 仓库 | 条件跳过原因白名单门禁（Argon 第二十一轮 Q4）：静态扫 `tests/*.test.js` 的 skip 表达式（常量展开、注释与字符串不误伤），运行时解析 TAP 的 `# SKIP` 原因。白名单 = HOST_MISSING_BASH / PYTHON / ANNDATA / RSCRIPT + HOST_UNREACHABLE_K40 / HOST_MISSING_LOCAL_DATA；裸 `skip: true`、空原因、枚举外标签一律判红。`main()` 可直接进程内调用，CLI 亦可用 `--tests-dir` / `--tap-file` / `--tap-stdin` | 2026-11-03 静态面 116 文件全绿；真实全量 TAP 18 条跳过全带标签；构造 6 类违规全红；变异反证 5/5 红 |
 | `clean_workspace.mjs` | 仓库 | 工作区清理（Ticket 4）：默认演练只报清单不删，`--execute` 才真删；白名单只含 .tmp / 过期解包 / 超期日志；神圣黑名单（审计流、ops/、src/、server/、docs/、.git/、D:\Backup\k40_cold）扫描与删除各熔断一次 | 通则 222MB 候选零改动；真删实测审计流与回执原样保留；变异 5/5 红 |
 | `preflight.mjs` | 仓库 | 宿主机依赖预检（Ticket 3）：必需项 node>=22/ssh/scp 缺失即 exit 1，可选 adb/tar/python 只 warn；纯 PATH+版本检查不起子进程；`--path` 可注入假 PATH 测红路径 | 真机必需项全绿；空 PATH 与低版本 node 两条红路径实测 |
+| `audit_summary.mjs` | 仓库 | 跨项目交付审计只读汇总（收官拼图）：扫各项目 deliverables 下的 acceptance_audit.jsonl，校 7 个标准键，坏行报 INVALID_AUDIT_LINE 不静默，输出总次数/唯一项目数/累计校验数/最近一次；`--root` 可注入夹具，`--json` 机器读；零写操作 | 真数据 1 次交付 357 文件；夹具多项目合并/空目录/坏行三向实测；变异 5/5 红 |
 | `fig_theme.py` / `fig_theme.R` | 服务器 | 出图主题层。Python 侧默认关（`BIOANALYS_PY_THEME=1` 开，实测对显式传参脚本零收益 #193）；R 侧仅 base R par（ggplot 走 SCI 模板 #193） | 底座保留、默认不启用 |
 
 ### 交付报告依赖的两份清单

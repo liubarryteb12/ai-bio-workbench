@@ -15,7 +15,8 @@
     "delivery:verify": "node ../ops/delivery_acceptance_core.mjs",
     "test:skip-gate": "node ../ops/skip_reason_gate.mjs",
     "preflight": "node ../ops/preflight.mjs",
-    "clean:workspace": "node ../ops/clean_workspace.mjs"
+    "clean:workspace": "node ../ops/clean_workspace.mjs",
+    "delivery:audit": "node ../ops/audit_summary.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

@@ -1,0 +1,102 @@
+# 架构整固专项结项报告（第 1~23 轮）
+
+> 4 Argon 第二十三轮 Q4 裁定：架构整固专项已达收敛点，做最后一次全局对账并封板，
+> 严禁无单开垦 52 个 pending 模板。本文件是那次对账的结果，也是移交日常运营的凭据。
+
+## 一、终局基线（2026-11-03）
+
+| 项 | 值 |
+|---|---|
+| HEAD | 见 `git log -1`（本报告随封板提交） |
+| 测试 | **1342 tests / 1324 pass / 0 fail / 18 skipped**（123 个测试文件，约 85 秒实测 TAP） |
+| 代码规模 | 20120 SLOC（非空行，66 个文件） |
+| 台账 | workflows 3 系列 / 54 Mod / 断链 0；图件 82 = 30 ready + 52 pending |
+| 设备 | K40 四服务全 run，8022 与 10022 双通，零 SSH 心跳五层全通 |
+
+## 二、八道门禁全绿（收官大合拢实测）
+
+| 门禁 | 命令 | 结果 |
+|---|---|---|
+| 静态语言门禁 | `node ops/static_gate.mjs` | sh 24 / ps1 24 / py 45 / r 16 全部通过（16 个因宿主缺工具跳过，CI 上不跳） |
+| 跳过原因白名单 | `npm run test:skip-gate` | 123 个测试文件，全部命中白名单 |
+| 运行时 TAP 面 | `node ops/metrics_sync.mjs --check` | 18 条真实跳过全部带白名单原因（复用同一次 TAP，零额外耗时） |
+| 台账一致性 | `node ops/ledger_gen.mjs --check` | 54 Mod / 3 系列 / 断链 0 |
+| 宿主机依赖 | `node ops/preflight.mjs` | PREFLIGHT_OK 必需项齐备 |
+| 交付审计汇总 | `npm run delivery:audit` | AUDIT_SUMMARY_OK 1 次交付 / 1 个项目 / 357 文件 |
+| 交付验收 | `npm run delivery:verify -- <tar>` | 四关全绿（真包实测 0.7 秒 VERIFIED 357） |
+| 工作区清理 | `npm run clean:workspace` | 演练模式列出 222 MB 候选，磁盘零改动 |
+
+## 三、这二十三轮建成了什么
+
+**底座**：三线隔离（GEO bulk / 单细胞 / 空间）的分析编排、图件模板准入、交付打包。
+
+**算力面**：K40 安卓机 Termux + proot 容器四服务，runit 监督，零 SSH 心跳探针，
+host key 指纹台账与轮换检测，runsvdir 幂等点火，三卷冷备恢复演练。
+
+**交付链**（本轮重点收口）：
+
+```
+preflight（宿主机依赖） → 打包（CHECKSUMS + 签名 + HOW_TO_VERIFY）
+   → 内联四关验收（侧车/解包/验签/双向差集）
+   → 随包回执 + 脱敏审计流（append-only）
+   → 下载门禁（409 ERR_DELIVERY_UNVERIFIED）
+   → 客户自助验签（含 openssl -rawin 命令）
+   → 交付复盘（audit_summary 只读汇总）
+   → 工作区清理（默认演练 + 神圣黑名单）
+```
+
+**陌生用户可用性**：五张票全部落地（预检 / 一页式 RUNBOOK / 自助验签单 /
+工作区清理 / 缺设备 Mock 横幅）。
+
+## 四、封板声明（不可随意回退）
+
+| 资产 | 状态 | 锁定机制 |
+|---|---|---|
+| 30 个 ready 图件模板 | **封板** | `ops/figure_ready_allowlist.json` + 集合恒等断言 + 5 条变异 |
+| 52 个 pending 模板 | **冻结** | 非真实客户订单点名，不得预制开发（本轮裁定明令） |
+| 22 个冻结判据 | **不动** | 判据正本 `docs/figure_pending_triage.md` |
+| 交付验收四关 | **唯一真源** | `ops/delivery_acceptance_core.mjs`（ps1 只是委托包装） |
+| 审计流落点 | **锁死** | deliverables 根（gitignore 区），仓库 records 仅演练样本 |
+
+## 五、移交后的日常节奏
+
+```powershell
+# 每天开工
+node ops/preflight.mjs          # 依赖齐不齐
+npm run test:skip-gate          # 跳过写法没有新违规（毫秒级）
+
+# 有真实订单时
+cd BioanalysDesktop; npm test   # 全量回归（同一进程里顺带跑运行时 skip 门禁）
+node ops/ledger_gen.mjs --check # 台账无断链
+# 打包 + 验收 + 回执 + 审计流由 /api/report/build 一条链路内联完成
+
+# 交付复盘
+npm run delivery:audit          # 跨项目交付历史只读汇总
+
+# 磁盘清理（默认演练，确认后加 --execute）
+npm run clean:workspace
+```
+
+## 六、遗留与边界（诚实清单）
+
+1. **52 个 pending 模板**：按裁定冻结，等真实客户点单再单点激活。这不是技术债，是长尾池。
+2. **22 个冻结模板**：判据未变，本专项不动。
+3. **ubuntu-sshd 的 `got TERM` 残留**：服务是 run，不影响；清掉需重启该服务，收益为零。
+4. **本机无 pwsh 7 / R**：静态门禁对这 16 个文件标记「宿主缺工具跳过」，CI 上会实检。
+5. **Mock 多边形**：`BIO_COMPUTE_ADAPTER=mock` 时前端有横幅，但 mock 仍只能覆盖传输层，
+   真实算力的验证仍必须在 K40 上做。
+
+## 七、这次专项抓到的真缺陷（留档）
+
+| 缺陷 | 教训 |
+|---|---|
+| `# SKIP` 字面量进了测试标题，被 TAP 当指令读 | 名字里的 TAP 指令记号必须转义 |
+| HOW_TO_VERIFY 进 CHECKSUMS 仍被第 4 关当幽灵 | CHECKSUMS 与 manifest 是两套口径 |
+| 审计流初版落进 acceptance/ 子目录 | clean 会连带清掉审计历史，必须落 deliverables 根 |
+| openssl 命令写成续行被客户复制断掉 | 给客户的命令必须是单行可复制 |
+| 审计行字段断言只查「不含某路径」，注入 host_path 存活 | 脱敏必须用字段集合精确恒等 |
+| 空目录测试预建了子目录，M5 变异存活 | 断言名要配得上它真正覆盖的形态 |
+| 变异恢复放 finally 只跑一次，红用例串味 | 每条变异前必须恢复到干净基线 |
+
+这七条都不是「防未来」，是这把真跑打出来的。留在这里，是因为同样的坑换个人会再踩一遍。
+
