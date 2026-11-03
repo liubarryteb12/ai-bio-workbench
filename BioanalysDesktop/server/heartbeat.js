@@ -46,6 +46,71 @@ export const ERR_HEARTBEAT_STALE = 'ERR_HEARTBEAT_STALE';
 /** 四个服务的 supervise/stat 期望值 */
 export const HEARTBEAT_SERVICES = ['sshd', 'ubuntu-sshd', 'crond', 'ssh-agent'];
 
+/**
+ * 复合诊断标志（Argon 第二十轮）。
+ *
+ * 起因是实测：`sv down ubuntu-sshd` 之后 10022 仍在监听。proot 用 ptrace 劫持子进程，
+ * 容器内的 dropbear 已脱离控制终端，SIGTERM 未必转发得到它，于是「服务非 run」与
+ * 「端口在听」同时成立。单看任一侧都会得出相反结论，必须把矛盾本身报出来。
+ */
+export const ANOMALY_RUN_NO_LISTEN = 'ANOMALY_RUN_NO_LISTEN';
+export const ANOMALY_DOWN_STILL_LISTEN = 'ANOMALY_DOWN_STILL_LISTEN';
+
+/**
+ * 第三种矛盾形态，来自 2026-11-03 的真机演练：`sv down ubuntu-sshd` 之后 supervise/stat
+ * 一直是 `run, got TERM, want down`，dropbear 与 10022 都还在。只截逗号前那一段会报成
+ * 正常的 run，恰好把「停止请求被吞」洗掉。设备侧把这种状态归一化成 `down_pending`，
+ * 这里据此报 `ANOMALY_STOP_IGNORED`：想要它停，它没停。
+ */
+export const ANOMALY_STOP_IGNORED = 'ANOMALY_STOP_IGNORED';
+
+/** 设备侧归一化后的过渡态取值 */
+export const SVC_STATE_DOWN_PENDING = 'down_pending';
+
+/**
+ * 服务与其负责端口的对照表。
+ * crond 与 ssh-agent 不监听 TCP，不参与这项交叉校验：硬凑一对只会报假异常。
+ */
+export const HEARTBEAT_SERVICE_PORTS = [
+  { service: 'sshd', port: 8022, field: 'sshd8022' },
+  { service: 'ubuntu-sshd', port: 10022, field: 'dropbear10022' },
+];
+
+/**
+ * 交叉校验服务状态与端口监听（纯函数）。
+ * 报三种矛盾形态：run 但没人听、非 run 但还在听、被要求停却没停。
+ * 其余组合（run+listen、非 run+不 listen）都是自洽的。
+ *
+ * @param {object} data parseHeartbeat 的 data
+ * @returns {Array<{code: string, service: string, port: number, svc: string, listen: number, detail: string}>}
+ */
+export function detectServicePortAnomalies(data) {
+  const anomalies = [];
+  for (const { service, port, field } of HEARTBEAT_SERVICE_PORTS) {
+    const svc = data?.services?.[service];
+    const listen = data?.[field];
+    if (typeof svc !== 'string' || (listen !== 0 && listen !== 1)) continue;
+    const isRun = svc === 'run';
+    if (svc === SVC_STATE_DOWN_PENDING && listen === 1) {
+      anomalies.push({
+        code: ANOMALY_STOP_IGNORED, service, port, svc, listen,
+        detail: service + ' 已请求停止（want down）但进程未退，' + port + ' 仍在监听：TERM 被 proot 吞掉了',
+      });
+    } else if (isRun && listen === 0) {
+      anomalies.push({
+        code: ANOMALY_RUN_NO_LISTEN, service, port, svc, listen,
+        detail: service + ' 服务 run 但 ' + port + ' 无人监听（守护进程空转或崩溃循环：缺 host key、配置错、端口被占）',
+      });
+    } else if (!isRun && listen === 1) {
+      anomalies.push({
+        code: ANOMALY_DOWN_STILL_LISTEN, service, port, svc, listen,
+        detail: service + ' 服务 ' + svc + ' 但 ' + port + ' 仍在监听（孤儿进程逃逸 runsv 监管）',
+      });
+    }
+  }
+  return anomalies;
+}
+
 function fail(code, detail) {
   return { ok: false, code, detail, data: null };
 }
@@ -156,12 +221,14 @@ export function parseHeartbeat(input) {
  *
  * @param {object} data parseHeartbeat 的 data
  * @param {{now?: number, maxAgeSec?: number}} options
- * @returns {{status: 'ok'|'fail', code: string|null, detail: string, stages: Array<object>}}
+ * @returns {{status: 'ok'|'fail', code: string|null, detail: string, stages: Array<object>, anomalies: Array<object>}}
  */
 export function evaluateHeartbeat(data, options = {}) {
   const now = Number.isFinite(options.now) ? options.now : Date.now() / 1000;
   const maxAgeSec = Number.isFinite(options.maxAgeSec) ? options.maxAgeSec : HEARTBEAT_DEFAULT_MAX_AGE_SEC;
   const age = Math.round(now - data.ts);
+  // 服务状态与端口监听的矛盾与层序无关：即便快照过期，这个矛盾本身仍是对现状的描述。
+  const anomalies = detectServicePortAnomalies(data);
 
   if (age > maxAgeSec) {
     return {
@@ -169,6 +236,7 @@ export function evaluateHeartbeat(data, options = {}) {
       code: ERR_HEARTBEAT_STALE,
       detail: '心跳快照已过期 ' + age + ' 秒（上限 ' + maxAgeSec + ' 秒），读到的不是当前状态',
       stages: [{ stage: 'fresh', pass: false, code: ERR_HEARTBEAT_STALE, detail: age + 's > ' + maxAgeSec + 's' }],
+      anomalies,
     };
   }
 
@@ -201,20 +269,61 @@ export function evaluateHeartbeat(data, options = {}) {
   ];
 
   const firstFailed = stages.find((stage) => !stage.pass);
+  const anomalyNote = anomalies.map((anomaly) => anomaly.code + ': ' + anomaly.detail).join(' ; ');
+  const baseDetail = firstFailed ? firstFailed.stage + ' 层失败（' + firstFailed.detail + '）' : '五层全通';
   return {
     status: firstFailed ? 'fail' : 'ok',
     code: firstFailed ? firstFailed.code : null,
-    detail: firstFailed ? firstFailed.stage + ' 层失败（' + firstFailed.detail + '）' : '五层全通',
+    detail: [baseDetail, anomalyNote].filter(Boolean).join(' ; '),
     stages,
+    anomalies,
   };
+}
+
+/**
+ * 「上一次五层全通是什么时候」（Argon 第二十轮）。
+ *
+ * 只有 code 时，「刚断 3 秒」与「已经死了 6 小时」长得一模一样，运维的处置优先级却相反。
+ * 因此记录最后一次 ok 的时间戳，失败时同时给出已经断了多久。
+ *
+ * 从未成功过就返回 null 而不是 0 或 now：0 会被读成 1970 年，now 会伪造「刚刚还活着」。
+ *
+ * @param {{status: 'ok'|'fail', now: number, lastOkTs?: number|null}} input
+ * @returns {{last_ok_ts: number|null, down_duration_sec: number|null}}
+ */
+export function describeLiveness({ status, now, lastOkTs }) {
+  const previous = Number.isFinite(lastOkTs) ? Math.round(lastOkTs) : null;
+  const at = Math.round(now);
+  if (status === 'ok') return { last_ok_ts: at, down_duration_sec: 0 };
+  return {
+    last_ok_ts: previous,
+    down_duration_sec: previous === null ? null : Math.max(0, at - previous),
+  };
+}
+
+/**
+ * 进程内记忆：只活在当前 server 进程里，不落盘。
+ * 落盘（$PREFIX/var/log/k40_heartbeat_last_ok）会把设备侧也变成写入方，反而多一个
+ * 需要自愈的东西；进程重启后 down_duration_sec 回到 null（诚实的「不知道」）。
+ */
+const livenessStore = { lastOkTs: null };
+
+/** 测试专用：清掉进程内记忆，避免用例之间互相污染 */
+export function resetHeartbeatLiveness() {
+  livenessStore.lastOkTs = null;
+}
+
+/** 读当前进程记住的最后一次全通时间戳（从未成功为 null） */
+export function getHeartbeatLastOkTs() {
+  return livenessStore.lastOkTs;
 }
 
 /**
  * 一次读完：adb 触发设备侧脚本 -> 解析 -> 判定。
  * run 可注入：测试里换成立即返回的桩，不需要设备在线。
  *
- * @param {{run?: Function, adb?: string, serial?: string, now?: number, maxAgeSec?: number, timeoutMs?: number}} options
- * @returns {{testedAt: number, tunnel: {pass: boolean, code: string|null, detail: string}, status: 'ok'|'fail', code: string|null, detail: string, stages: Array<object>, data: object|null}}
+ * @param {{run?: Function, adb?: string, serial?: string, now?: number, maxAgeSec?: number, timeoutMs?: number, state?: {lastOkTs: number|null}}} options
+ * @returns {{testedAt: number, tunnel: {pass: boolean, code: string|null, detail: string}, status: 'ok'|'fail', code: string|null, detail: string, stages: Array<object>, anomalies: Array<object>, last_ok_ts: number|null, down_duration_sec: number|null, data: object|null}}
  */
 export function readHeartbeat(options = {}) {
   const run = options.run ?? runSync;
@@ -222,36 +331,46 @@ export function readHeartbeat(options = {}) {
   const serial = options.serial ?? DEFAULT_SERIAL;
   const timeoutMs = Number.isFinite(options.timeoutMs) ? options.timeoutMs : 15000;
   const testedAt = Number.isFinite(options.now) ? options.now : Date.now() / 1000;
+  // 记忆可以注入：路由与测试都需要一个确定的时间基准，共用进程内单例会让用例互相污染。
+  const store = options.state ?? livenessStore;
+
+  // 三条返回路径都要带 liveness：隧道断掉时恰恰最需要知道「上次活着是什么时候」。
+  const finish = (snapshot) => {
+    const liveness = describeLiveness({ status: snapshot.status, now: testedAt, lastOkTs: store.lastOkTs });
+    if (snapshot.status === 'ok') store.lastOkTs = liveness.last_ok_ts;
+    return { ...snapshot, ...liveness };
+  };
 
   let raw;
   try {
     raw = run([adb, '-s', serial, 'exec-out', 'run-as', 'com.termux', 'sh', '-c', 'sh ' + HEARTBEAT_REMOTE_SCRIPT], { timeoutMs });
   } catch (error) {
-    return {
+    return finish({
       testedAt,
       tunnel: { pass: false, code: ERR_STAGE_TUNNEL, detail: 'adb 执行失败: ' + (error instanceof Error ? error.message : String(error)) },
       status: 'fail', code: ERR_STAGE_TUNNEL,
-      detail: '隧道层失败：adb 连不上设备或 run-as 不可用', stages: [], data: null,
-    };
+      detail: '隧道层失败：adb 连不上设备或 run-as 不可用', stages: [], anomalies: [], data: null,
+    });
   }
 
   const parsed = parseHeartbeat({ stdout: String(raw?.stdout ?? ''), stderr: String(raw?.stderr ?? '') });
   if (!parsed.ok) {
-    return {
+    return finish({
       testedAt,
       tunnel: { pass: true, code: null, detail: 'adb 通道可用' },
-      status: 'fail', code: parsed.code, detail: parsed.detail, stages: [], data: null,
-    };
+      status: 'fail', code: parsed.code, detail: parsed.detail, stages: [], anomalies: [], data: null,
+    });
   }
 
   const evaluated = evaluateHeartbeat(parsed.data, { now: testedAt, maxAgeSec: options.maxAgeSec });
-  return {
+  return finish({
     testedAt,
     tunnel: { pass: true, code: null, detail: 'adb 通道可用' },
     status: evaluated.status,
     code: evaluated.code,
     detail: evaluated.detail,
     stages: evaluated.stages,
+    anomalies: evaluated.anomalies,
     data: parsed.data,
-  };
+  });
 }

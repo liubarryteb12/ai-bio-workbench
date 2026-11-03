@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 
 import {
   parseHeartbeat, evaluateHeartbeat, readHeartbeat,
+  detectServicePortAnomalies, describeLiveness, resetHeartbeatLiveness, getHeartbeatLastOkTs,
   HEARTBEAT_SCHEMA, HEARTBEAT_REMOTE_SCRIPT, HEARTBEAT_DEFAULT_MAX_AGE_SEC, HEARTBEAT_SERVICES,
+  HEARTBEAT_SERVICE_PORTS, ANOMALY_RUN_NO_LISTEN, ANOMALY_DOWN_STILL_LISTEN,
+  ANOMALY_STOP_IGNORED, SVC_STATE_DOWN_PENDING,
   ERR_STAGE_TUNNEL, ERR_STAGE_RUNSV, ERR_STAGE_PORT_8022, ERR_STAGE_PORT_10022, ERR_STAGE_MNT_RO,
   ERR_HEARTBEAT_UNREADABLE, ERR_HEARTBEAT_INVALID, ERR_HEARTBEAT_STALE,
 } from '../server/heartbeat.js';
@@ -193,10 +196,163 @@ test('全绿路径：readHeartbeat 组合出 tunnel 通过 + 五层判定 + 原�
   const snapshot = readHeartbeat({
     run: () => ({ stdout: REAL_LINE + '\n', stderr: '' }),
     adb: 'adb', serial: 'SERIAL1', timeoutMs: 1000, now: 1793694009,
+    state: { lastOkTs: null },
   });
   assert.equal(snapshot.tunnel.pass, true);
   assert.equal(snapshot.status, 'ok');
   assert.equal(snapshot.code, null);
   assert.equal(snapshot.stages.length, 4);
   assert.equal(snapshot.data.runsvdirCount, 1);
+});
+
+// ── 服务状态与端口监听的复合诊断（Argon 第二十轮第一项）──
+//
+// 实测起因：`sv down ubuntu-sshd` 之后 10022 仍在监听。proot 用 ptrace 劫持子进程，
+// 容器内 dropbear 已脱离控制终端，SIGTERM 未必转发得到。单看服务状态会说「已停」，
+// 单看端口会说「活着」，两边都不算错，错的是各说一半。
+
+test('服务 run 但端口没人听：报 ANOMALY_RUN_NO_LISTEN，点名服务与端口', () => {
+  const data = { ...baseData(), sshd8022: 0 };
+  const anomalies = detectServicePortAnomalies(data);
+  assert.equal(anomalies.length, 1);
+  assert.equal(anomalies[0].code, ANOMALY_RUN_NO_LISTEN);
+  assert.equal(anomalies[0].service, 'sshd');
+  assert.equal(anomalies[0].port, 8022);
+  assert.match(anomalies[0].detail, /缺 host key/);
+
+  const evaluated = evaluateHeartbeat(data, { now: data.ts });
+  assert.equal(evaluated.anomalies[0].code, ANOMALY_RUN_NO_LISTEN);
+  // 层代号与复合标志是两件事：层代号说断在哪层，复合标志说这条证据自相矛盾。
+  assert.equal(evaluated.code, ERR_STAGE_PORT_8022);
+  assert.match(evaluated.detail, /port_8022 层失败/);
+  assert.match(evaluated.detail, new RegExp(ANOMALY_RUN_NO_LISTEN));
+});
+
+test('服务非 run 但端口仍在听：报 ANOMALY_DOWN_STILL_LISTEN（sv down 不穿透 proot）', () => {
+  const data = {
+    ...baseData(),
+    services: { ...baseData().services, 'ubuntu-sshd': 'down' },
+    dropbear10022: 1,
+  };
+  const evaluated = evaluateHeartbeat(data, { now: data.ts });
+  assert.equal(evaluated.anomalies.length, 1);
+  assert.equal(evaluated.anomalies[0].code, ANOMALY_DOWN_STILL_LISTEN);
+  assert.equal(evaluated.anomalies[0].service, 'ubuntu-sshd');
+  assert.match(evaluated.detail, new RegExp(ANOMALY_DOWN_STILL_LISTEN));
+  // 服务非 run 仍算监督层失败，两个判据同时成立不是重复报
+  assert.equal(evaluated.code, ERR_STAGE_RUNSV);
+});
+
+test('不监听 TCP 的服务（crond/ssh-agent）不参与交叉校验，避免报假异常', () => {
+  const data = { ...baseData(), services: { ...baseData().services, crond: 'down', 'ssh-agent': 'down' } };
+  assert.deepEqual(detectServicePortAnomalies(data), []);
+  assert.deepEqual(HEARTBEAT_SERVICE_PORTS.map((p) => p.service), ['sshd', 'ubuntu-sshd']);
+});
+
+test('被要求停却没停（want down 但进程在）：报 ANOMALY_STOP_IGNORED', () => {
+  // 2026-11-03 真机演练：sv down ubuntu-sshd 后 supervise/stat 一直是
+  // "run, got TERM, want down"，dropbear 与 10022 都还在。设备侧把这种状态归一化成
+  // down_pending，只截逗号前一段会把它洗成正常的 run。
+  const data = {
+    ...baseData(),
+    services: { ...baseData().services, 'ubuntu-sshd': SVC_STATE_DOWN_PENDING },
+    dropbear10022: 1,
+  };
+  const evaluated = evaluateHeartbeat(data, { now: data.ts });
+  assert.equal(evaluated.anomalies.length, 1);
+  assert.equal(evaluated.anomalies[0].code, ANOMALY_STOP_IGNORED);
+  assert.match(evaluated.anomalies[0].detail, /want down/);
+  assert.equal(evaluated.code, ERR_STAGE_RUNSV);
+  assert.match(evaluated.stages[0].detail, /ubuntu-sshd/);
+});
+
+test('down_pending 且端口已停：停止请求生效中，不报异常（只看结论不看过程）', () => {
+  const data = {
+    ...baseData(),
+    services: { ...baseData().services, 'ubuntu-sshd': SVC_STATE_DOWN_PENDING },
+    dropbear10022: 0,
+  };
+  assert.deepEqual(detectServicePortAnomalies(data), []);
+});
+
+test('自洽组合不报异常：全绿、以及「服务 down 且端口也不通」', () => {
+  assert.deepEqual(detectServicePortAnomalies(baseData()), []);
+  const down = {
+    ...baseData(),
+    services: { ...baseData().services, 'ubuntu-sshd': 'down' },
+    dropbear10022: 0,
+  };
+  assert.deepEqual(detectServicePortAnomalies(down), []);
+});
+
+test('快照过期时仍把服务与端口的矛盾带出来，但层序只报 stale', () => {
+  const data = { ...baseData(), sshd8022: 0 };
+  const evaluated = evaluateHeartbeat(data, { now: data.ts + HEARTBEAT_DEFAULT_MAX_AGE_SEC + 1 });
+  assert.equal(evaluated.code, ERR_HEARTBEAT_STALE);
+  assert.equal(evaluated.stages.length, 1);
+  assert.equal(evaluated.anomalies[0].code, ANOMALY_RUN_NO_LISTEN);
+});
+
+// ── 最后一次全通时间戳（Argon 第二十轮第三项）──
+//
+// 只有 code 时，「刚断 3 秒」与「已死 6 小时」长得一样，处置优先级却相反。
+
+test('首次即成功：last_ok_ts 记为本次，down_duration_sec=0', () => {
+  assert.deepEqual(describeLiveness({ status: 'ok', now: 1793694009, lastOkTs: null }), {
+    last_ok_ts: 1793694009, down_duration_sec: 0,
+  });
+});
+
+test('成功过一次之后再失败：保留上次全通时刻并给出已断多久', () => {
+  assert.deepEqual(describeLiveness({ status: 'fail', now: 1793694009, lastOkTs: 1793690009 }), {
+    last_ok_ts: 1793690009, down_duration_sec: 4000,
+  });
+});
+
+test('从未成功过：last_ok_ts 与 down_duration_sec 都是 null，不伪造 1970 或「刚刚」', () => {
+  const liveness = describeLiveness({ status: 'fail', now: 1793694009, lastOkTs: undefined });
+  assert.equal(liveness.last_ok_ts, null);
+  assert.equal(liveness.down_duration_sec, null);
+});
+
+test('readHeartbeat 把全通时刻记进注入的 store，失败路径沿用并算出间隔', () => {
+  const state = { lastOkTs: null };
+  const ok = readHeartbeat({
+    run: () => ({ stdout: REAL_LINE, stderr: '' }),
+    adb: 'adb', serial: 'SERIAL1', timeoutMs: 1000, now: 1793694009, state,
+  });
+  assert.equal(ok.last_ok_ts, 1793694009);
+  assert.equal(ok.down_duration_sec, 0);
+  assert.equal(state.lastOkTs, 1793694009);
+
+  const failed = readHeartbeat({
+    run: () => { throw new Error('adb: device offline'); },
+    adb: 'adb', serial: 'SERIAL1', timeoutMs: 1000, now: 1793694129, state,
+  });
+  assert.equal(failed.status, 'fail');
+  assert.equal(failed.last_ok_ts, 1793694009);
+  assert.equal(failed.down_duration_sec, 120);
+  assert.equal(state.lastOkTs, 1793694009, '失败不得刷新全通时刻');
+});
+
+test('隧道断掉时也带 liveness：ssh 全断恰恰最需要知道上次活着是什么时候', () => {
+  const snapshot = readHeartbeat({
+    run: () => { throw new Error('adb: device offline'); },
+    adb: 'adb', serial: 'SERIAL1', timeoutMs: 1000, now: 1793694129, state: { lastOkTs: 1793694009 },
+  });
+  assert.equal(snapshot.code, ERR_STAGE_TUNNEL);
+  assert.equal(snapshot.last_ok_ts, 1793694009);
+  assert.equal(snapshot.down_duration_sec, 120);
+});
+
+test('进程内记忆可显式清空：默认 store 全通后被 resetHeartbeatLiveness 清掉', () => {
+  resetHeartbeatLiveness();
+  assert.equal(getHeartbeatLastOkTs(), null);
+  readHeartbeat({
+    run: () => ({ stdout: REAL_LINE, stderr: '' }),
+    adb: 'adb', serial: 'SERIAL1', timeoutMs: 1000, now: 1793694009,
+  });
+  assert.equal(getHeartbeatLastOkTs(), 1793694009);
+  resetHeartbeatLiveness();
+  assert.equal(getHeartbeatLastOkTs(), null);
 });

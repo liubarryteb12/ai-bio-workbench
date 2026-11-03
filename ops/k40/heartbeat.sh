@@ -43,15 +43,23 @@ json_bool() {
   if "$@" >/dev/null 2>&1; then printf '1'; else printf '0'; fi
 }
 
-# supervise/stat 里的内容不只有状态词：执行过 sv down/up 后会是
-# "run, got TERM, want down" 这种带逗号的瞬时描述（2026-11-03 实测）。
-# 逗号前那一段才是当前状态，整行照抄会让判定把 'run' 误当成非 run。
+# supervise/stat 里除了状态词还有「期望状态」：
+#   "run"                        稳态，正常
+#   "run, got TERM, want up"     刚收到重启请求，目的是继续跑，按 run 算
+#   "run, got TERM, want down"   TERM 已发出、期望停止，进程却没退（proot 不转发信号）
+# 逗号前那一段单独看会把第三种报成正常的 run，恰恰掩盖了「停止请求被吞」。
+# 因此这里归一化：只有期望向下时才降级成 down_pending，期望向上仍算 run。
+# （2026-11-03 实测：sv down ubuntu-sshd 后 stat 一直是 "run, got TERM, want down"，
+#  dropbear 与 10022 都还在，端口照旧在听。）
 svc_stat() {
   state=""
   if [ -r "$SVDIR/$1/supervise/stat" ]; then
     state=$(head -n 1 "$SVDIR/$1/supervise/stat" 2>/dev/null | tr -d '\r')
-    state="${state%%,*}"
-    state=$(printf '%s' "$state" | tr -d ' \t')
+    first="${state%%,*}"
+    case "$state" in
+      *"want down"*) first=down_pending ;;
+    esac
+    state=$(printf '%s' "$first" | tr -d ' \t')
   fi
   printf '%s' "${state:-unknown}"
 }
@@ -59,13 +67,22 @@ svc_stat() {
 listening_8022=$(json_bool port_listen 8022)
 listening_10022=$(json_bool port_listen 10022)
 ssd_writable=$(json_bool test -w "$ROOTFS/mnt/ssd/bio_data")
-# 只数真正的监督进程：命令名恰好是 /bin/runsvdir 且带 -P <SVDIR>。
-# 不能 grep 整行 'bin/runsvdir -P'：flock 包装行（flock -n .../runsvdir.singleton.lock
-# .../runsvdir -P ...）的整行里也含这个串，会把 1 数成 2（2026-11-03 实测）。
-# 命令名的形态随调用方而变：经 ssh 跑时 ps 给出完整路径（.../bin/runsvdir），
-# 经 adb run-as 跑时只给基名（runsvdir）——2026-11-03 实测，两种都要认。
+# 只数真正的监督进程。三种形态都实测过（2026-11-03）：
+#   26563 runsvdir /data/.../usr/var/service          健康实例，runsvdir 启动后把 argv 改写掉了 -P
+#   12792 /data/.../usr/bin/runsvdir -P .../var/service 经 ssh 的 ps 给完整路径，且还没被改写
+#   30753 /data/.../usr/bin/runsvdir /data/.../bin/runsvdir .../var/service
+#                                                     野生态：argv0 被复制一份，不监督任何服务
+# 早先只认 ' -P <SVDIR>' 子串，结果在健康设备上数到 0，整盏灯报 ERR_STAGE_RUNSV（假红）。
+# 不能 grep 整行：flock 包装行（flock -n .../runsvdir.singleton.lock .../runsvdir -P ...）
+# 的整行里也含这个串，会把 1 数成 2。所以判据落在 argv 位置上，而不是整行匹配。
 runsvdir_count=$(ps -A -o pid,args 2>/dev/null \
-  | awk -v sv="$SVDIR" '($2 == "runsvdir" || $2 ~ /\/bin\/runsvdir$/) && index($0, " -P " sv) { n += 1 } END { print n + 0 }')
+  | awk -v sv="$SVDIR" '
+      $2 == "runsvdir" || $2 ~ /\/bin\/runsvdir$/ {
+        if ($3 ~ /\/runsvdir$/) next                 # 野生态：argv0 被复制
+        if ($3 == "-P" && $4 == sv) { n += 1; next }   # 未改写形态
+        if ($3 == sv) { n += 1 }                      # 已改写形态
+      }
+      END { print n + 0 }')
 [ -n "$runsvdir_count" ] || runsvdir_count=0
 ts=$(date +%s)
 

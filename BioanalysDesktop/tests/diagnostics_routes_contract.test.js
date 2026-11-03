@@ -356,6 +356,68 @@ test('/api/k40/heartbeat 的 serial 查询参数透传给读取器', async () =>
   assert.equal(r.last.payload.serial, 'OTHER123');
 });
 
+// ── 链路灯与零 SSH 心跳的主备递进（Argon 第二十轮 Q4）──
+//
+// Q4 的边界：心跳绝不并进高频自检。四段 ssh 探测全绿时一次都不许调（每次探测都会在
+// sshd.log / ubuntu-sshd.log 留断连噪声，且 +0.3 秒）；判 fail 时才调一次，把
+// 「ssh 断了」与「服务真的死了」分开。
+
+test('/api/selfcheck 链路判 fail 时调一次心跳，把层代号与已断时长带进链路灯', async () => {
+  let calls = 0;
+  const r = await call('/api/selfcheck', {
+    checkLink: () => linkFixture({ overall: 'fail', segments: [{ name: '设备在线', pass: false, detail: 'device offline' }], compute: null }),
+    readHeartbeat: () => {
+      calls += 1;
+      return {
+        testedAt: 1793694009,
+        tunnel: { pass: true, code: null, detail: 'adb 通道可用' },
+        status: 'fail', code: 'ERR_STAGE_PORT_10022',
+        detail: 'port_10022 层失败（tcp-connect 127.0.0.1:10022 不通）',
+        stages: [],
+        anomalies: [{ code: 'ANOMALY_RUN_NO_LISTEN', service: 'ubuntu-sshd', port: 10022 }],
+        last_ok_ts: 1793690009, down_duration_sec: 4000,
+        data: { ts: 1793694009 },
+      };
+    },
+  });
+  assert.equal(calls, 1);
+  const link = r.last.payload.checks.find((c) => c.id === 'link');
+  assert.equal(link.status, 'fail');
+  assert.equal(link.diagnostic_endpoint, '/api/k40/heartbeat');
+  assert.equal(link.heartbeat.code, 'ERR_STAGE_PORT_10022');
+  assert.equal(link.heartbeat.last_ok_ts, 1793690009);
+  assert.equal(link.heartbeat.down_duration_sec, 4000);
+  assert.deepEqual(link.heartbeat.anomalies.map((a) => a.code), ['ANOMALY_RUN_NO_LISTEN']);
+  assert.match(link.detail, /heartbeat=ERR_STAGE_PORT_10022/);
+  // 原有失败段点名不得因为加了心跳而丢失
+  assert.ok(link.detail.includes('设备在线 (device offline)'), '失败段点名不能因为加了心跳而丢失');
+});
+
+test('/api/selfcheck 链路全通时零开销：一次心跳都不调，也不给诊断端点', async () => {
+  let calls = 0;
+  const r = await call('/api/selfcheck', { readHeartbeat: () => { calls += 1; return { status: 'ok' }; } });
+  const link = r.last.payload.checks.find((c) => c.id === 'link');
+  assert.equal(calls, 0);
+  assert.equal(link.status, 'pass');
+  assert.equal('heartbeat' in link, false);
+  assert.equal('diagnostic_endpoint' in link, false);
+  assert.equal(link.detail, 'CPU=8/8 Mem=11.5GB');
+});
+
+test('/api/selfcheck 心跳自己抛错时不影响自检结论，只留下诊断端点', async () => {
+  const r = await call('/api/selfcheck', {
+    checkLink: () => linkFixture({ overall: 'fail', segments: [{ name: 'adb', pass: false, detail: 'no device' }], compute: null }),
+    readHeartbeat: () => { throw new Error('adb: device offline'); },
+  });
+  assert.equal(r.last.status, 200);
+  const link = r.last.payload.checks.find((c) => c.id === 'link');
+  assert.equal(link.status, 'fail');
+  assert.ok(link.detail.includes('adb (no device)'), '心跳坏了不得改写链路失败段');
+  assert.equal('heartbeat' in link, false);
+  assert.equal(link.diagnostic_endpoint, '/api/k40/heartbeat');
+  assert.match(r.last.payload.checks.map((c) => c.id).join(','), /link/);
+});
+
 test('/api/k40/heartbeat 读取器抛错时回 500，不伪装成健康', async () => {
   const r = await call('/api/k40/heartbeat', {
     readHeartbeat: () => { throw new Error('adb: device offline'); },

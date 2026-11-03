@@ -96,14 +96,38 @@ export async function handleDiagnosticsRoutes(req, res, url, {
       const hostkey = linkResult.hostkeys;
       const hostkeyNote = hostkey && hostkey.code ? `${hostkey.code}: ${hostkey.detail}` : '';
       const baseDetail = failedSegs || (linkResult.compute ? `CPU=${linkResult.compute.cpus}/${linkResult.compute.cpusTotal} Mem=${linkResult.compute.memoryGb}GB` : '');
-      checks.push({
+      const linkStatus = linkResult.overall === 'pass' ? 'pass' : linkResult.overall === 'warn' ? 'warn' : 'fail';
+      // Q4 裁定：心跳绝不并进高频自检。全绿时零开销，只有判 fail 才顺手调一次零 SSH 通道，
+      // 把「ssh 断了」与「服务真的死了」分开；两套判据由此从互相冲突变为主备递进。
+      let heartbeat = null;
+      if (linkStatus === 'fail') {
+        try {
+          const snapshot = readHeartbeatImpl();
+          heartbeat = {
+            status: snapshot.status ?? null,
+            code: snapshot.code ?? null,
+            detail: snapshot.detail ?? '',
+            last_ok_ts: snapshot.last_ok_ts ?? null,
+            down_duration_sec: snapshot.down_duration_sec ?? null,
+            anomalies: snapshot.anomalies ?? [],
+          };
+        } catch {
+          // 心跳自己坏了不能连累自检：这一盏灯的证据已经够了，降级为只给端点提示。
+          heartbeat = null;
+        }
+      }
+      const heartbeatNote = heartbeat && heartbeat.code ? `heartbeat=${heartbeat.code}` : '';
+      const linkCheck = {
         id: 'link',
         label: 'ADB/SSH 链路',
-        status: linkResult.overall === 'pass' ? 'pass' : linkResult.overall === 'warn' ? 'warn' : 'fail',
+        status: linkStatus,
         value: segSummary,
-        detail: [baseDetail, hostkeyNote].filter(Boolean).join(' ; '),
+        detail: [baseDetail, hostkeyNote, heartbeatNote].filter(Boolean).join(' ; '),
         hostkeys: hostkey ?? null,
-      });
+      };
+      if (linkStatus !== 'pass') linkCheck.diagnostic_endpoint = '/api/k40/heartbeat';
+      if (heartbeat) linkCheck.heartbeat = heartbeat;
+      checks.push(linkCheck);
     } catch (e) {
       checks.push({ id: 'link', label: 'ADB/SSH 链路', status: 'unknown', value: '', detail: '无法检测: ' + (e instanceof Error ? e.message : String(e)) });
     }
