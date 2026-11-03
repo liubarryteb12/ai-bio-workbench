@@ -243,3 +243,6 @@ BioanalysDesktop/Python/
 !local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l3_cellcomm_chord.png
 !local_projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/custom_fig_l1_connectedscatter.png
 !reference/05.可参考出图代码/L2_组学常用图/L2p_cellcomm_autocorr_code.py
+
+# 自包含运行时工具（体积大，按机器重铺；是否入库待裁定）
+vendor/
