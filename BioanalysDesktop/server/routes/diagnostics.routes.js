@@ -12,6 +12,7 @@ import {
   DEFAULT_SERIAL, SYSTEM_LOGS, LINES, sanitizeProjectId, projectLineDir,
 } from '../domain.js';
 import { checkLink } from '../link.js';
+import { readHeartbeat } from '../heartbeat.js';
 import {
   buildHardwareCommand, parseHardwareOutput, evaluateHardware,
   buildIsolationCommand, parseIsolationOutput, evaluateIsolation,
@@ -26,6 +27,8 @@ export async function handleDiagnosticsRoutes(req, res, url, {
   // checkLink 默认仍用模块内的真实探测；允许注入是为了让本模块可测：
   // 真实 checkLink 会跑 adb devices 与两段 ssh，在测试里既慢又不确定。
   checkLink: checkLinkImpl = checkLink,
+  // 零 SSH 健康快照（Q2 裁定）：真实实现要 adb 连真机，测试里注入桩即可覆盖路由契约。
+  readHeartbeat: readHeartbeatImpl = readHeartbeat,
 }) {
   if (url.pathname === '/api/selfcheck') {
     const checks = [];
@@ -119,6 +122,30 @@ export async function handleDiagnosticsRoutes(req, res, url, {
       json(res, 500, {
         error: cause instanceof Error ? cause.message : String(cause),
         hint: '先跑一次链路自检定位，或查看 con_hf/踩坑台账.md',
+      });
+      return true;
+    }
+  }
+
+  if (url.pathname === '/api/k40/heartbeat') {
+    // 零 SSH 观测通道：ssh 全断时仍可读（adb run-as 直读 app 私有目录并执行设备侧脚本）。
+    // 结论只报精确故障层代号，不做任何自愈动作（Q1 裁定）。
+    try {
+      const serial = url.searchParams.get('serial') || undefined;
+      const snapshot = readHeartbeatImpl(serial ? { serial } : {});
+      json(res, 200, {
+        ok: snapshot.status === 'ok',
+        serial: serial || DEFAULT_SERIAL,
+        ...snapshot,
+        hint: snapshot.status === 'ok'
+          ? ''
+          : '按 code 定位故障层（ERR_STAGE_TUNNEL/RUNSV/PORT_8022/PORT_10022/MNT_RO），设备侧只记录不重启',
+      });
+      return true;
+    } catch (cause) {
+      json(res, 500, {
+        error: cause instanceof Error ? cause.message : String(cause),
+        hint: '读心跳失败；先用 adb devices 确认设备在线',
       });
       return true;
     }

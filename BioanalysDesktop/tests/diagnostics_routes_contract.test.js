@@ -53,6 +53,19 @@ function harness(overrides = {}) {
     resolveProjectParam,
     adb: 'adb',
     checkLink: overrides.checkLink ?? linkFixture,
+    // 零 SSH 心跳同理：真实实现要 adb 连真机，注入桩让路由契约可确定
+    readHeartbeat: overrides.readHeartbeat ?? (() => ({
+      testedAt: 1793694009,
+      tunnel: { pass: true, code: null, detail: 'adb 通道可用' },
+      status: 'ok', code: null, detail: '五层全通',
+      stages: [
+        { stage: 'runsvdir', pass: true, code: null, detail: 'runsvdir=1' },
+        { stage: 'port_8022', pass: true, code: null, detail: 'ok' },
+        { stage: 'port_10022', pass: true, code: null, detail: 'ok' },
+        { stage: 'ssd_writable', pass: true, code: null, detail: '可写' },
+      ],
+      data: { ts: 1793694009, runsvdirCount: 1 },
+    })),
   };
   return { deps, seen };
 }
@@ -70,15 +83,16 @@ test('未命中本模块管辖的 pathname 时返回 false，且不写任何响�
   assert.equal(r.seen.json.length, 0);
 });
 
-test('四条路由命中后都显式返回 true：json() 返回 undefined 不能当命中信号', async () => {
+test('五条路由命中后都显式返回 true：json() 返回 undefined 不能当命中信号', async () => {
   const results = [
     await call('/api/selfcheck'),
     await call('/api/link/check'),
+    await call('/api/k40/heartbeat'),
     await call('/api/ledger/check'),
     await call('/api/files/tree?project=PRJ_X'),
   ];
   for (const r of results) assert.equal(r.handled, true);
-  assert.deepEqual(results.map((r) => r.last.status), [200, 200, 200, 200]);
+  assert.deepEqual(results.map((r) => r.last.status), [200, 200, 200, 200, 200]);
 });
 
 test('/api/selfcheck 固定五盏灯（fs_type/storage/memory/isolation/link），all_pass 严格等价于全 pass', async () => {
@@ -296,4 +310,56 @@ test('/api/selfcheck 链路灯在没有指纹诊断码时 detail 保持原样（
   });
   const link = r.last.payload.checks.find((c) => c.id === 'link');
   assert.equal(link.detail, 'CPU=8/8 Mem=11.5GB');
+});
+
+// ── /api/k40/heartbeat（4 Argon 第十九轮 Q2）：零 SSH 观测通道 ──
+//
+// 这条路由存在的唯一理由：ssh 全断时也要能定性。所以它的契约重点是
+// 「结论只报层代号 + 不做任何自愈」，以及「serial 可显式指定」。
+
+test('/api/k40/heartbeat 全通时 ok=true，serial 缺省取 DEFAULT_SERIAL', async () => {
+  const r = await call('/api/k40/heartbeat');
+  assert.equal(r.handled, true);
+  assert.equal(r.last.status, 200);
+  assert.equal(r.last.payload.ok, true);
+  assert.equal(r.last.payload.serial, '3a3e1f52');
+  assert.equal(r.last.payload.code, null);
+  assert.equal(r.last.payload.hint, '');
+});
+
+test('/api/k40/heartbeat 失败时 ok=false，code 原样带出并提示按层代号定位', async () => {
+  const r = await call('/api/k40/heartbeat', {
+    readHeartbeat: () => ({
+      testedAt: 1793694009,
+      tunnel: { pass: true, code: null, detail: 'adb 通道可用' },
+      status: 'fail', code: 'ERR_STAGE_PORT_10022',
+      detail: 'port_10022 层失败（tcp-connect 127.0.0.1:10022 不通）',
+      stages: [{ stage: 'port_10022', pass: false, code: 'ERR_STAGE_PORT_10022', detail: '不通' }],
+      data: { ts: 1793694009, runsvdirCount: 1 },
+    }),
+  });
+  const payload = r.last.payload;
+  assert.equal(payload.ok, false);
+  assert.equal(payload.code, 'ERR_STAGE_PORT_10022');
+  assert.match(payload.detail, /port_10022 层失败/);
+  // 不允许路由自己编自愈动作：只提示按代号定位
+  assert.match(payload.hint, /ERR_STAGE_TUNNEL/);
+  assert.match(payload.hint, /设备侧只记录不重启/);
+});
+
+test('/api/k40/heartbeat 的 serial 查询参数透传给读取器', async () => {
+  const seen = [];
+  const r = await call('/api/k40/heartbeat?serial=OTHER123', {
+    readHeartbeat: (options) => { seen.push(options); return { status: 'ok', code: null, detail: '', stages: [], data: null, tunnel: { pass: true } }; },
+  });
+  assert.deepEqual(seen, [{ serial: 'OTHER123' }]);
+  assert.equal(r.last.payload.serial, 'OTHER123');
+});
+
+test('/api/k40/heartbeat 读取器抛错时回 500，不伪装成健康', async () => {
+  const r = await call('/api/k40/heartbeat', {
+    readHeartbeat: () => { throw new Error('adb: device offline'); },
+  });
+  assert.equal(r.last.status, 500);
+  assert.match(r.last.payload.error, /device offline/);
 });
