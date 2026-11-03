@@ -8,7 +8,7 @@
 | 项 | 值 |
 |---|---|
 | HEAD | 见 `git log -1`（本报告随封板提交） |
-| 测试 | **1342 tests / 1324 pass / 0 fail / 18 skipped**（123 个测试文件，约 85 秒实测 TAP） |
+| 测试 | **1349 tests / 1331 pass / 0 fail / 18 skipped**（124 个测试文件） |
 | 代码规模 | 20120 SLOC（非空行，66 个文件） |
 | 台账 | workflows 3 系列 / 54 Mod / 断链 0；图件 82 = 30 ready + 52 pending |
 | 设备 | K40 四服务全 run，8022 与 10022 双通，零 SSH 心跳五层全通 |
@@ -17,6 +17,7 @@
 
 | 门禁 | 命令 | 结果 |
 |---|---|---|
+| **单命令总门禁** | **`npm run gate:all`** | **GATE_ALL_OK 7 道全绿（101 秒）**——八道门禁串成一条命令 |
 | 静态语言门禁 | `node ops/static_gate.mjs` | sh 24 / ps1 24 / py 45 / r 16 全部通过（16 个因宿主缺工具跳过，CI 上不跳） |
 | 跳过原因白名单 | `npm run test:skip-gate` | 123 个测试文件，全部命中白名单 |
 | 运行时 TAP 面 | `node ops/metrics_sync.mjs --check` | 18 条真实跳过全部带白名单原因（复用同一次 TAP，零额外耗时） |
@@ -25,6 +26,25 @@
 | 交付审计汇总 | `npm run delivery:audit` | AUDIT_SUMMARY_OK 1 次交付 / 1 个项目 / 357 文件 |
 | 交付验收 | `npm run delivery:verify -- <tar>` | 四关全绿（真包实测 0.7 秒 VERIFIED 357） |
 | 工作区清理 | `npm run clean:workspace` | 演练模式列出 222 MB 候选，磁盘零改动 |
+
+## 二点五、客户盲测预演（仓库外空目录，只用手工命令）
+
+按 Argon 第二十四轮 Q3 裁定，在 `D:\Temp\client_blind_test\client_env`（完全脱离仓库、
+PATH 不含 node 与仓库）逐字照 `HOW_TO_VERIFY.txt` 手工执行四步：
+
+| 步骤 | 命令 | 结果 |
+|---|---|---|
+| 1 包本体 | `sha256sum -c <tar>.sha256` | exit 0，OK |
+| 2 解包 | `tar -xzf <tar>` | exit 0，单一一级目录 |
+| 3 包内逐文件 | `sha256sum -c CHECKSUMS.sha256` | exit 0，9 个文件全 OK、零 FAILED |
+| 4 验签 | `openssl pkeyutl -verify -pubin -inkey ED25519_PUBLIC_KEY.pem -rawin -in CHECKSUMS.sha256 -sigfile CHECKSUMS.sig` | exit 0，`Signature Verified Successfully` |
+
+篡改探针（同样在客户环境、同样只用系统工具）：
+
+- 改图件一个字节 → 第 3 步 `fig1.png: FAILED`，exit 1；恢复后复绿。
+- 改 CHECKSUMS 首字节 → 第 4 步 `EVP_DigestVerify: provider signature failure`，exit 1；恢复后复绿。
+
+结论：客户侧零仓库依赖的验真闭环成立，且两条篡改路径都能当场抓住。
 
 ## 三、这二十三轮建成了什么
 

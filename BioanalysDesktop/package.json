@@ -16,7 +16,8 @@
     "test:skip-gate": "node ../ops/skip_reason_gate.mjs",
     "preflight": "node ../ops/preflight.mjs",
     "clean:workspace": "node ../ops/clean_workspace.mjs",
-    "delivery:audit": "node ../ops/audit_summary.mjs"
+    "delivery:audit": "node ../ops/audit_summary.mjs",
+    "gate:all": "node ../ops/run_all_gates.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

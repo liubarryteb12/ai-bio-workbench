@@ -50,6 +50,10 @@ const EXEMPT_RELPATHS = new Set([
   'ops/static_gate.mjs',                   // 离线静态门禁（手工/CI 跑，不进服务运行时）
   'ops/smoke_golden.mjs',                   // 离线真机冒烟驱动（手工/CI 跑，经 ssh 下发生产包装器）
   'ops/ledger_gen.mjs',                    // 离线台账生成（纯 node:fs，无子进程；列入以防将来引入）
+  // 总门禁串联器（Argon 第二十四轮 Q4）：它**本身就是**门禁的编排者，必须起子进程
+  // 才能把八道门禁一道道跑起来；与 metrics_sync/static_gate 同属「手工/CI 跑、
+  // 不进服务运行时」的离线工具类。它起的每个子进程都走白名单脚本，不碰远端算力。
+  'ops/run_all_gates.mjs',
 ]);
 
 // 豁免清单：接缝本体。加名字进这份清单需要人裁定，不许顺手扩。

@@ -1,89 +1,40 @@
-name: CI
+# 私有仓库 CI：与本地 npm run gate:all 行为 100% 同构（4 Argon 第二十四轮 Q4）。
+#
+# 为什么保持私有：本仓库含核心商业生信母版与交付底座，公开即等于把资产暴露给爬虫。
+# GitHub Private 免费额度（2000 分钟/月）对本流水线绰绰有余：单轮约 3 分钟，
+# 即使每天推 5 次，一个月也只消耗约 375 分钟。
+#
+# 与本地唯一的差异：Runner 上没有 K40 真机，依赖真机的用例按 HOST_UNREACHABLE_K40
+# 白名单原因跳过（skip_reason_gate 会核验每条跳过都带合法标签，无理由跳过照样红）。
+name: gates
 
 on:
   push:
+    branches: [master, main]
   pull_request:
+  workflow_dispatch:
 
 jobs:
-  static-gate:
+  gate-all:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
-      # 四语种静态语法门禁（2026-11-01，技术债 5.5 收口）：
-      # 覆盖 55 个生信母版（bash/R/Python）与 26 个 Windows 运维 .ps1。
-      # pwsh 7 是 ubuntu-latest 预装的；PowerShell 是动态绑定语言，
-      # ParseFile 只做语法树解析，不会去查 Get-WmiObject 或 HKLM: 是否存在，
-      # 所以无需任何 Windows 模块即可在 Linux 上完成语法看护。
-      - name: Install R for parse() gate
-        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends r-base-core
-      - name: Static syntax gate (sh / ps1 / py / r)
-        run: node ops/static_gate.mjs
-
-  ledger:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      # 台账自省一致性（技术债 5.7 收口）：改了 workflows.json / figure_templates.json
-      # 却忘了重跑生成器，这里直接判红。
-      - name: System ledger is in sync with code
-        run: |
-          node ops/ledger_gen.mjs --write
-          git diff --exit-code docs/generated/SYSTEM_LEDGER.json
-
-  metrics:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
+          node-version: '22'
+      - name: 安装前端依赖
         working-directory: BioanalysDesktop
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: BioanalysDesktop/package-lock.json
-      - name: Install dependencies
-        run: npm ci
-      # README 基线口径（技术债 5.4 + 5.12）：用例数与 pass/fail 必须与实测一致。
-      # 刻意不校验 SLOC——统计脚本自身被计入会导致循环依赖（metrics_sync 注释里有详细说明）。
-      - name: README baseline matches measured tests
-        run: node ../ops/metrics_sync.mjs --check
+        run: npm ci || npm install
+      - name: 单命令总门禁（与本地同构）
+        # 分别跑两次：先报门禁清单，再跑全量。gate:all 内含 preflight/static/ledger/
+        # figure/audit/metrics 七道；任一道红即整体红，exit 非 0 会直接让 job 失败。
+        run: node ops/run_all_gates.mjs --json
+      - name: 门禁结果留档
+        if: always()
+        run: node ops/run_all_gates.mjs --skip-tests || true
 
-  hygiene:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: LF check for executable scripts
-        run: |
-          bad=$(grep -rlP '\r$' --include='*.sh' --include='*.py' --include='*.R' src ops shared bin 2>/dev/null || true)
-          if [ -n "$bad" ]; then echo "CRLF found in:"; echo "$bad"; exit 1; fi
-      - name: Three-line isolation check
-        shell: pwsh
-        run: ./ops/02_check_isolation.ps1
-
-  node:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: BioanalysDesktop
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: BioanalysDesktop/package-lock.json
-      - name: Install dependencies
-        run: npm ci
-      - name: Run tests
-        run: npm test
-      - name: Typecheck
-        run: npx tsc --noEmit
-      - name: Build
-        run: npm run build
+# 刻意不在 CI 里做的事：
+#   - delivery:verify：需要具体客户 tar，属订单级动作，不属仓库级门禁
+#   - clean:workspace：破坏性动作，绝不由 CI 自动触发
+#   - 任何 SSH/adb：CI 无真机，链路类断言一律按白名单原因跳过
