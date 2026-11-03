@@ -68,3 +68,41 @@ BIO_ED25519_PRIVATE_KEY_PATH  = ops/secrets/ed25519_private.pem
 
 对 PRJ_AIMS_V3_20261027 真实打包签名 **4.5 秒**，产出 356 文件 / 335 图 / 36.7MB tar，
 `CHECKSUMS.sig` 64 字节。Argon 原估 3 分钟，实际快约 40 倍。
+
+## 六、第二十轮 Q1 落地：判据真源进 Node 核心，内联为打包后置条件（2026-11-03）
+
+Argon 裁定：放弃「人记得敲的命令」形态，四关验收成为打包链路的
+最后一步后置条件（Post-condition），且未持有效回执禁止放行交付。
+
+| 件 | 职责 |
+|---|---|
+| `ops/delivery_acceptance_core.mjs` | 四道关判据的唯一真源：侧车 → 解包 → 验签 → 双向差集/覆盖/counts，纯 Node（zlib + ustar，进程接缝门禁不许 server 起子进程） |
+| `ops/delivery_acceptance.ps1` | 人用的一行包装：找 tar、透传开关、透传退出码。判据词（ghosts/missingFiles/Get-FileHash 等）已不在其中，测试钉住这条委托关系 |
+| `server/report.js` `runInlineAcceptance` | 打包末尾后置条件：全绿才写回执，红时路由回 500 且回执绝不落盘 |
+| `server/routes/report.routes.js` | 下载门禁：放行前校验回执存在且 `tar_sha256` == 当前包实时哈希，否则 409 `ERR_DELIVERY_UNVERIFIED`；`/api/report/files` 同响应带 `delivery_verified` 供前端先显示再点 |
+| `npm run delivery:verify -- <tar>` | 外部抽检口（Argon Q1 点名要的那条） |
+
+回执 schema（落 `<deliverables>/acceptance/<pid>.receipt.json`，业务运行时产物不进仓库；
+CLI 加 `--project-id` 可落 `ops/delivery_acceptance/records/` 受控区留档演练回执）：
+
+```json
+{ "schema_version": 1, "project_id": "…", "tar_sha256": "…", "verified_count": 357,
+  "coverage_ok": true, "verified_at": "…", "verifier_version": "delivery-acceptance-core/1.0.0" }
+```
+
+实测（2026-11-03，PRJ_AIMS_V3_20261027 真包 38MB）：内联验收 0.7 秒，
+VERIFIED 357，双向差集/覆盖/counts 全绿，回执落盘后 `deliveryGateStatus` 放行。
+探针三件套在同一真包上红得其所：包内翻字节 → 关 3 点名 hash_mismatch；
+tar 体翻字节 → 关 1 点名 SHA256 不一致；塞幽灵文件 → 关 4 点名 ghosts。
+
+### 落地时踩到的两个坑（都是实测，不是预防）
+
+1. **PS5.1 无 BOM 的 UTF-8 中文脚本会断语法**：本机没有 pwsh 7，包装脚本喂进
+   Windows PowerShell 5.1 时按 ANSI 代码页解码，中文注释尾字节吃掉紧邻引号，
+   node 收到残缺 argv（`bad option: --project-id`）。解法：ps1 存为 UTF-8 带 BOM，
+   `delivery_acceptance.test.js` 钉住 BOM 字节（EF BB BF）。
+2. **GNU tar 的 PAX 扩展头**：演练包长路径走 `././@PaxHeader`（type 'x'）与 `L`/`K` 机制，
+   只认经典 ustar 的解析器把数据块当主头，当场 `bad_octal_field`。核心按
+   POSIX.1-2017 消费四种扩展头并应用 `path=`/`size=`；同时 zip-slip 防护
+   （`..` 段、绝对路径、盘符名在写盘前拒）用恶意 tar 实测过。
+

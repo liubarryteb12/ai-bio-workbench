@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "project_id": "PRJ_DRILL_WRAPPER_TEST",
+  "tar_sha256": "b5c74f06b967324a0935580d20f3abafa224d28d940b7aeea06736e02f123bb2",
+  "verified_count": 112,
+  "coverage_ok": true,
+  "verified_at": "2026-11-03T11:27:32.555Z",
+  "verifier_version": "delivery-acceptance-core/1.0.0",
+  "note": "演练回执：pwsh -File ops/delivery_acceptance.ps1 -DeliveryDir .tmp/core_drill -SkipExtract -ProjectId ... 全绿产物；tar 为 con_hf 2026-10-31 演练包 (b5c74f06...)"
+}

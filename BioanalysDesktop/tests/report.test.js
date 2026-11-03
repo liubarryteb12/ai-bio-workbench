@@ -22,7 +22,9 @@ import { EventEmitter } from 'node:events';
 import { Readable, Writable } from 'node:stream';
 import childProcess from 'node:child_process';
 import { createHash, generateKeyPairSync } from 'node:crypto';
+import zlib from 'node:zlib';
 import { signDelivery, writeChecksums } from '../../ops/ed25519_tools.mjs';
+import { buildMiniDeliveryPackage, sha256Hex } from './support/delivery_fixture.js';
 
 // 环境变量必须在 import 服务端模块之前设好（report.js / index.js 在模块加载时读）
 const LOCAL_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 's27-report-root-'));
@@ -45,6 +47,57 @@ fs.writeFileSync(
 );
 process.env.BIO_ED25519_PRIVATE_KEY_PATH = TEST_PRIVATE_KEY_PATH;
 process.env.BIO_ED25519_PUBLIC_KEY_PATH = TEST_PUBLIC_KEY_PATH;
+
+// 第二十轮 Q1：打包末尾内联验收 + 回执门禁。垫片因此不能再回放假字节串——
+// 四关验收要在本地真跑（解包、验签、双向差集），scp 必须回放结构合法的
+// 迷你交付包字节（tests/support/delivery_fixture.js，签名键 = 上面的 TEST 键对）。
+// 回执落点走 BIO_DELIVERY_RECORDS_DIR 指向临时区，绝不写进仓库受控区。
+const FIXTURE_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 's27-fixture-'));
+process.env.BIO_DELIVERY_RECORDS_DIR = path.join(FIXTURE_ROOT, 'records');
+const TEST_PUBLIC_PEM = fs.readFileSync(TEST_PUBLIC_KEY_PATH, 'utf8');
+const TEST_PRIVATE_PEM = fs.readFileSync(TEST_PRIVATE_KEY_PATH, 'utf8');
+function makeFixture(projectId) {
+  return buildMiniDeliveryPackage({
+    root: path.join(FIXTURE_ROOT, projectId),
+    projectId,
+    publicKey: TEST_PUBLIC_PEM,
+    privateKey: TEST_PRIVATE_PEM,
+  });
+}
+const FIXTURES = {
+  PRJ_TEST_OK: makeFixture('PRJ_TEST_OK'),
+  PRJ_PULL_OK: makeFixture('PRJ_PULL_OK'),
+  PRJ_PULL_BADHASH: makeFixture('PRJ_PULL_BADHASH'),
+  PRJ_PULL_NOHASH: makeFixture('PRJ_PULL_NOHASH'),
+};
+// PRJ_TEST_BADTAR：远端 tar 里的 01_Adapted_Code/run.sh 被翻了一个字节，
+// 侧车与远端基准哈希都按篡改后的包给（传输层全绿），红线必须落在内联验收的
+// 第 3 关（CHECKSUMS 验签），回执不落盘，下载持续 409。
+const BADTAR_FIXTURE = makeFixture('PRJ_TEST_BADTAR');
+{
+  const raw = zlib.gunzipSync(fs.readFileSync(BADTAR_FIXTURE.tarPath));
+  const at = raw.indexOf(Buffer.from('#!/bin/sh'));
+  if (at < 0) throw new Error('fixture tar 缺 #!/bin/sh 锚点');
+  raw[at + 7] ^= 0x20;
+  BADTAR_FIXTURE.tarBytes = zlib.gzipSync(raw);
+}
+BADTAR_FIXTURE.tarSha256 = sha256Hex(BADTAR_FIXTURE.tarBytes);
+FIXTURES.PRJ_TEST_BADTAR = BADTAR_FIXTURE;
+
+/** 按项目 id + 文件 basename 取垫片要回放的真实字节 */
+function fixtureBytesFor(projectId, name) {
+  const fx = FIXTURES[projectId];
+  if (!fx) return null;
+  if (/_Client_Delivery\.tar\.gz$/.test(name)) {
+    return fx.tarBytes ?? fs.readFileSync(fx.tarPath);
+  }
+  if (name === 'Analysis_Report.md') return fs.readFileSync(path.join(fx.deliveryDir, '03_Interpretation_Report', 'Analysis_Report.md'));
+  if (name === 'Analysis_Report.html') return fs.readFileSync(path.join(fx.deliveryDir, '03_Interpretation_Report', 'Analysis_Report.html'));
+  if (name === 'CHECKSUMS.sha256') return fs.readFileSync(path.join(fx.deliveryDir, 'CHECKSUMS.sha256'));
+  if (name === 'CHECKSUMS.sig') return fs.readFileSync(path.join(fx.deliveryDir, 'CHECKSUMS.sig'));
+  if (name === 'ED25519_PUBLIC_KEY.pem') return fs.readFileSync(path.join(fx.deliveryDir, 'ED25519_PUBLIC_KEY.pem'));
+  return null;
+}
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -155,7 +208,8 @@ function dispatchSpawn(program, args) {
       }
       const quotedPath = /'([^']+)'/.exec(remoteCmd);
       const remoteName = quotedPath ? quotedPath[1].split('/').pop() : '';
-      const bytes = fixtureBytes(remoteName);
+      const fixtureId = Object.keys(FIXTURES).find((id) => remoteCmd.includes(id));
+      const bytes = fixtureId ? fixtureBytesFor(fixtureId, remoteName) : fixtureBytes(remoteName);
       if (!bytes) return fakeChild({ exitCode: 1, stderrText: 'No such file or directory\n' });
       const digest = remoteCmd.includes('PRJ_PULL_BADHASH')
         ? '0'.repeat(64)
@@ -163,23 +217,28 @@ function dispatchSpawn(program, args) {
       return fakeChild({ exitCode: 0, stdoutText: `${digest}  ${remoteName}\n` });
     }
     if (remoteCmd.includes("-printf '%P|%s")) {
-      const listed = ['PRJ_TEST_OK', 'PRJ_PULL_OK', 'PRJ_PULL_BADHASH', 'PRJ_PULL_NOHASH']
-        .find((id) => remoteCmd.includes(id));
+      const listed = Object.keys(FIXTURES).find((id) => remoteCmd.includes(id));
       if (listed) {
         // 照 K40 实测布局：报告嵌在 <pid>_Client_Delivery/03_Interpretation_Report/ 下，
-        // tar.gz 在 deliverables 根
+        // tar.gz 在 deliverables 根；字节数回真实 fixture 尺寸（内联验收要真跑四关）
+        const fx = FIXTURES[listed];
+        const sizeOf = (name) => {
+          const bytes = fixtureBytesFor(listed, name);
+          return bytes ? bytes.length : 0;
+        };
+        const withIntegrityTrio = listed === 'PRJ_TEST_OK' || listed === 'PRJ_TEST_BADTAR';
         return fakeChild({
           exitCode: 0,
           stdoutText: `${listed}_Client_Delivery/01_Adapted_Scripts/run.sh|512\n`
-            + `${listed}_Client_Delivery/03_Interpretation_Report/Analysis_Report.md|1024\n`
-            + `${listed}_Client_Delivery/03_Interpretation_Report/Analysis_Report.html|2048\n`
+            + `${listed}_Client_Delivery/03_Interpretation_Report/Analysis_Report.md|${sizeOf('Analysis_Report.md')}\n`
+            + `${listed}_Client_Delivery/03_Interpretation_Report/Analysis_Report.html|${sizeOf('Analysis_Report.html')}\n`
             + `${listed}_Client_Delivery/delivery_manifest.json|256\n`
-            + `${listed}_Client_Delivery.tar.gz|4096\n`
-            // 端点链路会跑 writeSha256Sidecars，带 tar 的包必须有可验签的清单与签名
-            + (listed === 'PRJ_TEST_OK'
-              ? `${listed}_Client_Delivery/CHECKSUMS.sha256|512\n`
+            + `${listed}_Client_Delivery.tar.gz|${sizeOf(listed + '_Client_Delivery.tar.gz')}\n`
+            // 端点链路要跑 writeSha256Sidecars 与内联验收，带 tar 的包必须有可验签的清单与签名
+            + (withIntegrityTrio
+              ? `${listed}_Client_Delivery/CHECKSUMS.sha256|${sizeOf('CHECKSUMS.sha256')}\n`
                 + `${listed}_Client_Delivery/CHECKSUMS.sig|64\n`
-                + `${listed}_Client_Delivery/ED25519_PUBLIC_KEY.pem|451\n`
+                + `${listed}_Client_Delivery/ED25519_PUBLIC_KEY.pem|${sizeOf('ED25519_PUBLIC_KEY.pem')}\n`
               : ''),
         });
       }
@@ -197,19 +256,8 @@ function dispatchSpawn(program, args) {
     const remoteSpec = args.find((a) => a.startsWith('k40-ubuntu:')) || '';
     const localPath = args[args.length - 1];
     const name = remoteSpec.split('/').pop();
-    if (name === 'CHECKSUMS.sha256') {
-      writeChecksums(path.dirname(localPath));
-      return fakeChild({ exitCode: 0 });
-    }
-    if (name === 'CHECKSUMS.sig') {
-      signDelivery(path.dirname(localPath));
-      return fakeChild({ exitCode: 0 });
-    }
-    if (name === 'ED25519_PUBLIC_KEY.pem') {
-      fs.writeFileSync(localPath, fs.readFileSync(TEST_PUBLIC_KEY_PATH));
-      return fakeChild({ exitCode: 0 });
-    }
-    const bytes = fixtureBytes(name);
+    const fixtureId = Object.keys(FIXTURES).find((id) => remoteSpec.includes(id));
+    const bytes = fixtureId ? fixtureBytesFor(fixtureId, name) : fixtureBytes(name);
     if (bytes === null) {
       return fakeChild({ exitCode: 1, stderrText: 'scp: fixture missing\n' });
     }
@@ -339,7 +387,7 @@ async function api(pathname, options = {}) {
   return fetch(`${BASE}${pathname}`, { ...options, signal: AbortSignal.timeout(10000) });
 }
 
-test('POST /api/report/build：成功 → 200 且 files 形状正确、无绝对路径', async () => {
+test('POST /api/report/build：成功 → 200、files 形状正确、无绝对路径，且内联验收全绿发回执', async () => {
   const res = await api('/api/report/build', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -364,6 +412,18 @@ test('POST /api/report/build：成功 → 200 且 files 形状正确、无绝对
     assert.equal(file.path, file.name);
     assert.ok(!JSON.stringify(file).includes('/mnt/'), '响应里不许出现服务器绝对路径');
   }
+  // 第二十轮 Q1：打包末尾内联验收是后置条件，200 必须带全绿哨兵与回执文件名
+  assert.equal(body.acceptance.sentinel, 'DELIVERY_ACCEPTANCE_OK 四道关全绿');
+  assert.equal(body.acceptance.receipt, 'PRJ_TEST_OK.receipt.json');
+  assert.equal(body.acceptance.verified_count, 8, 'fixture 包受保护业务件 8 个');
+  const receiptFile = path.join(process.env.BIO_DELIVERY_RECORDS_DIR, 'PRJ_TEST_OK.receipt.json');
+  assert.ok(fs.existsSync(receiptFile), '回执必须落在 records 目录');
+  const receipt = JSON.parse(fs.readFileSync(receiptFile, 'utf8'));
+  assert.equal(receipt.project_id, 'PRJ_TEST_OK');
+  assert.equal(receipt.tar_sha256, sha256Hex(fs.readFileSync(path.join(localDeliverDir('PRJ_TEST_OK'), 'PRJ_TEST_OK_Client_Delivery.tar.gz'))),
+    '回执哈希必须与本地当前包实时哈希相等');
+  assert.equal(receipt.coverage_ok, true);
+  assert.match(receipt.verifier_version, /delivery-acceptance-core/);
 });
 
 test('POST /api/report/build：引擎退出码非 0 → 500 且 error 透传 stderr 原文', async () => {
@@ -418,12 +478,40 @@ test('GET /api/report/files：projectId 缺失 → 400', async () => {
   assert.equal(res.status, 400);
 });
 
-test('GET /api/report/download：合法文件 → 200 + 字节数正确', async () => {
+test('GET /api/report/download：合法文件且回执在 → 200 + 字节数正确', async () => {
+  // 回执是上一个 build 用例内联验收写的：下载门禁不是拦「没构建过的」，是拦「没验收过的」
   const res = await api('/api/report/download?projectId=PRJ_TEST_OK&file=Analysis_Report.html');
   assert.equal(res.status, 200);
   assert.match(res.headers.get('content-type') || '', /application\/octet-stream/);
   const body = await res.arrayBuffer();
   assert.equal(body.byteLength, 2048);
+});
+
+test('GET /api/report/download：包已回搬但没走内联验收 → 409 ERR_DELIVERY_UNVERIFIED', async () => {
+  // PRJ_PULL_OK 的三大件由 pullDeliverables 直接拉过（无 build 路由、无回执）：
+  // 文件真实存在、名字合法，但下载必须被回执门禁拦下——这是 Q1 裁定的本体。
+  assert.ok(fs.existsSync(path.join(localDeliverDir('PRJ_PULL_OK'), 'Analysis_Report.md')));
+  const res = await api('/api/report/download?projectId=PRJ_PULL_OK&file=Analysis_Report.md');
+  assert.equal(res.status, 409);
+  const body = await res.json();
+  assert.equal(body.code, 'ERR_DELIVERY_UNVERIFIED');
+  assert.match(body.error, /回执|无验收回执/);
+});
+
+test('GET /api/report/download：回执在但包被替换 → 409 且点名哈希不一致', async () => {
+  const dir = localDeliverDir('PRJ_TEST_OK');
+  const tar = path.join(dir, 'PRJ_TEST_OK_Client_Delivery.tar.gz');
+  const original = fs.readFileSync(tar);
+  try {
+    fs.writeFileSync(tar, Buffer.concat([original, Buffer.from('# swapped\n')]));
+    const res = await api('/api/report/download?projectId=PRJ_TEST_OK&file=Analysis_Report.html');
+    assert.equal(res.status, 409);
+    const body = await res.json();
+    assert.equal(body.code, 'ERR_DELIVERY_UNVERIFIED');
+    assert.match(body.error, /回执哈希与当前 tar 不一致/);
+  } finally {
+    fs.writeFileSync(tar, original);
+  }
 });
 
 test('GET /api/report/download：路径穿越与不在允许集合 → 400', async () => {
@@ -433,6 +521,29 @@ test('GET /api/report/download：路径穿越与不在允许集合 → 400', asy
   assert.equal(traversal.status, 400);
   const outsideSet = await api('/api/report/download?projectId=PRJ_TEST_OK&file=notes.txt');
   assert.equal(outsideSet.status, 400);
+});
+
+test('POST /api/report/build：包内文件被篡改 → 500 DELIVERY_ACCEPTANCE_FAILED，第 3 关红，绝不发回执', async () => {
+  // 传输层全绿（远端基准哈希与侧车都按篡改后的包给），红线必须落在内联验收：
+  // 「打包成功」不等于「包可信」，验收红时 200 就是假交付。
+  const res = await api('/api/report/build', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ projectId: 'PRJ_TEST_BADTAR' }),
+  });
+  assert.equal(res.status, 500);
+  const body = await res.json();
+  assert.equal(body.ok, false);
+  assert.match(body.error, /DELIVERY_ACCEPTANCE_FAILED/);
+  assert.match(body.error, /禁止交付/);
+  const sigGate = body.acceptance.gates.find((g) => g.name === 'signature');
+  assert.equal(sigGate.ok, false, '第 3 关（验签）必须红');
+  assert.match(sigGate.detail, /hash_mismatch/);
+  const receiptFile = path.join(process.env.BIO_DELIVERY_RECORDS_DIR, 'PRJ_TEST_BADTAR.receipt.json');
+  assert.equal(fs.existsSync(receiptFile), false, '验收红时绝不写回执');
+  // 下载同样被拦：没有回执就没有放行依据
+  const dl = await api('/api/report/download?projectId=PRJ_TEST_BADTAR&file=Analysis_Report.md');
+  assert.equal(dl.status, 409);
 });
 
 // ------------------------------------------------------------

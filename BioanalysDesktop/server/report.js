@@ -27,6 +27,9 @@ import { HOSTS, SSD_ROOT, PROJECTS_ROOT, SYSTEM_LOGS, LINES, sanitizeProjectId }
 import { runStream } from './proc.js';
 import { stripSshNoise } from './run.js';
 import { readPublicKey } from '../../ops/ed25519_tools.mjs';
+import {
+  acceptDelivery, writeReceipt, verifyTarReceipt, loadReceipt, ACCEPTANCE_VERSION, RECEIPT_SUBDIR,
+} from '../../ops/delivery_acceptance_core.mjs';
 
 const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
@@ -621,5 +624,108 @@ export function writeSha256Sidecars(projectId) {
     written.push({ name, sha256: digest, sidecar: `${name}.sha256` });
   }
   return written;
+}
+
+// ---------------------------------------------------------------
+// 交付回执与打包末尾内联验收（2026-11-03，4 Argon 第二十轮 Q1 裁定）
+//
+// 形态：(a)+(b) 混合态。四关验收作为打包链路的最后一步后置条件内联执行
+// （第十八轮实测打包+签名 4.5 秒、验收 <1 秒，没有理由靠人记得敲 npm run），
+// 通过后落回执 ops/delivery_acceptance/records/<project_id>.receipt.json；
+// 下载路由放行前必须校验回执存在且 tar_sha256 与当前包实时哈希相等，
+// 否则 409 ERR_DELIVERY_UNVERIFIED。回执严禁混入 docs/generated/SYSTEM_LEDGER.json
+// ——那是架构模具台账，回执是业务运行时产物。
+// ---------------------------------------------------------------
+
+export const DELIVERY_UNVERIFIED_CODE = 'ERR_DELIVERY_UNVERIFIED';
+export { ACCEPTANCE_VERSION };
+
+/** 本地交付目录里的当前交付 tar 包（取最新一个）；没有返回 null */
+export function findLocalTar(projectId) {
+  const safe = sanitizeProjectId(projectId);
+  if (!safe) throw new Error(`projectId 非法: ${projectId}`);
+  const dir = localDeliverDir(safe);
+  try {
+    const name = fs.readdirSync(dir).filter((n) => TAR_DELIVERY_RE.test(n)).sort().pop();
+    return name ? path.join(dir, name) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 生产回执落点（Argon Q1）：「records 目录可放行最新演练回执入库，生产客户回执落项目目录」。
+ * 所以服务端写 <localDeliverDir>/acceptance/<pid>.receipt.json（随 deliverables 一起 gitignore，
+ * 业务运行时产物不进仓库）；BIO_DELIVERY_RECORDS_DIR 存在时覆盖（测试/抽检隔离）。
+ */
+function serverRecordsDir(safe) {
+  if (process.env.BIO_DELIVERY_RECORDS_DIR) return process.env.BIO_DELIVERY_RECORDS_DIR;
+  return path.join(localDeliverDir(safe), 'acceptance');
+}
+
+/** 读回执的候选目录：服务端落点优先，仓库受控区兜底（演练包/CLI 手写回执走这条） */
+function receiptCandidateDirs(safe) {
+  const dirs = [serverRecordsDir(safe)];
+  const repoRecords = path.join(REPO_ROOT, RECEIPT_SUBDIR);
+  if (!dirs.includes(repoRecords)) dirs.push(repoRecords);
+  return dirs;
+}
+
+/**
+ * 打包末尾后置条件：对本地刚回搬的 tar 跑四关验收，全绿才写回执。
+ * 红时不抛异常而是回结构化 verdict——调用方（路由）决定怎么报错，
+ * 回执则绝不落盘（writeReceipt 内部也拒绝 !verdict.ok，双保险）。
+ */
+export function runInlineAcceptance(projectId, { recordsDir } = {}) {
+  const safe = sanitizeProjectId(projectId);
+  if (!safe) throw new Error(`projectId 非法: ${projectId}`);
+  const tar = findLocalTar(safe);
+  if (!tar) {
+    return {
+      ok: false,
+      gates: [],
+      failures: ['本地交付目录没有 *_Client_Delivery.tar.gz（回搬未完成，无从验收）'],
+      sentinel: 'ACCEPTANCE_FAILED 1 项',
+      receipt: null,
+    };
+  }
+  const publicKeyPath = trustedPublicKeyPath();
+  const verdict = acceptDelivery({ tarPath: tar, publicKeyPath, skipExtract: false });
+  let receipt = null;
+  if (verdict.ok) {
+    receipt = writeReceipt({ projectId: safe, verdict, recordsDir: recordsDir || serverRecordsDir(safe) });
+  }
+  return { ...verdict, tarPath: tar, receipt };
+}
+
+/**
+ * 下载放行判据：回执存在 且 其 tar_sha256 == 当前包实时哈希。
+ * 包被换/被改/回执被删都返回 { ok:false, code:'ERR_DELIVERY_UNVERIFIED' }。
+ */
+export function deliveryGateStatus(projectId, { recordsDir } = {}) {
+  const safe = sanitizeProjectId(projectId);
+  if (!safe) throw new Error(`projectId 非法: ${projectId}`);
+  const tar = findLocalTar(safe);
+  if (!tar) {
+    return {
+      ok: false,
+      code: DELIVERY_UNVERIFIED_CODE,
+      reason: '本地尚无交付 tar 包，先 POST /api/report/build（无包即无放行依据）',
+    };
+  }
+  // 有回执的那个目录说了算（哈希不符是决定性否决，不许再往兜底目录找一份旧的）
+  const dirs = recordsDir ? [recordsDir] : receiptCandidateDirs(safe);
+  for (const dir of dirs) {
+    if (loadReceipt(safe, dir)) {
+      const verdict = verifyTarReceipt(safe, tar, dir);
+      return { ...verdict, code: verdict.ok ? null : DELIVERY_UNVERIFIED_CODE, tarPath: tar };
+    }
+  }
+  return {
+    ok: false,
+    code: DELIVERY_UNVERIFIED_CODE,
+    reason: '无验收回执：交付包未经四关验收，禁止标记 DELIVERED 或开放下载',
+    tarPath: tar,
+  };
 }
 

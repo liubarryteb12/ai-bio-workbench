@@ -354,7 +354,15 @@ export function ResultPreviewStudio({ project }: { project: string }) {
 // ============================================================
 
 type DeliverableFile = { name: string; bytes: number };
-type ReportFilesResponse = { ok: boolean; projectId: string; files: DeliverableFile[] };
+type ReportFilesResponse = {
+  ok: boolean;
+  projectId: string;
+  files: DeliverableFile[];
+  // 第二十轮 Q1 回执门禁：未验收时下载会 409，先把状态显示出来
+  delivery_verified?: boolean;
+  verify_code?: string | null;
+  verify_reason?: string | null;
+};
 type ReportBuildResponse = {
   ok: boolean;
   error?: string;
@@ -373,6 +381,8 @@ const deliverDownloadUrl = (project: string, name: string) =>
 
 function DeliveryReportCard({ project }: { project: string }) {
   const [files, setFiles] = useState<DeliverableFile[]>([]);
+  const [verified, setVerified] = useState<boolean | null>(null);
+  const [verifyReason, setVerifyReason] = useState<string | null>(null);
   const [building, setBuilding] = useState(false);
   // 服务端 error 原样透出（引擎的退出码/stderr 是排查依据，不美化不截断）
   const [errorText, setErrorText] = useState('');
@@ -387,6 +397,8 @@ function DeliveryReportCard({ project }: { project: string }) {
         return;
       }
       setFiles(payload.files || []);
+      setVerified(payload.delivery_verified ?? null);
+      setVerifyReason(payload.verify_reason ?? null);
     } catch (cause) {
       setErrorText(cause instanceof Error ? cause.message : String(cause));
     }
@@ -434,6 +446,14 @@ function DeliveryReportCard({ project }: { project: string }) {
         完成后自动回搬本地；生成需在服务器读取全部产物，可能需要数分钟。
       </p>
       {note && <p className="subtle">{note}</p>}
+      {files.length > 0 && verified === false && (
+        <p className="hint" style={{ color: '#b45309' }}>
+          该包未持有有效验收回执，下载已被服务端拒绝（{verifyReason || 'ERR_DELIVERY_UNVERIFIED'}）。重新「生成交付报告」会在打包末尾自动跑四关验收。
+        </p>
+      )}
+      {files.length > 0 && verified === true && (
+        <p className="subtle">验收回执有效，四关全绿。</p>
+      )}
       {errorText && (
         <p className="hint" style={{ color: '#b91c1c', whiteSpace: 'pre-wrap' }}>
           {errorText}

@@ -1,228 +1,52 @@
-#!/usr/bin/env pwsh
-# 交付包端到端验收：tar 侧车哈希 → 解包 → 清单验签 → 计数核对
+﻿#!/usr/bin/env pwsh
+# 交付包端到端验收：人用的一行包装，四道关判据的唯一真源是 ops/delivery_acceptance_core.mjs。
 #
-# 存在的理由（2026-11-02，4 Argon 第十六轮 Priority 1）：
-# 客户买到的是最终交付包（报告 + 图 + 表 + .sig），不是仓库里的中间产物。
-# 过去只验证过各模块单独可用，没有一条命令能把「拿到一个 tar 到确认它可信」
-# 走完。本脚本把这四道关固化成可复跑的一次调用，任一道红即整体红。
+# 本文件必须存为 UTF-8 带 BOM：Windows PowerShell 5.1 无 BOM 时按 ANSI 代码页解码，
+# 中文注释的尾字节会吃掉紧邻的引号导致解析断裂（第 21 轮实测：无 BOM 时 node 收到
+# 残缺 argv，报 bad option）。delivery_acceptance.test.js 钉住这个 BOM。
 #
-# 判据（四道全绿才算通过）：
-#   1. tar 本体 SHA256 与侧车文件一致（防传输损坏与替换）
-#   2. 解包成功且目录结构含 CHECKSUMS.sha256 / CHECKSUMS.sig / delivery_manifest.json
-#   3. 清单逐文件哈希校验 + Ed25519 验签返回 VERIFIED
-#   4. 清单登记的各类计数与磁盘实际文件数一致
+# 为什么不再是独立实现（2026-11-03，4 Argon 第二十轮 Q1）：验收从「人记得敲的命令」升级为
+# 打包链路的后置条件（server/report.js 的 runInlineAcceptance 内联调用同一份核心）。
+# 如果 ps1 继续自带一套四关逻辑，两条路会漂移：服务端绿、手敲红（或反之）没法自证。
+# 本包装只做三件事：找 tar、把开关原样传给核心、按核心退出码退出（哨兵由核心打印）。
 #
 # 用法：
 #   pwsh -File ops/delivery_acceptance.ps1 -DeliveryDir <含 tar 的目录>
 #   可选 -PublicKeyPath 指定公钥（默认 ops/secrets/ed25519_public.pem）
-#   可选 -SkipExtract 复用既有 unpacked 目录（篡改探针专用，见关 2 注释）
+#   可选 -SkipExtract 复用既有 unpacked（篡改探针专用）
+#   可选 -ProjectId 验收通过时写回执 ops/delivery_acceptance/records/<id>.receipt.json
 
 param(
   [Parameter(Mandatory = $true)][string]$DeliveryDir,
-  [string]$PublicKeyPath = 'ops/secrets/ed25519_public.pem',
-  # 默认每次重新解包，保证重复跑拿到的是 tar 里的原始内容（幂等）。
-  # 带 -SkipExtract 时复用既有 unpacked：这是给「篡改探针」用的，
-  # 否则改过的文件会被重新解包覆盖，验出的是假绿。
-  [switch]$SkipExtract
+  [string]$PublicKeyPath = 'ops\secrets\ed25519_public.pem',
+  [switch]$SkipExtract,
+  [string]$ProjectId = '',
+  [string]$ReceiptOutDir = ''
 )
 
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 Set-Location $repo
 
-$dir = Resolve-Path $DeliveryDir
-$failures = @()
-function Fail([string]$msg) { $script:failures += $msg; Write-Host ("[ RED ] " + $msg) -ForegroundColor Red }
-function Ok([string]$msg) { Write-Host ("[ OK  ] " + $msg) -ForegroundColor Green }
+$core = Join-Path $PSScriptRoot 'delivery_acceptance_core.mjs'
+if (-not (Test-Path $core)) {
+  Write-Host '[ RED ] 缺 ops/delivery_acceptance_core.mjs（四关判据真源）' -ForegroundColor Red
+  Write-Host 'ACCEPTANCE_FAILED 1 项' -ForegroundColor Red
+  exit 1
+}
 
-# 关 1：tar 侧车哈希
+$dir = Resolve-Path $DeliveryDir
 $tar = Get-ChildItem -Path $dir -Filter '*Client_Delivery.tar.gz' -File | Select-Object -First 1
 if (-not $tar) {
-  Fail "找不到 *Client_Delivery.tar.gz"
+  Write-Host '[ RED ] 找不到 *Client_Delivery.tar.gz' -ForegroundColor Red
+  Write-Host 'ACCEPTANCE_FAILED 1 项' -ForegroundColor Red
   exit 1
 }
-# 侧车有两种历史命名：tar_sha256_sidecar.txt（演练包）与 <name>.tar.gz.sha256（打包器产物）。
-# 两者格式相同（"<sha256>  <文件名>"），一并接受，避免命名差异被误判成缺校验。
-$sidecar = Join-Path $dir 'tar_sha256_sidecar.txt'
-if (-not (Test-Path $sidecar)) {
-  $alt = Join-Path $dir ($tar.Name + '.sha256')
-  if (Test-Path $alt) { $sidecar = $alt }
-}
-if (Test-Path $sidecar) {
-  $expected = (Get-Content $sidecar -Raw).Trim().Split(' ')[0].ToLower()
-  $actual = (Get-FileHash $tar.FullName -Algorithm SHA256).Hash.ToLower()
-  if ($expected -eq $actual) { Ok "tar SHA256 与侧车一致：$($actual.Substring(0,16))..." }
-  else { Fail "tar SHA256 不一致：期望 $expected 实际 $actual" }
-} else {
-  Fail "缺 tar_sha256_sidecar.txt，无法校验 tar 本体"
-}
 
-# 关 2：解包
-$unpack = Join-Path $dir 'unpacked'
-if ($SkipExtract) {
-  # 篡改探针模式：磁盘上留的 unpacked 会被原样检验，这才是「有人改过包内文件」
-  # 时该走的路径。目录不在就直接判红，绝不能默默重建一份干净的解包来顶替。
-  if (-not (Test-Path $unpack)) {
-    Fail "-SkipExtract 要求 unpacked 目录已存在（先不带该开关跑一次生成）"
-    exit 1
-  }
-  Ok "复用既有解包目录（-SkipExtract，不重新解包）"
-} else {
-  if (Test-Path $unpack) { Remove-Item $unpack -Recurse -Force }
-  New-Item -ItemType Directory -Path $unpack | Out-Null
-  tar -xzf $tar.FullName -C $unpack
-  if ($LASTEXITCODE -ne 0) { Fail "解包失败"; exit 1 }
-}
-# 交付根目录是 tar 内唯一的一级目录
-$delivery = Get-ChildItem -Path $unpack -Directory | Select-Object -First 1
-if (-not $delivery) { Fail "解包后没有一级目录"; exit 1 }
-foreach ($need in @('CHECKSUMS.sha256', 'CHECKSUMS.sig', 'delivery_manifest.json')) {
-  if (-not (Test-Path (Join-Path $delivery.FullName $need))) { Fail "交付包缺 $need" }
-}
-if ($SkipExtract) { Ok "交付根目录：$($delivery.Name)（复用既有解包，未重新解包）" }
-else { Ok "解包完成：$($delivery.Name)" }
-
-# 关 3：清单哈希 + Ed25519 验签
-if (-not (Test-Path $PublicKeyPath)) {
-  Fail "公钥缺失：$PublicKeyPath"
-} else {
-  $env:BIO_ED25519_PUBLIC_KEY_PATH = (Resolve-Path $PublicKeyPath).Path
-  $out = node ops/verify_delivery_signature.mjs --delivery-dir $delivery.FullName 2>&1
-  $text = ($out | Out-String).Trim()
-  if ($LASTEXITCODE -eq 0 -and $text -match 'VERIFIED') {
-    Ok "清单哈希与 Ed25519 验签通过：$text"
-  } else {
-    Fail "验签失败：$text"
-  }
-}
-
-# 关 4：清单与磁盘的集合双向差集（2026-11-02，4 Argon 第十七轮第 1 节）
-#
-# 为什么不能只做「总数相减」：磁盘 115 含 4 个签名元数据自身 + 111 个业务文件，
-# 清单 117 条是不带小节前缀的相对路径。两个维度硬比只会得到假阳性。
-# 为什么也不能只看第 3 关：第 3 关是单向检查（遍历清单查磁盘），
-# 磁盘上多出的未登记「幽灵文件」（临时调试物、.bak、未脱敏配置）它 100% 放行。
-#
-# 判据：把清单每条按所属小节拼成磁盘相对路径，与「磁盘集合扣除元数据白名单」
-# 求双向差集，两侧都必须为空。多出即幽灵文件，缺失即清单漂移。
-$metaFiles = @('CHECKSUMS.sha256', 'CHECKSUMS.sig', 'delivery_manifest.json', 'ED25519_PUBLIC_KEY.pem')
-# 清单按分类登记业务文件；解读报告不在该登记表内，属交付必需但不入哈希清单
-# 打包器会额外写这些说明性文件：它们不参与哈希清单（清单只管受保护业务件），
-# 但属交付必需，不能算幽灵私货。
-$allowedUnlistedPrefixes = @('03_Interpretation_Report/')
-# README.md 是包根说明：它进 CHECKSUMS（受签名保护），但不属于 manifest 的业务分类，
-# 所以幽灵检测要放行它，否则每次交付都会误报。
-$allowedUnlistedFiles = @('01_Adapted_Code/_report.txt', 'README.md')
-
-$manifestPath = Join-Path $delivery.FullName 'delivery_manifest.json'
-if (Test-Path $manifestPath) {
-  $mf = Get-Content $manifestPath -Raw | ConvertFrom-Json
-  # 小节 -> 磁盘目录前缀（实测:两个目录，01 放代码，02 放图表）
-  $sectionDir = @{
-    scripts = '01_Adapted_Code'
-    adapted_code = '01_Adapted_Code'
-    figures = '02_Figures_and_Tables'
-    tables = '02_Figures_and_Tables'
-  }
-  $declared = New-Object System.Collections.Generic.HashSet[string]
-  foreach ($prop in $mf.files.PSObject.Properties) {
-    $prefix = $sectionDir[$prop.Name]
-    foreach ($rel in @($prop.Value)) {
-      if ($null -eq $rel) { continue }
-      $full = if ($prefix) { "$prefix/$rel" } else { "$rel" }
-      [void]$declared.Add(($full -replace '\\', '/'))
-    }
-  }
-
-  $diskAll = Get-ChildItem $delivery.FullName -Recurse -File | ForEach-Object {
-    $_.FullName.Substring($delivery.FullName.Length + 1).Replace('\', '/')
-  }
-  $diskBusiness = $diskAll | Where-Object { $metaFiles -notcontains $_ }
-
-  # 双向差集：(磁盘 - 白名单前缀) 与 清单
-  $ghosts = @()
-  foreach ($f in $diskBusiness) {
-    if ($declared.Contains($f)) { continue }
-    $allowed = $false
-    if ($allowedUnlistedFiles -contains $f) { $allowed = $true }
-    if (-not $allowed) {
-      foreach ($p in $allowedUnlistedPrefixes) { if ($f.StartsWith($p)) { $allowed = $true; break } }
-    }
-    if (-not $allowed) { $ghosts += $f }
-  }
-  $missingFiles = @($declared | Where-Object { -not (Test-Path (Join-Path $delivery.FullName $_)) })
-
-  if ($ghosts.Count -eq 0) {
-    Ok ("无幽灵文件：磁盘业务文件 " + $diskBusiness.Count + " 个，全部在清单或白名单内")
-  } else {
-    Fail ("发现 " + $ghosts.Count + " 个未登记文件（幽灵私货）：" + ($ghosts -join ', '))
-  }
-  if ($missingFiles.Count -eq 0) {
-    Ok ("清单 " + $declared.Count + " 条全部落到磁盘")
-  } else {
-    Fail ("清单有 " + $missingFiles.Count + " 条在磁盘缺失：" + ($missingFiles -join ', '))
-  }
-
-  # CHECKSUMS 覆盖完备性（2026-11-02，第 4 关补充）
-  #
-  # manifest 只登记四类业务件（scripts/adapted_code/figures/tables），但交付包里还有
-  # 解读报告、对账说明等「必需但不入清单」的文件。CHECKSUMS.sha256 是另一套口径：
-  # 它应当覆盖除签名元数据之外的**全部**业务文件。两者都能证明「文件没少」，
-  # 但它们回答的问题不同：manifest 答「登记的东西在不在」，CHECKSUMS 答「磁盘的东西
-  # 有没有被哈希保护」。只验前者会放过「存在但未被签名保护」的文件。
-  # 覆盖检查的文件集合与幽灵检查不同：幽灵检查要排除「登记表不识别的元数据」，
-  # 而覆盖检查要回答「磁盘上每一个业务文件是否都被哈希保护」，所以只排除
-  # 真正不进 CHECKSUMS 的三件（清单自身 / 它的签名 / 客户公钥）。
-  # delivery_manifest.json 是被哈希保护的普通文件，排除它会误判成幽灵登记（实测踩过）。
-  $coverageMeta = @('CHECKSUMS.sha256', 'CHECKSUMS.sig', 'ED25519_PUBLIC_KEY.pem')
-  $coverageDisk = @($diskAll | Where-Object { $coverageMeta -notcontains $_ })
-  $checksumsPath = Join-Path $delivery.FullName 'CHECKSUMS.sha256'
-  if (Test-Path $checksumsPath) {
-    $protected = @()
-    foreach ($line in (Get-Content $checksumsPath)) {
-      if ([string]::IsNullOrWhiteSpace($line)) { continue }
-      $parts = $line.Trim() -split '\s+', 2
-      if ($parts.Count -ge 2) {
-        $entryPath = ($parts[1] -replace '\\', '/').TrimStart('*').Trim()
-        # sha256sum 输出的路径可能带 "./" 或前导斜杠，统一成相对路径再比对
-        $entryPath = $entryPath -replace '^\./', '' -replace '^/', ''
-        $protected += $entryPath
-      }
-    }
-    $uncovered = @()
-    foreach ($f in $coverageDisk) { if ($protected -notcontains $f) { $uncovered += $f } }
-    $phantom = @()
-    foreach ($p2 in $protected) {
-      if (-not ($coverageDisk -contains $p2)) { $phantom += $p2 }
-    }
-    if ($uncovered.Count -eq 0 -and $phantom.Count -eq 0) {
-      Ok ("CHECKSUMS 覆盖全部 " + $protected.Count + " 个业务文件，无漏保护、无幽灵登记")
-    } else {
-      if ($uncovered.Count) { Fail ("有 " + $uncovered.Count + " 个业务文件未被 CHECKSUMS 保护：" + ($uncovered -join ', ')) }
-      if ($phantom.Count) { Fail ("CHECKSUMS 登记了 " + $phantom.Count + " 个磁盘不存在的文件：" + ($phantom -join ', ')) }
-    }
-  } else {
-    Fail "缺 CHECKSUMS.sha256，无法校验哈希覆盖完备性"
-  }
-
-  # counts 内部自洽：分项之和必须等于清单条目数（排除不受 counts 管理的分类）
-  $sumCounted = 0
-  $mismatch = @()
-  foreach ($row in $mf.counts.PSObject.Properties) {
-    $sumCounted += [int]$row.Value
-    $declaredInSection = @($mf.files.($row.Name)).Count
-    if ($declaredInSection -ne 0 -and [int]$row.Value -ne $declaredInSection) {
-      $mismatch += ($row.Name + '：counts=' + $row.Value + ' 条目=' + $declaredInSection)
-    }
-  }
-  if ($mismatch.Count -eq 0) { Ok ("counts 分项与清单条目逐类一致，合计 " + $sumCounted) }
-  else { Fail ("counts 与清单条目不一致：" + ($mismatch -join '；')) }
-}
-
-Write-Host ''
-if ($failures.Count -gt 0) {
-  Write-Host ("ACCEPTANCE_FAILED " + $failures.Count + " 项") -ForegroundColor Red
-  exit 1
-}
-Write-Host 'DELIVERY_ACCEPTANCE_OK 四道关全绿' -ForegroundColor Green
-exit 0
+# 侧车两种历史命名（tar_sha256_sidecar.txt 与 <name>.tar.gz.sha256）由核心统一认。
+$nodeArgs = @($core, $tar.FullName, '--public-key', $PublicKeyPath)
+if ($SkipExtract) { $nodeArgs += '--skip-extract' }
+if ($ProjectId) { $nodeArgs += @('--project-id', $ProjectId) }
+if ($ReceiptOutDir) { $nodeArgs += @('--receipt-out', $ReceiptOutDir) }
+node @nodeArgs
+exit $LASTEXITCODE

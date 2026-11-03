@@ -16,6 +16,7 @@ import {
   buildAdaptUploadPairs, readAdaptManifest, runReportBuild, pullDeliverables,
   checkRemoteProjectDir, isAllowedDeliverableName, localDeliverDir, localDeliverFilePath,
   runReportPreflight, writeSha256Sidecars,
+  runInlineAcceptance, deliveryGateStatus, ACCEPTANCE_VERSION,
 } from '../report.js';
 
 export function handleReportRoutes(req, res, url, { json, runRemoteRaw }) {
@@ -85,6 +86,24 @@ export function handleReportRoutes(req, res, url, { json, runRemoteRaw }) {
         const pulled = await pullDeliverables(projectId);
         // 旁挂 sha256：先验证包内 CHECKSUMS 与签名，再在本地交付目录补 .sha256 便于复核
         const sidecars = writeSha256Sidecars(projectId);
+        // 打包末尾后置条件（第二十轮 Q1）：四关验收内联跑，全绿才写回执。
+        // 验收红时不回 200——「包出来了」不等于「包可信」，回执不落盘，
+        // 下载路由会因缺回执持续 409，直到问题修复后重新打包。
+        const acceptance = runInlineAcceptance(projectId);
+        if (!acceptance.ok) {
+          return json(res, 500, {
+            ok: false,
+            projectId,
+            error: 'DELIVERY_ACCEPTANCE_FAILED：打包完成但四关验收未全绿，未发回执，禁止交付。'
+              + ' 失败项：' + acceptance.failures.join('；'),
+            acceptance: {
+              gates: acceptance.gates,
+              failures: acceptance.failures,
+              sentinel: acceptance.sentinel,
+              verifier_version: ACCEPTANCE_VERSION,
+            },
+          });
+        }
         return json(res, 200, {
           ok: true,
           projectId,
@@ -95,6 +114,12 @@ export function handleReportRoutes(req, res, url, { json, runRemoteRaw }) {
           adapted_manifest: readAdaptManifest(undefined, projectId),
           preflight,
           sidecars,
+          acceptance: {
+            sentinel: acceptance.sentinel,
+            receipt: acceptance.receipt ? path.basename(acceptance.receipt.file) : null,
+            verified_count: acceptance.verifiedCount,
+            verifier_version: ACCEPTANCE_VERSION,
+          },
         });
       } catch (cause) {
         return json(res, 500, {
@@ -122,7 +147,16 @@ export function handleReportRoutes(req, res, url, { json, runRemoteRaw }) {
     } catch {
       files = [];
     }
-    json(res, 200, { ok: true, projectId, files });
+    // 门禁状态与清单同响应（第二十轮 Q1）：前端在点下载前就能显示「未验收禁交付」，
+    // 而不是点了 <a> 之后把 409 的 JSON 当页面渲染出来。
+    let gate = { ok: false, code: null, reason: null };
+    try {
+      const status = deliveryGateStatus(projectId);
+      gate = { ok: status.ok, code: status.code || null, reason: status.ok ? null : status.reason };
+    } catch (cause) {
+      gate = { ok: false, code: 'ERR_DELIVERY_UNVERIFIED', reason: cause.message };
+    }
+    json(res, 200, { ok: true, projectId, files, delivery_verified: gate.ok, verify_code: gate.code, verify_reason: gate.reason });
     return true;
   }
 
@@ -137,6 +171,14 @@ export function handleReportRoutes(req, res, url, { json, runRemoteRaw }) {
     const name = url.searchParams.get('file') || '';
     if (!isAllowedDeliverableName(name)) {
       json(res, 400, { error: `文件名非法或不在交付件允许集合内: ${name}` });
+      return true;
+    }
+    // 回执门禁（第二十轮 Q1）：未持有效验收回执禁止开放下载。
+    // 校验的是回执 tar_sha256 与当前交付 tar 实时哈希相等——包被替换/篡改、
+    // 回执被删、从没走过内联验收，三种形态都落在这里 409。
+    const gate = deliveryGateStatus(projectId);
+    if (!gate.ok) {
+      json(res, 409, { ok: false, code: gate.code, error: gate.reason });
       return true;
     }
     const file = localDeliverFilePath(projectId, name);
