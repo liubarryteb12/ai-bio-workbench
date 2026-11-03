@@ -19,6 +19,16 @@ function indexModsByBareId() {
   return indexed;
 }
 
+/** bare mod.id -> 该 id 在三条线里的全部登记（同名 mod 跨线时不丢线信息）。 */
+function indexModsByBareIdAll() {
+  const indexed = new Map();
+  for (const [, entry] of indexMods()) {
+    if (!indexed.has(entry.mod.id)) indexed.set(entry.mod.id, []);
+    indexed.get(entry.mod.id).push(entry);
+  }
+  return indexed;
+}
+
 export function loadFigureTemplates() {
   if (cache) return cache;
   cache = JSON.parse(fs.readFileSync(REGISTRY, 'utf8'));
@@ -82,7 +92,28 @@ export function validateFigureStepInputs(item, modEntry) {
   return errors;
 }
 
-function validateReadyMapping(item, mods, errors) {
+export function validateLineAffinity(item, modsAll, errors) {
+  const lines = Array.isArray(item.lines) ? item.lines : [];
+  if (lines.length === 0) return; // 空 lines 由 validateReadyMapping 单独报错
+  const stepEntries = modsAll.get(item.analysis_step) || [];
+  if (stepEntries.length === 0) return; // analysis_step 悬空由上方单独报错
+  const stepLines = [...new Set(stepEntries.map((entry) => entry.series.id))];
+  const linked = Array.isArray(item.linked_mods) ? item.linked_mods : [];
+  for (const line of lines) {
+    if (!stepLines.includes(line)) {
+      errors.push(`${item.id}: 跨线不可达，lines 声明 ${line} 但 analysis_step ${item.analysis_step} 只属于 ${stepLines.join('/')}`);
+    }
+    if (linked.length > 0) {
+      const hasRenderMod = linked.some((modId) => (modsAll.get(modId) || [])
+        .some((entry) => entry.series.id === line));
+      if (!hasRenderMod) {
+        errors.push(`${item.id}: 跨线不可达，lines 声明 ${line} 但 linked_mods 没有该线的出图 Mod`);
+      }
+    }
+  }
+}
+
+function validateReadyMapping(item, mods, modsAll, errors) {
   if (!Array.isArray(item.lines) || item.lines.length === 0) {
     errors.push(`${item.id}: ready 模板 lines 必须为非空数组`);
   } else if (item.lines.some((line) => !LINES.includes(line))) {
@@ -95,6 +126,9 @@ function validateReadyMapping(item, mods, errors) {
   } else {
     errors.push(...validateFigureStepInputs(item, mods.get(item.analysis_step)));
   }
+  // 第 4 条拓扑不变量（第二十一轮 4 Argon Q3）：跨线亲和性闭合。
+  // analysis_step 的线要覆盖模板声明的每条线，且每条线的 linked_mods 里要有出图 Mod 可挂。
+  validateLineAffinity(item, modsAll, errors);
   for (const key of ['input_tables', 'produces']) {
     if (!Array.isArray(item[key]) || item[key].length === 0) {
       errors.push(`${item.id}: ready 模板 ${key} 必须为非空数组`);
@@ -113,10 +147,12 @@ function validateReadyMapping(item, mods, errors) {
   }
 }
 
-export function validateRegistry() {
-  const registry = loadFigureTemplates();
+export function validateRegistry(options = {}) {
+  const registry = options.registry || loadFigureTemplates();
+  const modsAll = options.modsAll || indexModsByBareIdAll();
   const errors = [];
-  const mods = indexModsByBareId();
+  const mods = new Map();
+  for (const [modId, entries] of modsAll) mods.set(modId, entries[0]);
   const seen = new Set();
   const counts = { ready: 0, pending: 0, pending_mapping: 0, blocked: 0 };
 
@@ -158,7 +194,7 @@ export function validateRegistry() {
     if (item.deps_status === 'ready' && item.verified) {
       validateReadyPath(item, 'source', 'source_sha256', errors);
       validateReadyPath(item, 'preview', 'preview_sha256', errors);
-      validateReadyMapping(item, mods, errors);
+      validateReadyMapping(item, mods, modsAll, errors);
     } else if (item.deps_status === 'ready' && !item.verified) {
       errors.push(`${item.id}: deps_status=ready 必须先通过验证`);
     } else if (item.deps_status !== 'ready' && !item.verified) {

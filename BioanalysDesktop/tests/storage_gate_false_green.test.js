@@ -33,7 +33,7 @@ function findBash() {
   return null;
 }
 const BASH = findBash();
-const NEED_BASH = BASH === null ? '宿主无 bash 解释器' : false;
+const NEED_BASH = BASH === null ? 'HOST_MISSING_BASH: 宿主无 bash 解释器' : false;
 
 /** df -T 的合法输出桩：让第 2 维先过，把问题隔离到第 3 维 */
 const DF_T_OK = [

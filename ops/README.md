@@ -48,6 +48,7 @@
 | `verify_plot_matrix.py` | 服务器 | 参考出图库源码级矩阵验证：逐个隔离运行 R/Python 入口，检查 `RENDER_OK`、PNG 解码与非空白、PDF 文件头和产物 SHA256，输出 `plot_matrix.json`、`PLOT_AVAILABILITY.md` 与 `summary.tsv` | 2026-10-27 K40 实跑 27/27 非隔离源码通过，1 个隔离文件按策略排除 |
 | `stage_plot_matrix.ps1` | PC | 把中文源码路径复制为纯英文 payload，供 K40 矩阵验证使用，并保留原始源码 SHA256 清单 | 2026-10-27 28 条目 staging 通过 |
 | `build_plot_contact_sheet.py` | 本地可视化 | 从 `plot_matrix.json` 生成带条目标签的 QA 总览。使用与交付单位始终是单张图，总览不进入成品 | 2026-10-27 41 张 PNG QA 总览生成成功 |
+| `skip_reason_gate.mjs` | 仓库 | 条件跳过原因白名单门禁（Argon 第二十一轮 Q4）：静态扫 `tests/*.test.js` 的 skip 表达式（常量展开、注释与字符串不误伤），运行时解析 TAP 的 `# SKIP` 原因。白名单 = HOST_MISSING_BASH / PYTHON / ANNDATA / RSCRIPT + HOST_UNREACHABLE_K40 / HOST_MISSING_LOCAL_DATA；裸 `skip: true`、空原因、枚举外标签一律判红。`main()` 可直接进程内调用，CLI 亦可用 `--tests-dir` / `--tap-file` / `--tap-stdin` | 2026-11-03 静态面 116 文件全绿；真实全量 TAP 18 条跳过全带标签；构造 6 类违规全红；变异反证 5/5 红 |
 | `fig_theme.py` / `fig_theme.R` | 服务器 | 出图主题层。Python 侧默认关（`BIOANALYS_PY_THEME=1` 开，实测对显式传参脚本零收益 #193）；R 侧仅 base R par（ggplot 走 SCI 模板 #193） | 底座保留、默认不启用 |
 
 ### 交付报告依赖的两份清单

@@ -93,8 +93,8 @@ function runGuardCapture(args) {
   return { code: res.status, stdout: res.stdout ?? '', stderr: res.stderr ?? '', captured };
 }
 
-const NEED_PY = PY === null ? '宿主无 python + anndata' : false;
-const NEED_BASH = BASH === null ? '宿主无 bash 解释器' : false;
+const NEED_PY = PY === null ? 'HOST_MISSING_ANNDATA: 宿主无 python 与 anndata' : false;
+const NEED_BASH = BASH === null ? 'HOST_MISSING_BASH: 宿主无 bash 解释器' : false;
 
 test('引擎 --help 暴露 --stage 且两个取值齐全', { skip: NEED_PY }, () => {
   const res = runEngine(['--help']);
@@ -234,7 +234,7 @@ test('引擎源码里降级分支排在硬失败之前（WARN 不被 FAIL 抢先
 
 // ---------- 引擎自身的失败口径（真机 /tmp/bad.h5ad 事故，契约 3c） ----------
 
-test('引擎：损坏的 h5ad 必须给出 [BRIDGE FAIL] 结论而不是裸 traceback', { skip: PY === null ? '宿主无 python+anndata' : false }, () => {
+test('引擎：损坏的 h5ad 必须给出 [BRIDGE FAIL] 结论而不是裸 traceback', { skip: PY === null ? 'HOST_MISSING_ANNDATA: 宿主无 python 与 anndata' : false }, () => {
   const dir = fs.mkdtempSync(path.join(TEST_TMP, 'bridge-bad-'));
   const bad = path.join(dir, 'bad.h5ad');
   fs.writeFileSync(bad, 'not-an-h5ad', 'utf8');
@@ -250,7 +250,7 @@ test('引擎：损坏的 h5ad 必须给出 [BRIDGE FAIL] 结论而不是裸 trac
   }
 });
 
-test('引擎：输入文件不存在时给出 [BRIDGE FAIL] 并点名路径', { skip: PY === null ? '宿主无 python+anndata' : false }, () => {
+test('引擎：输入文件不存在时给出 [BRIDGE FAIL] 并点名路径', { skip: PY === null ? 'HOST_MISSING_ANNDATA: 宿主无 python 与 anndata' : false }, () => {
   const res = runEngine(['--input', '/no/such/dir/x.h5ad', '--from', 'Python', '--to', 'R']);
   assert.notEqual(res.code, 0);
   assert.match(res.stdout + res.stderr, /\[BRIDGE FAIL\] 输入文件不存在/);

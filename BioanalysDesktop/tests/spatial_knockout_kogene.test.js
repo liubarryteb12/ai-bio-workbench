@@ -29,7 +29,7 @@ function findBash() {
   return null;
 }
 const BASH = findBash();
-const NEED_BASH = BASH === null ? '宿主无 bash 解释器' : false;
+const NEED_BASH = BASH === null ? 'HOST_MISSING_BASH: 宿主无 bash 解释器' : false;
 
 function findPython() {
   for (const cand of [process.env.BRIDGE_TEST_PYTHON, 'python', 'python3']) {
@@ -40,7 +40,7 @@ function findPython() {
   return null;
 }
 const PY = findPython();
-const NEED_PY = PY === null ? '宿主无 python 解释器' : false;
+const NEED_PY = PY === null ? 'HOST_MISSING_PYTHON: 宿主无 python 解释器' : false;
 
 /** 抽出 bash 包装层的敲除基因解析块，末尾补一行回显，便于真跑观察解析结果。 */
 function extractBlock() {

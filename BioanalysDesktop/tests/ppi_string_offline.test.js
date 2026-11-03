@@ -39,7 +39,7 @@ function findBash() {
   return null;
 }
 const BASH = findBash();
-const NEED = BASH === null ? '宿主无 bash 或 python3 缺 pandas/matplotlib' : false;
+const NEED = BASH === null ? 'HOST_MISSING_BASH: 宿主无 bash 或 python3 缺 pandas/matplotlib' : false;
 
 // --- fixture：1 个低分边、1 组反向重复边、1 个 info 表里查不到的 ENSP、2 条查询集外的边 ---
 const LINKS_HEADER = 'protein1 protein2 combined_score';

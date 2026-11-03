@@ -221,7 +221,7 @@ function runGuard(env, args) {
 }
 
 
-test('bridge_guard.sh 语法正确（bash -n）', { skip: BASH === null ? '宿主无 bash 解释器' : false }, () => {
+test('bridge_guard.sh 语法正确（bash -n）', { skip: BASH === null ? 'HOST_MISSING_BASH: 宿主无 bash 解释器' : false }, () => {
 
   const res = spawnSync(BASH, ['-n', GUARD], { encoding: 'utf8' });
 
@@ -231,7 +231,7 @@ test('bridge_guard.sh 语法正确（bash -n）', { skip: BASH === null ? '宿�
 
 
 
-test('引擎返回 0 → 守卫 0 且含 BRIDGE OK', { skip: BASH === null ? '宿主无 bash 解释器' : false }, () => {
+test('引擎返回 0 → 守卫 0 且含 BRIDGE OK', { skip: BASH === null ? 'HOST_MISSING_BASH: 宿主无 bash 解释器' : false }, () => {
 
   const res = runGuard({ sshScript: '#!/bin/sh\necho "[BRIDGE OK] assert1 ok"\nexit 0\n' }, ['--input', 'x.h5ad', '--from', 'Python', '--to', 'R', '--script', 'gsva_pathways']);
 
@@ -243,7 +243,7 @@ test('引擎返回 0 → 守卫 0 且含 BRIDGE OK', { skip: BASH === null ? '�
 
 
 
-test('引擎断言失败（3）→ 守卫透传同码且含 BRIDGE FAIL', { skip: BASH === null ? '宿主无 bash 解释器' : false }, () => {
+test('引擎断言失败（3）→ 守卫透传同码且含 BRIDGE FAIL', { skip: BASH === null ? 'HOST_MISSING_BASH: 宿主无 bash 解释器' : false }, () => {
 
   const res = runGuard({ sshScript: '#!/bin/sh\necho "[BRIDGE FAIL] assert2 mismatch"\nexit 3\n' }, ['--input', 'x.h5ad', '--from', 'Python', '--to', 'R', '--script', 'gsva_pathways']);
 
@@ -256,20 +256,20 @@ test('引擎断言失败（3）→ 守卫透传同码且含 BRIDGE FAIL', { skip
 
 
 
-test('ssh 可达但引擎返回 1（无 BRIDGE FAIL 文本）→ 阻断 exit 2，不冒充不可达', { skip: BASH === null ? '宿主无 bash 解释器' : false }, () => {
+test('ssh 可达但引擎返回 1（无 BRIDGE FAIL 文本）→ 阻断 exit 2，不冒充不可达', { skip: BASH === null ? 'HOST_MISSING_BASH: 宿主无 bash 解释器' : false }, () => {
   const res = runGuard({ sshScript: '#!/bin/sh\nexit 1\n' }, ['--input', 'x.h5ad', '--from', 'Python', '--to', 'R', '--script', 'gsva_pathways']);
   assert.equal(res.code, 2, `rc=1 必须按校验失败阻断，实际 ${res.code}`);
   assert.match(res.stdout + res.stderr, /BRIDGE FAIL/);
   assert.doesNotMatch(res.stdout + res.stderr, /BRIDGE SKIP/);
 });
 
-test('ssh 不可达（255）→ 默认 SKIP exit 0（K40 离线母版仍可跑）', { skip: BASH === null ? '宿主无 bash 解释器' : false }, () => {
+test('ssh 不可达（255）→ 默认 SKIP exit 0（K40 离线母版仍可跑）', { skip: BASH === null ? 'HOST_MISSING_BASH: 宿主无 bash 解释器' : false }, () => {
   const res = runGuard({ sshScript: '#!/bin/sh\nexit 255\n' }, ['--input', 'x.h5ad', '--from', 'Python', '--to', 'R', '--script', 'gsva_pathways']);
   assert.equal(res.code, 0, res.stderr);
   assert.match(res.stdout, /BRIDGE SKIP/);
 });
 
-test('ssh 不可达 + BIO_STRICT_BRIDGE=1 → 硬阻断 exit 2', { skip: BASH === null ? '宿主无 bash 解释器' : false }, () => {
+test('ssh 不可达 + BIO_STRICT_BRIDGE=1 → 硬阻断 exit 2', { skip: BASH === null ? 'HOST_MISSING_BASH: 宿主无 bash 解释器' : false }, () => {
   const res = runGuard({ sshScript: '#!/bin/sh\nexit 255\n', extra: { BIO_STRICT_BRIDGE: '1' } }, ['--input', 'x.h5ad', '--from', 'Python', '--to', 'R', '--script', 'gsva_pathways']);
   assert.equal(res.code, 2, res.stderr);
   assert.match(res.stdout + res.stderr, /BRIDGE FAIL/);
@@ -279,7 +279,7 @@ test('ssh 不可达 + BIO_STRICT_BRIDGE=1 → 硬阻断 exit 2', { skip: BASH ==
 
 
 
-test('输入非 h5ad/rds → 守卫 0 且 SKIP（不编造可校验对象）', { skip: BASH === null ? '宿主无 bash 解释器' : false }, () => {
+test('输入非 h5ad/rds → 守卫 0 且 SKIP（不编造可校验对象）', { skip: BASH === null ? 'HOST_MISSING_BASH: 宿主无 bash 解释器' : false }, () => {
 
   const res = runGuard({ sshScript: '#!/bin/sh\necho "[BRIDGE OK]"\nexit 0\n' }, ['--input', 'x.tsv', '--from', 'Python', '--to', 'R', '--script', 'gsva_pathways']);
 
@@ -289,7 +289,7 @@ test('输入非 h5ad/rds → 守卫 0 且 SKIP（不编造可校验对象）', {
 
 });
 
-test('未知 --stage → 守卫 2 且明确拒绝，不进入引擎（非法参数不许静默降级）', { skip: BASH === null ? '宿主无 bash 解释器' : false }, () => {
+test('未知 --stage → 守卫 2 且明确拒绝，不进入引擎（非法参数不许静默降级）', { skip: BASH === null ? 'HOST_MISSING_BASH: 宿主无 bash 解释器' : false }, () => {
   const res = runGuard({ sshScript: '#!/bin/sh\necho "[BRIDGE OK]"\nexit 0\n' }, ['--input', 'x.h5ad', '--from', 'Python', '--to', 'R', '--stage', 'whenever', '--script', 'gsva_pathways']);
   assert.equal(res.code, 2, `expected 2 got ${res.code}`);
   assert.match(res.stderr, /未知 --stage/);
@@ -297,7 +297,7 @@ test('未知 --stage → 守卫 2 且明确拒绝，不进入引擎（非法参�
   assert.doesNotMatch(res.stdout + res.stderr, /BRIDGE SKIP/);
 });
 
-test('未知参数 → exit 2（拼写错误严禁静默绕过）', { skip: BASH === null ? '宿主无 bash 解释器' : false }, () => {
+test('未知参数 → exit 2（拼写错误严禁静默绕过）', { skip: BASH === null ? 'HOST_MISSING_BASH: 宿主无 bash 解释器' : false }, () => {
   const res = runGuard({ sshScript: '#!/bin/sh\nexit 0\n' }, ['--inpuut', 'x.h5ad', '--from', 'Python', '--to', 'R', '--script', 'gsva_pathways']);
   assert.equal(res.code, 2, res.stderr);
   assert.match(res.stdout + res.stderr, /未知参数/);

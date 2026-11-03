@@ -23,7 +23,7 @@ function detectPython() {
 }
 
 const PY = detectPython();
-const SKIP = PY ? false : '没有可用的 python3/python';
+const SKIP = PY ? false : 'HOST_MISSING_PYTHON: 没有可用的 python3/python';
 
 function sha256Bytes(bytes) {
   return crypto.createHash('sha256').update(bytes).digest('hex');

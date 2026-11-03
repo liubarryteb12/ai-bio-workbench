@@ -12,7 +12,8 @@
     "start": "node server/index.js",
     "test": "node --test --test-concurrency=1 tests/*.test.js",
     "test:e2e": "node node_modules/@playwright/test/cli.js test --config playwright.config.ts",
-    "delivery:verify": "node ../ops/delivery_acceptance_core.mjs"
+    "delivery:verify": "node ../ops/delivery_acceptance_core.mjs",
+    "test:skip-gate": "node ../ops/skip_reason_gate.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

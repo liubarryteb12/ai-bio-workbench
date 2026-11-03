@@ -38,7 +38,7 @@ function detectPython() {
 }
 
 const PY = detectPython();
-const SKIP = PY ? false : '本机没有可用的 python3/python，跳过 HTML 渲染器用例';
+const SKIP = PY ? false : 'HOST_MISSING_PYTHON: 本机没有可用的 python3/python，跳过 HTML 渲染器用例';
 
 const TEMP_DIRS = [];
 function tmpDir(prefix) {

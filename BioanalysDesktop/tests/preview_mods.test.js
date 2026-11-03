@@ -77,7 +77,7 @@ function remoteReachableCached() {
 }
 
 test('按 mod 分组：只返回勾选的 mod，未勾选的不出现', async (t) => {
-  if (!(await remoteReachableCached())) { t.skip('远端 k40-ubuntu 不可达'); return; }
+  if (!(await remoteReachableCached())) { t.skip('HOST_UNREACHABLE_K40: 远端 k40-ubuntu 不可达'); return; }
   const { child, base } = await startServer();
   t.after(() => child.kill());
 
@@ -94,7 +94,7 @@ test('按 mod 分组：只返回勾选的 mod，未勾选的不出现', async (t
 });
 
 test('每个 mod 带产物清单与完整性状态', async (t) => {
-  if (!(await remoteReachableCached())) { t.skip('远端 k40-ubuntu 不可达'); return; }
+  if (!(await remoteReachableCached())) { t.skip('HOST_UNREACHABLE_K40: 远端 k40-ubuntu 不可达'); return; }
   const { child, base } = await startServer();
   t.after(() => child.kill());
 
@@ -115,7 +115,7 @@ test('每个 mod 带产物清单与完整性状态', async (t) => {
 });
 
 test('missing 与 complete 要能区分（不是所有缺失都叫文件丢失）', async (t) => {
-  if (!(await remoteReachableCached())) { t.skip('远端 k40-ubuntu 不可达'); return; }
+  if (!(await remoteReachableCached())) { t.skip('HOST_UNREACHABLE_K40: 远端 k40-ubuntu 不可达'); return; }
   const { child, base } = await startServer();
   t.after(() => child.kill());
 
@@ -142,7 +142,7 @@ test('missing 与 complete 要能区分（不是所有缺失都叫文件丢失�
 });
 
 test('未知系列 404，非法 project 400', async (t) => {
-  if (!(await remoteReachableCached())) { t.skip('远端 k40-ubuntu 不可达'); return; }
+  if (!(await remoteReachableCached())) { t.skip('HOST_UNREACHABLE_K40: 远端 k40-ubuntu 不可达'); return; }
   const { child, base } = await startServer();
   t.after(() => child.kill());
 

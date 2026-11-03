@@ -28,7 +28,7 @@ function findBash() {
   return null;
 }
 const BASH = findBash();
-const NEED_BASH = BASH === null ? '宿主无 bash 解释器' : false;
+const NEED_BASH = BASH === null ? 'HOST_MISSING_BASH: 宿主无 bash 解释器' : false;
 
 /**
  * Locate a python3 usable inside Git-Bash.
@@ -54,7 +54,7 @@ function findPython3() {
 
 const PY3 = findPython3();
 /** local branch is testable only when python3 is present; skip with a reason, never invert. */
-const NEED_PY3 = PY3 ? false : '宿主日 python3';
+const NEED_PY3 = PY3 ? false : 'HOST_MISSING_PYTHON: 宿主无 python3';
 import { TEST_TMP } from './support/test_tmp.js';
 
 /** 造一套工作区：dummy 输入 + 可控的本机引擎 + 会被记录的 ssh 垫片。 */

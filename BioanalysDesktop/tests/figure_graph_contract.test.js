@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  loadFigureTemplates, validateRegistry, validateFigureStepInputs,
+  loadFigureTemplates, validateRegistry, validateFigureStepInputs, validateLineAffinity,
   resolveFigure, buildAdaptedFigureTasks, authorizeOverwrite,
 } from '../server/figure_graph.js';
 import { indexMods } from '../server/workflow_graph.js';
@@ -177,4 +177,102 @@ test('authorizeOverwrite：不覆写直接放行；影响面按去重项目数�
     projectId: 'P', templateId: 't', overwrite: true,
     references: [{ projectId: 'A' }, 'B', null, { x: 1 }],
   }).reason, '母版影响面 2/3');
+});
+
+// ── 第 4 条拓扑不变量：跨线/跨语言亲和性闭合（第二十一轮 4 Argon Q3）──
+// 4A 语言失配：模板 language 与 linked_mods 语言不一致，必须拦并点名。
+// 4B 跨线不可达：lines 声明的每条线，analysis_step 必须属于该线，linked_mods 必须有该线出图 Mod。
+// 断言都用克隆真实 ready 模板的合成注册表注入，不碰磁盘真源。
+
+function modsAllIndex() {
+  const all = new Map();
+  for (const [, entry] of indexMods()) {
+    if (!all.has(entry.mod.id)) all.set(entry.mod.id, []);
+    all.get(entry.mod.id).push(entry);
+  }
+  return all;
+}
+
+function cloneReadyTemplate(id) {
+  const found = registry.templates.find((item) => item.id === id);
+  assert.ok(found, '测试前提：模板 ' + id + ' 必须存在');
+  return JSON.parse(JSON.stringify(found));
+}
+
+function validateOneTemplate(template) {
+  return validateRegistry({
+    registry: { schema_version: 1, templates: [template] },
+    modsAll: modsAllIndex(),
+  });
+}
+
+test('第 4 条不变量 4A：linked_mods 语言与模板 language 失配必败且点名语言冲突', () => {
+  const base = cloneReadyTemplate('fig_l2_pca'); // language=r，lines=[line1_bulk]
+  const modsAll = modsAllIndex();
+  // 同线挂一个 Python 出图 Mod：线对、语言错，单独暴露 4A
+  modsAll.set('probe_fig_mod', [{
+    mod: { id: 'probe_fig_mod', language: 'Python' },
+    series: { id: 'line1_bulk' },
+    stage: {},
+  }]);
+  base.linked_mods = ['probe_fig_mod'];
+  const bad = validateRegistry({ registry: { schema_version: 1, templates: [base] }, modsAll });
+  assert.equal(bad.ok, false, '语言失配必须判红');
+  assert.ok(bad.errors.some((e) => /linked_mods 语言不匹配，模板 r 与 probe_fig_mod Python/.test(e)),
+    '必须点名模板与 mod 的语言冲突：' + JSON.stringify(bad.errors));
+  // 对照：同线同语言（R）不报语言错误
+  modsAll.set('probe_fig_mod', [{
+    mod: { id: 'probe_fig_mod', language: 'R' },
+    series: { id: 'line1_bulk' },
+    stage: {},
+  }]);
+  const control = validateRegistry({ registry: { schema_version: 1, templates: [base] }, modsAll });
+  assert.equal(control.errors.some((e) => /语言不匹配/.test(e)), false,
+    '同线同语言不得误报：' + JSON.stringify(control.errors));
+});
+
+test('第 4 条不变量 4B：analysis_step 属于他线时必败并点名不可达', () => {
+  const t = cloneReadyTemplate('fig_l2_pca'); // lines=[line1_bulk]，step=l1_qc_pca
+  t.analysis_step = 'l2_qc_cells'; // line2_scrna
+  const v = validateOneTemplate(t);
+  assert.equal(v.ok, false, 'analysis_step 跨线必须判红');
+  assert.ok(v.errors.some((e) => /跨线不可达，lines 声明 line1_bulk 但 analysis_step l2_qc_cells 只属于 line2_scrna/.test(e)),
+    '必须点名 analysis_step 的线：' + JSON.stringify(v.errors));
+});
+
+test('第 4 条不变量 4B：linked_mods 没有本线出图 Mod 时必败', () => {
+  const t = cloneReadyTemplate('fig_l2_umap'); // language=python，lines=[line2_scrna]
+  const control = validateOneTemplate(t);
+  assert.equal(control.errors.some((e) => /跨线不可达/.test(e)), false,
+    '未改动的克隆不得出现跨线错误：' + JSON.stringify(control.errors));
+  t.linked_mods = ['l3_figures_spatial']; // 同语言 python，但只挂 line3_spatial
+  const v = validateOneTemplate(t);
+  assert.equal(v.ok, false, '本线无出图 Mod 必须判红');
+  assert.ok(v.errors.some((e) => /跨线不可达，lines 声明 line2_scrna 但 linked_mods 没有该线的出图 Mod/.test(e)),
+    '必须点名缺失的出图线：' + JSON.stringify(v.errors));
+});
+
+test('第 4 条不变量 4B：多线声明逐线闭合，任一线缺 step 或缺出图 Mod 都拦', () => {
+  const t = cloneReadyTemplate('fig_l2_umap');
+  t.lines = ['line2_scrna', 'line3_spatial'];
+  // step 只在 line2，line3 缺 step；linked_mods 只挂 line2，line3 也缺出图 Mod
+  const errors = [];
+  validateLineAffinity(t, modsAllIndex(), errors);
+  assert.ok(errors.some((e) => /lines 声明 line3_spatial 但 analysis_step l2_integrate_cluster/.test(e)),
+    'line3 缺 step 必须报：' + JSON.stringify(errors));
+  assert.ok(errors.some((e) => /lines 声明 line3_spatial 但 linked_mods 没有该线的出图 Mod/.test(e)),
+    'line3 缺出图 Mod 必须报：' + JSON.stringify(errors));
+  // 真实直补：补上 line3 的出图 Mod 后仍因 step 缺线报红（逐线闭合不是只看交集）
+  t.linked_mods = ['l2_figures_scrna', 'l3_figures_spatial'];
+  const errors2 = [];
+  validateLineAffinity(t, modsAllIndex(), errors2);
+  assert.equal(errors2.filter((e) => /没有该线的出图 Mod/.test(e)).length, 0, '补全后不得再报缺出图 Mod');
+  assert.ok(errors2.some((e) => /analysis_step l2_integrate_cluster/.test(e)), 'step 缺线仍须报');
+});
+
+test('第 4 条不变量：真源 30 个 ready 模板全部满足亲和性闭合（零误伤）', () => {
+  const v = validateRegistry();
+  assert.equal(v.ok, true, v.errors.slice(0, 3).join(' | '));
+  assert.equal(v.errors.some((e) => /跨线不可达|语言不匹配/.test(e)), false,
+    '真源不得触发亲和性告警：' + JSON.stringify(v.errors.filter((e) => /跨线|语言/.test(e))));
 });

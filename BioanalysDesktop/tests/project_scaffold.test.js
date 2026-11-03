@@ -25,7 +25,7 @@ function findPythonLauncher() {
 }
 
 const PYTHON = findPythonLauncher();
-const PYTHON_SKIP = PYTHON ? false : 'host Python interpreter not found';
+const PYTHON_SKIP = PYTHON ? false : 'HOST_MISSING_PYTHON: host Python interpreter not found';
 
 test.after(() => {
   fs.rmSync(TEST_ROOT, { recursive: true, force: true });
