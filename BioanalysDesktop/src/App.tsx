@@ -33,6 +33,9 @@ export function App() {
   const [project, setProject] = useState<string>('default');
   const [projects, setProjects] = useState<ProjectEntry[]>([]);
   const [projectError, setProjectError] = useState<string | null>(null);
+  // 计算面模式（Ticket 1）：'mock' = 离线演示（没有真机也算力），'ssh' = 真机。
+  // 只用于顶部提示，不阻塞任何交互；拿不到按 ssh 处理（不惊吓用户）。
+  const [computeMode, setComputeMode] = useState<'ssh' | 'mock'>('ssh');
   const projectInit = useRef(false);
 
   const refreshProjects = useCallback(async () => {
@@ -68,6 +71,31 @@ export function App() {
     document.addEventListener('visibilitychange', reload);
     return () => {
       window.removeEventListener('focus', reload);
+
+  // 计算面模式读取：/api/selfcheck 显式透出 compute_mode（第二十二轮 Q5 Ticket 1）。
+  // 读失败不影响使用；只在明确 mock 时提示，把「没有真机」摆到明面上，
+  // 而不是让用户在 mock 绿灯下误以为真机验过了。
+  useEffect(() => {
+    let alive = true;
+    const loadMode = async () => {
+      try {
+        const response = await fetch('/api/selfcheck');
+        if (!response.ok) return;
+        const payload = (await response.json()) as { compute_mode?: string };
+        if (!alive) return;
+        setComputeMode(payload.compute_mode === 'mock' ? 'mock' : 'ssh');
+      } catch {
+        // 静默：模式读取失败不该变成新的错误来源
+      }
+    };
+    void loadMode();
+    const onVisible = () => { if (document.visibilityState === 'visible') void loadMode(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      alive = false;
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
       document.removeEventListener('visibilitychange', reload);
     };
   }, [refreshProjects]);
@@ -115,6 +143,17 @@ export function App() {
           </button>
         </div>
       </header>
+
+      {/* Ticket 1：离线演示横幅（compute_mode=mock 时显式提示） */}
+      {computeMode === 'mock' && (
+        <div className="mock-banner" role="status">
+          <strong>离线演示模式</strong>
+          <span>
+            当前未连接真机（BIO_COMPUTE_ADAPTER=mock）。下方自检绿灯与任务结果均为演示数据，
+            不代表真机运行；需要真实算力时请先连上 K40 后重试。
+          </span>
+        </div>
+      )}
 
       {projectError && (
         <div className="card" style={{ margin: 16 }}>

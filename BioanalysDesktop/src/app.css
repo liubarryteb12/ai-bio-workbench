@@ -1485,3 +1485,23 @@ body {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Ticket 1：离线演示模式横幅（compute_mode=mock）。
+   醒目但不刺眼：左色条 + 柔和底色，绝不挡住任何交互。 */
+.mock-banner {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin: 0 16px 8px;
+  padding: 8px 12px;
+  border-left: 4px solid #d97706;
+  border-radius: 4px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.mock-banner strong {
+  white-space: nowrap;
+  font-weight: 600;
+}

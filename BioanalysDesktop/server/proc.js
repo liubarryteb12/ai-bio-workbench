@@ -68,6 +68,16 @@ export function childEnv(overrides = {}) {
  * 计算面适配器：默认 ssh。未知值 fail-closed，mock 只允许在测试环境
  * 或显式 BIO_ALLOW_MOCK_COMPUTE=1 时生效，防止生产进程静默走假算力。
  */
+/**
+ * 当前计算面模式（Ticket 1，4 Argon 第二十二轮 Q5）：'ssh' 真机 / 'mock' 离线演示。
+ * 只读、不抛错：调用方（自检路由、前端横幅）要的是「现在是什么模式」，
+ * 而不是「配置是否合法」——非法配置由 resolveComputeAdapter 在真正执行时 fail-closed。
+ */
+export function computeMode() {
+  const adapter = process.env.BIO_COMPUTE_ADAPTER || 'ssh';
+  return adapter === 'mock' ? 'mock' : 'ssh';
+}
+
 function resolveComputeAdapter() {
   const adapter = process.env.BIO_COMPUTE_ADAPTER || 'ssh';
   if (adapter !== 'ssh' && adapter !== 'mock') {

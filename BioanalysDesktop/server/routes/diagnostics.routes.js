@@ -12,6 +12,8 @@ import {
   DEFAULT_SERIAL, SYSTEM_LOGS, LINES, sanitizeProjectId, projectLineDir,
 } from '../domain.js';
 import { checkLink } from '../link.js';
+// Ticket 1：计算面模式只读透出（ssh 真机 / mock 离线演示），供前端顶部横幅。
+import { computeMode } from '../proc.js';
 import { readHeartbeat } from '../heartbeat.js';
 import {
   buildHardwareCommand, parseHardwareOutput, evaluateHardware,
@@ -132,7 +134,15 @@ export async function handleDiagnosticsRoutes(req, res, url, {
       checks.push({ id: 'link', label: 'ADB/SSH 链路', status: 'unknown', value: '', detail: '无法检测: ' + (e instanceof Error ? e.message : String(e)) });
     }
     const allPass = checks.every((c) => c.status === 'pass');
-    json(res, 200, { all_pass: allPass, checks });
+    // compute_mode 显式透出（Ticket 1）：mock 模式下所有「真机」绿灯都要打折扣，
+    // 前端据此渲染顶部横幅；链路灯单独给 diagnostic_endpoint 仍保留。
+    const computeModeValue = computeMode();
+    json(res, 200, {
+      all_pass: allPass,
+      checks,
+      compute_mode: computeModeValue,
+      mock_mode: computeModeValue === 'mock',
+    });
     return true;
   }
 
