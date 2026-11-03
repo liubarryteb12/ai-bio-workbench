@@ -2115,6 +2115,12 @@ def assemble(ctx, out_dir, no_tar=False):
     with open(os.path.join(delivery, "delivery_manifest.json"), "w", encoding="utf-8", newline="\n") as fh:
         json.dump(manifest, fh, ensure_ascii=False, indent=2)
 
+    # 包根 README：写死两套登记的分工（4 Argon 第十八轮第 3 节裁定，双层正交不合并）。
+    # 必须在 write_checksums 之前落盘，这样 README 自身也进 CHECKSUMS 并被签名覆盖；
+    # 它不属于 manifest 的业务分类，验收第 4 关的白名单（$allowedUnlistedFiles）同步放行。
+    with open(os.path.join(delivery, "README.md"), "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(delivery_readme(meta["project_id"], meta["project_name"], meta["generated_at"], copied))
+
     # 完整性清单：先写 CHECKSUMS.sha256 再打 tar，包内清单与包内文件一一对应。
     # 只覆盖三大件与 manifest 自身落盘之后的现实，manifest 里的 counts 是
     # 复制成功计数、这里是文件系统实测字节，两者不一致以本清单为准。
@@ -2155,6 +2161,50 @@ def assemble(ctx, out_dir, no_tar=False):
 # `sha256sum -c CHECKSUMS.sha256` 复核包内每个文件是否被改过。
 CHECKSUMS_NAME = "CHECKSUMS.sha256"
 SIGNATURE_NAME = "CHECKSUMS.sig"
+README_NAME = "README.md"
+
+
+def delivery_readme(project_id, project_name, generated_at, counts):
+    """包根 README：写死两套登记的分工。
+
+    为什么必须存在（4 Argon 第十八轮第 3 节）：交付包里有 manifest 与 CHECKSUMS 两套
+    登记，客户与对接人第一反应是「以哪套为准」。两套职责正交，合并任何一套都会破坏
+    另一边（CHECKSUMS 必须保持 sha256sum 可解析的纯文本；manifest 承载业务分类）。
+    所以不合并，但必须在包根用最短的话写清分工，否则每次交付都要口头解释一遍。
+    """
+    return (
+        "# %s · 交付包说明\n\n"
+        "> 项目 ID：`%s`　生成时间：%s\n\n"
+        "## 包里有什么\n\n"
+        "| 目录 | 内容 | 数量 |\n"
+        "|---|---|---|\n"
+        "| `01_Adapted_Code/` | 本次分析使用的脚本与图件适配代码 | %s |\n"
+        "| `02_Figures_and_Tables/` | 图件与结果表 | 图 %s / 表 %s |\n"
+        "| `03_Interpretation_Report/` | 七章解读报告（Markdown 与单文件 HTML） | 2 |\n\n"
+        "## 两套清单各管什么（重要）\n\n"
+        "- **`delivery_manifest.json` 管业务分类索引**：有哪些图、多少张表、属于哪条分析线。\n"
+        "  给管理台与报告索引器读，不是完整性凭证。\n"
+        "- **`CHECKSUMS.sha256` + `CHECKSUMS.sig` 管防篡改完整性**：覆盖包内每个文件，\n"
+        "  **含 `delivery_manifest.json` 与本 README 自身**。给取证与验收用。\n\n"
+        "两者不合并：CHECKSUMS 必须保持 `sha256sum` 能直接解析的纯文本格式，\n"
+        "一旦塞进 JSON，系统自带工具链就失效；manifest 需要树状结构表达分类，\n"
+        "两者职责正交。完整性以 CHECKSUMS 为准。\n\n"
+        "## 怎么自己验一遍（无需安装任何东西）\n\n"
+        "```sh\n"
+        "sha256sum -c CHECKSUMS.sha256\n"
+        "```\n\n"
+        "`CHECKSUMS.sig` 是 Ed25519 私钥对 `CHECKSUMS.sha256` 的签名，\n"
+        "`ED25519_PUBLIC_KEY.pem` 是对应公钥，可用于离线验签。\n\n"
+        "## 复现说明\n\n"
+        "所有统计量均从磁盘真实产物读出，未做任何填充或示例替换。\n"
+        "`01_Adapted_Code/figures/adapt/` 下每个脚本头部带 `Master-Source` 与\n"
+        "`Master-SHA256`，可与母版逐字节对账（见 `_report.txt`）。\n"
+        % (
+            project_name, project_id, generated_at,
+            int(counts.get("scripts", 0)) + int(counts.get("adapted_code", 0)),
+            counts.get("figures", 0), counts.get("tables", 0),
+        )
+    )
 
 
 def write_checksums(delivery_dir, skip=()):

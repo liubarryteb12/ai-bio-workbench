@@ -31,6 +31,7 @@ test('delivery acceptance script exists and covers all four gates', () => {
   assert.ok(text.includes('$metaFiles'), '关 4 缺失：未定义签名元数据白名单');
   assert.ok(text.includes('$sectionDir'), '关 4 缺失：未按小节拼装磁盘相对路径（清单路径不带目录前缀）');
   assert.ok(text.includes('$allowedUnlistedFiles'), '关 4 缺失：未把打包器写的说明文件纳入白名单');
+  assert.ok(text.includes('README.md'), '关 4 白名单缺失：README.md 属交付必需但不入 manifest 分类，必须放行');
   assert.ok(text.includes('.sha256'), '关 1 缺失：未兼容 <name>.tar.gz.sha256 这种侧车命名');
   assert.ok(text.includes('CHECKSUMS'), '关 4 缺失：未校验 CHECKSUMS 覆盖完备性');
   assert.ok(text.includes('$protected'), '关 4 缺失：未收集被哈希保护的文件集合');
@@ -52,3 +53,36 @@ test('the reference drill package still carries its sidecar and signature', () =
     assert.ok(fs.existsSync(path.join(drill, need)), '演练包缺 ' + need);
   }
 });
+
+// ── 包根 README 契约（2026-11-03，4 Argon 第十八轮第 3 节：双层正交不合并）──
+//
+// 交付包里有 manifest 与 CHECKSUMS 两套登记，客户第一反应是「以哪套为准」。
+// README 必须在 CHECKSUMS 之前落盘（否则自身不受签名保护），且必须写清分工。
+// 这两条断言钉住顺序与关键句，防止将来有人把 README 挪到签名之后或删掉分工说明。
+
+test('packaged README explains the two registries and is itself signed', () => {
+  const delivery = path.join(REPO, 'local_projects', 'PRJ_AIMS_V3_20261027',
+    'deliverables', 'PRJ_AIMS_V3_20261027_Client_Delivery');
+  const readme = path.join(delivery, 'README.md');
+  if (!fs.existsSync(readme)) return; // 交付目录是运行产物，缺失时不主张
+  const text = fs.readFileSync(readme, 'utf8');
+  // 文案在 Markdown 里带反引号与加粗（**`delivery_manifest.json` 管业务分类索引**），
+  // 用正则跨过反引号会脆；这里按「关键字都在」断言，既能钉住职责又不怕排版微调。
+  assert.ok(text.includes('delivery_manifest.json') && text.includes('管业务分类索引'),
+    '必须写明 manifest 职责（业务分类索引）');
+  assert.ok(text.includes('完整性以 CHECKSUMS 为准'), '必须写明完整性归属');
+  assert.match(text, /sha256sum -c CHECKSUMS\.sha256/, '必须给出系统自带命令的自验方式');
+  const cks = fs.readFileSync(path.join(delivery, 'CHECKSUMS.sha256'), 'utf8');
+  assert.ok(cks.split(/\r?\n/).some((l) => l.trim().split(/\s+/).pop() === 'README.md'),
+    'README.md 必须进 CHECKSUMS，否则不受签名保护');
+});
+
+test('packager writes README before checksums (order is the contract)', () => {
+  const src = fs.readFileSync(path.join(REPO, 'ops', 'build_client_report.py'), 'utf8');
+  const readmeAt = src.indexOf('"README.md"');
+  const cksAt = src.indexOf('checksums = write_checksums(delivery)');
+  assert.ok(readmeAt > 0, '打包器必须写包根 README');
+  assert.ok(cksAt > 0, '打包器必须生成 CHECKSUMS');
+  assert.ok(readmeAt < cksAt, 'README 必须在 CHECKSUMS 之前落盘，否则自身不被签名覆盖');
+});
+

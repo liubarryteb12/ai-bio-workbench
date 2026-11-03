@@ -94,7 +94,9 @@ $metaFiles = @('CHECKSUMS.sha256', 'CHECKSUMS.sig', 'delivery_manifest.json', 'E
 # 打包器会额外写这些说明性文件：它们不参与哈希清单（清单只管受保护业务件），
 # 但属交付必需，不能算幽灵私货。
 $allowedUnlistedPrefixes = @('03_Interpretation_Report/')
-$allowedUnlistedFiles = @('01_Adapted_Code/_report.txt')
+# README.md 是包根说明：它进 CHECKSUMS（受签名保护），但不属于 manifest 的业务分类，
+# 所以幽灵检测要放行它，否则每次交付都会误报。
+$allowedUnlistedFiles = @('01_Adapted_Code/_report.txt', 'README.md')
 
 $manifestPath = Join-Path $delivery.FullName 'delivery_manifest.json'
 if (Test-Path $manifestPath) {
