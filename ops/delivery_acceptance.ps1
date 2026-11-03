@@ -15,10 +15,15 @@
 # 用法：
 #   pwsh -File ops/delivery_acceptance.ps1 -DeliveryDir <含 tar 的目录>
 #   可选 -PublicKeyPath 指定公钥（默认 ops/secrets/ed25519_public.pem）
+#   可选 -SkipExtract 复用既有 unpacked 目录（篡改探针专用，见关 2 注释）
 
 param(
   [Parameter(Mandatory = $true)][string]$DeliveryDir,
-  [string]$PublicKeyPath = 'ops/secrets/ed25519_public.pem'
+  [string]$PublicKeyPath = 'ops/secrets/ed25519_public.pem',
+  # 默认每次重新解包，保证重复跑拿到的是 tar 里的原始内容（幂等）。
+  # 带 -SkipExtract 时复用既有 unpacked：这是给「篡改探针」用的，
+  # 否则改过的文件会被重新解包覆盖，验出的是假绿。
+  [switch]$SkipExtract
 )
 
 $ErrorActionPreference = 'Stop'
@@ -54,17 +59,28 @@ if (Test-Path $sidecar) {
 
 # 关 2：解包
 $unpack = Join-Path $dir 'unpacked'
-if (Test-Path $unpack) { Remove-Item $unpack -Recurse -Force }
-New-Item -ItemType Directory -Path $unpack | Out-Null
-tar -xzf $tar.FullName -C $unpack
-if ($LASTEXITCODE -ne 0) { Fail "解包失败"; exit 1 }
+if ($SkipExtract) {
+  # 篡改探针模式：磁盘上留的 unpacked 会被原样检验，这才是「有人改过包内文件」
+  # 时该走的路径。目录不在就直接判红，绝不能默默重建一份干净的解包来顶替。
+  if (-not (Test-Path $unpack)) {
+    Fail "-SkipExtract 要求 unpacked 目录已存在（先不带该开关跑一次生成）"
+    exit 1
+  }
+  Ok "复用既有解包目录（-SkipExtract，不重新解包）"
+} else {
+  if (Test-Path $unpack) { Remove-Item $unpack -Recurse -Force }
+  New-Item -ItemType Directory -Path $unpack | Out-Null
+  tar -xzf $tar.FullName -C $unpack
+  if ($LASTEXITCODE -ne 0) { Fail "解包失败"; exit 1 }
+}
 # 交付根目录是 tar 内唯一的一级目录
 $delivery = Get-ChildItem -Path $unpack -Directory | Select-Object -First 1
 if (-not $delivery) { Fail "解包后没有一级目录"; exit 1 }
 foreach ($need in @('CHECKSUMS.sha256', 'CHECKSUMS.sig', 'delivery_manifest.json')) {
   if (-not (Test-Path (Join-Path $delivery.FullName $need))) { Fail "交付包缺 $need" }
 }
-Ok "解包完成：$($delivery.Name)"
+if ($SkipExtract) { Ok "交付根目录：$($delivery.Name)（复用既有解包，未重新解包）" }
+else { Ok "解包完成：$($delivery.Name)" }
 
 # 关 3：清单哈希 + Ed25519 验签
 if (-not (Test-Path $PublicKeyPath)) {

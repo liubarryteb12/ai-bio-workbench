@@ -31,9 +31,29 @@
 
 ## 三、验收脚本运行时的一个行为要记住
 
-它**每次都会重新解包**（先 `Remove-Item unpacked` 再 `tar -xzf`）。
-所以想验证「CHECKSUMS 被篡改会不会被抓」，必须绕过验收脚本、用独立探针直接跑
-检测逻辑，否则篡改会被重新解包覆盖掉，得到假绿。
+默认它**每次都会重新解包**（先 `Remove-Item unpacked` 再 `tar -xzf`），
+所以篡改包内文件会被重新解包洗掉，验出假绿。实测证据：给
+`01_Adapted_Code/_report.txt` 追加一行后，不带开关跑仍是 `DELIVERY_ACCEPTANCE_OK`
+（第 3 关 `VERIFIED 357` 照过）。
+
+要演练「有人改过包内文件」，加 `-SkipExtract` 复用既有 `unpacked`，篡改才会走到第 3 关：
+
+```text
+pwsh -File ops/delivery_acceptance.ps1 -DeliveryDir <dir>              # 首次：生成 unpacked
+pwsh -File ops/delivery_acceptance.ps1 -DeliveryDir <dir> -SkipExtract # 探针：检验磁盘上的既有解包
+```
+
+同一份被篡改的解包，两种跑法结论相反，这正是开关存在的意义：
+
+| 跑法 | 结果 |
+|---|---|
+| `-SkipExtract` | `[ RED ] 验签失败：VERIFICATION_FAILED hash_mismatch:01_Adapted_Code/_report.txt`，`ACCEPTANCE_FAILED 1 项`，exit 1 |
+| 默认（重解包） | `DELIVERY_ACCEPTANCE_OK 四道关全绿`，exit 0 |
+
+复用模式下 `unpacked` 不存在直接判红退出，绝不默默重建一份干净解包来顶替。
+重解包只发生在 `else` 分支，这条花括号归属由
+`BioanalysDesktop/tests/delivery_acceptance.test.js` 的结构断言钉住
+（只比较 indexOf 顺序抓不到「两个分支都重解包」的写法）。
 
 ## 四、打包器对环境变量的要求（fail-closed，不是 bug）
 

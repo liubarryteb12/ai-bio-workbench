@@ -77,6 +77,26 @@ test('packaged README explains the two registries and is itself signed', () => {
     'README.md 必须进 CHECKSUMS，否则不受签名保护');
 });
 
+// ── -SkipExtract 契约（2026-11-03，4 Argon 第十八轮第 1 节）──
+//
+// 脚本默认每次先 Remove-Item 再 tar -xzf，所以「篡改包内文件」这个动作会被
+// 重新解包覆盖掉，验出来是假绿。实测证据：把 01_Adapted_Code/_report.txt
+// 追加一行后，不带开关跑仍是 DELIVERY_ACCEPTANCE_OK（重新解包把篡改洗掉了）。
+// -SkipExtract 复用既有 unpacked，才能让篡改走到第 3 关：
+//   带开关 -> VERIFICATION_FAILED hash_mismatch:01_Adapted_Code/_report.txt，exit 1。
+// 这条断言钉住「重解包只发生在 else 分支」，并钉住复用模式下目录缺失必须判红。
+
+test('delivery acceptance can reuse an existing unpack without re-extracting', () => {
+  const text = fs.readFileSync(SCRIPT, 'utf8');
+  assert.ok(text.includes('[switch]$SkipExtract'), '未提供 -SkipExtract 开关，篡改探针无法绕开重解包');
+  // 结构性断言：Remove-Item 与 tar -xzf 必须落在 else 分支里。
+  // 只比较 indexOf 顺序抓不到「两个分支都重解包」这种写法，必须钉住花括号归属。
+  assert.match(text, /if \(\$SkipExtract\) \{[\s\S]*?\} else \{[\s\S]*?Remove-Item \$unpack[\s\S]*?tar -xzf/,
+    '重解包必须只在 else 分支发生，否则 -SkipExtract 失效');
+  assert.ok(text.includes('-SkipExtract 要求 unpacked 目录已存在'),
+    '复用模式下 unpacked 缺失必须判红，不能默默重建干净副本');
+});
+
 test('packager writes README before checksums (order is the contract)', () => {
   const src = fs.readFileSync(path.join(REPO, 'ops', 'build_client_report.py'), 'utf8');
   const readmeAt = src.indexOf('"README.md"');
