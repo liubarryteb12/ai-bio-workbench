@@ -72,6 +72,27 @@ test('HOW_TO_VERIFY 由打包器在 CHECKSUMS 之前生成（因此自身受哈�
   assert.ok(src.includes('fh.write(how_to_verify('), '必须调用 how_to_verify 生成正文');
 });
 
+test('HOW_TO_VERIFY 第 4 步给出可直接复制的单行 openssl 验签命令（真包实测过的形态）', () => {
+  // Argon 第二十二轮 Q4：Ed25519 是纯 EdDSA，签名时对原始消息哈希两次，不支持预哈希，
+  // 所以必须用 pkeyutl -rawin；用 dgst -sha256 -verify 会直接报错。这一行在真包上实测
+  // 输出 Signature Verified Successfully（exit 0），客户复制即可。
+  const src = fs.readFileSync(PACKAGER, 'utf8');
+  const start = src.indexOf('def how_to_verify(');
+  const end = src.indexOf('def write_checksums(');
+  const body = src.slice(start, end);
+  const line = body.split('\\n').find((seg) => seg.includes('openssl pkeyutl'));
+  assert.ok(line, '缺 openssl 验签命令');
+  for (const flag of ['pkeyutl', '-verify', '-pubin', '-inkey', 'ED25519_PUBLIC_KEY.pem',
+    '-rawin', '-in', 'CHECKSUMS.sha256', '-sigfile', 'CHECKSUMS.sig']) {
+    assert.ok(line.includes(flag), '验签命令缺参数：' + flag);
+  }
+  // 必须是单行（可复制）：不允许尾部续行反斜杠或裸换行把命令拆开
+  assert.equal(/\\\\(?=\")/.test(line), false, '验签命令不得用续行反斜杠（客户复制会断）');
+  assert.ok(line.indexOf('-rawin') > 0, '-rawin 必须在命令里');
+  assert.ok(body.includes('Signature Verified Successfully'), '必须写明期望输出');
+  assert.ok(body.includes('dgst'), '必须点名 dgst 写法是错的（防客户照旧习惯踩坑）');
+});
+
 test('HOW_TO_VERIFY 文本覆盖四步验收且给出失败回传清单', () => {
   const src = fs.readFileSync(PACKAGER, 'utf8');
   const start = src.indexOf('def how_to_verify(');

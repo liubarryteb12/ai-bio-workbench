@@ -24,6 +24,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
+// Argon 第二十二轮 Q2 裁定：运行时 TAP 面的 # SKIP 白名单校验**复用**本模块已有的
+// 那次全量 node --test 输出，不再单独跑第二遍（否则 1320 条测试要跑两遍、白白多 150 秒）。
+import { checkTapSkips } from './skip_reason_gate.mjs';
+
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const README = path.join(REPO, 'BioanalysDesktop', 'README.md');
 
@@ -112,9 +116,11 @@ function measureTests() {
   const fail = pick('fail');
   const skipped = pick('skipped');
   if (cases === null || pass === null) {
-    return { files: fileCount, cases: 0, pass: 0, fail: 0, skipped: 0, measured: false };
+    return { files: fileCount, cases: 0, pass: 0, fail: 0, skipped: 0, measured: false, skipGate: null };
   }
-  return { files: fileCount, cases, pass, fail, skipped, measured: true };
+  // 零额外耗时的运行时判据：同一份 TAP 文本顺手校验每条 # SKIP 是否命中白名单。
+  const skipGate = checkTapSkips(text);
+  return { files: fileCount, cases, pass, fail, skipped, measured: true, skipGate };
 }
 
 function currentBaselineLine() {
@@ -147,10 +153,28 @@ function main() {
     console.log('测试规模: ' + metrics.tests.files + ' 文件 / ' + metrics.tests.cases + ' 用例');
     console.log('README 现基线: ' + (actual ?? '(未找到基线行)'));
     console.log('应写基线: ' + expected);
+    if (metrics.tests.skipGate) {
+      console.log('运行时 # SKIP 白名单: ' + (metrics.tests.skipGate.ok ? 'OK' : '违规 ' + metrics.tests.skipGate.violations.length + ' 条')
+        + '（' + metrics.tests.skipGate.total + ' 条跳过）');
+    }
     return 0;
   }
 
   if (mode === 'check') {
+    // 运行时 TAP 面门禁（Argon 第二十二轮 Q2）：每条 # SKIP 必须命中白名单。
+    // 复用本次唯一的全量 TAP 输出，零额外耗时；违规时逐条点名并 exit 1。
+    const skipVerdict = metrics.tests.skipGate;
+    if (!skipVerdict) {
+      console.error('无法读取 TAP 跳过判据（汇总行缺失），拒绝在未校验状态下放行');
+      return 1;
+    }
+    if (!skipVerdict.ok) {
+      for (const violation of skipVerdict.violations) console.error('[ RED ] ' + violation.message);
+      if (skipVerdict.failures > 0) console.error('[ RED ] TAP 里有 ' + skipVerdict.failures + ' 条 not ok');
+      console.error('[ RED ] 运行时 # SKIP 白名单：' + (skipVerdict.violations.length + skipVerdict.failures) + ' 处违规');
+      return 1;
+    }
+    console.log('[ OK ] 运行时 # SKIP 白名单：' + skipVerdict.total + ' 条跳过全部命中（复用本次 TAP，零额外耗时）');
     if (!actual) {
       console.error('README 里找不到基线行（锚点: "当前基线 **...**"）');
       return 1;

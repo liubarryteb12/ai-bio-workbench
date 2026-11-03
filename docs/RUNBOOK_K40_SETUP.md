@@ -78,6 +78,21 @@ cd <项目>_Client_Delivery && sha256sum -c CHECKSUMS.sha256   # 关 3：逐文�
 `npm run delivery:verify -- <tar>`（在 `BioanalysDesktop/` 下）。四关判据真源在
 `ops/delivery_acceptance_core.mjs`，验收回执与脱敏审计流见 `docs/delivery_acceptance_spec.md` 第六、七节。
 
+## 六点五、交付总账的归档约定（每年一次，不需要代码）
+
+代理侧的脱敏审计流是 append-only 的一行一单，落在
+`local_projects/<项目>/deliverables/acceptance_audit.jsonl`（gitignore 区）。
+单行约 400 字节，一千单也只有 400 KB，所以**不写自动轮转代码**（对抗过度工程化）。
+每年一月开工时手工归档一次即可：
+
+```sh
+# 归档上一年的总账，新文件继续追加
+mv acceptance_audit.jsonl acceptance_audit.<上一年>.jsonl
+```
+
+归档文件与活动文件放在同一目录，随 `deliverables/` 一起不进仓库；
+字段口径（七个原始值、项目号只留 sha256 前 16 位）见 `docs/delivery_acceptance_spec.md` 第七节。
+
 ## 七、该读哪份文档
 
 | 想知道 | 读 |
