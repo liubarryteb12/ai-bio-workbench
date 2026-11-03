@@ -53,13 +53,17 @@ test('54 个 Mod 的母版引用零断链', () => {
     'workflows.json 存在指向不存在母版脚本的断链');
 });
 
-test('82 个图件模板的就绪基线不退化（只许增加不许倒退）', () => {
+test('82 个图件模板的就绪数与封板白名单恒等（第二十轮 Q3）', () => {
   const fresh = computeSystemLedger();
   assert.equal(fresh.figureTemplates.total, 82, 'figure_templates.json 应登记 82 个模板');
-  // 基线锁定在 2026-11-01 实测值：16 就绪。只许增加，不许倒退。
-  // 补齐 pending 模板后把这个数字一起抬高（同时要重跑 ledger_gen --write）。
-  assert.ok(fresh.figureTemplates.readyCount >= 16,
-    '模板就绪数从基线 16 倒退了：' + fresh.figureTemplates.readyCount);
+  // 旧口径 readyCount >= 16 与 figure_templates_parity.test.js 同步作废：
+  // 下限断言放行第 31 个偷翻 ready，也放行 30 退化到 16。台账侧改为锚定
+  // ops/figure_ready_allowlist.json 条数（ID 集合恒等由 parity 测试把关，
+  // 这里守「台账数字与闸门不脱节」这一层）。
+  const gate = JSON.parse(fs.readFileSync(path.join(REPO, 'ops', 'figure_ready_allowlist.json'), 'utf8'));
+  assert.equal(fresh.figureTemplates.readyCount, gate.ids.length,
+    '台账就绪数与封板白名单不符：台账=' + fresh.figureTemplates.readyCount + ' 白名单=' + gate.ids.length
+    + '（registry 改了记得重跑 node ops/ledger_gen.mjs --write）');
   assert.equal(
     fresh.figureTemplates.readyCount + fresh.figureTemplates.pendingCount,
     fresh.figureTemplates.total,

@@ -26,6 +26,32 @@ const BOXPLOT_MASTERS = [
   path.join(REPO, 'reference', '05.可参考出图代码', '_meta', 'R453_compat', 'L1_boxplot_code.R'),
 ];
 const PLOT_MATRIX = path.join(REPO, 'reference', '05.可参考出图代码', '_meta', 'script_plot_matrix.json');
+const READY_ALLOWLIST = path.join(REPO, 'ops', 'figure_ready_allowlist.json');
+
+/**
+ * 封板白名单闸门（4 Argon 第二十轮 Q3）：deps_status=ready 的 ID 全集真源。
+ *
+ * 落点必须是 ops/（人工受控区）。docs/generated/ 是机器覆写区，闸门放那里
+ * 等于让脚本自己批自己，「防私自扩容」当场失效。
+ */
+function readyAllowlistIds() {
+  const doc = JSON.parse(fs.readFileSync(READY_ALLOWLIST, 'utf8'));
+  assert.ok(Array.isArray(doc.ids) && doc.ids.length > 0, '白名单 ids 必须是非空数组');
+  assert.ok(doc.ids.every((id) => typeof id === 'string' && id.length > 0), '白名单含空或非字符串 ID');
+  assert.deepEqual([...doc.ids].sort(), doc.ids, '白名单必须排序存储：乱序会把一次真实改动放大成整文件 diff，掩埋审批线索');
+  assert.equal(new Set(doc.ids).size, doc.ids.length, '白名单含重复 ID');
+  return doc.ids;
+}
+
+function readyDiffMessage(actual, allowlist) {
+  const extra = actual.filter((id) => !allowlist.includes(id));
+  const gone = allowlist.filter((id) => !actual.includes(id));
+  return 'ready 集合与 ops/figure_ready_allowlist.json 不恒等。'
+    + '多出的（未经准入）：' + (extra.join(', ') || '无') + '；'
+    + '丢失的（已封板却退化）：' + (gone.join(', ') || '无') + '。'
+    + '准入 = 显式改白名单（git diff 即审批记录）+ k40 验证证据进 registry；'
+    + '恢复退化 = 按准入流程重验。两边都不许在测试里放水。';
+}
 
 function sha256(file) {
   return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
@@ -46,12 +72,16 @@ test('registry contains the exact 82 figure inventory and verification counts', 
   assert.equal(registry.schema_version, 1);
   assert.equal(registry.templates.length, 82);
   assert.equal(new Set(registry.templates.map((item) => item.id)).size, 82);
-  // 水位线口径（2026-11-02）：ready 只设下限不倒退，pending 由总数派生，
-  // 准入新模板不必再手改这里的数字；结构性不变量（和为 82、blocked 为 1）照旧钉死。
-  const READY_BASELINE = 16;
+  // 精确集合恒等口径（2026-11-03，4 Argon 第二十轮 Q3 推翻水位线口径）：
+  // 旧断言 ready >= READY_BASELINE(16) 是「只能减少不能增加」的双向漏洞：
+  // 第 31 个偷偷翻 ready 会通过，已封板的从 30 退化到 16 也会通过。
+  // 结构性不变量（和为 82、blocked 为 1）照旧钉死在下面。
+  const readyIdsNow = registry.templates
+    .filter((item) => item.deps_status === 'ready')
+    .map((item) => item.id)
+    .sort();
+  assert.deepStrictEqual(readyIdsNow, readyAllowlistIds(), readyDiffMessage(readyIdsNow, readyAllowlistIds()));
   const byStatus = (status) => registry.templates.filter((item) => item.deps_status === status).length;
-  assert.ok(byStatus('ready') >= READY_BASELINE,
-    `ready 从基线 ${READY_BASELINE} 倒退：${byStatus('ready')}`);
   assert.equal(byStatus('pending_mapping'), 0);
   assert.equal(byStatus('blocked_r453'), 1);
   assert.equal(
@@ -140,9 +170,9 @@ test('non-ready templates stay unregistered until independently verified', () =>
 test('registry validation enforces linked mods, language and line affinity', () => {
   const result = validateRegistry();
   assert.equal(result.ok, true, result.errors.join('\n'));
-  // 水位线口径（2026-11-02）：ready 只设下限不倒退，pending 由总数派生，
-  // 准入新模板不必再手改这里的数字。
-  assert.ok(result.stats.ready >= 16, `ready 从基线 16 倒退：${result.stats.ready}`);
+  // 计数侧同样精确锁定（白名单是唯一真源：抬数量时只改白名单，不改这里）。
+  assert.equal(result.stats.ready, readyAllowlistIds().length,
+    'ready 计数与白名单条目数不符：stats=' + result.stats.ready + ' allowlist=' + readyAllowlistIds().length);
   assert.equal(result.stats.pending_mapping, 0);
   assert.equal(result.stats.blocked, 1);
   assert.equal(result.stats.ready + result.stats.pending + result.stats.pending_mapping + result.stats.blocked, 82);
@@ -406,5 +436,7 @@ test('sample_project_output never equals the verified preview hash', () => {
       + '疑似直接拷贝母版自证图伪造适配器产物');
     checked += 1;
   }
-  assert.ok(checked >= 26, '参与哈希互斥比对的就绪模板不足 26 个，断言覆盖面失真：' + checked);
+  // 覆盖面锚到白名单条数：30 个 ready 必须全参与比对，漏比一个即覆盖面失真
+  assert.equal(checked, readyAllowlistIds().length,
+    '参与哈希互斥比对的就绪模板数与白名单不符（漏比即覆盖面失真）：' + checked);
 });
