@@ -23,6 +23,9 @@ import { assertPathInsideProject, buildTreeFromFind } from '../files.js';
 
 export async function handleDiagnosticsRoutes(req, res, url, {
   json, uploadError, runRemote, runRemoteStrict, fetchLedgerFromServer, resolveProjectParam, adb,
+  // checkLink 默认仍用模块内的真实探测；允许注入是为了让本模块可测：
+  // 真实 checkLink 会跑 adb devices 与两段 ssh，在测试里既慢又不确定。
+  checkLink: checkLinkImpl = checkLink,
 }) {
   if (url.pathname === '/api/selfcheck') {
     const checks = [];
@@ -78,7 +81,7 @@ export async function handleDiagnosticsRoutes(req, res, url, {
     }
     // 5. ADB/SSH 链路（四段探测 + 服务状态）
     try {
-      const linkResult = checkLink(adb);
+      const linkResult = checkLinkImpl(adb);
       const segSummary = linkResult.segments
         .map((s) => `${s.name}:${s.pass ? 'ok' : 'FAIL'}`)
         .join(' | ');
@@ -103,7 +106,7 @@ export async function handleDiagnosticsRoutes(req, res, url, {
   if (url.pathname === '/api/link/check') {
     // 四段自检 + 服务状态，链不通时也能拿到"断在哪段"的结构化结果
     try {
-      const result = checkLink();
+      const result = checkLinkImpl();
       json(res, 200, { serial: DEFAULT_SERIAL, adb, link: result });
       return true;
     } catch (cause) {
