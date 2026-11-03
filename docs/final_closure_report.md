@@ -8,7 +8,7 @@
 | 项 | 值 |
 |---|---|
 | HEAD | 见 `git log -1`（本报告随封板提交） |
-| 测试 | **1349 tests / 1331 pass / 0 fail / 18 skipped**（124 个测试文件） |
+| 测试 | **1354 tests / 1336 pass / 0 fail / 18 skipped**（125 个测试文件） |
 | 代码规模 | 20120 SLOC（非空行，66 个文件） |
 | 台账 | workflows 3 系列 / 54 Mod / 断链 0；图件 82 = 30 ready + 52 pending |
 | 设备 | K40 四服务全 run，8022 与 10022 双通，零 SSH 心跳五层全通 |
@@ -17,7 +17,7 @@
 
 | 门禁 | 命令 | 结果 |
 |---|---|---|
-| **单命令总门禁** | **`npm run gate:all`** | **GATE_ALL_OK 7 道全绿（101 秒）**——八道门禁串成一条命令 |
+| **单命令总门禁** | **`npm run gate:all`** | **GATE_ALL_OK 7 道全绿（80 秒）**——八道门禁串成一条命令 |
 | 静态语言门禁 | `node ops/static_gate.mjs` | sh 24 / ps1 24 / py 45 / r 16 全部通过（16 个因宿主缺工具跳过，CI 上不跳） |
 | 跳过原因白名单 | `npm run test:skip-gate` | 123 个测试文件，全部命中白名单 |
 | 运行时 TAP 面 | `node ops/metrics_sync.mjs --check` | 18 条真实跳过全部带白名单原因（复用同一次 TAP，零额外耗时） |
@@ -64,6 +64,8 @@ preflight（宿主机依赖） → 打包（CHECKSUMS + 签名 + HOW_TO_VERIFY�
    → 交付复盘（audit_summary 只读汇总）
    → 工作区清理（默认演练 + 神圣黑名单）
 ```
+
+**客户文档双件套**：`HOW_TO_VERIFY.txt`（四步验收单）与 `CLIENT_DELIVERY_GUIDE.md`（使用与验真指南），都由打包器动态渲染、随包生成、受 CHECKSUMS 与签名保护；后者按「四准四不准」口径剥离全部内部术语。
 
 **陌生用户可用性**：五张票全部落地（预检 / 一页式 RUNBOOK / 自助验签单 /
 工作区清理 / 缺设备 Mock 横幅）。

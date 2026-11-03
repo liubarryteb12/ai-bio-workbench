@@ -2127,6 +2127,12 @@ def assemble(ctx, out_dir, no_tar=False):
     with open(os.path.join(delivery, HOW_TO_VERIFY_NAME), "w", encoding="utf-8", newline="\n") as fh:
         fh.write(how_to_verify(meta["project_id"], mtime_of_tar_sidecar(out_dir, ctx["project_id"])))
 
+    # 客户版《交付包使用与验真指南》（4 Argon 第二十四轮 Q2 / 第二十五轮 Q2 裁定）：
+    # 必须随包自动生成并受 CHECKSUMS 保护（不能只躺仓库 docs/ 等人手动拷）。
+    # 内容按「四准四不准」口径：只写客户关心的结构与验真，剥离全部内部工程术语与硬件细节。
+    with open(os.path.join(delivery, CLIENT_GUIDE_NAME), "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(client_delivery_guide(meta, copied, manifest))
+
     # 完整性清单：先写 CHECKSUMS.sha256 再打 tar，包内清单与包内文件一一对应。
     # 只覆盖三大件与 manifest 自身落盘之后的现实，manifest 里的 counts 是
     # 复制成功计数、这里是文件系统实测字节，两者不一致以本清单为准。
@@ -2169,6 +2175,7 @@ CHECKSUMS_NAME = "CHECKSUMS.sha256"
 SIGNATURE_NAME = "CHECKSUMS.sig"
 README_NAME = "README.md"
 HOW_TO_VERIFY_NAME = "HOW_TO_VERIFY.txt"
+CLIENT_GUIDE_NAME = "CLIENT_DELIVERY_GUIDE.md"
 
 
 def mtime_of_tar_sidecar(out_dir, project_id):
@@ -2273,6 +2280,94 @@ def delivery_readme(project_id, project_name, generated_at, counts):
             counts.get("figures", 0), counts.get("tables", 0),
         )
     )
+
+
+def client_delivery_guide(meta, counts, manifest):
+    """客户版《交付包使用与验真指南》（4 Argon 第二十四轮 Q2 / 第二十五轮 Q2）。
+
+    这是给客户的文档，不是给维护者的。四条准写：包结构、图与表怎么对应、
+    零依赖验真四步、复现所需的标准运行时版本区间。四条不准：不写任何硬件/
+    部署细节（统一说「标准隔离计算环境」）、不写研发过程词汇、不提未激活功能、
+    不含宿主机路径或内部脚本名。
+
+    由打包器按当前项目动态渲染，因此它总是和这一包的 manifest 一致；
+    并且写在 write_checksums 之前，所以自身也受哈希与签名保护。
+    """
+    project_id = meta["project_id"]
+    project_name = meta["project_name"]
+    generated_at = meta["generated_at"]
+    n_fig = int(counts.get("figures", 0))
+    n_tab = int(counts.get("tables", 0))
+    n_code = int(counts.get("scripts", 0)) + int(counts.get("adapted_code", 0))
+    lines = []
+    lines.append("# 交付包使用与验真指南")
+    lines.append("")
+    lines.append("> 项目：%s（`%s`）" % (project_name, project_id))
+    lines.append("> 生成时间：%s" % generated_at)
+    lines.append("")
+    lines.append("本包是一份自洽的分析交付物：说明、数据、图件与完整性凭证在同一目录内，")
+    lines.append("不需要任何外部服务即可验证它完整可信。")
+    lines.append("")
+    lines.append("## 一、包里有什么")
+    lines.append("")
+    lines.append("| 目录 | 内容 | 数量 |")
+    lines.append("|---|---|---|")
+    lines.append("| `01_Adapted_Code/` | 本次分析使用的脚本与适配代码 | %d |" % n_code)
+    lines.append("| `02_Figures_and_Tables/` | 图件与结果表 | 图 %d / 表 %d |" % (n_fig, n_tab))
+    lines.append("| `03_Interpretation_Report/` | 解读报告（Markdown 与单文件 HTML） | 2 |")
+    lines.append("")
+    lines.append("包根另有：`delivery_manifest.json`（业务分类索引）、`CHECKSUMS.sha256`")
+    lines.append("（逐文件哈希）、`CHECKSUMS.sig`（Ed25519 签名）、`ED25519_PUBLIC_KEY.pem`")
+    lines.append("（验签公钥）、`README.md`（两套清单分工）、`HOW_TO_VERIFY.txt`（四步验收单）、")
+    lines.append("以及本文件。")
+    lines.append("")
+    lines.append("## 二、图件与结果表怎么对应")
+    lines.append("")
+    lines.append("`delivery_manifest.json` 是业务分类索引，按 `figures` / `tables` 两类逐项列出")
+    lines.append("相对路径。需要核对「某张图对应哪条分析线、哪张表支撑哪张图」时，看它即可。")
+    lines.append("完整性不要以 manifest 为准：它以 `CHECKSUMS.sha256` 为准。")
+    lines.append("")
+    lines.append("## 三、零依赖验真四步")
+    lines.append("")
+    lines.append("只需要操作系统自带的 `sha256sum`、`tar` 与 `openssl`。")
+    lines.append("")
+    lines.append("```sh")
+    lines.append("# 1) 校验压缩包本体与侧车哈希一致")
+    lines.append("sha256sum -c %s_Client_Delivery.tar.gz.sha256" % project_id)
+    lines.append("")
+    lines.append("# 2) 解包（应只得到一个同名目录）")
+    lines.append("tar -xzf %s_Client_Delivery.tar.gz" % project_id)
+    lines.append("")
+    lines.append("# 3) 校验包内每个文件的哈希")
+    lines.append("cd %s_Client_Delivery && sha256sum -c CHECKSUMS.sha256" % project_id)
+    lines.append("")
+    lines.append("# 4) 验证清单签名（Ed25519，必须用 -rawin）")
+    lines.append("openssl pkeyutl -verify -pubin -inkey ED25519_PUBLIC_KEY.pem -rawin \\")
+    lines.append("  -in CHECKSUMS.sha256 -sigfile CHECKSUMS.sig")
+    lines.append("```")
+    lines.append("")
+    lines.append("四步全过即包完整可信。第 4 步期望输出 `Signature Verified Successfully`。")
+    lines.append("第 3 步若某行 `FAILED`，说明该文件与签发时不一致，请联系我们核对。")
+    lines.append("")
+    lines.append("## 四、复现所需的标准运行时")
+    lines.append("")
+    lines.append("本包的分析在标准隔离计算环境中完成，运行时为：")
+    lines.append("")
+    lines.append("| 运行时 | 建议版本 | 说明 |")
+    lines.append("|---|---|---|")
+    lines.append("| R | 4.5.x | 图件母版以 R 4.5 系列验证 |")
+    lines.append("| Python | 3.10 或以上 | 单细胞与空间分析脚本 |")
+    lines.append("| 关键包 | 以会话信息为准 | 见解读报告第二章「软件与版本登记」 |")
+    lines.append("")
+    lines.append("精确到补丁级的版本清单与本次运行的实际包快照，记录在解读报告第二章；")
+    lines.append("复现时优先对齐该章登记的主版本，再按报错补装依赖。")
+    lines.append("")
+    lines.append("## 五、本文件自身的地位")
+    lines.append("")
+    lines.append("本文件同样登记在 `CHECKSUMS.sha256` 中。若它被改动，第 3 步会报 `FAILED`；")
+    lines.append("这是有意的：交付说明不允许在送达后被悄悄改写。")
+    lines.append("")
+    return "\n".join(lines).rstrip("\n") + "\n"
 
 
 def write_checksums(delivery_dir, skip=()):
