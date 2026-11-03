@@ -49,7 +49,7 @@ const SKIP_DIRS = new Set([
 ]);
 
 /** README 基线行的锚点：这一行由本脚本拥有，其他文档引用它的数值 */
-const BASELINE_RE = /当前基线 \*\*[^\n]*\*\*/;
+const BASELINE_RE = /当前基线 \*\*[^\n]*/;
 
 function walk(dir, out = []) {
   let entries = [];
@@ -183,9 +183,11 @@ function main() {
     // 刻意不校验 SLOC——它会随「统计脚本自身被计入」而波动（写完 README 再测就变了），
     // 把它放进 check 会让基线永远追不上自己，形成无解的循环依赖（实测踩到）。
     // SLOC 仍写进 README 供人参考，但不作为门禁判据。
+    // 跨机器不变量只有两项：用例总数与失败数。pass/skipped 的分配
+    // 合法地随宿主形态漂移（缺 python/bash/设备时按白名单原因跳过），
+    // 漂移由「运行时 # SKIP 白名单 + fail=0」两道判据兜住，不再要求 README 记死。
     const need = [
       String(metrics.tests.cases),
-      String(metrics.tests.pass),
       String(metrics.tests.fail),
     ];
     const missing = need.filter((n) => !actual.includes(n));
