@@ -97,6 +97,6 @@ sh ops/k40/hostkey_guard_selftest.sh "$PREFIX/var/service"
 
 ## 6. 代价与边界
 
-- **生成即轮换**：新 host key 会改指纹，客户端 `known_hosts` 要同步更新。这是恢复可达性应付的代价，脚本只在文件缺失时动手，正常运行与重启不碰密钥。
+- **生成即轮换**：新 host key 会改指纹，客户端 `known_hosts` 要同步更新。这是恢复可达性应付的代价，脚本只在文件缺失时动手，正常运行与重启不碰密钥。指纹台账、比对诊断码与轮换后的同步四步见 [k40_hostkey_fingerprints.md](k40_hostkey_fingerprints.md)。
 - **`ssh-keygen -A` 会顺带补齐新算法密钥**：本机 OpenSSH 10 会额外生成 `ssh_host_mldsa44_ed25519_key`。守卫只要求 ed25519 存在，所以「只缺 MLDSA」不会触发生成，sshd 照常起。演练后把这类顺带产物删掉，保持设备状态与演练前一致。
 - **契约由测试钉住**：`BioanalysDesktop/tests/hostkey_guard.test.js` 与 `runit_sv_contract.test.js`，覆盖两个脚本的守卫顺序、`-r` 与生成路径一致、诊断不许写 stderr、四段式模板与 `exec 2>&1` 位置。八条变异全部判红（去掉/挪走 `exec 2>&1`、告警改走 stderr、丢掉层代号、`set -eu` 退化、去掉 PREFIX 兜底、`-r` 换路径、crond 丢 `-n`）。

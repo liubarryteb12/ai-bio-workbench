@@ -7,6 +7,7 @@
 
 import { DEFAULT_SERIAL, FORWARD_PAIRS, SERVICES } from './domain.js';
 import { runSync, findAdb } from './proc.js';
+import { checkHostKeys } from './hostkey.js';
 
 /** 剥掉 ssh 首连接 warning 与空行，只留有效输出 */
 function clean(text) {
@@ -155,6 +156,30 @@ function escapeRegex(text) {
 }
 
 /**
+ * 总体结论的唯一判定点（纯函数，便于单测）。
+ *
+ * 硬失败只认「四段探测不通过」或「主服务 down」；日志子服务异常与 host key 侧的任何
+ * 诊断码（轮换 / 探测不可读 / 台账缺失）都只抬到 warn。两条口径的理由：
+ *
+ * - 服务表（2026-11-01 实测修正）：K40 的 Termux 在 Android app_data_file 上，runsv 对 log
+ *   子服务监督不稳定（svlogd 目录锁必失败，改追加写后仍需 runsv 派生 log 子进程）。
+ *   实测常见形态是主服务 run、log 子服务 down，而 8022/10022 端口与业务完全正常，
+ *   把它判 fail 会让「链路是否可用」失真。主服务真 down 仍算 fail。
+ * - 指纹侧（4 Argon 第十九轮 Q3）：轮换后连接仍可能成功（StrictHostKeyChecking=no），
+ *   判 fail 会让链路可用性失真；但漏掉它则身份漂移无人知晓。任何非空诊断码都抬到 warn，
+ *   不为「探测不可读」单开一条更宽的口子：读不到指纹和指纹变了都该有人看一眼。
+ * @param {{hardFail: boolean, serviceDown: boolean, logCrash: boolean, hostkeyCode: string|null}} input
+ * @returns {'pass'|'warn'|'fail'}
+ */
+export function resolveLinkOverall({ hardFail, serviceDown, logCrash, hostkeyCode }) {
+  if (hardFail) return 'fail';
+  if (serviceDown) return 'fail';
+  if (logCrash) return 'warn';
+  if (hostkeyCode) return 'warn';
+  return 'pass';
+}
+
+/**
  * 一次跑完四段 + 服务状态，给出总体结论。
  * @returns {{overall: 'pass'|'warn'|'fail', segments: Array<object>, services: Array<object>, checkedAt: string}}
  */
@@ -177,28 +202,18 @@ export function checkLink() {
   const logCrash = services.some((service) => service.running && service.logCrashLoop);
 
   /**
-   * 判定口径（2026-11-01 按实测修正，理由必须留档）：
-   *
-   * 硬失败只认「四段探测不通过」——那才是业务真的不可用（设备离线、forward 缺失、
-   * ssh 握手失败）。服务表降级为**参考信息**，原因如下：
-   *
-   * K40 的 Termux 在 Android app_data_file 上，runsv 对 log 子服务的监督不稳定
-   * （svlogd 目录锁必失败，改用追加写后仍需 runsv 派生 log 子进程）。实测常见形态是
-   * 主服务 run、log 子服务 down，而 8022/10022 端口与业务完全正常——
-   * 把这种状态判成 fail 会让「链路是否可用」这个判据失真，是拿环境噪声当业务故障。
-   *
-   * 因此：日志子服务异常 → warn（可见、不阻断）；主服务 down → 仍算 fail
-   * （主服务真挂了业务确实不可用，这条不能放宽）。
+   * host key 指纹比对（Argon 第十九轮 Q3）：失配不等于链路不可用，连接可能照常成功，
+   * 所以不进 segments、不参与 hardFail；但必须显式可见，否则守卫重建密钥后的身份漂移
+   * 会被静默忽略。这里只把它抬到 warn 并原样带出 code。
    */
-  let overall = 'pass';
-  if (hardFail) overall = 'fail';
-  else if (serviceDown) overall = 'fail';
-  else if (logCrash) overall = 'warn';
+  const hostkeys = checkHostKeys();
+  const overall = resolveLinkOverall({ hardFail, serviceDown, logCrash, hostkeyCode: hostkeys.code });
 
   return {
     overall,
     segments,
     services,
+    hostkeys,
     compute: container.compute ?? { cpus: null, memoryGb: null, disk: null },
     checkedAt: new Date().toISOString(),
   };

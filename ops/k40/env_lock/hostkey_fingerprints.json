@@ -1,0 +1,29 @@
+{
+  "schema": "k40_hostkey_fingerprints/v1",
+  "generated_at": "2026-11-03T16:10:00+08:00",
+  "note": "K40 运行态 host key 指纹台账。不进 docs/generated/SYSTEM_LEDGER.json：那份由 ledger_gen.mjs 纯离线确定性生成、CI 在无真机环境校验 git diff，把硬件运行态写进去会污染它。指纹失配时链路探测抛 ERR_HOSTKEY_ROTATED，需同步 known_hosts 与本文件。",
+  "hosts": [
+    {
+      "host": "k40",
+      "role": "Termux 底座 sshd（adb forward tcp:8022）",
+      "port": 8022,
+      "algorithm": "ED25519",
+      "bits": 256,
+      "key_path": "/data/data/com.termux/files/usr/etc/ssh/ssh_host_ed25519_key.pub",
+      "probe": "export PREFIX=/data/data/com.termux/files/usr; export PATH=$PREFIX/bin:$PREFIX/bin/applets:$PATH; ssh-keygen -lf $PREFIX/etc/ssh/ssh_host_ed25519_key.pub",
+      "fingerprint": "SHA256:mKwIdn9qAXN73WVRYnH6aMrRC37LTUkaNl276UpSrKE",
+      "observed_at": "2026-11-03T16:10:00+08:00"
+    },
+    {
+      "host": "k40-ubuntu",
+      "role": "容器 dropbear（adb forward tcp:10022）",
+      "port": 10022,
+      "algorithm": "ED25519",
+      "bits": 256,
+      "key_path": "/etc/dropbear/dropbear_ed25519_host_key",
+      "probe": "dropbearkey -y -f /etc/dropbear/dropbear_ed25519_host_key 2>/dev/null | grep '^ssh-ed25519' | ssh-keygen -lf -",
+      "fingerprint": "SHA256:c0Lm97OYp7up92tIKMXJ7lEKW5crWBLELkHZAUUTQ4A",
+      "observed_at": "2026-11-03T16:10:00+08:00"
+    }
+  ]
+}

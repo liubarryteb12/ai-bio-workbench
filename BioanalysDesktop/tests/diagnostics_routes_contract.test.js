@@ -262,3 +262,38 @@ test('结构：本模块的链路探测只走注入入口，杜绝测试期跑�
   assert.equal(src.includes('checkLink(adb)'), false, '不得残留直连调用');
   assert.equal(src.includes('checkLink()'), false, '不得残留直连调用');
 });
+test('/api/selfcheck 链路灯把 host key 诊断码带进 detail，且不吞掉原有 CPU 摘要', async () => {
+  const rotated = {
+    overall: 'warn',
+    segments: [{ name: '设备在线', pass: true, detail: '' }],
+    services: [],
+    compute: { cpus: 8, cpusTotal: 8, memoryGb: 11.5 },
+    hostkeys: { pass: false, code: 'ERR_HOSTKEY_ROTATED', detail: 'k40: 期望 SHA256:a，实际 SHA256:b' },
+    checkedAt: '2026-11-03T00:00:00.000Z',
+  };
+  const r = await call('/api/selfcheck', {
+    checkLink: () => rotated,
+    runRemoteStrict: (cmd) => {
+      if (cmd.includes('df -T')) return 'ext4\n';
+      if (cmd.includes('df -P')) return 'overlay 100G 20G 80G 20% /mnt/ssd/bio_data\n';
+      throw new Error('其余探测不可用');
+    },
+  });
+  const link = r.last.payload.checks.find((c) => c.id === 'link');
+  assert.equal(link.status, 'warn');
+  assert.match(link.detail, /ERR_HOSTKEY_ROTATED/);
+  assert.match(link.detail, /CPU=8\/8/);
+  assert.equal(link.hostkeys.code, 'ERR_HOSTKEY_ROTATED');
+});
+
+test('/api/selfcheck 链路灯在没有指纹诊断码时 detail 保持原样（不留空分隔符）', async () => {
+  const r = await call('/api/selfcheck', {
+    runRemoteStrict: (cmd) => {
+      if (cmd.includes('df -T')) return 'ext4\n';
+      if (cmd.includes('df -P')) return 'overlay 100G 20G 80G 20% /mnt/ssd/bio_data\n';
+      throw new Error('x');
+    },
+  });
+  const link = r.last.payload.checks.find((c) => c.id === 'link');
+  assert.equal(link.detail, 'CPU=8/8 Mem=11.5GB');
+});

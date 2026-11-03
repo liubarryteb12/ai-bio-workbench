@@ -88,12 +88,18 @@ export async function handleDiagnosticsRoutes(req, res, url, {
       const failedSegs = linkResult.segments.filter((s) => !s.pass)
         .map((s) => `${s.name} (${s.detail || ''})`)
         .join('; ');
+      // 指纹失配（ERR_HOSTKEY_ROTATED）不进 segments，但必须让人看见：守卫重建密钥后
+      // 客户端 known_hosts 会与新身份对不上，这是链路"能用但身份变了"的独立信号。
+      const hostkey = linkResult.hostkeys;
+      const hostkeyNote = hostkey && hostkey.code ? `${hostkey.code}: ${hostkey.detail}` : '';
+      const baseDetail = failedSegs || (linkResult.compute ? `CPU=${linkResult.compute.cpus}/${linkResult.compute.cpusTotal} Mem=${linkResult.compute.memoryGb}GB` : '');
       checks.push({
         id: 'link',
         label: 'ADB/SSH 链路',
         status: linkResult.overall === 'pass' ? 'pass' : linkResult.overall === 'warn' ? 'warn' : 'fail',
         value: segSummary,
-        detail: failedSegs || (linkResult.compute ? `CPU=${linkResult.compute.cpus}/${linkResult.compute.cpusTotal} Mem=${linkResult.compute.memoryGb}GB` : ''),
+        detail: [baseDetail, hostkeyNote].filter(Boolean).join(' ; '),
+        hostkeys: hostkey ?? null,
       });
     } catch (e) {
       checks.push({ id: 'link', label: 'ADB/SSH 链路', status: 'unknown', value: '', detail: '无法检测: ' + (e instanceof Error ? e.message : String(e)) });
