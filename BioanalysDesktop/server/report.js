@@ -29,6 +29,7 @@ import { stripSshNoise } from './run.js';
 import { readPublicKey } from '../../ops/ed25519_tools.mjs';
 import {
   acceptDelivery, writeReceipt, verifyTarReceipt, loadReceipt, ACCEPTANCE_VERSION, RECEIPT_SUBDIR,
+  auditPathFor, readAuditLedger,
 } from '../../ops/delivery_acceptance_core.mjs';
 
 const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
@@ -663,6 +664,16 @@ function serverRecordsDir(safe) {
   return path.join(localDeliverDir(safe), 'acceptance');
 }
 
+/**
+ * 脱敏审计流落点（Argon 第二十一轮 Q2）：<deliverables>/acceptance_audit.jsonl。
+ * deliverables/ 整目录在 .gitignore 里，所以生产打包不会把项目号与交付节奏写进仓库历史。
+ * BIO_DELIVERY_AUDIT_PATH 存在时整体覆盖（抽检与测试隔离用这个）。
+ */
+function serverAuditPath(safe) {
+  if (process.env.BIO_DELIVERY_AUDIT_PATH) return process.env.BIO_DELIVERY_AUDIT_PATH;
+  return auditPathFor(localDeliverDir(safe));
+}
+
 /** 读回执的候选目录：服务端落点优先，仓库受控区兜底（演练包/CLI 手写回执走这条） */
 function receiptCandidateDirs(safe) {
   const dirs = [serverRecordsDir(safe)];
@@ -693,7 +704,13 @@ export function runInlineAcceptance(projectId, { recordsDir } = {}) {
   const verdict = acceptDelivery({ tarPath: tar, publicKeyPath, skipExtract: false });
   let receipt = null;
   if (verdict.ok) {
-    receipt = writeReceipt({ projectId: safe, verdict, recordsDir: recordsDir || serverRecordsDir(safe) });
+    const targetDir = recordsDir || serverRecordsDir(safe);
+    receipt = writeReceipt({
+      projectId: safe, verdict, recordsDir: targetDir,
+      // 审计流刻意落在 deliverables 根（而非 acceptance/ 子目录）：它是代理侧的交付总账，
+      // 与「随包回执」分开，方便 clean:workspace 只清回执目录时保住审计历史。
+      auditPath: recordsDir ? undefined : serverAuditPath(safe),
+    });
   }
   return { ...verdict, tarPath: tar, receipt };
 }

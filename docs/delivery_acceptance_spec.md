@@ -106,3 +106,36 @@ tar 体翻字节 → 关 1 点名 SHA256 不一致；塞幽灵文件 → 关 4 �
    POSIX.1-2017 消费四种扩展头并应用 `path=`/`size=`；同时 zip-slip 防护
    （`..` 段、绝对路径、盘符名在写盘前拒）用恶意 tar 实测过。
 
+## 七、第二十一轮 Q2：生产脱敏审计流与双落点（2026-11-03）
+
+Argon 裁定：**生产回执严禁往 git 跟踪的 `ops/delivery_acceptance/records/` 自动写**（污染
+`git status`、并把项目号与交付节奏写进仓库历史）；仓库 records 目录保持「仅存演练样本的
+静态契约区」，生产改落 gitignore 区，并额外留一份脱敏 append-only 总账。
+
+| 件 | 落点 | 谁读 |
+|---|---|---|
+| 随包全量回执 | `<deliverables>/acceptance/<project_id>.receipt.json` | download 门禁实时校验 `tar_sha256` |
+| 代理侧脱敏审计流 | `<deliverables>/acceptance_audit.jsonl`（append-only，一行约 400B） | 人/审计脚本追溯历史交付 |
+| 仓库演练样本 | `ops/delivery_acceptance/records/PRJ_DRILL_WRAPPER_TEST.receipt.json` | 命名与 schema 的活文档 |
+
+审计行字段精确锁死（测试用字段集合恒等断言，多一个字段即判红）：
+
+```json
+{"schema_version":1,"at":"…","project_id_sha256":"<16 hex>","tar_sha256":"<64 hex>",
+ "verified_count":357,"coverage_ok":true,"verifier_version":"delivery-acceptance-core/1.0.0"}
+```
+
+脱敏口径：项目号只留 `sha256(盐 + id)` 前 16 位（可追溯、不可枚举明文）；不写宿主机绝对路径；
+不写嵌套对象。落点可用 `BIO_DELIVERY_AUDIT_PATH` 覆盖（测试与抽检隔离用这个）。
+
+落地时的一处实测修正：首版服务端把审计流放进了 `<deliverables>/acceptance/`（与回执同目录），
+真包那次跑出来一行落在子目录里才发现语义错了——`clean:workspace` 清回执目录会连带清掉审计
+历史。改成 `writeReceipt` 接受显式 `auditPath`，服务端指向 deliverables 根，并补一条契约测试
+钉住「显式 auditPath 不回落到 recordsDir」。
+
+真包验证（PRJ_AIMS_V3_20261027）：验收 0.7s 全绿，回执落 `acceptance/`，审计行落
+`deliverables/acceptance_audit.jsonl`，`project_id_sha256=02ae953d13c44616`、
+`verified_count=357`。变异反证 5/5 红（去盐、红 verdict 也写、覆盖代替追加、塞 host_path、
+缺路径静默返回）。其中「塞 host_path」首轮存活，暴露断言只查了「不含某 root 路径」——
+改成字段集合精确恒等后才咬住。
+

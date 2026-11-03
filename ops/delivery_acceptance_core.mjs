@@ -37,6 +37,10 @@ const OPS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(OPS_DIR, '..');
 
 export const ACCEPTANCE_VERSION = 'delivery-acceptance-core/1.0.0';
+/** 生产脱敏审计流（Argon 第二十一轮 Q2）：append-only JSONL，必须落在 gitignore 区。 */
+export const AUDIT_LEDGER_NAME = 'acceptance_audit.jsonl';
+/** project_id 在审计流里的哈希盐前缀：只防一眼看穿的明文枚举，不是保密承诺。 */
+const AUDIT_ID_SALT = 'bioanalys-delivery-audit/v1';
 export const RECEIPT_SUBDIR = path.join('ops', 'delivery_acceptance', 'records');
 
 function sha256File(file) {
@@ -320,7 +324,58 @@ export function receiptPathFor(projectId, recordsDir) {
   return path.join(dir, safe + '.receipt.json');
 }
 
-export function writeReceipt({ projectId, verdict, recordsDir, now }) {
+
+// ── 脱敏审计流（Argon 第二十一轮 Q2 裁定） ──
+// 落点优先级：显式 auditPath > BIO_DELIVERY_AUDIT_PATH（测试/抽检隔离）> 与回执同目录。
+// 生产由 server/report.js 指向 <deliverables>/acceptance_audit.jsonl（gitignore 区），
+// 绝不写进仓库受控区——那会污染 git status 并泄漏项目号与交付节奏。
+export function auditPathFor(baseDir) {
+  return path.join(baseDir, AUDIT_LEDGER_NAME);
+}
+
+/** 项目号脱敏：sha256(盐 + id) 前 16 位。审计流里不出现可枚举的明文项目号。 */
+export function hashedProjectId(projectId) {
+  return crypto.createHash('sha256').update(AUDIT_ID_SALT + ':' + String(projectId)).digest('hex').slice(0, 16);
+}
+
+/**
+ * 追加一行脱敏审计（约 400B）。字段固定，不含任何宿主绝对路径或客户明文名称：
+ *   at / project_id_sha256 / tar_sha256 / verified_count / coverage_ok / verifier_version
+ * 返回 { path, entry } 便于调用方回执与日志引用；写入失败抛错（审计流不可静默丢）。
+ */
+export function appendAuditEntry({ projectId, verdict, verifiedAt, auditPath }) {
+  if (!verdict || verdict.ok !== true) {
+    throw new Error('验收未通过，禁止写审计流：' + ((verdict && verdict.failures) || []).join('；'));
+  }
+  const file = auditPath || process.env.BIO_DELIVERY_AUDIT_PATH || null;
+  if (!file) throw new Error('审计流路径缺失：需要显式 auditPath 或 BIO_DELIVERY_AUDIT_PATH');
+  const entry = {
+    schema_version: 1,
+    at: verifiedAt || new Date().toISOString(),
+    project_id_sha256: hashedProjectId(projectId),
+    tar_sha256: verdict.tarSha256,
+    verified_count: verdict.verifiedCount,
+    coverage_ok: true,
+    verifier_version: ACCEPTANCE_VERSION,
+  };
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.appendFileSync(file, JSON.stringify(entry) + '\n', 'utf8');
+  return { path: file, entry };
+}
+
+/** 读审计流（只读、容错跳过坏行）：返回 [{ line, entry }]。 */
+export function readAuditLedger(auditPath) {
+  if (!auditPath || !fs.existsSync(auditPath)) return [];
+  const out = [];
+  const lines = fs.readFileSync(auditPath, 'utf8').split(/\r?\n/);
+  for (let i = 0; i < lines.length; i += 1) {
+    if (!lines[i].trim()) continue;
+    try { out.push({ line: i + 1, entry: JSON.parse(lines[i]) }); } catch { /* 坏行跳过，不连坐 */ }
+  }
+  return out;
+}
+
+export function writeReceipt({ projectId, verdict, recordsDir, auditPath, now }) {
   if (!verdict.ok) throw new Error('验收未通过，禁止写回执：' + verdict.failures.join('；'));
   const receipt = {
     schema_version: 1,
@@ -334,7 +389,17 @@ export function writeReceipt({ projectId, verdict, recordsDir, now }) {
   const file = receiptPathFor(projectId, recordsDir);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(receipt, null, 2) + '\n', 'utf8');
-  return { file, receipt };
+  // Argon Q2 双落点：随包全量回执 + 代理侧脱敏审计流（append-only，一行一条）。
+  // 审计流刻意不含宿主机绝对路径，项目号只留哈希，删掉几十 GB 旧包后仍保有一份历史总账。
+  const audit = appendAuditEntry({
+    projectId,
+    verdict,
+    verifiedAt: receipt.verified_at,
+    // 审计落点：显式 auditPath 优先（服务端指向 deliverables 根，而不是 records 子目录）；
+    // 否则与回执同目录（CLI/演练场景），保证调用方不传也有地方落。
+    auditPath: auditPath || (recordsDir ? auditPathFor(recordsDir) : undefined),
+  });
+  return { file, receipt, audit };
 }
 
 export function loadReceipt(projectId, recordsDir) {
