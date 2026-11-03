@@ -246,3 +246,5 @@ BioanalysDesktop/Python/
 
 # 自包含运行时工具（体积大，按机器重铺；是否入库待裁定）
 vendor/
+# npm 缓存（48 个 blob 共 55 MB 历史上被误入库，2026-11-03 取消跟踪，文件留盘）
+.npmcache/
