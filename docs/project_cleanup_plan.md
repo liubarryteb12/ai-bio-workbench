@@ -161,3 +161,31 @@
 
 **Q5** 客户包里 `con_hf/` 与 `cn_debug/` 的排除方式：靠打包脚本白名单，还是靠 `.gitattributes export-ignore`？
     前者已在 `ops/build_client_report.py` 生效，后者能覆盖 `git archive` 场景但要多维护一份清单。
+
+## 六、落地记录（2026-11-04，本目标执行后回填）
+
+**第一、二节的清单已按取证执行，全部动作有提交号可查：**
+
+| 动作 | 结果 | 提交 |
+|---|---|---|
+| .npmcache 取消跟踪（55 MB / 48 blob，零引用） | 跟踪内容 62 MB -> 约 7 MB，文件留盘 | `5f46660` |
+| 垃圾四项删除（%SystemDrive%、referenceL3TMP、拼接事故 csv、临时日志） | 全清，其中 csv 属误入库（5b16d66 引入） | `dd7067c` |
+| BioanalysDesktop/Python 重复副本（167 MB） | 删除，保留根 Python/ 一份 | 本目标轮 |
+| cn_debug/lib 被 .gitignore 整目录规则吞掉（6 个测试 import 的真源没入库） | 取消忽略并入库；chain_runner_lib 的第 4 个输入同补 | `1b159b7` `ef490c9` |
+| con_hf/cn_debug 归类修正 | 历史归档 -> 运行必需+历史混合，只裁剪不移走；Q1 未再触发（保留跟踪） | `dd7067c` |
+| portal/inbox 运行目录缺失（新克隆/包内必炸） | 服务端加载时 recursive 建目录 | `ed59aba` |
+| 净化环境测试自适应（git 工作树根 / PowerShell / 执行策略 / 设备 / 图录数据） | 白名单加 HOST_MISSING_SHELL、HOST_MISSING_GIT 两标签 | `488c838` `4586a5c` |
+| 四层收敛构建器 ops/build_portable_package.mjs | L1 核心+测试依赖闭包 / L2 真源台账 / L3 runtime / L4 全排除；MANIFEST.sha256 覆盖 1526 文件 | `994ed09` |
+| BASELINE_RE 贪婪吞行导致 README 基线累积 6 层尾巴 | 修正则 + 重置基线行 | `2797696` |
+| metrics check 要求 pass/skipped 分配 | 只留 cases 与 fail 两个跨机器不变量；漂移由 # SKIP 白名单 + fail=0 兜底 | `2797696` |
+
+**双环境终验（2026-11-04 01:05 实测）：**
+
+| 环境 | gate:all | 交付四关 |
+|---|---|---|
+| 开发机（node/git/ssh/设备全在） | GATE_ALL_OK 7 道全绿 78 秒（1354 tests / 1336 pass / 0 fail / 18 skipped） | 演练包 0.7s 全绿（VERIFIED 112） |
+| 包内净化环境（PATH 仅 runtime+System32，无 node/git/ssh） | GATE_ALL_OK 7 道全绿 11 秒（同 1354 用例，63 条带白名单原因跳过，0 fail） | DELIVERY_ACCEPTANCE_OK 四道关全绿（本节上方实测） |
+
+**Q2 的临时决定（待 Argon 确认）**：vendor/ 先进 .gitignore 不入库；
+便携包构建时从本机 vendor/tools 复制。目标机不需要 git，构建机需要。
+若要求「克隆即可打包」，再把 vendor 入库或改为下载清单方案（第二节折中案）。
