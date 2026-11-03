@@ -2,4 +2,15 @@
 # ops/k40/sv/sshd/run 与 log/run —— K40 Termux 宿主面 runit 服务定义（仓库镜像，2026-11-01 纳管）
 # 落点：k40:$PREFIX/var/service/<service>/{run,log/run}
 # 同步：bash ops/k40/ensure_runsvdir.sh 会把本目录镜像到设备并幂等点火（见下一节）。
+#
+# host key 守卫（2026-11-03）：密钥缺失时先补生成。
+# 缺 key 时 sshd 立即退出（no hostkeys available），runit 反复重启，8022 永不监听，
+# 表现为「服务显示 run 但连不上」。生成即轮换指纹，客户端 known_hosts 需同步更新。
+# 诊断只走 stdout：实测本机 runit 的 log/run 只收 fd1，>&2 的日志会丢（hktest 探针实证）。
+HOST_KEY=/data/data/com.termux/files/usr/etc/ssh/ssh_host_ed25519_key
+if [ ! -f "$HOST_KEY" ]; then
+  echo "[sshd] host key missing -> ssh-keygen -A"
+  /data/data/com.termux/files/usr/bin/ssh-keygen -A 2>&1
+  [ -f "$HOST_KEY" ] || echo "[sshd] ssh-keygen -A failed, 8022 将不可达"
+fi
 exec sshd -D -e 2>&1

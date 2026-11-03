@@ -8,6 +8,18 @@ export HOME=/data/data/com.termux/files/home
 export PATH="$PREFIX/bin:$PREFIX/bin/applets"
 export TMPDIR="$PREFIX/tmp"
 
+# host key 守卫（2026-11-03）：dropbear 缺 -r 指向的密钥时打印 No hostkeys available 并退出（实测 exit 1），
+# runit 重启循环、10022 永不监听。密钥文件在容器内，宿主侧按 proot 容器根判断再进容器生成。
+# 诊断只走 stdout：实测本机 runit 的 log/run 只收 fd1，>&2 的日志会丢（hktest 探针实证）。
+ROOTFS="$PREFIX/var/lib/proot-distro/containers/ubuntu/rootfs"
+HOST_KEY="$ROOTFS/etc/dropbear/dropbear_ed25519_host_key"
+if [ ! -f "$HOST_KEY" ]; then
+  echo "[ubuntu-sshd] host key missing -> dropbearkey"
+  "$PREFIX/bin/proot-distro" login ubuntu -- \
+    /usr/bin/dropbearkey -t ed25519 -f /etc/dropbear/dropbear_ed25519_host_key 2>&1
+  [ -f "$HOST_KEY" ] || echo "[ubuntu-sshd] dropbearkey failed, 10022 将不可达"
+fi
+
 exec "$PREFIX/bin/proot-distro" login ubuntu -- \
   /mnt/ssd/bio_data/bin/dropbear-static-20261027 \
   -F -E -p 10022 -r /etc/dropbear/dropbear_ed25519_host_key -s 2>&1
