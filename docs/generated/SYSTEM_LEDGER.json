@@ -434,6 +434,7 @@
   "k40HostAssets": {
     "trackedFiles": [
       "ops/k40/ensure_runsvdir.sh",
+      "ops/k40/ensure_runsvdir_selftest.sh",
       "ops/k40/env_lock/apt_manual.txt",
       "ops/k40/env_lock/dpkg_selections.txt",
       "ops/k40/env_lock/hostkey_fingerprints.json",
