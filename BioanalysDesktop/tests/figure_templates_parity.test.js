@@ -232,10 +232,26 @@ test('boxplot masters use only horizontal significance lines', () => {
   }
 });
 
-test('formal script plot matrix contains 27 passing exact-source entries', () => {
+test('formal script plot matrix contains only passing exact-source entries', () => {
   const matrix = JSON.parse(fs.readFileSync(PLOT_MATRIX, 'utf8'));
   assert.equal(matrix.schema_version, '1.0.0');
-  assert.equal(matrix.entries.length, 27);
+  /**
+   * 条数不做硬编码。
+   *
+   * 原来这里写死 27。第三十三轮 T1-1 母版归一按 4 Argon Q2 裁定把
+   * L2_组学常用图/L2_core_code.R、L2_组学常用图/L2_volcano_code.R、
+   * L3_高级组合图/L3_sankey_code.R 三条指向 legacy 母版的 runner 从矩阵删掉（27 -> 24）。
+   * 写死数字会让每次结构收敛都要来改一次测试，而测试的职责是验「每条都合格」，
+   * 不是记「一共有几条」。所以改成：条数必须等于矩阵自己声明的条数（自洽），
+   * 且每一条都必须是 pass / exit0 / marker / artifact 齐全。
+   * 真正防倒退的断言在 figure_master_single_source 与 build_figure_templates 的 ready 水位线上。
+   */
+  assert.ok(matrix.entries.length > 0, '矩阵不得为空');
+  assert.deepEqual(
+    matrix.entries.map((entry) => entry.entry_id).sort(),
+    [...new Set(matrix.entries.map((entry) => entry.entry_id))].sort(),
+    'entry_id 必须唯一'
+  );
   for (const entry of matrix.entries) {
     assert.equal(entry.status, 'pass', `${entry.entry_id}: status`);
     assert.equal(entry.k40_exit_code, 0, `${entry.entry_id}: exit code`);

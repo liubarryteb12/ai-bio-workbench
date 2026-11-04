@@ -47,6 +47,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -82,6 +83,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -113,6 +115,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -159,6 +162,12 @@
       "output_glob": "figures/line1_bulk/custom_fig_l1_groupedbar.png",
       "canonical_output": "L1_groupedbar_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_groupedbar.png",
+      "render_evidence": {
+        "entry_id": "compat_l1_rest",
+        "artifact": "L1_groupedbar_verified.png",
+        "sha256": "60e0f943829c192ff4a89dc85635e5f761a1e769f5473940cd00dbcb68de752f",
+        "matches_preview": false
+      },
       "deprecated": false
     },
     {
@@ -193,6 +202,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -224,6 +234,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -259,6 +270,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -293,6 +305,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -326,6 +339,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -360,6 +374,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -403,6 +418,7 @@
       "output_glob": "figures/line1_bulk/L1_bubble_verified.png",
       "canonical_output": "L1_bubble_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_bubble.png",
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -437,6 +453,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -476,6 +493,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -516,6 +534,7 @@
       "output_glob": "figures/line3_spatial/L3_spatial_autocorr_verified.png",
       "canonical_output": "L3_spatial_autocorr_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/custom_fig_l1_connectedscatter.png",
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -556,6 +575,7 @@
       "output_glob": "figures/line1_bulk/L1_correlogram_verified.png",
       "canonical_output": "L1_correlogram_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_correlogram.png",
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -594,6 +614,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -652,6 +673,12 @@
       "output_glob": "figures/line1_bulk/custom_fig_l2_heatmap.png",
       "canonical_output": "L2_heatmap_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_04_topvar_heatmap.png",
+      "render_evidence": {
+        "entry_id": "compat_l2_more",
+        "artifact": "L2_heatmap_verified.png",
+        "sha256": "1e33aa5bff1d816da49df1f70cd9b54b1a81c33bffff466a114616451bec8ecc",
+        "matches_preview": false
+      },
       "deprecated": false
     },
     {
@@ -693,6 +720,12 @@
       "output_glob": "figures/line1_bulk/custom_fig_l2_pca.png",
       "canonical_output": "L2_pca_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_02_pca.png",
+      "render_evidence": {
+        "entry_id": "compat_l2_more",
+        "artifact": "L2_pca_verified.png",
+        "sha256": "a0b7d1081801088cc21c9134615d6e1bae30d5885dc0701c5f7da40e2511e549",
+        "matches_preview": false
+      },
       "deprecated": false
     },
     {
@@ -738,6 +771,12 @@
       "output_glob": "figures/line1_bulk/custom_fig_l1_scatter.png",
       "canonical_output": "L1_scatter_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_scatter.png",
+      "render_evidence": {
+        "entry_id": "compat_l1_rest",
+        "artifact": "L1_scatter_verified.png",
+        "sha256": "e8c0d1d7513e2408bac9421dbbf68b00526a3f9b91c1662dc9f37c3fea74ce06",
+        "matches_preview": false
+      },
       "deprecated": false
     },
     {
@@ -770,6 +809,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -814,6 +854,7 @@
       "output_glob": "figures/line2_scrna/custom_fig_l2_umap.png",
       "canonical_output": "umap_L2p_umap_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2_umap.png",
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -850,6 +891,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -885,6 +927,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -922,6 +965,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -957,6 +1001,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -990,6 +1035,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -1035,6 +1081,12 @@
       "output_glob": "figures/line1_bulk/custom_fig_l1_boxplot.png",
       "canonical_output": "L1_boxplot_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_boxplot.png",
+      "render_evidence": {
+        "entry_id": "compat_l1_boxplot",
+        "artifact": "L1_boxplot_verified.png",
+        "sha256": "ce3d2cb08118011f727b4c901fe4921d81129433a9e0507e43edad5b22bf8a82",
+        "matches_preview": true
+      },
       "deprecated": false
     },
     {
@@ -1071,6 +1123,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -1117,6 +1170,12 @@
       "output_glob": "figures/line1_bulk/custom_fig_l1_density.png",
       "canonical_output": "L1_density_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_density.png",
+      "render_evidence": {
+        "entry_id": "compat_l1_rest",
+        "artifact": "L1_density_verified.png",
+        "sha256": "075f329e6a74cdfcc63ae1f16499bc5b43acd12c8aa9ad84c68165c6886782c8",
+        "matches_preview": false
+      },
       "deprecated": false
     },
     {
@@ -1160,6 +1219,12 @@
       "output_glob": "figures/line1_bulk/custom_fig_l1_histogram.png",
       "canonical_output": "L1_histogram_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_histogram.png",
+      "render_evidence": {
+        "entry_id": "compat_l1_rest",
+        "artifact": "L1_histogram_verified.png",
+        "sha256": "edd894c9d5e5c3c2e8544ff4f3f0a444290781ac80e32c7f56450e649a2bac04",
+        "matches_preview": false
+      },
       "deprecated": false
     },
     {
@@ -1197,6 +1262,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -1230,6 +1296,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -1271,6 +1338,7 @@
       "output_glob": "figures/line1_bulk/L1_ridgeline_verified.png",
       "canonical_output": "L1_ridgeline_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_ridgeline.png",
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -1317,6 +1385,12 @@
       "output_glob": "figures/line1_bulk/custom_fig_l1_violin.png",
       "canonical_output": "L1_violin_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_violin.png",
+      "render_evidence": {
+        "entry_id": "compat_l1_violin",
+        "artifact": "L1_violin_verified.png",
+        "sha256": "d76f7b185a8b587c09af407a14d7c761381b04758e55286165e368a0fd2c04ea",
+        "matches_preview": false
+      },
       "deprecated": false
     },
     {
@@ -1360,6 +1434,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -1394,6 +1469,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -1432,6 +1508,7 @@
       "output_glob": "figures/line1_bulk/L1_upset_verified.png",
       "canonical_output": "L1_upset_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_upsetplot.png",
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -1471,6 +1548,7 @@
       "output_glob": "figures/line1_bulk/L1_venn_verified.png",
       "canonical_output": "L1_venn_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_vennplot.png",
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -1506,6 +1584,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -1535,6 +1614,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -1569,6 +1649,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -1606,6 +1687,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -1643,6 +1725,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -1677,6 +1760,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -1711,6 +1795,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -1744,6 +1829,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -1773,6 +1859,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -1806,6 +1893,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -1839,6 +1927,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -1872,6 +1961,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -1907,6 +1997,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -1940,6 +2031,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -1980,6 +2072,7 @@
       "output_glob": "figures/line2_scrna/L2p_konetwork_verified.png",
       "canonical_output": "L2p_konetwork_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2_networkplot.png",
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2011,6 +2104,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2043,6 +2137,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2085,6 +2180,12 @@
       "output_glob": "figures/line1_bulk/custom_fig_l2_volcano.png",
       "canonical_output": "L2_volcano_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_03_volcano_limma.png",
+      "render_evidence": {
+        "entry_id": "compat_l2_core",
+        "artifact": "L2_volcano_verified.png",
+        "sha256": "444d3cedda268b185556f998020178d1c3b46c0bfd8714531c617f64c5ff1e63",
+        "matches_preview": true
+      },
       "deprecated": false
     },
     {
@@ -2122,6 +2223,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2166,6 +2268,7 @@
       "output_glob": "figures/line2_scrna/custom_fig_l2p_barplot.png",
       "canonical_output": "L2p_bar_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_barplot.png",
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2208,6 +2311,7 @@
       "output_glob": "figures/line2_scrna/custom_fig_l2p_boxplot.png",
       "canonical_output": "L2p_box_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_boxplot.png",
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2246,6 +2350,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2281,6 +2386,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2322,6 +2428,7 @@
       "output_glob": "figures/line2_scrna/L2p_enrichment_verified.png",
       "canonical_output": "L2p_enrichment_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_enrichmentplot.png",
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2357,6 +2464,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2398,6 +2506,7 @@
       "output_glob": "figures/line2_scrna/L2p_gsea_verified.png",
       "canonical_output": "L2p_gsea_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_gseaplot.png",
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2443,6 +2552,7 @@
       "output_glob": "figures/line2_scrna/custom_fig_l2p_heatmap.png",
       "canonical_output": "L2p_heatmap_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_heatmap.png",
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2482,6 +2592,12 @@
       "output_glob": "figures/line1_bulk/custom_fig_l3_multipanel.png",
       "canonical_output": "L3_multipanel_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l3_multipanel.png",
+      "render_evidence": {
+        "entry_id": "l3_multipanel",
+        "artifact": "L3_multipanel_verified.png",
+        "sha256": "54dd575fdfb8938ce4d4d53f904bce8bae292dc93e42604ee901f67c42b651d0",
+        "matches_preview": false
+      },
       "deprecated": false
     },
     {
@@ -2518,6 +2634,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2554,6 +2671,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2590,6 +2708,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2626,6 +2745,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2670,6 +2790,7 @@
       "output_glob": "figures/line2_scrna/custom_fig_l2p_scatterplot.png",
       "canonical_output": "L2p_scatter_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_scatterplot.png",
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2712,6 +2833,7 @@
       "output_glob": "figures/line2_scrna/custom_fig_l2p_dotplot.png",
       "canonical_output": "figures/dotplot__L2p_dotplot_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/l2_13_target_gene_dotplot.png",
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2749,6 +2871,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2792,6 +2915,7 @@
       "output_glob": "figures/line3_spatial/custom_fig_l2p_umap.png",
       "canonical_output": "umap_L2p_umap_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/l3_human_06_umap_sample.png",
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2828,6 +2952,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2862,6 +2987,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2895,6 +3021,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2937,6 +3064,7 @@
       "output_glob": "figures/line2_scrna/custom_fig_l2p_violin.png",
       "canonical_output": "figures/violin_L2p_violin_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_violin.png",
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -2980,6 +3108,12 @@
       "output_glob": "figures/line2_scrna/custom_fig_l2p_volcano.png",
       "canonical_output": "L2p_volcano_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/l2_08_deg_volcano_basal_keratinocyte.png",
+      "render_evidence": {
+        "entry_id": "l2p_volcano",
+        "artifact": "L2p_volcano_verified.png",
+        "sha256": "c1221d0e1add02a999c8ce00f39aec4c9c57baf28e00b5ca3bd6b91688858dd4",
+        "matches_preview": false
+      },
       "deprecated": false
     },
     {
@@ -3026,6 +3160,7 @@
       "output_glob": "figures/line2_scrna/L3_cellcomm_chord_verified.png",
       "canonical_output": "L3_cellcomm_chord_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l3_cellcomm_chord.png",
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -3060,6 +3195,7 @@
       "output_glob": null,
       "canonical_output": null,
       "sample_project_output": null,
+      "render_evidence": null,
       "deprecated": false
     },
     {
@@ -3104,6 +3240,12 @@
       "output_glob": "figures/line1_bulk/custom_fig_l3_sankey.png",
       "canonical_output": "L3_sankey_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l3_sankey.png",
+      "render_evidence": {
+        "entry_id": "compat_l3_sankey",
+        "artifact": "L3_sankey_verified.png",
+        "sha256": "cf3b81baa6926d765db965dc14d5a818efefc762b852663bcd62eff9c41a8f79",
+        "matches_preview": true
+      },
       "deprecated": false
     }
   ]

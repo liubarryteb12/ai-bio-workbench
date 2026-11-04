@@ -147,6 +147,12 @@ reference/05.可参考出图代码/**
 !reference/05.可参考出图代码/_meta/R453_compat/L1_ridgeline_verified.png
 !reference/05.可参考出图代码/_meta/R453_compat/L1_upset_verified.png
 !reference/05.可参考出图代码/_meta/R453_compat/L1_venn_verified.png
+!reference/05.可参考出图代码/_legacy/
+!reference/05.可参考出图代码/_legacy/L2_组学常用图/
+!reference/05.可参考出图代码/_legacy/L2_组学常用图/L2_core_code.R
+!reference/05.可参考出图代码/_legacy/L2_组学常用图/L2_volcano_code.R
+!reference/05.可参考出图代码/_legacy/L3_高级组合图/
+!reference/05.可参考出图代码/_legacy/L3_高级组合图/L3_sankey_code.R
 !reference/05.可参考出图代码/library/
 !reference/05.可参考出图代码/library/README.md
 !reference/05.可参考出图代码/library/catalog.json

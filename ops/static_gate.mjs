@@ -15,13 +15,16 @@
  *   4. R (.R)：Rscript 单进程内 for 循环 parse(file=f)，任何语法错误 quit(1)。
  *
  * 用法：
- *   node ops/static_gate.mjs            跑全部门禁，任一失败 exit 1
- *   node ops/static_gate.mjs --only sh  只跑某一语种（sh|ps1|py|r）
+ *   node ops/static_gate.mjs                    跑全部门禁，任一失败 exit 1
+ *   node ops/static_gate.mjs --only sh          只跑某一语种（sh|ps1|py|r）
+ *   node ops/static_gate.mjs --allow-missing    宿主缺工具时显式降级为警告（exit 0）
  *
  * 设计约束（与 metrics_sync 同教训）：
  *   - 门禁只报**语法层**问题，不判语义、不判风格，避免假红；
- *   - 工具缺失（宿主没有 pwsh / python3 / Rscript）时该语种报 skip 而不是 fail，
- *     但仍会在汇总里明示 skip 数量，避免「静默全绿」。
+ *   - 工具缺失（宿主没有 pwsh / python3 / Rscript）默认**计入失败**：
+ *     跳过 16 个 .R 母版等于这 16 个文件一个都没查过，静默放行会让门禁变成装饰。
+ *     只有在命令行显式写 --allow-missing 时才降级为警告（打降级清单 + 一行 WARN），
+ *     让「本轮确实没查」这件事留在日志里，而不是混进绿色里。
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -31,7 +34,9 @@ import { fileURLToPath } from 'node:url';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 /** 扫描面：这些目录下的文件参与门禁（与 .gitignore 口径一致） */
-const SCAN_DIRS = ['ops', 'src', 'shared', 'bin', 'BioanalysDesktop/server'];
+// T2-5：扫描面必须覆盖真正产出业务代码的四块（tests/src 是前端与其契约测试，
+// portal 是门户，docs 里有可执行的 .sh 片段），否则语法回归只覆盖到一半仓库。
+const SCAN_DIRS = ['ops', 'src', 'shared', 'bin', 'BioanalysDesktop/server', 'BioanalysDesktop/tests', 'BioanalysDesktop/src', 'portal', 'docs'];
 const SKIP_DIR_NAMES = new Set(['node_modules', 'dist', 'encoding_backup', '_archive', 'artifacts', 'test-results', '.tmp', '__pycache__']);
 
 function walk(dir, out = []) {
@@ -260,9 +265,19 @@ const SAFE_INTERPOLATIONS = new Map([
 
 const BACKTICK = String.fromCharCode(96);
 
+/**
+ * 所有「把命令交给远端执行」的函数名。
+ *
+ * 第三十四轮扩充理由：T1.5 把同步 scp/ssh 改成异步时新增了 runSshAsync /
+ * runRemoteAsync 一类出口，而原正则只认 runRemote(Raw|Strict)?，新出口的模板串
+ * 会**悄悄不受门禁保护**——这正是门禁最危险的失效形态：看着还在，其实漏了。
+ * 所以这里改成按前缀匹配，任何 runRemote* / runSsh* / runExec* 都纳入扫描。
+ */
+const REMOTE_EXEC_PATTERN = 'run(?:Remote|Ssh|Exec)(?:Raw|Strict|Async|Stream|File)?';
+
 function remoteTemplates(text) {
   const out = [];
-  const re = new RegExp('runRemote(?:Raw|Strict)?\\s*\\(' + BACKTICK + '((?:[^' + BACKTICK + '\\\\]|\\\\.)*)' + BACKTICK, 'g');
+  const re = new RegExp(REMOTE_EXEC_PATTERN + '\\s*\\(' + BACKTICK + '((?:[^' + BACKTICK + '\\\\]|\\\\.)*)' + BACKTICK, 'g');
   let m;
   while ((m = re.exec(text)) !== null) {
     out.push({ line: text.slice(0, m.index).split('\n').length, template: m[1] });
@@ -309,6 +324,7 @@ function main() {
     const i = process.argv.indexOf('--only');
     return i > -1 ? (process.argv[i + 1] || '').toLowerCase() : null;
   })();
+  const allowMissing = process.argv.includes('--allow-missing');
 
   const bash = ['bash', 'D:/Git/bin/bash.exe', 'D:/Git/usr/bin/bash.exe'].find((c) => hasCommand(c, ['-c', ':']));
   const pwsh = ['pwsh', 'D:/Program Files/PowerShell/7/pwsh.exe'].find((c) => hasCommand(c, ['-NoProfile', '-NonInteractive', '-Command', 'exit 0']));
@@ -328,22 +344,43 @@ function main() {
   if (!only || only === 'py') results.push(gatePython(collect('.py'), python));
   if (!only || only === 'r') results.push(gateR(collect('.R'), rscript));
 
+  // `MISSING_TOOL_GATE`（锚点：mutation_gate 的 M4 会把本判定改回「跳过即通过」，要求 T2-5 红测变红）
+  // 缺工具 = 这批文件一个都没查过，必须计入失败。--allow-missing 是唯一的显式降级开关：
+  // 降级时打印降级清单与一行 WARN，让「本轮确实没查」留在日志里，而不是混进绿灯里。
   let failed = 0;
-  let skippedTotal = 0;
+  const missing = [];
   for (const r of results) {
-    skippedTotal += (r.skipped || []).length;
-    if (r.failures.length === 0) {
+    const skipped = (r.skipped || []).length;
+    if (skipped > 0) missing.push({ name: r.name, count: skipped, note: r.note || '' });
+    if (r.failures.length === 0 && skipped === 0) {
       const note = r.note ? '  [' + r.note + ']' : '';
       console.log('[ OK ] ' + r.name + ' : ' + r.total + ' 个文件' + note);
+    } else if (r.failures.length === 0 && skipped > 0) {
+      // 工具缺失既不算通过也不算语法失败，先把「没查」的事实亮出来
+      console.log('[SKIP] ' + r.name + ' : 宿主缺工具，' + skipped + '/' + r.total + ' 个文件未检查'
+        + (r.note ? '  [' + r.note + ']' : ''));
     } else {
       failed += r.failures.length;
-      console.log('[FAIL] ' + r.name + ' : ' + r.failures.length + '/' + r.total + ' 个文件有语法问题');
+      console.log('[FAIL] ' + r.name + ' : ' + r.failures.length + '/' + r.total + ' 个文件有语法问题'
+        + (skipped > 0 ? '，另有 ' + skipped + ' 个文件因缺工具未检查' : ''));
       for (const f of r.failures.slice(0, 20)) console.log('        - ' + f.file + ' :: ' + f.reason);
       if (r.failures.length > 20) console.log('        ... 另有 ' + (r.failures.length - 20) + ' 处');
     }
   }
 
-  if (skippedTotal > 0) console.log('[INFO] ' + skippedTotal + ' 个文件因宿主缺工具而跳过（CI 上有 pwsh7/r-base 时不会跳过）');
+  if (missing.length > 0) {
+    const lines = missing.map((m) => '  - ' + m.name + ' : ' + m.count + ' 个文件' + (m.note ? '（' + m.note + '）' : ''));
+    if (allowMissing) {
+      console.log('[ WARN ] 显式降级（--allow-missing）：以下语种本轮未检查，不计入失败');
+      for (const line of lines) console.log(line);
+      console.log('  降级清单必须随本轮结果一起留档，不写 --allow-missing 的调用不享受降级');
+    } else {
+      failed += missing.reduce((sum, m) => sum + m.count, 0);
+      console.log('[FAIL] 宿主缺工具：以下 ' + missing.reduce((sum, m) => sum + m.count, 0) + ' 个文件本轮完全没查（默认计入失败）');
+      for (const line of lines) console.log(line);
+      console.log('  确属环境限制时显式加 --allow-missing 降级为警告；CI runner 应装齐 pwsh7 / r-base / python3');
+    }
+  }
   console.log(failed === 0 ? '静态门禁通过' : '静态门禁失败：' + failed + ' 处');
   return failed === 0 ? 0 : 1;
 }

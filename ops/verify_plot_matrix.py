@@ -103,23 +103,7 @@ ENTRY_SPECS = [
         "figure_ids": ["fig_l1_violin"],
         "outputs": _paths("L1_violin_verified.png", "L1_violin_verified.pdf"),
         "seed_mode": "hardcoded",
-    },
-    {
-        "id": "l2_core",
-        "source": "L2_\u7ec4\u5b66\u5e38\u7528\u56fe/L2_core_code.R",
-        "lang": "r",
-        "role": "aggregate",
-        "figure_ids": ["fig_l2_volcano", "fig_l2_heatmap"],
-        "outputs": _paths(
-            "L2_volcano_verified.png",
-            "L2_volcano_verified.pdf",
-            "L2_enrichment_verified.png",
-            "L2_enrichment_verified.pdf",
-            "L2_heatmap_verified.pdf",
-        ),
-        "seed_mode": "hardcoded",
-    },
-    {
+    },    {
         "id": "l2_enrichment",
         "source": "L2_\u7ec4\u5b66\u5e38\u7528\u56fe/L2_enrichment_code.R",
         "lang": "r",
@@ -170,17 +154,7 @@ ENTRY_SPECS = [
         "figure_ids": ["fig_l2_umap"],
         "outputs": _paths("L2_umap_verified.png", "L2_umap_verified.pdf"),
         "seed_mode": "hardcoded",
-    },
-    {
-        "id": "l2_volcano",
-        "source": "L2_\u7ec4\u5b66\u5e38\u7528\u56fe/L2_volcano_code.R",
-        "lang": "r",
-        "role": "primary",
-        "figure_ids": ["fig_l2_volcano"],
-        "outputs": _paths("L2_volcano_verified.png", "L2_volcano_verified.pdf"),
-        "seed_mode": "hardcoded",
-    },
-    {
+    },    {
         "id": "l2p_dotplot",
         "source": "L2_\u7ec4\u5b66\u5e38\u7528\u56fe/L2p_dotplot_code.py",
         "lang": "python",
@@ -253,17 +227,7 @@ ENTRY_SPECS = [
         "outputs": [],
         "quarantined": True,
         "quarantine_reason": "_QUARANTINE_NOTE.md excludes this file from entries and verification.",
-    },
-    {
-        "id": "l3_sankey",
-        "source": "L3_\u9ad8\u7ea7\u7ec4\u5408\u56fe/L3_sankey_code.R",
-        "lang": "r",
-        "role": "primary",
-        "figure_ids": ["fig_l3_sankey"],
-        "outputs": _paths("L3_sankey_verified.png", "L3_sankey_verified.pdf"),
-        "seed_mode": "hardcoded",
-    },
-    {
+    },    {
         "id": "compat_l1_boxplot",
         "source": "_meta/R453_compat/L1_boxplot_code.R",
         "lang": "r",

@@ -10,6 +10,7 @@ const FIGURE_ROOT = 'reference/05.可参考出图代码';
 const CSV_PATH = path.join(REPO, FIGURE_ROOT, '_meta', 'bizard_index.csv');
 const REPORT_PATH = path.join(REPO, FIGURE_ROOT, '_meta', 'r453_verification_report.json');
 const REGISTRY_PATH = path.join(REPO, 'src', 'figure_templates.json');
+const PLOT_MATRIX_PATH = path.join(REPO, FIGURE_ROOT, '_meta', 'script_plot_matrix.json');
 
 function fail(message) {
   console.error(message);
@@ -59,6 +60,36 @@ function parseCsv(text) {
 
 function sha256(file) {
   return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+}
+
+
+/**
+ * 读 script_plot_matrix.json 里的 png artifact，按 basename 索引。
+ *
+ * 为什么需要它（第三十三轮 T1-3）：r453 报告的 artifacts[] 只有 file 与 runner，
+ * **没有 sha256**，拿它做「预览与产物恒等」只能比文件名。matrix 的 artifacts[].sha256
+ * 才是重渲染产物的真实哈希，所以 render_evidence 的证据源只能是 matrix。
+ * 矩阵文件缺失时返回空表：render_evidence 一律 null，由门禁负责把欠账报出来。
+ */
+function plotMatrixArtifacts() {
+  const out = new Map();
+  let matrix;
+  try {
+    matrix = JSON.parse(fs.readFileSync(PLOT_MATRIX_PATH, 'utf8'));
+  } catch {
+    return out;
+  }
+  for (const entry of matrix.entries || []) {
+    for (const art of entry.artifacts || []) {
+      const rel = art.relative_path;
+      if (!rel || !rel.endsWith('.png')) continue;
+      out.set(rel, {
+        entry_id: entry.entry_id, runner: entry.script_path,
+        sha256: art.sha256, width: art.width, height: art.height,
+      });
+    }
+  }
+  return out;
 }
 
 function snakeCase(value) {
@@ -594,6 +625,26 @@ function buildRegistry() {
       output_glob: mapping ? mapping.output_glob : null,
       canonical_output: mapping ? mapping.canonical_output || null : null,
       sample_project_output: activeStatus === 'ready' ? mapping.sample_project_output : null,
+      /**
+       * 渲染证据（第三十三轮 T1-3）：把「这张预览是不是当前母版这次渲染出来的」
+       * 变成注册表里的显式字段，而不是靠门禁临时去猜。
+       *
+       *   render_evidence = { entry_id, artifact, sha256, matches_preview }  -> 矩阵里有同源产物
+       *   render_evidence = null                                             -> 矩阵里没有证据（欠账）
+       *
+       * 无证据写 null 而不是省略字段：省略会让「读不到」与「不存在」混在一起，
+       * 门禁就没法把欠账条数报准。null 是显式的「我们知道这里没有证据」。
+       */
+      render_evidence: activeStatus === 'ready' && preview ? (() => {
+        const evidence = plotMatrixArtifacts().get(path.basename(preview));
+        if (!evidence) return null;
+        return {
+          entry_id: evidence.entry_id,
+          artifact: path.basename(preview),
+          sha256: evidence.sha256,
+          matches_preview: evidence.sha256 === previewSha256,
+        };
+      })() : null,
       deprecated: false,
     });
   }

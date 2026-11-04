@@ -24,7 +24,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash, verify as cryptoVerify } from 'node:crypto';
 
 import { HOSTS, SSD_ROOT, PROJECTS_ROOT, SYSTEM_LOGS, LINES, sanitizeProjectId } from './domain.js';
-import { runStream } from './proc.js';
+import { runStream, shellQuote } from './proc.js';
 import { stripSshNoise } from './run.js';
 import { readPublicKey } from '../../ops/ed25519_tools.mjs';
 import {
@@ -112,7 +112,7 @@ function sha256OfFile(file) {
  */
 async function remoteFileSha256(remotePath) {
   try {
-    const result = await runSsh(`sha256sum '${remotePath}' 2>/dev/null`);
+    const result = await runSsh(`sha256sum ${shellQuote(remotePath)} 2>/dev/null`);
     const match = /^([0-9a-f]{64})\s/m.exec(result.stdout || '');
     return match ? match[1] : null;
   } catch {
@@ -308,7 +308,7 @@ function streamRemote(argv, handlers, label) {
 export async function checkRemoteProjectDir(projectId) {
   const { remoteProjectDir } = buildReportCommand(projectId);
   try {
-    await runSsh(`test -d '${remoteProjectDir}'`);
+    await runSsh(`test -d ${shellQuote(remoteProjectDir)}`);
     return true;
   } catch {
     return false;
