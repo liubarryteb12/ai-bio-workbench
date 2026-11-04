@@ -56,3 +56,23 @@
 - tsc --noEmit：exit 0。
 - 变异反证：A B C D E F G H I 九条全部变红，还原 sha 全部一致。
 - 3 个新测试文件入库：diagnostics_injection / portal_resilience / portal_csrf / task_slot_reclaim / audit_single_source / remote_command_quoting。
+## 七、Round2 执行进度（截至本轮结束）
+
+| 项 | 状态 | 证据 |
+|---|---|---|
+| Tier0 六票 + T0-7 | 已完成并提交 | 4c5fc7a、cce95ce |
+| 测试入口口径分裂（新发现） | 已完成并提交 | 77d5ee7 |
+| T1-4 line2 火山接真源 | 已完成并提交 | 7395a49，变异 A-D 全红 |
+| 静态门禁 remote-quoting（新防线） | 已完成并提交 | 9799c89，变异全红 |
+| T1-1 母版归一 | 红测已就绪未实施 | .tmp/review2/t11_*.redtest.test.js 红 1 条（两份 divergent 同名） |
+| T1-2 / T1-3 | 待下一轮（需 k40） | .tmp/review2/figures.md、tier1_spec.md |
+| T2-1..T2-7 | 红测已就绪未实施 | .tmp/review2/gates.md，21 条红测 |
+| T1.5 异步 scp | 红测与阻塞实测已就绪 | .tmp/review2/runtime_delivery.md |
+| T4-4 一键验签 | 设计已就绪 | .tmp/review2/runtime_delivery.md |
+
+## 八、为什么 T1-1 与 T2 的红测没有放进 BioanalysDesktop/tests/
+
+这两组红测当前都是红的（T1-1 红 1 条、T2 红 21 条）。放进正式测试树会让 `npm test` 长期挂红，
+等于用「已知红」污染基线，与「红测先写、修完才绿」的纪律冲突。
+统一放在 .tmp/review2/，文件名带 .redtest. 前缀（不匹配 tests/*.test.js 官方入口），
+下一轮实施时先让它们转绿再迁入。批跑入口：node .tmp/review2/run_redtests.mjs。
