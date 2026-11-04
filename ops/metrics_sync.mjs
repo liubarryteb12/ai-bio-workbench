@@ -97,7 +97,11 @@ function measureTests() {
     } catch { return 0; }
   })();
 
-  const spawned = spawnSync('node', ['--test', '--test-reporter=tap', 'tests/*.test.js'], {
+  // 串行执行：默认并发是 CPU 核数，而 tests/index.test.js 等子进程用例会在同一时间抢同一批端口，
+  // 2026-11-04 实测并行口径连跑 4 次有 2 次随机红（health 10s 超时 + index 整片 400 断言），
+  // 官方 npm test 用 --test-concurrency=1 同机六次零红。门禁口径必须与官方入口一致，
+  // 否则「换条命令就随机红」会被当成业务回归。
+  const spawned = spawnSync('node', ['--test', '--test-concurrency=1', '--test-reporter=tap', 'tests/*.test.js'], {
     cwd: path.join(REPO, 'BioanalysDesktop'),
     encoding: 'utf8',
     timeout: 600000,
