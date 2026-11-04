@@ -78,9 +78,43 @@ START = time.time()
 OUT = "../figures"
 os.makedirs(OUT, exist_ok=True)
 made = []
-UP = "#D62728"      # 上调 红
-DOWN = "#1F77B4"    # 下调 蓝
-NS = "#BBBBBB"      # 非显著 灰
+# 火山三色与 CASE_COLOR / CTRL_COLOR 同一色族（docs/figure_spec.md §八.5）：
+# 上调用暖红 #EE0000，下调用冷蓝 #3B4992，中性用浅灰 #BEBEBE。
+# 旧值 #D62728 / #1F77B4 / #BBBBBB 是 Okabe-Ito 时代的遗留，2026-11 全量审查实测
+# 现网 l2_08 产物命中旧色 738px、规范色 0px，已按 4 Argon Q4 裁定统一。
+UP = "#EE0000"      # 上调 红
+DOWN = "#3B4992"    # 下调 蓝
+NS = "#BEBEBE"      # 非显著 灰
+
+
+def read_cutoffs():
+    """读建项时锁死的统计阈值（project.json 的 analysis_cutoffs）。
+
+    与 line1 bulk_figures 同款规则：阈值真源在 project.json，脚本只读不写，
+    也不带自己的默认值去覆盖客户选择；真实跑批一定有 BIOANALYS_PROJECT_JSON，
+    拿不到才回落标准档（手跑母版场景）。
+    """
+    fallback = {"log2fc": 1.0, "p_field": "padj", "p_cut": 0.05,
+                "source": "fallback_standard"}
+    meta = load_project_json()
+    if meta is None:
+        return fallback
+    cut = (meta or {}).get("analysis_cutoffs") or {}
+
+    def num(value, default):
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return default
+        return number if number > 0 else default
+
+    field = "pvalue" if cut.get("effective_p_field") == "pvalue" else "padj"
+    return {
+        "log2fc": num(cut.get("log2fc_threshold"), fallback["log2fc"]),
+        "p_field": field,
+        "p_cut": num(cut.get("effective_p_threshold"), fallback["p_cut"]),
+        "source": "project.json",
+    }
 
 
 def log(m):
@@ -715,8 +749,14 @@ if deg is not None:
         l2 = rows["log2fc"].to_numpy(dtype=float)
         padj = rows["pvals_adj"].to_numpy(dtype=float)
         neglogp = -np.log10(np.clip(padj, 1e-300, 1))
-        sig_up = (padj < 0.05) & (l2 > 1)
-        sig_dn = (padj < 0.05) & (l2 < -1)
+        # 阈值来自 project.json 的 analysis_cutoffs，不在这里写死 0.05 与 1
+        cuts = read_cutoffs()
+        l2_cut = cuts["log2fc"]
+        p_cut = cuts["p_cut"]
+        log(f"volcano cutoffs source=%s log2fc=%s p_field=%s p_cut=%s"
+            % (cuts["source"], l2_cut, cuts["p_field"], p_cut))
+        sig_up = (padj < p_cut) & (l2 > l2_cut)
+        sig_dn = (padj < p_cut) & (l2 < -l2_cut)
         ns = ~(sig_up | sig_dn)
         fig, ax = plt.subplots(figsize=(7.5, 6.5))
         ax.scatter(l2[ns], neglogp[ns], s=6, color=NS, linewidths=0, label="NS")
@@ -724,24 +764,27 @@ if deg is not None:
                    label="Down: %d" % int(sig_dn.sum()))
         ax.scatter(l2[sig_up], neglogp[sig_up], s=10, color=UP, linewidths=0,
                    label="Up: %d" % int(sig_up.sum()))
-        ax.axhline(-np.log10(0.05), color="k", lw=0.6, ls="--")
-        ax.axvline(-1, color="k", lw=0.6, ls="--")
-        ax.axvline(1, color="k", lw=0.6, ls="--")
+        ax.axhline(-np.log10(p_cut), color="k", lw=0.6, ls="--")
+        ax.axvline(-l2_cut, color="k", lw=0.6, ls="--")
+        ax.axvline(l2_cut, color="k", lw=0.6, ls="--")
         # 阈值线在图内注明（规范：火山图须标注 adj p<0.05 与 |log2FC|>1）；
         # adj p 阈值标注贴左侧轴框内缘：中心点云最密，放中间会被点压住看不见
         xlo, xhi = ax.get_xlim()
-        ax.text(xlo + 0.02 * (xhi - xlo), -np.log10(0.05), "adj p=0.05",
+        ax.text(xlo + 0.02 * (xhi - xlo), -np.log10(p_cut),
+                "%s=%g" % (cuts["p_field"], p_cut),
                 fontsize=8, va="bottom", ha="left")
         # log2FC 标注移到轴框顶部，避开底部密集点云与 p 标注
         ytop = ax.get_ylim()[1]
-        ax.text(-1.02, ytop, "log2FC=-1", fontsize=8, va="top", ha="right",
-                rotation=90)
-        ax.text(1.02, ytop, "log2FC=+1", fontsize=8, va="top", rotation=90)
+        ax.text(-l2_cut - 0.02, ytop, "log2FC=%g" % -l2_cut, fontsize=8,
+                va="top", ha="right", rotation=90)
+        ax.text(l2_cut + 0.02, ytop, "log2FC=+%g" % l2_cut, fontsize=8,
+                va="top", rotation=90)
         ax.set_xlabel("log2FC (Psoriasis vs Healthy)")
         ax.set_ylabel("-log10 adj p")
         caption(fig, "line2 scrna: DEG volcano - %s" % c,
                 "from step15 deg_groups",
-                "sig=%d" % per[c].get("n_sig", 0),
+                "sig=%d (|log2FC|>%g & %s<%g)"
+                % (per[c].get("n_sig", 0), l2_cut, cuts["p_field"], p_cut),
                 "red = up, blue = down, grey = NS")
         # 图例外置到轴框下方（figure_spec v2.2：禁止轴内 loc）
         ax.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.10),
@@ -756,8 +799,10 @@ if deg is not None:
     ax.set_xticks(range(len(cts)))
     ax.set_xticklabels(cts, rotation=45, ha="right", fontsize=8)
     ax.set_ylabel("significant DEG count")
+    cuts = read_cutoffs()
     caption(fig, "line2 scrna: DEG count per celltype",
-            "from step15 deg_groups", "adj p<0.05 & |log2FC|>1")
+            "from step15 deg_groups",
+            "|log2FC|>%g & %s<%g" % (cuts["log2fc"], cuts["p_field"], cuts["p_cut"]))
     for i, v in enumerate(vals):
         ax.text(i, v, str(v), ha="center", va="bottom", fontsize=8)
     save(fig, "l2_09_deg_sig_bar.png")
