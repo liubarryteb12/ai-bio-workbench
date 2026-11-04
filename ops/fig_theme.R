@@ -2,9 +2,9 @@
 #
 # 为什么只剩 bioanalys_par：
 #   ggplot 图件的字号/spines/网格/图例规则**已经由 SCI 模板实现**——
-#   bin/layout_helper.R 在 ggsave 挂载点后套 theme_classic()/theme_bw() 完整主题，
-#   并自设 axis.text=8 / axis.title=9 / legend 8-9 / caption 8 grey20 /
-#   plot.title 10 bold + 图例方位 + 角标。在同一个挂载点再垫一层主题会被整体重置
+#   bin/layout_helper.R 在 ggsave 挂载点后套 theme_classic() 完整主题，
+#   并自设 axis.title=7 / axis.text=6.5 / legend=6.5 / plot.title=blank。
+#   在同一个挂载点再垫一层主题会被整体重置
 #   （2026-10-19 实测：主题开/关图件 md5 完全一致），所以 R ggplot 侧不建主题层（踩坑 #192）。
 #
 #   真正没被覆盖的是 base R `png()` 设备出的图（line1 的 l1_28~l1_31 来自 wgcna_modules）：
@@ -17,9 +17,12 @@
 if (!nzchar(Sys.getenv("BIOANALYS_PROJECT_JSON", ""))) return(invisible(NULL))
 if (identical(Sys.getenv("BIOANALYS_LAYOUT_DISABLE", ""), "1")) return(invisible(NULL))
 
-# base R（png() 设备）图：统一 par；cex 下限约 8pt（1.0 ≈ 12pt，0.9 ≈ 10.8pt）
+# base R（png() 设备）图：默认 12 pt，cex=0.58 约 7 pt；单图标题留空。
+# cex.main 不能用 0（2026-11-05 DCM 基准实测：R 对 par(cex.main=0) 直接报
+# "invalid value specified for graphical parameter"，wgcna_modules 四张 base R 图
+# 全挂，引擎台账记 failed）。留空标题用极小正字号表达，视觉等同无题。
 bioanalys_par <- function(...) {
-  graphics::par(cex.axis = 0.9, cex.lab = 1.0, cex.main = 1.1, ...)
+  graphics::par(cex.axis = 0.58, cex.lab = 0.58, cex.main = 0.01, ...)
 }
 
 message("[fig_theme] base R par 已定义（由母版脚本显式调用 bioanalys_par()）")
