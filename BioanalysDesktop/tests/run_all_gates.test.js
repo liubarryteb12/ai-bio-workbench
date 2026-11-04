@@ -12,12 +12,14 @@ import path from 'node:path';
 
 import { GATES, runAllGates, main, REPO_ROOT } from '../../ops/run_all_gates.mjs';
 
-test('门禁清单：八道齐全，顺序越便宜越靠前，只有最后一道是 slow', () => {
-  // mutation_gate 是 T2-6 的第 8 道：它证明「改坏能让门禁红」，与红测证明的
+test('门禁清单：九道齐全，顺序越便宜越靠前，只有最后一道是 slow', () => {
+  // mutation_gate 是 T2-6 的变异门禁：它证明「改坏能让门禁红」，与红测证明的
   // 「修好能让门禁红」合成闭环。slow 标记只有 metrics 一道，快检仍然秒级。
+  // preview_provenance 是 T1-3 的溯源门禁（第三十四轮 T1-2 重渲染后由 info-only 转硬阻断），
+  // 它排在 figure_registry 之后：注册表先证明「字段齐全」，溯源再证明「预览与产物同一份」。
   assert.deepEqual(GATES.map((g) => g.id), [
-    'preflight', 'static_gate', 'skip_static', 'ledger', 'figure_registry', 'audit_summary',
-    'mutation_gate', 'metrics',
+    'preflight', 'static_gate', 'skip_static', 'ledger', 'figure_registry',
+    'preview_provenance', 'audit_summary', 'mutation_gate', 'metrics',
   ]);
   assert.equal(GATES.filter((g) => g.slow).length, 1, '只能有一道 slow（全量测试）');
   assert.equal(GATES[GATES.length - 1].slow, true, '最慢的一道必须排最后');

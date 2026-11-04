@@ -46,6 +46,10 @@ export const GATES = Object.freeze([
   { id: 'skip_static', label: '跳过原因白名单（静态面）', exec: 'node', args: ['ops/skip_reason_gate.mjs'], cwd: '.', slow: false },
   { id: 'ledger', label: '台账与真源一致', exec: 'node', args: ['ops/ledger_gen.mjs', '--check'], cwd: '.', slow: false },
   { id: 'figure_registry', label: '图件注册表与证据同步', exec: 'node', args: ['ops/build_figure_templates.cjs', '--check'], cwd: '.', slow: false },
+  // T1-3 预览溯源（第三十四轮 4 Argon Q3）：T1-2 重渲染已完成，9 条分叉归零
+  // （相等 12 / 分叉 0），按裁定同笔转硬阻断。任何 ready 的预览与矩阵产物 sha 再次分叉，
+  // 这道门禁当场红——那是「预览来自另一次渲染」的唯一可信判据。
+  { id: 'preview_provenance', label: '预览与渲染产物溯源', exec: 'node', args: ['ops/figure_preview_provenance.mjs'], cwd: '.', slow: false },
   { id: 'audit_summary', label: '交付审计流可解析', exec: 'node', args: ['ops/audit_summary.mjs'], cwd: '.', slow: false },
   // 第 8 道：变异门禁（T2-6）。它证明的不是「代码对不对」，而是「门禁会不会红」：
   // 对 7 条关键防线各注入一次真实破坏，任一条没让对应判据变红即整道失败。
