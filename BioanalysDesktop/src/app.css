@@ -1505,3 +1505,42 @@ body {
   white-space: nowrap;
   font-weight: 600;
 }
+/* T0-5：错误卡（自检 500 / 监控拉取失败）。
+   与 .error-text 的区别：错误卡是可操作的降级块，必须自带重试按钮，
+   让用户不必刷新整页。 */
+.error-card {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-left: 4px solid #b3261e;
+  border-radius: 4px;
+  background: #fef2f2;
+}
+.error-card-title {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #b3261e;
+}
+.error-card .hint {
+  margin: 6px 0 10px;
+}
+
+/* 视图级 ErrorBoundary 降级卡：整块视野内出错时的可读出口。
+   不复用 .error-card 是因为它只占一行宽，这里是整视图的空态。 */
+.view-error-card {
+  margin: 16px;
+  padding: 20px 18px;
+  border: 1px solid #fca5a5;
+  border-left: 4px solid #b3261e;
+  border-radius: 6px;
+  background: #fef2f2;
+}
+.view-error-title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #b3261e;
+}
+.view-error-card .hint {
+  margin: 8px 0 12px;
+}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { SelfCheckResponse } from './shared/types';
+import { fetchJson, httpStatusOf, errorMessage } from '../lib/fetchJson';
 
 // ============================================================
 // 视图3：服务端五维自检面板（Pre-flight Dashboard）
@@ -9,16 +10,25 @@ export function PreFlightDashboard() {
   const [result, setResult] = useState<SelfCheckResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
 
   const run = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setErrorStatus(null);
     try {
-      const res = await fetch('/api/selfcheck');
-      const payload = (await res.json()) as SelfCheckResponse;
-      setResult(payload);
+      const payload = await fetchJson<SelfCheckResponse>('/api/selfcheck');
+      setResult({
+        ...payload,
+        // 契约漂移兜底：checks 缺失或不是数组时降级为空数组，
+        // 否则下面的 map 抛 TypeError（历史白屏的直接来源）
+        checks: Array.isArray(payload?.checks) ? payload.checks : [],
+        all_pass: Boolean(payload?.all_pass),
+      });
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setResult(null);
+      setError(errorMessage(cause));
+      setErrorStatus(httpStatusOf(cause));
     } finally {
       setLoading(false);
     }
@@ -40,8 +50,9 @@ export function PreFlightDashboard() {
           : 'selfcheck-dot-unknown';
   const dotText = (status: string) =>
     status === 'pass' ? 'OK' : status === 'fail' ? 'FAIL' : status === 'warn' ? '!' : '?';
-  const hasFail = (result?.checks ?? []).some((c) => c.status === 'fail');
-  const hasWarn = (result?.checks ?? []).some((c) => c.status === 'warn');
+  const checks = result?.checks ?? [];
+  const hasFail = checks.some((c) => c?.status === 'fail');
+  const hasWarn = checks.some((c) => c?.status === 'warn');
 
   return (
     <div className="view-container">
@@ -53,7 +64,20 @@ export function PreFlightDashboard() {
           </button>
         </div>
 
-        {error && <p className="error-text">检测失败：{error}</p>}
+        {error && (
+          <div className="error-card" role="alert">
+            <h3 className="error-card-title">检测失败</h3>
+            <p className="error-text">{error}</p>
+            <p className="hint">
+              {errorStatus === 0
+                ? '服务端没有响应，请确认工作台后端仍在运行后重试。'
+                : '自检结果取不到时，本页不会显示任何"通过"结论；请重试或查看服务端日志。'}
+            </p>
+            <button type="button" className="btn btn-primary" onClick={() => void run()} disabled={loading}>
+              {loading ? '重试中...' : '重试'}
+            </button>
+          </div>
+        )}
 
         {result && (
           <div className="selfcheck-summary">
@@ -71,7 +95,7 @@ export function PreFlightDashboard() {
 
         {result && (
           <div className="selfcheck-grid">
-            {result.checks.map((item) => (
+            {checks.map((item) => (
               <div key={item.id} className="selfcheck-light">
                 <div className={`selfcheck-dot ${dotClass(item.status)}`}>{dotText(item.status)}</div>
                 <div className="selfcheck-label">{item.label}</div>
@@ -94,7 +118,7 @@ export function PreFlightDashboard() {
         )}
 
         {!result && !error && !loading && (
-          <p className="hint">点击"重新检测"调用 GET /api/selfcheck。</p>
+          <p className="hint">点击"重新检测"重新收集本机与计算面的体检结果。</p>
         )}
       </div>
     </div>

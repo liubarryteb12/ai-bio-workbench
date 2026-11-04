@@ -3,6 +3,8 @@ import './app.css';
 
 import { projectDisplayName } from './views/shared/helpers';
 import type { ProjectEntry, ProjectsResponse } from './views/shared/types';
+import { fetchJson, errorMessage } from './lib/fetchJson';
+import { ViewErrorBoundary } from './components/ViewErrorBoundary';
 import { ResultPreviewStudio } from './views/ResultStudioView';
 import { PreFlightDashboard } from './views/SelfCheckAdminView';
 import { OnboardingPortal, CustomerInputConsole } from './views/OnboardingView';
@@ -24,6 +26,11 @@ const VIEWS: Array<{ key: ViewKey; label: string }> = [
   { key: 'pi-chat', label: 'Pi Agent 对话' },
 ];
 
+const VIEW_LABELS: Record<ViewKey, string> = VIEWS.reduce(
+  (acc, item) => ({ ...acc, [item.key]: item.label }),
+  {} as Record<ViewKey, string>,
+);
+
 // ============================================================
 // App 主组件
 // ============================================================
@@ -36,23 +43,29 @@ export function App() {
   // 计算面模式（Ticket 1）：'mock' = 离线演示（没有真机也算力），'ssh' = 真机。
   // 只用于顶部提示，不阻塞任何交互；拿不到按 ssh 处理（不惊吓用户）。
   const [computeMode, setComputeMode] = useState<'ssh' | 'mock'>('ssh');
+  // ErrorBoundary 重试计数：递增即让失败视图换 key 重新挂载
+  const [retryTick, setRetryTick] = useState(0);
   const projectInit = useRef(false);
 
   const refreshProjects = useCallback(async () => {
     try {
-      const response = await fetch('/api/projects/list');
-      const payload = (await response.json()) as ProjectsResponse;
-      setProjects(payload.projects);
+      const payload = await fetchJson<ProjectsResponse>('/api/projects/list');
+      // 成功必须清错误：否则一次失败后横幅永久常驻（FE-03）
+      setProjectError(null);
+      // 契约漂移（缺 projects 数组）不许把 undefined 塞进 state：
+      // 渲染期 projects.length 会抛 TypeError，而那已经是 ErrorBoundary 之外
+      const list = Array.isArray(payload?.projects) ? payload.projects : [];
+      setProjects(list);
       setProject((prev) => {
         if (!projectInit.current) {
           projectInit.current = true;
-          return payload.defaultProject || 'default';
+          return payload?.defaultProject || 'default';
         }
-        if (payload.projects.some((item) => item.projectId === prev)) return prev;
-        return payload.defaultProject || 'default';
+        if (list.some((item) => item.projectId === prev)) return prev;
+        return payload?.defaultProject || 'default';
       });
     } catch (cause) {
-      setProjectError(cause instanceof Error ? cause.message : String(cause));
+      setProjectError(errorMessage(cause));
     }
   }, []);
 
@@ -71,10 +84,17 @@ export function App() {
     document.addEventListener('visibilitychange', reload);
     return () => {
       window.removeEventListener('focus', reload);
+      document.removeEventListener('visibilitychange', reload);
+    };
+  }, [refreshProjects]);
 
   // 计算面模式读取：/api/selfcheck 显式透出 compute_mode（第二十二轮 Q5 Ticket 1）。
   // 读失败不影响使用；只在明确 mock 时提示，把「没有真机」摆到明面上，
   // 而不是让用户在 mock 绿灯下误以为真机验过了。
+  //
+  // 这个 effect 必须与上一个平级：2026-11 审查发现它曾被嵌进上一个 effect 的清理
+  // 函数体内，结果是首页挂载时根本不会请求 /api/selfcheck，而卸载时会在清理函数里
+  // 调 hooks 触发 Invalid hook call。
   useEffect(() => {
     let alive = true;
     const loadMode = async () => {
@@ -96,9 +116,10 @@ export function App() {
       document.removeEventListener('visibilitychange', onVisible);
     };
   }, []);
-      document.removeEventListener('visibilitychange', reload);
-    };
-  }, [refreshProjects]);
+
+  const retryFailedView = useCallback(() => {
+    setRetryTick((n) => n + 1);
+  }, []);
 
   return (
     <div className="app-root">
@@ -161,12 +182,19 @@ export function App() {
         </div>
       )}
 
-      {view === 'onboarding' && <OnboardingPortal onCreated={refreshProjects} onProjectSet={setProject} />}
-      {view === 'console' && <CustomerInputConsole project={project} />}
-      {view === 'preflight' && <PreFlightDashboard />}
-      {view === 'studio' && <ResultPreviewStudio project={project} />}
-      {view === 'pi-agent' && <PiAgentMonitor />}
-      {view === 'pi-chat' && <PiAgentChat />}
+      {/* 每个 tab 视图各包一层：一个视图渲染失败只降级这一块，外壳与其他视图照常可用 */}
+      <ViewErrorBoundary
+        key={view + '-' + retryTick}
+        viewName={VIEW_LABELS[view]}
+        onRetry={retryFailedView}
+      >
+        {view === 'onboarding' && <OnboardingPortal onCreated={refreshProjects} onProjectSet={setProject} />}
+        {view === 'console' && <CustomerInputConsole project={project} />}
+        {view === 'preflight' && <PreFlightDashboard />}
+        {view === 'studio' && <ResultPreviewStudio project={project} />}
+        {view === 'pi-agent' && <PiAgentMonitor />}
+        {view === 'pi-chat' && <PiAgentChat />}
+      </ViewErrorBoundary>
     </div>
   );
 }
