@@ -47,6 +47,8 @@ test('derived adapt copy keeps the master byte-for-byte unchanged', () => {
       input_data: 'data/line1_bulk/results/de_results.csv',
       group_col: 'condition',
       label_genes: ['TNF'],
+      log2fc_cutoff: 1,
+      padj_cutoff: 0.05,
     },
   });
 
@@ -73,6 +75,8 @@ test('derived adapt copy carries a verifiable master header and adapt values', (
       input_data: 'data/line1_bulk/results/de_results.csv',
       group_col: 'condition',
       label_genes: ['TNF'],
+      log2fc_cutoff: 1,
+      padj_cutoff: 0.05,
     },
   });
 
@@ -99,6 +103,8 @@ test('figure resolution rejects cross-line templates and adapt values', () => {
       input_data: 'data/line1_bulk/results/de_results.csv',
       group_col: 'condition',
       label_genes: [],
+      log2fc_cutoff: 1,
+      padj_cutoff: 0.05,
     },
     ['l1_figures_bulk'],
   );
@@ -113,6 +119,8 @@ test('figure resolution rejects cross-line templates and adapt values', () => {
       input_data: 'data/line1_bulk/results/de_results.csv',
       group_col: 'condition',
       label_genes: [],
+      log2fc_cutoff: 1,
+      padj_cutoff: 0.05,
     },
     ['l2_figures_scrna'],
   );
@@ -144,6 +152,8 @@ test('adapt manifest maps project-local copies to per-line delivery paths', () =
       input_data: 'data/line1_bulk/results/de_results.csv',
       group_col: 'condition',
       label_genes: [],
+      log2fc_cutoff: 1,
+      padj_cutoff: 0.05,
     },
   });
 
@@ -202,6 +212,8 @@ test('derived adapt copy rejects a master outside reference/05.', () => {
       input_data: 'data/line1_bulk/results/de_results.csv',
       group_col: 'condition',
       label_genes: [],
+      log2fc_cutoff: 1,
+      padj_cutoff: 0.05,
     },
   });
   assert.equal(result.ok, false);
@@ -278,6 +290,8 @@ test('18787 工作台模板、预览与真实派生接线协同通过', async (t
         input_data: 'data/line1_bulk/results/de_results.csv',
         group_col: 'condition',
         label_genes: ['TNF'],
+        log2fc_cutoff: 1,
+        padj_cutoff: 0.05,
       },
     }),
   });
@@ -295,6 +309,8 @@ test('18787 工作台模板、预览与真实派生接线协同通过', async (t
         input_data: 'data/line1_bulk/results/de_results.csv',
         group_col: 'condition',
         label_genes: ['TNF'],
+        log2fc_cutoff: 1,
+        padj_cutoff: 0.05,
       },
       seed: 42,
     }),
@@ -307,7 +323,7 @@ test('18787 工作台模板、预览与真实派生接线协同通过', async (t
   assert.equal(deriveBody.task.seed, 42);
   assert.equal(deriveBody.task.dependsOnStep, 'l1_de_limma');
   assert.ok(fs.existsSync(deriveBody.local_path));
-  assert.equal(deriveBody.master_sha256, 'd60ecbf24668aacf3498168ac4d7279bb9347f26c1e6106c548e87eba9bcc07b');
+  assert.equal(deriveBody.master_sha256, 'a8ae5c81ea4e66546c40cd3d4f22609bb96dfe37febd0f21fd2b684daff04ad0');
 
   const blockedSubmit = await fetch(`${base}/api/tasks/submit`, {
     method: 'POST',

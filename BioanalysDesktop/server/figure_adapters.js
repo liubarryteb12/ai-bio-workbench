@@ -238,18 +238,35 @@ as_cutoff <- function(value, fallback) {
   if (!length(num) || !is.finite(num) || num <= 0) return(fallback)
   num
 }
-# 阈值由需求单的三档选择经 adapt_vars 传入，缺省为标准档（|log2FC| > 1, adj.P < 0.05）
+# 阈值与判据口径都来自需求单：project.json 的 analysis_cutoffs 是唯一真源，
+# adapt_vars 里的两个 cutoff 是兜底（门户未绑定项目时用）。
+use_adj_p <- TRUE
+project_json <- Sys.getenv("BIOANALYS_PROJECT_JSON")
+if (nzchar(project_json) && requireNamespace("jsonlite", quietly = TRUE)) {
+  cutoff_meta <- tryCatch(
+    jsonlite::fromJSON(project_json, simplifyVector = FALSE)$analysis_cutoffs,
+    error = function(e) NULL)
+  if (is.list(cutoff_meta)) {
+    use_adj_p <- isTRUE(cutoff_meta$use_adj_p)
+    if (!is.null(cutoff_meta$log2fc_threshold)) adapt_vars$log2fc_cutoff <- cutoff_meta$log2fc_threshold
+    if (use_adj_p && !is.null(cutoff_meta$adj_p_threshold)) adapt_vars$padj_cutoff <- cutoff_meta$adj_p_threshold
+    if (!use_adj_p && !is.null(cutoff_meta$p_threshold)) adapt_vars$padj_cutoff <- cutoff_meta$p_threshold
+  }
+}
 fc_cut <- as_cutoff(adapt_vars$log2fc_cutoff, 1)
-padj_cut <- as_cutoff(adapt_vars$padj_cutoff, 0.05)
+p_cut <- as_cutoff(adapt_vars$padj_cutoff, 0.05)
+p_label <- if (use_adj_p) "adj p" else "p"
 volcano_df <- data.frame(
   gene = as.character(deg_df[[gene_col]]),
   log2fc = as.numeric(deg_df[[fc_col]]),
   pvalue = as.numeric(deg_df[[p_col]]),
   padj = as.numeric(deg_df[[padj_col]])
 )
-volcano_df <- volcano_df[is.finite(volcano_df$log2fc) & is.finite(volcano_df$pvalue) & volcano_df$pvalue > 0 & is.finite(volcano_df$padj), ]
-volcano_df$sig <- ifelse(volcano_df$padj < padj_cut & volcano_df$log2fc > fc_cut, "Up",
-                  ifelse(volcano_df$padj < padj_cut & volcano_df$log2fc < -fc_cut, "Down", "NS"))
+volcano_df$p_use <- if (use_adj_p) volcano_df$padj else volcano_df$pvalue
+volcano_df <- volcano_df[is.finite(volcano_df$log2fc) & is.finite(volcano_df$p_use) &
+                           volcano_df$p_use > 0 & volcano_df$p_use <= 1, ]
+volcano_df$sig <- ifelse(volcano_df$p_use < p_cut & volcano_df$log2fc > fc_cut, "Up",
+                  ifelse(volcano_df$p_use < p_cut & volcano_df$log2fc < -fc_cut, "Down", "NS"))
 volcano_df$sig <- factor(volcano_df$sig, levels = c("Up", "NS", "Down"))
 sig_counts <- table(volcano_df$sig)
 legend_labels <- c(
@@ -258,22 +275,45 @@ legend_labels <- c(
   Down = sprintf("Down (n=%d)", as.integer(sig_counts[["Down"]]))
 )
 sig_only <- volcano_df[volcano_df$sig != "NS", , drop = FALSE]
-ranked <- head(sig_only$gene[order(sig_only$padj, -abs(sig_only$log2fc))], 8)
+ranked <- head(sig_only$gene[order(sig_only$p_use, -abs(sig_only$log2fc))], 6)
 label_pool <- unique(c(as.character(adapt_vars$label_genes), ranked))
 label_pool <- label_pool[label_pool %in% volcano_df$gene]
 label_df <- volcano_df[volcano_df$gene %in% label_pool, , drop = FALSE]
 label_df <- label_df[!duplicated(label_df$gene), , drop = FALSE]
-volcano <- ggplot(volcano_df, aes(x = log2fc, y = -log10(pvalue), colour = sig)) +
+y_max <- max(-log10(volcano_df$p_use), na.rm = TRUE)
+n_sig <- as.integer(sig_counts[["Up"]]) + as.integer(sig_counts[["Down"]])
+volcano <- ggplot(volcano_df, aes(x = log2fc, y = -log10(p_use), colour = sig)) +
   geom_point(size = 0.8, alpha = 0.72) +
-  scale_colour_manual(values = c(Up = "#D0021B", NS = "grey72", Down = "#0072B2"),
+  scale_colour_manual(values = c(Up = "#EE0000", NS = "#BEBEBE", Down = "#3B4992"),
                       labels = legend_labels, drop = FALSE) +
+  guides(colour = guide_legend(override.aes = list(size = 2.4, alpha = 1))) +
+  scale_y_continuous(expand = expansion(mult = c(0.02, 0.20))) +
   geom_vline(xintercept = c(-fc_cut, fc_cut), linetype = "dashed", linewidth = 0.35, colour = "grey35") +
-  geom_hline(yintercept = -log10(padj_cut), linetype = "dashed", linewidth = 0.35, colour = "grey35") +
-  geom_text_repel(data = label_df, aes(label = gene), size = 2.2, max.overlaps = 30) +
-  labs(x = "log2(Fold Change)", y = "-log10(P)", colour = NULL,
-       subtitle = sprintf("Up/Down 阈值：|log2FC| > %s 且 adj.P < %s", format(fc_cut), format(padj_cut))) +
-  theme_classic(base_size = 7) +
-  theme(legend.position = "top", plot.subtitle = element_text(size = 5.4, colour = "grey30"))
+  geom_hline(yintercept = -log10(p_cut), linetype = "dashed", linewidth = 0.35, colour = "grey35") +
+  annotate("text", x = -Inf, y = -log10(p_cut), label = sprintf("%s=%g", p_label, p_cut),
+           hjust = -0.04, vjust = -0.5, size = 2.8, colour = "grey20") +
+  annotate("text", x = fc_cut, y = y_max * 1.10, label = sprintf("log2FC=%g", fc_cut),
+           angle = 90, hjust = 1, vjust = 1, size = 2.8, colour = "grey20") +
+  annotate("text", x = -fc_cut, y = y_max * 1.10, label = sprintf("log2FC=-%g", fc_cut),
+           angle = 90, hjust = 1, vjust = 1, size = 2.8, colour = "grey20") +
+  geom_text_repel(data = label_df, aes(label = gene), size = 2.8, max.overlaps = 30,
+                  seed = 42, min.segment.length = 0.2,
+                  nudge_x = ifelse(label_df$sig == "Up", 2.1, -2.1), nudge_y = 0.8,
+                  direction = "both") +
+  labs(x = "log2(Fold Change)",
+       y = if (use_adj_p) "-log10(adjusted P)" else "-log10(P)",
+       colour = NULL,
+       caption = paste(
+         "adapted volcano, real DEG table",
+         sprintf("threshold |log2FC|>%g & %s<%g", fc_cut, p_label, p_cut),
+         sprintf("%d genes, %d significant", nrow(volcano_df), n_sig),
+         "red = up, blue = down, grey = NS", sep = "\\n")) +
+  theme_classic(base_size = 8) +
+  theme(legend.position = "right",
+        legend.text = element_text(size = 8),
+        legend.key.size = unit(3.2, "mm"),
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust = 0, size = 8))
 ggsave(output_file, volcano, width = 89, height = 75, units = "mm", dpi = 300,
        device = png, type = "cairo", bg = "white")
 cat("ADAPT_REAL_INPUT_OK volcano rows=", nrow(volcano_df),
@@ -471,54 +511,66 @@ kept_counts <- as.integer(mod_counts[top_modules])
 cuts <- unique(quantile(kept_counts, probs = c(1/3, 2/3), na.rm = TRUE))
 size_rank <- function(n) {
   if (length(cuts) >= 2) {
-    if (n > cuts[[2]]) return("Large module")
-    if (n > cuts[[1]]) return("Medium module")
-    return("Small module")
+    if (n > cuts[[2]]) return("Large")
+    if (n > cuts[[1]]) return("Medium")
+    return("Small")
   }
-  if (length(cuts) == 1) { if (n >= cuts[[1]]) "Large module" else "Small module" } else "All modules"
+  if (length(cuts) == 1) { if (n >= cuts[[1]]) "Large" else "Small" } else "All"
 }
 flow$size_band <- factor(
   vapply(as.integer(mod_counts[as.character(flow$module)]), size_rank, character(1)),
-  levels = c("Large module", "Medium module", "Small module", "All modules")
+  levels = c("Large", "Medium", "Small", "All")
 )
 flow <- flow[!is.na(flow$size_band), , drop = FALSE]
 flow$axis_module <- factor(as.character(flow$module), levels = top_modules)
 counts_df <- data.frame(module = top_modules, n = kept_counts, stringsAsFactors = FALSE)
-# WGCNA 模块名本身即颜色名，画布若认识就直接用，否则回落 viridis
+# WGCNA 模块名本身即颜色名，画布若认识就直接用，否则回落 viridis；
+# 图例出轴框（规范 三之二），标签带真实基因数，读者不必回查表格
+module_labels <- setNames(
+  sprintf("%s (%d)", counts_df$module, counts_df$n), counts_df$module)
 module_fills <- top_modules
 known_colours <- !inherits(tryCatch(grDevices::col2rgb(module_fills), error = function(e) e), "try-error")
-legend_scale <- scale_fill_viridis_d(guide = "none")
+legend_scale <- scale_fill_viridis_d(labels = module_labels, name = "WGCNA module",
+                                     guide = guide_legend(ncol = 1))
 if (known_colours) {
   fill_values <- setNames(vapply(module_fills, function(m) {
     rgb <- grDevices::col2rgb(m)
     grDevices::rgb(rgb[1], rgb[2], rgb[3], maxColorValue = 255)
   }, character(1)), module_fills)
-  legend_scale <- scale_fill_manual(values = fill_values, guide = "none")
+  legend_scale <- scale_fill_manual(values = fill_values, labels = module_labels,
+                                    name = "WGCNA module", guide = guide_legend(ncol = 1))
 }
 sankey <- ggplot(flow, aes(axis1 = axis_module, axis2 = size_band, y = 1)) +
   geom_alluvium(aes(fill = axis_module), width = 0.16, alpha = 0.78, knot.pos = 0.35) +
   geom_stratum(width = 0.16, fill = "grey93", colour = "grey45", linewidth = 0.2) +
-  geom_text(stat = "stratum", aes(label = after_stat(stratum)), size = 1.45) +
-  scale_x_discrete(limits = c("WGCNA module", "Module size band"), expand = c(0.02, 0.02)) +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum)), size = 2.4, check_overlap = TRUE) +
+  scale_x_discrete(limits = c("WGCNA module", "Size band"), expand = c(0.04, 0.04)) +
   scale_y_continuous(expand = expansion(mult = c(0.03, 0.03))) +
   coord_cartesian(clip = "off") +
   legend_scale +
-  labs(y = "Genes", title = "WGCNA module gene flow",
-       subtitle = sprintf("Ribbon width = real gene count per module; top %d of %d modules (%d of %d genes).\nSource: wgcna_modules.tsv",
-                          nrow(counts_df), length(mod_counts), nrow(flow), sum(mod_counts))) +
-  theme_minimal(base_size = 7) +
-  theme(axis.text.x = element_text(size = 6.4),
+  labs(y = "Genes",
+       caption = paste(
+         "adapted sankey, real WGCNA modules",
+         sprintf("top %d of %d modules, %d of %d genes", nrow(counts_df), length(mod_counts), nrow(flow), sum(mod_counts)),
+         "ribbon width = real gene count",
+         "right axis = module size tertile", sep = "\\n")) +
+  theme_classic(base_size = 8) +
+  theme(axis.text.x = element_text(size = 8),
         axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        axis.line.y = element_blank(),
         axis.title.x = element_blank(),
-        panel.grid.major.y = element_blank(),
-        plot.title = element_text(size = 7.4, face = "bold"),
-        plot.subtitle = element_text(size = 5.2, colour = "grey30"))
+        legend.position = "right",
+        legend.text = element_text(size = 8),
+        legend.key.size = unit(3.2, "mm"),
+        legend.title = element_text(size = 8),
+        plot.caption.position = "plot",
+        plot.caption = element_text(hjust = 0, size = 8))
 ggsave(output_file, sankey, width = 183, height = 112, units = "mm", dpi = 300,
        device = png, type = "cairo", bg = "white")
 cat("ADAPT_REAL_INPUT_OK sankey modules=", nrow(counts_df), " genes=", nrow(flow),
     " bands=", nlevels(droplevels(flow$size_band)), "\n", sep = "")
-`,
-};
+`,};
 
 R_OVERLAYS.fig_l1_bubble = `# Real-data DEG multi-dimensional bubble overlay
 suppressPackageStartupMessages({library(ggplot2); library(ggrepel)})
@@ -798,54 +850,112 @@ plt.close(fig)
 print(f"ADAPT_REAL_INPUT_OK dotplot rows={len(plot_df)}")
 `,
   fig_l2p_volcano: `# Real-data cell-type differential-expression volcano overlay
-deg = pd.read_csv(input_data, sep = "\\t")
+import json
+
+deg = pd.read_csv(input_data, sep="\t")
 required = {"celltype", "gene_symbol", "log2fc", "pvals_adj"}
 missing = sorted(required.difference(deg.columns))
 if missing:
     raise ValueError(f"volcano input columns missing: {missing}")
+
+# 阈值与判据口径来自需求单：project.json 的 analysis_cutoffs 是唯一真源，
+# ADAPT_VARS 里的两个 cutoff 是兜底（门户未绑定项目时用）。
+use_adj_p = True
+l2_cut = float(ADAPT_VARS.get("log2fc_cutoff") or 1.0)
+p_cut = float(ADAPT_VARS.get("padj_cutoff") or 0.05)
+meta_path = os.environ.get("BIOANALYS_PROJECT_JSON", "")
+if meta_path and Path(meta_path).exists():
+    try:
+        meta = json.loads(Path(meta_path).read_text(encoding="utf-8"))
+        cut = meta.get("analysis_cutoffs") or {}
+        use_adj_p = bool(cut.get("use_adj_p", True))
+        if cut.get("log2fc_threshold") is not None:
+            l2_cut = float(cut["log2fc_threshold"])
+        if use_adj_p and cut.get("adj_p_threshold") is not None:
+            p_cut = float(cut["adj_p_threshold"])
+        if not use_adj_p and cut.get("p_threshold") is not None:
+            p_cut = float(cut["p_threshold"])
+    except Exception:
+        pass
+p_label = "adj p" if use_adj_p else "p"
+
 deg = deg.replace([np.inf, -np.inf], np.nan).dropna(subset=["gene_symbol", "log2fc", "pvals_adj"])
-deg["neglog10"] = -np.log10(np.clip(deg["pvals_adj"].astype(float), 1e-300, 1.0))
+deg["fc"] = deg["log2fc"].astype(float)
+deg["p_use"] = np.clip(deg["pvals_adj"].astype(float), 1e-300, 1.0)
+deg["neglog10"] = -np.log10(deg["p_use"])
 deg["sig"] = np.where(
-    (deg["pvals_adj"].astype(float) < 0.05) & (deg["log2fc"].astype(float) > 1), "Up",
-    np.where((deg["pvals_adj"].astype(float) < 0.05) & (deg["log2fc"].astype(float) < -1), "Down", "NS"),
+    (deg["p_use"] < p_cut) & (deg["fc"] > l2_cut), "Up",
+    np.where((deg["p_use"] < p_cut) & (deg["fc"] < -l2_cut), "Down", "NS"),
 )
 group_col = str(ADAPT_VARS.get("group_col") or "celltype")
 if group_col not in deg.columns:
     group_col = "celltype"
 top_groups = (
-    deg.groupby(group_col, observed=True)["pvals_adj"].min()
+    deg.groupby(group_col, observed=True)["p_use"].min()
     .sort_values().head(8).index
 )
 plot_df = deg[deg[group_col].isin(top_groups)].copy()
 if len(plot_df) > 5000:
-    plot_df = plot_df.nsmallest(5000, "pvals_adj")
+    plot_df = plot_df.nsmallest(5000, "p_use")
+
+# 配色按上调/下调编码，不按细胞类型；NS 先画，红蓝永远压在上层（规范 三之二）
+colors = {"Up": "#EE0000", "NS": "#BEBEBE", "Down": "#3B4992"}
+counts = plot_df["sig"].value_counts()
 fig, ax = plt.subplots(figsize=(89 / 25.4, 75 / 25.4))
-palette = ["#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9", "#F0E442", "#999999"]
-for index, group in enumerate(top_groups):
-    part = plot_df[plot_df[group_col] == group]
-    ax.scatter(part["log2fc"], part["neglog10"], s=2.4, alpha=0.72,
-               color=palette[index % len(palette)], label=str(group), linewidths=0)
-ax.axvline(-1, ls="--", lw=0.45, color="#555555")
-ax.axvline(1, ls="--", lw=0.45, color="#555555")
-ax.axhline(-np.log10(0.05), ls="--", lw=0.45, color="#555555")
+for group in ("NS", "Up", "Down"):
+    part = plot_df[plot_df["sig"] == group]
+    if part.empty:
+        continue
+    ax.scatter(part["fc"], part["neglog10"], s=2.4, alpha=0.72, color=colors[group],
+               label=f"{group} (n={int(counts.get(group, 0))})", linewidths=0, zorder=3 if group != "NS" else 2)
+
+ax.axvline(-l2_cut, ls="--", lw=0.45, color="#595959")
+ax.axvline(l2_cut, ls="--", lw=0.45, color="#595959")
+ax.axhline(-np.log10(p_cut), ls="--", lw=0.45, color="#595959")
+
+# 基因名分列在两条竖直阈值线外侧、逐级下移，绝不与阈值标注争同一位置
 label_genes = set(ADAPT_VARS.get("label_genes") or [])
-top_labels = plot_df.nsmallest(8, "pvals_adj")["gene_symbol"].astype(str).tolist()
-for gene in list(label_genes.union(top_labels))[:12]:
-    row = plot_df[plot_df["gene_symbol"].astype(str) == gene].nsmallest(1, "pvals_adj")
-    if not row.empty:
-        ax.annotate(gene, (float(row.iloc[0]["log2fc"]), float(row.iloc[0]["neglog10"])),
-                    fontsize=4.2, xytext=(2, 2), textcoords="offset points")
+sig_df = plot_df[plot_df["sig"] != "NS"]
+xlo_f, xhi_f = float(plot_df["fc"].min()), float(plot_df["fc"].max())
+ylo_f = 0.0
+yhi_f = float(plot_df["neglog10"].max()) * 1.42
+label_rows = []
+for grp in ("Down", "Up"):
+    part = sig_df[sig_df["sig"] == grp].nsmallest(3, "p_use")
+    label_rows.extend([(grp, row) for _, row in part.iterrows()])
+named = [r for r in label_rows if str(r[1]["gene_symbol"]) in label_genes]
+named += [r for r in label_rows if r not in named]
+for rank, (grp, row) in enumerate(named[:8]):
+    x_txt = (-l2_cut - 0.35) if grp == "Down" else (l2_cut + 0.35)
+    y_txt = yhi_f - (0.05 + 0.085 * (rank % 3)) * yhi_f
+    ax.annotate(str(row["gene_symbol"]), xy=(float(row["fc"]), float(row["neglog10"])),
+                xytext=(x_txt, y_txt), fontsize=8,
+                ha="right" if grp == "Down" else "left", va="center", zorder=6,
+                arrowprops=dict(arrowstyle="-", color="0.55", lw=0.4,
+                                shrinkA=1, shrinkB=2))
+
 ax.set_xlabel("log2 fold change")
-ax.set_ylabel("-log10(adjusted P)")
-ax.legend(frameon=False, fontsize=4.5, loc="upper right", ncol=2)
+ax.set_ylabel("-log10(adjusted P)" if use_adj_p else "-log10(P)")
+ax.set_xlim(xlo_f - 0.10 * (xhi_f - xlo_f), xhi_f + 0.10 * (xhi_f - xlo_f))
+ax.set_ylim(ylo_f, yhi_f)
+ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0), frameon=False, fontsize=8,
+          title=None, handletextpad=0.4, labelspacing=0.5)
 for spine in ("top", "right"):
     ax.spines[spine].set_visible(False)
-fig.tight_layout()
+
+n_sig = int(counts.get("Up", 0)) + int(counts.get("Down", 0))
+caption_lines = [
+    "adapted volcano, real per-celltype DEG",
+    f"threshold |log2FC|>{l2_cut:g} & {p_label}<{p_cut:g}",
+    f"{len(plot_df)} genes, {n_sig} significant",
+    "red = up, blue = down, grey = NS",
+]
+fig.subplots_adjust(right=0.74)
+fig.text(0.01, -0.06, "\\n".join(caption_lines), ha="left", va="top", fontsize=8, linespacing=1.5)
 fig.savefig(output_file, dpi=300, bbox_inches="tight")
 plt.close(fig)
 print(f"ADAPT_REAL_INPUT_OK volcano rows={len(plot_df)}")
-`,
-  fig_l2p_umap: `# Real-data spatial UMAP overlay
+`,  fig_l2p_umap: `# Real-data spatial UMAP overlay
 import scanpy as sc
 adata = sc.read_h5ad(input_data)
 if "X_umap" not in adata.obsm:

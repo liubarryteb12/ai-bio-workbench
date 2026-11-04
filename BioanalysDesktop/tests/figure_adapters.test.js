@@ -745,16 +745,33 @@ test('remaining figure templates build real-data adapters before promotion', () 
   }
 });
 
+// 图内中文禁令针对落到画布上的字符串，注释里的中文不在此列
+function hasCjkOutsideComments(text) {
+  return text
+    .split('\n')
+    .filter((line) => !line.trim().startsWith('#'))
+    .some((line) => /[\u4e00-\u9fa5]/.test(line));
+}
+
 test('火山图叠加层按三档阈值与红蓝灰语义渲染（第二十九轮 ③）', () => {
   const source = buildSource('fig_l2_volcano');
   assert.match(source, /fc_cut <- as_cutoff\(adapt_vars\$log2fc_cutoff, 1\)/);
-  assert.match(source, /padj_cut <- as_cutoff\(adapt_vars\$padj_cutoff, 0\.05\)/);
-  assert.match(source, /Up = "#D0021B"/);
-  assert.match(source, /Down = "#0072B2"/);
-  assert.match(source, /NS = "grey72"/);
+  assert.match(source, /p_cut <- as_cutoff\(adapt_vars\$padj_cutoff, 0\.05\)/);
+  // 三色与出图规范统一：上调红、下调蓝、NS 灰
+  assert.match(source, /Up = "#EE0000"/);
+  assert.match(source, /Down = "#3B4992"/);
+  assert.match(source, /NS = "#BEBEBE"/);
   assert.match(source, /geom_vline\(xintercept = c\(-fc_cut, fc_cut\)/);
-  assert.match(source, /geom_hline\(yintercept = -log10\(padj_cut\)/);
+  assert.match(source, /geom_hline\(yintercept = -log10\(p_cut\)/);
   assert.ok(source.includes('sprintf("Up (n=%d)"'));
+  // 判据口径由 analysis_cutoffs 决定，勾了 adj.P 才算 adj.P
+  assert.match(source, /use_adj_p <- isTRUE\(cutoff_meta\$use_adj_p\)/);
+  assert.match(source, /p_label <- if \(use_adj_p\) "adj p" else "p"/);
+  // 图例出轴框、图注一条一行、字号不低于 8pt、图内无中文
+  assert.match(source, /legend\.position = "right"/);
+  assert.match(source, /plot\.caption\.position = "plot"/);
+  assert.equal(/legend\.position = "top"/.test(source), false, '图例不得挂在轴框顶部');
+  assert.equal(hasCjkOutsideComments(source), false, '图内文字不得出现中文（注释除外）');
 });
 
 test('桑基图叠加层走真 ggalluvial 且不用手绘多边形（第二十九轮 ③）', () => {
@@ -767,4 +784,9 @@ test('桑基图叠加层走真 ggalluvial 且不用手绘多边形（第二十�
   assert.equal(/segments\(/.test(source), false, '桑基图禁止手绘 segments');
   assert.equal(/rect\(/.test(source), false, '桑基图禁止手绘 rect');
   assert.match(source, /ADAPT_REAL_INPUT_OK sankey/);
+  // 图例必须出轴框且带真实基因数，标题改图注（禁 title/subtitle）
+  assert.match(source, /legend\.position = "right"/);
+  assert.match(source, /sprintf\("%s \(%d\)", counts_df\$module, counts_df\$n\)/);
+  assert.equal(/labs\([^)]*title =/.test(source), false, '桑基图标题改走 caption');
+  assert.equal(hasCjkOutsideComments(source), false, '图内文字不得出现中文（注释除外）');
 });

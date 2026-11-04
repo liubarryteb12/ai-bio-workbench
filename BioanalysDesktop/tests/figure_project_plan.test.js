@@ -26,6 +26,8 @@ test('建项前把图模板选择转换成可持久化的自动执行任务', (t
         input_data: 'data/line1_bulk/processed/deg_all.tsv',
         group_col: 'group',
         label_genes: ['ELOVL2'],
+        log2fc_cutoff: 1,
+        padj_cutoff: 0.05,
       },
     }],
   });
