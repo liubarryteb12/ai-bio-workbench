@@ -25,14 +25,32 @@ export function ResultPreviewStudio({ project }: { project: string }) {
   const [selectedFig, setSelectedFig] = useState<{ name: string; line: string } | null>(null);
   // 项目出图配置：让对接人一眼看到"这批图按哪个模板/阈值出的"
   const [projectMeta, setProjectMeta] = useState<ProjectMetaBrief | null>(null);
+  // T3-6：meta 读失败不能静默 null，要给对接人可见的提示
+  const [metaError, setMetaError] = useState('');
+  // T3-8：图件列表整体失败/全空时给明确错误态与空态，不要只剩一片空白
+  const [loadError, setLoadError] = useState('');
 
   const loadProjectMeta = useCallback(async () => {
+    setMetaError('');
     try {
       const res = await fetch(`/api/projects/meta?project=${encodeURIComponent(project)}`);
+      // 非 2xx 的响应体是 { error }，不是 ProjectMetaBrief；不判 res.ok 会把错误体当业务实体。
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        setProjectMeta(null);
+        setMetaError(`项目出图配置读取失败（${res.status}）${body.error ? '：' + body.error : ''}`);
+        return;
+      }
       const payload = (await res.json()) as ProjectMetaBrief & { error?: string };
-      setProjectMeta(payload && !payload.error ? payload : null);
-    } catch {
+      if (payload && !payload.error) {
+        setProjectMeta(payload);
+      } else {
+        setProjectMeta(null);
+        setMetaError('项目出图配置无法读取，请确认项目存在后重试');
+      }
+    } catch (cause) {
       setProjectMeta(null);
+      setMetaError(`项目出图配置读取失败：${cause instanceof Error ? cause.message : String(cause)}`);
     }
   }, [project]);
 
@@ -42,13 +60,16 @@ export function ResultPreviewStudio({ project }: { project: string }) {
 
   const loadAll = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     const result: Record<string, FigureEntry[]> = {};
     const source: Record<string, 'local' | 'remote'> = {};
+    let failedLines = 0;
     for (const line of LINES) {
       try {
         const res = await fetch(
           `/api/figures/list?project=${encodeURIComponent(project)}&line=${encodeURIComponent(line)}`
         );
+        if (!res.ok) { failedLines += 1; continue; }
         const payload = (await res.json()) as FiguresResponse;
         if (!('blocked' in payload) && !('error' in payload)) continue;
         if ('blocked' in payload && !payload.blocked) {
@@ -56,12 +77,16 @@ export function ResultPreviewStudio({ project }: { project: string }) {
           if (payload.source) source[line] = payload.source;
         }
       } catch {
-        // 跳过单线失败
+        failedLines += 1;
       }
     }
     setFiguresByLine(result);
     setFiguresSource(source);
     setLoading(false);
+    // 三条线全部请求失败才是「整体失败」，单线失败由空态覆盖即可。
+    if (failedLines === LINES.length) {
+      setLoadError('图件加载失败，请检查服务端连接后点「刷新全部」重试');
+    }
   }, [project]);
 
   /** 把远端图件回搬到本地 outputs/，之后视图 4 直接读本地副本 */
@@ -173,6 +198,11 @@ export function ResultPreviewStudio({ project }: { project: string }) {
         </div>
         <p className="subtle">左侧步骤树 · 中间图廊+TSV预览 · 右侧三段式解读卡片</p>
         {pullNote && <p className="subtle">{pullNote}</p>}
+        {metaError && <p className="hint" role="alert">{metaError}</p>}
+        {loadError && <p className="hint" role="alert">{loadError}</p>}
+        {!loading && !loadError && Object.values(figuresByLine).every((list) => !list || list.length === 0) && (
+          <p className="hint">当前项目暂无图件。完成分析步骤或点「回搬图件到本地」后，这里会显示结果。</p>
+        )}
         {Object.entries(figuresSource).some(([, src]) => src === 'remote') && (
           <p className="hint">
             当前有分析线在读远端实时图件（本地尚无回搬副本）。点「回搬图件到本地」把图存到

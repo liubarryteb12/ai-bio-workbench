@@ -18,11 +18,34 @@ import { shellQuote } from '../proc.js';
 import { describeSeries, loadWorkflows, resolvePlan, validateRegistry } from '../workflow_graph.js';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const DEFAULT_REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+
+/**
+ * 读本地项目元数据（local_projects/<id>/project.json）。
+ *
+ * 为什么需要它（T3-5）：meta 接口历史上只读远端 K40 的 project.json，
+ * 而默认项目 default 在本机 local_projects/default/project.json 是有内容的。
+ * 远端没有该文件时接口直接 404，前端因此永远拿不到出图配置。
+ * 回落只读本地这一个确定位置，不猜路径、不越界。
+ */
+function readLocalProjectMeta(repoRoot, projectId) {
+  if (!repoRoot) return null;
+  const file = path.join(repoRoot, 'local_projects', projectId, 'project.json');
+  try {
+    if (!fs.existsSync(file)) return null;
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    return null;
+  }
+}
 
 export function handleProjectRoutes(req, res, url, {
   PORTAL_INBOX, deployDataFiles, isSafeManifestName, json,
   lineFromPipeline, listInboxManifests, listProjectsWithMeta, readPackageManifest,
   runRemote, runRemoteRaw, uploadPreparedFigureScripts,
+  REPO_ROOT = DEFAULT_REPO_ROOT,
 }) {
   if (url.pathname === '/api/projects/list') {
     // 项目列表：数据面按项目分文件夹后，界面据此渲染项目选择器
@@ -463,6 +486,9 @@ export function handleProjectRoutes(req, res, url, {
       });
       return true;
     }
+    // T3-5：远端读不到时回落本地 local_projects/<id>/project.json。
+    // 顺序刻意是「远端优先、本地兜底」：远端才是算力面真源，本地只是没同步时的可读副本。
+    if (!meta) meta = readLocalProjectMeta(REPO_ROOT, projectId);
     if (!meta) {
       json(res, 404, { error: `项目 ${projectId} 不存在或缺少 project.json` });
       return true;
