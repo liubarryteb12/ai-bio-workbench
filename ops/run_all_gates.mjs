@@ -47,6 +47,9 @@ export const GATES = Object.freeze([
   // （wp33 共享父目录、mutation_gate 固定 scope id），上升为机器静态规则：凡含递归删除的
   // 测试/门禁文件必须带 mkdtemp / pid / 随机 隔离标记，调用方拥有的输出目录走冻结豁免清单。
   { id: 'test_isolation', label: '测试与门禁临时目录隔离', exec: 'node', args: ['ops/test_isolation_gate.mjs'], cwd: '.', slow: false },
+  // 第 4 道：便携包关键资产同源（第三十五轮 4 Argon Q4 条件同意）。
+  // dist/ 存在则逐字节比对 5 个关键资产；不存在（CI 干净 Runner）显式 SKIP_NO_DIST 放行。
+  { id: 'dist_parity', label: '便携包关键资产同源', exec: 'node', args: ['ops/dist_parity_gate.mjs'], cwd: '.', slow: false },
   { id: 'skip_static', label: '跳过原因白名单（静态面）', exec: 'node', args: ['ops/skip_reason_gate.mjs'], cwd: '.', slow: false },
   { id: 'ledger', label: '台账与真源一致', exec: 'node', args: ['ops/ledger_gen.mjs', '--check'], cwd: '.', slow: false },
   { id: 'figure_registry', label: '图件注册表与证据同步', exec: 'node', args: ['ops/build_figure_templates.cjs', '--check'], cwd: '.', slow: false },
