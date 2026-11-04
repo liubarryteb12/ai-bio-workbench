@@ -6,11 +6,12 @@
 > 自该裁定起，系统进入**无条件静默待命期（Event-Driven Standby）**：
 > 绿灯免报、红灯即报、有单才动。
 >
-> **里程碑基线（最高水位，不得回退）**：HEAD `f92d70f`｜1354 tests / 1336 pass / 0 fail｜
-> `npm run gate:all` 7 道全绿（80 秒）｜30 ready 模板白名单锁死｜52 pending 冻结。
+> **里程碑基线（最高水位，不得回退）**：HEAD `5fdece1`｜1406 tests / 1405 pass / 0 fail / 1 skipped｜
+> `npm run gate:all` GATE_ALL_OK 7 道全绿（35 秒）｜30 ready 模板白名单锁死｜52 pending 冻结｜
+> 第二十九轮需求单对齐与出图规范收口（4 Argon 第二十九轮终局复核裁定 A/A/A，置信度 100%）。
 >
 > **未来接单的开局三锚点**（新会话无需回溯历史）：
-> ① 本文件；② `BioanalysDesktop/README.md` 的根基线行（1354 tests）；③ 当前 HEAD。
+> ① 本文件（含第十节收口基线）；② `BioanalysDesktop/README.md` 的根基线行（1406 tests）；③ 当前 HEAD。
 
 > 第二十八轮补录：便携包四层收敛、净化环境实证与 MSYS/PATH 隔离教训见**第九节**。
 >
@@ -304,3 +305,31 @@ readyCount 仍为 30，`ops/figure_ready_allowlist.json` 未改动，集合恒�
 
 相对第二十六轮基线 1354 tests，本轮净增 52 条，全部为七条需求的契约与回归闸门。
 
+### 10.7 第二十九轮终局复核裁定与封板例外窗口关闭（2026-11-04）
+
+向 4 Argon 提交六段终局回执（基线、三次提交逐条机制、三条实测改判、真机红绿与变异反证、刻意没做、三个待裁定问题），
+收到裁定原文（落盘 `.tmp/argon29c_full.txt`）：**全盘批准 A/A/A 终局裁定方案，置信度 100%**。
+
+| 裁定项 | 结论 |
+|---|---|
+| Q1 关闭第二十九轮封板例外窗口 | 批准立即关闭。以 `5fdece1` 为终点的火山图、桑基图重渲染与 Schema 统一已通过真机与静态门禁双重闭环，例外窗口使命达成，按期关闭以重新锁死系统熵值 |
+| Q2 刷新里程碑基线锚点 | 批准以 HEAD `5fdece1` 与 1406 tests 刷新 `docs/final_closure_report.md` 与 `BioanalysDesktop/README.md` 三锚点 |
+| Q3 转入静默待命 | 批准直接转入事件驱动静默待命期，当前任务清单清空，严禁无真实订单支撑的主动开垦 |
+
+终局收官行动清单（三条「立即做」）与落点：
+
+1. 固化终局基线与锚点更新：本文件头部三锚点已改为 `5fdece1` / 1406 tests / GATE_ALL_OK 7 道全绿（35 秒），
+   `BioanalysDesktop/README.md:84` 根基线行已由 `node ops/metrics_sync.mjs --write` 回写为 1406 tests。
+2. 锁定受控文件并完成工作区无状态归档：`ops/figure_ready_allowlist.json`（30 个 ready 模板）与
+   `.github/workflows/ci.yml` 保持绝对受控态，本轮未改动；最后一次 `git status` 确认工作区零污染。
+3. 切断主动交互链路，正式转入静默待命态：自本裁定确认起，暂停所有主动汇报与非订单分支扩展，
+   完全切换至「绿灯免报、红灯即报、有单才动」的事件驱动运行模式。
+
+第二十九轮封板例外窗口自此**正式关闭**。第一至二十九轮的七条需求、三次提交、全量回归与端到端验收均已闭环，
+`ops/figure_ready_allowlist.json` 的 30 个 ready 模板 ID 集合保持绝对恒等，未新增任何模板。
+
+**锚点自指说明**：本节补录裁定原文与刷新三锚点的动作本身会产生一个纯文档提交，
+它不改变代码、测试计数或 `ops/figure_ready_allowlist.json`。因此「里程碑基线」中的
+HEAD `5fdece1` 特指通过 1406 tests / GATE_ALL_OK 的代码里程碑，三锚点第 ③ 条的
+「当前 HEAD」按 `git log -1` 动态取值；接单时以代码基线 `5fdece1` 与 1406 tests 为准，
+纯文档补录不构成新的代码水位，也不得据此回退任何契约。
