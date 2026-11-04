@@ -51,7 +51,7 @@ test('四段自检：总体结论与各段明细都要有', async (testContext) 
     assert.equal(segment.pass, true, `段落失败：${segment.name} -> ${segment.detail || JSON.stringify(segment)}`);
   }
   // 服务表：四个 runit 主服务都要在（主服务挂了业务真的不可用，这条不放宽）
-  assert.equal(result.services.length, 4);
+  assert.equal(result.services.length, 5);
   for (const service of result.services) {
     assert.equal(service.running, true, `${service.name} 未在运行: ${service.state}`);
   }

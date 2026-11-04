@@ -334,7 +334,7 @@ export const SYSTEM_LOGS = `${SSD_ROOT}/system_logs`;
 export const LINE_SUBDIRS = ['raw_data', 'processed', 'results', 'figures'];
 
 /** runit 监管的四个服务 */
-export const SERVICES = ['sshd', 'crond', 'ssh-agent', 'ubuntu-sshd'];
+export const SERVICES = ['sshd', 'crond', 'ssh-agent', 'ubuntu-sshd', 'pi-a2a'];
 
 /**
  * adb forward 的四条隧道。

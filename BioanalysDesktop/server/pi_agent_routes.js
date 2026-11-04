@@ -24,6 +24,7 @@ import {
   buildTelemetryRestartCommand,
   buildSwitchModelCommand,
   cancelA2ATask,
+  classifyAgentCard,
   extractTaskFromRpcData,
   fetchAgentCard,
   fetchTelemetry,
@@ -129,10 +130,12 @@ export async function handlePiAgentRoutes(req, res, url, deps) {
   if (url.pathname === '/api/pi-agent/ping' && req.method === 'GET') {
     try {
       const card = await agentCard();
+      const diag = classifyAgentCard(card);
       if (card.status === 200) {
         json(res, 200, {
           ok: true,
           online: true,
+          a2a_status: diag.status,
           agent_card: {
             name: card.data?.name,
             version: card.data?.version,
@@ -142,7 +145,11 @@ export async function handlePiAgentRoutes(req, res, url, deps) {
         json(res, 502, {
           ok: false,
           online: false,
-          error: `ERR_AGENT_CARD_HTTP_${card.status}`,
+          a2a_status: diag.status,
+          a2a_reason: diag.reason,
+          error: diag.status === 'tunnel_down'
+            ? 'ERR_AGENT_CARD_TUNNEL_DOWN'
+            : `ERR_AGENT_CARD_${diag.status.toUpperCase()}`,
         });
       }
     } catch (cause) {
@@ -164,9 +171,12 @@ export async function handlePiAgentRoutes(req, res, url, deps) {
       const card = await cardPromise;
       const tele = await telePromise;
       const overview = parseOverview(raw.text);
+      const a2aDiag = classifyAgentCard(card);
       overview.a2a_card = card.status === 200
         ? { name: card.data?.name, version: card.data?.version, url: card.data?.url }
         : null;
+      overview.a2a_status = a2aDiag.status;
+      overview.a2a_reason = a2aDiag.status === 'ok' ? null : a2aDiag.reason;
       const telemetryStatus = tele.status === 200
         ? 'ok'
         : tele.status === 401

@@ -64,8 +64,45 @@ test('GET ping 返回 Agent Card 可达状态', async () => {
   assert.deepEqual(captureSink.responses[0].payload, {
     ok: true,
     online: true,
+    a2a_status: 'ok',
     agent_card: { name: 'pi-termux-executor', version: '1.0.0' },
   });
+});
+
+test('ping 在 forward 未建时报 tunnel_down 而不是笼统 0', async () => {
+  const captureSink = capture();
+  await handlePiAgentRoutes(
+    makeRequest('GET', '/api/pi-agent/ping'),
+    {},
+    new URL('http://x/api/pi-agent/ping'),
+    {
+      json: captureSink.json,
+      runSshRaw: () => { throw new Error('must not run'); },
+      fetchAgentCard: async () => ({ status: 0, data: null, reason: 'refused' }),
+    }
+  );
+  assert.equal(captureSink.responses[0].status, 502);
+  assert.equal(captureSink.responses[0].payload.a2a_status, 'tunnel_down');
+  assert.equal(captureSink.responses[0].payload.error, 'ERR_AGENT_CARD_TUNNEL_DOWN');
+  assert.match(captureSink.responses[0].payload.a2a_reason, /adb forward tcp:9910|pi-a2a/);
+});
+
+test('overview 把 A2A 失败档与处置建议一起带出来', async () => {
+  const captureSink = capture();
+  await handlePiAgentRoutes(
+    makeRequest('GET', '/api/pi-agent/overview'),
+    {},
+    new URL('http://x/api/pi-agent/overview'),
+    {
+      json: captureSink.json,
+      runSshRaw: () => ({ code: 0, text: '' }),
+      fetchAgentCard: async () => ({ status: 0, data: null, reason: 'timeout' }),
+      fetchTelemetry: async () => ({ status: 0, data: null }),
+    }
+  );
+  assert.equal(captureSink.responses[0].payload.a2a_status, 'timeout');
+  assert.match(captureSink.responses[0].payload.a2a_reason, /5 秒无响应/);
+  assert.equal(captureSink.responses[0].payload.a2a_card, null);
 });
 
 test('GET 模型返回真实 provider/model 与白名单', async () => {

@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
 const SV = path.join(REPO, 'ops', 'k40', 'sv');
-const SERVICES = ['sshd', 'ubuntu-sshd', 'crond', 'ssh-agent'];
+const SERVICES = ['sshd', 'ubuntu-sshd', 'crond', 'ssh-agent', 'pi-a2a'];
 const SHEBANG = '#!/data/data/com.termux/files/usr/bin/sh';
 
 // ── runit run 脚本的四段式契约（2026-11-03，4 Argon 第十九轮 Q4）──

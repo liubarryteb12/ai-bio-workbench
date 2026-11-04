@@ -440,8 +440,47 @@ export function parseCurrentModel(text) {
 // A2A AgentCard 读取（走 adb forward，PC 零额外端口）
 // ============================================================
 
+/**
+ * 把 A2A 读取结果归成可行动的一档（第二十九轮 ⑦）。
+ *
+ * 旧实现把所有失败都压成 status:0，前端只能显示「不可达」，而「forward 没建」
+ * 与「pi 没起」与「超时」的处置完全不同。这里保留 status 语义不变，另补 reason，
+ * 让上层能给出「该补哪一条」的结论，而不是让人去猜。
+ * @param {{status:number, reason?:string}} card
+ * @returns {{status:string, reason:string}} status 是粗档，reason 是给运维看的一句话
+ */
+export function classifyAgentCard(card) {
+  if (card?.status === 200) return { status: 'ok', reason: 'A2A 9910 可达' };
+  const why = card?.reason || 'http';
+  if (why === 'refused') {
+    return {
+      status: 'tunnel_down',
+      reason: 'A2A 9910 无监听：adb forward tcp:9910 未建，或手机侧 pi-a2a 服务未在跑',
+    };
+  }
+  if (why === 'timeout') {
+    return { status: 'timeout', reason: 'A2A 9910 5 秒无响应：pi 进程在但被阻塞，看 daemon.log' };
+  }
+  if (why === 'reset') {
+    return { status: 'reset', reason: 'A2A 9910 连接被重置：手机侧进程刚退出，等 daemon 60 秒自愈' };
+  }
+  if (why === 'invalid_json') {
+    return { status: 'bad_card', reason: 'A2A 有响应但不是合法 AgentCard JSON：检查 pi_a2a_launch.sh 输出' };
+  }
+  if (typeof card?.status === 'number' && card.status > 0) {
+    return { status: `http_${card.status}`, reason: `A2A 返回 HTTP ${card.status}：卡片端点异常` };
+  }
+  return { status: 'unknown', reason: 'A2A 读取失败且未归类：检查 9910 端口占用' };
+}
+
 export function fetchAgentCard() {
   return new Promise((resolve) => {
+    let settled = false;
+    const done = (value) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
     const req = http.request(
       {
         hostname: '127.0.0.1',
@@ -456,15 +495,25 @@ export function fetchAgentCard() {
         res.on('data', (c) => chunks.push(c));
         res.on('end', () => {
           try {
-            resolve({ status: res.statusCode, data: JSON.parse(Buffer.concat(chunks).toString('utf8')) });
+            done({ status: res.statusCode, data: JSON.parse(Buffer.concat(chunks).toString('utf8')), reason: null });
           } catch {
-            resolve({ status: 0, data: null });
+            done({ status: 0, data: null, reason: 'invalid_json' });
           }
         });
       }
     );
-    req.on('error', () => resolve({ status: 0, data: null }));
-    req.on('timeout', () => { req.destroy(); resolve({ status: 0, data: null }); });
+    req.on('error', (cause) => {
+      const code = cause && cause.code ? String(cause.code) : '';
+      const reason = code.includes('ECONNREFUSED') || code.includes('ENOENT')
+        ? 'refused'
+        : code.includes('ETIMEDOUT')
+          ? 'timeout'
+          : code.includes('ECONNRESET') || code.includes('EPIPE')
+            ? 'reset'
+            : 'error';
+      done({ status: 0, data: null, reason });
+    });
+    req.on('timeout', () => { req.destroy(); done({ status: 0, data: null, reason: 'timeout' }); });
     req.end();
   });
 }

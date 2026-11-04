@@ -13,6 +13,8 @@
 > ① 本文件；② `BioanalysDesktop/README.md` 的根基线行（1354 tests）；③ 当前 HEAD。
 
 > 第二十八轮补录：便携包四层收敛、净化环境实证与 MSYS/PATH 隔离教训见**第九节**。
+>
+> 第二十九轮补录：需求单对齐、三档阈值契约与出图规范收口见**第十节**。
 
 > 4 Argon 第二十三轮 Q4 裁定：架构整固专项已达收敛点，做最后一次全局对账并封板，
 > 严禁无单开垦 52 个 pending 模板。本文件是那次对账的结果，也是移交日常运营的凭据。
@@ -213,3 +215,92 @@ L4 运行时产物不进包：.tmp/ outputs/ projects/ artifacts/ project_data/ 
 
 静默待命期唯一允许的主动动作：八道门禁报警、真实订单、或用户点名。
 待真实订单到来时，唯一允许变动的受控闸门仍是 `ops/figure_ready_allowlist.json`。
+
+## 十、第二十九轮补录：需求单对齐与出图规范收口（2026-11-04）
+
+> 4 Argon 第二十九轮裁定：批准三条改判请求，正式开启**第二十九轮封板例外窗口**
+> （允许在 k40-ubuntu 对火山与桑基真机重新渲染、更新 preview_sha256 与二进制预览）。
+> 铁律：readyCount 严禁突破 30，`ops/figure_ready_allowlist.json` 的 30 个 ID 集合保持绝对恒等。
+> 本节是该轮行动清单第 3 条（更新终局报告后恢复无状态零污染工作区）。
+
+### 10.1 本轮七条需求的落点
+
+| 条 | 用户原话要点 | 落点 |
+|---|---|---|
+| ① | 每个数据集各对应样本数与组织来源 | 门户 `#d-count-<id>`/`#d-tissue-<id>` 行级输入，项目级标量删除；服务端 strict 建项校验「半填即拒」；打印页 6 列表格 |
+| ② | 三分类与多分组要明确谁与谁比较 | 角色收敛为基准组/变化组；取消「>=3 组才显示对比对」门槛，两组也显式写「变化组 A 相比 基准组 B」；>=3 组进手工模式 |
+| ③ | 火山缺红蓝与显著性标识、桑基不对 | 三处 overlay 重写（配色 #EE0000/#3B4992/#BEBEBE、图例出轴框、阈值参数化、图注四行）；两处母版注入黄金数据集后重渲染 |
+| ④ | reference/05 更新了出图代码，要理解后调教 | 母版 L2_core_code.R / L3_sankey_code.R / L2p_more_code.py 按规范与参考代码重写，产线脚本 deg_limma 与 bulk_figures 同步主口径 |
+| ⑤ | 缺 DGE 阈值功能 | 三档 loose/standard/strict + `use_adj_p` 勾选与 `adj_p_threshold`；`normalizeAnalysisCutoffs` 派生唯一 `effective_p_field` |
+| ⑥ | 门户输出要能直接导入服务端建项 | `shared/requirement_schema.json` + `shared/requirement_schema.mjs` 单一真源；`portal/serve.mjs` handleSubmit 前置总闸；门户产出 analysisCutoffs 等 intake 块 |
+| ⑦ | 服务端对手机 piagent 的调用检测全不可用 | 根因是 `FORWARD_PAIRS` 缺 9910/9911 与 pi 无开机自启；补两条隧道 + `ops/k40/sv/pi-a2a/` runit 服务（真机已点火）+ ping/overview 分级 |
+
+### 10.2 ⑦ piagent 的两个根因与修法
+
+| 根因 | 证据 | 修法 |
+|---|---|---|
+| 隧道缺失 | `server/pi_agent.js:38 ADB_FORWARD_PORT = 9910` 直连本机；`server/domain.js` 的 FORWARD_PAIRS 只有 8022/10022，`link.js` checkForwards 按表补，9910/9911 永不被补 | FORWARD_PAIRS 补 `tcp:9910`（pi agent A2A）与 `tcp:9911`（遥测侧车） |
+| 无开机自启 | 手机 `$PREFIX/var/service/` 只有 crond/ssh-agent/sshd/ubuntu-sshd；pi 只能手动 tmux 起 | 新增 `ops/k40/sv/pi-a2a/{run,log/run}` 四段式 runit 服务，末行 `exec bash pi_a2a_daemon.sh`，自带 20 秒退避防崩溃循环 |
+
+真机实测：`sv up pi-a2a` 后 `sv status` = `run: pi-a2a: (pid …)`，9910 LISTEN_OK，日志尾 `PASS a2a_server_ready host=127.0.0.1 port=9910`；
+`GET /api/pi-agent/ping` 返回 `{"ok":true,"online":true,"agent_card":{"name":"pi-termux-executor"}}`。
+SERVICES 清单五处同步（domain.js / heartbeat.js / ensure_runsvdir.sh / runit_sv_contract.test.js / heartbeat.sh），
+heartbeat 新增 `pi_9910_listen` 与 `svc_pi_a2a` 两个 wire 字段。
+
+### 10.3 ⑤ 阈值契约（提交即锁死，事后不可逆）
+
+| 档 | log2FC | p |
+|---|---|---|
+| loose | 0.5 | 0.1 |
+| standard | 1.0 | 0.05 |
+| strict | 2.0 | 0.05 |
+
+旧档位名 `standard_sci`/`sensitive` 经 `LEGACY_CUTOFF_PROFILES` 映射到 standard/loose，历史库导入不被静默改判。
+`use_adj_p` 缺省 true，派生 `effective_p_field`（padj/pvalue）与 `effective_p_threshold`，产线脚本只认这两个派生值，
+因此火山 y 轴标签、阈值线、图内标注、图注、日志五处永远同源。
+
+真机三档实测（k40-ubuntu，3000 基因 × 6 样本）：loose 档 sig 605（up 333 / down 272）、strict 档 sig 207（up 138 / down 69）；
+`bulk_figures` 的 volcano 与 MA 随主口径切换文件名后缀（`l1_03_volcano_nominal.png` 与 `l1_03_volcano_fdr.png`）。
+
+### 10.4 ③ 出图规范收口（封板例外窗口内执行）
+
+三处 overlay 全部重写：`R_OVERLAYS.fig_l2_volcano`、`R_OVERLAYS.fig_l3_sankey`、`PYTHON_OVERLAYS.fig_l2p_volcano`。
+共同口径：三色 `Up=#EE0000 / NS=#BEBEBE / Down=#3B4992`；图例一律 `legend.position="right"` 出轴框
+（竖版 Python 图用 `bbox_to_anchor=(1.02, 1.0)` 加 `subplots_adjust(right=0.74)`）；阈值线灰 35% 虚线并带图内文字标注
+（p 阈值贴左侧轴框内缘 `hjust=-0.04`，log2FC 竖直 `angle=90` 置轴顶）；图内禁中文；信息全走四行 caption（每行不超过 40 字符）。
+
+桑基从 base R 手绘矩形改为真 `ggalluvial`（`geom_alluvium` 加 `geom_stratum` 加 `geom_text(stat="stratum")`），
+第二轴由 WGCNA 模块规模三分位派生 Large/Medium/Small/All，图例逐模块带基因数。
+
+**母版数据缺陷（本轮最重要的改判）**：`L2_core_code.R` 与 `L2p_more_code.py` 原本用 `runif` 生成 p 值再 BH 校正，
+在 k40-ubuntu 上复现得 `min_padj = 0.540`、`n_sig = 0`，数学上不可能出现一个显著点，这就是用户看到「全灰、无红蓝」的根因，
+只调配色重渲染仍是全灰。修法是在母版注入确定性黄金数据集（4000 基因，前 120 上调、后 120 下调，240 个 p 取 10^U(-8,-3) 再 BH），
+实测 245 到 247 个显著点，红蓝两色在三档图上都合法呈现。
+
+### 10.5 哈希变更备案（封板例外窗口凭据）
+
+| 文件 | 新 sha256 前 8 位 | 字节 |
+|---|---|---|
+| `_meta/R453_compat/L2_core_code.R` | `a8ae5c81` | 5597 |
+| `_meta/R453_compat/L3_sankey_code.R` | `9f80d4b6` | 1860 |
+| `L2_组学常用图/L2p_more_code.py` | `858a5656` | 6603 |
+| `L2_组学常用图/L2_volcano_verified.png` | `444d3ced` | 177858 |
+| `L2_组学常用图/L2p_volcano_verified.png` | `728002f5` | 145819 |
+| `L3_高级组合图/L3_sankey_verified.png` | `cf3b81ba` | 93322 |
+
+同步范围：`src/figure_templates.json`（source_sha256 与 preview_sha256）、`_meta/r453_verification_report.json`（l3.runners 三条）、
+`_meta/script_plot_matrix.json`（27 条入口的 K40 实跑证据，用 `ops/verify_plot_matrix.py` 重跑生成，`overall_status=pass`）、
+`BioanalysDesktop/tests/wp33_figure_adapt.test.js` 的硬编码 master sha。
+readyCount 仍为 30，`ops/figure_ready_allowlist.json` 未改动，集合恒等断言通过。
+
+### 10.6 收口基线（2026-11-04）
+
+| 判据 | 结果 |
+|---|---|
+| 全量测试 | **1406 tests / 1405 pass / 0 fail / 1 skipped**（129 个测试文件，103 秒） |
+| `npm run gate:all` | **GATE_ALL_OK 7 道全绿**（37 秒） |
+| 图件注册表 | `figure_templates.check=ok`，82 模板 / 30 ready / 52 pending |
+| 新增测试文件 | `analysis_cutoffs_contract.test.js`、`portal_intake_contract.test.js`、`requirement_schema_contract.test.js` |
+
+相对第二十六轮基线 1354 tests，本轮净增 52 条，全部为七条需求的契约与回归闸门。
+

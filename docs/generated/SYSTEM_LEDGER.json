@@ -461,6 +461,8 @@
       "ops/k40/pi_telemetry_sidecar.py",
       "ops/k40/sv/crond/log/run",
       "ops/k40/sv/crond/run",
+      "ops/k40/sv/pi-a2a/log/run",
+      "ops/k40/sv/pi-a2a/run",
       "ops/k40/sv/ssh-agent/log/run",
       "ops/k40/sv/ssh-agent/run",
       "ops/k40/sv/sshd/log/run",
