@@ -1,8 +1,8 @@
 # 出图深度优化专题 · 阶段性长远目标设计稿
 
-> version 1（设计稿） | 2026-11-04
+> version 1.1（设计稿） | 2026-11-04
 > 状态：**待用户调优后自行 `create_goal` 长期运行**。本稿只做规划，不含实现代码。
-> 授权：4 Argon 第三十轮裁定 `.tmp/argon30_full.txt`，Q1~Q5 全选 A，置信度 100%。
+> 授权：4 Argon 第三十轮裁定 `.tmp/argon30_full.txt`（Q1~Q5 全选 A）与第三十一轮裁定 `.tmp/argon31_full.txt`（Q1~Q4 全选 A），置信度均 100%。第三十一轮四项裁定已回填本稿：B2 渲染溯源元数据、3.2 铁律 5 批次量纲、C4 `preview_state=stale` 降级、D3 独占一轮。
 > 上游订单：m04423、m04426（"特别是出图那一部分的优化，据目前现状来讲非常糟糕，需要开专题来深度优化修改"，"你为我设计好阶段性长远目标，我来调优后设置goal长期运行"）。
 > 补充硬要求：m04576（"你要告诉他具体内容和结构啊，不然你搁那里空谈，他也不懂你说了啥啊"）。本稿因此把每个阶段的**具体动作、产出物、完成判据、阻塞边、红环**逐条写实。
 > 代码基线：HEAD `cc21c99`，`git status --porcelain` 空，1406 tests / 1405 pass / 0 fail / 1 skipped，`npm run gate:all` 7 道全绿。本轮不改代码、不动 `ops/figure_ready_allowlist.json`、不创建 Goal。
@@ -93,6 +93,7 @@ E 长效防回潮门禁闭环
 2. Phase D 起按真实订单受控递增白名单，每次变更附订单号与授权字样，写入 `docs/final_closure_report.md` 补录日志。
 3. 每阶段出口一律以 `npm run gate:all` 全绿收口，阶段台账回写实测证据后再进下一阶段。
 4. 静默待命纪律承接 `docs/final_closure_report.md:317/325`：真实订单之外的主动开垦一律留给用户点名。
+5. 画布量纲**按单次交付批次归属**：同批次内尺寸与档位统一，批次之间可变（第三十一轮 Q2 裁定）。裁剪或统一尺寸一律以批次为单位，不跨批次一刀切。
 
 ---
 
@@ -109,7 +110,7 @@ E 长效防回潮门禁闭环
 | A1 | 给 `sci.md` 加版本头与适用范围声明：新产线图与 Ready 模板重渲染立即适用；存量 141 张经豁免台账按项目交付节奏迁移 | `reference/03出图规范/sci.md` 头部 | 头部写明 `version 3.0`、适用范围、迁移入口指向 A2 台账 |
 | A2 | 把 `docs/figure_spec.md` 降级为兼容层：保留生产路径规则（`figures/` 目录、命名、dpi=300），逐条标注与 `sci.md` 的差异 | `docs/figure_spec.md` 头部与 §一 | 头部有 context pointer 指向 `sci.md` 与 A4 矩阵；6 类冲突每类有一节"兼容口径" |
 | A3 | 裁定 `cn_debug/figure_code_audit.py:14` C6 冲突：拆为 C6a（交付图件禁 PDF/SVG，保留）与 C6b（矢量母版 PDF 允许，白名单） | A4 矩阵记裁定；C6a/C6b 的**实现**归 B3 | 矩阵里 C6 一行有明确裁定与责任阶段 B3 |
-| A4 | 产出冲突矩阵 `docs/figure_spec_conflict_matrix.md`，每行 `{冲突点, sci.md 行号, figure_spec.md 行号, 受影响产线图数量, 裁定, 迁移窗口, 责任阶段}` | 新文件 | 6 行齐备：`bbox_inches`、画布单位与档位、交付扩展名与三件套、图内字号、多面板与纯单图、标题；每行 7 个字段全填，无 `TBD` |
+| A4 | 产出冲突矩阵 `docs/figure_spec_conflict_matrix.md`，每行 `{冲突点, sci.md 行号, figure_spec.md 行号, 受影响产线图数量, 裁定, 迁移窗口, 责任阶段}`；`迁移窗口` 一律按**交付批次**表述（第三十一轮 Q2 裁定） | 新文件 | 6 行齐备：`bbox_inches`、画布单位与档位、交付扩展名与三件套、图内字号、多面板与纯单图、标题；每行 7 个字段全填，无 `TBD`，`迁移窗口` 不含"全量"这种跨批次表述 |
 | A5 | 定义审计机的输入契约：`ops/audit_figure_layout.py:22/:92` 两处"脚本统一 savefig.bbox='tight'"的假设改由 A4 矩阵驱动，写进矩阵的接口节 | A4 矩阵接口节 | 接口节写明审计机读取矩阵的方式、默认档位、`UNAVAILABLE` 的触发条件 |
 
 **产出物**：`sci.md` 版本头、`docs/figure_spec.md` 降级后的兼容层、`docs/figure_spec_conflict_matrix.md`（6 行 + 接口节）。
@@ -133,14 +134,14 @@ E 长效防回潮门禁闭环
 | 票 | 动作 | 落点 | 完成判据 |
 |---|---|---|---|
 | B1 | 建单一入口 `audit(path, profile) -> {verdict: PASS\|FAIL\|UNAVAILABLE, checks[]}`，覆盖源码静态面与渲染产物面 | `ops/audit_figure_visual.py`（或把 `ops/audit_figure_layout.py` 扩成 v2 后共用一个入口） | 两类输入都从同一入口进；`verdict` 三态齐全；`--check` 可批量跑 |
-| B2 | 渲染产物面判据，承接 `sci.md:162/163`：PNG 按档位 58/88/130/180 mm 反算像素（dpi=300，宽 px = mm/25.4*300）、PDF 页框同档、PDF 字体 Type42 且无 Type3、图内标题为空、图例不出轴框、火山图色阶 Up 红 / Down 蓝 / NS 灰像素抽样 | B1 同一文件 | 6 项判据各有独立 `checks[]` 条目，任一缺失即 `UNAVAILABLE` |
+| B2 | 渲染产物面判据，承接 `sci.md:162/163`：PNG 按档位 58/88/130/180 mm 反算像素（dpi=300，宽 px = mm/25.4*300）、PDF 页框同档、PDF 字体 Type42 且无 Type3、图内标题为空、图例不出轴框、火山图色阶 Up 红 / Down 蓝 / NS 灰像素抽样；**并做渲染溯源校验** | B1 同一文件 + 产物旁 `<figure>_render_meta.json` | 6 项判据各有独立 `checks[]` 条目，任一缺失即 `UNAVAILABLE`；溯源 4 字段（`master_sha256` 母版字节哈希、`adapter_sha256` 适配器文件哈希、`rendered_at` ISO8601、`toolchain` 版本串）齐备且与仓库当前真源一致，缺字段或对不上直接判 `UNAVAILABLE`，绝不判 PASS |
 | B3 | 补 `ops/audit_figure_artifacts.py`：三件套齐备（PDF / `_preview.png` / `_plot.rds` 或 `_plot.pkl`）、dpi=300、单文件 <=10MB、`05_figures/main/` 落位；同时落地 A3 的 C6a/C6b 拆分 | 新文件 + `cn_debug/figure_code_audit.py:14/:55-58` | 141 张产线图静态审计无新增 FAIL；矢量母版 PDF 命中 C6b 白名单后判合规 |
 | B4 | 补 `tests/test_figure_layout_contract.py`，每类违规至少一个**变红样例**，先红后绿 | 新测试 + `tests/figure_red_samples/` 样例集 | 6 类样例齐备：色彩映射违规（橙代红上调点）、图例越界（外置图例被 bbox 裁切）、`bbox_inches="tight"` 裁小画布、三件套缺 PDF、分辨率 150dpi、C6 矢量母版误判；每个样例先红后绿且留 TAP 证据 |
 | B5 | 把 `cn_debug/figure_score.py:270-277` 三态判决接到 B1：有 `UNAVAILABLE` 项即 `UNVERIFIED`；修掉 `figure_score.csv` 29 条 `l1_*` 全 `score=100 PASS` 的假绿 | `cn_debug/figure_score.py` + `con_hf/figure_score.csv` + `con_hf/figure_manual_review.md:57-58` | 6/6 未目视样本保持 `UNVERIFIED`；29 条假绿逐条改判并留 diff |
 
 **产出物**：`ops/audit_figure_visual.py`、`ops/audit_figure_artifacts.py`、`tests/test_figure_layout_contract.py`、`tests/figure_red_samples/`（6 类）、`con_hf/figure_score.csv` 改判结果。
 
-**出口判据**：4 Argon 第三十轮 Q2 补答原话"必须交付每类违规的红测样例集（色彩映射违规注入错误色阶用橙代红上调点、图例/边框越界注入外置图例截断或 bbox 裁切违规、三件套/分辨率缺失即拒收）"。可检查面：6 类样例全部判 FAIL；30 个 Ready 预览全部判 PASS 或 UNAVAILABLE，无假 PASS；`npm run gate:all` 7 道全绿。
+**出口判据**：4 Argon 第三十轮 Q2 补答原话"必须交付每类违规的红测样例集（色彩映射违规注入错误色阶用橙代红上调点、图例/边框越界注入外置图例截断或 bbox 裁切违规、三件套/分辨率缺失即拒收）"。可检查面：6 类样例全部判 FAIL；30 个 Ready 预览全部判 PASS 或 UNAVAILABLE，无假 PASS；任一产物缺 `master_sha256`/`adapter_sha256`/`rendered_at`/`toolchain` 四字段之一即判 `UNAVAILABLE` 而非 PASS；`npm run gate:all` 7 道全绿。
 
 **红环**：把 B4 的橙色样例喂回 B1，`verdict` 必须为 `FAIL` 且 `checks[]` 点名色彩映射条目；把样例改回正确色后必须转 PASS。这条环必须秒级、确定性、Agent 可跑。
 
@@ -183,7 +184,7 @@ E 长效防回潮门禁闭环
 |---|---|---|
 | C2 | 母版收敛：main 与 compat 的 `same=4/diff=2`、`compat_only=1`、`main_only=10` 收敛到单一真源，清掉 11 个孤儿副本；`wp33_figure_adapt.test.js:326` 的 `master_sha256` 改指向新真源 | 逐字节 `diff` 只剩 1 份母版；测试硬编码与真源一致 |
 | C3 | 其余 29 个 Ready 各走一遍 C1 的链，批次台账 `docs/figure_ready_rerender_ledger.md` 每行 `{id, source_before, source_after, preview_before, preview_after, verdict, k40_job_id}` | 30 行齐备，每行 7 字段全填 |
-| C4 | 预览端点同源化：`portal/serve.mjs handleFigureTemplatePreview` 从 `readFileSync` 静态字节升级为"注册哈希校验 + 可手动触发真机重渲染"，改适配器后预览可见变化 | 改一处 overlay 的配色常量后，预览端点返回的字节与 `preview_sha256` 同步变化；静态 PNG 作为封板资产保留 |
+| C4 | 预览端点同源化：`portal/serve.mjs handleFigureTemplatePreview` 从 `readFileSync` 静态字节升级为"注册哈希校验 + 可手动触发真机重渲染"，改适配器后预览可见变化；K40 不可达时**自动回落静态 PNG 并在响应元数据标 `preview_state=stale`**，不抛 503、不返回空白（第三十一轮 Q3 裁定） | 改一处 overlay 的配色常量后，预览端点返回的字节与 `preview_sha256` 同步变化；断掉 K40 后端点仍返回 200 且 `preview_state=stale`；静态 PNG 作为封板资产保留 |
 | C5 | 矩阵与产物判据对齐：`script_plot_matrix.json` 的 `quarantined=1` 补判据，PDF 的 `"PDF header passed; full validation not performed"` 换成 B3 的产物面判据 | `ops/verify_plot_matrix.py` 在 K40 重跑 `{"failed":0,"overall_status":"pass"}`，PDF 条目带 Type42 与页框尺寸实测值 |
 
 **产出物**：收敛后的母版、30 个重渲染预览、`docs/figure_ready_rerender_ledger.md`、`src/figure_templates.json` 新哈希、`portal/serve.mjs` 同源化端点。
@@ -200,7 +201,7 @@ E 长效防回潮门禁闭环
 |---|---|---|
 | D1 | 准入单据模板 `docs/figure_admission_order.md`：每单点名 `{模板 id, 真实项目/数据集, 期望图语义, 验收人}` | 单据 4 字段全填，缺字段的批次留在该批之外 |
 | D2 | 每批四件套门禁：① 真实样例（项目数据，避免 `runif` 假数）② 适配器（`figure_adapters.js` 增 overlay 或 Python overlay）③ `script_plot_matrix.json` 加入口并在 K40 真机跑 ④ B1 自动化审验判 PASS | 每批 4/4 齐备且留档，缺任一件该批保持 pending |
-| D3 | 结构化 `adapt_vars`：把 `ops/build_figure_templates.cjs:355-466` 的中文描述字符串改成 `{type, default, required, description}`；每条模板补 `figure_layout` 字段 `{size_preset, width_mm, height_mm, legend_position, caption_lines}`；`src/figure_templates.json` 同步且 `schema_version` 递增 | `ops/build_figure_templates.cjs --check` 绿；82 条模板的 `adapt_vars` 全为对象、`figure_layout` 全非空 |
+| D3 | 结构化 `adapt_vars`：把 `ops/build_figure_templates.cjs:355-466` 的中文描述字符串改成 `{type, default, required, description}`；每条模板补 `figure_layout` 字段 `{size_preset, width_mm, height_mm, legend_position, caption_lines}`；`src/figure_templates.json` 同步且 `schema_version` 显式递增；**本票独占一轮、不与任何其他票并行**（第三十一轮 Q4 裁定：跨切面结构性变更须中间态可精确归因） | `ops/build_figure_templates.cjs --check` 绿；82 条模板的 `adapt_vars` 全为对象、`figure_layout` 全非空 |
 | D4 | 挂单咬合：`BioanalysDesktop/server/figure_execution_plan.js:15 buildTaskExecutionSequence` 要求 `adapted === true`（:57）且 `depends_on_step` 在执行计划中（:60），每批新模板在 `meta.figure_tasks` 补条目并验证依赖闭包 | 每批新模板的 `buildTaskExecutionSequence` 返回 `ok:true`，`errors` 为空 |
 | D5 | 白名单与审计回执：按 `docs/figure_pending_triage.md` 分类（actionable / blocked_upstream / excluded_out_of_scope），对齐 `docs/figure_admission_sealed.md:12/14/:56/:61` 的 33 真待办与 22 冻结；每次转 Ready 后更新白名单并追加 `docs/final_closure_report.md` 补录日志（理由 + 授权字样） | 白名单 ids 每次变化可逐条追溯到订单号；补录日志含授权字样；`npm run gate:all` 7 道全绿 |
 
@@ -216,7 +217,7 @@ E 长效防回潮门禁闭环
 
 | 票 | 动作 | 完成判据 |
 |---|---|---|
-| E1 | `ops/run_all_gates.mjs:40-47` 的 `GATES` 新增第 8 道 `figure_visual`，插在 `figure_registry` 之后、`metrics`（`slow:true`）之前，调 `ops/audit_figure_visual.py --check` | `GATES.length=8`；`node ops/run_all_gates.mjs --skip-tests` 含第 8 道；任一 FAIL 即整体非 0 且点名道号 |
+| E1 | `ops/run_all_gates.mjs:40-47` 的 `GATES` 新增第 8 道 `figure_visual`，插在 `figure_registry` 之后、`metrics`（`slow:true`）之前，调 `ops/audit_figure_visual.py --check`；顺带修掉本文件既有文案不一（`:5` 与 `:116` 写"八道串联"、`:40` 实际 7 条、`:128` 输出"7 道全绿"） | `GATES.length=8`；`node ops/run_all_gates.mjs --skip-tests` 含第 8 道；任一 FAIL 即整体非 0 且点名道号；四处文案与实测道数一致 |
 | E2 | `.github/workflows/ci.yml` 同步，保持"本地与 CI 100% 同构"：单 job `gate-all`、`ubuntu-latest`、`timeout-minutes: 20`、node 22、`node ops/run_all_gates.mjs --json`；CI 无真机的检查按 `HOST_UNREACHABLE_K40` 白名单原因跳过，`skip_reason_gate` 核验 | CI 与本地 `GATES` 清单逐条 diff 为空；CI 刻意不含 SSH/adb 的注释保留 |
 | E3 | 门禁自验红环：把 B4 的 6 类变红样例固化为 `ops/run_all_gates.mjs` 自检项，每轮自验"注入违规样例 → 第 8 道必须红" | 注入后第 8 道红，移除后 8 道全绿；防止审计机自己腐化成假绿 |
 | E4 | 120 秒拦截：定义快速面 `preflight → static_gate → figure_registry → figure_visual`（`--skip-tests`）从提交到报警 <=120 秒；全量面按 CI 单轮约 3 分钟、上限 `timeout-minutes: 20` | 注入违规后快速面在 120 秒内返回非 0 且点名第 8 道；实测墙钟时间留档 |
@@ -244,6 +245,8 @@ D5 ─→ E1 → E2 → E3 → E4 → E5
 ---
 
 ## 十、给用户调优的六项（推荐答案已附，"yes" 等于接受推荐）
+
+第三十一轮已向 4 Argon 提出四项具体裁定并全部取回（Q1~Q4 全选 A，置信度各 100%），裁定正文见 `.tmp/argon31_full.txt` 与本轮汇报。**下表六项仍需用户本人调优**，4 Argon 的裁定只覆盖设计取舍，不代替用户对目标与轮数的设定。
 
 | # | 调优项 | 推荐答案 | 理由 |
 |---|---|---|---|
@@ -293,4 +296,4 @@ max_goal_rounds: 256
 | 门禁与 CI | `ops/run_all_gates.mjs:40-47`、`.github/workflows/ci.yml` |
 | 准入与封板 | `docs/figure_pending_triage.md`、`docs/figure_admission_sealed.md:12/:14/:45/:56/:61`、`docs/final_closure_report.md:6/:317/:325` |
 | 既有审计票 | `artifacts/agent_tasks/figure_spec_audit_result.md` P1④、`artifacts/agent_tasks/figure_audit_visual.md` |
-| 裁定与汇报 | `.tmp/argon30_full.txt`、`.tmp/round30.md`（均被 `.gitignore` 排除） |
+| 裁定与汇报 | `.tmp/argon30_full.txt`、`.tmp/round30.md`、`.tmp/argon31_full.txt`、`.tmp/round31.md`（均被 `.gitignore` 排除） |
