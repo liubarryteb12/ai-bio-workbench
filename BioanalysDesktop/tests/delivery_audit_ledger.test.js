@@ -22,7 +22,7 @@ import { buildMiniDeliveryPackage } from './support/delivery_fixture.js';
 import crypto from 'node:crypto';
 
 function tmpRoot(tag) {
-  const base = path.join(path.resolve(import.meta.dirname, '..', '..'), '.tmp', 'audit-' + tag + '-' + Date.now());
+  const base = path.join(path.resolve(import.meta.dirname, '..', '..'), '.tmp', 'audit-' + tag + '-' + process.pid + '-' + Math.random().toString(36).slice(2, 8));
   fs.mkdirSync(base, { recursive: true });
   return base;
 }

@@ -19,7 +19,7 @@ const BIOANALYS_DIR = path.resolve(import.meta.dirname, '..');
 const REPO = path.resolve(BIOANALYS_DIR, '..');
 
 function tmpRoot(tag) {
-  const base = path.join(REPO, '.tmp', 'clean-' + tag + '-' + Date.now());
+  const base = path.join(REPO, '.tmp', 'clean-' + tag + '-' + process.pid + '-' + Math.random().toString(36).slice(2, 8));
   fs.mkdirSync(base, { recursive: true });
   return base;
 }

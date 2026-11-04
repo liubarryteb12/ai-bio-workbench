@@ -7,6 +7,7 @@ import json
 import os
 import re
 import sys
+from pathlib import Path
 
 from local_project_workspace import (
     LEDGER_NAMES,
@@ -27,6 +28,23 @@ from local_project_workspace import (
 SYNC_DIRS = ("inbox", "outbox")
 TICKET_PATTERN = re.compile(r"[A-Za-z0-9._-]{1,80}")
 QA_ROOT = REPO_ROOT / "artifacts" / "project_scaffold_tests"
+
+
+def extra_allowed_roots():
+    """从环境变量读「本次运行显式信任的额外根」。
+
+    为什么需要它：测试要在并发下互不干扰，必须每次用进程独有的根目录
+    （artifacts/project_scaffold_tests_<pid>_<rand>）。但 workspace_root 的白名单
+    只认固定的 QA_ROOT，于是隔离后的根会被判越界、退出码 2。
+    这里不放宽默认白名单，只增加一条**显式**通道：谁要额外根，谁自己用环境变量声明。
+    """
+    raw = os.environ.get("BIO_SCAFFOLD_ALLOWED_ROOTS", "")
+    roots = []
+    for part in raw.split(os.pathsep):
+        part = part.strip()
+        if part:
+            roots.append(Path(part).resolve())
+    return tuple(roots)
 
 
 def validate_ticket(ticket):
@@ -319,7 +337,7 @@ def emit(payload):
 def main(argv=None):
     args = build_parser().parse_args(argv)
     try:
-        root = workspace_root(args.root, extra_allowed_roots=(QA_ROOT,))
+        root = workspace_root(args.root, extra_allowed_roots=(QA_ROOT,) + extra_allowed_roots())
         payload = scaffold(root, args.project, args.line, args.ticket)
         emit(payload)
         return 0

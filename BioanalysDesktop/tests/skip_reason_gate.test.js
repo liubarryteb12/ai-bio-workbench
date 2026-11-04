@@ -130,7 +130,7 @@ test('CLI main：真仓静态扫描 exit 0，违规目录 exit 1', () => {
   const io = { log: (m) => logs.push('L ' + m), error: (m) => logs.push('E ' + m) };
   const ok = main([], io);
   assert.equal(ok, 0, logs.join('\n'));
-  const dir = path.join(REPO, '.tmp', 'skip-gate-probe-' + Date.now());
+  const dir = path.join(REPO, '.tmp', 'skip-gate-probe-' + process.pid + '-' + Math.random().toString(36).slice(2, 8));
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'bad.test.js'), "test('x', { skip: true }, () => {});\n", 'utf8');
   const bad = main(['--tests-dir', dir], io);

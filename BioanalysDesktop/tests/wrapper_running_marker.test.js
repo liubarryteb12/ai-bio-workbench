@@ -23,7 +23,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
 const WRAPPER = path.join(REPO, 'ops', 'run_throttled_task.sh');
 const CHECKER = path.join(REPO, 'ops', '03_check_logs_remote.sh');
-const TEST_ROOT = path.join(REPO, 'artifacts', 'wrapper_running_marker_tests');
+const TEST_ROOT = path.join(REPO, 'artifacts', 'wrapper_running_marker_tests_' + process.pid + '_' + Math.random().toString(36).slice(2, 8));
 // 定位 bash：Git for Windows 自带 D:\Git\bin\bash.exe，PATH 里通常没有 bash（与其它真跑测试同口径）。
 const BASH = [process.env.BIO_BASH, 'D:\\Git\\bin\\bash.exe', 'D:\\Git\\usr\\bin\\bash.exe', 'bash']
   .find((cand) => {

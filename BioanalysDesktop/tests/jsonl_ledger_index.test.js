@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..', '..');
 const SCRIPT = path.join(REPO_ROOT, 'ops', 'ledger_indexer.py');
-const TEST_ROOT = path.join(REPO_ROOT, 'artifacts', 'local_project_workspace_tests', 'jsonl_ledger_index_tests');
+const TEST_ROOT = path.join(REPO_ROOT, 'artifacts', 'local_project_workspace_tests', 'jsonl_ledger_index_tests_' + process.pid + '_' + Math.random().toString(36).slice(2, 8));
 
 function findPythonLauncher() {
   const candidates = [

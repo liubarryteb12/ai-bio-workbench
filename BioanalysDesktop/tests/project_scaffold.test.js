@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..', '..');
 const SCRIPT = path.join(REPO_ROOT, 'ops', 'init_project_scaffold.py');
-const TEST_ROOT = path.join(REPO_ROOT, 'artifacts', 'project_scaffold_tests');
+const TEST_ROOT = path.join(REPO_ROOT, 'artifacts', 'project_scaffold_tests_' + process.pid + '_' + Math.random().toString(36).slice(2, 8));
 const LINES = ['line1_bulk', 'line2_scrna', 'line3_spatial'];
 const LEDGER_NAMES = ['actions', 'changes', 'errors', 'fixes', 'pitfalls'];
 
@@ -40,6 +40,9 @@ function runScaffold(root, args) {
   const proc = spawnSync(PYTHON.command, [...PYTHON.prefix, SCRIPT, '--root', root, ...args], {
     cwd: REPO_ROOT,
     encoding: 'utf8',
+    // 隔离根是本进程独有的（TEST_ROOT），必须显式声明给脚本的白名单通道，
+    // 否则 workspace_root 只认固定 QA_ROOT 会把隔离根判越界（exit 2）。
+    env: { ...process.env, BIO_SCAFFOLD_ALLOWED_ROOTS: TEST_ROOT },
   });
   const output = proc.stdout.trim();
   return {

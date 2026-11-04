@@ -64,6 +64,10 @@ const EXEMPT_RELPATHS = new Set([
   // 变异门禁（T2-6，第 8 道）：它本身的工作就是「跑测试、跑门禁、看变没变红」，
   // 必然要起子进程。与 run_all_gates 同类——门禁的编排者。
   'ops/mutation_gate.mjs',
+  // 临时目录隔离门禁（第三十四轮 Q4）与便携包同源门禁（第三十五轮 Q4）：
+  // 两者都要用 git ls-files 列「被跟踪的源码」，离线静态门禁，不进服务运行时。
+  'ops/test_isolation_gate.mjs',
+  'ops/dist_parity_gate.mjs',
 ]);
 
 // 豁免清单：接缝本体。加名字进这份清单需要人裁定，不许顺手扩。

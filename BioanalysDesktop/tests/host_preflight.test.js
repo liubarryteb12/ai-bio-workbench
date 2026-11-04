@@ -38,7 +38,7 @@ test('node 版本判据：22 及以上通过，以下判红', () => {
 });
 
 test('findExecutable：按 PATH 段找，支持 PATHEXT，找不到返回 null', () => {
-  const dir = path.join(REPO, '.tmp', 'preflight-probe-' + Date.now());
+  const dir = path.join(REPO, '.tmp', 'preflight-probe-' + process.pid + '-' + Math.random().toString(36).slice(2, 8));
   fs.mkdirSync(dir, { recursive: true });
   try {
     const exe = path.join(dir, 'fake-tool.EXE');

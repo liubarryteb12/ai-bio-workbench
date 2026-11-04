@@ -34,8 +34,9 @@ const HEALTH_DEADLINE_MS = 1000;
 const PAYLOAD_BYTES = 4096;
 const POLL_INTERVAL_MS = 40;
 
-// 端口固定：其它用例也用 BAD_PORT，串行执行不会撞车（npm test 带 --test-concurrency=1）
-process.env.BAD_PORT = process.env.BAD_PORT || '19099';
+// 端口必须按进程派生：原先写死 19099，实测两个 npm test 进程并发时直接 EADDRINUSE。
+// 用 pid 落在 19100~19999，单进程内稳定、跨进程几乎不撞；外部显式给了 BAD_PORT 时仍尊重外部值。
+process.env.BAD_PORT = process.env.BAD_PORT || String(19100 + (process.pid % 900));
 process.env.BIO_ALLOW_DEV_NOAUTH = '1';
 delete process.env.BIO_AUTH_RUNTIME_FILE;
 const PORT = Number(process.env.BAD_PORT);

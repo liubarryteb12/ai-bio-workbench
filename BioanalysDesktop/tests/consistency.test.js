@@ -43,7 +43,9 @@ function runWithRetry(argv, options, label) {
 const repoRoot = path.resolve(import.meta.dirname, '../..');
 const samplesDir = path.join(repoRoot, 'cn_debug/samples/system_logs');
 const checkerScript = path.join(repoRoot, 'ops/03_check_logs_remote.sh');
-const remoteDir = '/tmp/bad_ledger_consistency';
+const RUN_TAG = process.pid + '-' + Math.random().toString(36).slice(2, 8);
+const remoteDir = '/tmp/bad_ledger_consistency_' + RUN_TAG;
+const remoteScript = '/tmp/03_check_logs_remote_' + RUN_TAG + '.sh';
 
 const SAMPLES = ['task_ok.json', 'task_cross.json', 'task_noseed.json'];
 
@@ -62,12 +64,12 @@ test('Node 判定与服务器 bash 判定结论一致', async (testContext) => {
     const copyResult = runWithRetry(['scp', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', path.join(samplesDir, name), `k40-ubuntu:${remoteDir}/${name}`], { timeoutMs: 30000 }, `scp ${name}`);
     assert.equal(copyResult.code, 0, `scp ${name} 失败: ${copyResult.stderr}`);
   }
-  const scriptResult = runWithRetry(['scp', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', checkerScript, 'k40-ubuntu:/tmp/03_check_logs_remote.sh'], { timeoutMs: 30000 }, 'scp 校验脚本');
+  const scriptResult = runWithRetry(['scp', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', checkerScript, 'k40-ubuntu:' + remoteScript], { timeoutMs: 30000 }, 'scp 校验脚本');
   assert.equal(scriptResult.code, 0, `scp 校验脚本失败: ${scriptResult.stderr}`);
 
   const runResult = runWithRetry([
     'ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', 'k40-ubuntu',
-    `bash /tmp/03_check_logs_remote.sh ${remoteDir}`,
+    'bash ' + remoteScript + ' ' + remoteDir,
   ], { timeoutMs: 40000 }, '远端校验脚本');
   // 校验脚本用退出码表达「有没有违规」（样例里本来就有违规项），所以这里不要求 code === 0，
   // 只要求它确实跑起来了并给出判定行（下面的逐条比对会兜住内容）。
@@ -91,5 +93,5 @@ test('Node 判定与服务器 bash 判定结论一致', async (testContext) => {
   }
 
   // 4. 清理
-  runSync(['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', 'k40-ubuntu', `rm -rf ${remoteDir} /tmp/03_check_logs_remote.sh`], { timeoutMs: 20000 });
+  runSync(['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', 'k40-ubuntu', 'rm -rf ' + remoteDir + ' ' + remoteScript], { timeoutMs: 20000 });
 });
