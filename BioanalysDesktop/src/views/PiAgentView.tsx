@@ -353,7 +353,7 @@ export function PiAgentMonitor() {
               placeholder="输入任务指令，例如: 在 ~/workspace/projects 下创建 probe.py 并运行"
               onChange={(e) => setDispatchMsg(e.target.value)} />
             <div className="pi-modal-foot">
-              <span className="pi-empty">经 A2A v1.0 SendMessage 直发 :9910，token 服务端注入</span>
+              <span className="pi-empty">消息由本机服务端直接投递，凭据在服务端注入，不在界面上传递</span>
               <button className="btn" disabled={dispatching || !dispatchMsg.trim()} onClick={() => void dispatchTask()}>
                 {dispatching ? '派发中...' : '立即发送'}
               </button>

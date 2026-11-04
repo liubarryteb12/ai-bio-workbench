@@ -336,7 +336,7 @@ export function TaskPanel({ project }: { project: string }) {
       )}
 
       {logs.length === 0 && !exitInfo && !submitError && (
-        <p className="hint">下发后这里实时显示远端 stdout/stderr；任务结束自动回显退出码与台账摘要。跨线内容会被审计直接拒绝（HTTP 400）。</p>
+        <p className="hint">下发后这里实时显示远端输出；任务结束自动回显退出码与台账摘要。跨分析线的内容会被审计直接拒绝。</p>
       )}
     </div>
   );

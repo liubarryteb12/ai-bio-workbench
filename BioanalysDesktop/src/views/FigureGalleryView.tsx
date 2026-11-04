@@ -173,7 +173,7 @@ export function FigureAdaptCard({ project }: { project: string }) {
           />
           <div>
             <p className="subtle">{selected.category} · {selected.language} · {selected.level}</p>
-            {selected.source_sha256 && <p className="subtle">Master-SHA256：{selected.source_sha256.slice(0, 16)}</p>}
+            {selected.source_sha256 && <p className="subtle">母版校验码：{selected.source_sha256.slice(0, 16)}</p>}
           </div>
         </div>
       )}
@@ -205,7 +205,7 @@ export function FigureAdaptCard({ project }: { project: string }) {
       {derivation && (
         <div className="block-box">
           <strong>派生副本已生成</strong>
-          <p className="subtle">Master-SHA256：{derivation.master_sha256}</p>
+          <p className="subtle">母版校验码：{derivation.master_sha256}</p>
           <p className="subtle">远端：{derivation.remote_path}</p>
           <p className="subtle">任务步骤：{derivation.task.step}</p>
         </div>

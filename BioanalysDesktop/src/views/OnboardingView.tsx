@@ -1478,7 +1478,7 @@ export function OnboardingPortal({
 
         {/* 子项 2：算力削峰与断点恢复 */}
         <div className="form-group">
-          <label className="form-label">子项 2 · 算力削峰与断点恢复</label>
+          <label className="form-label">子项 2 · 长任务稳定运行与断点恢复</label>
           <div className="compute-shield-card">
             <div className="compute-shield-icon">🛡</div>
             <ul className="compute-shield-list">
