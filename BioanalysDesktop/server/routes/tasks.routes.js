@@ -8,7 +8,7 @@
 // 返回约定：命中本模块管辖的 pathname 就返回 true（含"已注册异步回调、稍后才回响应"
 // 的情形），未命中返回 false 让 index.js 继续往下派发。json() 返回 undefined，
 // 所以绝不能拿它的返回值当命中信号，分支顶层必须显式 return true。
-// 注意：req.on('end') 与 setImmediate 回调里的 return 是回调返回值，不是派发信号，
+// 注意：runJsonRoute 回调（T3-7 起）与 setImmediate 回调里的 return 是回调返回值，不是派发信号，
 // 那些 return json(...) 与 return; 保持原样。
 import {
   DEFAULT_PROJECT, LINES, SYSTEM_LOGS, sanitizeProjectId,
@@ -21,6 +21,7 @@ import {
   runBridgeCheckSync, BridgeCheckError, requiresKoGene, isValidKoGene, KNOCKOUT_STEPS,
 } from '../task.js';
 import { runTask, prepareAndAuditTask } from '../run.js';
+import { collectJsonBody, runJsonRoute, JSON_BODY_LIMIT } from '../http_body.js';
 
 /**
  * T0-6：陈旧任务位的回收上限。
@@ -72,7 +73,7 @@ export function registerTaskSlot(runningTasks, taskId, task, exited) {
   return true;
 }
 
-export function handleTasksRoutes(req, res, url, {
+export async function handleTasksRoutes(req, res, url, {
   json, runRemoteRaw, runningTasks, createSink, dropSink, sendEvent, closeSink,
   sanitizeBridgeOutput, validateTaskPaths,
 }) {
@@ -95,9 +96,11 @@ export function handleTasksRoutes(req, res, url, {
 
   if (url.pathname === '/api/tasks/submit' && req.method === 'POST') {
     // 任务下发：参数在服务端再校验一次，不信前端传来的东西
-    let body = '';
-    req.on('data', (chunk) => { body += chunk; });
-    req.on('end', () => {
+    runJsonRoute(async () => {
+      // T3-7：请求体上限闸门。超限时 collectJsonBody 已回出 413 并交回 null，
+      // 这里必须短路：再写第二个响应会抛 ERR_HTTP_HEADERS_SENT 打死进程。
+      const body = await collectJsonBody(req, res, json, { maxBytes: JSON_BODY_LIMIT });
+      if (body === null) return;
       let requested;
       try {
         requested = JSON.parse(body || '{}');

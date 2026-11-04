@@ -23,8 +23,9 @@ import {
 } from '../figure_catalog.js';
 import { deriveAdaptedFigure } from '../task.js';
 import { readAdaptManifest, checkRemoteProjectDir } from '../report.js';
+import { collectJsonBody, runJsonRoute, JSON_BODY_LIMIT } from '../http_body.js';
 
-export function handleFiguresRoutes(req, res, url, {
+export async function handleFiguresRoutes(req, res, url, {
   json, runRemote, runRemoteRaw, resolveProjectParam, REPO_ROOT,
   listFiguresForLine, listRemoteProcessed, remoteTaskInput,
 }) {
@@ -161,9 +162,11 @@ export function handleFiguresRoutes(req, res, url, {
   }
 
   if (url.pathname === '/api/figures/adapt/derive' && req.method === 'POST') {
-    let body = '';
-    req.on('data', (chunk) => { body += chunk; });
-    req.on('end', async () => {
+    runJsonRoute(async () => {
+      // T3-7：请求体上限闸门。超限时 collectJsonBody 已回出 413 并交回 null，
+      // 这里必须短路：再写第二个响应会抛 ERR_HTTP_HEADERS_SENT 打死进程。
+      const body = await collectJsonBody(req, res, json, { maxBytes: JSON_BODY_LIMIT });
+      if (body === null) return;
       let requested;
       try {
         requested = JSON.parse(body || '{}');
@@ -367,9 +370,11 @@ export function handleFiguresRoutes(req, res, url, {
   if (url.pathname === '/api/figures/pull' && req.method === 'POST') {
     // 图件回搬：把远端 figures/（以及 results/）拉到本地 outputs/，供视图 4 离线查看。
     // 本地只跑 scp，不触发任何计算（零算力红线）。
-    let body = '';
-    req.on('data', (chunk) => { body += chunk; });
-    req.on('end', () => {
+    runJsonRoute(async () => {
+      // T3-7：请求体上限闸门。超限时 collectJsonBody 已回出 413 并交回 null，
+      // 这里必须短路：再写第二个响应会抛 ERR_HTTP_HEADERS_SENT 打死进程。
+      const body = await collectJsonBody(req, res, json, { maxBytes: JSON_BODY_LIMIT });
+      if (body === null) return;
       let payload;
       try {
         payload = JSON.parse(body || '{}');

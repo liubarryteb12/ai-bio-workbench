@@ -9,6 +9,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { collectJsonBody, JSON_BODY_LIMIT } from './http_body.js';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -82,18 +83,30 @@ export function appendPiLedger(action, details, root = process.cwd()) {
   }
 }
 
-function readJsonBody(req) {
-  return new Promise((resolve) => {
-    let body = '';
-    req.on('data', (chunk) => { body += chunk; });
-    req.on('end', () => {
-      try {
-        resolve(JSON.parse(body || '{}'));
-      } catch {
-        resolve(null);
-      }
-    });
-  });
+/**
+ * 「JSON 非法」与「闸门已短路」的区分符。
+ *
+ * 两者都得让调用方停止往下走，但只有前者还欠客户端一个 400：
+ * 混成一个 null 的话，非法 JSON 的请求会一个响应都不写、永远挂着（改造前是 400）。
+ */
+const INVALID_JSON_BODY = Symbol('invalid json body');
+
+/**
+ * 读取并解析 JSON 请求体（T3-7：走统一的上限闸门）。
+ *
+ * 返回三档：解析出的对象、null（闸门已短路：413 或客户端断开）、
+ * INVALID_JSON_BODY（正文在限额内但不是合法 JSON）。
+ * null 这一档响应已经由闸门写完，调用方必须直接 return true：
+ * 再补一个响应会抛 ERR_HTTP_HEADERS_SENT 打死进程。
+ */
+async function readJsonBody(req, res, json) {
+  const body = await collectJsonBody(req, res, json, { maxBytes: JSON_BODY_LIMIT });
+  if (body === null) return null; // 闸门已短路（413 或断连），响应写完了
+  try {
+    return JSON.parse(body || '{}');
+  } catch {
+    return INVALID_JSON_BODY;
+  }
 }
 
 function extractNormalizedTask(data) {
@@ -345,7 +358,8 @@ export async function handlePiAgentRoutes(req, res, url, deps) {
   }
 
   if (url.pathname === '/api/pi-agent/model' && req.method === 'POST') {
-    const requested = await readJsonBody(req);
+    const requested = await readJsonBody(req, res, json);
+    if (requested === null) return true; // 闸门已回 413（或断连），这里绝不双写第二个响应
     try {
       const command = buildSwitchModelCommand(requested?.provider, requested?.model);
       const raw = runSshRaw(PI_SSH_TARGET, command, { timeoutMs: 30000 });
@@ -423,7 +437,8 @@ export async function handlePiAgentRoutes(req, res, url, deps) {
   }
 
   if (url.pathname === '/api/pi-agent/task/cancel' && req.method === 'POST') {
-    const requested = await readJsonBody(req);
+    const requested = await readJsonBody(req, res, json);
+    if (requested === null) return true; // 闸门已回 413（或断连），这里绝不双写第二个响应
     const taskId = String(requested?.id || '').trim();
     if (!taskId || taskId.length > 256) {
       json(res, 400, { ok: false, error: 'id 字段必填且长度不超过 256' });
@@ -451,7 +466,8 @@ export async function handlePiAgentRoutes(req, res, url, deps) {
   }
 
   if (url.pathname === '/api/pi-agent/dispatch' && req.method === 'POST') {
-    const requested = await readJsonBody(req);
+    const requested = await readJsonBody(req, res, json);
+    if (requested === null) return true; // 闸门已回 413（或断连），这里绝不双写第二个响应
     const promptText = String(requested?.message || '').trim();
     if (!promptText) {
       json(res, 400, { ok: false, error: 'message 字段必填' });
@@ -498,8 +514,9 @@ export async function handlePiAgentRoutes(req, res, url, deps) {
   // v2.0 遥测心跳捎带 (Heartbeat Piggybacking)
   // ============================================================
   if (url.pathname === '/api/v1/a2a/heartbeat' && req.method === 'POST') {
-    const payload = await readJsonBody(req);
-    if (!payload) {
+    const payload = await readJsonBody(req, res, json);
+    if (payload === null) return true; // 闸门已回 413（或断连），这里绝不双写第二个响应
+    if (!payload || payload === INVALID_JSON_BODY) {
       json(res, 400, { ok: false, error: '非法 JSON 请求体' });
       return true;
     }

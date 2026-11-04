@@ -5,8 +5,9 @@
 // 两个真源。
 //
 // 返回约定：命中本模块管辖的 pathname 就返回 true，未命中返回 false。
-// 注意 /api/report/build 里的 await 全在 req.on('end', async () => ...) 回调内，
-// 不在分支体顶层，所以本模块不需要声明为 async（与 diagnostics 不同）。
+// 注意 /api/report/build 里的 await 全在 runJsonRoute 的回调内（T3-7 起请求体走
+// http_body.js 的上限闸门），不在分支体顶层；本模块声明为 async 是为了 index.js
+// 能 await 派发结果，与 diagnostics 同形（闸门接线要求见 tests/http_body_limit.test.js 断言 13）。
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -18,14 +19,17 @@ import {
   runReportPreflight, writeSha256Sidecars,
   runInlineAcceptance, deliveryGateStatus, ACCEPTANCE_VERSION,
 } from '../report.js';
+import { collectJsonBody, runJsonRoute, JSON_BODY_LIMIT } from '../http_body.js';
 
-export function handleReportRoutes(req, res, url, { json, runRemoteRaw }) {
+export async function handleReportRoutes(req, res, url, { json, runRemoteRaw }) {
   if (url.pathname === '/api/report/build' && req.method === 'POST') {
     // 客户交付报告生成（A4/R3）：远端跑引擎 + 三大件回搬本地，一个请求内完成。
     // 失败（引擎退出码 1/2、scp 失败、交付件缺失）一律 500 且 error 带原文，不假成功。
-    let body = '';
-    req.on('data', (chunk) => { body += chunk; });
-    req.on('end', async () => {
+    runJsonRoute(async () => {
+      // T3-7：请求体上限闸门。超限时 collectJsonBody 已回出 413 并交回 null，
+      // 这里必须短路：再写第二个响应会抛 ERR_HTTP_HEADERS_SENT 打死进程。
+      const body = await collectJsonBody(req, res, json, { maxBytes: JSON_BODY_LIMIT });
+      if (body === null) return;
       let requested;
       try {
         requested = JSON.parse(body || '{}');

@@ -4,9 +4,10 @@
 // 注入而不是在这里重复定义，理由是这三个辅助函数在 index.js 的其它路由里仍在用，
 // 复制一份会造出两个真源（改一处漏一处）。
 //
-// 返回约定：命中本模块管辖的 pathname 就返回 true（含"已注册异步回调、稍后才回响应"
-// 的情形），未命中返回 false 让 index.js 继续往下派发。json() 与 uploadError() 都返回
-// undefined，所以绝不能拿它们的返回值当命中信号，必须显式 return true。
+// 返回约定：命中本模块管辖的 pathname 就返回 true（含"已交给 runJsonRoute 异步处理、
+// 稍后才回响应"的情形，T3-7 起），未命中返回 false 让 index.js 继续往下派发。
+// json() 与 uploadError() 都返回 undefined，所以绝不能拿它们的返回值当命中信号，
+// 必须显式 return true。
 import fs from 'node:fs';
 
 import { LINES, DEFAULT_PROJECT, sanitizeProjectId } from '../domain.js';
@@ -17,13 +18,16 @@ import {
   uploadStatus, resolveUploadId, maybeGcStaleUploads, normalizeReservedBytes,
   checkChunkAdmission, writeSessionMeta, clearSessionMeta,
 } from '../upload.js';
+import { collectJsonBody, runJsonRoute, JSON_BODY_LIMIT } from '../http_body.js';
 
-export function handleUploadRoutes(req, res, url, { json, uploadError, runRemote }) {
+export async function handleUploadRoutes(req, res, url, { json, uploadError, runRemote }) {
   if (url.pathname === '/api/upload/init' && req.method === 'POST') {
     // 数据导入第 1 步：创建上传会话（强制归属线）
-    let body = '';
-    req.on('data', (chunk) => { body += chunk; });
-    req.on('end', () => {
+    runJsonRoute(async () => {
+      // T3-7：请求体上限闸门。超限时 collectJsonBody 已回出 413 并交回 null，
+      // 这里必须短路：再写第二个响应会抛 ERR_HTTP_HEADERS_SENT 打死进程。
+      const body = await collectJsonBody(req, res, json, { maxBytes: JSON_BODY_LIMIT });
+      if (body === null) return;
       let requested;
       try {
         requested = JSON.parse(body || '{}');
@@ -167,9 +171,11 @@ export function handleUploadRoutes(req, res, url, { json, uploadError, runRemote
     // runSshAsync。两条 argv 的 timeoutMs 是 900000（15 分钟），同步出口一旦卡住，
     // 主线程会整段停摆，/api/health、SSE 日志流、其它上传全部排在后面。
     // 回调体里抛错不再有同步 try/catch 兜底，末尾统一收敛成 500，避免请求悬挂。
-    let body = '';
-    req.on('data', (chunk) => { body += chunk; });
-    req.on('end', async () => {
+    runJsonRoute(async () => {
+      // T3-7：请求体上限闸门。超限时 collectJsonBody 已回出 413 并交回 null，
+      // 这里必须短路：再写第二个响应会抛 ERR_HTTP_HEADERS_SENT 打死进程。
+      const body = await collectJsonBody(req, res, json, { maxBytes: JSON_BODY_LIMIT });
+      if (body === null) return;
       // 异步化之后，抛错不再被同步 try/catch 捕获：这里统一收敛成 500，
       // 避免异常变成未处理的 rejection 让请求一直悬着。
       try {

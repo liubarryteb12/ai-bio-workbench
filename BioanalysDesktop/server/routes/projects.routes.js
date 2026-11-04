@@ -4,7 +4,7 @@
 // 注入项的定义仍在 index.js（守卫与测试按 index.js 统计那些符号），此处不复制第二份。
 // 返回约定：命中本模块管辖的 pathname 就返回 true。json() 与 uploadError() 返回
 // undefined，不能当命中信号，所以分支顶层的 return 一律改成「先响应、再显式 return true」。
-// 嵌套回调（req.on('end')、map、setImmediate）里的 return 是回调返回值，保持原样。
+// 嵌套回调（runJsonRoute 的回调、map、setImmediate）里的 return 是回调返回值，保持原样。
 import {
   DEFAULT_PROJECT, LINES, PROJECTS_ROOT, normalizeDataSource, normalizeDatasets, resolveLineFromDataType, sanitizeProjectId,
 } from '../domain.js';
@@ -16,6 +16,7 @@ import {
 import { BLACKLIST_HINT, checkTumorBlacklist } from '../tumor_blacklist.js';
 import { shellQuote } from '../proc.js';
 import { describeSeries, loadWorkflows, resolvePlan, validateRegistry } from '../workflow_graph.js';
+import { collectJsonBody, runJsonRoute, JSON_BODY_LIMIT } from '../http_body.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -41,7 +42,7 @@ function readLocalProjectMeta(repoRoot, projectId) {
   }
 }
 
-export function handleProjectRoutes(req, res, url, {
+export async function handleProjectRoutes(req, res, url, {
   PORTAL_INBOX, deployDataFiles, isSafeManifestName, json,
   lineFromPipeline, listInboxManifests, listProjectsWithMeta, readPackageManifest,
   runRemote, runRemoteRaw, uploadPreparedFigureScripts,
@@ -65,11 +66,13 @@ export function handleProjectRoutes(req, res, url, {
   if (url.pathname === '/api/projects/create' && req.method === 'POST') {
     // 建项目：建三线数据子目录 + 写 project.json，已存在则拒绝（不覆盖）
     // v2 支持四段式 manifest：basicInfo / dataSource / pipelineDag / aclAndOutput
-    let body = '';
-    req.on('data', (chunk) => { body += chunk; });
-    req.on('end', async () => {
+    runJsonRoute(async () => {
+      // T3-7：请求体上限闸门。超限时 collectJsonBody 已回出 413 并交回 null，
+      // 这里必须短路：再写第二个响应会抛 ERR_HTTP_HEADERS_SENT 打死进程。
+      const body = await collectJsonBody(req, res, json, { maxBytes: JSON_BODY_LIMIT });
+      if (body === null) return;
       // T1.5：本链路里的图模板 scp 与数据文件 scp 都已改异步，回调随之变成 async。
-      // 抛错不再被同步 try/catch 捕获，这里统一收敛成 500，避免请求悬挂。
+      // 抛错由 runJsonRoute 统一收敛成 500（T3-7），避免请求悬挂与未处理 rejection。
       try {
         let requested;
         try {
@@ -218,9 +221,11 @@ export function handleProjectRoutes(req, res, url, {
 
   // 非肿瘤正则黑名单校验（前端实时调用，输入时红字拦截）
   if (url.pathname === '/api/blacklist/check' && req.method === 'POST') {
-    let body = '';
-    req.on('data', (chunk) => { body += chunk; });
-    req.on('end', () => {
+    runJsonRoute(async () => {
+      // T3-7：请求体上限闸门。超限时 collectJsonBody 已回出 413 并交回 null，
+      // 这里必须短路：再写第二个响应会抛 ERR_HTTP_HEADERS_SENT 打死进程。
+      const body = await collectJsonBody(req, res, json, { maxBytes: JSON_BODY_LIMIT });
+      if (body === null) return;
       let payload;
       try {
         payload = JSON.parse(body || '{}');
@@ -259,9 +264,11 @@ export function handleProjectRoutes(req, res, url, {
 
   // 组合合法性预检：客户端勾完步骤后先问一次，别等远端跑爆才发现
   if (url.pathname === '/api/workflows/resolve' && req.method === 'POST') {
-    let body = '';
-    req.on('data', (chunk) => { body += chunk; });
-    req.on('end', async () => {
+    runJsonRoute(async () => {
+      // T3-7：请求体上限闸门。超限时 collectJsonBody 已回出 413 并交回 null，
+      // 这里必须短路：再写第二个响应会抛 ERR_HTTP_HEADERS_SENT 打死进程。
+      const body = await collectJsonBody(req, res, json, { maxBytes: JSON_BODY_LIMIT });
+      if (body === null) return;
       // T1.5：建项链路里的图模板 scp 与数据文件 scp 都已改异步，回调随之变成 async。
       // 抛错不再有同步 try/catch 兜底，这里统一收敛成 500，避免请求悬挂。
       try {
@@ -304,9 +311,11 @@ export function handleProjectRoutes(req, res, url, {
 
   // 单个项目的关键元数据：Studio 用它显示"这批图按什么模板/阈值出的"
   if (url.pathname === '/api/projects/figures/apply' && req.method === 'POST') {
-    let body = '';
-    req.on('data', (chunk) => { body += chunk; });
-    req.on('end', async () => {
+    runJsonRoute(async () => {
+      // T3-7：请求体上限闸门。超限时 collectJsonBody 已回出 413 并交回 null，
+      // 这里必须短路：再写第二个响应会抛 ERR_HTTP_HEADERS_SENT 打死进程。
+      const body = await collectJsonBody(req, res, json, { maxBytes: JSON_BODY_LIMIT });
+      if (body === null) return;
       // T1.5：图模板脚本上传已改异步，回调随之变成 async；抛错统一收敛成 500。
       try {
         let requested;
@@ -429,9 +438,11 @@ export function handleProjectRoutes(req, res, url, {
   }
 
   if (url.pathname === '/api/projects/execution-plan' && req.method === 'POST') {
-    let body = '';
-    req.on('data', (chunk) => { body += chunk; });
-    req.on('end', () => {
+    runJsonRoute(async () => {
+      // T3-7：请求体上限闸门。超限时 collectJsonBody 已回出 413 并交回 null，
+      // 这里必须短路：再写第二个响应会抛 ERR_HTTP_HEADERS_SENT 打死进程。
+      const body = await collectJsonBody(req, res, json, { maxBytes: JSON_BODY_LIMIT });
+      if (body === null) return;
       let requested;
       try {
         requested = JSON.parse(body || '{}');

@@ -265,7 +265,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   // 项目与建项路由，处理体在 routes/projects.routes.js
-  if (handleProjectRoutes(req, res, url, routeCtx)) {
+  if (await handleProjectRoutes(req, res, url, routeCtx)) {
     return;
   }
 
@@ -282,7 +282,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   // 图件与图形路由，处理体在 routes/figures.routes.js
-  if (handleFiguresRoutes(req, res, url, routeCtx)) {
+  if (await handleFiguresRoutes(req, res, url, routeCtx)) {
     return;
   }
 
@@ -308,12 +308,12 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (handleReportRoutes(req, res, url, routeCtx)) return;
+  if (await handleReportRoutes(req, res, url, routeCtx)) return;
 
-  if (handleUploadRoutes(req, res, url, routeCtx)) return;
+  if (await handleUploadRoutes(req, res, url, routeCtx)) return;
 
   // 任务路由（列表 / 下发 / 中止 / 日志流），处理体在 routes/tasks.routes.js
-  if (handleTasksRoutes(req, res, url, routeCtx)) {
+  if (await handleTasksRoutes(req, res, url, routeCtx)) {
     return;
   }
 
