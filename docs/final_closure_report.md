@@ -160,12 +160,12 @@ npm run clean:workspace
 
 | 层 | 内容 | 文件数 |
 |---|---|---|
-| L1 软件核心 | BioanalysDesktop/ ops/ src/ portal/ shared/ bin/ configs/ tests/ aims/ docs/ .github/ 根级文件 | 618（含前端 dist 3） |
-| L1 附加 | 测试依赖闭包（react/react-dom/scheduler/loose-envify/js-tokens/esbuild/@esbuild） | 92 |
+| L1 软件核心 | BioanalysDesktop/ ops/ src/ portal/ shared/ bin/ configs/ tests/ aims/ docs/ .github/ 根级文件 | 620（含前端 dist 3 与测试依赖闭包 92） |
 | L2 真源资产 | reference/ con_hf/ cn_debug/ local_projects/ deliverables/ | 821 |
 | L3 便携运行时 | vendor/tools（node v24.19.0 + MSYS ssh/scp/tar/sha256sum/openssl + 全部 msys-*.dll） | 81 |
+| 公开验签公钥 | 只带 `ops/secrets/ed25519_public.pem`（公钥非机密；私钥与 token 永不进包） | 1 |
 | 入口 | 5 个 .cmd 启动器 + 使用说明.md + MANIFEST | 6 |
-| **合计** | **dist/portable/BioanalysWorkbench，约 172 MB** | **1526** |
+| **合计** | **dist/portable/BioanalysWorkbench，约 172 MB** | **1529** |
 
 L4 运行时产物不进包：.tmp/ outputs/ projects/ artifacts/ project_data/ node_modules/ .npmcache/ Python/ vendor/ dist/ .git/。
 
@@ -177,7 +177,7 @@ L4 运行时产物不进包：.tmp/ outputs/ projects/ artifacts/ project_data/ 
 |---|---|
 | `gate.cmd`（gate:all 七道） | **GATE_ALL_OK 7 道全绿，11 秒** |
 | 全量测试 | **1354 tests / 0 fail**，63 条跳过全部命中 8 类白名单原因 |
-| 交付验收四关（包内样例包） | **DELIVERY_ACCEPTANCE_OK**：sidecar `b5c74f06…`、unpack 解出 PRJ_NAFLD_E2E_20261028_Client_Delivery、signature VERIFIED 112、set_equality 业务 111 全在清单、counts 合计 117 |
+| 交付验收四关（包内跑样例包） | **DELIVERY_ACCEPTANCE_OK**：sidecar `f6b71cb1…`、unpack 解出 PRJ_AIMS_V3_20261027_Client_Delivery、signature VERIFIED 357、set_equality 业务 356 全在清单、counts 合计 352。**不传 --public-key 也通过**，因为包内带了公开验签公钥 |
 
 对比开发机同轮基线：GATE_ALL_OK 7 道全绿 78 秒，1354 tests / 1336 pass / 0 fail / 18 skipped。
 两环境 fail 都是 0，pass/skip 的分配差来自宿主能力（无 git/无 pwsh/无设备），不是行为差。
