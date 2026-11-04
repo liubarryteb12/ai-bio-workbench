@@ -286,3 +286,6 @@
 {"id":"ACT-1793778370348-20780e","ts":"2026-11-04T07:46:10.349Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_telemetry_restart","detail":{"before":"000","after":"000","outcome":"sidecar_missing","ok":false}}
 {"id":"ACT-1793778370354-3635c5","ts":"2026-11-04T07:46:10.354Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_telemetry_restart","detail":{"before":"000","after":"000","outcome":"no_session","ok":false}}
 {"id":"ACT-1793778370357-3e3fc4","ts":"2026-11-04T07:46:10.357Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_telemetry_restart","detail":{"before":"000","after":"000","outcome":"down","ok":false}}
+{"id":"ACT-1793779381514-20d1e2","ts":"2026-11-04T08:03:01.514Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_telemetry_restart","detail":{"before":"000","after":"000","outcome":"sidecar_missing","ok":false}}
+{"id":"ACT-1793779381516-e78913","ts":"2026-11-04T08:03:01.516Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_telemetry_restart","detail":{"before":"000","after":"000","outcome":"no_session","ok":false}}
+{"id":"ACT-1793779381519-aac508","ts":"2026-11-04T08:03:01.519Z","type":"action","kind":"mod_pi_observability","action":"pi_agent_telemetry_restart","detail":{"before":"000","after":"000","outcome":"down","ok":false}}
