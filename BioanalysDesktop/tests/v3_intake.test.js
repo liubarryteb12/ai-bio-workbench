@@ -19,36 +19,75 @@ import {
 
 // ---------- 统计阈值三档 ----------
 
-test('三档阈值数值与 aims v3.0 完全一致', () => {
-  assert.deepEqual(ANALYSIS_CUTOFFS.standard_sci, { log2fc: 1.0, padj: 0.05, p: null });
-  assert.deepEqual(ANALYSIS_CUTOFFS.sensitive, { log2fc: 0.585, padj: null, p: 0.05 });
-  assert.deepEqual(ANALYSIS_CUTOFFS.strict, { log2fc: 1.5, padj: 0.01, p: null });
-  assert.deepEqual(CUTOFF_PROFILES, ['standard_sci', 'sensitive', 'strict']);
+test('三档阈值数值与提交页展示口径完全一致', () => {
+  // 提交页对客户展示的就是这三个数：log2FC 0.5 / 1 / 2，p 0.1 / 0.05 / 0.05
+  assert.deepEqual(ANALYSIS_CUTOFFS.loose, { log2fc: 0.5, p: 0.1 });
+  assert.deepEqual(ANALYSIS_CUTOFFS.standard, { log2fc: 1.0, p: 0.05 });
+  assert.deepEqual(ANALYSIS_CUTOFFS.strict, { log2fc: 2.0, p: 0.05 });
+  assert.deepEqual(CUTOFF_PROFILES, ['loose', 'standard', 'strict']);
 });
 
 test('阈值归一化：缺失回标准档，非法档位回落并标记', () => {
   const def = normalizeAnalysisCutoffs(undefined);
-  assert.equal(def.profile, 'standard_sci');
+  assert.equal(def.profile, 'standard');
   assert.equal(def.log2fc_threshold, 1.0);
   assert.equal(def.padj_threshold, 0.05);
   assert.equal(def.max_mt_percent, 15);
   assert.equal(def.profileFallback, false);
 
-  const sens = normalizeAnalysisCutoffs({ profile: 'sensitive' });
-  assert.equal(sens.log2fc_threshold, 0.585);
-  assert.equal(sens.padj_threshold, 0.05);
+  const loose = normalizeAnalysisCutoffs({ profile: 'loose' });
+  assert.equal(loose.log2fc_threshold, 0.5);
+  assert.equal(loose.p_threshold, 0.1);
 
   const bad = normalizeAnalysisCutoffs({ profile: 'whatever' });
-  assert.equal(bad.profile, 'standard_sci');
+  assert.equal(bad.profile, 'standard');
   assert.equal(bad.profileFallback, true);
+});
+
+test('阈值归一化：旧档位名映射到新档位，不被静默改判', () => {
+  // 历史库里落过 standard_sci / sensitive，导入时必须还认，且数值对得上
+  const legacyStd = normalizeAnalysisCutoffs({ profile: 'standard_sci' });
+  assert.equal(legacyStd.profile, 'standard');
+  assert.equal(legacyStd.profileFallback, false);
+  assert.equal(legacyStd.log2fc_threshold, 1.0);
+
+  const legacySens = normalizeAnalysisCutoffs({ profile: 'sensitive' });
+  assert.equal(legacySens.profile, 'loose');
+  assert.equal(legacySens.profileFallback, false);
+  assert.equal(legacySens.log2fc_threshold, 0.5);
 });
 
 test('阈值归一化：调用方给的显式数值优先于档位预设', () => {
   const c = normalizeAnalysisCutoffs({ profile: 'strict', log2fc_threshold: 2.0, max_mt_percent: 20 });
   assert.equal(c.log2fc_threshold, 2.0);
   assert.equal(c.max_mt_percent, 20);
-  // padj 未显式给，仍取 strict 预设
-  assert.equal(c.padj_threshold, 0.01);
+  // p 未显式给，仍取 strict 预设
+  assert.equal(c.p_threshold, 0.05);
+});
+
+test('阈值归一化：use_adj_p 派生唯一显著性判据字段', () => {
+  // 不勾 = 用名义 p 判显著
+  const nominal = normalizeAnalysisCutoffs({ profile: 'loose', use_adj_p: false });
+  assert.equal(nominal.use_adj_p, false);
+  assert.equal(nominal.effective_p_field, 'pvalue');
+  assert.equal(nominal.effective_p_threshold, 0.1);
+  assert.equal(nominal.adj_p_threshold, null);
+
+  // 勾了 = 用 adj.P 判显著，阈值取客户另填的 adj_p_threshold
+  const adjusted = normalizeAnalysisCutoffs({ profile: 'loose', use_adj_p: true, adj_p_threshold: 0.02 });
+  assert.equal(adjusted.use_adj_p, true);
+  assert.equal(adjusted.effective_p_field, 'padj');
+  assert.equal(adjusted.adj_p_threshold, 0.02);
+  assert.equal(adjusted.effective_p_threshold, 0.02);
+
+  // 勾了但没另填 = 沿用档位的 p 值
+  const fallback = normalizeAnalysisCutoffs({ profile: 'strict', use_adj_p: true });
+  assert.equal(fallback.adj_p_threshold, 0.05);
+  assert.equal(fallback.effective_p_threshold, 0.05);
+
+  // 非数值的 adj.P 不许污染判据
+  const junk = normalizeAnalysisCutoffs({ profile: 'standard', use_adj_p: true, adj_p_threshold: 'abc' });
+  assert.equal(junk.adj_p_threshold, 0.05);
 });
 
 // ---------- 生物学先验 ----------
@@ -259,8 +298,9 @@ test('buildProjectMeta：四个 intake 块全部落进 project.json', () => {
   assert.equal(meta.schema_version, 3);
   assert.deepEqual(meta.biological_priors.focus_genes, ['IL17A', 'S100A8']);
   assert.equal(meta.biological_priors.target_ko_gene, 'TNF');
-  assert.equal(meta.analysis_cutoffs.profile, 'sensitive');
-  assert.equal(meta.analysis_cutoffs.log2fc_threshold, 0.585);
+  // 旧档位名 sensitive 落进 project.json 时归一成新档位 loose，数值跟着新档位走
+  assert.equal(meta.analysis_cutoffs.profile, 'loose');
+  assert.equal(meta.analysis_cutoffs.log2fc_threshold, 0.5);
   // 旧 id 落进 project.json 时归一成新 id（规则逐字段相同）
   assert.equal(meta.plot_layout_config.template_id, 'template_16x9');
   assert.equal(meta.plot_layout_config.theme_rules.legend_position, 'bottom_center');
@@ -271,7 +311,7 @@ test('buildProjectMeta：四个 intake 块全部落进 project.json', () => {
 test('buildProjectMeta：什么都不传时四块取安全默认值（不抛错、不留 undefined）', () => {
   const meta = buildProjectMeta({ id: 'prj_default', basicInfo: { name: '默认' }, groupingDesign: twoGroups });
   assert.deepEqual(meta.biological_priors, { focus_genes: [], target_ko_gene: '', ko_fallback_policy: 'strict_abort' });
-  assert.equal(meta.analysis_cutoffs.profile, 'standard_sci');
+  assert.equal(meta.analysis_cutoffs.profile, 'standard');
   assert.equal(meta.plot_layout_config.template_id, 'template_4x3');
   assert.equal(meta.experimental_design.is_paired, false);
   assert.deepEqual(meta.validation_group_mapping, { val_control_samples: [], val_treat_samples: [], invalid: true });

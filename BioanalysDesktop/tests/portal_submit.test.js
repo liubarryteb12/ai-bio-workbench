@@ -65,7 +65,14 @@ const PAYLOAD = {
     data_source_mode: 'PUBLIC_DB', source: 'GEO',
     datasets: [{ gse: 'GSE10001', gpl: 'GPL570', role: 'train' }],
   },
-  groupingDesign: { mode: 'two_group', groups: [], contrasts: [] },
+  groupingDesign: {
+    mode: 'two_group',
+    groups: [
+      { groupName: 'Control', role: 'reference', stageOrder: 0, sampleIds: ['GSM1', 'GSM2'] },
+      { groupName: 'Sepsis', role: 'disease_stage', stageOrder: 1, sampleIds: ['GSM3', 'GSM4'] },
+    ],
+    contrasts: [{ name: 'Sepsis_vs_Control', case: 'Sepsis', ctrl: 'Control', isPrimary: true }],
+  },
   dataFiles: [],
   references: [],
   uploadSid: SID,
@@ -144,8 +151,15 @@ test('老客户端（无数据文件）仍落平铺 JSON，工作台两种形态
       manifest_version: '1.0',
       submitted_at: '2026-10-19_120000',
       basicInfo: { name: '测试项目_旧格式', disease: 'Flu', domain: '呼吸', species: 'Homo sapiens' },
-      dataSource: { source: 'GEO', dataType: 'microarray', trainGse: 'GSE10001', valGse: '', gpl: 'GPL570', sampleCount: 6, tissue: 'Blood', datasets: [{ gse: 'GSE10001', gpl: 'GPL570', role: 'train' }] },
-      groupingDesign: { mode: 'two_group', groups: [] },
+      dataSource: { source: 'GEO', dataType: 'microarray', trainGse: 'GSE10001', valGse: '', gpl: 'GPL570', sampleCount: 6, tissue: 'Blood', datasets: [{ gse: 'GSE10001', gpl: 'GPL570', role: 'train', sampleCount: 6, tissue: 'Blood' }] },
+      groupingDesign: {
+        mode: 'two_group',
+        groups: [
+          { groupName: 'Healthy', role: 'reference', stageOrder: 0, sampleIds: ['GSM1'] },
+          { groupName: 'Flu', role: 'disease_stage', stageOrder: 1, sampleIds: ['GSM2'] },
+        ],
+        contrasts: [{ name: 'Flu_vs_Healthy', case: 'Flu', ctrl: 'Healthy', isPrimary: true }],
+      },
     }),
   });
   const body = await res.json();

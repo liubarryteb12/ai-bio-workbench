@@ -4,7 +4,9 @@
 #
 # 做法：design ~0+group，对照按字典序后者减前者（如 NLS-LS，log2FC 正 = 后者高），
 # lmFit -> contrasts.fit -> eBayes(trend=TRUE)（log2 芯片数据适用 trend）。
-# 显著标准固定：|log2FC| > 1 且 adj.P.Val < 0.05（标准阈值，不随结果调整，防 p-hacking）。
+# 显著标准来自建项时锁死的 analysis_cutoffs（三档 log2FC 0.5/1/2 与 p 0.1/0.05/0.05，
+# 客户勾选是否用 adj.P 判定）。跑的时候只读不写，阈值不随结果调整，防 p-hacking。
+# 没有 project.json 的直接手跑场景回落标准档（|log2FC| > 1 且 adj.P.Val < 0.05）。
 #
 # 注意：两组比较在该数据集上完全可能 0 显著基因（小样本 + 效应弱时 BH 校正后无基因通过）。
 # 这是真实分析结果：脚本照常出全量统计表与报告，0 显著也 exit 0，但报告里写明
@@ -105,41 +107,86 @@ deg_table <- data.table(
 )
 if (any(is.na(deg_table$log2FC)) || any(is.na(deg_table$adj_P_Val))) fail("统计结果含 NA")
 
-# 阈值固定，不随结果调整
-logfc_cut <- 1
-padj_cut <- 0.05
-deg_table[, is_sig := abs(log2FC) > logfc_cut & adj_P_Val < padj_cut]
+# 阈值真源：project.json 的 analysis_cutoffs（第二十九轮契约）。
+# 三档 log2FC 0.5/1/2 与 p 0.1/0.05/0.05 由客户在提交页选定，建项时锁死进台账，
+# 事后不可逆（防按结果反复调阈值）。直接手跑母版时没有 project.json，才回落标准档。
+read_cutoffs <- function() {
+  fallback <- list(log2fc = 1, p_field = "padj", p_cut = 0.05)
+  path <- Sys.getenv("BIOANALYS_PROJECT_JSON", "")
+  if (!nzchar(path) || !file.exists(path)) return(fallback)
+  if (!requireNamespace("jsonlite", quietly = TRUE)) return(fallback)
+  parsed <- tryCatch(jsonlite::fromJSON(path, simplifyVector = FALSE), error = function(e) NULL)
+  cut <- parsed$analysis_cutoffs
+  if (is.null(cut) || !is.list(cut)) return(fallback)
+  num <- function(x, d) {
+    if (is.null(x) || !is.numeric(x) || length(x) != 1 || !is.finite(x) || x <= 0) d else as.numeric(x)
+  }
+  list(
+    log2fc = num(cut$log2fc_threshold, fallback$log2fc),
+    p_field = if (identical(cut$effective_p_field, "pvalue")) "pvalue" else "padj",
+    p_cut = num(cut$effective_p_threshold, fallback$p_cut)
+  )
+}
+cut <- read_cutoffs()
+logfc_cut <- cut$log2fc
+padj_cut <- cut$p_cut
+p_used <- if (cut$p_field == "pvalue") deg_table$P_Value else deg_table$adj_P_Val
+p_label <- if (cut$p_field == "pvalue") "p" else "adj p"
+deg_table[, is_sig := abs(log2FC) > logfc_cut & p_used < padj_cut]
 sig_table <- deg_table[is_sig == TRUE][order(adj_P_Val)]
 fwrite(deg_table[, !"is_sig"], "deg_all.tsv", sep = "\t")
 # 0 显著时也要落带表头的空表：下游拿不到文件比空表更难排查
 fwrite(sig_table[, !"is_sig"], "deg_sig.tsv", sep = "\t")
 
+# 三分类配色对齐 figure_spec v2.2 与第二十九轮 Argon 裁定：
+# 上调红 #EE0000 / 下调蓝 #3B4992 / 不显著灰 #BEBEBE。只按"显著与否"上色会让
+# 上调下调同色，读者看不出方向，所以判据拆成 Up / NS / Down 三档。
+deg_table[, direction := factor(
+  ifelse(is_sig & log2FC > 0, "Up", ifelse(is_sig & log2FC < 0, "Down", "NS")),
+  levels = c("Up", "NS", "Down"))]
+dir_counts <- table(deg_table$direction)
+legend_labels <- c(
+  Up = sprintf("Up (n=%d)", as.integer(dir_counts[["Up"]])),
+  NS = sprintf("NS (n=%d)", as.integer(dir_counts[["NS"]])),
+  Down = sprintf("Down (n=%d)", as.integer(dir_counts[["Down"]])))
+y_max <- max(-log10(deg_table$P_Value), na.rm = TRUE)
 p <- ggplot(deg_table, aes(x = log2FC, y = -log10(P_Value))) +
-  geom_point(aes(color = is_sig), alpha = 0.6, size = 1.2) +
-  scale_color_manual(
-    values = c("TRUE" = "#EE0000", "FALSE" = "grey60"),
-    labels = c("TRUE" = sprintf("significant (n=%d)", nrow(sig_table)),
-               "FALSE" = sprintf("not significant (n=%d)", nrow(deg_table) - nrow(sig_table))),
-    name = NULL) +
-  geom_vline(xintercept = c(-logfc_cut, logfc_cut), linetype = "dashed") +
-  geom_hline(yintercept = -log10(padj_cut), linetype = "dashed") +
+  geom_point(aes(color = direction), alpha = 0.65, size = 1.2) +
+  scale_color_manual(values = c(Up = "#EE0000", NS = "#BEBEBE", Down = "#3B4992"),
+                     labels = legend_labels, drop = FALSE, name = NULL) +
+  geom_vline(xintercept = c(-logfc_cut, logfc_cut), colour = "grey35",
+             linetype = "dashed", linewidth = 0.35) +
+  geom_hline(yintercept = -log10(padj_cut), colour = "grey35",
+             linetype = "dashed", linewidth = 0.35) +
   # 阈值线必须在图内标注（figure_spec §三之三）：p 阈值贴左侧轴框内缘，
-  # log2FC 竖直标注置轴框顶部，避免被点云遮挡。
+  # log2FC 竖直标注置轴框顶部，避免被点云遮挡。口径不同标注不能混用：
+  # 用 adj.P 判显著写 adj p，用名义 p 判显著写 p。
   annotate("text",
            x = min(deg_table$log2FC, na.rm = TRUE) + 0.02 * diff(range(deg_table$log2FC, na.rm = TRUE)),
-           y = -log10(padj_cut) + 0.04 * max(-log10(deg_table$P_Value), na.rm = TRUE),
-           label = sprintf("adj p=%g", padj_cut),
+           y = -log10(padj_cut) + 0.04 * y_max,
+           label = sprintf("%s=%g", p_label, padj_cut),
            hjust = 0, vjust = 0, size = 2.8) +
-  annotate("text", x = logfc_cut, y = max(-log10(deg_table$P_Value), na.rm = TRUE),
+  annotate("text", x = logfc_cut, y = y_max,
            label = sprintf("log2FC=%g", logfc_cut),
            angle = 90, hjust = 1, vjust = 1, size = 2.8) +
-  labs(caption = paste(
-    "line1: limma DEG volcano (step deg_limma)",
-    sprintf("threshold |log2FC|>%g & adj.P<%g", logfc_cut, padj_cut),
-    sprintf("%d genes tested, %d significant", nrow(deg_table), nrow(sig_table)),
+  annotate("text", x = -logfc_cut, y = y_max,
+           label = sprintf("log2FC=-%g", logfc_cut),
+           angle = 90, hjust = 1, vjust = 1, size = 2.8) +
+  labs(x = "log2 fold change", y = sprintf("-log10 %s", p_label),
+       # 画布固定 88mm 宽（layout_autoload 的 template_4x3），8pt 一行只放得下
+       # 约 40 字符；图注超过这个宽度会被 ggsave 裁掉左端，所以逐条压短。
+       caption = paste(
+    "line1: limma DEG volcano",
+    sprintf("threshold |log2FC|>%g & %s<%g", logfc_cut, p_label, padj_cut),
+    sprintf("%d genes, %d significant", nrow(deg_table), nrow(sig_table)),
+    "red = up, blue = down, grey = NS",
     sep = "\n")) +
   theme_classic(base_size = 12) +
-  theme(plot.caption.position = "plot",
+  theme(legend.position = "right",
+        legend.frame = element_blank(),
+        legend.text = element_text(size = 8),
+        legend.title = element_blank(),
+        plot.caption.position = "plot",
         plot.caption = element_text(hjust = 0, size = 8))
 # 出图规范 v2.2：PNG 300dpi 落 <line>/figures/
 dir.create("../figures", showWarnings = FALSE, recursive = TRUE)
@@ -154,7 +201,8 @@ report_lines <- c(
   sprintf("group_map=%s", group_file),
   sprintf("contrast=%s", contrast_text),
   sprintf("method=limma lmFit + eBayes(trend=TRUE)"),
-  sprintf("thresholds=|log2FC|>%g & adj.P.Val<%g", logfc_cut, padj_cut),
+  sprintf("thresholds=|log2FC|>%g & %s<%g (%s)", logfc_cut, p_label, padj_cut,
+          if (cut$p_field == "pvalue") "nominal p" else "adjusted p"),
   sprintf("genes_tested=%d", nrow(deg_table)),
   sprintf("sig_genes=%d (up=%d down=%d)", nrow(sig_table),
           sum(sig_table$log2FC > 0), sum(sig_table$log2FC < 0)),
@@ -182,7 +230,8 @@ cat("genes_tested=", nrow(deg_table), "\n", sep = "")
 cat("sig_genes=", nrow(sig_table), " (up=", sum(sig_table$log2FC > 0), " down=", sum(sig_table$log2FC < 0), ")\n", sep = "")
 cat("min_adj_P_Val=", sprintf("%.4g", min(deg_table$adj_P_Val)), "\n", sep = "")
 if (nrow(sig_table) == 0) {
-  cat("NOTE=无基因通过 |log2FC|>1 & adj.P<0.05，报告已写明证据与建议（见 deg_report.txt）\n")
+  cat(sprintf("NOTE=无基因通过 |log2FC|>%g & %s<%g，报告已写明证据与建议（见 deg_report.txt）\n",
+              logfc_cut, p_label, padj_cut))
 }
 RSCRIPT
 

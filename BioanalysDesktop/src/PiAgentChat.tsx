@@ -34,6 +34,8 @@ type PiOverview = {
   online?: boolean;
   current_model?: { provider: string; model: string } | null;
   a2a_card?: { name: string; version: string; url: string } | null;
+  a2a_status?: string;
+  a2a_reason?: string | null;
   error?: string;
 };
 type CancelState = 'pending' | 'confirmed' | 'failed';
@@ -347,7 +349,11 @@ export function PiAgentChat() {
           {overview == null ? '状态读取中' : online ? '在线' : '离线'}
         </span>
         <span>模型：{overview?.current_model?.model ?? '未知'}</span>
-        <span>A2A：{overview?.a2a_card ? `${overview.a2a_card.name} v${overview.a2a_card.version}` : '不可达'}</span>
+        <span title={overview?.a2a_reason ?? ''}>
+          A2A：{overview?.a2a_card
+            ? `${overview.a2a_card.name} v${overview.a2a_card.version}`
+            : `不可达（${overview?.a2a_status ?? 'unknown'}）`}
+        </span>
         <span>任务：{taskState ? taskStateLabel(taskState) : '空闲'}</span>
         <div className="pi-chat-header-actions">
           {taskId && !isTerminalA2ATaskState(taskState) && (

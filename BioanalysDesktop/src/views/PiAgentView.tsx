@@ -12,6 +12,8 @@ type PiOverview = {
   current_model?: { provider: string; model: string };
   allowed_models?: Array<{ provider: string; model: string }>;
   a2a_card?: { name: string; version: string; url: string } | null;
+  a2a_status?: string;
+  a2a_reason?: string | null;
   battery?: { percentage: string; status: string; plugged: string; temperature: string };
   telemetry?: {
     usage: { total_calls: number; input_tokens: number; output_tokens: number; cost_usd: number } | null;
@@ -184,7 +186,11 @@ export function PiAgentMonitor() {
             <div>模型: <strong>{overview?.current_model?.model ?? '...'}</strong></div>
             <div>tmux: {overview?.tmux_state ?? '...'}</div>
             <div>内存: {overview?.memory ?? '...'}</div>
-            <div>A2A: {overview?.a2a_card ? `${overview.a2a_card.name} v${overview.a2a_card.version}` : '不可达'}</div>
+            <div title={overview?.a2a_reason ?? ''}>
+              A2A: {overview?.a2a_card
+                ? `${overview.a2a_card.name} v${overview.a2a_card.version}`
+                : `不可达（${overview?.a2a_status ?? 'unknown'}）`}
+            </div>
           </div>
         </div>
         <div className="card pi-status-card">

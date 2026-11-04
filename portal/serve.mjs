@@ -39,6 +39,9 @@ import { resolveFigure } from '../BioanalysDesktop/server/figure_graph.js';
 import {
   resolveCatalogFigure, searchFigureCatalog, validateFigureCatalog,
 } from '../BioanalysDesktop/server/figure_catalog.js';
+// 第二十九轮 ⑥：需求单结构的唯一真源。门户与服务端建项共用同一份规则，
+// 这样客户在这里提交通过的东西，工作台那边一定认；反过来这边拦下的，工作台也不会收到半成品。
+import { validateRequirement } from '../shared/requirement_schema.mjs';
 
 const PORT = Number(process.env.PORTAL_PORT || 8080);
 const HOST = process.env.PORTAL_HOST || '127.0.0.1';
@@ -1275,6 +1278,16 @@ function handleSubmit(req, res) {
     }
     if (typeof notes === 'string' && notes.length > 4000) {
       return sendJson(res, 400, { ok: false, error: `备注过长（${notes.length} 字，上限 4000）` });
+    }
+    // 需求单结构总闸（第二十九轮 ⑥）：行级样本数/组织来源、分组角色与对比对、阈值锁死项
+    // 全在这里一次校验。放在落盘之前，客户拿到的是能直接建项的东西，而不是一条只能人工返工的半成品。
+    const reqCheck = validateRequirement(payload);
+    if (!reqCheck.ok) {
+      return sendJson(res, 400, {
+        ok: false,
+        error: `需求单校验未通过: ${reqCheck.errors.join('；')}`,
+        errors: reqCheck.errors,
+      });
     }
     const projectName = (payload && payload.basicInfo && payload.basicInfo.name) || 'requirement';
 

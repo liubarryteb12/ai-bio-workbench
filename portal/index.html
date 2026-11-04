@@ -422,18 +422,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
         <div class="card-sub">每行一组「数据集编号 ↔ 平台编号」。多组数据上传时请逐行配对：不同平台走不同的探针注释与归一化，配对错了预处理就会跑偏。同一 GSE 有多个平台时分多行写。</div>
         <div id="dataset-list"></div>
         <div class="msg err" id="e-datasets" role="alert"></div>
-        <div class="grid-2">
-          <div class="field">
-            <label for="f-sample-count">样本总数</label>
-            <input type="number" id="f-sample-count" name="sampleCount" min="0" inputmode="numeric" placeholder="例如 60…" aria-describedby="h-sample-count">
-            <div class="hint" id="h-sample-count">所有分组样本数量之和。</div>
-          </div>
-          <div class="field">
-            <label for="f-tissue">组织来源</label>
-            <input type="text" id="f-tissue" name="tissue" placeholder="例如：组织 / 体液来源…" aria-describedby="h-tissue">
-            <div class="hint" id="h-tissue">非肿瘤、非免疫浸润的组织或体液来源。</div>
-          </div>
-        </div>
+        <div class="hint" id="h-per-dataset">样本数与组织来源填在每张数据集卡片上，不设项目级总数：一个项目合入多个 GSE 时两项常不同（例如芯片 60 例外周血 + 测序 24 例皮肤），合并成一个值会让预处理按错的注释分支跑。组织来源限非肿瘤、非免疫浸润的组织或体液。</div>
       </div>
       <div class="card" id="mode-card">
         <div class="card-title">数据来源模式<span class="req" aria-hidden="true">*</span></div>
@@ -494,7 +483,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       </div>
       <div class="guide">
         <span class="ico" aria-hidden="true">💡</span>
-        <span><strong>填写引导：</strong>第 1 组默认为基准对照组。若研究「健康 → 轻度 → 重度」这类多阶段演进，请选择「有序阶段演进」并调整顺序。样本编号可直接从 Excel 整列粘贴，系统会自动统计并检查重复。</span>
+        <span><strong>填写引导：</strong>分组角色只有两种：<b>基准组</b>是被拿来当参照的那一组（全项目只有一个），<b>变化组</b>是被检验有没有差异的组。差异结果一律读作「变化组 相对 基准组」。若研究「健康 → 轻度 → 重度」这类多阶段演进，请选择「有序阶段演进」并调整顺序。样本编号可直接从 Excel 整列粘贴，系统会自动统计并检查重复。</span>
       </div>
       <div class="card">
         <div class="field">
@@ -523,10 +512,24 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
         <div class="msg err" id="e-groups" data-testid="group-duplicate-error" role="alert"></div>
       </div>
       <div class="card" id="contrast-card" style="display:none;">
-        <div class="card-title">差异对比对（Contrasts）</div>
-        <div class="card-sub">分组数 ≥ 3 时，请明确「谁比谁」。勾选需要的对比，并指定一个主对比对。</div>
+        <div class="card-title">差异对比对：谁与谁比较<span class="req" aria-hidden="true">*</span></div>
+        <div class="card-sub" id="contrast-sub-auto">两个分组只有一种比较方向，下面已按「变化组 相比 基准组」列出，请核对方向。</div>
+        <div class="card-sub" id="contrast-sub-manual">三组及以上不做自动配对：请逐条选择「变化组」与「基准组」后点击添加，明确这一次比较谁与谁。</div>
+        <div class="grid-3" id="contrast-builder" style="display:none; align-items:end;">
+          <div class="field">
+            <label for="ct-case">变化组（被检验有差异的一方）</label>
+            <select id="ct-case"></select>
+          </div>
+          <div class="field">
+            <label for="ct-ctrl">基准组（作为参照的一方）</label>
+            <select id="ct-ctrl"></select>
+          </div>
+          <div class="field">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-add-contrast">＋ 添加对比对</button>
+          </div>
+        </div>
         <div id="contrast-list"></div>
-        <div class="hint">主对比对将用于核心建模。</div>
+        <div class="hint">勾选保留需要的对比对，并指定其中一个为主对比（用于核心建模）。差异结果一律读作「变化组 相对 基准组」的倍数变化。</div>
       </div>
     </section>
 
@@ -609,6 +612,39 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
           </select>
           <div class="hint" id="h-layout">选中的画幅会随需求单提交，出图时统一套用。</div>
         </div>
+      </div>
+      <div class="card" id="cutoff-card">
+        <div class="card-title">差异基因筛选阈值</div>
+        <div class="card-sub">火山图、MA 图、热图的红蓝着色与显著基因计数全部按这里选的阈值判定。阈值在提交建项时锁死，事后不能按结果反复调，避免 p-hacking。</div>
+        <div class="field">
+          <label for="f-cutoff-profile">阈值档位</label>
+          <select id="f-cutoff-profile" aria-describedby="h-cutoff-profile">
+            <option value="loose">宽松档（|log2FC| &gt; 0.5，p &lt; 0.1）</option>
+            <option value="standard" selected>标准档（|log2FC| &gt; 1.0，p &lt; 0.05）</option>
+            <option value="strict">严格档（|log2FC| &gt; 2.0，p &lt; 0.05）</option>
+          </select>
+          <div class="hint" id="h-cutoff-profile">不确定时选标准档。宽严只影响「哪些基因算显著」，不改变表达矩阵与统计模型。</div>
+        </div>
+        <div class="field">
+          <label class="chk" for="f-use-adjp">
+            <input type="checkbox" id="f-use-adjp" checked />
+            <span>用 adj.P（校正后 p 值）判定显著性</span>
+          </label>
+          <div class="hint" id="h-use-adjp">勾选后按多重检验校正后的 adj.P 判显著（更保守，推荐）；取消勾选则按名义 p 值判，需在下方填写名义 p 阈值。</div>
+        </div>
+        <div class="grid-2">
+          <div class="field" id="f-adjp-wrap">
+            <label for="f-adjp">adj.P 阈值</label>
+            <input type="number" id="f-adjp" min="0.000001" max="0.999999" step="0.001" placeholder="留空则用档位默认值…" aria-describedby="h-adjp" />
+            <div class="hint" id="h-adjp">留空时取档位自带的值（宽松 0.1 / 标准 0.05 / 严格 0.05）。</div>
+          </div>
+          <div class="field" id="f-pval-wrap" style="display:none;">
+            <label for="f-pval">名义 p 阈值</label>
+            <input type="number" id="f-pval" min="0.000001" max="0.999999" step="0.001" placeholder="留空则用档位默认值…" aria-describedby="h-pval" />
+            <div class="hint" id="h-pval">取消勾选 adj.P 后才生效。只用于探索性分析，正式结论建议用 adj.P。</div>
+          </div>
+        </div>
+        <div class="msg err" id="e-cutoff" role="alert"></div>
       </div>
     </section>
 
@@ -787,9 +823,12 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     groupSeq: 2,
     // 数据集 ↔ 平台配对表：多组数据上传时，必须逐行说清「哪个 GPL 属于哪个 GSE」，
     // 扁平的两个编号数组表达不了这层对应关系。
+    // 每行自带样本数与组织来源：一个项目合入多个 GSE 时这两项常不同
+    // （芯片 60 例外周血 + 测序 24 例皮肤），只存一份项目级总数会让预处理走错
+    // 注释分支。项目级不设输入框，manifest 里的顶层值是这里按行派生出来的。
     datasets: [
-      { id: 'd1', gse: '', gpl: '', role: 'train' },
-      { id: 'd2', gse: '', gpl: '', role: 'validation' }
+      { id: 'd1', gse: '', gpl: '', role: 'train', sampleCount: '', tissue: '' },
+      { id: 'd2', gse: '', gpl: '', role: 'validation', sampleCount: '', tissue: '' }
     ],
     datasetSeq: 2,
     // 参考文献：选中即上传，上传成功的才进这个数组（结构 = 服务端返回的 {name, path, size}）
@@ -908,6 +947,43 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     });
     return dup;
   }
+  // 每行数据集的样本数 / 组织来源都是必填：服务端建项契约要求 sampleCount 为正整数，
+  // 而组织来源会进非肿瘤黑名单扫描，缺了就在提交时才发现，不如入口挡住。
+  function datasetRowProblem() {
+    for (var i = 0; i < state.datasets.length; i++) {
+      var d = state.datasets[i];
+      if (!d.gse.trim()) continue;
+      var n = Number(String(d.sampleCount).trim());
+      if (String(d.sampleCount).trim() === '' || !isFinite(n) || Math.floor(n) !== n || n < 1) {
+        return '数据集 ' + (i + 1) + '（' + d.gse.trim() + '）的样本数必须填正整数';
+      }
+      if (!d.tissue.trim()) {
+        return '数据集 ' + (i + 1) + '（' + d.gse.trim() + '）的组织来源必须填写';
+      }
+    }
+    return '';
+  }
+
+  // 项目级样本总数由行级样本数求和派生，不再单独让用户填（用户 2026-11-04 第 1 条）。
+  function datasetTotalCount() {
+    var sum = 0;
+    state.datasets.forEach(function (d) {
+      var n = Number(String(d.sampleCount).trim());
+      if (d.gse.trim() && isFinite(n) && n > 0) sum += n;
+    });
+    return sum;
+  }
+
+  // 项目级组织来源：各行一致时给该值，不一致时按「; 」拼接去重，交给服务端非肿瘤扫描。
+  function datasetTissueSummary() {
+    var seen = {}, out = [];
+    state.datasets.forEach(function (d) {
+      var t = d.tissue.trim();
+      if (d.gse.trim() && t && !seen[t]) { seen[t] = true; out.push(t); }
+    });
+    return out.join('; ');
+  }
+
   // 数据集 ↔ 平台配对表。多组数据上传时必须逐行标清「哪个 GPL 属于哪个 GSE」：
   // 不同平台走不同探针注释与归一化，配对错了预处理就跑偏。
   function renderDatasets() {
@@ -949,8 +1025,28 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       roleSel.addEventListener('change', function (e) { d.role = e.target.value; renderSummary(); renderDfBinds(); });
       roleField.appendChild(roleSel);
 
+      // 样本数 / 组织来源按数据集逐行填：同项目多 GSE 时这两项常不同，
+      // 合并成项目级单值会让预处理按错的注释分支跑（用户 2026-11-04 点名）。
+      var countField = el('div', { class: 'field' }, [
+        el('label', { for: 'd-count-' + d.id, text: '样本数（该数据集）' }),
+        el('input', { type: 'number', id: 'd-count-' + d.id, min: '1', inputmode: 'numeric', placeholder: '例如 60…' })
+      ]);
+      var countIn = countField.querySelector('input');
+      countIn.value = d.sampleCount;
+      countIn.addEventListener('input', function (e) { d.sampleCount = e.target.value; showMsg('e-datasets', '', 'err'); renderSummary(); });
+
+      var tissueField = el('div', { class: 'field' }, [
+        el('label', { for: 'd-tissue-' + d.id, text: '组织来源（该数据集）' }),
+        el('input', { type: 'text', id: 'd-tissue-' + d.id, placeholder: '例如：外周血 / 皮肤…' })
+      ]);
+      var tissueIn = tissueField.querySelector('input');
+      tissueIn.value = d.tissue;
+      tissueIn.addEventListener('input', function (e) { d.tissue = e.target.value; showMsg('e-datasets', '', 'err'); renderSummary(); });
+
       wrap.appendChild(el('div', { class: 'group-card' }, [
-        head, el('div', { class: 'grid-3' }, [gseField, gplField, roleField])
+        head,
+        el('div', { class: 'grid-3' }, [gseField, gplField, roleField]),
+        el('div', { class: 'grid-2' }, [countField, tissueField])
       ]));
     });
   }
@@ -981,7 +1077,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
 
       var roleField = el('div', { class: 'field' }, [el('label', { for: 'g-role-' + g.id, text: '分组角色' })]);
       var roleSel = el('select', { id: 'g-role-' + g.id });
-      [['reference', '基准对照组（Reference）'], ['disease_stage', '疾病 / 实验组']].forEach(function (o) {
+      [['reference', '基准组（作为比较基准，全项目只能有 1 个）'], ['disease_stage', '变化组（被检验有无差异的一组）']].forEach(function (o) {
         var op = el('option', { value: o[0], text: o[1] });
         if (g.role === o[0]) op.selected = true;
         roleSel.appendChild(op);
@@ -1055,32 +1151,101 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     showMsg('e-groups', anyDup ? '⚠ 样本编号跨组重复：' + Object.keys(dups).join('、') : '', 'err');
   }
 
+  // 分组角色与服务端建项校验同口径：有且仅有 1 个基准组（project.js 的
+  // validateCreateContract 与 buildProjectMeta 都按这条拦），变化组至少 1 个。
+  function groupRoleProblem() {
+    var named = state.groups.filter(function (g) { return g.name.trim(); });
+    var refs = named.filter(function (g) { return g.role === 'reference'; });
+    if (refs.length !== 1) {
+      return '基准组必须有且只有 1 个，当前 ' + refs.length + ' 个。请把其中一组改成基准组。';
+    }
+    if (!named.some(function (g) { return g.role !== 'reference'; })) {
+      return '至少需要 1 个变化组（被检验有无差异的组）';
+    }
+    return '';
+  }
+
+  // 对比对必须显式、且恰好 1 条主对比（服务端 contrasts 契约：case/ctrl 引用真实组名）。
+  function contrastProblem() {
+    var on = state.contrasts.filter(function (c) { return c.enabled; });
+    if (!on.length) return '请至少保留 1 条对比对，明确谁与谁比较';
+    if (!state.primary || !on.some(function (c) { return c.name === state.primary; })) {
+      return '请指定 1 条主对比（用于核心建模）';
+    }
+    var names = state.groups.filter(function (g) { return g.name.trim(); }).map(function (g) { return g.name; });
+    for (var i = 0; i < on.length; i++) {
+      if (names.indexOf(on[i].case) < 0 || names.indexOf(on[i].ctrl) < 0) {
+        return '对比对「' + on[i].name + '」引用了已删除的分组，请移除后重新添加';
+      }
+    }
+    return '';
+  }
+
+  // 差异对比对：谁与谁比较（用户 2026-11-04 第 2 条）。
+  // 旧实现按「有 reference 就每个非 reference × reference，否则两两组合」自动生成，
+  // 三组以上时用户看不出哪条是主对比、方向也容易读反；两组时又完全不显示。
+  // 现在改成：两组显式列出唯一方向；三组及以上禁用自动配对，由用户逐条选「变化组 / 基准组」。
   function renderContrasts() {
     var named = state.groups.filter(function (g) { return g.name.trim(); });
     var card = $('contrast-card');
-    if (named.length < 3) { card.style.display = 'none'; state.contrasts = []; return; }
+    var builder = $('contrast-builder');
+    var subAuto = $('contrast-sub-auto');
+    var subManual = $('contrast-sub-manual');
+    if (named.length < 2) {
+      card.style.display = 'none';
+      state.contrasts = [];
+      state.primary = '';
+      return;
+    }
     card.style.display = '';
-    var pairs = [];
-    for (var i = 0; i < named.length; i++)
-      for (var j = 0; j < named.length; j++)
-        if (i !== j && named[j].role === 'reference') pairs.push([named[i], named[j]]);
-    for (var a = 0; a < named.length; a++)
-      for (var b = a + 1; b < named.length; b++)
-        if (named[a].role !== 'reference' && named[b].role !== 'reference') pairs.push([named[b], named[a]]);
-    var seen = {};
-    state.contrasts = pairs.filter(function (p) {
-      var k = p[0].name + '|' + p[1].name;
-      if (seen[k]) return false; seen[k] = true; return true;
-    }).map(function (p) {
-      var ex = state.contrasts.find(function (c) { return c.case === p[0].name && c.ctrl === p[1].name; });
-      return { name: p[0].name + '_vs_' + p[1].name, case: p[0].name, ctrl: p[1].name, enabled: ex ? ex.enabled : true };
-    });
+    var manual = named.length >= 3;
+    builder.style.display = manual ? '' : 'none';
+    subAuto.style.display = manual ? 'none' : '';
+    subManual.style.display = manual ? '' : 'none';
+
+    if (!manual) {
+      // 两组：方向唯一。基准组取 role=reference 的那一组，另一组为变化组。
+      var base = named.filter(function (g) { return g.role === 'reference'; })[0] || named[0];
+      var other = named.filter(function (g) { return g !== base; })[0];
+      var keep = state.contrasts.filter(function (c) { return c.case === other.name && c.ctrl === base.name; })[0];
+      state.contrasts = [{
+        name: other.name + '_vs_' + base.name,
+        case: other.name,
+        ctrl: base.name,
+        enabled: keep ? keep.enabled : true
+      }];
+      state.primary = state.contrasts[0].name;
+    } else {
+      // 三组及以上：只保留仍引用现有组名的手工条目，不再凭空生成配对。
+      var names = named.map(function (g) { return g.name; });
+      state.contrasts = state.contrasts.filter(function (c) {
+        return names.indexOf(c.case) >= 0 && names.indexOf(c.ctrl) >= 0 && c.case !== c.ctrl;
+      });
+      if (state.primary && !state.contrasts.some(function (c) { return c.name === state.primary; })) state.primary = '';
+      var caseSel = $('ct-case'), ctrlSel = $('ct-ctrl');
+      var prevCase = caseSel.value, prevCtrl = ctrlSel.value;
+      caseSel.innerHTML = ''; ctrlSel.innerHTML = '';
+      named.forEach(function (g) {
+        var o1 = el('option', { value: g.name, text: g.name });
+        if (g.name === prevCase) o1.selected = true;
+        caseSel.appendChild(o1);
+        var o2 = el('option', { value: g.name, text: g.name });
+        if (g.name === prevCtrl || (!prevCtrl && g.role === 'reference')) o2.selected = true;
+        ctrlSel.appendChild(o2);
+      });
+    }
+
     var wrap = $('contrast-list'); wrap.innerHTML = '';
     state.contrasts.forEach(function (c, idx) {
       var row = el('div', { class: 'contrast-row' });
       var cb = el('input', { type: 'checkbox', id: 'ct-' + idx }); cb.checked = c.enabled;
       cb.addEventListener('change', function () { c.enabled = cb.checked; });
-      var lbl = el('label', { for: 'ct-' + idx, class: 'c-name', text: c.name });
+      // 无歧义写法：方向写在文字里，不让用户去猜 case/ctrl 谁是被检验方。
+      var lbl = el('label', {
+        for: 'ct-' + idx,
+        class: 'c-name',
+        text: '变化组「' + c.case + '」 相比 基准组「' + c.ctrl + '」'
+      });
       lbl.style.flex = '1'; lbl.style.cursor = 'pointer';
       var radio = el('input', { type: 'radio', name: 'primaryContrast', id: 'pr-' + idx, value: c.name });
       radio.checked = state.primary === c.name;
@@ -1088,6 +1253,15 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       var rlbl = el('label', { for: 'pr-' + idx, text: '主对比' });
       rlbl.style.cssText = 'font-size:12px;color:#64748b;cursor:pointer;';
       row.appendChild(cb); row.appendChild(lbl); row.appendChild(radio); row.appendChild(rlbl);
+      if (manual) {
+        var del = el('button', { type: 'button', class: 'btn-del', text: '移除', 'aria-label': '移除对比对 ' + c.name });
+        del.addEventListener('click', function () {
+          state.contrasts = state.contrasts.filter(function (x) { return x !== c; });
+          if (state.primary === c.name) state.primary = '';
+          renderContrasts();
+        });
+        row.appendChild(del);
+      }
       wrap.appendChild(row);
     });
     if (!state.primary && state.contrasts.length) state.primary = state.contrasts[0].name;
@@ -2060,13 +2234,37 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
   // ============================================================
   // 摘要
   // ============================================================
+  // 阈值摘要：只陈述「会写进项目台账的那几个值」，不在此处复算有效判据。
+  var CUTOFF_PROFILE_LABEL = {
+    loose: '宽松档',
+    standard: '标准档',
+    strict: '严格档'
+  };
+  function cutoffSummary() {
+    var prof = CUTOFF_PROFILES[cutoffProfileId()];
+    var name = CUTOFF_PROFILE_LABEL[cutoffProfileId()] || cutoffProfileId();
+    var head = name + '（|log2FC| > ' + prof.log2fc + '）';
+    if (useAdjP()) {
+      var a = boundaryValue('f-adjp');
+      return head + '，用 adj.P < ' + (a === null ? prof.p : a) + ' 判显著';
+    }
+    var p = boundaryValue('f-pval');
+    return head + '，用名义 p < ' + (p === null ? prof.p : p) + ' 判显著（未校正）';
+  }
+
   function renderSummary() {
     var ul = $('summary'); ul.innerHTML = '';
     var lineName = { line1_bulk: '线 1 · GEO Bulk', line2_scrna: '线 2 · 单细胞 + 虚拟敲除', line3_spatial: '线 3 · 空间 + 虚拟敲除' };
     var dsPairs = state.datasets.filter(function (d) { return d.gse.trim(); }).map(function (d) {
       var role = d.role === 'validation' ? '验证' : '训练';
       var gpl = d.gpl.trim();
-      return gpl ? (d.gse.trim() + '↔' + gpl + '（' + role + '）') : (d.gse.trim() + '（' + role + '，未标平台）');
+      var head = gpl ? (d.gse.trim() + '↔' + gpl + '（' + role + '）') : (d.gse.trim() + '（' + role + '，未标平台）');
+      var n = String(d.sampleCount).trim();
+      var t = d.tissue.trim();
+      var tail = [];
+      if (n) tail.push('n=' + n);
+      if (t) tail.push(t);
+      return tail.length ? (head + ' ' + tail.join(' / ')) : head;
     });
     var lineSel = document.querySelector('input[name="lineId"]:checked');
     var lineSeries = lineSel ? workflowSeries(lineSel.value) : null;
@@ -2082,6 +2280,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       ['分组数', String(state.groups.length)],
       ['分析线', lineSel ? ((lineSeries && lineSeries.name) || lineName[lineSel.value] || lineSel.value) : '未选择'],
       ['分析步骤', picked.length ? picked.length + ' 个' : '未选择'],
+      ['DEG 阈值', cutoffSummary()],
       ['参考文献', state.refs.length ? state.refs.length + ' 篇' : '未上传']
     ];
     // 自有上传模式才显示这两行，公共数据库路径的摘要与既往一致
@@ -2114,7 +2313,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     line2_scrna: '线 2 · 单细胞 + 虚拟敲除',
     line3_spatial: '线 3 · 空间 + 虚拟敲除'
   };
-  var GROUP_ROLE_LABEL = { reference: '基准对照组（Reference）', disease_stage: '疾病 / 实验组' };
+  var GROUP_ROLE_LABEL = { reference: '基准组（比较基准）', disease_stage: '变化组' };
   var GROUP_MODE_LABEL = {
     two_group: '二分类对比（2 组，如对照 vs 疾病）',
     multi_group: '多组无序对比（≥3 组，如亚型 A / B / C）',
@@ -2221,7 +2420,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       ['数据类型', DATA_TYPE_LABEL[ds.dataType] || ds.dataType],
       ['数据库来源', ds.source],
       ['组织来源', ds.tissue],
-      ['样本总数', ds.sampleCount ? String(ds.sampleCount) : ''],
+      ['样本总数', ds.sampleCount ? String(ds.sampleCount) + '（各数据集样本数之和）' : ''],
       ['分组模式', GROUP_MODE_LABEL[g.mode] || g.mode],
       ['非肿瘤合规自查', blHits.length ? ('命中需修改：' + blHits.join('、')) : '本地校验通过（无肿瘤相关词命中）']
     ];
@@ -2233,10 +2432,12 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     // 二、数据集 ↔ 平台配对
     var s2 = prSection('二、数据集 ↔ 平台配对');
     s2.appendChild(prTable(
-      ['序号', 'GSE 数据集编号', 'GPL 平台编号', '用途'],
+      ['序号', 'GSE 数据集编号', 'GPL 平台编号', '用途', '样本数', '组织来源'],
       (ds.datasets || []).map(function (x, i) {
         return [i + 1, x.gse, x.gpl || '（未标平台，按数据类型默认注释）',
-                x.role === 'validation' ? '验证集' : '训练集'];
+                x.role === 'validation' ? '验证集' : '训练集',
+                x.sampleCount ? String(x.sampleCount) : '（未填）',
+                x.tissue || '（未填）'];
       }),
       '（未填写数据集）'
     ));
@@ -2271,13 +2472,13 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     root.appendChild(s3);
 
     // 四、差异对比对
-    var s4 = prSection('四、差异对比对（Contrasts）');
+    var s4 = prSection('四、差异对比对：谁与谁比较');
     s4.appendChild(prTable(
-      ['序号', '对比名称', '实验组 Case', '对照组 Ctrl', '主对比'],
+      ['序号', '对比名称（变化组_vs_基准组）', '变化组（被检验方）', '基准组（参照方）', '主对比'],
       (g.contrasts || []).map(function (c, i) {
         return [i + 1, c.name, c.case, c.ctrl, c.isPrimary ? '★ 主对比（用于核心建模）' : ''];
       }),
-      '（未设置对比对：两组设计默认按「第 2 组 vs 第 1 组」比较）'
+      '（未设置对比对：请回到第 3 步明确谁与谁比较）'
     ));
     root.appendChild(s4);
 
@@ -2310,6 +2511,26 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     root.appendChild(s6);
 
     // 七、备注 / 分析需求补充
+    // 六·补、差异基因筛选阈值（提交后锁死，纸质单上必须留痕）
+    var ac = m.analysisCutoffs || {};
+    var prof = CUTOFF_PROFILES[ac.profile] || CUTOFF_PROFILES.standard;
+    var adjUsed = ac.use_adj_p !== false;
+    var pCut = adjUsed
+      ? (ac.adj_p_threshold != null ? ac.adj_p_threshold : prof.p)
+      : (ac.p_threshold != null ? ac.p_threshold : prof.p);
+    var s6b = prSection('六·补、差异基因筛选阈值');
+    s6b.appendChild(prTable(
+      ['项目', '取值'],
+      [
+        ['阈值档位', (CUTOFF_PROFILE_LABEL[ac.profile] || '标准档') + '（|log2FC| > ' + prof.log2fc + '）'],
+        ['显著性判据', adjUsed ? 'adj.P（多重检验校正后 p 值）' : '名义 p 值（未校正）'],
+        ['显著性阈值', adjUsed ? 'adj.P < ' + pCut : 'p < ' + pCut],
+        ['是否锁死', '是（提交建项后不可逆，避免按结果反复调阈值）']
+      ],
+      '（未设置：按标准档 + adj.P < 0.05 执行）'
+    ));
+    root.appendChild(s6b);
+
     var s7 = prSection('七、备注 / 分析需求补充');
     s7.appendChild(el('pre', { class: 'pr-pre', text: (m.notes || '').trim() || '（未填写）' }));
     root.appendChild(s7);
@@ -2372,6 +2593,65 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
   // ============================================================
   // 校验
   // ============================================================
+  // ============================================================
+  // 差异基因筛选阈值（用户 2026-11-04 第 5 条）
+  // 三档固定枚举 + 「是否用 adj.P」勾选框；勾了就按 adj.P 判显著并可覆盖阈值。
+  // 服务端 normalizeAnalysisCutoffs 是唯一权威：这里只负责把用户意图结构化传过去，
+  // 派生字段（effective_p_field / effective_p_threshold）由服务端算，门户不复算。
+  // ============================================================
+  var CUTOFF_PROFILES = {
+    loose: { log2fc: 0.5, p: 0.1 },
+    standard: { log2fc: 1.0, p: 0.05 },
+    strict: { log2fc: 2.0, p: 0.05 }
+  };
+
+  function cutoffProfileId() {
+    var v = val('f-cutoff-profile');
+    return CUTOFF_PROFILES[v] ? v : 'standard';
+  }
+
+  function useAdjP() { return !!$('f-use-adjp').checked; }
+
+  // 只接受 (0, 1) 内的数；空串表示「用档位默认值」，不算错。
+  function boundaryValue(id) {
+    var raw = String(val(id)).trim();
+    if (!raw) return null;
+    var n = Number(raw);
+    if (!isFinite(n) || n <= 0 || n >= 1) return NaN;
+    return n;
+  }
+
+  function cutoffProblem() {
+    if (useAdjP() && isNaN(boundaryValue('f-adjp'))) {
+      return 'adj.P 阈值必须是 0 到 1 之间的小数（例如 0.05）';
+    }
+    if (!useAdjP() && isNaN(boundaryValue('f-pval'))) {
+      return '名义 p 阈值必须是 0 到 1 之间的小数（例如 0.05）';
+    }
+    return '';
+  }
+
+  function syncCutoffUI() {
+    var adj = useAdjP();
+    $('f-adjp-wrap').style.display = adj ? '' : 'none';
+    $('f-pval-wrap').style.display = adj ? 'none' : '';
+    var prof = CUTOFF_PROFILES[cutoffProfileId()];
+    $('f-adjp').placeholder = '默认 ' + prof.p + '…';
+    $('f-pval').placeholder = '默认 ' + prof.p + '…';
+  }
+
+  function buildAnalysisCutoffs() {
+    var out = { profile: cutoffProfileId(), use_adj_p: useAdjP() };
+    if (useAdjP()) {
+      var a = boundaryValue('f-adjp');
+      if (a !== null) out.adj_p_threshold = a;
+    } else {
+      var p = boundaryValue('f-pval');
+      if (p !== null) out.p_threshold = p;
+    }
+    return out;
+  }
+
   function validateStep(n) {
     var ok = true;
     if (n === 1) {
@@ -2388,6 +2668,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       var dsMissing = state.datasets.filter(function (d) { return !d.gse.trim(); }).length;
       if (!state.datasets.length) { showMsg('e-datasets', '至少需要一组数据集（填 GSE 编号）', 'err'); ok = false; }
       else if (dsMissing) { showMsg('e-datasets', '有 ' + dsMissing + ' 组数据集未填编号（GSE），请补齐后再继续', 'err'); ok = false; }
+      else if (datasetRowProblem()) { showMsg('e-datasets', datasetRowProblem(), 'err'); ok = false; }
       else showMsg('e-datasets', '', 'err');
       // 自有数据上传：至少 1 个文件，且每个文件的绑定仍对得上当前填写的数据集
       if (state.dataSourceMode === 'IN_HOUSE_UPLOAD') {
@@ -2399,6 +2680,8 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     if (n === 3) {
       if (state.groups.length < 2) { showMsg('e-groups', '至少需要 2 个分组', 'err'); ok = false; }
       else if (Object.keys(groupDupIds()).length) { showMsg('e-groups', '存在跨组重复的样本编号', 'err'); ok = false; }
+      else if (groupRoleProblem()) { showMsg('e-groups', groupRoleProblem(), 'err'); ok = false; }
+      else if (contrastProblem()) { showMsg('e-groups', contrastProblem(), 'err'); ok = false; }
       else showMsg('e-groups', '', 'err');
     }
     if (n === 4) {
@@ -2408,7 +2691,8 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       else if (!selectedWorkflowMods().length) { showMsg('e-line', '请至少勾选一个分析步骤', 'err'); ok = false; }
       else if (koGeneProblem()) { showMsg('e-line', koGeneProblem(), 'err'); ok = false; }
       else if (figureTemplateProblem()) { showMsg('e-line', figureTemplateProblem(), 'err'); ok = false; }
-      else showMsg('e-line', '', 'err');
+      else if (cutoffProblem()) { showMsg('e-cutoff', cutoffProblem(), 'err'); ok = false; }
+      else { showMsg('e-cutoff', '', 'err'); showMsg('e-line', '', 'err'); }
     }
     return ok;
   }
@@ -2441,11 +2725,21 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       dataSource: {
         source: val('f-source'),
         dataType: val('f-datatype'),
+        // 行级样本数 / 组织来源是权威值（服务端 normalizeDatasets 行级留空才回落项目级）。
+        // 顶层 sampleCount / tissue 由行级派生，只为兼容只读项目级字段的老下游；
+        // 不给用户第二个可填的地方，避免两处数值打架。
         datasets: state.datasets.map(function (d) {
-          return { gse: d.gse.trim(), gpl: d.gpl.trim(), role: d.role };
+          return {
+            gse: d.gse.trim(),
+            gpl: d.gpl.trim(),
+            role: d.role,
+            dataType: val('f-datatype'),
+            sampleCount: Number(String(d.sampleCount).trim()) || 0,
+            tissue: d.tissue.trim()
+          };
         }).filter(function (d) { return d.gse; }),
-        sampleCount: Number(val('f-sample-count')) || 0,
-        tissue: val('f-tissue')
+        sampleCount: datasetTotalCount(),
+        tissue: datasetTissueSummary()
       },
       groupingDesign: {
         mode: $('f-group-mode').value,
@@ -2470,6 +2764,9 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       // 出图版式：只保留 4:3 / 16:9 两档（2026-10-19 用户拍板）。
       // 字段名与工作台一致（plotLayoutConfig.templateId），value 直接用新 template_id。
       plotLayoutConfig: { templateId: val('f-layout') || 'template_4x3' },
+      // 差异基因筛选阈值：字段名与服务端 project.js 的 normalizeAnalysisCutoffs 完全一致，
+      // 建项时原样写入 project.json 的 analysis_cutoffs 并锁死（事后不可逆）。
+      analysisCutoffs: buildAnalysisCutoffs(),
       // 参考文献：只记元数据与收件箱内相对路径，文件本体已由 /api/references 落在 inbox/refs/<sid>/
       references: state.refs.map(function (r) { return { name: r.name, path: r.path, size: r.size }; }),
       // 备注 / 分析需求补充说明（自由文本，参与服务端非肿瘤合规校验）
@@ -2671,6 +2968,22 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     $('f-disease').addEventListener('input', function (e) { blCheck(e.target.value, 'e-disease'); });
 
     $('f-group-mode').addEventListener('change', function () { renderGroups(); renderContrasts(); });
+    // 三组及以上：用户逐条挑「变化组 / 基准组」再添加，系统不做自动配对。
+    $('btn-add-contrast').addEventListener('click', function () {
+      var c = $('ct-case').value.trim();
+      var b = $('ct-ctrl').value.trim();
+      if (!c || !b) return;
+      if (c === b) { showMsg('e-groups', '变化组与基准组不能是同一组', 'err'); return; }
+      var name = c + '_vs_' + b;
+      if (state.contrasts.some(function (x) { return x.name === name; })) {
+        showMsg('e-groups', '这条对比对已经添加过了', 'err');
+        return;
+      }
+      showMsg('e-groups', '', 'err');
+      state.contrasts.push({ name: name, case: c, ctrl: b, enabled: true });
+      if (!state.primary) state.primary = name;
+      renderContrasts();
+    });
     $('btn-add-group').addEventListener('click', function () {
       state.groupSeq += 1;
       var palette = ['#EE0000', '#F39B7F', '#8C6D31', '#55A868', '#8172B3'];
@@ -2703,10 +3016,16 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     // 数据类型 → 自动锁定分析线
     $('f-datatype').addEventListener('change', function () { applyDataTypeToLine(); renderSummary(); });
 
+    // 差异基因筛选阈值：勾选框切换「adj.P / 名义 p」两组输入，档位变化同步占位提示
+    $('f-use-adjp').addEventListener('change', function () { syncCutoffUI(); showMsg('e-cutoff', '', 'err'); renderSummary(); });
+    $('f-cutoff-profile').addEventListener('change', function () { syncCutoffUI(); renderSummary(); });
+    $('f-adjp').addEventListener('input', function () { showMsg('e-cutoff', '', 'err'); renderSummary(); });
+    $('f-pval').addEventListener('input', function () { showMsg('e-cutoff', '', 'err'); renderSummary(); });
+
     // 数据集 ↔ 平台配对表：新增一行、逐行编辑
     $('btn-add-dataset').addEventListener('click', function () {
       state.datasetSeq += 1;
-      state.datasets.push({ id: 'd' + state.datasetSeq, gse: '', gpl: '', role: state.datasets.length ? 'validation' : 'train' });
+      state.datasets.push({ id: 'd' + state.datasetSeq, gse: '', gpl: '', role: state.datasets.length ? 'validation' : 'train', sampleCount: '', tissue: '' });
       renderDatasets(); renderSummary(); renderDfBinds();
     });
 
@@ -2742,7 +3061,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
 
   function init() {
     initAuth();
-    renderDatasets(); renderGroups(); renderContrasts(); renderOutputs(); renderLineCounts(); renderRefs(); updateNotesCount(); updateDfUi(); bind();
+    renderDatasets(); renderGroups(); renderContrasts(); renderOutputs(); renderLineCounts(); renderRefs(); updateNotesCount(); updateDfUi(); syncCutoffUI(); bind();
     goStep(1, false);
     loadWorkflows();
   }

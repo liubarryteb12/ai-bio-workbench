@@ -148,9 +148,16 @@ const PAYLOAD_ON = {
   dataSource: {
     dataType: 'microarray', sampleCount: 12, tissue: 'Blood', species: 'Homo sapiens',
     data_source_mode: 'PUBLIC_DB', source: 'GEO',
-    datasets: [{ gse: 'GSE10001', gpl: 'GPL570', role: 'train' }],
+    datasets: [{ gse: 'GSE10001', gpl: 'GPL570', role: 'train', sampleCount: 12, tissue: 'Blood' }],
   },
-  groupingDesign: { mode: 'two_group', groups: [], contrasts: [] },
+  groupingDesign: {
+    mode: 'two_group',
+    groups: [
+      { groupName: 'Control', role: 'reference', stageOrder: 0, sampleIds: ['GSM1', 'GSM2'] },
+      { groupName: 'Sepsis', role: 'disease_stage', stageOrder: 1, sampleIds: ['GSM3', 'GSM4'] },
+    ],
+    contrasts: [{ name: 'Sepsis_vs_Control', case: 'Sepsis', ctrl: 'Control', isPrimary: true }],
+  },
   dataFiles: [],
   references: [],
   uploadSid: SID_ON,
@@ -263,9 +270,16 @@ test('未启用态：/health auth_required=false 且全链路（上传+包归档
       dataSource: {
         dataType: 'microarray', sampleCount: 12, tissue: 'Blood', species: 'Homo sapiens',
         data_source_mode: 'PUBLIC_DB', source: 'GEO',
-        datasets: [{ gse: 'GSE10001', gpl: 'GPL570', role: 'train' }],
+        datasets: [{ gse: 'GSE10001', gpl: 'GPL570', role: 'train', sampleCount: 12, tissue: 'Blood' }],
       },
-      groupingDesign: { mode: 'two_group', groups: [], contrasts: [] },
+      groupingDesign: {
+        mode: 'two_group',
+        groups: [
+          { groupName: 'Control', role: 'reference', stageOrder: 0, sampleIds: ['GSM1', 'GSM2'] },
+          { groupName: 'Sepsis', role: 'disease_stage', stageOrder: 1, sampleIds: ['GSM3', 'GSM4'] },
+        ],
+        contrasts: [{ name: 'Sepsis_vs_Control', case: 'Sepsis', ctrl: 'Control', isPrimary: true }],
+      },
       references: [],
       uploadSid: SID_OFF,
       notes: '未启用态回归',

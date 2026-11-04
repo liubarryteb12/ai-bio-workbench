@@ -1,0 +1,377 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bioanalys.local/shared/requirement_schema.json",
+  "title": "客户需求单（requirement.json）",
+  "description": "客户门户（portal/index.html）导出、服务端（BioanalysDesktop）建项所共同遵守的唯一真源。改动此文件必须同时改 portal/index.html 的输入控件与 BioanalysDesktop/server/project.js 的归一化，且 BioanalysDesktop/tests/requirement_schema_contract.test.js 会逐条比对。",
+  "type": "object",
+  "required": [
+    "basicInfo",
+    "dataSource",
+    "groupingDesign"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "manifest_version": {
+      "type": "string"
+    },
+    "submitted_at": {
+      "type": "string"
+    },
+    "basicInfo": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "domain": {
+          "type": "string"
+        },
+        "disease": {
+          "type": "string"
+        },
+        "species": {
+          "type": "string"
+        },
+        "contact": {
+          "type": "string"
+        },
+        "nonTumorVerified": {
+          "type": "boolean"
+        }
+      }
+    },
+    "dataSource": {
+      "type": "object",
+      "required": [
+        "source",
+        "dataType",
+        "datasets"
+      ],
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "dataType": {
+          "type": "string"
+        },
+        "data_source_mode": {
+          "type": "string",
+          "enum": [
+            "PUBLIC_DB",
+            "IN_HOUSE_UPLOAD"
+          ]
+        },
+        "datasets": {
+          "type": "array",
+          "minItems": 1,
+          "description": "每行一个 GSE ↔ GPL 配对。sampleCount 与 tissue 是行级权威值：一个项目合入多个 GSE 时两者常不同，项目级单值会把不准的数字写进台账。",
+          "items": {
+            "type": "object",
+            "required": [
+              "gse",
+              "role",
+              "sampleCount",
+              "tissue"
+            ],
+            "properties": {
+              "gse": {
+                "type": "string",
+                "minLength": 1
+              },
+              "gpl": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "train",
+                  "validation"
+                ]
+              },
+              "dataType": {
+                "type": "string"
+              },
+              "sampleCount": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "tissue": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "sampleCount": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "由行级 sampleCount 求和派生，仅用于兼容只读项目级字段的老下游；必须等于行级合计。"
+        },
+        "tissue": {
+          "type": "string",
+          "description": "由行级 tissue 去重拼接派生，仅用于兼容老下游。"
+        }
+      }
+    },
+    "groupingDesign": {
+      "type": "object",
+      "required": [
+        "mode",
+        "groups",
+        "contrasts"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string"
+        },
+        "groups": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": [
+              "groupName",
+              "role",
+              "sampleIds"
+            ],
+            "properties": {
+              "groupName": {
+                "type": "string",
+                "minLength": 1
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "reference",
+                  "disease_stage"
+                ],
+                "description": "reference = 基准组（全项目恰好 1 个，作为比较基准）；disease_stage = 变化组（被检验有无差异的一方）。差异结果一律读作「变化组 相对 基准组」。"
+              },
+              "stageOrder": {
+                "type": "integer"
+              },
+              "colorHex": {
+                "type": "string"
+              },
+              "sampleIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "contrasts": {
+          "type": "array",
+          "minItems": 1,
+          "description": "显式写明谁与谁比较。至少 2026-11-04 起两组也会产出，不再只在 >=3 组时出现。",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "case",
+              "ctrl",
+              "isPrimary"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "case": {
+                "type": "string",
+                "description": "变化组（被检验方）的组名，必须引用真实存在的组名"
+              },
+              "ctrl": {
+                "type": "string",
+                "description": "基准组（参照方）的组名，必须引用真实存在的组名"
+              },
+              "isPrimary": {
+                "type": "boolean",
+                "description": "全项目恰好 1 条为 true"
+              }
+            }
+          }
+        }
+      }
+    },
+    "analysisCutoffs": {
+      "type": "object",
+      "description": "差异基因筛选阈值。提交建项后锁死，事后不可逆，避免按结果反复调阈值。",
+      "required": [
+        "profile",
+        "use_adj_p"
+      ],
+      "properties": {
+        "profile": {
+          "type": "string",
+          "enum": [
+            "loose",
+            "standard",
+            "strict"
+          ],
+          "description": "loose=|log2FC|>0.5 & p<0.1；standard=|log2FC|>1.0 & p<0.05；strict=|log2FC|>2.0 & p<0.05。历史档位名 standard_sci / sensitive 由服务端映射，不在本枚举内。"
+        },
+        "use_adj_p": {
+          "type": "boolean",
+          "description": "true = 用校正后 adj.P 判显著；false = 用名义 p 值"
+        },
+        "adj_p_threshold": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1,
+          "description": "use_adj_p=true 时生效；留空沿用档位默认值"
+        },
+        "p_threshold": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1,
+          "description": "use_adj_p=false 时生效；留空沿用档位默认值"
+        },
+        "log2fc_threshold": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "覆盖档位自带的 |log2FC| 阈值"
+        },
+        "max_mt_percent": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "plotLayoutConfig": {
+      "type": "object",
+      "properties": {
+        "templateId": {
+          "type": "string"
+        }
+      }
+    },
+    "biologicalPriors": {
+      "type": "object",
+      "properties": {
+        "focusGenes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "targetKoGene": {
+          "type": "string"
+        },
+        "koFallbackPolicy": {
+          "type": "string",
+          "enum": [
+            "strict_abort",
+            "auto_recommend"
+          ]
+        }
+      }
+    },
+    "experimentalDesign": {
+      "type": "object",
+      "properties": {
+        "isPaired": {
+          "type": "boolean"
+        },
+        "pairMap": {
+          "type": "object"
+        },
+        "covariates": {
+          "type": "object"
+        }
+      }
+    },
+    "validationGroupMapping": {
+      "type": "object",
+      "properties": {
+        "valControlSamples": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "valTreatSamples": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "dataFiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string"
+          },
+          "bind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          },
+          "path": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "figure_templates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "template_id"
+        ],
+        "properties": {
+          "template_id": {
+            "type": "string"
+          },
+          "adapt_vars": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "references": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "path"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string",
+            "pattern": "^refs/"
+          },
+          "size": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "string",
+      "maxLength": 4000
+    }
+  }
+}

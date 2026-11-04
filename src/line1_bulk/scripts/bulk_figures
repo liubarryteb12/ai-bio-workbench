@@ -73,9 +73,46 @@ OUT = os.path.join(D, "..", "figures")
 os.makedirs(OUT, exist_ok=True)
 made = []
 
-UP = "#D62728"      # 上调 红
-DOWN = "#1F77B4"    # 下调 蓝
-NS = "#BBBBBB"      # 非显著 灰
+# 三分类配色对齐 figure_spec v2.2 与第二十九轮 Argon 裁定：
+# 上调红 #EE0000 / 下调蓝 #3B4992 / 不显著灰 #BEBEBE。
+UP = "#EE0000"      # 上调 红
+DOWN = "#3B4992"    # 下调 蓝
+NS = "#BEBEBE"      # 非显著 灰
+
+
+def read_cutoffs():
+    """读建项时锁死的统计阈值（project.json 的 analysis_cutoffs）。
+
+    阈值真源在 project.json，脚本只读不写，也不带自己的默认值去覆盖客户选择：
+    真实跑批一定有 BIOANALYS_PROJECT_JSON，拿不到才回落标准档（手跑母版场景）。
+    """
+    fallback = {"log2fc": 1.0, "p_field": "padj", "p_cut": 0.05,
+                "source": "fallback_standard"}
+    path = os.environ.get("BIOANALYS_PROJECT_JSON", "")
+    if not path or not os.path.exists(path):
+        return fallback
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            meta = json.load(fh)
+    except Exception as exc:                     # 坏 project.json 不该伪造阈值
+        log("WARN project.json 读取失败（%s），回落标准档" % exc)
+        return fallback
+    cut = (meta or {}).get("analysis_cutoffs") or {}
+
+    def num(value, default):
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return default
+        return number if number > 0 else default
+
+    field = "pvalue" if cut.get("effective_p_field") == "pvalue" else "padj"
+    return {
+        "log2fc": num(cut.get("log2fc_threshold"), fallback["log2fc"]),
+        "p_field": field,
+        "p_cut": num(cut.get("effective_p_threshold"), fallback["p_cut"]),
+        "source": "project.json",
+    }
 
 
 def log(m):
@@ -450,16 +487,32 @@ if deg is not None:
     neglog_adj = -np.log10(np.clip(padj, 1e-300, 1))
     neglog_nom = -np.log10(np.clip(pv, 1e-300, 1))
 
+    # 阈值真源：project.json 的 analysis_cutoffs（建项时锁死，跑的时候只读不写）。
+    # 手跑没 project.json 时回落标准档 |log2FC|>1 & p<0.05。
+    cutoffs = read_cutoffs()
+    L2_CUT = cutoffs["log2fc"]
+    P_CUT = cutoffs["p_cut"]
+    USE_ADJ = cutoffs["p_field"] == "padj"
+    P_LABEL = "adj p" if USE_ADJ else "p"
+    print("analysis_cutoffs source=%s log2fc=%g p_field=%s p_cut=%g"
+          % (cutoffs["source"], L2_CUT, cutoffs["p_field"], P_CUT))
+
     def classify(pcol):
-        up = (pcol < 0.05) & (l2 > 1)
-        dn = (pcol < 0.05) & (l2 < -1)
+        up = (pcol < P_CUT) & (l2 > L2_CUT)
+        dn = (pcol < P_CUT) & (l2 < -L2_CUT)
         return up, dn, ~(up | dn)
 
-    # 单图原则：FDR 口径与 nominal 口径各出一张独立图，不拼多面板
-    for suffix, pcol, ylab, tag, nlog in [
-            ("fdr", padj, "-log10 adj p (FDR)", "adj p<0.05 (FDR, primary)", neglog_adj),
-            ("nominal", pv, "-log10 nominal p",
-             "nominal p<0.05 (exploratory, not FDR)", neglog_nom)]:
+    # 单图原则：主口径（客户选定的判据）必须出，"另一口径"只在它确实不同时出探索图。
+    # 客户选了 adj.P 就主图出 FDR 口径，选了名义 p 就主图出 nominal 口径，
+    # 主图只用客户锁死的阈值，探索图不冒充主结论。
+    primary_suffix = "fdr" if USE_ADJ else "nominal"
+    panels = [
+        ("fdr", padj, "-log10 adj p (FDR)", None, neglog_adj),
+        ("nominal", pv, "-log10 nominal p", None, neglog_nom)]
+    for suffix, pcol, ylab, _tag, nlog in panels:
+        if suffix != primary_suffix:
+            continue
+        tag = "%s=%g (%s)" % (P_LABEL, P_CUT, "primary, locked at intake")
         up, dn, ns = classify(pcol)
         fig, ax = plt.subplots(figsize=(8, 6.5))
         ax.scatter(l2[ns], nlog[ns], s=6, color=NS, linewidths=0, label="NS")
@@ -467,21 +520,22 @@ if deg is not None:
                    label="Down: %d" % int(dn.sum()))
         ax.scatter(l2[up], nlog[up], s=10, color=UP, linewidths=0,
                    label="Up: %d" % int(up.sum()))
-        ax.axhline(-np.log10(0.05), color="k", lw=0.6, ls="--")
-        ax.axvline(-1, color="k", lw=0.6, ls="--")
-        ax.axvline(1, color="k", lw=0.6, ls="--")
-        # 阈值线在图内注明（规范：火山图须标注 adj p<0.05 与 |log2FC|>1）；
+        ax.axhline(-np.log10(P_CUT), color="k", lw=0.6, ls="--")
+        ax.axvline(-L2_CUT, color="k", lw=0.6, ls="--")
+        ax.axvline(L2_CUT, color="k", lw=0.6, ls="--")
+        # 阈值线在图内注明（规范：火山图须标注阈值线与数值）；
         # p 阈值标注贴左侧轴框内缘：中心点云最密，放中间会被点压住看不见
-        # 口径不同标注不能混用：FDR 口径写 adj p，nominal 口径写 p
-        thr_label = "adj p=0.05" if suffix == "fdr" else "p=0.05"
+        # 口径不同标注不能混用：用 adj.P 判显著写 adj p，用名义 p 判显著写 p
+        thr_label = "%s=%g" % (P_LABEL, P_CUT)
         xlo, xhi = ax.get_xlim()
-        ax.text(xlo + 0.02 * (xhi - xlo), -np.log10(0.05), thr_label,
+        ax.text(xlo + 0.02 * (xhi - xlo), -np.log10(P_CUT), thr_label,
                 fontsize=8, va="bottom", ha="left")
         # log2FC 标注移到轴框顶部，避开底部密集点云与 p 标注
         ytop = ax.get_ylim()[1]
-        ax.text(-1.02, ytop, "log2FC=-1", fontsize=8, va="top", ha="right",
-                rotation=90)
-        ax.text(1.02, ytop, "log2FC=+1", fontsize=8, va="top", rotation=90)
+        ax.text(-L2_CUT - 0.02, ytop, "log2FC=-%g" % L2_CUT, fontsize=8,
+                va="top", ha="right", rotation=90)
+        ax.text(L2_CUT + 0.02, ytop, "log2FC=+%g" % L2_CUT, fontsize=8,
+                va="top", rotation=90)
         ax.set_xlabel(log2fc_label)
         ax.set_ylabel(ylab)
         caption(fig, "line1: DEG volcano", tag, "n=%d genes" % len(deg),
@@ -492,31 +546,34 @@ if deg is not None:
         save(fig, "l1_03_volcano_%s.png" % suffix)
 
     if ave is not None:
-        for suffix, pcol, tag in [
-                ("fdr", padj, "adj p<0.05 (FDR)"),
-                ("nominal", pv, "nominal p<0.05 (exploratory)")]:
-            up, dn, ns = classify(pcol)
-            fig, ax = plt.subplots(figsize=(8, 6.5))
-            ax.scatter(ave[ns], l2[ns], s=6, color=NS, linewidths=0, label="NS")
-            ax.scatter(ave[dn], l2[dn], s=10, color=DOWN, linewidths=0,
-                       label="Down: %d" % int(dn.sum()))
-            ax.scatter(ave[up], l2[up], s=10, color=UP, linewidths=0,
-                       label="Up: %d" % int(up.sum()))
-            ax.axhline(0, color="k", lw=0.6)
-            ax.axhline(-1, color="k", lw=0.5, ls="--")
-            ax.axhline(1, color="k", lw=0.5, ls="--")
-            # 阈值线在图内注明（规范：MA 图须标注 log2FC 阈值）
-            xr = ax.get_xlim()[1]
-            ax.text(xr, 1, " log2FC=+1", fontsize=8, va="bottom", ha="right")
-            ax.text(xr, -1, " log2FC=-1", fontsize=8, va="top", ha="right")
-            ax.set_xlabel("AveExpr (mean normalized expression)")
-            ax.set_ylabel(log2fc_label)
-            caption(fig, "line1: MA plot", tag,
-                    "red = up, blue = down, grey = NS")
-            # 图例外置到轴框下方（figure_spec v2.2：禁止轴内 loc）
-            ax.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.10),
-                      ncol=1, frameon=False)
-            save(fig, "l1_06_ma_%s.png" % suffix)
+        # MA 图同样只按客户锁定的主口径出，阈值取 analysis_cutoffs，不另立一套
+        suffix = primary_suffix
+        pcol = padj if USE_ADJ else pv
+        tag = "%s=%g (%s)" % (P_LABEL, P_CUT, "primary, locked at intake")
+        up, dn, ns = classify(pcol)
+        fig, ax = plt.subplots(figsize=(8, 6.5))
+        ax.scatter(ave[ns], l2[ns], s=6, color=NS, linewidths=0, label="NS")
+        ax.scatter(ave[dn], l2[dn], s=10, color=DOWN, linewidths=0,
+                   label="Down: %d" % int(dn.sum()))
+        ax.scatter(ave[up], l2[up], s=10, color=UP, linewidths=0,
+                   label="Up: %d" % int(up.sum()))
+        ax.axhline(0, color="k", lw=0.6)
+        ax.axhline(-L2_CUT, color="k", lw=0.5, ls="--")
+        ax.axhline(L2_CUT, color="k", lw=0.5, ls="--")
+        # 阈值线在图内注明（规范：MA 图须标注 log2FC 阈值）
+        xr = ax.get_xlim()[1]
+        ax.text(xr, L2_CUT, " log2FC=+%g" % L2_CUT, fontsize=8, va="bottom",
+                ha="right")
+        ax.text(xr, -L2_CUT, " log2FC=-%g" % L2_CUT, fontsize=8, va="top",
+                ha="right")
+        ax.set_xlabel("AveExpr (mean normalized expression)")
+        ax.set_ylabel(log2fc_label)
+        caption(fig, "line1: MA plot", tag,
+                "red = up, blue = down, grey = NS")
+        # 图例外置到轴框下方（figure_spec v2.2：禁止轴内 loc）
+        ax.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.10),
+                  ncol=1, frameon=False)
+        save(fig, "l1_06_ma_%s.png" % suffix)
 
 # --- 05 QC（拆两张单图） ---
 qc = rd("sample_qc.tsv")
@@ -566,7 +623,9 @@ if qc is not None:
 PANEL_FONT_PT = 12   # G1：面板编号字号 >=10pt（图内正文 9pt）
 if (expr is not None and pca is not None and deg is not None and ave is not None
         and "z" in globals()):
-    up_f, dn_f, ns_f = classify(padj)   # FDR 口径，与 l1_03_volcano_fdr / l1_06_ma_fdr 一致
+    # 组合图 A/B 面板跟主图同一口径（客户锁定的判据），不另立 FDR 默认值
+    neglog_primary = neglog_adj if USE_ADJ else neglog_nom
+    up_f, dn_f, ns_f = classify(padj if USE_ADJ else pv)
 
     def panel_letter(ax, letter):
         """G1 面板编号：面板左上角外侧、与面板顶边齐平、bold、字号 12pt（> 正文 9pt）。
@@ -590,24 +649,26 @@ if (expr is not None and pca is not None and deg is not None and ave is not None
                           left=0.055, right=0.955, top=0.945, bottom=0.145,
                           wspace=0.24, hspace=0.30)
 
-    # A = 火山图（FDR 口径；与 l1_03_volcano_fdr 同数据、同阈值、同标注位置规则）
+    # A = 火山图（主口径；与 l1_03_volcano 同数据、同阈值、同标注位置规则）
     axA = fig.add_subplot(gs[0, 0])
-    axA.scatter(l2[ns_f], neglog_adj[ns_f], s=6, color=NS, linewidths=0, label="NS")
-    axA.scatter(l2[dn_f], neglog_adj[dn_f], s=10, color=DOWN, linewidths=0,
+    axA.scatter(l2[ns_f], neglog_primary[ns_f], s=6, color=NS, linewidths=0, label="NS")
+    axA.scatter(l2[dn_f], neglog_primary[dn_f], s=10, color=DOWN, linewidths=0,
                 label="Down: %d" % int(dn_f.sum()))
-    axA.scatter(l2[up_f], neglog_adj[up_f], s=10, color=UP, linewidths=0,
+    axA.scatter(l2[up_f], neglog_primary[up_f], s=10, color=UP, linewidths=0,
                 label="Up: %d" % int(up_f.sum()))
-    axA.axhline(-np.log10(0.05), color="k", lw=0.6, ls="--")
-    axA.axvline(-1, color="k", lw=0.6, ls="--")
-    axA.axvline(1, color="k", lw=0.6, ls="--")
+    axA.axhline(-np.log10(P_CUT), color="k", lw=0.6, ls="--")
+    axA.axvline(-L2_CUT, color="k", lw=0.6, ls="--")
+    axA.axvline(L2_CUT, color="k", lw=0.6, ls="--")
     xlo, xhi = axA.get_xlim()
-    axA.text(xlo + 0.02 * (xhi - xlo), -np.log10(0.05), "adj p=0.05",
+    axA.text(xlo + 0.02 * (xhi - xlo), -np.log10(P_CUT), "%s=%g" % (P_LABEL, P_CUT),
              fontsize=8, va="bottom", ha="left")
     ytop = axA.get_ylim()[1]
-    axA.text(-1.02, ytop, "log2FC=-1", fontsize=8, va="top", ha="right", rotation=90)
-    axA.text(1.02, ytop, "log2FC=+1", fontsize=8, va="top", rotation=90)
+    axA.text(-L2_CUT - 0.02, ytop, "log2FC=-%g" % L2_CUT, fontsize=8, va="top",
+             ha="right", rotation=90)
+    axA.text(L2_CUT + 0.02, ytop, "log2FC=+%g" % L2_CUT, fontsize=8, va="top",
+             rotation=90)
     axA.set_xlabel(log2fc_label)
-    axA.set_ylabel("-log10 adj p (FDR)")
+    axA.set_ylabel("-log10 %s" % P_LABEL)
     panel_letter(axA, "A")
     # G2：up/down/NS 是同一组色码语义，全图组只画一次（B 面板不重复），
     # 位置按横版规则置轴框下方；源级不写轴内 loc（§三之二）。
@@ -620,11 +681,11 @@ if (expr is not None and pca is not None and deg is not None and ave is not None
     axB.scatter(ave[dn_f], l2[dn_f], s=10, color=DOWN, linewidths=0)
     axB.scatter(ave[up_f], l2[up_f], s=10, color=UP, linewidths=0)
     axB.axhline(0, color="k", lw=0.6)
-    axB.axhline(-1, color="k", lw=0.5, ls="--")
-    axB.axhline(1, color="k", lw=0.5, ls="--")
+    axB.axhline(-L2_CUT, color="k", lw=0.5, ls="--")
+    axB.axhline(L2_CUT, color="k", lw=0.5, ls="--")
     xr = axB.get_xlim()[1]
-    axB.text(xr, 1, " log2FC=+1", fontsize=8, va="bottom", ha="right")
-    axB.text(xr, -1, " log2FC=-1", fontsize=8, va="top", ha="right")
+    axB.text(xr, L2_CUT, " log2FC=+%g" % L2_CUT, fontsize=8, va="bottom", ha="right")
+    axB.text(xr, -L2_CUT, " log2FC=-%g" % L2_CUT, fontsize=8, va="top", ha="right")
     axB.set_xlabel("AveExpr (mean normalized expression)")
     axB.set_ylabel(log2fc_label)
     panel_letter(axB, "B")
@@ -675,22 +736,23 @@ if (expr is not None and pca is not None and deg is not None and ave is not None
 
     caption(fig,
             "line1: DEG overview (composite of panels A-D)",
-            "A = DEG volcano, FDR-adjusted (from l1_03_volcano_fdr)",
-            "B = MA plot, FDR-adjusted (from l1_06_ma_fdr)",
+            "A = DEG volcano (from l1_03_volcano_%s)" % primary_suffix,
+            "B = MA plot (from l1_06_ma_%s)" % primary_suffix,
             "C = PCA, PC1 vs PC2, dashed = 95% CI ellipse (from l1_02_pca)",
             "D = top-50 most variable genes, row z-score (from l1_04_topvar_heatmap)",
             "inputs: deg_all.tsv (deg_limma) / pca_scores.tsv (pca_matrix) / "
             "expr_genes.tsv (prep_matrix) / group_map.tsv",
-            "thresholds: adj p<0.05 (FDR) and |log2FC|>1",
-            "n=%d samples, %d genes tested, %d up / %d down (FDR)"
+            "thresholds: %s<%g and |log2FC|>%g" % (P_LABEL, P_CUT, L2_CUT),
+            "n=%d samples, %d genes tested, %d up / %d down"
             % (len(samples), len(deg), int(up_f.sum()), int(dn_f.sum())))
     save(fig, "l1_32_deg_overview.png")
     # G3 可追溯：组合图由哪几张单图组成、生成口径，写进运行日志（台账可查）
     # seed 从环境读：bash 段的 seed 变量不进 Python 作用域（踩过：NameError）
-    log("composite l1_32_deg_overview <- A:l1_03_volcano_fdr + B:l1_06_ma_fdr "
-        "+ C:l1_02_pca + D:l1_04_topvar_heatmap | FDR adj p<0.05, |log2FC|>1 | "
+    log("composite l1_32_deg_overview <- A:l1_03_volcano_%s + B:l1_06_ma_%s "
+        "+ C:l1_02_pca + D:l1_04_topvar_heatmap | %s<%g, |log2FC|>%g | "
         "n=%d samples | seed=%s"
-        % (len(samples), os.environ.get("BIOANALYS_SEED", "UNSET")))
+        % (primary_suffix, primary_suffix, P_LABEL, P_CUT, L2_CUT,
+           len(samples), os.environ.get("BIOANALYS_SEED", "UNSET")))
 else:
     log("skip l1_32_deg_overview: 缺 expr_genes.tsv / pca_scores.tsv / "
         "deg_all.tsv(AveExpr) 之一，无法拼四联图")

@@ -23,36 +23,79 @@ export const PROJECT_META_FILE = 'project.json';
 export const PROJECT_SCHEMA_VERSION = 3;
 
 /**
- * 统计阈值三档预设（aims v3.0 模块 C 第四级）。
+ * 统计阈值三档预设（aims v3.0 模块 C 第四级；第二十九轮按客户口径重定）。
+ *
  * 客户不懂 log2FC/FDR，只要选"多严格"；具体数值在此锁定，前端只展示档位说明。
+ * 三档的 log2FC 阈值 0.5 / 1 / 2 与名义 p 阈值 0.1 / 0.05 / 0.05 就是提交页展示的
+ * 全部数值，客户勾选"用 adj.P 判定"时另填一个 adj.P 值覆盖显著性判据。
  */
 export const ANALYSIS_CUTOFFS = {
-  standard_sci: { log2fc: 1.0, padj: 0.05, p: null },
-  sensitive: { log2fc: 0.585, padj: null, p: 0.05 },
-  strict: { log2fc: 1.5, padj: 0.01, p: null },
+  loose: { log2fc: 0.5, p: 0.1 },
+  standard: { log2fc: 1.0, p: 0.05 },
+  strict: { log2fc: 2.0, p: 0.05 },
 };
 export const CUTOFF_PROFILES = Object.keys(ANALYSIS_CUTOFFS);
+
+/**
+ * 旧档位名到新档位名的映射。
+ * 旧库里落下过 standard_sci / sensitive，导入时必须仍然认识，否则历史项目
+ * 会被静默改判成默认档（数值与客户当初选的档位不符）。
+ */
+export const LEGACY_CUTOFF_PROFILES = {
+  standard_sci: 'standard',
+  sensitive: 'loose',
+  strict: 'strict',
+};
+
+/** 显著性判据用哪一列：校正后 adj.P 还是名义 p */
+export const EFFECTIVE_P_FIELDS = ['padj', 'pvalue'];
 
 /** 虚拟敲除靶基因检出率不足时的兜底策略 */
 export const KO_FALLBACK_POLICIES = ['strict_abort', 'auto_recommend'];
 
+function positiveNumber(value, fallback) {
+  if (value === null || value === undefined || value === '') return fallback;
+  const num = Number(value);
+  return Number.isFinite(num) && num > 0 ? num : fallback;
+}
+
 /**
  * 归一化统计阈值档位。
+ *
+ * 产出唯一判据：effective_p_field / effective_p_threshold。
+ * 下游脚本、出图、报告只认这两个字段，不再各自猜"该用 padj 还是 p"。
+ *   use_adj_p = true  -> effective_p_field='padj'，阈值取 adj_p_threshold
+ *   use_adj_p = false -> effective_p_field='pvalue'，阈值取 p_threshold
  * 未给 profile 用标准档（默认）；profile 非法时按标准档处理并在返回值里标记，
  * 不静默扩散一个没定义过的档位名到下游脚本。
  */
 export function normalizeAnalysisCutoffs(cutoffs) {
   const requested = String(cutoffs?.profile || '').trim();
-  const preset = ANALYSIS_CUTOFFS[requested] ? requested : 'standard_sci';
+  const mapped = LEGACY_CUTOFF_PROFILES[requested] || requested;
+  const known = Boolean(ANALYSIS_CUTOFFS[mapped]);
+  const preset = known ? mapped : 'standard';
   const base = ANALYSIS_CUTOFFS[preset];
+  const pThreshold = positiveNumber(cutoffs?.p_threshold, base.p);
+  const padjThreshold = positiveNumber(cutoffs?.padj_threshold, base.p);
+  // 勾选框语义：没勾就是不用 adj.P；勾了才让 adj_p_threshold 生效
+  const useAdjP = cutoffs?.use_adj_p === undefined || cutoffs?.use_adj_p === null
+    ? true
+    : Boolean(cutoffs.use_adj_p);
+  const adjPThreshold = useAdjP
+    ? positiveNumber(cutoffs?.adj_p_threshold, padjThreshold)
+    : null;
   return {
     profile: preset,
-    // 只在"给了值但不是合法档位"时标记回落；没给等于选默认档，不算回退
-    profileFallback: requested.length > 0 && !ANALYSIS_CUTOFFS[requested],
-    log2fc_threshold: Number(cutoffs?.log2fc_threshold ?? base.log2fc),
-    padj_threshold: Number(cutoffs?.padj_threshold ?? base.padj ?? 0.05),
-    p_threshold: Number(cutoffs?.p_threshold ?? base.p ?? 0.05),
-    max_mt_percent: Number(cutoffs?.max_mt_percent ?? 15),
+    // 只在"给了值但既不是新档位也不是旧档位"时标记回落
+    profileFallback: requested.length > 0 && !known,
+    log2fc_threshold: positiveNumber(cutoffs?.log2fc_threshold, base.log2fc),
+    p_threshold: pThreshold,
+    padj_threshold: padjThreshold,
+    use_adj_p: useAdjP,
+    adj_p_threshold: adjPThreshold,
+    effective_p_field: useAdjP ? 'padj' : 'pvalue',
+    effective_p_threshold: useAdjP ? adjPThreshold : pThreshold,
+    max_mt_percent: positiveNumber(cutoffs?.max_mt_percent, 15),
   };
 }
 
@@ -399,11 +442,79 @@ function validateCreateContract(params) {
   if (!DATA_TYPE_IDS.includes(dataType)) {
     throw new Error(`dataType 缺失或非法: "${dataType}"，只能是 ${DATA_TYPE_IDS.join(' / ')}`);
   }
+  // 行级样本数与组织来源（第二十九轮 ①）：一个项目合入多个 GSE 时两者常不同，
+  // 项目级单值会把不准的数字写进台账。行级是权威值，顶层 sampleCount 只在
+  // 客户没填行级时兜底（历史需求文件），并校验「顶层 == 行级之和」防止两处打架。
+  const dsRows = Array.isArray(params.dataSource?.datasets) ? params.dataSource.datasets : [];
+  const hasRowCount = (d) => d?.sampleCount !== undefined && d?.sampleCount !== null && d?.sampleCount !== '';
+  const hasRowTissue = (d) => String(d?.tissue ?? '').trim() !== '';
+  const anyRowCount = dsRows.some(hasRowCount);
+  const anyRowTissue = dsRows.some(hasRowTissue);
+  // 行级是权威：只要有任意一行填了，就必须每行都填（半填会让下游拿不准哪一行是真值）。
+  // 全部留空视为历史需求文件（2026-10-29 之前的门户不产出行级字段），此时才允许
+  // 回落到项目级 sampleCount / tissue —— 与 domain.js normalizeDatasets 同一套继承规则。
+  if (anyRowCount && !dsRows.every(hasRowCount)) {
+    throw new Error(
+      `每个数据集都要有自己的样本数（正整数 >=1），当前值: ${JSON.stringify(
+        dsRows.map((d) => ({ gse: d?.gse ?? '', sampleCount: d?.sampleCount ?? null })),
+      )}`,
+    );
+  }
+  if (anyRowTissue && !dsRows.every(hasRowTissue)) {
+    const missing = dsRows.filter((d) => !hasRowTissue(d)).map((d) => d?.gse ?? '');
+    throw new Error(`每个数据集都要有自己的组织来源，缺失的数据集: ${JSON.stringify(missing)}`);
+  }
+  const rowCounts = dsRows.map((d) => Number(d?.sampleCount));
+  if (anyRowCount) {
+    const bad = rowCounts.filter((n) => !Number.isInteger(n) || n < 1);
+    if (bad.length) {
+      throw new Error(`每个数据集的样本数必须是正整数（>=1），非法值: ${JSON.stringify(bad)}`);
+    }
+  }
+  const rowSum = anyRowCount ? rowCounts.reduce((a, b) => a + b, 0) : 0;
   // sampleCount：正整数（0/负数/小数/字符串一律拒；数字字符串也拒——类型必须是 number）
   const rawSampleCount = params.dataSource?.sampleCount;
   const sampleCount = Number(rawSampleCount);
   if (typeof rawSampleCount !== 'number' || !Number.isInteger(sampleCount) || sampleCount < 1) {
     throw new Error(`sampleCount 必须是正整数（>=1），当前值: ${JSON.stringify(rawSampleCount ?? null)}`);
+  }
+  if (anyRowCount && sampleCount !== rowSum) {
+    throw new Error(
+      `dataSource.sampleCount 与逐数据集样本数之和不一致: 顶层 ${sampleCount}，行级合计 ${rowSum}。` +
+      '行级是权威值，顶层由行级派生，两者必须相等',
+    );
+  }
+  // analysisCutoffs（第二十九轮 ⑤）：档位只能是三档之一（旧档位名先映射），
+  // use_adj_p 必须是布尔，阈值必须落在 (0,1)。脏值会静默改变显著基因集。
+  const rawCutoffs = params.analysisCutoffs;
+  if (rawCutoffs !== undefined && rawCutoffs !== null) {
+    if (typeof rawCutoffs !== 'object' || Array.isArray(rawCutoffs)) {
+      throw new Error('analysisCutoffs 必须是对象');
+    }
+    const rawProfile = String(rawCutoffs.profile ?? '').trim();
+    if (rawProfile && !CUTOFF_PROFILES.includes(LEGACY_CUTOFF_PROFILES[rawProfile] || rawProfile)) {
+      throw new Error(
+        `analysisCutoffs.profile 非法: "${rawProfile}"，只能是 ${CUTOFF_PROFILES.join(' / ')}（历史档位名 ${Object.keys(LEGACY_CUTOFF_PROFILES).join(' / ')} 也认）`,
+      );
+    }
+    if (rawCutoffs.use_adj_p !== undefined && typeof rawCutoffs.use_adj_p !== 'boolean') {
+      throw new Error(`analysisCutoffs.use_adj_p 必须是布尔，当前值: ${JSON.stringify(rawCutoffs.use_adj_p)}`);
+    }
+    for (const key of ['log2fc_threshold', 'p_threshold', 'adj_p_threshold', 'padj_threshold']) {
+      const v = rawCutoffs[key];
+      if (v === undefined || v === null) continue;
+      const n = Number(v);
+      const upper = key === 'log2fc_threshold' ? Infinity : 1;
+      if (!Number.isFinite(n) || n <= 0 || n >= upper) {
+        const range = key === 'log2fc_threshold' ? '正数' : '(0,1) 之间的小数';
+        throw new Error(`analysisCutoffs.${key} 必须是${range}，当前值: ${JSON.stringify(v)}`);
+      }
+    }
+    // 勾了 adj.P 就必须给出一个判据值（可来自档位默认），没勾就必须走名义 p，
+    // 不允许「勾着 adj.P 却只填了 p_threshold」这种自相矛盾的组合。
+    if (rawCutoffs.use_adj_p === true && rawCutoffs.p_threshold != null && rawCutoffs.adj_p_threshold == null) {
+      throw new Error('勾选「用 adj.P 判定显著性」时必须给 adj_p_threshold（或留空沿用档位默认值），不要只填 p_threshold');
+    }
   }
   // contrasts：case/ctrl 必须引用存在的组名；给了对比就恰好一条 primary。
   // 两条 contrasts 都为空（二组模式）时不强制 primary——工作台在 <3 组时不生成对比。

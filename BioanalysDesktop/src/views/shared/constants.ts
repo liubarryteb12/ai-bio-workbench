@@ -30,11 +30,11 @@ export const LAYOUT_TEMPLATE_OPTIONS = [
   { id: 'template_16x9', label: '16:9（图例底部 · 横向宽幅）' },
 ];
 
-// 统计阈值三档（server/project.js ANALYSIS_CUTOFFS 同值）
+// 统计阈值三档（server/project.js ANALYSIS_CUTOFFS 同值，数值改动必须两处同步）
 export const CUTOFF_PROFILE_OPTIONS = [
-  { id: 'standard_sci', label: '标准科研档（log2FC ≥ 1.0，padj < 0.05）' },
-  { id: 'sensitive', label: '灵敏档（log2FC ≥ 0.585，p < 0.05）' },
-  { id: 'strict', label: '严格档（log2FC ≥ 1.5，padj < 0.01）' },
+  { id: 'loose', label: '宽松档（|log2FC| > 0.5，p < 0.1）' },
+  { id: 'standard', label: '标准档（|log2FC| > 1.0，p < 0.05）' },
+  { id: 'strict', label: '严格档（|log2FC| > 2.0，p < 0.05）' },
 ];
 // 虚拟敲除靶基因检出率不足时的兜底策略（server/project.js KO_FALLBACK_POLICIES 同值）
 export const KO_FALLBACK_OPTIONS = [

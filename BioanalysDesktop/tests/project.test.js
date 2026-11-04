@@ -364,7 +364,7 @@ test('strict：完整 intake payload（含 IN_HOUSE 三件套 + 16:9 模板）�
     },
     pipelineDag: [{ order: 1, stepId: 'deg_limma', tool: 'limma', lang: 'R' }],
     plotLayoutConfig: { templateId: 'template_16x9' },
-    analysisCutoffs: { profile: 'sensitive' },
+    analysisCutoffs: { profile: 'loose' },
     biologicalPriors: { focusGenes: ['IL17A'], koFallbackPolicy: 'auto_recommend' },
     experimentalDesign: { isPaired: true, pairMap: { Ctrl_1: 'D1' }, covariates: { batchCol: 'plate', adjustedVariables: ['age'] } },
     validationGroupMapping: { valControlSamples: ['GSM1'], valTreatSamples: ['GSM3'] },
@@ -373,8 +373,117 @@ test('strict：完整 intake payload（含 IN_HOUSE 三件套 + 16:9 模板）�
   assert.equal(meta.data_source.data_source_mode, 'IN_HOUSE_UPLOAD');
   assert.equal(meta.data_source.accession_and_platform.train_id, 'LOC_prj_s24_inhouse_TRAIN');
   assert.equal(meta.plot_layout_config.template_id, 'template_16x9');
-  assert.equal(meta.analysis_cutoffs.profile, 'sensitive');
+  assert.equal(meta.analysis_cutoffs.profile, 'loose');
   assert.equal(meta.biological_priors.ko_fallback_policy, 'auto_recommend');
   assert.equal(meta.experimental_design.cov.batch_col, 'plate');
   assert.equal(meta.validation_group_mapping.invalid, false);
+});
+
+// ── 第二十九轮 ①：行级样本数 / 组织来源 ─────────────────────────
+
+test('strict：行级样本数半填（部分行有、部分行空）被拒，全空才允许回落项目级', () => {
+  const b = strictBase();
+  const half = {
+    ...b,
+    dataSource: {
+      ...b.dataSource,
+      sampleCount: 4,
+      datasets: [
+        { gse: 'GSE16561', gpl: 'GPL6883', role: 'train', sampleCount: 4, tissue: 'Peripheral Blood' },
+        { gse: 'GSE16562', gpl: '', role: 'validation' },
+      ],
+    },
+  };
+  assert.throws(() => buildProjectMetaStrict(half), /每个数据集都要有自己的样本数/);
+
+  const halfTissue = {
+    ...b,
+    dataSource: {
+      ...b.dataSource,
+      sampleCount: 5,
+      datasets: [
+        { gse: 'GSE16561', gpl: 'GPL6883', role: 'train', sampleCount: 4, tissue: 'Peripheral Blood' },
+        { gse: 'GSE16562', gpl: '', role: 'validation', sampleCount: 1, tissue: '' },
+      ],
+    },
+  };
+  assert.throws(() => buildProjectMetaStrict(halfTissue), /每个数据集都要有自己的组织来源/);
+});
+
+test('strict：行级样本数合计与顶层 sampleCount 不一致被拒（两处打架要先解决）', () => {
+  const b = strictBase();
+  const mismatch = {
+    ...b,
+    dataSource: {
+      ...b.dataSource,
+      sampleCount: 60, // 顶层还是老值
+      datasets: [
+        { gse: 'GSE16561', gpl: 'GPL6883', role: 'train', sampleCount: 30, tissue: 'Peripheral Blood' },
+        { gse: 'GSE16562', gpl: '', role: 'validation', sampleCount: 24, tissue: 'Skin' },
+      ],
+    },
+  };
+  assert.throws(() => buildProjectMetaStrict(mismatch), /逐数据集样本数之和不一致/);
+});
+
+test('strict：行级样本数齐全且合计等于顶层时通过，并原样落进 project.json', () => {
+  const b = strictBase();
+  const meta = buildProjectMetaStrict({
+    ...b,
+    dataSource: {
+      ...b.dataSource,
+      sampleCount: 54,
+      datasets: [
+        { gse: 'GSE16561', gpl: 'GPL6883', role: 'train', sampleCount: 30, tissue: 'Peripheral Blood' },
+        { gse: 'GSE16562', gpl: '', role: 'validation', sampleCount: 24, tissue: 'Skin' },
+      ],
+    },
+  });
+  assert.equal(meta.data_source.datasets.length, 2);
+  assert.deepEqual(meta.data_source.datasets.map((d) => d.sampleCount), [30, 24]);
+  assert.deepEqual(meta.data_source.datasets.map((d) => d.tissue), ['Peripheral Blood', 'Skin']);
+});
+
+// ── 第二十九轮 ⑤：阈值契约 ─────────────────────────────────────
+
+test('strict：analysisCutoffs 档位非法被拒且点名档位清单（历史档位名放行）', () => {
+  const b = strictBase();
+  assert.throws(
+    () => buildProjectMetaStrict({ ...b, analysisCutoffs: { profile: 'super_strict' } }),
+    /analysisCutoffs\.profile 非法/
+  );
+  // 旧档位名要认，否则历史需求单导入不了
+  const legacy = buildProjectMetaStrict({ ...b, analysisCutoffs: { profile: 'standard_sci' } });
+  assert.equal(legacy.analysis_cutoffs.profile, 'standard');
+});
+
+test('strict：use_adj_p 必须是布尔，阈值必须落在合法区间', () => {
+  const b = strictBase();
+  assert.throws(
+    () => buildProjectMetaStrict({ ...b, analysisCutoffs: { profile: 'standard', use_adj_p: 'yes' } }),
+    /use_adj_p 必须是布尔/
+  );
+  assert.throws(
+    () => buildProjectMetaStrict({ ...b, analysisCutoffs: { profile: 'standard', adj_p_threshold: 1.5 } }),
+    /adj_p_threshold 必须是\(0,1\) 之间的小数/
+  );
+  assert.throws(
+    () => buildProjectMetaStrict({ ...b, analysisCutoffs: { profile: 'standard', adj_p_threshold: -0.05 } }),
+    /adj_p_threshold 必须是\(0,1\) 之间的小数/
+  );
+  assert.throws(
+    () => buildProjectMetaStrict({ ...b, analysisCutoffs: { profile: 'standard', log2fc_threshold: 0 } }),
+    /log2fc_threshold 必须是正数/
+  );
+});
+
+test('strict：勾了 adj.P 却只填 p_threshold 的组合被拒（自相矛盾的判据）', () => {
+  const b = strictBase();
+  assert.throws(
+    () => buildProjectMetaStrict({
+      ...b,
+      analysisCutoffs: { profile: 'standard', use_adj_p: true, p_threshold: 0.1 },
+    }),
+    /勾选「用 adj\.P 判定显著性」时必须给 adj_p_threshold/
+  );
 });

@@ -166,7 +166,17 @@ export type PortalManifest = {
 export type IntakeExtras = {
   biologicalPriors?: { focusGenes?: string[]; targetKoGene?: string; koFallbackPolicy?: string };
   // 数值键与 server/project.js normalizeAnalysisCutoffs 同形（snake_case；maxMtPercent 为 portal 旧写法兼容）
-  analysisCutoffs?: { profile?: string; log2fc_threshold?: number; padj_threshold?: number; p_threshold?: number; max_mt_percent?: number; maxMtPercent?: number };
+  analysisCutoffs?: {
+    profile?: string;
+    log2fc_threshold?: number;
+    padj_threshold?: number;
+    p_threshold?: number;
+    // 显著性判据：勾了用 adj.P（另填 adj_p_threshold），不勾用名义 p
+    use_adj_p?: boolean;
+    adj_p_threshold?: number;
+    max_mt_percent?: number;
+    maxMtPercent?: number;
+  };
   plotLayoutConfig?: { templateId?: string };
   experimentalDesign?: { isPaired?: boolean; pairMap?: Record<string, string>; covariates?: { batchCol?: string; adjustedVariables?: string[] } };
   validationGroupMapping?: { valControlSamples?: string[]; valTreatSamples?: string[] } | null;
@@ -194,7 +204,15 @@ export type FigureEntry = { name: string; size: number; mtime: number; caption?:
 export type ProjectMetaBrief = {
   projectId: string;
   plotLayoutConfig: { template_id?: string; dpi?: number; theme_rules?: Record<string, unknown> } | null;
-  analysisCutoffs: { profile?: string; log2fc_threshold?: number; padj_threshold?: number } | null;
+  analysisCutoffs: {
+    profile?: string;
+    log2fc_threshold?: number;
+    p_threshold?: number;
+    padj_threshold?: number;
+    use_adj_p?: boolean;
+    adj_p_threshold?: number;
+    effective_p_field?: string;
+  } | null;
   dataSourceMode: string;
   focusGenes: string[];
   targetKoGene: string;

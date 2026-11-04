@@ -50,6 +50,11 @@ const LAYOUT_LEGACY_TO_NEW: Record<string, string> = {
   template_2_cell_wide: 'template_16x9',
   template_3_clinical_note: 'template_4x3',
 };
+// 旧阈值档位名到新档位名（server/project.js LEGACY_CUTOFF_PROFILES 同值）
+const CUTOFF_LEGACY_TO_NEW: Record<string, string> = {
+  standard_sci: 'standard',
+  sensitive: 'loose',
+};
 // WGCNA 参数（server/project.js WGCNA_CONFIG_DEFAULTS 同键，留空走服务端默认）
 const WGCNA_PARAM_FIELDS: Array<{ key: string; label: string; placeholder: string }> = [
   { key: 'top_n_genes', label: 'Top N 高变基因', placeholder: '5000' },
@@ -124,7 +129,10 @@ export function OnboardingPortal({
 
   // 模块 E · v3 intake 分析契约（R2：字段形状照 v3_intake.test.js / server/project.js 归一化契约）
   const [layoutTemplate, setLayoutTemplate] = useState('template_4x3');
-  const [cutoffProfile, setCutoffProfile] = useState('standard_sci');
+  const [cutoffProfile, setCutoffProfile] = useState('standard');
+  // 显著性判据：勾了用 adj.P（客户另填值），不勾用名义 p（走档位预设）
+  const [useAdjP, setUseAdjP] = useState(true);
+  const [adjPThreshold, setAdjPThreshold] = useState('');
   // 显式数值覆盖：留空走档位预设（服务端 normalizeAnalysisCutoffs 只认 snake_case 键）
   const [cutoffOverrides, setCutoffOverrides] = useState<Record<string, string>>({
     log2fc_threshold: '', padj_threshold: '', p_threshold: '', max_mt_percent: '',
@@ -604,7 +612,15 @@ export function OnboardingPortal({
           targetKoGene: koGene.trim(),
           koFallbackPolicy,
         },
-        analysisCutoffs: { profile: cutoffProfile, ...cutoffOverridePayload },
+        analysisCutoffs: {
+          profile: cutoffProfile,
+          ...cutoffOverridePayload,
+          // 勾选框语义：勾了才带 adj_p_threshold，服务端据此派生 effective_p_field
+          use_adj_p: useAdjP,
+          ...(useAdjP && Number.isFinite(Number(adjPThreshold)) && adjPThreshold.trim() !== ''
+            ? { adj_p_threshold: Number(adjPThreshold) }
+            : {}),
+        },
         plotLayoutConfig: { templateId: layoutTemplate },
         experimentalDesign: {
           isPaired,
@@ -651,7 +667,8 @@ export function OnboardingPortal({
       setSampleCount(''); setTissue('');
       setDataSourceMode('PUBLIC_DB'); setTrainMatrixPath(''); setValMatrixPath('');
       setDatasetRows([{ gse: '', gpl: '', role: 'train' }, { gse: '', gpl: '', role: 'validation' }]);
-      setLayoutTemplate('template_4x3'); setCutoffProfile('standard_sci');
+      setLayoutTemplate('template_4x3'); setCutoffProfile('standard');
+      setUseAdjP(true); setAdjPThreshold('');
       setCutoffOverrides({ log2fc_threshold: '', padj_threshold: '', p_threshold: '', max_mt_percent: '' });
       setFocusGenesText(''); setKoFallbackPolicy('strict_abort');
       setIsPaired(false); setPairMapText(''); setBatchCol(''); setAdjustedVarsText('');
@@ -667,7 +684,7 @@ export function OnboardingPortal({
     }
   }, [projectId, name, description, blacklistHit, selectedLine, selectedSteps, hasKnockout, koGene,
     domain, disease, species, dataSource, dataSourceMode, idType, valueScale, trainMatrixPath, valMatrixPath,
-    dataType, datasetRows, sampleCount, tissue, layoutTemplate, cutoffProfile, cutoffOverrides,
+    dataType, datasetRows, sampleCount, tissue, layoutTemplate, cutoffProfile, useAdjP, adjPThreshold, cutoffOverrides,
     focusGenesText, koFallbackPolicy, isPaired, pairMapText, batchCol, adjustedVarsText,
     valControlText, valTreatText, wgcnaParams,
     groupMode, groups, contrasts, primaryContrast, owner, collaborators, outputItems,
@@ -773,12 +790,19 @@ export function OnboardingPortal({
         notesList.push(`出图模板：${LAYOUT_LEGACY_TO_NEW[tid] ?? tid}`);
       }
       if (m.analysisCutoffs?.profile) {
-        if (CUTOFF_PROFILE_OPTIONS.some((o) => o.id === m.analysisCutoffs?.profile)) {
-          setCutoffProfile(m.analysisCutoffs.profile);
+        // 旧档位名（standard_sci / sensitive）先映射成新档位再回填，避免历史需求单落不进选项
+        const rawProfile = m.analysisCutoffs.profile;
+        const mappedProfile = CUTOFF_LEGACY_TO_NEW[rawProfile] ?? rawProfile;
+        if (CUTOFF_PROFILE_OPTIONS.some((o) => o.id === mappedProfile)) {
+          setCutoffProfile(mappedProfile);
         }
-        notesList.push(`统计阈值档：${m.analysisCutoffs.profile}`);
+        notesList.push(`统计阈值档：${mappedProfile}`);
       }
       const incomingCutoffs = m.analysisCutoffs;
+      // 显著性判据：历史需求单没有 use_adj_p，缺省按"用 adj.P"处理
+      if (typeof incomingCutoffs?.use_adj_p === 'boolean') setUseAdjP(incomingCutoffs.use_adj_p);
+      setAdjPThreshold(incomingCutoffs?.adj_p_threshold != null ? String(incomingCutoffs.adj_p_threshold) : '');
+      if (incomingCutoffs?.use_adj_p === false) notesList.push('显著性判据：名义 p 值（未用 adj.P）');
       setCutoffOverrides({
         log2fc_threshold: incomingCutoffs?.log2fc_threshold != null ? String(incomingCutoffs.log2fc_threshold) : '',
         padj_threshold: incomingCutoffs?.padj_threshold != null ? String(incomingCutoffs.padj_threshold) : '',
@@ -1547,11 +1571,27 @@ export function OnboardingPortal({
               </button>
             ))}
           </div>
+          <div className="form-group" style={{ marginTop: 8 }}>
+            <label className="form-label">
+              <input type="checkbox" checked={useAdjP} onChange={(e) => setUseAdjP(e.target.checked)} />
+              {' '}用 adj.P（校正后 p 值）判定显著性
+            </label>
+            <div className="hint">
+              勾选则按 adj.P 判显著，并在下方填 adj.P 阈值；不勾则按档位的名义 p 判定。
+              该选择在提交建项时锁死，事后不可逆，避免按结果反复调阈值。
+            </div>
+            {useAdjP && (
+              <input className="form-input" inputMode="decimal" style={{ marginTop: 8 }}
+                value={adjPThreshold}
+                placeholder="adj.P 阈值，留空沿用档位预设"
+                onChange={(e) => setAdjPThreshold(e.target.value)} />
+            )}
+          </div>
           <div className="form-grid-2" style={{ marginTop: 8 }}>
             {([
               { key: 'log2fc_threshold', label: 'log2FC 阈值（覆盖档位预设）' },
-              { key: 'padj_threshold', label: 'padj 阈值（覆盖档位预设）' },
-              { key: 'p_threshold', label: 'p 阈值（覆盖档位预设）' },
+              { key: 'p_threshold', label: '名义 p 阈值（覆盖档位预设）' },
+              { key: 'padj_threshold', label: 'adj.P 兼底阈值（覆盖档位预设）' },
               { key: 'max_mt_percent', label: '线粒体百分比上限（默认 15）' },
             ] as const).map((f) => (
               <div className="form-group" key={f.key}>

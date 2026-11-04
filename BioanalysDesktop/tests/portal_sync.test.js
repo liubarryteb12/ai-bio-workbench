@@ -88,9 +88,16 @@ test('提交请求落盘时初始化 sync_status=pending', async () => {
       dataSource: {
         dataType: 'microarray', sampleCount: 2, tissue: 'Blood', species: 'Homo sapiens',
         data_source_mode: 'PUBLIC_DB', source: 'GEO',
-        datasets: [{ gse: 'GSE10001', gpl: 'GPL570', role: 'train' }],
+        datasets: [{ gse: 'GSE10001', gpl: 'GPL570', role: 'train', sampleCount: 2, tissue: 'Blood' }],
       },
-      groupingDesign: { mode: 'two_group', groups: [], contrasts: [] },
+      groupingDesign: {
+        mode: 'two_group',
+        groups: [
+          { groupName: 'Control', role: 'reference' },
+          { groupName: 'Sepsis', role: 'disease_stage' },
+        ],
+        contrasts: [{ name: 'Sepsis_vs_Control', case: 'Sepsis', ctrl: 'Control', isPrimary: true }],
+      },
       dataFiles: [],
       references: [],
       notes: 'WP-2.4',
