@@ -175,7 +175,11 @@ test('落盘命令对远端路径整体加引号，元字符不会拆断重定�
   // 重定向目标必须整体在单引号里，不能出现裸露的 "> /path with space"
   assert.match(command, /> '\/mnt\/ssd\/bio_data\/system_logs\/[^']+'/, '重定向目标没加引号');
   assert.doesNotMatch(command, /> \//, '重定向目标裸露，空格会拆断');
-  assert.match(command, /echo WROTE '/, 'WROTE 回显也没加引号');
+  // 断言的是「echo 的**输出**保留 WROTE '<path>' 形态」：路径外的双引号是给远端 shell 的语法，
+  // 单引号才是回执的一部分。旧版 echo WROTE '<path>' 会被 shell 吞掉单引号，
+  // 输出与 persistEntry 判据脱节（第三十六轮 DCM 基准实测）。
+  assert.match(command, /echo WROTE "'/, '回执路径必须包成字面量，让 echo 输出保留单引号');
+  assert.ok(command.includes("'\" $(wc -c"), '回执字节数必须与路径字面量同段 echo');
 });
 
 // ───────────── S26 新增（只增不改）─────────────

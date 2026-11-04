@@ -354,7 +354,7 @@ export function buildLedgerFileName(entry) {
 export function buildLedgerWriteCommand(entry) {
   const remotePath = `${SYSTEM_LOGS}/${buildLedgerFileName(entry)}`;
   const command = `mkdir -p '${SYSTEM_LOGS}' && base64 -d > '${remotePath}'`
-    + ` && echo WROTE '${remotePath}' $(wc -c < '${remotePath}')`;
+    + ` && echo WROTE "'${remotePath}'" $(wc -c < '${remotePath}')`;
   return { command, remotePath };
 }
 
@@ -367,19 +367,38 @@ export function buildLedgerWriteCommand(entry) {
  * 导出是为了测试可用假 ssh 垫片验证 stdin 传输与校验行为。
  * @throws 落盘失败 / 无 WROTE 标记 / 字节数不符
  */
+/**
+ * 从远端输出里解析台账回执 WROTE '<path>' <bytes>，返回声称的字节数；无回执返回 null。
+ *
+ * 兼容两种形态（第三十六轮 DCM 基准实测教训）：带引号 WROTE '/p' 1167 是现行 echo
+ * 输出与既有 mock 的形态；不带引号 WROTE /p 1167 是旧版 echo 被 shell 剥掉引号后的
+ * 真实形态。旧版校验只认带引号，而旧命令的 echo 实际输出不带引号：每条台账落盘成功
+ * 仍被判定「未回 WROTE 标记」。前缀逐字相等（非子串匹配），防其它日志行混算成回执。
+ */
+export function persistReceiptMarker(output, remotePath) {
+  const quoted = "WROTE '" + remotePath + "' ";
+  const plain = 'WROTE ' + remotePath + ' ';
+  for (const line of String(output).split(/\r?\n/)) {
+    const text = line.trim();
+    let rest = null;
+    if (text.startsWith(quoted)) rest = text.slice(quoted.length);
+    else if (text.startsWith(plain)) rest = text.slice(plain.length);
+    if (rest === null) continue;
+    const bytes = Number(rest.trim());
+    if (Number.isFinite(bytes)) return bytes;
+  }
+  return null;
+}
+
 export async function persistEntry(entry, lineId, options = {}) {
   const { command, remotePath } = buildLedgerWriteCommand(entry);
   const payload = Buffer.from(JSON.stringify(entry, null, 2), 'utf8');
   const result = await runSsh(command, payload.toString('base64'), options.sshTarget || 'k40-ubuntu');
-  const marker = result
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .find((line) => line.startsWith(`WROTE '${remotePath}'`));
-  if (!marker) {
+  const reportedBytes = persistReceiptMarker(result, remotePath);
+  if (reportedBytes === null) {
     throw new Error(`写台账失败：远端未回 WROTE 标记（命令疑似被截断或落盘未执行） path=${remotePath} tail=${result.slice(-300)}`);
   }
-  const reportedBytes = Number(marker.split(/\s+/).pop());
-  if (!Number.isFinite(reportedBytes) || reportedBytes !== payload.length) {
+  if (reportedBytes !== payload.length) {
     throw new Error(`写台账失败：远端落盘 ${reportedBytes} 字节 != payload ${payload.length} 字节（疑似半截写入） path=${remotePath}`);
   }
   return { path: remotePath, output: result };
