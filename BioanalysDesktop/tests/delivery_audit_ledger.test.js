@@ -28,7 +28,9 @@ function tmpRoot(tag) {
 }
 
 function greenVerdict(tarSha256 = 'a'.repeat(64)) {
-  return { ok: true, tarSha256, verifiedCount: 112, failures: [] };
+  // coverageOk 是 T2-2 接进审计流的真实字段：审计行不再无条件写 coverage_ok: true，
+  // 而是如实记录验收结论。夹具必须带这个字段，否则测的是「字段缺失时写出了什么」。
+  return { ok: true, tarSha256, verifiedCount: 112, failures: [], coverageOk: true };
 }
 
 test('审计流命名与路径：acceptance_audit.jsonl，落调用方指定目录', () => {

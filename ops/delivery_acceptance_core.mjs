@@ -300,7 +300,10 @@ export function acceptDelivery({
 
 function summarize(gates, deliveryDir) {
   const failures = gates.filter((g) => !g.ok).map((g) => '[' + g.name + '] ' + g.detail);
-  const ok = failures.length === 0 && gates.length === 4;
+  // coverage 计入总判据：set_equality 判「覆盖完备」是四道关里唯一有 coverageOk 语义的一道，
+  // 只把它留在 gates 明细里而不进 ok，会让「覆盖不全」在 sentinel 上显示成四道关全绿。
+  const coverageOk = !!(gates.find((g) => g.name === 'set_equality') || {}).ok;
+  const ok = failures.length === 0 && gates.length === 4 && coverageOk;
   return {
     ok,
     gates,
@@ -308,7 +311,7 @@ function summarize(gates, deliveryDir) {
     deliveryDir,
     tarSha256: gates[0]?.tarSha256 || null,
     verifiedCount: (gates.find((g) => g.name === 'signature') || {}).verifiedCount ?? null,
-    coverageOk: !!(gates.find((g) => g.name === 'set_equality') || {}).ok,
+    coverageOk,
     sentinel: ok ? 'DELIVERY_ACCEPTANCE_OK 四道关全绿' : 'ACCEPTANCE_FAILED ' + failures.length + ' 项',
   };
 }
@@ -347,6 +350,8 @@ export function appendAuditEntry({ projectId, verdict, verifiedAt, auditPath }) 
   if (!verdict || verdict.ok !== true) {
     throw new Error('验收未通过，禁止写审计流：' + ((verdict && verdict.failures) || []).join('；'));
   }
+  // 审计流只记录事实字段，覆盖完备性由 `coverage_ok` 字段本身携带；
+  // 拒绝写入的守卫放在 writeReceipt 入口（回执是放行凭据，审计是历史账）。
   const file = auditPath || process.env.BIO_DELIVERY_AUDIT_PATH || null;
   if (!file) throw new Error('审计流路径缺失：需要显式 auditPath 或 BIO_DELIVERY_AUDIT_PATH');
   const entry = {
@@ -355,7 +360,9 @@ export function appendAuditEntry({ projectId, verdict, verifiedAt, auditPath }) 
     project_id_sha256: hashedProjectId(projectId),
     tar_sha256: verdict.tarSha256,
     verified_count: verdict.verifiedCount,
-    coverage_ok: true,
+    // T2-2：coverage 是 verdict 已算出的结论（gateSetEquality 的 failures 为空），
+    // 审计流是 append-only 总账，写成常量 true 等于把历史证据做成常数。
+    coverage_ok: verdict.coverageOk === true,
     verifier_version: ACCEPTANCE_VERSION,
   };
   fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -377,12 +384,19 @@ export function readAuditLedger(auditPath) {
 
 export function writeReceipt({ projectId, verdict, recordsDir, auditPath, now }) {
   if (!verdict.ok) throw new Error('验收未通过，禁止写回执：' + verdict.failures.join('；'));
+  // `COVERAGE_GUARD`（锚点：mutation_gate 的 M6 会删掉下面三行，要求 T2-2 红测变红）
+  // 回执照写、但把事实与告警一起留下：拒绝写入会让「覆盖不全」这件事从证据链里消失，
+  // 而放行链条由 summarize.ok 把 coverage 计入后自然断掉（拿不到 DELIVERY_ACCEPTANCE_OK）。
+  if (verdict.coverageOk !== true) {
+    console.error('[ WARN ] 覆盖不完备（coverageOk !== true）：回执如实记 coverage_ok=false，本次交付不得放行');
+  }
   const receipt = {
     schema_version: 1,
     project_id: projectId,
     tar_sha256: verdict.tarSha256,
     verified_count: verdict.verifiedCount,
-    coverage_ok: true,
+    // T2-2：回执与审计流必须写同一个已算出的 coverage 结论。
+    coverage_ok: verdict.coverageOk === true,
     verified_at: (now || new Date()).toISOString(),
     verifier_version: ACCEPTANCE_VERSION,
   };

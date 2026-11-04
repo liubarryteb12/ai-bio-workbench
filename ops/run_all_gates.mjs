@@ -39,11 +39,18 @@ export const REPO_ROOT = path.resolve(HERE, '..');
  */
 export const GATES = Object.freeze([
   { id: 'preflight', label: '宿主机依赖预检', exec: 'node', args: ['ops/preflight.mjs'], cwd: '.', slow: false },
-  { id: 'static_gate', label: '静态语言门禁', exec: 'node', args: ['ops/static_gate.mjs'], cwd: '.', slow: false },
+  // static_gate 默认「缺工具即失败」。开发机长期没有 Rscript（16 个 .R 母版本轮未查），
+  // 那边显式降级为警告：降级清单与 [SKIP] 行仍逐条打印，gate:all 的 tail 里看得到「本机少验了 16 个」。
+  // CI runner 装齐 pwsh7 / r-base 后走 strict 路径（不带本参数）。
+  { id: 'static_gate', label: '静态语言门禁', exec: 'node', args: ['ops/static_gate.mjs', '--allow-missing'], cwd: '.', slow: false },
   { id: 'skip_static', label: '跳过原因白名单（静态面）', exec: 'node', args: ['ops/skip_reason_gate.mjs'], cwd: '.', slow: false },
   { id: 'ledger', label: '台账与真源一致', exec: 'node', args: ['ops/ledger_gen.mjs', '--check'], cwd: '.', slow: false },
   { id: 'figure_registry', label: '图件注册表与证据同步', exec: 'node', args: ['ops/build_figure_templates.cjs', '--check'], cwd: '.', slow: false },
   { id: 'audit_summary', label: '交付审计流可解析', exec: 'node', args: ['ops/audit_summary.mjs'], cwd: '.', slow: false },
+  // 第 8 道：变异门禁（T2-6）。它证明的不是「代码对不对」，而是「门禁会不会红」：
+  // 对 7 条关键防线各注入一次真实破坏，任一条没让对应判据变红即整道失败。
+  // 变异只在 .tmp/mutation_gate/ 的临时副本上做，不碰工作树（并发安全）。
+  { id: 'mutation_gate', label: '变异门禁（7 条防线反证）', exec: 'node', args: ['ops/mutation_gate.mjs'], cwd: '.', slow: false },
   { id: 'metrics', label: '全量测试 + 运行时 skip + 基线一致', exec: 'node', args: ['ops/metrics_sync.mjs', '--check'], cwd: '.', slow: true },
 ]);
 
@@ -113,7 +120,7 @@ export function main(argv = process.argv.slice(2), io = { log: console.log, erro
     }, null, 2));
     return outcome.ok ? 0 : 1;
   }
-  io.log('总门禁（八道串联，越便宜越靠前）');
+  io.log('总门禁（' + outcome.results.length + ' 道串联，越便宜越靠前）');
   for (let i = 0; i < outcome.results.length; i += 1) {
     const r = outcome.results[i];
     const tag = r.skipped ? '[SKIP]' : (r.ok ? '[ OK ]' : '[ RED]');

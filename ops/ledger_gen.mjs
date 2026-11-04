@@ -16,7 +16,8 @@
  *
  * 用法：
  *   node ops/ledger_gen.mjs --write   生成并写入 docs/generated/SYSTEM_LEDGER.json
- *   node ops/ledger_gen.mjs           打印到 stdout（用于比对）
+ *   node ops/ledger_gen.mjs --check   只比对：磁盘台账与现算结果字节级一致才 exit 0，差异 exit 1
+ *   node ops/ledger_gen.mjs           打印到 stdout（人看，不参与门禁）
  *
  * 产物 Schema（最小集）：
  *   workflows:        { totalSeries, totalMods, boundScriptsCount, missingScripts[] }
@@ -244,6 +245,34 @@ function main() {
       + ledger.figureTemplates.readyCount + ' 就绪 / '
       + ledger.figureTemplates.pendingCount + ' pending');
     return 0;
+  }
+
+  // `CHECK_BRANCH`（锚点：mutation_gate 的 M3 会删掉本分支，要求 T2-4 红测变红）
+  // 门禁语义：--check 必须与磁盘逐字节比对，不许退化成「把台账打到 stdout 就算通过」。
+  // 之前这里没有分支，--check 走的是下面的 fallthrough，于是第 4 道门禁恒绿。
+  if (process.argv.includes('--check')) {
+    if (!fs.existsSync(OUT_FILE)) {
+      console.error('[ RED ] 磁盘台账不存在：' + path.relative(REPO, OUT_FILE) + '，先跑 node ops/ledger_gen.mjs --write');
+      return 1;
+    }
+    const onDisk = fs.readFileSync(OUT_FILE, 'utf8');
+    if (onDisk === text) {
+      console.log('[ OK ] 台账与真源一致（ledger checksum 相同）');
+      return 0;
+    }
+    const diskLines = onDisk.split('\n');
+    const nowLines = text.split('\n');
+    const max = Math.max(diskLines.length, nowLines.length);
+    let firstDiff = max;
+    for (let i = 0; i < max; i += 1) {
+      if (diskLines[i] !== nowLines[i]) { firstDiff = i + 1; break; }
+    }
+    console.error('[ RED ] 台账与真源不一致（ledger drift）：磁盘 ' + diskLines.length + ' 行 / 现算 '
+      + nowLines.length + ' 行，首个差异在第 ' + firstDiff + ' 行');
+    console.error('  磁盘: ' + JSON.stringify(diskLines[firstDiff - 1] ?? '(缺行)'));
+    console.error('  现算: ' + JSON.stringify(nowLines[firstDiff - 1] ?? '(多行)'));
+    console.error('  修复: node ops/ledger_gen.mjs --write');
+    return 1;
   }
 
   process.stdout.write(text);

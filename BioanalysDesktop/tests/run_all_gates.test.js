@@ -12,9 +12,12 @@ import path from 'node:path';
 
 import { GATES, runAllGates, main, REPO_ROOT } from '../../ops/run_all_gates.mjs';
 
-test('门禁清单：七道齐全，顺序越便宜越靠前，只有最后一道是 slow', () => {
+test('门禁清单：八道齐全，顺序越便宜越靠前，只有最后一道是 slow', () => {
+  // mutation_gate 是 T2-6 的第 8 道：它证明「改坏能让门禁红」，与红测证明的
+  // 「修好能让门禁红」合成闭环。slow 标记只有 metrics 一道，快检仍然秒级。
   assert.deepEqual(GATES.map((g) => g.id), [
-    'preflight', 'static_gate', 'skip_static', 'ledger', 'figure_registry', 'audit_summary', 'metrics',
+    'preflight', 'static_gate', 'skip_static', 'ledger', 'figure_registry', 'audit_summary',
+    'mutation_gate', 'metrics',
   ]);
   assert.equal(GATES.filter((g) => g.slow).length, 1, '只能有一道 slow（全量测试）');
   assert.equal(GATES[GATES.length - 1].slow, true, '最慢的一道必须排最后');
@@ -23,7 +26,7 @@ test('门禁清单：七道齐全，顺序越便宜越靠前，只有最后一�
   }
 });
 
-test('真跑快检：--skip-tests 跳过全量测试，其余六道全绿且总耗时在秒级', () => {
+test('真跑快检：--skip-tests 跳过全量测试，其余七道全绿且总耗时在秒级', () => {
   const logs = [];
   const started = Date.now();
   const code = main(['--skip-tests'], { log: (m) => logs.push(m), error: (m) => logs.push(m) });
@@ -31,9 +34,19 @@ test('真跑快检：--skip-tests 跳过全量测试，其余六道全绿且总�
   const text = logs.join('\\n');
   assert.equal(code, 0, text);
   assert.match(text, /GATE_ALL_OK/);
-  // 输出形态是「[SKIP] 7. <label>」：用字面量匹配，避免方括号被当字符类
-  assert.ok(text.includes('[SKIP] 7. '), '第七道应被跳过，实际输出：\n' + text);
-  assert.ok(elapsed < 30000, '快检不该超过 30 秒，实际 ' + elapsed + 'ms');
+  // 输出形态是「[SKIP] 8. <label>」：用字面量匹配，避免方括号被当字符类。
+  // 序号跟着 GATES 增长走，新增门禁时这里必须同步，否则跳过的是哪一道就不再有断言锁。
+  assert.ok(text.includes('[SKIP] ' + GATES.length + '. '), '最后一道（全量测试）应被跳过，实际输出：\n' + text);
+  // mutation_gate 每轮在临时副本上做 7 条变异（含两次 metrics 探针仓的 node --test），
+  // 实测约 5 秒；上限放到 60 秒，留足慢机与杀软扫包的余量，同时仍能挡住「快检退化成分钟级」。
+  assert.ok(elapsed < 60000, '快检不该超过 60 秒，实际 ' + elapsed + 'ms');
+  // 缺工具不得静默：static_gate 在 gate:all 里显式走 --allow-missing 降级，
+  // 但「本机少验了几个文件」必须出现在 tail 里，否则降级会变成新的静默全绿。
+  const staticGate = GATES.find((g) => g.id === 'static_gate');
+  assert.ok(staticGate.args.includes('--allow-missing'), 'gate:all 必须显式降级而不是隐式放行');
+  const staticResult = runAllGates({ skipSlow: true, gates: [staticGate] }).results[0];
+  const staticText = staticResult.tail.join('\n');
+  assert.match(staticText, /宿主缺工具|未检查|跳过/, '静态门禁必须把「缺工具未检查」写进输出，实际：\n' + staticText);
 });
 
 test('--json 可解析：每道带 status 与耗时，failed 为空', () => {

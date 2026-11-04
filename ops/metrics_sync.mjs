@@ -119,7 +119,9 @@ function measureTests() {
   const pass = pick('pass');
   const fail = pick('fail');
   const skipped = pick('skipped');
-  if (cases === null || pass === null) {
+  // T2-3：实测到 0 个用例不等于「测过了」，它多半意味着 tests 目录被清空/glob 打空
+  // （TAP 对空 glob 仍给 tests 0/pass 0）。把 0 与 null 一并判为未实测，门禁才不会因此放绿。
+  if (cases === null || pass === null || cases === 0) {
     return { files: fileCount, cases: 0, pass: 0, fail: 0, skipped: 0, measured: false, skipGate: null };
   }
   // 零额外耗时的运行时判据：同一份 TAP 文本顺手校验每条 # SKIP 是否命中白名单。
@@ -190,11 +192,15 @@ function main() {
     // 跨机器不变量只有两项：用例总数与失败数。pass/skipped 的分配
     // 合法地随宿主形态漂移（缺 python/bash/设备时按白名单原因跳过），
     // 漂移由「运行时 # SKIP 白名单 + fail=0」两道判据兜住，不再要求 README 记死。
-    const need = [
-      String(metrics.tests.cases),
-      String(metrics.tests.fail),
-    ];
-    const missing = need.filter((n) => !actual.includes(n));
+    // T2-3：判定必须是「基线行里那个数字恰好等于实测值」，不是「实测值的字符串出现在行里任意位置」。
+    // 子串判定在两类撞车下会静默放行：基线 13 含实测 3；基线里的尾巴「3 个测试文件」也含 3。
+    // 用词边界正则 + 紧跟单位名，把 13 / 7 / 9 与 3 / 0 区分开。
+    // 锚点（mutation_gate 用）：判定必须是精确相等，A 型变异即把下一行回退成 includes 子串判定。
+    const measure = (value, unit) => new RegExp('\\b' + value + '\\s+' + unit + '\\b').test(actual);
+    const missing = [
+      { label: '用例数', value: metrics.tests.cases, unit: 'tests' },
+      { label: '失败数', value: metrics.tests.fail, unit: 'fail' },
+    ].filter((item) => !measure(item.value, item.unit)).map((item) => item.label + '=' + item.value);
     if (missing.length > 0) {
       console.error('基线已过期，缺少实测值: ' + missing.join(', '));
       console.error('  现基线: ' + actual);

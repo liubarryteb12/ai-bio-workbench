@@ -26,6 +26,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -46,6 +47,9 @@ export const SACRED_PATTERNS = Object.freeze([
   '.git/',
   'backup/k40_cold',
   'd:\\backup\\k40_cold',
+  // T2-1：桌面端整棵子树都是受控区，其 .tmp 又是清理目标（:101），
+  // 名单漏掉它就会让「护栏放行、清理照删」自相矛盾。按包含判定加一条即可覆盖其下全部路径。
+  'BioanalysDesktop/',
 ]);
 
 function normalizeForMatch(p) {
@@ -82,15 +86,55 @@ function dirSize(dir) {
   return total;
 }
 
+/** 绝对路径 -> 相对 root 的仓库相对路径（posix 分隔符），与 git ls-files 输出可比。 */
+function toRepoRelative(root, full) {
+  return path.relative(root, full).split(path.sep).join('/');
+}
+
+/**
+ * 收集 root 下 git 索引里的仓库相对路径。
+ *
+ * 判定失败（非仓库、无 git、git 报错）时返回空集合并在 onWarn 打一行 WARN：
+ * 此时退化为「不跳过任何文件」，即旧行为，但这行 WARN 让退化本身可见，
+ * 不会被误读成「已确认没有跟踪文件」。
+ */
+export function trackedFiles(root, onWarn = (m) => console.error('[ WARN ] ' + m)) {
+  const result = spawnSync('git', ['ls-files', '--full-name', '-z'], { cwd: root, encoding: 'utf8', timeout: 30000 });
+  const output = result.stdout || '';
+  if (result.error || result.status !== 0) {
+    onWarn('git 不可用（' + String(result.error ? 'spawn 失败' : 'exit ' + result.status) + '），无法判定跟踪状态；过期日志一律按未跟踪处理');
+    return new Set();
+  }
+  if (output === '') {
+    // status=0 但没有输出：空索引（刚 git init、尚未 add）。索引为空不等于「没有风险」，
+    // 说明此刻没有任何文件受 git 保护，需要人知道。
+    onWarn('git 索引为空，此刻没有文件受跟踪保护；过期日志一律按未跟踪处理');
+    return new Set();
+  }
+  return new Set(output.split('\u0000').filter(Boolean));
+}
+
 /**
  * 扫描候选清理目标（纯函数式：只读文件系统，不删）。
  * 返回 [{ kind, path, bytes, reason }]，kind ∈ tmp | unpack | log。
  */
-export function scanTargets({ root = DEFAULT_ROOT, keepDays = DEFAULT_KEEP_DAYS, now = Date.now() } = {}) {
+export function scanTargets({ root = DEFAULT_ROOT, keepDays = DEFAULT_KEEP_DAYS, now = Date.now(), onWarn = (m) => console.error('[ WARN ] ' + m) } = {}) {
   const targets = [];
+  const warnings = [];
+  const sacredHits = [];
   const addIfExists = (kind, full, reason) => {
     if (!fs.existsSync(full)) return;
-    assertNotSacred(full);                       // 扫描阶段就熔断，删之前已知有危险
+    try {
+      assertNotSacred(full);                     // 扫描阶段就熔断，删之前已知有危险
+    } catch (error) {
+      if (error.code !== SACRED_PATH_CODE) throw error;
+      // 单个候选踩中神圣路径时只跳过它并留证，不整轮熔断：
+      // BioanalysDesktop/ 现在整棵是受控区，若因它一个就中止，工作区 .tmp 与过期解包
+      // 这些真正该清的目标也跟着清不掉，清理脚本会退化成「什么都不做」。
+      // 删除入口 executeTargets 仍是硬熔断，扫描阶段的放行不许被当成删除授权。
+      sacredHits.push({ path: full, reason });
+      return;
+    }
     const stat = fs.statSync(full);
     const bytes = stat.isDirectory() ? dirSize(full) : stat.size;
     targets.push({ kind, path: full, bytes, reason });
@@ -115,7 +159,10 @@ export function scanTargets({ root = DEFAULT_ROOT, keepDays = DEFAULT_KEEP_DAYS,
   }
 
   // ③ 超保留期日志：只认 *.log 且 mtime 早于 keepDays
+  // T2-1：仓库里 29 个 .log 是 git 已跟踪的历史证据（mtime 早已过保留期），
+  // 只按 mtime 挑会把它们当垃圾删掉。删除集必须先问 git 归属：已跟踪的一律不删。
   const cutoff = now - keepDays * 24 * 3600 * 1000;
+  const tracked = trackedFiles(root, (message) => warnings.push(message));
   const scanLogs = (dir) => {
     let entries = [];
     try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
@@ -127,12 +174,20 @@ export function scanTargets({ root = DEFAULT_ROOT, keepDays = DEFAULT_KEEP_DAYS,
         continue;
       }
       if (!entry.name.endsWith('.log')) continue;
+      // 命中 git 索引就必须 continue 而不是 return：return 会把整棵子树剩下的日志一起放过，
+      // 清理脚本退化成「一个都不删」还能骗过「已跟踪文件不得入目」的那条断言。
+      if (tracked.size > 0 && tracked.has(toRepoRelative(root, full))) continue;
       try {
         if (fs.statSync(full).mtimeMs < cutoff) addIfExists('log', full, '超过 ' + keepDays + ' 天的日志');
       } catch { /* 忽略单条 */ }
     }
   };
   scanLogs(root);
+  for (const hit of sacredHits) {
+    const relPath = toRepoRelative(root, hit.path);
+    onWarn('目标命中神圣黑名单，已跳过：' + relPath + '（' + hit.reason + '）');
+  }
+  for (const message of warnings) onWarn(message);
   return targets;
 }
 
@@ -170,9 +225,12 @@ export function main(argv = process.argv.slice(2), io = { log: console.log, erro
     return 2;
   }
   const execute = argv.includes('--execute');
+  // 扫描期告警（神圣跳过、git 不可用）必须进最终产物：--json 时是 payload 里的 warnings 字段，
+  // 人读时是 stderr 上的 [ WARN ] 行。两条路径都留证，「本机少删了什么」不会静默消失。
+  const warnings = [];
   let targets;
   try {
-    targets = scanTargets({ root, keepDays });
+    targets = scanTargets({ root, keepDays, onWarn: (message) => warnings.push(message) });
   } catch (cause) {
     io.error('[ RED ] ' + cause.message);
     return 1;
@@ -190,10 +248,13 @@ export function main(argv = process.argv.slice(2), io = { log: console.log, erro
       totalBytes_estimate: totalBytes,
       deleted: result ? result.deleted.length : 0,
       failed: result ? result.failed.length : 0,
+      warnings,
     }, null, 2));
     return 0;
   }
 
+  for (const message of warnings) io.error('[ WARN ] ' + message);
+  for (const message of warnings) io.error('[ WARN ] ' + message);
   io.log('工作区清理（' + (execute ? '执行模式' : '演练模式，磁盘不会变化') + '）');
   io.log('根目录: ' + root + '｜日志保留期: ' + keepDays + ' 天');
   if (targets.length === 0) {

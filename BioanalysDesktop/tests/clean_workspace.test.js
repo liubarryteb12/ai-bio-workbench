@@ -27,8 +27,11 @@ function tmpRoot(tag) {
 function seedWorkspace(root) {
   fs.mkdirSync(path.join(root, '.tmp'), { recursive: true });
   fs.writeFileSync(path.join(root, '.tmp', 'a.txt'), 'x'.repeat(100), 'utf8');
+  // T2-1：BioanalysDesktop/ 整棵子树进 SACRED_PATTERNS，其 .tmp 属于清理白名单但被护栏熔断。
+  // 夹具仍造它，是为了证明「护栏挡得下」这条反向能力，而不是为了证明「删得掉」。
   fs.mkdirSync(path.join(root, 'BioanalysDesktop', '.tmp'), { recursive: true });
   fs.writeFileSync(path.join(root, 'BioanalysDesktop', '.tmp', 'b.txt'), 'y'.repeat(50), 'utf8');
+
   const del = path.join(root, 'local_projects', 'PRJ_X', 'deliverables');
   fs.mkdirSync(path.join(del, 'unpacked', 'inner'), { recursive: true });
   fs.writeFileSync(path.join(del, 'unpacked', 'inner', 'c.bin'), 'z'.repeat(20), 'utf8');
@@ -54,6 +57,9 @@ test('黑名单：命中即抛 ERR_SACRED_PATH_PROTECTED，覆盖裁定点名的
     'ops/', 'src/', 'server/', 'docs/', '.git/',
     'backup/k40_cold',
     'd:' + backslash + 'backup' + backslash + 'k40_cold',
+    // T2-1：桌面端整棵子树是受控区，其 .tmp 又是清理白名单成员（见 scanTargets ①），
+    // 名单漏掉它就会出现「护栏放行、清理想删」的自相矛盾。
+    'BioanalysDesktop/',
   ];
   assert.deepEqual([...SACRED_PATTERNS].sort(), expectedPatterns.sort());
   const bad = [
@@ -64,6 +70,8 @@ test('黑名单：命中即抛 ERR_SACRED_PATH_PROTECTED，覆盖裁定点名的
     '/repo/docs/a.md',
     '/repo/.git/config',
     'D:\\Backup\\k40_cold\\snapshot.tar',
+    '/repo/BioanalysDesktop/.tmp/x.txt',
+    '/repo/BioanalysDesktop/src/app.tsx',
   ];
   for (const target of bad) {
     assert.throws(() => assertNotSacred(target), (error) => {
@@ -80,7 +88,9 @@ test('扫描面：只挑白名单三类，且跳过受保护文件', () => {
   const root = tmpRoot('scan');
   try {
     seedWorkspace(root);
-    const targets = scanTargets({ root });
+    // 扫描阶段遇到神圣目标只跳过该条并留证，不整轮熔断（删除入口仍是硬熔断）
+    const warns = [];
+    const targets = scanTargets({ root, onWarn: (m) => warns.push(m) });
     const kinds = targets.map((t) => t.kind).sort();
     assert.ok(kinds.includes('tmp'), '必须选中工作区 .tmp');
     assert.ok(kinds.includes('unpack'), '必须选中 unpacked');
@@ -91,6 +101,16 @@ test('扫描面：只挑白名单三类，且跳过受保护文件', () => {
     }
     const logNames = targets.filter((t) => t.kind === 'log').map((t) => path.basename(t.path));
     assert.deepEqual(logNames, ['old.log'], '新日志不该入选（保留期内）');
+    // BioanalysDesktop/.tmp 属于白名单目标，但被神圣名单挡下：必须一条目标都不入列，且留一行 WARN
+    assert.equal(
+      targets.some((t) => t.path.includes(path.join('BioanalysDesktop', '.tmp'))),
+      false,
+      'BioanalysDesktop/.tmp 不得进入候选集'
+    );
+    assert.ok(
+      warns.some((m) => m.includes('BioanalysDesktop')),
+      '踩中神圣路径必须留 WARN 证据，实际：' + JSON.stringify(warns)
+    );
     const total = targets.reduce((s, t) => s + t.bytes, 0);
     assert.ok(total > 0, '应算出可释放字节');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
@@ -110,6 +130,8 @@ test('默认第 2 类护栏：不传 --execute 时磁盘零改动', () => {
     assert.ok(fs.existsSync(path.join(root, '.tmp', 'a.txt')), '演练必须不动盘');
     assert.ok(fs.existsSync(path.join(root, 'local_projects', 'PRJ_X', 'deliverables', 'unpacked')));
     assert.ok(fs.existsSync(path.join(root, 'logs', 'old.log')));
+    // 演练阶段也要把「神圣目标被跳过」这件事说出来，不能静默
+    assert.match(text, /神圣黑名单/, '演练输出必须留一行 BioanalysDesktop/.tmp 被跳过');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -123,7 +145,11 @@ test('--execute 真删：白名单目标被删，受保护审计流与回执目�
     assert.equal(code, 0, logs.join('\\n'));
     assert.match(logs.join('\\n'), /CLEAN_OK/);
     assert.equal(fs.existsSync(path.join(root, '.tmp')), false, '.tmp 应被删');
-    assert.equal(fs.existsSync(path.join(root, 'BioanalysDesktop', '.tmp')), false);
+    // T2-1：BioanalysDesktop/.tmp 现在是神圣路径，必须原样保留（护栏优先于清理白名单）
+    assert.ok(
+      fs.existsSync(path.join(root, 'BioanalysDesktop', '.tmp', 'b.txt')),
+      'BioanalysDesktop/.tmp 命中神圣名单，必须原样保留'
+    );
     assert.equal(fs.existsSync(path.join(root, 'local_projects', 'PRJ_X', 'deliverables', 'unpacked')), false);
     assert.equal(fs.existsSync(path.join(root, 'logs', 'old.log')), false, '过期日志应被删');
     assert.ok(fs.existsSync(path.join(root, 'logs', 'new.log')), '保留期内日志不该被删');
@@ -144,6 +170,23 @@ test('幂等：--execute 连跑两次都成功，第二次无可清理项', () =
     const code = main(['--root', root, '--execute'], { log: (m) => logs.push(m), error: (m) => logs.push(m) });
     assert.equal(code, 0);
     assert.match(logs.join('\\n'), /CLEAN_OK 无可清理项/);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('扫描阶段的神圣目标只跳过单条，不整轮熔断（清理不得退化成空转）', () => {
+  const root = tmpRoot('sacredskip');
+  try {
+    seedWorkspace(root);
+    const warns = [];
+    const targets = scanTargets({ root, onWarn: (m) => warns.push(m) });
+    // 工作区 .tmp 与过期解包目录都必须仍在候选里：一个神圣目标不能连坐整轮
+    assert.ok(
+      targets.some((t) => t.kind === 'tmp' && t.path === path.join(root, '.tmp')),
+      '工作区 .tmp 必须仍在候选，实际：' + JSON.stringify(targets.map((t) => t.path))
+    );
+    assert.ok(targets.some((t) => t.kind === 'unpack'), '过期解包目录必须仍在候选');
+    const sacredWarns = warns.filter((m) => m.startsWith('目标命中神圣黑名单'));
+    assert.equal(sacredWarns.length, 1, '恰好一条神圣跳过告警，实际：' + JSON.stringify(warns));
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 

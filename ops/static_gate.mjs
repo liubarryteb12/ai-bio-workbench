@@ -371,12 +371,12 @@ function main() {
   if (missing.length > 0) {
     const lines = missing.map((m) => '  - ' + m.name + ' : ' + m.count + ' 个文件' + (m.note ? '（' + m.note + '）' : ''));
     if (allowMissing) {
-      console.log('[ WARN ] 显式降级（--allow-missing）：以下语种本轮未检查，不计入失败');
+      console.log('[ WARN ] 显式降级（--allow-missing）：以下 ' + missing.reduce((sum, m) => sum + m.count, 0) + ' 个文件本轮跳过未检查，不计入失败');
       for (const line of lines) console.log(line);
       console.log('  降级清单必须随本轮结果一起留档，不写 --allow-missing 的调用不享受降级');
     } else {
       failed += missing.reduce((sum, m) => sum + m.count, 0);
-      console.log('[FAIL] 宿主缺工具：以下 ' + missing.reduce((sum, m) => sum + m.count, 0) + ' 个文件本轮完全没查（默认计入失败）');
+      console.log('[FAIL] 宿主缺工具：以下 ' + missing.reduce((sum, m) => sum + m.count, 0) + ' 个文件本轮跳过未检查（默认计入失败）');
       for (const line of lines) console.log(line);
       console.log('  确属环境限制时显式加 --allow-missing 降级为警告；CI runner 应装齐 pwsh7 / r-base / python3');
     }

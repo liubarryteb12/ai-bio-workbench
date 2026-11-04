@@ -26,13 +26,50 @@ jobs:
       - name: 安装前端依赖
         working-directory: BioanalysDesktop
         run: npm ci || npm install
+      - name: 前端类型检查（tsc --noEmit）
+        # tsconfig.json 一直在仓库里，本地实跑 exit 0，但 CI 从不调用它：
+        # 类型回归只能靠人记得在本地跑，等于没有门禁。
+        working-directory: BioanalysDesktop
+        run: node node_modules/typescript/bin/tsc --noEmit
       - name: 单命令总门禁（与本地同构）
-        # 分别跑两次：先报门禁清单，再跑全量。gate:all 内含 preflight/static/ledger/
-        # figure/audit/metrics 七道；任一道红即整体红，exit 非 0 会直接让 job 失败。
+        # gate:all 内含 preflight/static/skip_static/ledger/figure_registry/audit_summary/
+        # mutation_gate/metrics 八道；任一道红即整体红，exit 非 0 会直接让 job 失败。
+        # mutation_gate 在 CI 上同样只在临时副本上变异，不写工作树。
         run: node ops/run_all_gates.mjs --json
       - name: 门禁结果留档
         if: always()
-        run: node ops/run_all_gates.mjs --skip-tests || true
+        # 留档步骤与门禁步骤跑同一套判据，失败时它也必须红。此前这里用「或裸 true」的
+        # 短路兜底吞掉退出码，结果日志里写着 GATE_ALL_FAILED 而 job 仍绿，
+        # 事后翻日志的人会以为失败被容忍了。
+        run: node ops/run_all_gates.mjs --skip-tests
+
+  e2e:
+    # Playwright 单列一个 job：浏览器二进制下载与安装要 1~2 分钟，
+    # 与门禁 job 混在一起会把「门禁红」和「浏览器没装」两类失败混成一团。
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: 安装前端依赖
+        working-directory: BioanalysDesktop
+        run: npm ci || npm install
+      - name: 缓存 Playwright 浏览器
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('BioanalysDesktop/package-lock.json') }}
+      - name: 安装 Playwright 浏览器
+        # 缺 --with-deps 会缺系统库，27 个 spec 全部 browser not found。
+        run: npx playwright install --with-deps chromium
+      - name: 端到端（playwright 27 个 test）
+        # playwright.config.ts 自带两个 webServer（portal 9321 / admin 9322），
+        # admin 面在 D-29 Fail-Closed 后强制 Basic 鉴权，凭据写在 config 的 env 里，
+        # 这里不重复传，避免两处真源。
+        working-directory: BioanalysDesktop
+        run: npm run test:e2e
 
 # 刻意不在 CI 里做的事：
 #   - delivery:verify：需要具体客户 tar，属订单级动作，不属仓库级门禁
