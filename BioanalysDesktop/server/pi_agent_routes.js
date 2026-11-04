@@ -20,6 +20,8 @@ import {
   buildDaemonLogCommand,
   buildOverviewCommand,
   buildPeerTokenCommand,
+  buildTelemetryProbeCommand,
+  buildTelemetryRestartCommand,
   buildSwitchModelCommand,
   cancelA2ATask,
   extractTaskFromRpcData,
@@ -30,6 +32,7 @@ import {
   parseCurrentModel,
   parseOverview,
   parseSessionList,
+  parseTelemetryProbe,
   parseTranscript,
   parseTranscriptTimeline,
   postA2ARequest,
@@ -164,6 +167,13 @@ export async function handlePiAgentRoutes(req, res, url, deps) {
       overview.a2a_card = card.status === 200
         ? { name: card.data?.name, version: card.data?.version, url: card.data?.url }
         : null;
+      const telemetryStatus = tele.status === 200
+        ? 'ok'
+        : tele.status === 401
+          ? 'sidecar_unauthorized'
+          : tele.status === 0
+            ? 'sidecar_down'
+            : `sidecar_http_${tele.status}`;
       overview.telemetry = tele.status === 200
         ? {
             usage: tele.data?.usage ?? null,
@@ -171,11 +181,64 @@ export async function handlePiAgentRoutes(req, res, url, deps) {
             recent_calls: (tele.data?.recent_calls ?? []).slice(0, 15),
           }
         : null;
+      overview.telemetry_status = telemetryStatus;
+      overview.telemetry_reason = tele.status === 200
+        ? null
+        : '遥测侧车 9911 不在线：调用台账与 Token 统计暂缺，可点「重建侧车」恢复（daemon 每轮也会自愈）。';
       overview.battery = parseBattery(overview.battery_raw);
       delete overview.battery_raw;
       json(res, 200, { ok: true, ...overview });
     } catch (cause) {
       json(res, 200, { ok: false, online: false, error: cause instanceof Error ? cause.message : String(cause) });
+    }
+    return true;
+  }
+
+  if (url.pathname === '/api/pi-agent/telemetry/restart' && req.method === 'POST') {
+    try {
+      const before = parseTelemetryProbe(
+        runSshRaw(PI_SSH_TARGET, buildTelemetryProbeCommand(), { timeoutMs: 15000 }).text
+      );
+      const rebuild = runSshRaw(PI_SSH_TARGET, buildTelemetryRestartCommand(), { timeoutMs: 40000 });
+      const text = String(rebuild.text || '');
+      const outcome = /TELEMETRY_UP/.test(text)
+        ? 'up'
+        : /TELEMETRY_SIDECAR_MISSING/.test(text)
+          ? 'sidecar_missing'
+          : /TELEMETRY_NO_SESSION/.test(text)
+            ? 'no_session'
+            : 'down';
+      const after = parseTelemetryProbe(
+        runSshRaw(PI_SSH_TARGET, buildTelemetryProbeCommand(), { timeoutMs: 15000 }).text
+      );
+      let tele = { status: 0, data: null };
+      if (after.alive) {
+        const token = runSshRaw(PI_SSH_TARGET, buildPeerTokenCommand(), { timeoutMs: 15000 }).text.trim();
+        tele = await telemetry(token);
+      }
+      const ok = after.alive && tele.status === 200;
+      ledger('pi_agent_telemetry_restart', {
+        before: before.code,
+        after: after.code,
+        outcome,
+        ok,
+      });
+      json(res, ok ? 200 : 502, {
+        ok,
+        outcome,
+        before_code: before.code,
+        after_code: after.code,
+        telemetry_status: tele.status === 200 ? 'ok' : 'sidecar_down',
+        error: ok
+          ? null
+          : redact(outcome === 'sidecar_missing'
+            ? '手机上缺少 ~/bin/pi_telemetry_sidecar.py，无法重建侧车'
+            : outcome === 'no_session'
+              ? '手机上没有 pi-a2a tmux 会话，需先启动 A2A 主服务'
+              : '已重建 telemetry 窗口，但 9911 仍未响应'),
+      });
+    } catch (cause) {
+      json(res, 502, { ok: false, error: redact(cause instanceof Error ? cause.message : String(cause)) });
     }
     return true;
   }

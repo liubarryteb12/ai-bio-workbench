@@ -29,7 +29,7 @@ export const DEFAULT_MODEL = {
   model: 'glm-5.3-flash',
 };
 
-/** 与 ops/pi_a2a_daemon.sh 的模型锁同源（A2A-D 锁定组合，不得扩大） */
+/** 与 ops/k40/pi_a2a_daemon.sh 的模型锁同源（A2A-D 锁定组合，不得扩大） */
 export const ALLOWED_MODELS = [
   DEFAULT_MODEL,
   { provider: 'deepseek', model: 'deepseek-v4.1-flash' },
@@ -96,6 +96,42 @@ export function buildCurrentModelCommand() {
 
 export function buildPeerTokenCommand() {
   return b64Envelope(`cat "${PI_AGENT_DIR}/.peer_token"`);
+}
+
+/** 遥测侧车（:9911）地址；与 ops/k40/pi_telemetry_sidecar.py 的 SIDE_PORT 同源。 */
+export const TELEMETRY_URL = 'http://127.0.0.1:9911/api/telemetry/overview';
+
+/** 侧车探活：在手机侧 curl 一次，200 或 401 都说明进程在听，000 说明没人监听。 */
+export function buildTelemetryProbeCommand() {
+  return `code="$(curl --noproxy '*' -s -o /dev/null -m 4 -w '%{http_code}' ${TELEMETRY_URL} 2>/dev/null || printf 000)"; printf 'TELEMETRY_CODE=%s\\n' "$code"`;
+}
+
+/** 解析探活输出，返回状态码与是否存活。 */
+export function parseTelemetryProbe(text) {
+  const hit = /TELEMETRY_CODE=(\d{3})/.exec(String(text || ''));
+  const code = hit ? hit[1] : '000';
+  return { code, alive: code === '200' || code === '401' };
+}
+
+/** 侧车重启：重建 telemetry 窗口并等它就绪，窗口内自带重启循环。 */
+export function buildTelemetryRestartCommand() {
+  return b64Envelope([
+    'set -u',
+    'session=pi-a2a',
+    'tmux has-session -t "$session" 2>/dev/null || { printf "TELEMETRY_NO_SESSION\\n"; exit 3; }',
+    'if [ ! -f "$HOME/bin/pi_telemetry_sidecar.py" ]; then printf "TELEMETRY_SIDECAR_MISSING\\n"; exit 4; fi',
+    'tmux kill-window -t "$session:telemetry" 2>/dev/null || true',
+    "tmux new-window -t \"$session\" -n telemetry -c \"$HOME/workspace\" \"while true; do python3 '$HOME/bin/pi_telemetry_sidecar.py' || true; sleep 2; done\"",
+    'i=0',
+    'while [ "$i" -lt 10 ]; do',
+    '  code="$(curl --noproxy \'*\' -s -o /dev/null -m 3 -w \'%{http_code}\' http://127.0.0.1:9911/api/telemetry/overview 2>/dev/null || printf 000)"',
+    '  case "$code" in 200|401) printf "TELEMETRY_UP code=%s\\n" "$code"; exit 0 ;; esac',
+    '  i=$((i + 1))',
+    '  sleep 1',
+    'done',
+    'printf "TELEMETRY_DOWN\\n"',
+    'exit 5',
+  ].join('\n'));
 }
 
 export function buildSwitchModelCommand(provider, model) {
