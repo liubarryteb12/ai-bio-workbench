@@ -12,6 +12,8 @@
 > **未来接单的开局三锚点**（新会话无需回溯历史）：
 > ① 本文件；② `BioanalysDesktop/README.md` 的根基线行（1354 tests）；③ 当前 HEAD。
 
+> 第二十八轮补录：便携包四层收敛、净化环境实证与 MSYS/PATH 隔离教训见**第九节**。
+
 > 4 Argon 第二十三轮 Q4 裁定：架构整固专项已达收敛点，做最后一次全局对账并封板，
 > 严禁无单开垦 52 个 pending 模板。本文件是那次对账的结果，也是移交日常运营的凭据。
 
@@ -148,3 +150,66 @@ npm run clean:workspace
 
 待真实订单到来时，唯一允许变动的受控闸门是：
 `ops/figure_ready_allowlist.json`（点名激活 pending 图件，需同步 k40 验证证据进 registry）。
+
+## 九、第二十八轮补录：便携包与四层收敛（2026-11-04）
+
+> 4 Argon 第二十八轮 Q4：正式确认便携包双环境实证圆满成功，体系终局封板，
+> 转入事件驱动静默待命期。本节是该轮的行动清单第 2 条（补录终局报告）。
+
+### 9.1 四层收敛实测
+
+| 层 | 内容 | 文件数 |
+|---|---|---|
+| L1 软件核心 | BioanalysDesktop/ ops/ src/ portal/ shared/ bin/ configs/ tests/ aims/ docs/ .github/ 根级文件 | 618（含前端 dist 3） |
+| L1 附加 | 测试依赖闭包（react/react-dom/scheduler/loose-envify/js-tokens/esbuild/@esbuild） | 92 |
+| L2 真源资产 | reference/ con_hf/ cn_debug/ local_projects/ deliverables/ | 821 |
+| L3 便携运行时 | vendor/tools（node v24.19.0 + MSYS ssh/scp/tar/sha256sum/openssl + 全部 msys-*.dll） | 81 |
+| 入口 | 5 个 .cmd 启动器 + 使用说明.md + MANIFEST | 6 |
+| **合计** | **dist/portable/BioanalysWorkbench，约 172 MB** | **1526** |
+
+L4 运行时产物不进包：.tmp/ outputs/ projects/ artifacts/ project_data/ node_modules/ .npmcache/ Python/ vendor/ dist/ .git/。
+
+### 9.2 净化环境实证（无 node、无 git、无 ssh 的 PATH）
+
+环境只有包内 runtime + SystemRoot/System32 + Wbem，TEMP/TMP 指向包内 .tmp：
+
+| 判据 | 结果 |
+|---|---|
+| `gate.cmd`（gate:all 七道） | **GATE_ALL_OK 7 道全绿，11 秒** |
+| 全量测试 | **1354 tests / 0 fail**，63 条跳过全部命中 8 类白名单原因 |
+| 交付验收四关（包内样例包） | **DELIVERY_ACCEPTANCE_OK**：sidecar `b5c74f06…`、unpack 解出 PRJ_NAFLD_E2E_20261028_Client_Delivery、signature VERIFIED 112、set_equality 业务 111 全在清单、counts 合计 117 |
+
+对比开发机同轮基线：GATE_ALL_OK 7 道全绿 78 秒，1354 tests / 1336 pass / 0 fail / 18 skipped。
+两环境 fail 都是 0，pass/skip 的分配差来自宿主能力（无 git/无 pwsh/无设备），不是行为差。
+
+### 9.3 这轮抓到的真缺陷（都已修并有提交）
+
+| 缺陷 | 后果 | 修法 |
+|---|---|---|
+| `cn_debug/lib/chain_runner.mjs` 被 `.gitignore:160 cn_debug/` 忽略 | 6 个测试 import 它，**新克隆与便携包本身跑不过** | `.gitignore` 改 `cn_debug/*` + `!cn_debug/lib/`，入库该文件 |
+| `cn_debug/2026-10-22_m1_line2_rest.mjs` 同样被忽略 | chain_runner_lib.test.js:28 第 4 个输入 ENOENT | `git add -f` 入库 |
+| `portal/inbox/` 由测试与运行时非递归 `mkdirSync` 创建 | 新克隆缺目录，收件箱两条用例 ENOENT | portal_inbox.js 加载时 `mkdirSync(…, {recursive:true})` |
+| `ops/metrics_sync.mjs` 的 BASELINE_RE 贪婪匹配吞掉行尾 | README 基线行累积 6 层重复尾巴（超 800 字符） | 正则去掉尾部 `\*\*`，只替换整行 |
+| 跳过原因白名单只有 6 类 | 无 git / 无 pwsh 的干净 Windows 上跳不过门禁 | 扩到 8 类，新增 `HOST_MISSING_GIT` 与 `HOST_MISSING_SHELL`，并给相关用例加前置 guard |
+
+### 9.4 MSYS/PATH 隔离教训（换机器会再踩）
+
+1. vendor 的 MSYS `ssh.exe` **不读 Windows 用户 `~/.ssh/config`**（它去找 `/etc/ssh/ssh_config`），
+   且把 `~/.ssh/id_ed25519` 展开成 POSIX 家目录 `/home/<user>`；必须显式 `-F <config 绝对路径> -i <私钥绝对路径>`。
+   `ops/toolchain.mjs` 的 `resolveSshArgs()` 已封装该拼装。
+2. 单拷 `ssh.exe` 会报 `0xC0000135`（DLL 未找到），必须整批复制 `msys-*.dll`（74 个，34 MB）。
+3. 把 vendor 顶到 PATH 首位会打红 4 个测试文件的 argv 全等断言（共 52~54 条），
+   因此 toolchain **只做显式路径解析，不改 PATH**；包内自足由 runtime/ 目录保证。
+4. TEMP/TMP 必须指向包内 `.tmp`，否则 node 落回系统临时目录，在受限环境成片 EPERM。
+
+### 9.5 Argon 第二十八轮四条裁定（存档）
+
+| 问 | 裁定 | 落地 |
+|---|---|---|
+| Q1 vendor 128 MB 是否入库 | **绝对禁止**；本地受控缓存 + 构建时按需组装 + 清单校验 | `vendor/` 整目录进 .gitignore；`docs/vendor_assembly.md` 给组装步骤；构建器缺件点名拒绝 |
+| Q2 便携 `--verify` 是否进日常 CI | 不进；属发布期或本地封板前置门禁 | `.github/workflows/ci.yml` 只跑 gate:all，不含 portable 步骤 |
+| Q3 升级方式 | 整包重发 + MANIFEST 校验，拒绝内置自更新脚本 | 构建器产出 MANIFEST.sha256；无自更新代码 |
+| Q4 是否结项 | 正式确认，终局封板，转静默待命 | 本节 |
+
+静默待命期唯一允许的主动动作：八道门禁报警、真实订单、或用户点名。
+待真实订单到来时，唯一允许变动的受控闸门仍是 `ops/figure_ready_allowlist.json`。

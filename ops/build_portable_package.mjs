@@ -85,8 +85,19 @@ export function trackedFiles({ repoRoot = REPO_ROOT, env = process.env } = {}) {
 
 export function runtimeFiles({ repoRoot = REPO_ROOT } = {}) {
   const dir = path.join(repoRoot, 'vendor', 'tools');
-  if (!fs.existsSync(dir)) throw new Error('缺少 vendor/tools：便携运行时未就位');
-  return fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isFile()).map((e) => e.name).sort();
+  if (!fs.existsSync(dir)) {
+    throw new Error(
+      '缺少 vendor/tools（便携运行时未就位）。' +
+      'Argon 第二十八轮 Q1：二进制不进 Git——在构建机从本地受控缓存目录' +
+      '（装机时的 Node 发行版 + Git for Windows 的 usr/bin 与其 msys-*.dll 全集）' +
+      '复制到 ' + dir + '，该目录已在 .gitignore 内。');
+  }
+  const files = fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isFile()).map((e) => e.name).sort();
+  // 组装完整性预检：少一个关键 exe 时报「缺谁」，而不是到目标机才炸
+  const REQUIRED_BINS = ['node.exe', 'ssh.exe', 'scp.exe', 'tar.exe', 'sha256sum.exe', 'openssl.exe'];
+  const missing = REQUIRED_BINS.filter((n) => !files.includes(n));
+  if (missing.length > 0) throw new Error('vendor/tools 缺关键二进制：' + missing.join(', ') + '（补齐后再打包）');
+  return files;
 }
 
 function copyFile(from, to) {
