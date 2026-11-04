@@ -115,3 +115,33 @@ HEAD 27326d1，工作区完全干净。
 - 异步化：改造前 3022ms / 探针最慢 2993ms / childCalls 全 spawnSync；
   改造后 3014ms / 71 样本 / 探针最慢 2ms / childCalls 全 spawn。
 - clean_workspace：默认 keep-days 7 时 git 已跟踪命中 0，keep-days 3 时命中 29。
+### T1-2 前置核对（第三十四轮实测）
+
+k40 连线与工具链已确认可用：
+- `ssh k40-ubuntu` → ALIVE，Linux aarch64（PRoot-Distro 容器）
+- `/usr/bin/Rscript`、`/usr/bin/python3` 均在
+- `/mnt/ssd/bio_data/reference/05.可参考出图代码/` 存在
+
+**compat 母版与本地一致**（逐字节核对，前 8 位）：
+
+| 母版 | k40 | 本地 |
+|---|---|---|
+| L1_boxplot_code.R | dfc6a22b | dfc6a22b |
+| L1_rest_code.R | da210745 | da210745 |
+| L1_violin_code.R | 9470bc63 | 9470bc63 |
+| L2_core_code.R | a8ae5c81 | a8ae5c81 |
+| L2_more_code.R | 0b5342dd | 0b5342dd |
+| L3_sankey_code.R | 9f80d4b6 | 9f80d4b6 |
+
+**两处必须先同步再重渲染**：
+1. k40 上 `_legacy/` 不存在（本地是刚建的），迁移后的目录结构需要同步到 k40，
+   否则 `verify_plot_matrix.py` 在远端找不到 legacy 母版会直接报缺文件。
+2. `_meta/script_plot_matrix.json` k40 版与本地不同（本地已删 3 条 legacy runner，27→24），
+   远端必须用同一份，否则重渲染出的 artifact 集合与本地门禁的判据口径不一致。
+
+T1-2 执行顺序（下一轮）：
+1. 同步 `_legacy/` 与裁剪后的 matrix 到 k40；
+2. 在 k40 上只重渲染 9 条分叉的 preview（不是全部 30 条）；
+3. 回搬 9 个 PNG，重跑 `node ops/build_figure_templates.cjs` 重写 registry；
+4. 去掉 `ops/run_all_gates.mjs` 里 preview_provenance 的 `--info-only` 开关，门禁转硬阻断；
+5. 判据：`node ops/figure_preview_provenance.mjs` exit 0，readyCount 恒 30。
