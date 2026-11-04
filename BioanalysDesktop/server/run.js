@@ -24,6 +24,34 @@ const DETACHED_POLL_INTERVAL_MS = Math.max(
 const DETACHED_TIMEOUT_MS = Number(process.env.BIO_TASK_TIMEOUT_MS || 40 * 60 * 1000);
 
 /**
+ * 把 task 描述编译成**最终**远端脚本并做唯一一次安全审计（第三十二轮 Q3 裁定）。
+ *
+ * 为什么要有它：提交层与引擎层历史上各审一次，而两次的输入不同（引擎层多带 throttled /
+ * detached / wrapperTaskId），脚本内容实测已分叉（.tmp/probe_audit_divergence.mjs）。
+ * 两条审计迟早会给出不同结论，那时用户看到的是「提交成功但引擎拒绝」的哑谜。
+ *
+ * 现在脚本拼装与审计收口到这里：提交层先调它拿 400 判定，引擎层再调它拿同一份脚本，
+ * 「审的就是跑的」由结构保证，不再靠两边手工对齐。
+ *
+ * wrapperTaskId 必须由调用方传进来：提交层要在响应里回 taskId，引擎层要用同一个 id 拼日志
+ * 路径，两边各自随机生成就会再次分叉。
+ *
+ * @param {object} task 任务描述（projectId / lineId / step / inputs / outputs / seed 等）
+ * @param {{wrapperTaskId: string}} ids 由调用方生成的稳定标识
+ * @returns {{script: string, audit: {allowed: boolean, reason: string|null, hits: Array}} 冻结对象
+ */
+export function prepareAndAuditTask(task, ids = {}) {
+  if (!ids.wrapperTaskId) throw new Error('prepareAndAuditTask 需要 wrapperTaskId：两端必须用同一个标识');
+  const script = buildTaskScript({
+    ...task,
+    throttled: true,
+    detached: isLongRunningStep(task.step),
+    wrapperTaskId: ids.wrapperTaskId,
+  });
+  return Object.freeze({ script, audit: Object.freeze(auditCommand(script, task.lineId)) });
+}
+
+/**
  * 启动一个任务。
  *
  * @param {object} task
@@ -32,6 +60,8 @@ const DETACHED_TIMEOUT_MS = Number(process.env.BIO_TASK_TIMEOUT_MS || 40 * 60 * 
  * @param {string[]} task.inputs
  * @param {string[]} task.outputs
  * @param {number} [task.seed]
+ * @param {string} [task.preparedScript] 提交层已编译并审过的脚本；给了就直接用，不再重编译
+ * @param {string} [task.preparedWrapperTaskId] 提交层使用的 wrapperTaskId，引擎沿用同一个
  * @param {{onStdout?: Function, onStderr?: Function, onExit?: Function, cwd?: string}} handlers
  * @returns {{id: string, kill: Function}} 用于中止任务
  */
@@ -39,18 +69,19 @@ export function runTask(task, handlers = {}) {
   const startedAt = new Date().toISOString();
   const taskId = randomUUID();
   const detached = isLongRunningStep(task.step);
-  const wrapperTaskId = `task_${Date.now()}_${taskId.slice(0, 8)}`;
+  const wrapperTaskId = task.preparedWrapperTaskId || `task_${Date.now()}_${taskId.slice(0, 8)}`;
   // 远端执行与审计用同一份脚本，避免"审的是一套、跑的是另一套"
   // throttled: true —— 工作台任务必须经 ops/run_throttled_task.sh（nice/ionice 降权 + 存储水位与
   // 跨线门禁 + 线程封顶，aims §六.3）。2026-10-21 之前这里是默认 false，等于整条契约对引擎任务
   // 全部失效（D-21）；包装器缺 BIO_EXEC_CMD 支持时传命令串会 ENOENT，现已由命令串模式解决。
-  const script = buildTaskScript({
+  // 提交层已经编译并审过的脚本优先：重编译会换一个 wrapperTaskId，等于审的和跑的不是同一份
+  const script = task.preparedScript || buildTaskScript({
     ...task,
     throttled: true,
     detached,
     wrapperTaskId,
   });
-  const audit = auditCommand(script, task.lineId);
+  const audit = task.preparedScript ? { allowed: true, reason: null } : auditCommand(script, task.lineId);
   if (!audit.allowed) {
     // 审计不过就不启动，直接把拒绝原因当 stderr 抛给调用方
     handlers.onStderr?.(`[audit] ${audit.reason}\n`);

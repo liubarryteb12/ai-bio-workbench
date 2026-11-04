@@ -5,6 +5,7 @@ import {
   buildProjectListCommand, buildReadProjectMetaCommand, parseProjectList, parseProjectMeta,
 } from './project.js';
 import { runRemote } from './remote_exec.js';
+import { shellQuote } from './proc.js';
 /**
  * 解析 project 查询参数：缺省用默认项目；非法（含穿越字符）返回 null，调用方回 400。
  */
@@ -53,12 +54,13 @@ export function listFiguresForLine(projectId, lineId) {
       )),
     };
   }
-  const probe = runRemote(`if [ -d '${guard.dir}' ]; then echo EXISTS; else echo MISSING; fi`);
+  // guard.dir 由 assertFiguresPath 拼出，上游是 project/line 参数；引号闭合权不能留给调用方
+  const probe = runRemote(`if [ -d ${shellQuote(guard.dir)} ]; then echo EXISTS; else echo MISSING; fi`);
   if (!probe.includes('EXISTS')) {
     return { blocked: true, reason: `图件目录不存在: ${guard.dir}`, figures: [] };
   }
   const listing = runRemote(
-    `find '${guard.dir}' -maxdepth 1 -type f -printf '%f|%s|%T@\\n' 2>/dev/null`
+    `find ${shellQuote(guard.dir)} -maxdepth 1 -type f -printf '%f|%s|%T@\\n' 2>/dev/null`
   );
   return {
     blocked: false,

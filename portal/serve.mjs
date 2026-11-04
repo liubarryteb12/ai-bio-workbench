@@ -407,6 +407,35 @@ export function checkToken(req, url) {
   return { ok: true };
 }
 
+/**
+ * T0-2 / T0-3：写端点的 CSRF 闸。
+ *
+ * 只读浏览器一定会带的两个头，不引入新配置：
+ *   - Sec-Fetch-Site 为 cross-site / same-site 直接拒绝（兄弟域也是别人）。
+ *   - Origin 存在且不等于本站源时拒绝（老浏览器可能没有 Sec-Fetch-Site，但有 Origin）。
+ *   - 两个头都缺时放行：那是 curl / Node / 内部脚本，本来就不受 CSRF 影响。
+ *
+ * 返回 { ok:true } 或 { ok:false, error }，与 checkToken 同形态便于组合与单测。
+ */
+export function checkSameOrigin(req, host, port) {
+  const site = String((req && req.headers && req.headers['sec-fetch-site']) || '').trim().toLowerCase();
+  if (site === 'cross-site' || site === 'same-site') {
+    return { ok: false, error: '跨站请求被拒绝（写操作只接受同源调用）' };
+  }
+  const origin = String((req && req.headers && req.headers.origin) || '').trim();
+  if (origin) {
+    const allowed = new Set([
+      `http://${host}:${port}`,
+      `http://127.0.0.1:${port}`,
+      `http://localhost:${port}`,
+    ]);
+    if (!allowed.has(origin.toLowerCase().replace(/\/$/, ''))) {
+      return { ok: false, error: '请求来源不在允许列表（写操作只接受同源调用）' };
+    }
+  }
+  return { ok: true };
+}
+
 /** 与 checkToken 同形态，但让编排面 token 与客户 token 各自闭环，互不借用。 */
 function checkEnvToken(req, url, expected, errorText) {
   if (!expected) return { ok: false, error: errorText };
@@ -1441,7 +1470,16 @@ function handleReferenceUpload(req, res, url) {
 }
 
 const server = http.createServer((req, res) => {
-  const url = new URL(req.url, `http://${HOST}:${PORT}`);
+  // T0-1：请求目标由客户端任意构造，new URL 会因非法 IPv6 字面量等直接抛。
+  // 未捕获异常会打死整个门户进程，把所有在线客户一起拖下线，所以这里必须兜住。
+  let url;
+  try {
+    url = new URL(req.url, `http://${HOST}:${PORT}`);
+  } catch {
+    res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('Bad Request');
+    return;
+  }
 
   if (url.pathname === '/' || url.pathname === '/index.html') {
     let html;
@@ -1503,16 +1541,28 @@ const server = http.createServer((req, res) => {
     }
   }
 
-  // 三个写端点在启用 PORTAL_TOKEN 时要求令牌；未启用时 checkToken 直接放行（历史行为）
+  // 所有写端点在启用 PORTAL_TOKEN 时要求令牌；未启用时 checkToken 直接放行（历史行为）。
+  // T0-2：/api/survey/* 原先漏在名单外，token 启用时也能被匿名覆盖调研单，现已纳入。
   const PROTECTED_API = url.pathname === '/api/submit'
     || url.pathname === '/api/datafiles'
-    || url.pathname === '/api/references';
+    || url.pathname === '/api/references'
+    || url.pathname === '/api/survey/request'
+    || url.pathname === '/api/survey/select';
   if (PROTECTED_API) {
     const verdict = checkToken(req, url);
     if (!verdict.ok) {
       // 只记方法与路径，绝不打印 token 本身
       console.warn(`[user-portal] 鉴权失败: ${req.method} ${url.pathname}`);
       return sendJson(res, 401, { ok: false, error: verdict.error });
+    }
+
+    // T0-3：写端点一律过 CSRF 闸。放在鉴权之后，避免未授权请求先被 CSRF 拦下而掩盖鉴权结论。
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      const originVerdict = checkSameOrigin(req, HOST, PORT);
+      if (!originVerdict.ok) {
+        console.warn(`[user-portal] 跨站写请求被拒: ${req.method} ${url.pathname}`);
+        return sendJson(res, 403, { ok: false, error: originVerdict.error });
+      }
     }
   }
 
@@ -1804,6 +1854,30 @@ const server = http.createServer((req, res) => {
 
   res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
   res.end('Not Found');
+});
+
+// T0-1 纵深防御三层：
+// 1) clientError：Node 解析不出 HTTP 报文时默认静默 destroy，这里回 400 让客户端拿到明确失败；
+// 2) unhandledRejection / uncaughtException：任何漏网的请求级异常只记日志，不让进程退出；
+// 3) listen 的 error 事件：端口被占等启动期错误必须打出来，而不是变成未捕获异常。
+server.on('clientError', (err, socket) => {
+  if (!socket.writable || socket.destroyed) {
+    socket.destroy();
+    return;
+  }
+  socket.end('HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[user-portal] 未处理的 Promise 拒绝（已拦截，进程继续）:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[user-portal] 未捕获异常（已拦截，进程继续）:', err && err.stack ? err.stack : err);
+});
+
+server.on('error', (err) => {
+  console.error('[user-portal] 服务监听失败: ' + (err && err.message ? err.message : String(err)));
+  if (err && err.code === 'EADDRINUSE') process.exit(2);
 });
 
 server.listen(PORT, HOST, () => {

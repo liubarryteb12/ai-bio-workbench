@@ -23,6 +23,7 @@ import {
 } from '../selfcheck.js';
 import { summarizeLedger, auditLedgerEntry } from '../ledger.js';
 import { assertPathInsideProject, buildTreeFromFind } from '../files.js';
+import { shellQuote } from '../proc.js';
 
 export async function handleDiagnosticsRoutes(req, res, url, {
   json, uploadError, runRemote, runRemoteStrict, fetchLedgerFromServer, resolveProjectParam, adb,
@@ -188,7 +189,8 @@ export async function handleDiagnosticsRoutes(req, res, url, {
   if (url.pathname === '/api/ledger/check') {
     // 台账巡检：SSD 未挂载时必须显式报阻塞，不能假装 0 违规
     const requested = url.searchParams.get('dir') || SYSTEM_LOGS;
-    const probe = runRemote(`if [ -d '${requested}' ]; then echo EXISTS; else echo MISSING; fi`);
+    // T0-4：requested 直接来自 URL 参数，必须过 shellQuote，否则一个 ' 就能接任意命令
+    const probe = runRemote(`if [ -d ${shellQuote(requested)} ]; then echo EXISTS; else echo MISSING; fi`);
     if (!probe.includes('EXISTS')) {
       json(res, 200, {
         blocked: true,
@@ -238,7 +240,8 @@ export async function handleDiagnosticsRoutes(req, res, url, {
       return true;
     }
 
-    const probe = runRemote(`if [ -d '${lineDir}' ]; then echo EXISTS; else echo MISSING; fi`);
+    // lineDir 由 sanitizeProjectId 收口，仍显式引号化，让这两条探针同一口径
+    const probe = runRemote(`if [ -d ${shellQuote(lineDir)} ]; then echo EXISTS; else echo MISSING; fi`);
     if (!probe.includes('EXISTS')) {
       json(res, 200, {
         blocked: true,
@@ -251,8 +254,10 @@ export async function handleDiagnosticsRoutes(req, res, url, {
       return true;
     }
 
+    // T0-4：sub 来自 URL 参数，assertPathInsideProject 只折叠 .. 不管引号，
+    // 逃逸防线落在这里的 shellQuote 上。
     const listing = runRemote(
-      `find '${guard.normalized}' -printf '%p|%y|%s|%T@\\n' 2>/dev/null | head -5000`
+      `find ${shellQuote(guard.normalized)} -printf '%p|%y|%s|%T@\\n' 2>/dev/null | head -5000`
     );
     const tree = buildTreeFromFind(listing, projectId, lineId);
     json(res, 200, { blocked: false, projectId, lineId, root: guard.normalized, tree });

@@ -101,6 +101,20 @@ function resolveMockRemote(program) {
     && ['ssh', 'scp'].includes(programBaseName(program));
 }
 
+/**
+ * 把任意字符串包成一个 POSIX shell 单引号词。
+ *
+ * 存在的理由（T0-4）：远端命令普遍写成 `if [ -d '${x}' ]`，而 x 一旦来自 URL 参数，
+ * 里面的单个 ' 就能闭合引号、用 ; 接上任意命令。单引号段里除 ' 之外没有元字符，
+ * 所以把 ' 换成 '\'' 之后就再也无法逃逸。
+ *
+ * @param {unknown} text 任意值，会被 String() 后转义
+ * @returns {string} 形如 'abc' 或 'a'\''b'
+ */
+export function shellQuote(text) {
+  return `'${String(text).replace(/'/g, String.raw`'\''`)}'`;
+}
+
 /** ssh 的固定参数段：调用点不再各自拼 '-o BatchMode=yes -o ConnectTimeout=10'。 */
 export function sshArgv(target, command) {
   return ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', target, command];

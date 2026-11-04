@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { PROJECTS_ROOT, projectLineDir } from './domain.js';
-import { runSync, scpArgv } from './proc.js';
+import { runSync, scpArgv, shellQuote } from './proc.js';
 import { remoteRawPath, deployedRawName } from './upload.js';
 import { PORTAL_INBOX } from './portal_inbox.js';
 import { runRemoteRaw, runRemote } from './remote_exec.js';
@@ -27,7 +27,7 @@ export function uploadPreparedFigureScripts(preparedFigures) {
   const uploads = [];
   for (const entry of preparedFigures.manifest_entries || []) {
     const remoteDir = path.posix.dirname(entry.remote_path);
-    const mkdir = runRemoteRaw(`mkdir -p '${remoteDir}'`);
+    const mkdir = runRemoteRaw(`mkdir -p ${shellQuote(remoteDir)}`);
     if (mkdir.code !== 0) {
       return { ok: false, error: `图模板目录创建失败: ${mkdir.text}`, uploads };
     }
@@ -82,7 +82,7 @@ export function deployDataFiles(projectId, lineId, dataFiles) {
       results.push({ name: file.name, ok: false, error: `scp 失败: ${scp.stderr || scp.stdout}` });
       continue;
     }
-    const stat = runRemote(`stat -c %s '${remote}' 2>/dev/null || echo MISSING`);
+    const stat = runRemote(`stat -c %s ${shellQuote(remote)} 2>/dev/null || echo MISSING`);
     const remoteSize = Number(stat.trim());
     if (!Number.isFinite(remoteSize) || remoteSize !== localSize) {
       results.push({

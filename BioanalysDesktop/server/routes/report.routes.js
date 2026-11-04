@@ -11,7 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { sanitizeProjectId } from '../domain.js';
-import { runSync } from '../proc.js';
+import { runSync, shellQuote } from '../proc.js';
 import {
   buildAdaptUploadPairs, readAdaptManifest, runReportBuild, pullDeliverables,
   checkRemoteProjectDir, isAllowedDeliverableName, localDeliverDir, localDeliverFilePath,
@@ -56,7 +56,7 @@ export function handleReportRoutes(req, res, url, { json, runRemoteRaw }) {
       }
       for (const pair of adaptPairs) {
         const remoteScriptDir = path.posix.dirname(pair.remote);
-        const mkdir = runRemoteRaw(`mkdir -p '${remoteScriptDir}'`);
+        const mkdir = runRemoteRaw(`mkdir -p ${shellQuote(remoteScriptDir)}`);
         if (mkdir.code !== 0) {
           return json(res, 503, { ok: false, error: `远端适配目录创建失败: ${mkdir.text}` });
         }

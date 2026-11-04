@@ -10,7 +10,7 @@
 import fs from 'node:fs';
 
 import { LINES, DEFAULT_PROJECT, sanitizeProjectId } from '../domain.js';
-import { runSync, scpArgv } from '../proc.js';
+import { runSync, scpArgv, shellQuote } from '../proc.js';
 import {
   CHUNK_SIZE, initUpload, writeChunk, listChunks, assembleChunks,
   readHeader, validateUpload, remoteRawPath, cleanupUpload, sanitizeFilename,
@@ -200,7 +200,7 @@ export function handleUploadRoutes(req, res, url, { json, uploadError, runRemote
       if (scp.code !== 0) {
         return uploadError(res, 500, `scp 上传失败（code=${scp.code}）: ${scp.stderr || scp.stdout}`);
       }
-      const remoteStat = runRemote(`stat -c %s '${remote}' 2>/dev/null || echo MISSING`);
+      const remoteStat = runRemote(`stat -c %s ${shellQuote(remote)} 2>/dev/null || echo MISSING`);
       const remoteSize = Number(remoteStat.trim());
       const sizeMatch = Number.isFinite(remoteSize) && remoteSize === localSize;
       // P4：上传成功后会话元数据（预留额度）随会话一起作废。显式清一次，不依赖

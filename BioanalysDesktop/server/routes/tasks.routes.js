@@ -20,7 +20,57 @@ import {
   buildTaskScript, needsBridgeCheck, inspectBridgeNeed, buildBridgeCheckCommand,
   runBridgeCheckSync, BridgeCheckError, requiresKoGene, isValidKoGene, KNOCKOUT_STEPS,
 } from '../task.js';
-import { runTask } from '../run.js';
+import { runTask, prepareAndAuditTask } from '../run.js';
+
+/**
+ * T0-6：陈旧任务位的回收上限。
+ *
+ * 取值理由是引擎寿命的两倍：server/run.js 的 DETACHED_TIMEOUT_MS 默认 40 分钟，
+ * 超过它的任务引擎自己会判死并落台账；80 分钟意味着还在表里的条目已经不可能
+ * 是活任务，回收不会误杀正在跑的分析。
+ */
+export const STALE_SLOT_MS = Number(process.env.BIO_TASK_SLOT_TTL_MS || 80 * 60 * 1000);
+
+/**
+ * 回收陈旧任务位。返回被回收的 taskId 数组。
+ *
+ * 不调 task.kill：这类条目本来就是"登记了但永远不会退出"的幽灵，
+ * 杀它只是再赌一次它的实现是好的；直接从表里摘掉才是确定行为。
+ * startedAt 解析不出来的条目按新鲜处理（宁可拦也不放行并发）。
+ */
+export function reclaimStaleSlots(runningTasks, now = Date.now()) {
+  const reclaimed = [];
+  for (const [taskId, task] of runningTasks.entries()) {
+    const started = Date.parse(String((task && task.startedAt) || ''));
+    if (Number.isNaN(started)) continue;
+    if (now - started >= STALE_SLOT_MS) {
+      runningTasks.delete(taskId);
+      reclaimed.push(taskId);
+    }
+  }
+  return reclaimed;
+}
+
+
+/**
+ * T0-6：任务位登记。runTask 的审计拒绝路径会**同步**回调 onExit，而登记发生在它返回之后，
+ * 于是 onExit 里的 delete 早于 set，条目永久残留，P-29 全局闸门（runningTasks.size > 0）
+ * 从此恒 409，只能靠重启进程恢复（2026-11 全量审查实测）。
+ *
+ * 这里用 exited 标记把两步顺序补回来，并把整段抽成纯函数，让红测能直接驱动，
+ * 不用去构造一次注定失败的远端执行。
+ *
+ * @param {Map} runningTasks 进程内任务表（注入的同一份引用）
+ * @param {string} taskId 提交层生成的 taskId
+ * @param {object} task 任务位元数据（kill/projectId/lineId/step/startedAt）
+ * @param {boolean} exited runTask 返回前 onExit 是否已经跑过
+ * @returns {boolean} 登记后是否仍是活条目
+ */
+export function registerTaskSlot(runningTasks, taskId, task, exited) {
+  if (exited) return false;
+  runningTasks.set(taskId, task);
+  return true;
+}
 
 export function handleTasksRoutes(req, res, url, {
   json, runRemoteRaw, runningTasks, createSink, dropSink, sendEvent, closeSink,
@@ -141,6 +191,14 @@ export function handleTasksRoutes(req, res, url, {
         }
       }
 
+      // T0-6：先回收陈旧任务位，再判并发闸门。
+      // 幽灵来源见下面 runningTasks.set 之前的注释：审计拒绝路径会在登记前同步调 onExit，
+      // 那条永远不会退出的任务位留在表里，P-29 闸门从此恒 409，只能靠重启进程恢复。
+      const reclaimedSlots = reclaimStaleSlots(runningTasks);
+      if (reclaimedSlots.length > 0) {
+        console.warn(`[bioanalys-desktop] 回收陈旧任务位 ${reclaimedSlots.join(',')}`);
+      }
+
       // P-29：禁止并发 SSH 到 k40-ubuntu。单任务串行是 proot 不进入 abort
       // 自我维持环的必要条件；跨项目并发同样禁止。
       if (runningTasks.size > 0) {
@@ -216,6 +274,21 @@ export function handleTasksRoutes(req, res, url, {
         return json(res, 400, { error: audit.reason });
       }
 
+      // Q3 合并审计（第三十二轮裁定）：提交层与引擎层历史上各审一次，而两次的输入不同
+      // （引擎层多带 throttled / detached / wrapperTaskId），脚本内容实测已分叉。
+      // 这里改用引擎导出的唯一编译加审计入口，把「审的就是跑的」变成结构保证：
+      // 拿到最终脚本与审计结论，400 仍在这一层当场返回，异步派发时把同一份脚本带下去。
+      const wrapperTaskId = `task_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+      let prepared;
+      try {
+        prepared = prepareAndAuditTask(taskSpec, { wrapperTaskId });
+      } catch (cause) {
+        return json(res, 400, { error: `任务脚本构建失败（参数不合法）: ${cause.message}` });
+      }
+      if (!prepared.audit.allowed) {
+        return json(res, 400, { error: prepared.audit.reason });
+      }
+
       // S29 / R9：路径归属预校验，放在审计之后、桥接检查之前：
       // 先拦越界路径，避免为一条注定非法的路径去跑远端桥接校验（白耗 ssh 往返）。
       const pathCheck = validateTaskPaths(requested.inputs || [], requested.outputs || [], projectId);
@@ -275,6 +348,9 @@ export function handleTasksRoutes(req, res, url, {
         }
       }
 
+      // T0-6：审计拒绝等路径会在 runTask 内**同步**回调 onExit，而登记在 runTask 返回之后，
+      // 于是 onExit 里的 delete 早于 set，条目永久残留。用 exited 标记把两步的顺序补回来。
+      let exited = false;
       try {
         const handle = runTask(
           {
@@ -290,11 +366,15 @@ export function handleTasksRoutes(req, res, url, {
             language: adapted ? adaptedLanguage : undefined,
             canonicalOutput: adapted ? canonicalOutput : undefined,
             adapted,
+            // 与提交层的审计同源：引擎直接执行这份已审脚本，不再重编译换 id
+            preparedScript: prepared.script,
+            preparedWrapperTaskId: wrapperTaskId,
           },
           {
             onStdout: (text) => sendEvent(taskId, 'stdout', text),
             onStderr: (text) => sendEvent(taskId, 'stderr', text),
             onExit: (code, entry) => {
+              exited = true;
               runningTasks.delete(taskId);
               sendEvent(taskId, 'exit', JSON.stringify({ code, entry }));
               if (code !== 0) {
@@ -319,13 +399,14 @@ export function handleTasksRoutes(req, res, url, {
             },
           }
         );
-        runningTasks.set(taskId, {
+        // 回调已经跑过的（同步拒绝路径）不登记，不留幽灵位。
+        registerTaskSlot(runningTasks, taskId, {
           kill: handle.kill,
           projectId,
           lineId,
           step: requested.step,
           startedAt: new Date().toISOString(),
-        });
+        }, exited);
         return json(res, 200, { taskId, projectId, lineId, step: requested.step });
       } catch (cause) {
         return json(res, 500, { error: cause instanceof Error ? cause.message : String(cause) });

@@ -358,4 +358,6 @@ if (process.env.LINE_INFER_PROBE) {
   });
 }
 
-export { server };
+// T0-6：runningTasks 必须可观测。幽灵任务位的回收断言（tests/task_slot_reclaim.test.js）
+// 需要在进程外读到这张表；导出的是同一个可变 Map 引用，不是副本。
+export { server, runningTasks };

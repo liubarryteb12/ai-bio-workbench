@@ -14,6 +14,7 @@ import {
   LINE_STEPS, PIPELINE_STEP_META, buildCreateProjectCommand, buildPipelineDag, buildProjectMetaStrict, buildReadProjectMetaCommand, parseProjectMeta,
 } from '../project.js';
 import { BLACKLIST_HINT, checkTumorBlacklist } from '../tumor_blacklist.js';
+import { shellQuote } from '../proc.js';
 import { describeSeries, loadWorkflows, resolvePlan, validateRegistry } from '../workflow_graph.js';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -322,7 +323,7 @@ export function handleProjectRoutes(req, res, url, {
       const updated = { ...meta, line_id: lineId, figure_tasks: mergedTasks };
       const metaPath = `${PROJECTS_ROOT}/${projectId}/project.json`;
       const payload = Buffer.from(JSON.stringify(updated, null, 2)).toString('base64');
-      const write = runRemoteRaw(`echo ${payload} | base64 -d > '${metaPath}'`);
+      const write = runRemoteRaw(`echo ${payload} | base64 -d > ${shellQuote(metaPath)}`);
       if (write.code !== 0) {
         return json(res, 503, { ok: false, error: `项目元数据写回失败: ${write.text}` });
       }

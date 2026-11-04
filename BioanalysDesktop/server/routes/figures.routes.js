@@ -11,7 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { LINES, sanitizeProjectId, PROJECTS_ROOT } from '../domain.js';
-import { runSync } from '../proc.js';
+import { runSync, shellQuote } from '../proc.js';
 import { assertFiguresPath } from '../figures.js';
 import { pullLineOutputs, localFigurePath, LOCAL_OUTPUTS_ROOT } from '../pull.js';
 import { loadWorkflows } from '../workflow_graph.js';
@@ -222,7 +222,7 @@ export function handleFiguresRoutes(req, res, url, {
       const adaptedTask = adapted.tasks[0];
 
       const remoteDir = path.posix.dirname(derivation.remote_path);
-      const mkdir = runRemoteRaw(`mkdir -p '${remoteDir}'`);
+      const mkdir = runRemoteRaw(`mkdir -p ${shellQuote(remoteDir)}`);
       if (mkdir.code !== 0) {
         return json(res, 503, {
           ok: false,
@@ -419,7 +419,7 @@ export function handleFiguresRoutes(req, res, url, {
     // 优先读本地回搬副本；本地没有才回落远端（ssh + base64）。
     // 本地副本是规范要求的离线可看形态，也避免每次翻图都走一次 ssh。
     const localFile = localFigurePath(projectId, lineId, name);
-    const encoded = localFile ? null : runRemote(`base64 -w0 '${guard.dir}/${name}' 2>/dev/null || true`);
+    const encoded = localFile ? null : runRemote(`base64 -w0 ${shellQuote(`${guard.dir}/${name}`)} 2>/dev/null || true`);
     if (!localFile && !encoded.trim()) {
       json(res, 404, { error: `图件不存在或读取失败: ${name}` });
       return true;
