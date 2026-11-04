@@ -42,6 +42,7 @@ import type {
 } from './shared/types';
 import { LedgerPanel, TaskPanel } from './LedgerAuditView';
 import { FilesPanel } from './ResultStudioView';
+import { ModuleHeading, ComputeShieldCard, SelectedStepsIndicator } from '../components/onboarding/OnboardingDisplayParts';
 
 // 数据来源双模态（aims v2.8，与 server/domain.js DATA_SOURCE_MODES 同值）
 type DataSourceMode = 'PUBLIC_DB' | 'IN_HOUSE_UPLOAD';
@@ -947,10 +948,10 @@ export function OnboardingPortal({
     <div className="view-container">
       {/* 模块 0：从客户需求导入 */}
       <div className="module-card">
-        <h2 className="module-title">从客户需求导入</h2>
-        <p className="module-desc">
-          读取 <code>portal/inbox/</code> 中用户提交台导出的需求文件，自动填充下方 A/B/C/D 四个模块。导入后仍可逐项修改。
-        </p>
+        <ModuleHeading
+          title="从客户需求导入"
+          description={<>读取 <code>portal/inbox/</code> 中用户提交台导出的需求文件，自动填充下方 A/B/C/D 四个模块。导入后仍可逐项修改。</>}
+        />
 
         <div className="inbox-toolbar">
           <button className="btn btn-primary" onClick={() => void loadInbox()} disabled={inboxLoading}>
@@ -1035,8 +1036,7 @@ export function OnboardingPortal({
 
       {/* 模块 A：项目基础信息 */}
       <div className="module-card">
-        <h2 className="module-title">模块 A · 项目基础信息</h2>
-        <p className="module-desc">项目 ID、名称、描述与研究领域。疾病/名称/描述实时校验非肿瘤黑名单。</p>
+        <ModuleHeading title="模块 A · 项目基础信息" description="项目 ID、名称、描述与研究领域。疾病/名称/描述实时校验非肿瘤黑名单。" />
 
         <div className="form-grid-2">
           <div className="form-group">
@@ -1099,8 +1099,7 @@ export function OnboardingPortal({
 
       {/* 模块 B：数据来源与动态分组设计 */}
       <div className="module-card">
-        <h2 className="module-title">模块 B · 数据来源与分组设计</h2>
-        <p className="module-desc">数据类型（决定分析线，必选）+ GEO / ArrayExpress / 自有数据，训练集与验证集 GSE、GPL 平台、样本量、组织来源，以及动态多分组 + 组内样本绑定 + 对比对。</p>
+        <ModuleHeading title="模块 B · 数据来源与分组设计" description="数据类型（决定分析线，必选）+ GEO / ArrayExpress / 自有数据，训练集与验证集 GSE、GPL 平台、样本量、组织来源，以及动态多分组 + 组内样本绑定 + 对比对。" />
 
         <div className="form-row">
           <div className="form-col">
@@ -1390,8 +1389,7 @@ export function OnboardingPortal({
 
       {/* 模块 C：分析线与步骤 */}
       <div className="module-card">
-        <h2 className="module-title">模块 C · 分析线与步骤</h2>
-        <p className="module-desc">先选一条分析线（物理锁死，单选），再勾选该线步骤。每个步骤展示功能名称、简介、核心工具与输入/输出。前置 QC 模块固定勾选不可取消。</p>
+        <ModuleHeading title="模块 C · 分析线与步骤" description="先选一条分析线（物理锁死，单选），再勾选该线步骤。每个步骤展示功能名称、简介、核心工具与输入/输出。前置 QC 模块固定勾选不可取消。" />
 
         <div className="form-group">
           <label className="form-label">分析线（单选物理锁死）</label>
@@ -1448,7 +1446,7 @@ export function OnboardingPortal({
               })}
             </div>
             {selectedSteps.length > 0 && (
-              <p className="subtle" style={{ marginTop: 8 }}>已选 {selectedSteps.length} 个步骤</p>
+              <SelectedStepsIndicator count={selectedSteps.length} />
             )}
           </>
         )}
@@ -1456,8 +1454,7 @@ export function OnboardingPortal({
 
       {/* 模块 D：权限、算力策略与交付物配置 */}
       <div className="module-card">
-        <h2 className="module-title">模块 D：项目权限、算力保护策略与预期交付物配置</h2>
-        <p className="module-desc">本模块用于定义项目归属权、确认服务器端防崩运行级别，并锁定最终交付清单。</p>
+        <ModuleHeading title="模块 D：项目权限、算力保护策略与预期交付物配置" description="本模块用于定义项目归属权、确认服务器端防崩运行级别，并锁定最终交付清单。" />
 
         {/* 子项 1：项目成员与权限 */}
         <div className="form-group">
@@ -1477,17 +1474,14 @@ export function OnboardingPortal({
         </div>
 
         {/* 子项 2：算力削峰与断点恢复 */}
-        <div className="form-group">
-          <label className="form-label">子项 2 · 长任务稳定运行与断点恢复</label>
-          <div className="compute-shield-card">
-            <div className="compute-shield-icon">🛡</div>
-            <ul className="compute-shield-list">
-              <li>K40 降权执行：nice/ionice（默认不绑核，EAS 动态调度实测更快）+ 3 线程封顶</li>
-              <li>7.5GB 内存软熔断与检查点续跑</li>
-              <li>每步 exit 0 后自动落盘检查点与 JSON 台账</li>
-            </ul>
-          </div>
-        </div>
+        <ComputeShieldCard
+          title="子项 2 · 长任务稳定运行与断点恢复"
+          items={[
+            'K40 降权执行：nice/ionice（默认不绑核，EAS 动态调度实测更快）+ 3 线程封顶',
+            '7.5GB 内存软熔断与检查点续跑',
+            '每步 exit 0 后自动落盘检查点与 JSON 台账',
+          ]}
+        />
 
         {/* 子项 3：预期输出结果 */}
         <div className="form-group">
@@ -1544,10 +1538,7 @@ export function OnboardingPortal({
 
       {/* 模块 E：v3 intake 分析契约（R2：排版 / 统计阈值 / 生物学先验 / 实验设计 / 验证集映射 / WGCNA 参数） */}
       <div className="module-card">
-        <h2 className="module-title">模块 E · 分析契约（v3 intake）</h2>
-        <p className="module-desc">
-          决定下游脚本跑什么阈值、按什么统计模型、出图套哪个模板。字段形状与服务端归一化契约逐字段一致；留空项取服务端安全默认。
-        </p>
+        <ModuleHeading title="模块 E · 分析契约（v3 intake）" description="决定下游脚本跑什么阈值、按什么统计模型、出图套哪个模板。字段形状与服务端归一化契约逐字段一致；留空项取服务端安全默认。" />
 
         {/* 出图画幅（plotLayoutConfig.templateId，两档） */}
         <div className="form-group">
