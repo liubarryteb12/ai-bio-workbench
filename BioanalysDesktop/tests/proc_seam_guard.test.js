@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 
 const SERVER_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'server');
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -57,12 +58,42 @@ const EXEMPT_RELPATHS = new Set([
   // 便携包构建器：必须起 git（列跟踪清单）与包内 node（自检），与 run_all_gates
   // 同类——离线手工/CI 工具，不进服务运行时。
   'ops/build_portable_package.mjs',
+  // 清理器：T2-1 要求用 git ls-files 判定「文件是否已被版本控制跟踪」，
+  // 这必须起 git 子进程。它是离线手工/CI 工具，不进服务运行时。
+  'ops/clean_workspace.mjs',
+  // 变异门禁（T2-6，第 8 道）：它本身的工作就是「跑测试、跑门禁、看变没变红」，
+  // 必然要起子进程。与 run_all_gates 同类——门禁的编排者。
+  'ops/mutation_gate.mjs',
 ]);
 
 // 豁免清单：接缝本体。加名字进这份清单需要人裁定，不许顺手扩。
 const EXEMPT = new Set(['proc.js']);
 
-function jsFiles(dir) {
+/**
+ * 被版本控制跟踪才算「源码」。这样测试运行期产生的临时夹具目录（比如
+ * 某个测试把 ops/ 复制到 ops/probe_repo 或 ops/static 再跑一遍）不会被当成
+ * 现行违规——实测过一次：门禁自己扫到了另一条测试留下的副本，报出 10 处
+ * 「直连 child_process」，全是副本里的旧代码，整条接缝门禁假红。
+ *
+ * 用 git 判定而不是再列一串目录名黑名单：黑名单永远漏，且每加一个夹具目录
+ * 就要回来改门禁。git 跟踪状态是事实，不是约定。
+ *
+ * git 不可用时（纯目标机、无 git）退化为不排除，但打一行提示，不静默。
+ */
+function trackedSet() {
+  const r = spawnSync('git', ['ls-files', '--', ...RUNTIME_DIRS.map((d) => path.relative(REPO_ROOT, d).split(path.sep).join('/'))], {
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+  if (r.status !== 0) {
+    console.log('[WARN] 无 git，无法判定哪些文件被跟踪；本次按全部文件扫描');
+    return null;
+  }
+  return new Set((r.stdout || '').split(/\r?\n/).filter(Boolean).map((p) => p.split('/').join('/')));
+}
+
+function jsFiles(dir, tracked) {
   let entries = [];
   try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return []; }
   const out = [];
@@ -73,16 +104,22 @@ function jsFiles(dir) {
     if (entry.name === 'node_modules' || entry.name === 'dist'
       || entry.name === 'encoding_backup' || entry.name === '_archive'
       || entry.name === 'artifacts' || entry.name === 'test-results') continue;
-    if (entry.isDirectory()) out.push(...jsFiles(full));
-    else if (entry.name.endsWith('.js') || entry.name.endsWith('.mjs') || entry.name.endsWith('.cjs')) out.push(full);
+    if (entry.isDirectory()) { out.push(...jsFiles(full, tracked)); continue; }
+    if (!entry.name.endsWith('.js') && !entry.name.endsWith('.mjs') && !entry.name.endsWith('.cjs')) continue;
+    if (tracked) {
+      const rel = path.relative(REPO_ROOT, full).split(path.sep).join('/');
+      if (!tracked.has(rel)) continue;
+    }
+    out.push(full);
   }
   return out;
 }
 
 /** 全仓运行时可达的 JS 文件清单 */
 function runtimeFiles() {
+  const tracked = trackedSet();
   const all = [];
-  for (const dir of RUNTIME_DIRS) all.push(...jsFiles(dir));
+  for (const dir of RUNTIME_DIRS) all.push(...jsFiles(dir, tracked));
   return all;
 }
 
@@ -96,8 +133,19 @@ const FORBIDDEN = [
 test('接缝门禁：server/ 除 proc.js 外不得有任何 child_process 直连', () => {
   const violations = [];
   for (const file of runtimeFiles()) {
+    const relPath = path.relative(REPO_ROOT, file).split(path.sep).join('/');
     // 用仓库相对路径精确匹配，不用 basename：同名文件放在别处就不会被误豁免
-    if (EXEMPT_RELPATHS.has(path.relative(REPO_ROOT, file).split(path.sep).join('/'))) continue;
+    if (EXEMPT_RELPATHS.has(relPath)) continue;
+    /**
+     * ops/diagnostics/ 整目录豁免，而不是逐个文件列名单。
+     *
+     * 这里的脚本是**一次性诊断探针**（原 BioanalysDesktop/.tmp_probe_*.mjs，第三十四轮
+     * 归档进来）：它们的工作方式就是起子进程去拉起服务/浏览器并取证，天然要直连
+     * child_process。逐个列文件名会在每加一个探针时都要回来改门禁，而漏改的表现是
+     * 门禁假红——比假绿更招人烦，最后必然被整体豁免掉。
+     * 整目录豁免的前提是这个目录**从不被服务运行时 import**，由下面的反向断言守住。
+     */
+    if (relPath.startsWith('ops/diagnostics/')) continue;
     const rel = path.relative(SERVER_DIR, file).split(path.sep).join('/');
     const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/);
     lines.forEach((line, i) => {
@@ -110,6 +158,20 @@ test('接缝门禁：server/ 除 proc.js 外不得有任何 child_process 直连
     });
   }
   assert.deepEqual(violations, [], '发现绕过 proc.js 的直连（' + violations.length + ' 处）:\n' + violations.join('\n'));
+});
+
+test('ops/diagnostics 是离线探针目录，服务端不得 import 它（豁免的前提）', () => {
+  // 上一条测试把整个 ops/diagnostics/ 从接缝门禁里豁免了。豁免要成立，
+  // 必须保证这个目录永远不会进入服务运行时——否则就是给绕开 proc.js 留了后门。
+  const serverDir = path.join(REPO_ROOT, 'BioanalysDesktop', 'server');
+  const offenders = [];
+  for (const file of jsFiles(serverDir)) {
+    const text = fs.readFileSync(file, 'utf8');
+    if (/from\s+['"][^'"]*ops\/diagnostics|require\(\s*['"][^'"]*ops\/diagnostics/.test(text)) {
+      offenders.push(path.relative(REPO_ROOT, file).split(path.sep).join('/'));
+    }
+  }
+  assert.deepEqual(offenders, [], '服务端引用了离线探针目录: ' + offenders.join(', '));
 });
 
 test('run.js 不再 import child_process（5.1 修复的固化断言）', () => {
