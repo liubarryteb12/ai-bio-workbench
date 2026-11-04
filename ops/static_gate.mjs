@@ -234,6 +234,76 @@ function gateR(files, rscript) {
   return { name: 'r', total: files.length, failures, skipped: [] };
 }
 
+
+// ── 门禁 5：远端命令插值必须引号化（2026-11-04，4 Argon 第三十三轮裁定为立即做）──
+//
+// 由来：T0-4 全量审查抓到 diagnostics 的 dir 参数直接拼进 `if [ -d '<x>' ]`，
+// 修完探针后同一参数仍流进 ledger_fetch.js 与 query_views.js 的裸插值（余震），
+// 全仓共 10 处。真 bash 复现 injection_executed=true。
+//
+// 这类缺陷的共同形态是「模板串里插了外部变量，没走 shellQuote」，单点修复必然会漏，
+// 所以升级成静态门禁：凡 runRemote / runRemoteRaw / runRemoteStrict 的模板串，
+// 每个 ${...} 必须整体是 shellQuote(...) 或列在 SAFE_INTERPOLATIONS 里。
+// 新增漏网点会当场红，不再依赖人工 review。
+const QUOTE_SCAN_FILES = [
+  'ledger_fetch.js', 'query_views.js', 'task_input.js', 'task.js', 'run.js', 'pull.js', 'report.js',
+  'routes/diagnostics.routes.js', 'routes/upload.routes.js', 'routes/figures.routes.js',
+  'routes/tasks.routes.js', 'routes/report.routes.js', 'routes/projects.routes.js',
+];
+
+/** 不需要引号化的插值：本地常量，或已被证明不含 shell 元字符的编码串。 */
+const SAFE_INTERPOLATIONS = new Map([
+  ['SYSTEM_LOGS', 'domain.js 的固定远端路径常量'],
+  ['SHA256_REMOTE_ROOT', '固定远端路径常量'],
+  ['payload', 'Buffer.toString(base64)，字符集 [A-Za-z0-9+/=]，不含引号与分隔符'],
+]);
+
+const BACKTICK = String.fromCharCode(96);
+
+function remoteTemplates(text) {
+  const out = [];
+  const re = new RegExp('runRemote(?:Raw|Strict)?\\s*\\(' + BACKTICK + '((?:[^' + BACKTICK + '\\\\]|\\\\.)*)' + BACKTICK, 'g');
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    out.push({ line: text.slice(0, m.index).split('\n').length, template: m[1] });
+  }
+  return out;
+}
+
+function unsafeInterpolations(template) {
+  const bad = [];
+  const re = /\$\{([^{}]*)\}/g;
+  let m;
+  while ((m = re.exec(template)) !== null) {
+    const inner = m[1].trim();
+    if (/^shellQuote\(/.test(inner)) continue;
+    if (SAFE_INTERPOLATIONS.has(inner)) continue;
+    bad.push(inner);
+  }
+  return bad;
+}
+
+function gateRemoteQuoting() {
+  const failures = [];
+  const serverDir = path.join(REPO, 'BioanalysDesktop', 'server');
+  let total = 0;
+  for (const relPath of QUOTE_SCAN_FILES) {
+    const file = path.join(serverDir, relPath);
+    if (!fs.existsSync(file)) continue;
+    total += 1;
+    const text = fs.readFileSync(file, 'utf8');
+    for (const item of remoteTemplates(text)) {
+      const bad = unsafeInterpolations(item.template);
+      if (bad.length > 0) {
+        failures.push({
+          file: 'BioanalysDesktop/server/' + relPath.replace(/\\/g, '/') + ':' + item.line,
+          reason: '未加引号的远端插值: ' + bad.join(' | '),
+        });
+      }
+    }
+  }
+  return { name: 'remote-quoting', total, failures, skipped: [] };
+}
 function main() {
   const only = (() => {
     const i = process.argv.indexOf('--only');
@@ -249,6 +319,7 @@ function main() {
   const results = [];
   results.push(gateShebang(allFiles));
   results.push(gateHostPollution());
+  results.push(gateRemoteQuoting());
   if (!only || only === 'sh') {
     results.push(gateBareRscript(collect('.sh')));
     results.push(gateShell(collect('.sh'), bash));
