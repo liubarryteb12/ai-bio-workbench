@@ -182,6 +182,100 @@ export function runSync(argv, options = {}) {
 }
 
 /**
+ * 异步执行并收集全部输出：不阻塞事件循环的那一半接缝。
+ *
+ * 存在的理由（T1.5）：`runSync` 用 `spawnSync`，子进程存活期间主线程一个 tick 都不走。
+ * 两次 `scp` 的 timeoutMs 都写死 900000（15 分钟），真链路打不回握手时整个后端
+ * 会停摆最长 15 分钟：`/api/health`、SSE 日志流、其它上传全部排在它后面。
+ * 语义与 `runSync` 逐项对齐（白名单、mock 短路、childEnv 保底、错误原文），
+ * 唯一区别是内部换成 `spawn` 并返回 Promise。
+ *
+ * 与 `runStream` / `runExecStream` 的分工：那两个只为实时日志与 stdin 设计，
+ * 退出码走回调、不收集输出；上传链路要的是「一次拿到 code/stdout/stderr」，
+ * 所以这里按 `runSync` 的返回形态给，调用点只改 `await` 与函数名。
+ *
+ * 参数取值必须与 `runSync` 同口径（默认 30000），否则超时行为会在两条路径上分叉。
+ * @param {string[]} argv 形如 ['scp', '-o', '...']
+ * @param {{cwd?: string, timeoutMs?: number, maxBuffer?: number, env?: Record<string,string>}} [options]
+ * @returns {Promise<{code: number, stdout: string, stderr: string, error: string|null}>}
+ */
+export function runAsync(argv, options = {}) {
+  assertAllowedProgram(argv);
+  if (resolveMockRemote(argv[0] || '')) {
+    return Promise.resolve(mockRemoteResult());
+  }
+  const timeoutMs = options.timeoutMs ?? 30000;
+  return new Promise((resolve) => {
+    let pending = null;
+    let settled = false;
+    let stdout = '';
+    let stderr = '';
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      if (pending) clearTimeout(pending);
+      resolve(result);
+    };
+    const child = childProcess.spawn(argv[0], argv.slice(1), {
+      cwd: options.cwd,
+      windowsHide: true,
+      env: childEnv(options.env),
+    });
+    pending = setTimeout(() => {
+      // 超时口径对齐 spawnSync：kill(SIGTERM) 之后 code 记 -1 并在 error 里留原文，
+      // 让台账能区分「超时被杀」与「远端退出码非 0」。
+      try { child.kill(); } catch { /* 已经退出则忽略 */ }
+      finish({ code: -1, stdout, stderr, error: `超时 ${timeoutMs}ms 未结束，已中止子进程（${programBaseName(argv[0] || '')}）` });
+    }, timeoutMs);
+    // 与 runExecFile 的 maxBuffer 同口径：超出后停止累积，不把主进程拖成 OOM。
+    // 上传链路只解析 stat 的一行数字，正常人远不到上限；命中即视为输出不可信。
+    const maxBuffer = options.maxBuffer ?? 2 * 1024 * 1024;
+    let overflow = false;
+    const append = (target, chunk) => {
+      const text = chunk.toString();
+      if (target === 'stdout') stdout += text; else stderr += text;
+      if (stdout.length + stderr.length > maxBuffer) {
+        overflow = true;
+        try { child.kill(); } catch { /* 已退出则忽略 */ }
+        finish({ code: -1, stdout, stderr, error: `输出超过 ${maxBuffer} 字节，已中止子进程` });
+      }
+    };
+    child.stdout?.on?.('data', (chunk) => append('stdout', chunk));
+    child.stderr?.on?.('data', (chunk) => append('stderr', chunk));
+    // 启动失败（如 ssh 不存在）走 error 事件：把原文留在 error 字段，与 runSync 同形。
+    child.on?.('error', (error) => finish({ code: -1, stdout, stderr, error: String(error.message || error) }));
+    child.on?.('close', (code) => {
+      if (overflow) return;
+      finish({ code: code ?? -1, stdout, stderr, error: null });
+    });
+  });
+}
+
+/**
+ * ssh 远端执行（宽松版）的异步出口：合并输出、滤噪口径与 `runSshRaw` 逐字相同。
+ *
+ * 只多一个 `await`。新增而不是改写 `runSshRaw`，是因为后者有十几个同步调用点
+ * （pi_agent_routes、diagnostics、query_views 等），一次性全改会把这轮改造的
+ * 半径撑到整个后端；上传链路的字节校验单独走这条异步口即可。
+ * @param {string} target ssh 目标（如 k40-ubuntu）
+ * @param {string} command 远端命令
+ * @param {{timeoutMs?: number}} [options]
+ * @returns {Promise<{code: number, text: string}>}
+ */
+export async function runSshAsync(target, command, options = {}) {
+  const result = await runAsync(
+    ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', target, command],
+    { timeoutMs: options.timeoutMs ?? 40000 }
+  );
+  const text = (result.stdout + '\n' + result.stderr)
+    .split(/\r?\n/)
+    .filter((line) => !line.startsWith('Warning: Permanently added'))
+    .join('\n')
+    .trim();
+  return { code: result.code, text };
+}
+
+/**
  * ssh 远端执行（宽松版）：合并 stdout/stderr，滤掉 ssh 客户端噪声，返回退出码 + 文本。
  *
  * 为什么单独成函数：远端输出解析散落在十几个 handler 里，噪声过滤口径必须只有一份

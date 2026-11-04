@@ -1,10 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { PROJECTS_ROOT, projectLineDir } from './domain.js';
-import { runSync, scpArgv, shellQuote } from './proc.js';
+import { runAsync, runSshAsync, scpArgv, shellQuote } from './proc.js';
 import { remoteRawPath, deployedRawName } from './upload.js';
 import { PORTAL_INBOX } from './portal_inbox.js';
-import { runRemoteRaw, runRemote } from './remote_exec.js';
 export function remoteTaskInput(rawPath, projectId, lineId) {
   const normalized = String(rawPath || '').split('\\').join('/').replace(/^\.\/+/, '');
   if (!normalized) return `${projectLineDir(projectId, lineId)}/processed/input.tsv`;
@@ -23,15 +22,19 @@ export function remoteTaskInput(rawPath, projectId, lineId) {
   return `${PROJECTS_ROOT}/${projectId}/${normalized}`;
 }
 
-export function uploadPreparedFigureScripts(preparedFigures) {
+/**
+ * 图模板脚本上传。异步版：调用链上再有同步 scp，建项请求就会把事件循环按住。
+ * 返回形态未变（{ ok, error, uploads }），调用点只多一个 await。
+ */
+export async function uploadPreparedFigureScripts(preparedFigures) {
   const uploads = [];
   for (const entry of preparedFigures.manifest_entries || []) {
     const remoteDir = path.posix.dirname(entry.remote_path);
-    const mkdir = runRemoteRaw(`mkdir -p ${shellQuote(remoteDir)}`);
+    const mkdir = await runSshAsync('k40-ubuntu', `mkdir -p ${shellQuote(remoteDir)}`, { timeoutMs: 40000 });
     if (mkdir.code !== 0) {
       return { ok: false, error: `图模板目录创建失败: ${mkdir.text}`, uploads };
     }
-    const scp = runSync([
+    const scp = await runAsync([
       'scp', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10',
       entry.local_path, `k40-ubuntu:${entry.remote_path}`,
     ]);
@@ -51,7 +54,14 @@ export function uploadPreparedFigureScripts(preparedFigures) {
   return { ok: true, error: '', uploads };
 }
 
-export function deployDataFiles(projectId, lineId, dataFiles) {
+/**
+ * 提交包数据文件部署：scp 落远端 raw_data/ 后做字节校验。
+ *
+ * 异步版（T1.5）：两个 timeoutMs 都是 900000（15 分钟）。真链路打不回握手时，
+ * 同步出口会让整个后端停摆同样长的时间，所以 scp 与随后的 stat 探针一起换异步。
+ * 返回形态未变（{ ok, results }），调用点必须 await，漏了会把 Promise 当成成功。
+ */
+export async function deployDataFiles(projectId, lineId, dataFiles) {
   const results = [];
   if (!Array.isArray(dataFiles) || !dataFiles.length) return { ok: true, results };
   if (!lineId) {
@@ -77,13 +87,13 @@ export function deployDataFiles(projectId, lineId, dataFiles) {
       continue;
     }
     const localSize = fs.statSync(src).size;
-    const scp = runSync(scpArgv(src, remote), { timeoutMs: 900000 });
+    const scp = await runAsync(scpArgv(src, remote), { timeoutMs: 900000 });
     if (scp.code !== 0) {
       results.push({ name: file.name, ok: false, error: `scp 失败: ${scp.stderr || scp.stdout}` });
       continue;
     }
-    const stat = runRemote(`stat -c %s ${shellQuote(remote)} 2>/dev/null || echo MISSING`);
-    const remoteSize = Number(stat.trim());
+    const stat = await runSshAsync('k40-ubuntu', `stat -c %s ${shellQuote(remote)} 2>/dev/null || echo MISSING`, { timeoutMs: 40000 });
+    const remoteSize = Number(stat.text.trim());
     if (!Number.isFinite(remoteSize) || remoteSize !== localSize) {
       results.push({
         name: file.name, ok: false,

@@ -10,7 +10,7 @@
 import fs from 'node:fs';
 
 import { LINES, DEFAULT_PROJECT, sanitizeProjectId } from '../domain.js';
-import { runSync, scpArgv, shellQuote } from '../proc.js';
+import { runAsync, runSshAsync, scpArgv, shellQuote } from '../proc.js';
 import {
   CHUNK_SIZE, initUpload, writeChunk, listChunks, assembleChunks,
   readHeader, validateUpload, remoteRawPath, cleanupUpload, sanitizeFilename,
@@ -162,56 +162,67 @@ export function handleUploadRoutes(req, res, url, { json, uploadError, runRemote
 
   if (url.pathname === '/api/upload/complete' && req.method === 'POST') {
     // 数据导入第 3 步：合并 + 格式校验 + scp 到线内 raw_data + 字节校验
+    //
+    // 这个回调必须是 async（T1.5）：scp 与随后的 stat 探针都改成 await runAsync /
+    // runSshAsync。两条 argv 的 timeoutMs 是 900000（15 分钟），同步出口一旦卡住，
+    // 主线程会整段停摆，/api/health、SSE 日志流、其它上传全部排在后面。
+    // 回调体里抛错不再有同步 try/catch 兜底，末尾统一收敛成 500，避免请求悬挂。
     let body = '';
     req.on('data', (chunk) => { body += chunk; });
-    req.on('end', () => {
-      let requested;
+    req.on('end', async () => {
+      // 异步化之后，抛错不再被同步 try/catch 捕获：这里统一收敛成 500，
+      // 避免异常变成未处理的 rejection 让请求一直悬着。
       try {
-        requested = JSON.parse(body || '{}');
-      } catch (cause) {
-        return uploadError(res, 400, `请求体不是合法 JSON: ${cause.message}`);
-      }
-      const { uploadId, lineId, filename } = requested;
-      if (!LINES.includes(lineId)) {
-        return uploadError(res, 400, `lineId 非法: ${lineId}`);
-      }
-      const projectId = sanitizeProjectId(requested.projectId || DEFAULT_PROJECT);
-      if (!projectId) {
-        return uploadError(res, 400, `projectId 非法（只允许字母数字 . _ -）: ${requested.projectId}`);
-      }
-      let localPath;
-      try {
-        localPath = assembleChunks(uploadId, filename);
-      } catch (cause) {
-        return uploadError(res, 400, `合并分片失败: ${cause.message}`);
-      }
-      const header = readHeader(localPath);
-      const validation = validateUpload(filename, header);
-      if (!validation.ok) {
+        let requested;
+        try {
+          requested = JSON.parse(body || '{}');
+        } catch (cause) {
+          return uploadError(res, 400, `请求体不是合法 JSON: ${cause.message}`);
+        }
+        const { uploadId, lineId, filename } = requested;
+        if (!LINES.includes(lineId)) {
+          return uploadError(res, 400, `lineId 非法: ${lineId}`);
+        }
+        const projectId = sanitizeProjectId(requested.projectId || DEFAULT_PROJECT);
+        if (!projectId) {
+          return uploadError(res, 400, `projectId 非法（只允许字母数字 . _ -）: ${requested.projectId}`);
+        }
+        let localPath;
+        try {
+          localPath = assembleChunks(uploadId, filename);
+        } catch (cause) {
+          return uploadError(res, 400, `合并分片失败: ${cause.message}`);
+        }
+        const header = readHeader(localPath);
+        const validation = validateUpload(filename, header);
+        if (!validation.ok) {
+          cleanupUpload(uploadId);
+          return json(res, 200, {
+            ok: false, validation,
+            hint: '格式校验未通过，未落盘到服务器（文件已从暂存清理）',
+          });
+        }
+        const remote = remoteRawPath(projectId, lineId, filename);
+        const localSize = fs.statSync(localPath).size;
+        const scp = await runAsync(scpArgv(localPath, remote), { timeoutMs: 900000 });
+        if (scp.code !== 0) {
+          return uploadError(res, 500, `scp 上传失败（code=${scp.code}）: ${scp.stderr || scp.stdout}`);
+        }
+        const remoteStat = (await runSshAsync('k40-ubuntu', `stat -c %s ${shellQuote(remote)} 2>/dev/null || echo MISSING`, { timeoutMs: 40000 })).text;
+        const remoteSize = Number(remoteStat.trim());
+        const sizeMatch = Number.isFinite(remoteSize) && remoteSize === localSize;
+        // P4：上传成功后会话元数据（预留额度）随会话一起作废。显式清一次，不依赖
+        // cleanupUpload 里 rm -rf 的副作用；清理顺序变了也不会留下一个「已完成的预留额度」。
+        clearSessionMeta(uploadId);
         cleanupUpload(uploadId);
         return json(res, 200, {
-          ok: false, validation,
-          hint: '格式校验未通过，未落盘到服务器（文件已从暂存清理）',
+          ok: sizeMatch, validation, remotePath: remote,
+          localSize, remoteSize: Number.isFinite(remoteSize) ? remoteSize : null, sizeMatch,
+          hint: sizeMatch ? '上传完成，字节校验通过' : '上传后字节数不一致，请重试',
         });
+      } catch (cause) {
+        return uploadError(res, 500, `上传完成处理失败: ${(cause && cause.message) || cause}`);
       }
-      const remote = remoteRawPath(projectId, lineId, filename);
-      const localSize = fs.statSync(localPath).size;
-      const scp = runSync(scpArgv(localPath, remote), { timeoutMs: 900000 });
-      if (scp.code !== 0) {
-        return uploadError(res, 500, `scp 上传失败（code=${scp.code}）: ${scp.stderr || scp.stdout}`);
-      }
-      const remoteStat = runRemote(`stat -c %s ${shellQuote(remote)} 2>/dev/null || echo MISSING`);
-      const remoteSize = Number(remoteStat.trim());
-      const sizeMatch = Number.isFinite(remoteSize) && remoteSize === localSize;
-      // P4：上传成功后会话元数据（预留额度）随会话一起作废。显式清一次，不依赖
-      // cleanupUpload 里 rm -rf 的副作用；清理顺序变了也不会留下一个「已完成的预留额度」。
-      clearSessionMeta(uploadId);
-      cleanupUpload(uploadId);
-      return json(res, 200, {
-        ok: sizeMatch, validation, remotePath: remote,
-        localSize, remoteSize: Number.isFinite(remoteSize) ? remoteSize : null, sizeMatch,
-        hint: sizeMatch ? '上传完成，字节校验通过' : '上传后字节数不一致，请重试',
-      });
     });
     return true;
   }

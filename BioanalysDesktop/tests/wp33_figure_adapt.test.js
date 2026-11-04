@@ -10,8 +10,17 @@ import { fileURLToPath } from 'node:url';
 import childProcess from 'node:child_process';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const TMP_TEST_ROOT = path.join(REPO, 'BioanalysDesktop', '.tmp', 'wp33-figure-adapt-tests');
-fs.mkdirSync(TMP_TEST_ROOT, { recursive: true });
+/**
+ * 每次运行用**自己的**隔离根，清理时也只删这一棵。
+ *
+ * 原来清理的是共享父目录 wp33-figure-adapt-tests，于是「本进程跑完」会把
+ * 「另一个同进程组还在用的目录」一起删掉——实测在全量并行跑时本文件 4 条随机红，
+ * 单独跑 7 条全绿，就是这个原因。用 mkdtemp 生成本次独有的根，清理范围就与
+ * 本进程的创建范围严格对齐。
+ */
+const TMP_TEST_BASE = path.join(REPO, 'BioanalysDesktop', '.tmp');
+fs.mkdirSync(TMP_TEST_BASE, { recursive: true });
+const TMP_TEST_ROOT = fs.mkdtempSync(path.join(TMP_TEST_BASE, 'wp33-figure-adapt-'));
 const TEST_ROOT = fs.mkdtempSync(path.join(TMP_TEST_ROOT, 'case-'));
 
 test.after(() => {
