@@ -1,0 +1,58 @@
+# 全量审查 Round2 计划稿：外部评审接入 + 梯队票图（Argon 第 32 轮裁定已落地）
+
+本文件接 docs/full_review_round1_plan.md。Round1 出 227 条缺陷与 34 张票；本轮做的是**执行**与**扩票**，不是重新取证。
+
+## 一、裁定来源
+
+4 Argon 第 32 轮（.tmp/argon32_full.txt）Q1 到 Q5 全选 A，置信度 100%（Q4 为 95%）：
+
+| 问 | 裁定 |
+|---|---|
+| Q1 | 保持严格串行，外部新增 P0 插入梯队 0，不开并行轨 |
+| Q2 | 外部新增 4 项按爆炸半径归档：fetchJson+ErrorBoundary 并入 T0-5；15 分钟同步 scp 改异步流进梯队 1.5；AbortController 进梯队 3；一键验签进梯队 4 |
+| Q3 | 合并双层脚本审计到引擎层唯一入口，提交层保留当场 400 的能力，断言 auditedScript === executedScript |
+| Q4 | mutation_gate 从 5 条扩到 7 条，纳入「异步上传不阻塞」与「验签失败必红」 |
+| Q5 | CI 先补 tsc --noEmit 与 e2e 并修净存量红点，最后一步才撤除 || true |
+
+## 二、梯队 0 收官状态（本轮已全绿）
+
+| 票 | 主题 | 实现 | 红测 | 变异 |
+|---|---|---|---|---|
+| T0-1 | 门户进程级 DoS | portal/serve.mjs:1473 / :1859 / :1864 / :1869 / :1871 | portal_resilience 2 条 | A 变红 |
+| T0-2 | survey 端点未鉴权 | serve.mjs:1544 PROTECTED_API 纳入两端点 | portal_csrf 1 条 | B 变红 |
+| T0-3 | 写端点无 CSRF | serve.mjs:420 checkSameOrigin，:1561 接入 | portal_csrf 2 条 | B 连带变红 |
+| T0-4 | 远端命令拼接 | proc.js:114 shellQuote；diagnostics 三处 + **余震 10 处**全部接入 | diagnostics_injection 3 条 + remote_command_quoting 3 条 | C / H / I 变红 |
+| T0-5 | 桌面端 effect 交错与白屏 | App.tsx 两 effect 拆平级；SelfCheckAdminView 判 res.ok + checks 兜底；fetchJson / ErrorBoundary 由 ui-resilience 落 | e2e 三条 | 见 ui-resilience |
+| T0-6 | 幽灵任务位永久 409 | tasks.routes.js STALE_SLOT_MS + reclaimStaleSlots + registerTaskSlot；index.js 导出 runningTasks | task_slot_reclaim 4 条 | D / E 变红 |
+| T0-7（新） | 双层脚本审计分叉 | run.js:43 prepareAndAuditTask（唯一编译+审计，冻结对象，强制 wrapperTaskId）；tasks.routes.js 提交层改调它并下传 preparedScript | audit_single_source 4 条 | F / G 变红 |
+
+## 三、本轮实测发现的三个新缺陷（不在 Round1 的 227 条里）
+
+1. **T0-4 余震（已修）**：同一个 `dir` 参数修好探针后仍原样流进 ledger_fetch.js:5/13 与 query_views.js:56，这两处是裸插值。真 bash 复现 injection_executed=true。修复后 false。此外全仓另有 7 处同类裸插值（upload/figures×2/report/projects/task_input×2），一并换成 shellQuote。
+2. **T0-7 双层审计分叉（已修）**：提交层 tasks.routes.js:272 与引擎层 run.js:53 各审一次，两次的输入不同（引擎层多带 throttled/detached/wrapperTaskId）。探针证明脚本内容已分叉。已按 Q3 合并为唯一入口。
+3. **clean_workspace 的默认安全是巧合**（gates-steward 实测，我独立复核一致）：默认 --keep-days 7 时 targets=442、删除集里 git 已跟踪文件数 **0**；--keep-days 3 时 targets=489、git 已跟踪命中 **29**（样本 con_hf/runs/2026-10-28_aims_v31/delivery_verify.log 等）。Round1 写的「dry-run targets=440 且含 git 已跟踪文件」在默认参数下不成立，需按此修正：危险分界线在 3 天，不是默认值。
+
+## 四、后续梯队票图（串行，每票红测先行）
+
+| 梯队 | 票 | 出口判据 |
+|---|---|---|
+| 1 | T1-1 母版三份归一；T1-2 30 ready 重渲染；T1-3 preview 与产物 sha 恒等门禁；T1-4 line2 火山接真源；T1-5 桑基产线缺口定案；T1-6 火山排版接规范；T1-7 便携包适配器同步 | 30/30 preview sha 逐字节相等；readyCount 恒 30 |
+| 1.5（新） | T1-8 15 分钟同步 scp 改异步流 + 进度回调；T1-9 边缘长任务主动心跳 | 大文件上传期间 /api/health 仍 200 且 P95 响应 < 500ms；心跳静默 5 分钟触发判定 |
+| 2 | T2-1..T2-7 七张门禁票（gates-steward 已出 21 条红测，8 个文件全红） | mutation_gate 7 条变异全红；gate:all 从 7 道变 8 道且绿；CI 撤 || true 后仍绿 |
+| 3 | T3-1 tab 收敛为 3；T3-2 双端校验同一份常量；T3-3 fetch 裸调清零；T3-4 内部术语外泄清零；T3-5 空态与错误态；T3-6 门户提交反馈；T3-7 请求体上限与 413；T3-8 meta 404；**T3-9 PiAgentView 轮询生命周期** | grep 断言为 0；每处失败路径有可见错误态 |
+| 4 | T4-1 门户五步密度；T4-2 结果页三栏；T4-3 无障碍；**T4-4 交付包一键验签** | axe 0 critical；篡改一字节必报 FAIL |
+
+## 五、执行纪律（本轮继续有效）
+
+1. 梯队内可并行，梯队间严格串行。
+2. 每票先写红测，红测不变红不许改实现。
+3. 每票收尾做一次变异反证：把该票修的东西破坏回去，对应红测必须变红，并核对原文件 sha 还原一致。
+4. 梯队 1 期间锁死 ops/figure_ready_allowlist.json，readyCount 恒 30。
+5. 变异驱动器统一走 .tmp/mut_tier0.mjs 的锚点替换机制（命中次数不等于 1 直接报错，跑完自动还原并比对 sha）。
+
+## 六、验收基线（本轮结束时）
+
+- npm test：1425 tests / 1424 pass / 0 fail / 1 skipped。
+- tsc --noEmit：exit 0。
+- 变异反证：A B C D E F G H I 九条全部变红，还原 sha 全部一致。
+- 3 个新测试文件入库：diagnostics_injection / portal_resilience / portal_csrf / task_slot_reclaim / audit_single_source / remote_command_quoting。
