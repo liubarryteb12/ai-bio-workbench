@@ -43,6 +43,10 @@ export const GATES = Object.freeze([
   // 那边显式降级为警告：降级清单与 [SKIP] 行仍逐条打印，gate:all 的 tail 里看得到「本机少验了 16 个」。
   // CI runner 装齐 pwsh7 / r-base 后走 strict 路径（不带本参数）。
   { id: 'static_gate', label: '静态语言门禁', exec: 'node', args: ['ops/static_gate.mjs', '--allow-missing'], cwd: '.', slow: false },
+  // 第 3 道：临时目录隔离（第三十四轮 4 Argon Q4）。同一类并发互删缺陷连续出现两次
+  // （wp33 共享父目录、mutation_gate 固定 scope id），上升为机器静态规则：凡含递归删除的
+  // 测试/门禁文件必须带 mkdtemp / pid / 随机 隔离标记，调用方拥有的输出目录走冻结豁免清单。
+  { id: 'test_isolation', label: '测试与门禁临时目录隔离', exec: 'node', args: ['ops/test_isolation_gate.mjs'], cwd: '.', slow: false },
   { id: 'skip_static', label: '跳过原因白名单（静态面）', exec: 'node', args: ['ops/skip_reason_gate.mjs'], cwd: '.', slow: false },
   { id: 'ledger', label: '台账与真源一致', exec: 'node', args: ['ops/ledger_gen.mjs', '--check'], cwd: '.', slow: false },
   { id: 'figure_registry', label: '图件注册表与证据同步', exec: 'node', args: ['ops/build_figure_templates.cjs', '--check'], cwd: '.', slow: false },

@@ -53,12 +53,14 @@ test('isSafeManifestName：只认两种固定文件名，多级与错扩展名�
 test('readPackageManifest：无斜杠、目录缺失、清单坏损都返回 null 不抛错', () => {
   assert.equal(readPackageManifest('x.json'), null);
   assert.equal(readPackageManifest('PKG_no_such_pkg/requirement.json'), null);
-  // 造一个坏清单目录：解析失败也必须 null，不能把列表接口打崩
-  const badDir = path.join(PORTAL_INBOX, 'PKG_zzprobe_broken');
+  // 造一个坏清单目录：解析失败也必须 null，不能把列表接口打崩。
+  // 目录名带本次进程号 + 随机后缀：这段测试会在全量测试里并发跑，固定名字会让
+  // 两个实例互相删掉对方正在用的夹具（第三十四轮 Q4 静态隔离门禁判定的同类缺陷）。
+  const badDir = path.join(PORTAL_INBOX, 'PKG_zzprobe_broken_' + process.pid + '_' + Math.random().toString(36).slice(2, 8));
   if (!fs.existsSync(badDir)) fs.mkdirSync(badDir);
   fs.writeFileSync(path.join(badDir, 'package_manifest.json'), '{not json');
   try {
-    assert.equal(readPackageManifest('PKG_zzprobe_broken/requirement.json'), null);
+    assert.equal(readPackageManifest(path.basename(badDir) + '/requirement.json'), null);
   } finally {
     fs.rmSync(badDir, { recursive: true, force: true });
   }
