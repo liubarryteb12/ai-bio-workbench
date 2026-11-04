@@ -76,3 +76,42 @@
 等于用「已知红」污染基线，与「红测先写、修完才绿」的纪律冲突。
 统一放在 .tmp/review2/，文件名带 .redtest. 前缀（不匹配 tests/*.test.js 官方入口），
 下一轮实施时先让它们转绿再迁入。批跑入口：node .tmp/review2/run_redtests.mjs。
+## 九、Round2 收官状态（第三十四轮结束）
+
+HEAD 27326d1，工作区完全干净。
+
+| 判据 | 结果 |
+|---|---|
+| npm test | 1452 tests / 1451 pass / **0 fail** / 1 skipped（连跑两次同结果） |
+| gate:all | **8 道全绿**（143 秒） |
+| 红测批跑 | 39 pass / 0 fail / red-files 0/11（T1-1/T1-3/T1-4/T0-4/T2-1..T2-7 全部转绿） |
+| 变异反证 | 本轮累计 20 条全红，还原 sha 全部一致 |
+
+### 已完成并提交
+
+| 票 | 内容 | 提交 |
+|---|---|---|
+| T1-1 | 母版唯一真源归一（27→24 runner，三份进 _legacy） | 7caf192 |
+| T1-3 | 预览溯源门禁（--info-only 阶段）+ render_evidence 字段 | 7caf192 |
+| T1-4 | line2 火山接阈值真源与规范三色 | 7395a49 |
+| T1.5 | 五处同步 scp/ssh 改异步流 | 9fa7f71 |
+| T2-1..T2-7 | 门禁自证七票 + 第 8 道 mutation_gate | 27326d1 |
+| T3-4 首批 | 6 处用户可见内部术语 | 789000d |
+| 卫生 | %SystemDrive% 空目录链 + 8 探针归档 + 防呆 | d674678 |
+| 接缝加固 | 改用 git 跟踪状态判定源码 | dfa98d4 |
+
+### 仍未做
+
+| 票 | 阻塞原因 |
+|---|---|
+| T1-2 | 需 k40 真机重渲染 9 条 preview 分叉，会改 registry 与 preview 文件 |
+| T3-1 / T3-2 | 会大改 OnboardingView 1925 行巨石 |
+| T3-5..T3-8 | 空态 / 提交反馈 / 413 / meta 404 |
+| T4-1..T4-4 | 页面美化与一键验签 |
+
+### 关键数字（供下一轮引用）
+
+- preview 溯源：ready 30 条中 有矩阵证据 12（相等 3 / 分叉 9）、无证据 18。
+- 异步化：改造前 3022ms / 探针最慢 2993ms / childCalls 全 spawnSync；
+  改造后 3014ms / 71 样本 / 探针最慢 2ms / childCalls 全 spawn。
+- clean_workspace：默认 keep-days 7 时 git 已跟踪命中 0，keep-days 3 时命中 29。
