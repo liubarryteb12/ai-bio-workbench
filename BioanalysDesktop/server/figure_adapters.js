@@ -219,7 +219,8 @@ draw(heat)
 dev.off()
 cat("ADAPT_REAL_INPUT_OK heatmap genes=", nrow(expr_z), " samples=", ncol(expr_z), "\n", sep = "")
 `,
-  fig_l2_volcano: `# Real-data differential-expression volcano overlay
+  fig_l2_volcano: `
+# Real-data differential-expression volcano overlay
 suppressPackageStartupMessages({library(ggplot2); library(ggrepel)})
 deg_df <- read.delim(input_data, check.names = FALSE)
 pick_column <- function(candidates) {
@@ -231,29 +232,52 @@ gene_col <- pick_column(c("gene", "gene_symbol", "symbol"))
 fc_col <- pick_column(c("log2FC", "log2fc", "logFC"))
 p_col <- pick_column(c("P_Value", "pvalue", "p_value", "P.Value"))
 padj_col <- pick_column(c("adj_P_Val", "padj", "pvals_adj", "adj.P.Val"))
+as_cutoff <- function(value, fallback) {
+  if (is.null(value)) return(fallback)
+  num <- suppressWarnings(as.numeric(value))
+  if (!length(num) || !is.finite(num) || num <= 0) return(fallback)
+  num
+}
+# 阈值由需求单的三档选择经 adapt_vars 传入，缺省为标准档（|log2FC| > 1, adj.P < 0.05）
+fc_cut <- as_cutoff(adapt_vars$log2fc_cutoff, 1)
+padj_cut <- as_cutoff(adapt_vars$padj_cutoff, 0.05)
 volcano_df <- data.frame(
   gene = as.character(deg_df[[gene_col]]),
   log2fc = as.numeric(deg_df[[fc_col]]),
   pvalue = as.numeric(deg_df[[p_col]]),
   padj = as.numeric(deg_df[[padj_col]])
 )
-volcano_df <- volcano_df[is.finite(volcano_df$log2fc) & is.finite(volcano_df$pvalue) & volcano_df$pvalue > 0, ]
-volcano_df$sig <- ifelse(volcano_df$padj < 0.05 & volcano_df$log2fc > 1, "Up",
-                  ifelse(volcano_df$padj < 0.05 & volcano_df$log2fc < -1, "Down", "NS"))
-labels <- unique(c(as.character(adapt_vars$label_genes), head(volcano_df$gene[order(volcano_df$padj)], 8)))
-label_df <- volcano_df[volcano_df$gene %in% labels, ]
+volcano_df <- volcano_df[is.finite(volcano_df$log2fc) & is.finite(volcano_df$pvalue) & volcano_df$pvalue > 0 & is.finite(volcano_df$padj), ]
+volcano_df$sig <- ifelse(volcano_df$padj < padj_cut & volcano_df$log2fc > fc_cut, "Up",
+                  ifelse(volcano_df$padj < padj_cut & volcano_df$log2fc < -fc_cut, "Down", "NS"))
+volcano_df$sig <- factor(volcano_df$sig, levels = c("Up", "NS", "Down"))
+sig_counts <- table(volcano_df$sig)
+legend_labels <- c(
+  Up = sprintf("Up (n=%d)", as.integer(sig_counts[["Up"]])),
+  NS = sprintf("NS (n=%d)", as.integer(sig_counts[["NS"]])),
+  Down = sprintf("Down (n=%d)", as.integer(sig_counts[["Down"]]))
+)
+sig_only <- volcano_df[volcano_df$sig != "NS", , drop = FALSE]
+ranked <- head(sig_only$gene[order(sig_only$padj, -abs(sig_only$log2fc))], 8)
+label_pool <- unique(c(as.character(adapt_vars$label_genes), ranked))
+label_pool <- label_pool[label_pool %in% volcano_df$gene]
+label_df <- volcano_df[volcano_df$gene %in% label_pool, , drop = FALSE]
+label_df <- label_df[!duplicated(label_df$gene), , drop = FALSE]
 volcano <- ggplot(volcano_df, aes(x = log2fc, y = -log10(pvalue), colour = sig)) +
   geom_point(size = 0.8, alpha = 0.72) +
-  scale_colour_manual(values = c(Up = "#D55E00", Down = "#0072B2", NS = "grey72")) +
-  geom_vline(xintercept = c(-1, 1), linetype = "dashed", linewidth = 0.35, colour = "grey35") +
-  geom_hline(yintercept = -log10(0.05), linetype = "dashed", linewidth = 0.35, colour = "grey35") +
+  scale_colour_manual(values = c(Up = "#D0021B", NS = "grey72", Down = "#0072B2"),
+                      labels = legend_labels, drop = FALSE) +
+  geom_vline(xintercept = c(-fc_cut, fc_cut), linetype = "dashed", linewidth = 0.35, colour = "grey35") +
+  geom_hline(yintercept = -log10(padj_cut), linetype = "dashed", linewidth = 0.35, colour = "grey35") +
   geom_text_repel(data = label_df, aes(label = gene), size = 2.2, max.overlaps = 30) +
-  labs(x = "log2(Fold Change)", y = "-log10(P)", colour = NULL) +
+  labs(x = "log2(Fold Change)", y = "-log10(P)", colour = NULL,
+       subtitle = sprintf("Up/Down 阈值：|log2FC| > %s 且 adj.P < %s", format(fc_cut), format(padj_cut))) +
   theme_classic(base_size = 7) +
-  theme(legend.position = "top")
+  theme(legend.position = "top", plot.subtitle = element_text(size = 5.4, colour = "grey30"))
 ggsave(output_file, volcano, width = 89, height = 75, units = "mm", dpi = 300,
        device = png, type = "cairo", bg = "white")
-cat("ADAPT_REAL_INPUT_OK volcano rows=", nrow(volcano_df), "\n", sep = "")
+cat("ADAPT_REAL_INPUT_OK volcano rows=", nrow(volcano_df),
+    " up=", as.integer(sig_counts[["Up"]]), " down=", as.integer(sig_counts[["Down"]]), "\n", sep = "")
 `,
   fig_l1_groupedbar: `# Real-data enrichment grouped bar overlay
 suppressPackageStartupMessages({library(ggplot2)})
@@ -426,31 +450,73 @@ ggsave(output_file, figure, width = 183, height = 120, units = "mm", dpi = 300,
        device = png, type = "cairo", bg = "white")
 cat("ADAPT_REAL_INPUT_OK multipanel rows=", nrow(pred), "\n", sep = "")
 `,
-  fig_l3_sankey: `# Real-data WGCNA module flow overlay
+  fig_l3_sankey: `
+# Real-data WGCNA module flow overlay (ggalluvial alluvial: module -> module size tertile, ribbon width = real gene count)
+suppressPackageStartupMessages({library(ggplot2); library(ggalluvial)})
 modules <- read.delim(input_data, check.names = FALSE)
 module_col <- if (is.null(adapt_vars$module_col) || !nzchar(adapt_vars$module_col)) "module" else adapt_vars$module_col
 if (!all(c("gene", module_col) %in% names(modules))) stop(paste("sankey input columns missing:", module_col, "gene"))
-flow <- aggregate(list(count = rep(1, nrow(modules))), by = list(module = modules[[module_col]]), FUN = sum)
-flow <- flow[order(flow$count, decreasing = TRUE), , drop = FALSE]
-flow <- head(flow, min(10, nrow(flow)))
-flow$left_y <- rev(seq(0.12, 0.88, length.out = nrow(flow)))
-flow$right_y <- seq(0.12, 0.88, length.out = nrow(flow))
-flow$width <- flow$count / max(flow$count) * 0.08
-png(output_file, width = 183, height = 90, units = "mm", res = 300, type = "cairo", bg = "white")
-par(mar = c(1, 1, 1, 1))
-plot.new()
-plot.window(xlim = c(0, 1), ylim = c(0, 1))
-segments(0.2, flow$left_y, 0.8, flow$right_y, col = adjustcolor("#56B4E9", alpha.f = 0.35),
-         lwd = pmax(2, flow$count / max(flow$count) * 18))
-rect(0.12, flow$left_y - flow$width, 0.20, flow$left_y + flow$width,
-     col = "#0072B2", border = NA)
-rect(0.80, flow$right_y - flow$width, 0.88, flow$right_y + flow$width,
-     col = "#D55E00", border = NA)
-text(0.19, flow$left_y, flow$module, adj = c(1, 0.5), cex = 0.65)
-text(0.81, flow$right_y, paste0("genes=", flow$count), adj = c(0, 0.5), cex = 0.65)
-title(main = "WGCNA module composition", cex.main = 0.8)
-dev.off()
-cat("ADAPT_REAL_INPUT_OK sankey modules=", nrow(flow), "\n", sep = "")
+modules$gene <- as.character(modules$gene)
+modules$module <- as.character(modules[[module_col]])
+modules <- modules[!is.na(modules$gene) & nzchar(modules$gene), , drop = FALSE]
+modules$module[is.na(modules$module) | !nzchar(modules$module)] <- "grey"
+mod_counts <- sort(table(modules$module), decreasing = TRUE)
+top_n <- if (is.null(adapt_vars$top_modules)) 10 else max(3, as.integer(adapt_vars$top_modules))
+top_modules <- names(mod_counts)[seq_len(min(top_n, length(mod_counts)))]
+flow <- modules[modules$module %in% top_modules, c("gene", "module"), drop = FALSE]
+if (!nrow(flow)) stop("sankey input has no genes assigned to modules")
+flow$module <- factor(flow$module, levels = top_modules)
+# 第二轴按真实模块规模的三分位分层（数据驱动，不写死阈值）
+kept_counts <- as.integer(mod_counts[top_modules])
+cuts <- unique(quantile(kept_counts, probs = c(1/3, 2/3), na.rm = TRUE))
+size_rank <- function(n) {
+  if (length(cuts) >= 2) {
+    if (n > cuts[[2]]) return("Large module")
+    if (n > cuts[[1]]) return("Medium module")
+    return("Small module")
+  }
+  if (length(cuts) == 1) { if (n >= cuts[[1]]) "Large module" else "Small module" } else "All modules"
+}
+flow$size_band <- factor(
+  vapply(as.integer(mod_counts[as.character(flow$module)]), size_rank, character(1)),
+  levels = c("Large module", "Medium module", "Small module", "All modules")
+)
+flow <- flow[!is.na(flow$size_band), , drop = FALSE]
+flow$axis_module <- factor(as.character(flow$module), levels = top_modules)
+counts_df <- data.frame(module = top_modules, n = kept_counts, stringsAsFactors = FALSE)
+# WGCNA 模块名本身即颜色名，画布若认识就直接用，否则回落 viridis
+module_fills <- top_modules
+known_colours <- !inherits(tryCatch(grDevices::col2rgb(module_fills), error = function(e) e), "try-error")
+legend_scale <- scale_fill_viridis_d(guide = "none")
+if (known_colours) {
+  fill_values <- setNames(vapply(module_fills, function(m) {
+    rgb <- grDevices::col2rgb(m)
+    grDevices::rgb(rgb[1], rgb[2], rgb[3], maxColorValue = 255)
+  }, character(1)), module_fills)
+  legend_scale <- scale_fill_manual(values = fill_values, guide = "none")
+}
+sankey <- ggplot(flow, aes(axis1 = axis_module, axis2 = size_band, y = 1)) +
+  geom_alluvium(aes(fill = axis_module), width = 0.16, alpha = 0.78, knot.pos = 0.35) +
+  geom_stratum(width = 0.16, fill = "grey93", colour = "grey45", linewidth = 0.2) +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum)), size = 1.45) +
+  scale_x_discrete(limits = c("WGCNA module", "Module size band"), expand = c(0.02, 0.02)) +
+  scale_y_continuous(expand = expansion(mult = c(0.03, 0.03))) +
+  coord_cartesian(clip = "off") +
+  legend_scale +
+  labs(y = "Genes", title = "WGCNA module gene flow",
+       subtitle = sprintf("Ribbon width = real gene count per module; top %d of %d modules (%d of %d genes).\nSource: wgcna_modules.tsv",
+                          nrow(counts_df), length(mod_counts), nrow(flow), sum(mod_counts))) +
+  theme_minimal(base_size = 7) +
+  theme(axis.text.x = element_text(size = 6.4),
+        axis.text.y = element_blank(),
+        axis.title.x = element_blank(),
+        panel.grid.major.y = element_blank(),
+        plot.title = element_text(size = 7.4, face = "bold"),
+        plot.subtitle = element_text(size = 5.2, colour = "grey30"))
+ggsave(output_file, sankey, width = 183, height = 112, units = "mm", dpi = 300,
+       device = png, type = "cairo", bg = "white")
+cat("ADAPT_REAL_INPUT_OK sankey modules=", nrow(counts_df), " genes=", nrow(flow),
+    " bands=", nlevels(droplevels(flow$size_band)), "\n", sep = "")
 `,
 };
 

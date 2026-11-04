@@ -74,6 +74,8 @@ const CASES = {
       input_data: 'data/line1_bulk/processed/deg_all.tsv',
       group_col: 'group',
       label_genes: ['ELOVL2'],
+      log2fc_cutoff: 1,
+      padj_cutoff: 0.05,
     },
     inputPath: 'data/line1_bulk/processed/deg_all.tsv',
     truth: { columns: ['gene', 'log2FC', 'adj_P_Val'], language: 'r' },
@@ -741,4 +743,28 @@ test('remaining figure templates build real-data adapters before promotion', () 
     assert.ok(source.includes(candidate.canonicalOutput), templateId);
     assert.ok(source.includes('Retained master source'), templateId);
   }
+});
+
+test('火山图叠加层按三档阈值与红蓝灰语义渲染（第二十九轮 ③）', () => {
+  const source = buildSource('fig_l2_volcano');
+  assert.match(source, /fc_cut <- as_cutoff\(adapt_vars\$log2fc_cutoff, 1\)/);
+  assert.match(source, /padj_cut <- as_cutoff\(adapt_vars\$padj_cutoff, 0\.05\)/);
+  assert.match(source, /Up = "#D0021B"/);
+  assert.match(source, /Down = "#0072B2"/);
+  assert.match(source, /NS = "grey72"/);
+  assert.match(source, /geom_vline\(xintercept = c\(-fc_cut, fc_cut\)/);
+  assert.match(source, /geom_hline\(yintercept = -log10\(padj_cut\)/);
+  assert.ok(source.includes('sprintf("Up (n=%d)"'));
+});
+
+test('桑基图叠加层走真 ggalluvial 且不用手绘多边形（第二十九轮 ③）', () => {
+  const source = buildSource('fig_l3_sankey');
+  assert.match(source, /library\(ggalluvial\)/);
+  assert.match(source, /geom_alluvium\(aes\(fill = axis_module\)/);
+  assert.match(source, /geom_stratum\(/);
+  assert.match(source, /stat = "stratum"/);
+  assert.match(source, /quantile\(kept_counts, probs = c\(1\/3, 2\/3\)/);
+  assert.equal(/segments\(/.test(source), false, '桑基图禁止手绘 segments');
+  assert.equal(/rect\(/.test(source), false, '桑基图禁止手绘 rect');
+  assert.match(source, /ADAPT_REAL_INPUT_OK sankey/);
 });

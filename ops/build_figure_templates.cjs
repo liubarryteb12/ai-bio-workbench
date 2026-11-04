@@ -109,7 +109,13 @@ function adaptVars(row) {
     return { ...common, group_col: '细胞或样本分组列名' };
   }
   if (name.includes('volcano')) {
-    return { ...common, group_col: '比较方向定义使用的分组列名', label_genes: '需要标注的基因清单，可为空' };
+    return {
+      ...common,
+      group_col: '比较方向定义使用的分组列名',
+      label_genes: '需要标注的基因清单，可为空',
+      log2fc_cutoff: '差异倍数阈值，三档：0.5 宽松 / 1 标准 / 2 严苛',
+      padj_cutoff: '显著性阈值，三档：0.1 / 0.05 / 0.05',
+    };
   }
   if (name.includes('violin') || name.includes('boxplot')) {
     return { ...common, group_col: '分组列名', value_col: '表达或测量值列名' };

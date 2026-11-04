@@ -317,6 +317,8 @@ test('figure resolution accepts a same-line linked mod and complete adapt vars',
       input_data: 'figures/line1_bulk/de_results.csv',
       group_col: 'condition',
       label_genes: [],
+      log2fc_cutoff: 1,
+      padj_cutoff: 0.05,
     },
     ['l1_figures_bulk'],
   );
