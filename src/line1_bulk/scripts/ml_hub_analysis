@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# PROVENANCE: INDEPENDENT  本脚本出图代码为独立实现，未派生自 reference/05.可参考出图代码 的源码；
 # ml_hub_analysis：line1_bulk 机器学习：hub 基因精筛 + 重要性评估（aims 线1"机器学习建模"扩展）。
 #
 # 两类方法（用户 2026-10-14 指定）：

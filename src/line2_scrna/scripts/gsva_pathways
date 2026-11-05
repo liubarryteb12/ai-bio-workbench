@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# PROVENANCE: INDEPENDENT  本脚本出图代码为独立实现，未派生自 reference/05.可参考出图代码 的源码；
 # gsva_pathways：line2_scrna 通路活性打分 GSVA（aims 线2 下游第 6 项，GO/KEGG/Reactome/GSEA/GSVA 之 GSVA）。
 #
 # 输入（cwd 下）：

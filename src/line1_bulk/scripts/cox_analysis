@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# PROVENANCE: INDEPENDENT  本脚本出图代码为独立实现，未派生自 reference/05.可参考出图代码 的源码；
 # cox_analysis：line1_bulk 生存分析（单因素/多因素 Cox + LASSO-Cox + 森林图）
 # aims 线1 步骤 5 附加项（v2.3 方案"单因素/多因素 Cox 回归，如果后续要做生存分析"）
 #

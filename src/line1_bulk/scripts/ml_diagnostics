@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# PROVENANCE: INDEPENDENT  本脚本出图代码为独立实现，未派生自 reference/05.可参考出图代码 的源码；
 # ml_diagnostics：line1_bulk 诊断模型增强（补 SOP Stage 8 缺口：校准曲线 / DCA / 单基因对比 / Nomogram 门槛）。
 #
 # 背景：ml_model（LOOCV LR/RF）与 external_validation 给 AUC；本步补三件套：

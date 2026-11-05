@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# PROVENANCE: INDEPENDENT  本脚本出图代码为独立实现，未派生自 reference/05.可参考出图代码 的源码；
 # target_gene_localization：line2_scrna 目标基因表达定位（aims 线2 下游第 4 项）。
 #
 # 输入（cwd 下）：

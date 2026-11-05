@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# PROVENANCE: INDEPENDENT  本脚本出图代码为独立实现，未派生自 reference/05.可参考出图代码 的源码；
 # external_validation：line1_bulk 步骤 11 独立验证（冻结评估）。
 #
 # 硬约束（aims）：验证集只做冻结评估，不重新筛基因、不重新调参；验证集内部可

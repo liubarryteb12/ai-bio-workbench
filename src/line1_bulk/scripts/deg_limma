@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# PROVENANCE: INDEPENDENT  本脚本出图代码为独立实现，未派生自 reference/05.可参考出图代码 的源码；
 # deg_limma：line1_bulk 步骤 7 的差异分析部分（limma，LS vs NLS 两组比较）。
 # WGCNA 部分不在本脚本（样本量不足时 WGCNA 不可靠，见 line1 README 状态）。
 #

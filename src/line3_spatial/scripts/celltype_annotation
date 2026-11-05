@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# PROVENANCE: INDEPENDENT  本脚本出图代码为独立实现，未派生自 reference/05.可参考出图代码 的源码；
 # celltype_annotation：line3_spatial 步骤 11 轻量级细胞类型注释 / 反卷积
 # aims 线3 下游第 7 项（v2.3 反卷积白名单 1/2/3 需 R Seurat/CARD/RCTD，容器未装，
 # 按 P2 裁决用 Python 轻量方案替代：NNLS 非负最小二乘 + marker 基因打分）。

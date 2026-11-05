@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# PROVENANCE: INDEPENDENT  本脚本出图代码为独立实现，未派生自 reference/05.可参考出图代码 的源码；
 # dr_post_analysis：line3_spatial 虚拟敲除后线内分析（aims 线3 第 155 行两项收尾）。
 #   1. DR 基因富集（prerank GSEA，全 DR 表按 Z 排序，不依赖显著阈值；小鼠/人源分库）
 #   2. DR ∩ 空间域 marker 交集

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# PROVENANCE: INDEPENDENT  本脚本出图代码为独立实现，未派生自 reference/05.可参考出图代码 的源码；
 # wgcna_modules：line1_bulk 步骤 7 的 WGCNA 部分（共表达网络 + 模块-性状关联）。
 #
 # 输入（同 cwd，步骤 1/5 产物）：expr_genes.tsv（基因 × 样本）+ group_map.tsv。

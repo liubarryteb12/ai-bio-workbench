@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# PROVENANCE: INDEPENDENT  本脚本出图代码为独立实现，未派生自 reference/05.可参考出图代码 的源码；
 # key_genes：line1_bulk 步骤 9 交集关键基因（DEG ∩ WGCNA 显著模块 ∩ PPI hub）。
 #
 # 输入（同 cwd）：deg_all.tsv + wgcna_modules.tsv + wgcna_module_trait.tsv + ppi_hubs.tsv。

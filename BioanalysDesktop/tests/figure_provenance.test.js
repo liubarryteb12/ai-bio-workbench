@@ -47,16 +47,17 @@ test("假溯源被抓：声明 DERIVED 但不引用库", () => {
   assert.equal(referencesLibrary(fake), false);
 });
 
-test("门禁在工作树上可通过（6 个出图脚本均有诚实声明）", () => {
+test("门禁在工作树上可通过（全量产图母版均有诚实声明）", () => {
   const out = execFileSync(process.execPath, [GATE], { cwd: REPO, encoding: "utf8" });
   assert.match(out, /FIGURE_PROVENANCE_OK/);
-  assert.match(out, /扫描 6 个出图脚本/);
+  // 数字不写死：覆盖面由动态发现决定，写死数字就是下一个「新增脚本脱离审查」的坑
+  assert.match(out, /按产图调用动态发现 \d+ 个出图脚本/);
 });
 
 test("全部出图脚本都是 INDEPENDENT（如实反映审核结论：未引用参考库）", () => {
   const out = execFileSync(process.execPath, [GATE], { cwd: REPO, encoding: "utf8" });
   const rows = [...out.matchAll(/(line\d_[a-z]+\/[a-z_]+)\s+(DERIVED|INSPIRED|INDEPENDENT)\s+referencesLibrary=(true|false)/g)];
-  assert.equal(rows.length, 6, "应解析出 6 行，实际 " + rows.length);
+  assert.ok(rows.length >= 22, "应解析出 >=22 行（实测产图母版数），实际 " + rows.length);
   for (const r of rows) {
     assert.equal(r[2], "INDEPENDENT", r[1] + " 声明应为 INDEPENDENT");
     assert.equal(r[3], "false", r[1] + " 不应引用参考库");

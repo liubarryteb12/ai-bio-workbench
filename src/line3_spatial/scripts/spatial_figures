@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# PROVENANCE: INDEPENDENT  本脚本出图代码为独立实现，未派生自 reference/05.可参考出图代码 的源码；
 # spatial_figures：line3_spatial 出图脚本（读步骤 13 产物，产 PNG 供目视审核）。
 #
 # 输入：spatial_knockout_mouse.h5ad / spatial_knockout_human.h5ad

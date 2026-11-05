@@ -3,14 +3,18 @@
  * figure_source_provenance.mjs —— 出图代码与参考库的溯源诚实性门禁（生信代码专项审核）。
  *
  * 审核发现的核心问题：注册表 src/figure_templates.json 里 30 条 ready 模板都登记了
- * source 指向 reference/05.可参考出图代码，但五个真实出图脚本一处都没引用参考库。
+ * source 指向 reference/05.可参考出图代码，但真实出图脚本一处都没引用参考库。
  * 也就是说「溯源」目前只是元数据关系，不是代码的派生关系。
  *
  * 本门禁不强行要求「必须派生」（那是产品决定），而是要求**诚实**：
  *   1. 每份出图脚本必须显式声明它与参考库的关系（DERIVED / INSPIRED / INDEPENDENT）；
  *   2. 声明 DERIVED 的，脚本里必须真的出现参考库路径引用（否则是假溯源）；
- *   3. 声明 INDEPENDENT 的，注册表对应条目的 source 字段必须标注为「参考来源」而非「派生来源」；
- *   4. 任何出图脚本缺声明 -> FAIL（不允许默认沉默）。
+ *   3. 任何出图脚本缺声明 -> FAIL（不允许默认沉默）。
+ *
+ * 覆盖面口径（Argon 第 65 轮 Q2 改判）：清单不再手写维护，改为**按实际产图调用动态发现**。
+ * 手写白名单 + 文件名 *figures* 匹配都是「按名字信人」：ml_hub_analysis / ppi_string /
+ * key_genes 这类名字不带 figures 却实打实调用 savefig / png( 产图的母版会合法游离在审查外。
+ * 现在凡源码含产图落盘调用（且不在注释里）的母版一律纳管，集合双向恒等由契约测试钉住。
  *
  * 用法：node ops/figure_source_provenance.mjs
  */
@@ -19,15 +23,84 @@ import path from "node:path";
 
 const REPO = path.resolve(import.meta.dirname, "..");
 
-/** 出图脚本清单（相对 src/）。新增出图脚本必须登记到这里，否则门禁不知道要审它。 */
-export const FIGURE_SCRIPTS = Object.freeze([
-  "line1_bulk/bulk_figures",
-  "line1_bulk/enrichment_figures",
-  "line2_scrna/scrna_figures",
-  "line2_scrna/enrichment_figures",
-  "line2_scrna/scenic_figures",
-  "line3_spatial/enrichment_figures",
-]);
+/** 三条分析线的脚本目录（隔离红线：只扫本仓 src/，不跨线取数）。 */
+export const SCRIPT_LINES = Object.freeze(["line1_bulk", "line2_scrna", "line3_spatial"]);
+
+/**
+ * 产图落盘调用的判据。
+ *
+ * 刻意收得比较窄：只认真正会写出图件的调用，避免把 plt.plot( 这类绘制中间步骤也算进来。
+ *   - Python: fig.savefig(...) / plt.savefig(...) / savefig(...)
+ *   - R:      ggsave(...) / png(...) / pdf(...) / svg(...) / tiff(...)
+ *   - R:      dev.copy(...)（把当前设备内容复制到文件设备）
+ * 排除项：par( 与 plot( 不是落盘；readPNG 之类读入也不算。
+ */
+export const FIGURE_CALL_RE = /\b(?:savefig|ggsave|dev\.copy|png|pdf|svg|tiff|jpeg)\s*\(/;
+
+/**
+ * 从源码文本判定它是否真的产图。
+ *
+ * 关键：先剔除注释行与行尾注释。否则注释里写一句 "# fig.savefig(x)" 就会让
+ * 一份纯计算母版被误判成产图母版，反之规范说明里的示例也会造成假阳性。
+ */
+export function hasFigureCall(text) {
+  for (const rawLine of text.split(/\r?\n/)) {
+    const trimmed = rawLine.trim();
+    if (trimmed.length === 0) continue;
+    if (trimmed.startsWith("#")) continue;
+    // 行尾注释：截断到第一个 #（R 与 Python 都用 #；这里不处理字符串内的 #，
+    // 因为产图调用行极少出现含 # 的字符串，且假阳性只会多审不会漏审）
+    const hashAt = rawLine.indexOf("#");
+    const code = hashAt >= 0 ? rawLine.slice(0, hashAt) : rawLine;
+    if (FIGURE_CALL_RE.test(code)) return true;
+  }
+  return false;
+}
+
+/**
+ * 动态发现所有产图母版。
+ *
+ * @param {{ roots?: string[] }} [opts] roots 用于测试注入（给一个临时目录即只扫它）。
+ * @returns {{ rel: string, abs: string, lineId: string, name: string }[]}
+ */
+export function discoverFigureProducers(opts = {}) {
+  const out = [];
+  if (Array.isArray(opts.roots)) {
+    for (const root of opts.roots) {
+      for (const e of fs.readdirSync(root, { withFileTypes: true })) {
+        if (!e.isFile()) continue;
+        if (e.name === "README.md") continue;
+        const abs = path.join(root, e.name);
+        if (hasFigureCall(fs.readFileSync(abs, "utf8"))) {
+          out.push({ rel: e.name, abs, lineId: "", name: e.name });
+        }
+      }
+    }
+    return out;
+  }
+  for (const lineId of SCRIPT_LINES) {
+    const dir = path.join(REPO, "src", lineId, "scripts");
+    if (!fs.existsSync(dir)) continue;
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (!e.isFile()) continue;
+      if (e.name === "README.md") continue;
+      // 独立脚本（.py/.R/.sh）不是母版，母版约定为无扩展名
+      if (/\.(py|R|sh|md|json|tsv|csv)$/i.test(e.name)) continue;
+      const abs = path.join(dir, e.name);
+      if (!hasFigureCall(fs.readFileSync(abs, "utf8"))) continue;
+      out.push({ rel: lineId + "/" + e.name, abs, lineId, name: e.name });
+    }
+  }
+  return out.sort((a, b) => a.rel.localeCompare(b.rel));
+}
+
+/**
+ * 出图脚本清单（相对 src/）。
+ *
+ * 由 discoverFigureProducers() 在模块加载时算好并冻结：新增产图母版会自动进来，
+ * 不需要人工登记，也就不会出现「新增脚本悄悄脱离审查而门禁仍绿」。
+ */
+export const FIGURE_SCRIPTS = Object.freeze(discoverFigureProducers().map((r) => r.rel));
 
 /** 合法的溯源声明关键字。 */
 export const PROVENANCE_KINDS = Object.freeze(["DERIVED", "INSPIRED", "INDEPENDENT"]);
@@ -88,9 +161,9 @@ function main() {
     }
   }
 
-  console.log("[figure_provenance] 扫描 " + rows.length + " 个出图脚本");
+  console.log("[figure_provenance] 按产图调用动态发现 " + rows.length + " 个出图脚本");
   for (const r of rows) {
-    console.log("  " + r.script.padEnd(34) + " " + String(r.provenance).padEnd(12)
+    console.log("  " + r.script.padEnd(38) + " " + String(r.provenance).padEnd(12)
       + " referencesLibrary=" + r.referencesLibrary);
   }
   for (const p of problems) console.log("[FAIL] " + p);
@@ -98,7 +171,7 @@ function main() {
     console.log("FIGURE_PROVENANCE_FAIL " + problems.length + " 处不诚实或缺声明");
     process.exit(1);
   }
-  console.log("FIGURE_PROVENANCE_OK 全部出图脚本均有诚实溯源声明");
+  console.log("FIGURE_PROVENANCE_OK " + rows.length + " 个产图母版均有诚实溯源声明");
 }
 
 // 入口判定用 fileURLToPath（URL.pathname 在 Windows 上带 %编码与正斜杠，直接比对会失败，

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# PROVENANCE: INDEPENDENT  本脚本出图代码为独立实现，未派生自 reference/05.可参考出图代码 的源码；
 # ml_model：line1_bulk 步骤 10 机器学习建模（训练集内选基因 + 调参 + 评估）。
 #
 # 输入（同 cwd）：expr_genes.tsv + group_map.tsv + key_genes.tsv（步骤 9 交集关键基因）。
