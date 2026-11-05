@@ -885,8 +885,9 @@ for organism in ("Mus musculus", "Homo sapiens"):
                                "样本间扫描缩放不同（spot_diameter 21 vs 147 两档），"
                                "跨样本比较必须用 obs 的 array_row/array_col 捕获区网格坐标")
     adata.uns["image_note"] = "uns['spatial'][sample_id] 只存 lowres 图；hires 图未入 h5ad，需要时从 raw_data tar 重取"
-    if warnings_list:
-        adata.uns["warnings"] = list(warnings_list)
+    # warnings 键无条件写：下游（spatial_markers 等 9 个母版）把它列为 REQUIRED_UNS，
+    # 「没有警告」与「忘了写」必须可区分，所以空列表也要落键，不能条件省略。
+    adata.uns["warnings"] = list(warnings_list)
     # scanpy/squidpy 空间绘图约定结构（按样本分开，跨样本图缩放不同不能混）
     for rec in recs:
         adata.uns.setdefault("spatial", {})[rec["sf"]] = {
