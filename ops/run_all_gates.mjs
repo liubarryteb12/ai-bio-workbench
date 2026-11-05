@@ -68,6 +68,10 @@ export const GATES = Object.freeze([
   // 从未引用库 —— 本门禁要求每份出图脚本显式声明 DERIVED/INSPIRED/INDEPENDENT，
   // 并抓「声称派生却不引用库」的假溯源。
   { id: 'figure_provenance', label: '出图溯源诚实性', exec: 'node', args: ['ops/figure_source_provenance.mjs'], cwd: '.', slow: false },
+  // 生信代码专项审核：母版解释器解析。47 个母版此前硬编码 python3，而 K40 的
+  // /usr/bin/python3 没有科学计算栈，真正带依赖的是 /root/venvs/bio-py ——
+  // 靠 PATH 里碰巧有 venv 等于把运行环境交给运气。
+  { id: 'python_interpreter', label: '母版解释器解析', exec: 'node', args: ['ops/python_interpreter_gate.mjs'], cwd: '.', slow: false },
   { id: 'audit_summary', label: '交付审计流可解析', exec: 'node', args: ['ops/audit_summary.mjs'], cwd: '.', slow: false },
   // 第 8 道：变异门禁（T2-6）。它证明的不是「代码对不对」，而是「门禁会不会红」：
   // 对 7 条关键防线各注入一次真实破坏，任一条没让对应判据变红即整道失败。
