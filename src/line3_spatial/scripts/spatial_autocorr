@@ -299,11 +299,26 @@ for path in os.environ["AUTOCORR_INPUTS"].splitlines():
 
     zonation = SANITY[species]["zonation"]
     immune = SANITY[species]["immune"]
-    zonation_vals = [symbol_i(gene) for gene in zonation]
-    immune_vals = [symbol_i(gene) for gene in immune]
-    if min(zonation_vals) <= max(immune_vals):
-        fail("%s zonation 基因 I %s 未全部高于免疫基因 I %s（空间结构或坐标口径异常？）"
-             % (species, [round(v, 3) for v in zonation_vals], [round(v, 3) for v in immune_vals]))
+    # 断言修正（2026-11-06 GSE233814 脑真机暴露，与 spatial_markers sanity 同类）：
+    # 旧版硬断言「肝 zonation 基因 I 必高于肝免疫基因」，但这三只基因是肝脏知识。
+    # 脑组织里 Apoa2/Mup3/Hamp 本就无分区结构（实测 I 约 0.03），而小胶质标记弥散度更高，
+    # 于是必然失败 —— 把「组织生物学」误写成了「流水线不变量」。
+    # 面板 I 值仍如实写进报告（sanity_zonation_I / sanity_immune_I），供人工判读。
+    # 换成坐标无关的分布不变量：存在显著空间自相关的基因集。
+    # 若权重/邻接/坐标坏了，全体基因的 I 都会退化到零假设水平（E[I]=-1/(n-1)≈-0.0004），
+    # 拿 I 分布相对零假设的富尾幅度判据即可抓住真故障。
+    finite_i = i_mean[np.isfinite(i_mean)]
+    null_abs = abs(float(np.nanmean([
+        -1.0 / (int(adata.uns["autocorr"]["n_spots_" + s]) - 1)
+        for s in adata.uns["autocorr"]["samples"]
+    ]))) if "autocorr" in adata.uns else 0.001
+    i_p99 = float(np.percentile(finite_i, 99))
+    i_med = float(np.median(finite_i))
+    if not (i_p99 - i_med > 0.05):
+        fail("%s I 分布无富尾（p99=%.4f median=%.4f 差 %.4f <= 0.05，"
+             "零假设 E[I]=-%.4f）：邻接权重或坐标疑似损坏"
+             % (species, i_p99, i_med, i_p99 - i_med, null_abs))
+    log("%s I 分布不变量 OK p99=%.4f median=%.4f tail=%.4f" % (species, i_p99, i_med, i_p99 - i_med))
     if adata.X.nnz != x_nnz_before:
         fail("%s X nnz 被改变" % species)
     if adata.layers["counts"].nnz != counts_nnz_before:
