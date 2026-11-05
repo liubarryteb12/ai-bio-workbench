@@ -26,7 +26,9 @@ import path from "node:path";
 const REPO = path.resolve(import.meta.dirname, "..");
 const REMOTE_ROOT = "/mnt/ssd/bio_data/bin";
 const LINES = ["line1_bulk", "line2_scrna", "line3_spatial"];
-const MANIFEST = path.join(REPO, ".ops_state", "k40_script_manifest.json");
+// 测试用 K40_PARITY_MANIFEST 覆盖清单路径，避免变异反证碰真实缓存
+const MANIFEST = process.env.K40_PARITY_MANIFEST
+  || path.join(REPO, ".ops_state", "k40_script_manifest.json");
 
 const offline = process.argv.includes("--offline");
 const asJson = process.argv.includes("--json");
@@ -108,8 +110,11 @@ function main() {
                    shared: shared.length, diverged: diverged.length,
                    onlyLocal: onlyLocal.length, onlyRemote: onlyRemote.length });
     for (const n of diverged) problems.push(line + "/" + n + " 内容分叉（仓库 " + local[n].slice(0, 12) + " vs 远端 " + rem[n].slice(0, 12) + "）");
-    for (const n of onlyRemote) warnings.push(line + "/" + n + " 只在 K40 存在（野生脚本，需人工裁定归档或回流）");
-    if (onlyLocal.length) warnings.push(line + "/" + onlyLocal.join(",") + " 只在仓库存在（尚未部署）");
+    // 单侧独有从警告升为硬阻断（Argon 第 39 轮裁定）：只警告的话，任何人往 K40 bin/
+    // 手工塞新脚本门禁依然绿灯，同源性就没焊死。野生脚本已归档到 _legacy_wild/，
+    // 现在两侧集合必须恒等。
+    for (const n of onlyRemote) problems.push(line + "/" + n + " 只在 K40 存在（未回流仓库；若确属历史遗留，请移到 /mnt/ssd/bio_data/bin/_legacy_wild/）");
+    for (const n of onlyLocal) problems.push(line + "/" + n + " 只在仓库存在（尚未部署到 K40）");
   }
 
   report(problems, warnings, summary);
@@ -129,9 +134,10 @@ function report(problems, warnings, summary) {
     for (const p of problems) console.log("[FAIL] " + p);
   }
   if (problems.length === 0) {
-    console.log("K40_SCRIPT_PARITY_OK 共有脚本逐字节一致（" + summary.reduce((a, s) => a + s.shared, 0) + " 个）");
+    const shared = summary.reduce((a, s) => a + s.shared, 0);
+    console.log("K40_SCRIPT_PARITY_OK 双向集合恒等 + 逐字节一致（" + shared + " 个脚本）");
   } else {
-    console.log("K40_SCRIPT_PARITY_FAIL " + problems.length + " 个分叉脚本");
+    console.log("K40_SCRIPT_PARITY_FAIL " + problems.length + " 处不同源");
     process.exit(1);
   }
 }

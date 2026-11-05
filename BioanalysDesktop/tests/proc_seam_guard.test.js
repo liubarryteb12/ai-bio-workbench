@@ -68,6 +68,9 @@ const EXEMPT_RELPATHS = new Set([
   // 两者都要用 git ls-files 列「被跟踪的源码」，离线静态门禁，不进服务运行时。
   'ops/test_isolation_gate.mjs',
   'ops/dist_parity_gate.mjs',
+  // K40 脚本同源门禁（第 39 轮）：它的工作就是 ssh 到真机取三线全部 sha256 再比对，
+  // 必须起子进程。与 smoke_golden 同类——离线手工/CI 跑的真机驱动，不进服务运行时。
+  'ops/k40_script_parity.mjs',
 ]);
 
 // 豁免清单：接缝本体。加名字进这份清单需要人裁定，不许顺手扩。
