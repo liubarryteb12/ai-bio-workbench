@@ -58,11 +58,14 @@ for path in "${INPUTS[@]:-}"; do
   esac
 done
 
-if [ -z "$mouse_h5ad" ] || [ -z "$human_h5ad" ]; then
-  echo "缺少必需输入：spatial_composition_mouse.h5ad 与 spatial_composition_human.h5ad（步骤 9 产物）都必须提供" >&2
+if [ -z "$mouse_h5ad" ] && [ -z "$human_h5ad" ]; then
+  # 单物种数据集（GSE233814 只有小鼠 GPL24247）不再要求两份都提供。
+  # 判据改为「至少一份」：两份都缺才报错；实际提供哪份，下游按文件名分流。
+  echo "缺少必需输入：至少需要一份物种 h5ad（mouse 或 human）" >&2
   exit 2
 fi
 for path in "$mouse_h5ad" "$human_h5ad"; do
+  [ -n "$path" ] || continue
   if [ ! -f "$path" ]; then
     echo "输入文件不存在: $path"
     exit 2
