@@ -633,6 +633,43 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
     else:
         log("skip %s_16_domain_panel（缺样本或域标签）" % pre)
 
+# 输入数据溯源（Argon 第 65 轮 B4）：只记产物清单时，「这张图由哪份数据渲染」不可证。
+# 大文件分级：超 500MB 全量读哈希会把 K40 的 I/O 拖死，改为 size + 首尾各 1MB 采样。
+LARGE_FILE_BYTES = 500 * 1024 * 1024
+SAMPLE_WINDOW = 1024 * 1024
+
+
+def _sha256_of(p):
+    """常规文件全量 sha256；超大文件退回 size + 首尾各 1MB 指纹。"""
+    import hashlib
+    size = os.path.getsize(p)
+    h = hashlib.sha256()
+    if size <= LARGE_FILE_BYTES:
+        with open(p, "rb") as fh:
+            for chunk in iter(lambda: fh.read(SAMPLE_WINDOW), b""):
+                h.update(chunk)
+        return "full:" + h.hexdigest()
+    h.update(("size=%d;" % size).encode("utf-8"))
+    with open(p, "rb") as fh:
+        h.update(fh.read(SAMPLE_WINDOW))
+        if size > 2 * SAMPLE_WINDOW:
+            fh.seek(-SAMPLE_WINDOW, os.SEEK_END)
+            h.update(fh.read(SAMPLE_WINDOW))
+    return "sampled:" + h.hexdigest()
+
+
+def input_fingerprints(paths):
+    """把本步读取的输入文件算成指纹，键按文件名稳定排序。"""
+    rows = []
+    for p in sorted(x for x in paths if x and os.path.isfile(x)):
+        try:
+            rows.append((os.path.basename(p), _sha256_of(p)))
+        except OSError as exc:
+            rows.append((os.path.basename(p), "unreadable:" + type(exc).__name__))
+    return rows
+
+
+
 log("figures_done count=%d elapsed=%.1fs" % (len(made), time.time() - START))
 if not made:
     fail("未生成任何图件；拒绝以零产物正常退出")
@@ -647,6 +684,8 @@ try:
             OUT, len(made), time.time() - START, chr(10)))
         for _rn, _rms in render_ms:
             _fh.write("render_ms=%s=%.1f%s" % (_rn, _rms, chr(10)))
+        for _name, _digest in input_fingerprints([(os.environ.get(k) or "").strip() for k in ("FIG_MOUSE", "FIG_HUMAN")]):
+            _fh.write("input_sha256=%s=%s%s" % (_name, _digest, chr(10)))
         for _n in made:
             _p = os.path.join(OUT, _n)
             _sz = os.path.getsize(_p) if os.path.exists(_p) else -1
