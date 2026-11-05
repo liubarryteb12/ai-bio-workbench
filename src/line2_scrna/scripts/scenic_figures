@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # scenic_figures：line2_scrna SCENIC 结果出图（读步骤 19 产物，产 PNG 供目视审核）。
 #
+# PROVENANCE: INDEPENDENT  本脚本出图代码为独立实现，未派生自 reference/05.可参考出图代码 的源码；
+#   参考库仅用于风格与手法借鉴，不构成代码派生关系。
 # 输入（同 cwd）：scenic_regulon_by_celltype.tsv + scenic_tf_summary.tsv
 # 输出（写到 ../figures/）：
 #   l2_scenic_01_regulon_heatmap.png   top-30 regulon x celltype 活性热图

@@ -64,6 +64,10 @@ export const GATES = Object.freeze([
   // 白名单只证明「ID 被封板」，不证明源码与预览还和登记时一致。这道门禁对每条 ready
   // 做真实的 sha256 比对：文件被悄悄改动、预览被重渲染覆盖，都会当场红。
   { id: 'ready_matrix', label: 'Ready 模板实证矩阵（30 条 sha 核验）', exec: 'node', args: ['ops/figure_ready_matrix.mjs'], cwd: '.', slow: false },
+  // 生信代码专项审核产物：出图溯源诚实性。注册表登记了参考库 source，但出图脚本
+  // 从未引用库 —— 本门禁要求每份出图脚本显式声明 DERIVED/INSPIRED/INDEPENDENT，
+  // 并抓「声称派生却不引用库」的假溯源。
+  { id: 'figure_provenance', label: '出图溯源诚实性', exec: 'node', args: ['ops/figure_source_provenance.mjs'], cwd: '.', slow: false },
   { id: 'audit_summary', label: '交付审计流可解析', exec: 'node', args: ['ops/audit_summary.mjs'], cwd: '.', slow: false },
   // 第 8 道：变异门禁（T2-6）。它证明的不是「代码对不对」，而是「门禁会不会红」：
   // 对 7 条关键防线各注入一次真实破坏，任一条没让对应判据变红即整道失败。

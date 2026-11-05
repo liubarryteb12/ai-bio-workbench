@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # bulk_figures：line1_bulk 出图脚本（读步骤 1-7 产物 tsv，产 PNG 供目视审核）。
 #
+# PROVENANCE: INDEPENDENT  本脚本出图代码为独立实现，未派生自 reference/05.可参考出图代码 的源码；
+#   参考库仅用于风格与手法借鉴，不构成代码派生关系。
 # 输入（cwd 下，缺哪个跳哪张图）：
 #   expr_genes.tsv（基因 × 样本表达矩阵）/ deg_all.tsv（limma 全表）/
 #   pca_scores.tsv（样本 PCA 得分）/ group_map.tsv / sample_qc.tsv

@@ -22,7 +22,7 @@ test('门禁清单：齐全，顺序越便宜越靠前，只有最后一道是 s
   // 预览哈希与登记值逐字节一致」。三者从粗到细，越便宜越靠前。
   assert.deepEqual(GATES.map((g) => g.id), [
     'preflight', 'static_gate', 'test_isolation', 'dist_parity', 'skip_static', 'project_script', 'ledger',
-    'figure_registry', 'preview_provenance', 'ready_matrix', 'audit_summary', 'mutation_gate', 'metrics',
+    'figure_registry', 'preview_provenance', 'ready_matrix', 'figure_provenance', 'audit_summary', 'mutation_gate', 'metrics',
   ]);
   assert.equal(GATES.filter((g) => g.slow).length, 1, '只能有一道 slow（全量测试）');
   assert.equal(GATES[GATES.length - 1].slow, true, '最慢的一道必须排最后');

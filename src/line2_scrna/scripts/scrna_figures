@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # scrna_figures：line2_scrna 出图脚本（读步骤 14/15 产物，产 PNG 供目视审核）。
 #
+# PROVENANCE: INDEPENDENT  本脚本出图代码为独立实现，未派生自 reference/05.可参考出图代码 的源码；
+#   参考库仅用于风格与手法借鉴，不构成代码派生关系。
 # 输入：scrna_deg.h5ad（含 obs celltype/diagnosis/donor/leiden + obsm X_umap/X_pca
 #       + uns composition/deg/cluster_markers）。
 # 输出（写到 ../figures/，独立出图目录）：

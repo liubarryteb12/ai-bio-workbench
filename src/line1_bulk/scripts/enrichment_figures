@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # enrichment_figures：line1_bulk 富集结果出图（读步骤 8 产物 tsv，产 PNG 供目视审核）。
 #
+# PROVENANCE: INDEPENDENT  本脚本出图代码为独立实现，未派生自 reference/05.可参考出图代码 的源码；
+#   参考库仅用于风格与手法借鉴，不构成代码派生关系。
 # 输入（cwd 下，缺哪个跳哪张图）：
 #   enrichment_gsea_go.tsv（GSEA GO BP/CC/MF 全表，含 ont 列）/ enrichment_gsea_kegg.tsv（GSEA KEGG）/
 #   enrichment_module_ora.tsv（WGCNA 模块 ORA，含 ont 列）/ enrichment_kegg.tsv（KEGG ORA）

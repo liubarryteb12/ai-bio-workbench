@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # enrichment_figures：line3_spatial 富集结果出图（读 enrichment 步骤产物 tsv，产 PNG 供目视审核）。
 #
+# PROVENANCE: INDEPENDENT  本脚本出图代码为独立实现，未派生自 reference/05.可参考出图代码 的源码；
+#   参考库仅用于风格与手法借鉴，不构成代码派生关系。
 # 输入（cwd 下，缺哪个跳哪张图）：
 #   enrichment_ora_mouse.tsv / enrichment_ora_human.tsv（逐域 ORA 全表）
 #   enrichment_gsea_mouse.tsv / enrichment_gsea_human.tsv（逐域 prerank GSEA）
