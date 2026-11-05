@@ -277,6 +277,12 @@ def env_int(name, default):
         fail("%s 必须是整数（当前值 %r）" % (name, raw))
 
 
+def env_str(name, default):
+    """字符串环境变量：未设或空串取默认值。取值合法性由调用方校验（便于给出精确报错）。"""
+    raw = os.environ.get(name)
+    return raw.strip() if raw and raw.strip() else default
+
+
 def env_path(name, default):
     raw = os.environ.get(name)
     return raw.strip() if raw and raw.strip() else default
@@ -366,12 +372,21 @@ def load_protein_info(path, wanted_symbols):
     return sym2ensp, ensp2sym, n_rows
 
 
-def scan_links(path, wanted_ensp, min_score):
+def scan_links(path, wanted_ensp, min_score, scope="any"):
     """流式扫 protein.links（human v12.0 约 1200 万行）：每行只取前 3 列，
     先按查询集与阈值过滤再落字典，内存里只留命中查询基因的边。
-    返回 ({(a, b): score}, 统计)。重复边（含反向重复）保留最高分。"""
+    返回 ({(a, b): score}, 统计)。重复边（含反向重复）保留最高分。
+
+    scope 决定边的纳入口径（生信审核发现的实际缺陷）：
+      "any"  ：只要一端在查询集内就保留（历史默认，会引入大量外部蛋白）
+      "both" ：两端都必须在查询集内（限定网络，与本步骤「显著模块基因做 PPI」的设计意图一致）
+
+    为什么需要 both：用 782 基因的 NanoString 面板实测，any 口径引入 7,497 个外部蛋白，
+    边数从 12,332 放大到 89,826（7.28 倍），hub 分析会被外部节点污染；both 才是
+    「这批基因内部的互作图」。默认保留 any 是为了不让既有结果静默改变，
+    要限定网络需显式设置 BIO_STRING_SCOPE=both。"""
     edges = {}
-    stats = {"rows": 0, "low": 0, "dup": 0, "self": 0}
+    stats = {"rows": 0, "low": 0, "dup": 0, "self": 0, "outside": 0}
     with open_text(path) as fh:
         for line in fh:
             if not line.strip() or line.startswith("#") or line.startswith("protein1"):
@@ -382,7 +397,15 @@ def scan_links(path, wanted_ensp, min_score):
             stats["rows"] += 1
             a = norm_protein(parts[0])
             b = norm_protein(parts[1])
-            if a not in wanted_ensp and b not in wanted_ensp:
+            in_a = a in wanted_ensp
+            in_b = b in wanted_ensp
+            if scope == "both":
+                # 限定网络：任一端在外即跳过（不把外部蛋白拉进图里）
+                if not (in_a and in_b):
+                    if in_a or in_b:
+                        stats["outside"] = stats.get("outside", 0) + 1
+                    continue
+            elif not (in_a or in_b):
                 continue
             if a == b:
                 stats["self"] += 1
@@ -533,8 +556,14 @@ if source == "offline":
     n_sym_mapped = sum(1 for g in genes if g in sym2ensp)
     log("offline_source links=%s info=%s info_rows=%d symbol_mapped=%d/%d ensp_in_query=%d"
         % (links_file, info_file, n_info, n_sym_mapped, len(genes), len(wanted_ensp)))
+    # 边的纳入口径：any（历史默认，一端在内）或 both（两端都在内，限定网络）。
+    # 要得到「这批基因内部的互作图」必须用 both，否则外部蛋白会淹没网络。
+    SCOPE = env_str("BIO_STRING_SCOPE", "any")
+    if SCOPE not in ("any", "both"):
+        fail("BIO_STRING_SCOPE 只能是 any 或 both，当前 %r" % SCOPE)
+    log("edge_scope=%s" % SCOPE)
     try:
-        raw_edges, stats = scan_links(links_file, wanted_ensp, MIN_SCORE)
+        raw_edges, stats = scan_links(links_file, wanted_ensp, MIN_SCORE, scope=SCOPE)
     except READ_ERRORS as exc:
         fail(read_failure_msg("protein.links", links_file, exc))
     log("offline_scan rows=%d low_score=%d dup=%d self=%d kept=%d"
