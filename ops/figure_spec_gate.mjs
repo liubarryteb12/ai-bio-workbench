@@ -67,6 +67,8 @@ export function readPngSize(buf) {
 export const STRICT_PROJECTS = Object.freeze([
   "PRJ_DCM_BENCH_20261105",
   "PRJ_GSE316126_SANITY",
+  "PRJ_STROKE_P1_SPATIAL_ABCA1",
+  "PRJ_STROKE_P2_SPATIAL_LACTPYRO_5GENES",
 ]);
 
 function main() {
