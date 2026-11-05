@@ -228,10 +228,20 @@ for path in os.environ["MARKER_INPUTS"].splitlines():
         fail("%s top20 表行数 %d != 域数 %d x %d" % (species, len(tsv_df), n_domains, TOP_N))
     if n_symbol_missing:
         fail("%s 有 %d 个 marker 未映射到 gene_symbol" % (species, n_symbol_missing))
+    # sanity 断言判据修正（2026-11-06 GSE233814 脑卒中真机暴露）：
+    # 旧版要求每个 sanity 基因都进 top200，但这三只（Tmsb4x/Cd5l/C1qb）是按肝脏
+    # KC 数据集选的，Cd5l 在脑组织本来就是低表达 —— 把「组织生物学」误写成了
+    # 「流水线不变量」，换数据集必炸。真正的流水线故障（排名表为空/结构损坏）
+    # 已由行数与 symbol 映射断言覆盖，这里只兜「全军覆没」这一异常信号：
+    #   全缺席 -> fail（说明 marker 排名管道坏了）；部分缺席 -> WARN 如实入报告。
+    sanity_hit_count = sum(1 for g in SANITY_GENES[species] if sanity_hits[g] is not None)
+    if sanity_hit_count == 0:
+        fail("%s sanity 基因全部未出现在 top%d（marker 排名管道异常？）"
+             % (species, N_GENES))
     for gene in SANITY_GENES[species]:
         if sanity_hits[gene] is None:
-            fail("%s sanity 基因 %s 未出现在 top%d（域识别或检验口径异常？）"
-                 % (species, gene, N_GENES))
+            log("WARN %s sanity 基因 %s 未进 top%d（可能为组织特异性，不判失败）"
+                % (species, gene, N_GENES))
     if adata.X.nnz != x_nnz_before:
         fail("%s X nnz 被改变" % species)
     if adata.layers["counts"].nnz != counts_nnz_before:
