@@ -350,8 +350,13 @@ try:
                      % (name, one.shape, shape))
             if list(one.obs_names) != bc_matrix:
                 fail("样本 %s scanpy obs_names 与 h5 barcodes 不一致" % name)
-            if list(one.var_names[:5]) != gene_ids[:5]:
-                fail("样本 %s scanpy var_names 与 h5 features/id 不一致" % name)
+            # scanpy 可能把 var_names 设成 symbol 空间并对重名加后缀（本数据有重复 symbol），
+            # 所以核对用 var['gene_ids']（scanpy 保留的原始 ID 列），没有该列才退回 var_names。
+            _ids = (one.var["gene_ids"].astype(str).tolist()
+                    if "gene_ids" in one.var.columns else list(one.var_names.astype(str)))
+            if _ids[:5] != gene_ids[:5]:
+                fail("样本 %s scanpy 基因 ID 与 h5 features/id 不一致（前 5 个: %s vs %s）"
+                     % (name, _ids[:5], gene_ids[:5]))
             if len(set(gene_ids)) != len(gene_ids):
                 dup = sorted(g for g, c in Counter(gene_ids).items() if c > 1)[:5]
                 fail("样本 %s 基因 ID 重复（前 5）: %s" % (name, dup))
@@ -362,8 +367,14 @@ try:
             if len(set(bc_matrix)) != len(bc_matrix):
                 fail("样本 %s 矩阵 barcode 重复" % name)
             X_mat = one.X if isinstance(one.X, csr_matrix) else csr_matrix(one.X)
-            if not np.issubdtype(X_mat.data.dtype, np.integer) or X_mat.data.min() < 0:
-                fail("样本 %s 计数含负值或非整数（dtype=%s）" % (name, X_mat.data.dtype))
+            # scanpy.read_10x_h5 会把 10x 的 int32 计数转成 float32（内存/兼容考虑），
+            # 所以判据不能用 dtype，而要判「值本身是否为非负整数」，再显式转回 int32。
+            if X_mat.data.size and X_mat.data.min() < 0:
+                fail("样本 %s 计数含负值（min=%s）" % (name, float(X_mat.data.min())))
+            if X_mat.data.size and not np.all(X_mat.data == np.rint(X_mat.data)):
+                fail("样本 %s 计数含非整数值（dtype=%s，前 5 个: %s）"
+                     % (name, X_mat.data.dtype, np.round(X_mat.data[:5], 4).tolist()))
+            X_mat = X_mat.astype(np.int32)
 
             # 3b. positions：全部 4992 行（含 in_tissue=0）
             pos_order = []
@@ -578,6 +589,21 @@ adata.uns["coord_note"] = ("obsm['spatial'] 为 pxl 全分辨率像素坐标 (co
                            "跨样本空间比较必须用 obs 的 array_row/array_col 捕获区网格坐标; "
                            "本数据三样本在同一张 V11Y10-334 切片的不同捕获区, 但 Space Ranger 逐区域对齐, "
                            "跨样本像素坐标仍不可直接比较")
+# scanpy 约定的空间容器：uns['spatial'][sample_id] = {images: {lowres}, scalefactors: {...}}。
+# 下游 qc_spots / spatial_domains / spatial_localization 都按这个键取图与缩放因子，
+# 之前只读了 lowres 却漏了写入，导致 qc 直接报「输入缺少 uns['spatial']」。
+adata.uns["spatial"] = {
+    r["name"]: {
+        "images": {"lowres": r["lowres"]},
+        "scalefactors": {
+            "spot_diameter_fullres": float(r["scalefactors"]["spot_diameter_fullres"]),
+            "tissue_lowres_scalef": float(r["scalefactors"]["tissue_lowres_scalef"]),
+            "fiducial_diameter_fullres": float(r["scalefactors"]["fiducial_diameter_fullres"]),
+            "tissue_hires_scalef": float(r["scalefactors"].get("tissue_hires_scalef", 0.0)),
+        },
+    }
+    for r in records
+}
 adata.uns["image_note"] = ("uns['spatial'][sample_id] 只存 lowres 图与 scalefactors; hires 图与 HE tif 未入 "
                            "h5ad（用户口径 HE tif 不用）, 需要时从 raw_data tar 重取")
 adata.uns["matrix_included_offtissue"] = ("obs 含全部 %d x %d spot 行（in_tissue=0 的行为全零计数）; "

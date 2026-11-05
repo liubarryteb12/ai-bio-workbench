@@ -2,15 +2,10 @@
 # -*- coding: utf-8 -*-
 """export_signatures：L2 注释产物 -> L3 解卷积用的细胞类型平均表达签名。
 
-为什么需要这一步：L3（小鼠 Visium）的 NNLS 解卷积必须用**本项目的**细胞类型签名，
-不能用任何内置或外部研究的签名（物种/组织/平台都不同）。L2 是人心脏 snRNA，
-所以这里导出 human symbol 空间的均值表达谱，由 L3 侧按 symbol 同名映射到小鼠。
-
-口径：
-  - 表达用 layers['counts'] 重算 normalize_total(1e4)+log1p（与 L2 DEG 同口径，避免用整合空间）；
-  - 签名 = 每个 celltype 内细胞的均值表达（不按供体加权，供体差异已被 Harmony 校正）；
-  - 只保留在 >= MIN_CELLS 细胞里出现的类型，并把细胞数与供体数写进报告；
-  - 输出宽表：第一列 gene_symbol，其后每列一个 celltype。
+内存纪律（2026-11-05 实测）：norm 是 74,883 x 29,327、nnz 2.1 亿，整对象加载约 1.7GB，
+且 anndata 读 layers 时会整层 to_memory（单数组 802MB），足以把手机打到 thrash。
+这里改成按行块流式累加：每块读若干细胞的行，按 celltype 累加和与计数，
+峰值内存与块大小成正比（默认 2000 行/块）。
 """
 import os
 import sys
@@ -19,8 +14,12 @@ import time
 import numpy as np
 import pandas as pd
 import anndata as ad
+import h5py
 
-TARGET_SUM = 1e4
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from h5_rows import read_csr_rows, read_var_column  # noqa: E402
+
+BLOCK_ROWS = int(os.environ.get("BIO_SIG_BLOCK_ROWS", "2000"))
 MIN_CELLS = 50
 
 
@@ -40,58 +39,51 @@ out_file = os.environ["SIG_OUT"]
 seed = os.environ.get("BIOANALYS_SEED", "UNSET")
 START = time.time()
 
-annot = ad.read_h5ad(annotated_file)
-norm = ad.read_h5ad(norm_file)
-log("annotated=%s norm=%s" % (annot.shape, norm.shape))
+annot = ad.read_h5ad(annotated_file, backed="r")
 if "celltype" not in annot.obs.columns:
     fail("annotated 缺 obs['celltype']")
-if "counts" not in norm.layers:
-    fail("norm 缺 layers['counts']")
-if set(annot.obs_names) != set(norm.obs_names):
-    fail("annotated 与 norm 细胞集合不一致")
+labels = annot.obs["celltype"].astype(str)
+celltypes = [c for c in sorted(labels.unique()) if c != "unknown"]
+counts = labels.value_counts()
+kept = [c for c in celltypes if int(counts.get(c, 0)) >= MIN_CELLS]
+skipped = {c: int(counts.get(c, 0)) for c in celltypes if c not in kept}
+if not kept:
+    fail("没有细胞类型达到 %d 细胞的门槛" % MIN_CELLS)
+log("celltypes_kept=%d skipped=%s" % (len(kept), skipped))
 
-# 顺序对齐到 annotated 的细胞顺序（两者细胞集合已断言一致），避免标签与矩阵错位
-annot = annot[norm.obs_names].copy()
+with h5py.File(norm_file, "r") as f:
+    n_genes = int(f["X"].attrs["shape"][1])
+    n_obs = int(f["X"].attrs["shape"][0])
+symbols = read_var_column(norm_file, "gene_symbol")
+if n_obs != labels.shape[0]:
+    fail("norm 细胞数 %d 与 annotated %d 不一致" % (n_obs, labels.shape[0]))
 
-X = norm.layers["counts"].tocsr().astype(np.float32)
-lib = np.asarray(X.sum(axis=1)).ravel().astype(np.float64)
-if (lib <= 0).any():
-    fail("有细胞库大小为 0")
-scaling = (TARGET_SUM / lib).astype(np.float32)
-indptr = X.indptr
-row_nnz = np.diff(indptr)
-data = X.data
-for start in range(0, X.shape[0], 4000):
-    stop = min(start + 4000, X.shape[0])
-    lo, hi = int(indptr[start]), int(indptr[stop])
-    blk = np.repeat(scaling[start:stop], row_nnz[start:stop])
-    data[lo:hi] *= blk
-    del blk
-np.log1p(data, out=data)
+label_arr = labels.to_numpy()
+sums = {c: np.zeros(n_genes, dtype=np.float64) for c in kept}
+n_cells = {c: 0 for c in kept}
+for start in range(0, n_obs, BLOCK_ROWS):
+    stop = min(start + BLOCK_ROWS, n_obs)
+    rows = np.arange(start, stop)
+    Xb = read_csr_rows(norm_file, "X", rows)
+    block_labels = label_arr[start:stop]
+    for c in kept:
+        m = block_labels == c
+        if not m.any():
+            continue
+        sums[c] += np.asarray(Xb[m].sum(axis=0)).ravel()
+        n_cells[c] += int(m.sum())
+    del Xb
+    log("block %d-%d done (%.0fs)" % (start, stop, time.time() - START))
 
-symbols = (norm.var["gene_symbol"].astype(str).to_numpy()
-           if "gene_symbol" in norm.var.columns else norm.var_names.astype(str))
-celltype = annot.obs["celltype"].astype(str).to_numpy()
-donor = annot.obs["donor"].astype(str).to_numpy()
-
-kept, skipped = [], {}
 cols = {}
-for ct in sorted(set(celltype)):
-    mask = celltype == ct
-    n_cells = int(mask.sum())
-    n_donors = len(set(donor[mask]))
-    if ct == "unknown" or n_cells < MIN_CELLS:
-        skipped[ct] = {"cells": n_cells, "donors": n_donors,
-                       "reason": "unknown" if ct == "unknown" else "cells<%d" % MIN_CELLS}
+for c in kept:
+    if n_cells[c] == 0:
         continue
-    mean_vec = np.asarray(X[mask].mean(axis=0)).ravel()
-    cols[ct] = mean_vec
-    kept.append({"celltype": ct, "cells": n_cells, "donors": n_donors})
+    cols[c] = sums[c] / n_cells[c]
 if not cols:
-    fail("没有任何细胞类型通过门槛（>= %d 细胞且非 unknown）" % MIN_CELLS)
+    fail("没有任何细胞类型有细胞")
 
 df = pd.DataFrame(cols, index=pd.Index(symbols, name="gene_symbol"))
-# 同 symbol 多行：取均值（签名表按 symbol 唯一，L3 侧按 symbol 精确匹配）
 if df.index.duplicated().any():
     n_dup = int(df.index.duplicated().sum())
     df = df.groupby(level=0, sort=False).mean()
@@ -104,13 +96,12 @@ report = [
     "seed=%s" % seed,
     "annotated=%s" % annotated_file,
     "norm=%s" % norm_file,
-    "cells=%d genes=%d" % (X.shape[0], X.shape[1]),
-    "normalization=normalize_total(%g)+log1p（从 layers['counts'] 重算，分块实现）" % TARGET_SUM,
-    "signature=per_celltype_mean_expression（不按供体加权）",
+    "cells=%d genes=%d block_rows=%d" % (n_obs, n_genes, BLOCK_ROWS),
+    "expression=norm 的 X（log1p 归一化域）按细胞类型求均值，流式分块累加",
     "min_cells=%d" % MIN_CELLS,
-    "celltypes_kept=%s" % {r["celltype"]: {"cells": r["cells"], "donors": r["donors"]} for r in kept},
+    "celltypes_kept=%s" % {c: n_cells[c] for c in cols},
     "celltypes_skipped=%s" % skipped,
-    "limitation_note=签名来自人心 snRNA 的细胞类型均值，跨物种到小鼠靠 symbol 同名映射，"
+    "limitation_note=签名来自人心 snRNA 的细胞类型均值，跨物种到小鼠靠 symbol 大写同名映射，"
     " 存在同源误配与表达域差异（log1p 域线性混合是近似），L3 报告需重复该局限。",
     "outputs=%s" % out_file,
     "elapsed_seconds=%.0f" % (time.time() - START),

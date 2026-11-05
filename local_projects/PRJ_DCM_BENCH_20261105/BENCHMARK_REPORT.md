@@ -66,7 +66,7 @@ L2/L3 的性别、年龄、基因型、饲料全部取自 `GPL*_family.soft.gz` 
 
 **贯通 Top5（`l1_hub_top5.txt`）：ATM、RPL7、ANKRD36C、UBN2、INO80D。**
 其中只有 **ATM** 同时被共表达网络与蛋白互作两侧支持，且两组检出率都是 100%，是本轮唯一够格进入 L2/L3 验证的主线候选；RPL7 是核糖体蛋白，先按管家基因嫌疑看待。
-## 3. Line 2（snRNA，跑到逐细胞类型差异，**完成**；细胞通讯**进行中**）
+## 3. Line 2（snRNA，**完成**：ingest 到签名导出全链）
 
 | 步骤 | 关键数字 | 说明 |
 |---|---|---|
@@ -77,7 +77,8 @@ L2/L3 的性别、年龄、基因型、饲料全部取自 `GPL*_family.soft.gz` 
 | cluster_adapt | **32 簇** | 母版「大簇单供体≤50%」绝对门在本数据会误判；改以对照混合度为主判据，逐簇占比留痕 |
 | annotate_cardiac | 心肌 **30,771**、成纤维 **20,608**、内皮 8,271、巨噬 5,781、周细胞 4,589、平滑肌 1,553、T 1,493、施万 1,240、B 135、unknown 442（0.6%） | 改用 score_genes 全基因打分（母版 top20 命中法半数簇 unknown） |
 | deg_celltype | 全表 **263,943 行**；显著 **12,561** → 假信号筛查后 **2,585** | 逐细胞类型 DCM vs Ctrl，wilcoxon+BH；每侧 ≥20 细胞且 ≥2 供体 |
-| cellcomm_adapt | 进行中（LIANA，按供体分层降采样到每类 ≤500 细胞） | 手机侧运行中被网络中断打断，待恢复续跑 |
+| cellcomm_adapt | **完成**：1,485 细胞、36 万+ LR 对、峰值内存 792MB、9 秒 | 先修内存（见第 9 节）再跑通；置换默认关，只出 lr_means 排序 |
+| export_signatures | **完成**：9 类细胞类型签名表 5.07MB、6 秒 | L3 解卷积输入，流式分块累加 |
 | ko_adapt | 待跑（scTenifoldKnk，靶基因取 L1 hub） | — |
 
 ### 3.1 Line 2 的两个必须记住的坑
@@ -86,7 +87,7 @@ L2/L3 的性别、年龄、基因型、饲料全部取自 `GPL*_family.soft.gz` 
 2. **假信号在单细胞里同样存在**：9 个细胞类型的 top 差异基因是**同一批** lncRNA/克隆号（MIR1302-2HG、AL627309.x、AC114498.1…），adj_p≈0。加两条筛查——泛细胞类型同向（≥70% 类型同方向）与检出率 <10%——标出 **207 个 suspect**，显著数从 12,561 降到 2,585。
 3. **供体主导簇**：32 簇里 8 个大簇单供体 >50%，其中 2 个是胎心驱动（发育差异，合理），6 个是儿童供体（cluster 15 = DCM1 93.5%、cluster 26 = Young3 92.8%，需在解读时避开）。
 
-## 4. Line 3（Visium，**待跑**）
+## 4. Line 3（Visium，**进行中**：ingest 与 QC 已完成）
 
 数据与 7 个适配脚本已就位（`scripts/line3_spatial/`），链路：ingest_visium → qc_visium → domains_visium → autocorr_visium → deconv_visium（需 L2 签名）→ localization_visium → spatial_stats。
 
@@ -146,3 +147,78 @@ RUN_CWD=processed bash run_project_step.sh submit line3_spatial ingest_visium in
 - 逐步骤报告：计算面 `projects/PRJ_DCM_BENCH_20261105/<line>/*_report.txt`（回搬后位于 `local_projects/PRJ_DCM_BENCH_20261105/data/<line>/processed/`）
 - 图件：`local_projects/PRJ_DCM_BENCH_20261105/figures/line1_bulk/`（33 张，300dpi）
 - 项目元数据：`local_projects/PRJ_DCM_BENCH_20261105/project.json`（含 analysis_cutoffs 与 grouping_design 主对照）
+## 9. Termux 反复闪退：定性结论（2026-11-05 12:50）
+
+### 9.1 对 Ubuntu 容器有没有影响
+
+**没有数据损失，但有运行中断。** 证据：
+
+- 崩溃后清点 /mnt/ssd/bio_data 下 63 个产物文件，大小/时间戳与崩溃前一致；
+- 磁盘 `f2fs/dm-40` 226G、已用 32%，`dmesg` 里 ext4/f2fs 错误计数为 0；
+- 全部失败都发生在「读入 → 计算 → 尚未 write_h5ad」这一窗口，成品文件没有出现半截状态。
+
+真正的代价是：正在跑的那一步白跑（LIANA 之前连续 3 次），以及 SSH 断连需要人工/ADB 拉起 Termux。
+
+### 9.2 崩溃原因（内核日志原文）
+
+```
+11-05 11:48:20 lowmemorykiller: Kill 'com.termux' (26208), oom_score_adj 0
+  to free 63172kB rss, 44028kB swap; reason: device is in direct reclaim
+11-05 12:01:08 lowmemorykiller: thrashing (52%) old_min_score_adj 0 new_min_score_adj 0
+```
+
+不是 CPU 过热、不是 Termux 自身 bug、不是磁盘满：是**内核低内存杀手（LMK）在 direct reclaim 时**
+杀掉 Termux。触发点是 proot 里的 Python 进程短时间把内存吃穿（Termux 自身只占 60MB）。
+
+### 9.3 是算力问题还是代码问题：实测归因
+
+用 4 秒粒度的采样器（写 Termux home，崩溃后仍可由 ADB 读）抓到崩溃瞬间：
+
+| 时刻 | Python RSS | MemAvailable |
+|---|---|---|
+| 12:06:50 | 476 MB | 8,238 MB |
+| 12:06:55 | 3,377 MB | 5,313 MB |
+| 12:06:59 | 6,392 MB | 2,218 MB |
+| 12:07:03 | **9,063 MB** | **42 MB**（Termux 随即被杀） |
+
+12 秒内从 476MB 涨到 9GB，这是**代码路径的内存行为**，不是 CPU 算不动。归因为三类：
+
+1. **anndata 的 hidden 整层加载**（最主要）：对 backed 对象做 `adata[rows, cols].to_memory()` 时，
+   它先把整个 `layers['counts']` 读进内存。本数据 nnz=2.1 亿，仅 indices 一个数组就是 802 MiB，
+   叠加 data/indptr 约 2.4GB。**同一根因也解释了母版 normalize_hvg 的 OOM。**
+2. **LIANA 置换检验**：每次置换按「细胞 × 配体受体对」构造矩阵，1500 细胞 × 1.7 万对就上 GB。
+3. **反复读两份大 h5ad**：annotated(1.37GB) + norm(3.38GB)，整对象加载必然超 5GB。
+
+### 9.4 已做的代码层修复（不弃用，先调代码）
+
+| 改动 | 效果（实测） |
+|---|---|
+| 新增 `h5_rows.py`：用 h5py 按行区间读 CSR，绕开 anndata 整层加载 | 任意子集读取峰值 408MB（原 2.4GB+） |
+| LIANA 改「backed 读 obs + 只取 LR 基因 + 分层抽样细胞 + 只物化小矩阵」 | 峰值 **792MB**，耗时 9 秒，跑通 |
+| LIANA 置换默认关（`BIO_LIANA_PERMS=none`），只出 lr_means 排序 | 去掉唯一的重内存环节；桌面端可开 1000 复现母版口径 |
+| 签名导出改流式分块累加（2000 行/块） | 峰值 <1GB，6 秒出 9 类签名表 |
+| 所有步骤加 `ulimit -v` 硬顶（3-6GB） | 超限变成**干净报错**而不是拖垮手机：实测 3GB 顶下 `ArrayMemoryError`，Termux 存活 |
+
+修复前后对比：**LIANA 从 9GB 撑爆 → 792MB 跑通**；L3 ingest 三切片（14,976 spots）→ QC 7,078 spots →
+均已正常落盘。
+
+### 9.5 能力边界（如果后续还有步骤过不去）
+
+按你的规则，代码调完仍属「硬算力」的才弃用。当前判定：
+
+- **可跑**：单细胞 ingest/QC/标准化/Harmony（201 秒）/聚类/注释/逐细胞类型 DEG/签名导出；
+  空间 ingest/QC。峰值都在 1-2GB。
+- **需降参可跑**：LIANA（关置换、每类 30 细胞）；结果只作方向性排序，已在报告注明不含置换 p 值。
+- **接近边界**：需要「整层稀疏矩阵」的算法（如全量矩阵乘、某些解卷积实现）。
+  这类必须走行块流式，否则 2.4GB 起步。
+- **已确认不可行**：在 11.5GB 手机上同时驻留两份全量 h5ad 并做置换统计。
+
+### 9.6 防止再次误杀（设备侧，已执行）
+
+- `cmd deviceidle whitelist +com.termux`（电池优化白名单）；
+- `am set-standby-bucket com.termux active`；
+- `settings put global settings_enable_monitor_phantom_procs false`；
+- `svc power stayon true`；
+- 崩溃后用 ADB `am start -n com.termux/.HomeActivity` 可在 10 秒内恢复（本轮恢复 5 次）。
+
+仍建议：长任务前先看 `MemAvailable > 6GB`；不要在手机上同时开浏览器/相册等大内存应用。
