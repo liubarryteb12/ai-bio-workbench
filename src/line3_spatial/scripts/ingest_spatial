@@ -468,6 +468,9 @@ with tarfile.open(tar_file, "r:") as tf:
                  % (gsm, combo, sorted(declared_combos)))
 
         # 4a. 计数矩阵：按 data_format 分流（v1_h5 走 h5py，v1_mtx 走 mtx 三件套）
+        # 坐标来源优先级：v1_h5 自带 tissue_positions_list；
+        #                  v1_mtx 先试 BIO_VISIUM_V1_LAYOUT 全局布局表（无损），
+        #                  再按 BIO_SPATIAL_COORD_POLICY 决定 fail 或降级占位。
         if format_kind == "v1_h5":
             raw = tf.extractfile(files["filtered_feature_bc_matrix"]).read()
             with h5py.File(io.BytesIO(raw), "r") as f:
@@ -555,6 +558,7 @@ with tarfile.open(tar_file, "r:") as tf:
         scf = {}
         lowres_arr = None
         coord_degraded = False
+        _layout_used = False
         if format_kind == "v1_h5":
             pos_handle = tf.extractfile(files["tissue_positions_list"])
             positions = {}
@@ -581,21 +585,55 @@ with tarfile.open(tar_file, "r:") as tf:
                 # 且 barcodes.tsv 是字母序、oligo 是几何序，两者无索引对应关系。
                 # 精确对齐依赖 tissue_positions_list.csv，本数据集未提供（GEO 与姊妹系列都没有）。
                 # 因此按项目契约决定：strict 模式下 fail；否则降级为「无坐标模式」并如实记录。
-                if os.environ.get("BIO_SPATIAL_COORD_POLICY", "strict") == "strict":
+                # 首选解法：用 10x Visium v1 载玻片的全局布局表把 barcode 映射回坐标。
+                # 该布局对同一规格载玻片是常量（实测 GSE233814 的 oligo 序列与
+                # GSE218759 的 tissue_positions 逐条一致，mismatch=0；5 样本 barcode 100% 命中）。
+                # 表在 reference/06.Visium_v1_载玻片布局/visium_v1_tissue_positions.csv。
+                layout_path = os.environ.get("BIO_VISIUM_V1_LAYOUT", "")
+                if layout_path and os.path.exists(layout_path):
+                    mapping = {}
+                    with open(layout_path, "r", encoding="utf-8") as lf:
+                        for line in lf:
+                            if line.startswith("#") or not line.strip():
+                                continue
+                            parts = line.strip().split(",")
+                            if len(parts) == 6:
+                                mapping[parts[0]] = parts
+                                mapping[parts[0].rsplit("-1", 1)[0]] = parts
+                    positions = {}
+                    missing = []
+                    for b in bc:
+                        rec = mapping.get(b) or mapping.get(b.rsplit("-1", 1)[0])
+                        if rec is None:
+                            missing.append(b)
+                            continue
+                        # 与 v1_h5 同构：[barcode, in_tissue, array_row, array_col, pxl_row, pxl_col]
+                        positions[b] = [b, "1", rec[2], rec[3], rec[4], rec[5]]
+                    if missing:
+                        fail("样本 %s 有 %d 个 barcode 不在 v1 布局表里（前 3: %s）"
+                             % (gsm, len(missing), missing[:3]))
+                    log("sample=%s coord_source=v1_layout_table mapped=%d" % (sf, len(positions)))
+                    coord_degraded = False
+                    _layout_used = True
+                elif os.environ.get("BIO_SPATIAL_COORD_POLICY", "strict") == "strict":
                     fail("样本 %s 的 json oligo 数 %d 与 barcodes 数 %d 不一致；"
-                         "且本数据集缺 tissue_positions_list.csv，无法建立 barcode→坐标映射。"
+                         "且未提供 v1 布局表（BIO_VISIUM_V1_LAYOUT）。"
                          "若确认接受无坐标模式，请在项目上设 BIO_SPATIAL_COORD_POLICY=degrade"
                          % (gsm, len(raw_positions), len(bc)))
-                log("WARN 样本 %s 坐标降级：oligo=%d / barcodes=%d，缺 tissue_positions_list，"
-                    "uns['spatial'] 无 barcode 级坐标（保留占位坐标，空间图不可用）"
-                    % (gsm, len(raw_positions), len(bc)))
-                # 占位坐标：全部置 0，并标记 in_tissue=0 便于下游识别「本样本无真实坐标」。
-                # 不伪造几何（如把捕获区顺序硬套给 barcode），那会让下游图看起来有空间结构
-                # 而实际是假的。下游 spatial_figures 会因 coord_mode=degraded 跳过空间图。
-                positions = {b: [b, "0", "0", "0", "0", "0"] for b in bc}
-                coord_degraded = True
-            if coord_degraded:
-                # 降级路径已装好占位坐标，跳过真实几何装配（oligo 与 barcodes 无索引对应）
+                else:
+                    log("WARN 样本 %s 坐标降级：oligo=%d / barcodes=%d，且无 v1 布局表，"
+                        "uns['spatial'] 无 barcode 级坐标（保留占位坐标，空间图不可用）"
+                        % (gsm, len(raw_positions), len(bc)))
+                    # 占位坐标：全部置 0，并标记 in_tissue=0 便于下游识别「本样本无真实坐标」。
+                    # 不伪造几何（如把捕获区顺序硬套给 barcode），那会让下游图看起来有空间结构
+                    # 而实际是假的。下游 spatial_figures 会因 coord_mode=degraded 跳过空间图。
+                    positions = {b: [b, "0", "0", "0", "0", "0"] for b in bc}
+                    coord_degraded = True
+            if _layout_used:
+                # 布局表路径已装好真实坐标，跳过 oligo 几何装配（oligo 与 barcodes 无索引对应）
+                pass
+            elif coord_degraded:
+                # 降级路径已装好占位坐标
                 pass
             else:
                 positions = {}
@@ -624,7 +662,9 @@ with tarfile.open(tar_file, "r:") as tf:
                 "tissue_lowres_scalef": 1.0,
             }
 
-        if len(positions) != CAPTURE_AREA_SPOTS:
+        # 布局表路径下 positions 只含组织下 spot（等于矩阵 spot 数），不是全捕获区，
+        # 因此不能拿 CAPTURE_AREA_SPOTS 当判据；只有 v1_h5 的 positions 才是全捕获区。
+        if format_kind == "v1_h5" and len(positions) != CAPTURE_AREA_SPOTS:
             log("WARN 样本 %s positions 行数 %d != 捕获区参考值 %d（按实际值继续，不静默改判）"
                 % (gsm, len(positions), CAPTURE_AREA_SPOTS))
         if coord_degraded:
@@ -646,11 +686,14 @@ with tarfile.open(tar_file, "r:") as tf:
                 fail("样本 %s in_tissue spot 数 %d 与矩阵 spot 数 %d 不符"
                      % (gsm, n_in_tissue, n_spots))
 
-        # 4c. 与 soft "number of spots" 对账（降级模式下 soft 无该字段时跳过）
+        # 4c. 与 soft "number of spots" 对账。
+        # 该字段只有部分 GEO 提交带；缺它就跳过对账并如实记录，不拿它当失败判据。
+        # 真正的表达层对账靠「矩阵 shape == barcodes 数」（上面已做）。
         soft_spots = smeta.get("number of spots", "")
-        if coord_degraded and not soft_spots:
+        if not soft_spots:
             soft_spots = str(n_spots)
-            log("WARN 样本 %s soft 无 'number of spots'，降级模式下按矩阵实际值 %d 记账" % (gsm, n_spots))
+            log("WARN 样本 %s soft 无 'number of spots' 字段，跳过该对账（按矩阵实际值 %d 记账）"
+                % (gsm, n_spots))
         try:
             soft_spots_int = int(soft_spots)
         except ValueError:
