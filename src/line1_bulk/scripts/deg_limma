@@ -91,6 +91,13 @@ if (any(is.na(mat))) fail("表达矩阵含 NA")
 #   先 log2(x+1) 再喂 -> max|log2FC| = 2.47（合理），min_padj = 0.583
 # 判据用「上四分位数 > 50」：log2 尺度的表达矩阵上四分位通常是个位数到十几，
 # 而原始计数的中位数就已几百。这个阈值足够区分两种尺度，不会误伤正常的 log2 数据。
+#
+# 为什么本步还要查一遍（prep_matrix 已有值域校验，不得视为重复而删除）：
+#   prep_matrix 在 line1 正常流水线上会保证 log2 量纲（counts 走 CPM+log2，
+#   并有「值域超出 [0,20] 即 fail」的自校验）。本守卫是纵深防御，覆盖两种绕过路径：
+#     a) 直接手跑 deg_limma 绕过 prep_matrix（排障、复查、换数据集时常见）；
+#     b) 上游换数据源后 prep_matrix 的形态判断被误触发而放行。
+#   实测正常管线产出 q75=2.70，本守卫放行，不会误报。
 q75 <- as.numeric(quantile(mat, 0.75, na.rm = TRUE))
 if (q75 > 50) {
   fail(sprintf(paste0("表达矩阵疑似未经 log 变换（上四分位数 %.2f > 50）：",
