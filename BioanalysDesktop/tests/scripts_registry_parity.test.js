@@ -27,7 +27,12 @@ const LINES = ['line1_bulk', 'line2_scrna', 'line3_spatial'];
  */
 const DEPLOY_EXEMPT = {
   probe_env: '环境自检冒烟脚本：验证 seed 注入、PATH 注入与 manifest 在位（handoff.md 母版口径不含它）',
+  'h5_rows.py': '共享库（非步骤）：按行区间读 h5ad 稀疏矩阵，绕开 anndata backed 整层加载；被 line2/line3 多个步骤 import，无命令行入口',
+  'spatial_stats.py': '共享库（非步骤）：Moran\'s I / Geary\'s C 的分块自实现，替代 squidpy 1.8.3 已移除的 morans_i/gearys_c，无命令行入口',
 };
+
+/** scripts/ 下的共享库：被步骤 import 的纯函数模块，不是步骤母版 */
+const SHARED_LIBS = new Set(['h5_rows.py', 'spatial_stats.py']);
 
 /** scripts/ 下的文件名（README.md 不部署，不是母版） */
 function scriptsOf(line) {
@@ -100,7 +105,9 @@ test('母版总规模与 git 跟踪口径一致（防止静默增删）', () => 
     (sum, line) => sum + scriptsOf(line).filter((n) => DEPLOY_EXEMPT[n]).length,
     0,
   );
-  // 注册表 54 + probe_env 1 = 55；数字变了说明有母版进出，需同步登记或更新此处口径
+  // 57 个文件 = 注册表 54 个步骤 + probe_env 1 + 共享库 2（h5_rows.py / spatial_stats.py）。
+  // DEPLOY_EXEMPT 已经包含共享库，所以这里只需减一次：total - exempt == registered。
+  // 数字变了说明有母版进出，需同步登记或更新此处口径。
   assert.equal(total - exempt, registered.size, '母版数与注册表登记数不一致');
-  assert.equal(total, 55, `母版总数变化: ${total}（含豁免件），需人工核对`);
+  assert.equal(total, 57, `母版文件总数变化: ${total}（含 3 个豁免件），需人工核对`);
 });

@@ -27,6 +27,10 @@ const SRC_ROOT = path.join(REPO_ROOT, 'src');
 const RSCRIPT_CALL_RE = /(^|[\s;&|"])(?:\$RSCRIPT_BIN|\$\{RSCRIPT_BIN\}|Rscript)(?=[\s"']|$)/;
 const PYTHON_CALL_RE = /(^|[\s;&|])python3?(?=[\s"']|$)/;
 
+// 共享库不是步骤母版：没有命令行入口，被步骤 import（h5_rows 绕开 anndata backed 整层加载，
+// spatial_stats 替代 squidpy 1.8.3 已移除的 morans_i/gearys_c）。
+const SHARED_LIBS = new Set(['h5_rows.py', 'spatial_stats.py']);
+
 function listMasters() {
   const out = [];
   for (const line of fs.readdirSync(SRC_ROOT, { withFileTypes: true })) {
@@ -35,6 +39,7 @@ function listMasters() {
     if (!fs.existsSync(scriptsDir)) continue;
     for (const f of fs.readdirSync(scriptsDir)) {
       if (f === 'README.md') continue;
+      if (SHARED_LIBS.has(f)) continue;
       const abs = path.join(scriptsDir, f);
       if (fs.statSync(abs).isFile()) out.push({ lineId: line.name, step: f, abs });
     }
@@ -137,6 +142,7 @@ test('P3: 真实母版 ml_diagnostics 头部插入历史注释后，计数仍为
 // ───────────── 3. 母版全集回归 ─────────────
 
 test('P3: 母版全集规模稳定（55 个）', () => {
+  // 55 = 注册表 54 个步骤 + probe_env；共享库已被 listMasters 排除。
   assert.equal(masters.length, 55, `母版数量变化，需同步核对 bilingual 集合: ${masters.length}`);
 });
 

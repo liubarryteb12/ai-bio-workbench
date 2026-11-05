@@ -103,11 +103,16 @@ test('scripts/ 母版契约仍然成立（上一轮闸门不回潮）', () => {
       for (const mod of stage.mods) registered.add(`${series.id}/${mod.script || mod.id}`);
     }
   }
+  // 共享库不是步骤母版（没有命令行入口，被步骤 import），不计入未登记母版。
+  const SHARED_LIBS = new Set(['h5_rows.py', 'spatial_stats.py']);
   const stray = [];
   for (const line of ['line1_bulk', 'line2_scrna', 'line3_spatial']) {
     const dir = path.join(REPO, 'src', line, 'scripts');
     for (const name of fs.readdirSync(dir)) {
       if (name === 'README.md' || name === 'probe_env') continue;
+      if (SHARED_LIBS.has(name)) continue;
+      // 只判文件：目录（如 __pycache__）不是母版，算进来会产生假红
+      if (!fs.statSync(path.join(dir, name)).isFile()) continue;
       if (!registered.has(`${line}/${name}`)) stray.push(`${line}/${name}`);
     }
   }

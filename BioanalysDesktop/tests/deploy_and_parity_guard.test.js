@@ -110,11 +110,26 @@ test('闸门必须排在文件收集之后、部署之前（拦在 scp 前才有
 });
 
 test('豁免名单只放已知的非步骤脚本，且逐个写明理由', () => {
-  assert.ok(deployText.includes("$deployExempt = @{ 'probe_env'"), '缺少 probe_env 豁免');
+  assert.ok(deployText.includes('$deployExempt = @{'), '缺少豁免表');
+  assert.ok(deployText.includes("'probe_env'"), '缺少 probe_env 豁免');
   assert.ok(
     deployText.includes('环境自检冒烟脚本'),
     '豁免必须写明理由，否则后来人不知道该不该继续放行',
   );
+  // 共享库是两个 Python 模块，不是可提交的步骤：必须有豁免，否则部署闸门会把它们
+  // 当未登记母版拦下，或者更糟，放上服务器变成可点名的 step。
+  for (const lib of ['h5_rows.py', 'spatial_stats.py']) {
+    assert.ok(deployText.includes("'" + lib + "'"), '缺少共享库豁免: ' + lib);
+  }
+  // 每个豁免项都必须带非空理由：断言豁免表里每一项等号右侧都有中文说明
+  const exemptBlock = deployText.slice(deployText.indexOf('$deployExempt'));
+  for (const lib of ['probe_env', 'h5_rows.py', 'spatial_stats.py']) {
+    const at = exemptBlock.indexOf("'" + lib + "'");
+    assert.notEqual(at, -1, '豁免项缺失: ' + lib);
+    const lineEnd = exemptBlock.indexOf('\n', at);
+    const line = exemptBlock.slice(at, lineEnd === -1 ? undefined : lineEnd);
+    assert.ok(/=\s*'[^']{4,}'/.test(line), lib + ' 的豁免理由为空或过短');
+  }
 });
 
 test('闸门把测试案例指到 cn_debug/，把新母版指到注册表', () => {

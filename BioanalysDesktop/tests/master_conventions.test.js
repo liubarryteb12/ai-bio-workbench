@@ -20,6 +20,17 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
 const EM_DASH = String.fromCharCode(0x2014);
 
+/**
+ * scripts/ 下的共享库（不是步骤母版）。
+ *
+ * 判据：被其它步骤脚本 import 的纯函数模块，没有命令行入口，因此不适用母版契约
+ * （不需要 shebang、set -euo pipefail、seed 缺省 exit 3 与未知参数 exit 2）。
+ * 2026-11-05 真机事故后新增：h5_rows 绕开 anndata backed 的整层加载，
+ * spatial_stats 替代被 squidpy 1.8.3 移除的 morans_i/gearys_c。
+ * 加新库时在这里登记。
+ */
+const SHARED_LIBS = new Set(['h5_rows.py', 'spatial_stats.py']);
+
 function masterFiles() {
   const out = [];
   for (const line of ['line1_bulk', 'line2_scrna', 'line3_spatial']) {
@@ -27,8 +38,12 @@ function masterFiles() {
     for (const name of fs.readdirSync(dir)) {
       // README.md 不部署（ops/06_deploy_scripts.ps1 明确排除），不是步骤脚本，不受母版规范约束
       if (name === 'README.md') continue;
+      // 共享库不是步骤母版：没有命令行入口，契约按模块对待
+      if (SHARED_LIBS.has(name)) continue;
       const full = path.join(dir, name);
-      if (fs.statSync(full).isFile()) out.push(full);
+      // 只收文件：目录（如 __pycache__）不是母版，readFileSync 会 EISDIR
+      if (!fs.statSync(full).isFile()) continue;
+      out.push(full);
     }
   }
   out.push(path.join(REPO, 'src', 'bridge_guard.sh'));

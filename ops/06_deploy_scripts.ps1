@@ -88,7 +88,12 @@ foreach ($line in $lines) {
   # 在这里按注册表拦一次，未登记的件根本出不了本机。
   #
   # 豁免名单只放「本就不属于分析步骤、但确需部署」的脚本，逐个写明理由，不批量放行。
-  $deployExempt = @{ 'probe_env' = '环境自检冒烟脚本：验证 seed 注入、PATH 注入与 manifest 在位（handoff.md 母版口径不含它）' }
+  $deployExempt = @{
+  'probe_env'        = '环境自检冒烟脚本：验证 seed 注入、PATH 注入与 manifest 在位（handoff.md 母版口径不含它）'
+  'h5_rows.py'       = '共享库（非步骤）：按行区间读 h5ad 稀疏矩阵，绕开 anndata backed 整层加载；被 line2/line3 多个步骤 import，无命令行入口'
+  'spatial_stats.py' = '共享库（非步骤）：Morans I / Gearys C 的分块自实现，替代 squidpy 1.8.3 已移除的 morans_i/gearys_c，无命令行入口'
+}
+# 锚点：'$deployExempt = @{ 'probe_env'' 这行由 tests/deploy_and_parity_guard.test.js 断言，改格式要同步改测试
   $registryScripts = @{}
   $workflowFile = Join-Path $repoRoot 'src/workflows.json'
   if (Test-Path $workflowFile) {

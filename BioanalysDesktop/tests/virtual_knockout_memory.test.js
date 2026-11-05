@@ -167,7 +167,11 @@ test('峰值记录覆盖全流程阶段，顺序与阶段名固定', () => {
 
 test('其它 line2 母版未被本切片污染：gsva_pathways 等脚本没有 record_peak/memory_peak', () => {
   const dir = path.resolve(import.meta.dirname, '../../src/line2_scrna/scripts');
-  const others = fs.readdirSync(dir).filter((name) => name !== 'virtual_knockout' && name !== 'README.md');
+  const others = fs.readdirSync(dir).filter((name) => {
+    if (name === 'virtual_knockout' || name === 'README.md') return false;
+    // 只收文件：__pycache__ 之类的目录不是母版，readFileSync 会 EISDIR
+    return fs.statSync(path.join(dir, name)).isFile();
+  });
   assert.ok(others.includes('gsva_pathways'), '找不到 gsva_pathways，目录结构变了？');
   assert.ok(others.length >= 20, '同级脚本数量异常: ' + others.length);
   for (const name of others) {

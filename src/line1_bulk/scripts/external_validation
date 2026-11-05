@@ -58,6 +58,8 @@ import time
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import json
+
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
@@ -227,6 +229,81 @@ def fail(m):
 def log(m):
     print(m, flush=True)
 
+
+# --- 项目元数据与冻结模型解析（吸收自 K40 远端，第三十八轮同源收敛）---
+# 远端在这里读 project.json 的 train/validation 数据集角色，并把冻结模型表按
+# record_type 拆成元信息与特征系数。仓库版本缺这段，导致真机 external_validation
+# 拿不到 train_dataset / train_platform 等溯源字段。下面两个函数逐字取自远端，
+# 与仓库的排版工具组（caption/wrap_label/fit_text_edges/legend_out/layout_fix）互补，
+# 合并而不是二选一。
+
+def project_datasets():
+    path = os.environ.get("BIOANALYS_PROJECT_JSON", "")
+    if not path or not os.path.exists(path):
+        return {}, {}
+    try:
+        with open(path, encoding="utf-8") as handle:
+            project = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return {}, {}
+    datasets = project.get("data_source", {}).get("datasets", [])
+    train = next((item for item in datasets if item.get("role") == "train"), {})
+    validation = next((item for item in datasets if item.get("role") == "validation"), {})
+    return train, validation
+
+
+def parse_frozen_model(path):
+    table = pd.read_csv(path, sep="\t", dtype=str, keep_default_na=False)
+    required = {"record_type", "feature_index", "gene", "value_key", "value"}
+    if not required.issubset(table.columns):
+        fail("冻结模型缺字段: %s" % sorted(required - set(table.columns)))
+    model_rows = table[table["record_type"] == "model"]
+    feature_rows = table[table["record_type"] == "feature"].copy()
+    metadata = dict(zip(model_rows["value_key"], model_rows["value"]))
+    required_meta = {
+        "model_type", "penalty", "C", "max_iter", "seed", "case_group",
+        "control_group", "train_dataset", "train_platform", "train_samples",
+        "feature_count", "missing_value_strategy", "decision_threshold", "intercept",
+    }
+    if not required_meta.issubset(metadata):
+        fail("冻结模型缺元信息: %s" % sorted(required_meta - set(metadata)))
+    if metadata["model_type"] != "logistic_regression":
+        fail("不支持的冻结模型: %s" % metadata["model_type"])
+    if metadata["missing_value_strategy"] != "train_mean":
+        fail("不支持的缺失基因策略: %s" % metadata["missing_value_strategy"])
+    if int(metadata["seed"]) != SEED:
+        fail("冻结模型 seed=%s 与当前 seed=%s 不一致" % (metadata["seed"], SEED))
+
+    feature_rows["feature_index"] = pd.to_numeric(feature_rows["feature_index"], errors="coerce")
+    if feature_rows["feature_index"].isna().any():
+        fail("冻结特征索引含非数值")
+    feature_rows = feature_rows.sort_values("feature_index")
+    expected_index = list(range(len(feature_rows)))
+    if feature_rows["feature_index"].astype(int).tolist() != expected_index:
+        fail("冻结特征索引不连续")
+    if int(metadata["feature_count"]) != len(feature_rows):
+        fail("冻结特征数与 feature_count 不一致")
+
+    parameters = []
+    for row in feature_rows.itertuples(index=False):
+        parts = {}
+        for item in str(row.value).split(";"):
+            if "=" not in item:
+                fail("冻结特征参数格式错误: %s" % row.gene)
+            key, value = item.split("=", 1)
+            parts[key] = float(value)
+        for key in ("scaler_mean", "scaler_scale", "coef"):
+            if key not in parts or not np.isfinite(parts[key]):
+                fail("冻结特征 %s 缺合法参数 %s" % (row.gene, key))
+        if parts["scaler_scale"] <= 0:
+            fail("冻结特征 %s 的 scaler_scale <= 0" % row.gene)
+        parameters.append({
+            "gene": str(row.gene),
+            "scaler_mean": parts["scaler_mean"],
+            "scaler_scale": parts["scaler_scale"],
+            "coef": parts["coef"],
+        })
+    return metadata, pd.DataFrame(parameters)
 
 expr = pd.read_csv(os.environ["EXPR_FILE"], sep="\t", index_col=0)
 gm = pd.read_csv(os.environ["GROUP_FILE"], sep="\t")
