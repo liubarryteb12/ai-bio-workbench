@@ -5,17 +5,9 @@
 // 返回约定：命中本模块管辖的 pathname 就返回 true。json() 与 uploadError() 返回
 // undefined，不能当命中信号，所以分支顶层的 return 一律改成「先响应、再显式 return true」。
 // 嵌套回调（runJsonRoute 的回调、map、setImmediate）里的 return 是回调返回值，保持原样。
-import {
-  DEFAULT_PROJECT, LINES, PROJECTS_ROOT, normalizeDataSource, normalizeDatasets, resolveLineFromDataType, sanitizeProjectId,
-} from '../domain.js';
-import { buildProjectExecutionPlan, mergeFigureProjectTasks } from '../figure_execution_plan.js';
-import { prepareFigureProjectTasks } from '../figure_project_plan.js';
-import {
-  LINE_STEPS, PIPELINE_STEP_META, buildCreateProjectCommand, buildPipelineDag, buildProjectMetaStrict, buildReadProjectMetaCommand, parseProjectMeta,
-} from '../project.js';
-import { BLACKLIST_HINT, checkTumorBlacklist } from '../tumor_blacklist.js';
-import { shellQuote } from '../proc.js';
-import { describeSeries, loadWorkflows, resolvePlan, validateRegistry } from '../workflow_graph.js';
+// Q2 收口后，建项/图件/执行计划/黑名单等处理体已移入 services/，
+// 本模块只保留仍在使用的小工具与 domain 归一函数。
+import { normalizeDataSource, normalizeDatasets, resolveLineFromDataType } from '../domain.js';
 import { collectJsonBody, runJsonRoute, JSON_BODY_LIMIT } from '../http_body.js';
 // Q2：声明式路由表 + service 层。先迁移 4 个无副作用端点验证模式，
 // 其余 8 个（含建项/图件/执行计划等重逻辑）在后续提交里逐步迁移。
