@@ -16,6 +16,9 @@ import { SYSTEM_LOGS } from './domain.js';
 // （白名单 + BIO_COMPUTE_ADAPTER=mock 罩护 + 可测垫片），"唯一出口"从此没有例外。
 import { runExecFile, runExecStream, sshArgv } from './proc.js';
 import { probeRemoteState, reconcileTask } from './reconcile.js';
+// Q3：失败分类学唯一真源。finishTask 不再自己发明「非零即失败」的裸判定，
+// 而是把退出码交给 FSM 得到带原因码的结果（LOCK_CONFLICT / OOM_GUARD / STEP_CONTRACT_FAIL ...）。
+import { classifyTaskOutcome } from './task_fsm.js';
 
 const DETACHED_POLL_INTERVAL_MS = Math.max(
   60000,
@@ -111,6 +114,14 @@ export function runTask(task, handlers = {}) {
     if (!env) {
       handlers.onStderr?.(`[ledger] 未找到 ${task.lineId} 的 envs/manifest.txt，environment 用默认值\n`);
     }
+    // Q3：把退出码交给 FSM 得到标准失败原因码。注意这里传 hasReceipt=null ——
+    // finishTask 时 persistEntry 还没跑，回执信号未知，FSM 会诚实给 UNKNOWN 而不是臆断。
+    // 因此 status 仍沿用既有 code===0 判定（避免行为漂移），FSM 只负责给失败日志
+    // 加上可机读的原因码前缀，让 LOCK_CONFLICT / OOM_GUARD 等在台账里可检索。
+    const fsmOutcome = classifyTaskOutcome({ exitCode: code, hasReceipt: null });
+    const reasonTag = !success && fsmOutcome.reason
+      ? `[FSM:${fsmOutcome.reason}] `
+      : '';
     const entry = buildLedgerEntry({
       projectId: task.projectId,
       lineId: task.lineId,
@@ -121,7 +132,7 @@ export function runTask(task, handlers = {}) {
       status: success ? 'completed' : 'failed',
       checkpointStatus: options.checkpointStatus || (success ? 'passed' : 'failed'),
       exitCode: code,
-      errorLog: success ? null : (options.errorLog || stripSshNoise(stderrTail).trim() || 'stderr 为空，退出码非零'),
+      errorLog: success ? null : (reasonTag + (options.errorLog || stripSshNoise(stderrTail).trim() || 'stderr 为空，退出码非零')),
       startedAt,
       endedAt,
       language: env?.language,

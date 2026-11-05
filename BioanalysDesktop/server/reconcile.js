@@ -8,6 +8,7 @@
 
 import { runSync } from './proc.js';
 import { SYSTEM_LOGS } from './domain.js';
+import { TASK_STATES, FAILURE_REASONS } from './task_fsm.js';
 
 /** 远端标记目录：wrapper 已固定写入 system_logs/_running/<task_id>.json */
 export const RUNNING_DIR = `${SYSTEM_LOGS}/_running`;
@@ -18,14 +19,28 @@ export const RECONCILE_PROBE_SENTINEL = 'RECONCILE_END';
 /** 探针只查文件存在性，不做任务重试，15 秒足够覆盖一次连接建立 */
 const PROBE_TIMEOUT_MS = 15000;
 
-/** 五种对账状态是对外契约，顺序即文档口径 */
-export const RECONCILE_STATES = [
+/**
+ * 五种对账状态是对外契约，顺序即文档口径。
+ * Q3 收口：它们是 **探针细分态**，比 TASK_STATES（queued/running/reconciling/
+ * succeeded/failed/interrupted）更细，各自映射到 FSM 的终态。失败原因枚举与
+ * 终态判定统一由 task_fsm.js 提供，本文件不再自己发明一套分类。
+ */
+export const RECONCILE_STATES = Object.freeze([
   'completed',
   'link_lost_still_running',
   'link_lost_output_present',
   'failed',
   'unknown',
-];
+]);
+
+/** 对账状态 -> FSM 终态的显式映射（唯一真源在 task_fsm.js）。 */
+export const RECONCILE_TO_FSM = Object.freeze({
+  completed: TASK_STATES.SUCCEEDED,
+  link_lost_output_present: TASK_STATES.SUCCEEDED,
+  link_lost_still_running: TASK_STATES.INTERRUPTED,
+  failed: TASK_STATES.FAILED,
+  unknown: TASK_STATES.INTERRUPTED,
+});
 
 /**
  * 判定远端真实状态。
