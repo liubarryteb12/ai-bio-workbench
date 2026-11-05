@@ -74,6 +74,7 @@ fi
 MOD_FILE="$mod_file" TRAIT_FILE="$trait_file" BIOANALYS_SEED="$seed" \
 python3 - <<'PYSCRIPT'
 import gzip
+import json
 import os
 import re
 import sys
@@ -508,8 +509,28 @@ if not sig_modules:
     fail("没有与分组显著相关的模块，PPI 无输入")
 genes = sorted(set(mods.loc[mods["module"].astype(str).isin(sig_modules), "gene"].astype(str)))
 log("significant modules=%s genes=%d" % (sig_modules, len(genes)))
-if len(genes) < 3:
-    fail("显著模块基因 < 3")
+# 上游零显著时短路（Argon 第 44 轮 4A 裁定）。
+# 理由：PPI 的输入应当是差异基因（DEGs）而非全部背景基因。当上游 n_sig < 2 时，
+# 没有可比对的差异信号，硬算 PPI 会产出「依托背景基因的拓扑」并可能被误读成发现。
+# 这里不是 fail，而是正常跳过并落一份说明文件：缺输入是上游结论（无可报告差异），
+# 不是本步骤的失败。下游 reconcile 依据 skip 文件判 SKIPPED 而非 FAILED。
+if len(genes) < 2:
+    skip_reason = "n_sig=%d < 2（上游无足够显著基因，PPI 无可比对差异，按设计跳过）" % len(genes)
+    log("SKIP: %s" % skip_reason)
+    skip_doc = {
+        "step": "ppi_string",
+        "status": "skipped",
+        "reason": skip_reason,
+        "n_input_genes": int(len(genes)),
+        "threshold_required": 2,
+        "note": "PPI 需要差异基因输入；上游零显著时本步无意义。"
+                "这是上游结论（无可报告差异），不是本步失败。",
+        "seed": str(os.environ.get("BIOANALYS_SEED", "")),
+    }
+    with open("ppi_skip.json", "w", encoding="utf-8") as fh:
+        json.dump(skip_doc, fh, ensure_ascii=False, indent=2)
+    log("wrote ppi_skip.json")
+    sys.exit(0)
 
 # --- 边表来源：离线文件优先，只有离线文件完全不存在才回落网络 API ---
 MIN_SCORE = env_int("BIO_STRING_MIN_SCORE", 400)   # STRING combined_score 阈值（中等置信）
@@ -655,7 +676,8 @@ top = hub.head(MAX_HUB).iloc[::-1]
 ax.barh(range(len(top)), top["degree"].to_numpy(), color="#C44E52")
 ax.set_yticks(range(len(top)))
 ax.set_yticklabels(top["gene"].tolist(), fontsize=8)
-ax.set_xlabel("degree (STRING interactions)")
+# 轴标签点明口径：targeted panel 上 degree 不是无偏中心性，别让读者误读
+ax.set_xlabel("degree within input set (STRING score>=%d)" % MIN_SCORE)
 caption(fig, "line1: PPI hub genes", "top %d by degree" % MAX_HUB)
 fig.savefig("../figures/l1_08_ppi_hubs.png")
 plt.close(fig)
@@ -674,6 +696,32 @@ lines = [
 ]
 for _, r in hub.head(15).iterrows():
     lines.append("  %-14s degree=%d" % (r["gene"], r["degree"]))
+# 面板选择偏倚说明（Argon 第 44 轮 4A 裁定）。
+# 靶向小面板（NanoString 免疫代谢 panel、定制 gene list）是围绕已知明星分子人工浓缩的，
+# 其拓扑天然被设计者的先验知识塑形，破坏了「全基因组无偏抽样」这一 hub 分析的前提。
+# 在这种面板上做 degree 中心性，很容易把「设计时就知道重要」的基因重新排到前面，
+# 并误当成「新发现的 hub」。本报告必须把这件事写清楚，而不是只给 degree 排名。
+n_input = len(genes)
+# 判据用「来源类型」而非「基因数量」（第一版用 n_input<5000 判，结果把本例
+# 5000 个 WGCNA 显著模块基因误判成 genome_scale）。理由：5000 往往是上游的截断上限，
+# 不是全基因组规模；而 WGCNA 模块本身就是「按共表达筛选过的子集」，
+# 且含 grey（未分配到任何模块的散点）时更是明确的非无偏输入。
+is_wgcna_subset = ("wgcna" in os.environ.get("MOD_FILE", "").lower()) or ("grey" in sig_modules)
+panel_kind = "targeted_panel" if is_wgcna_subset else "genome_scale"
+if panel_kind == "targeted_panel":
+    lines.append(
+        "panel_selection_bias=1 kind=targeted_panel n_input=%d: "
+        "输入是筛选过的子集（WGCNA 显著模块 / 靶向 panel），拓扑受筛选与设计先验影响，"
+        "degree 排名只能读作「面板内部已知互作的相对中心性」，"
+        "不得据此宣称发现新的 hub 基因。若要声称 hub 发现，需换成全基因组无偏输入。"
+        % n_input
+    )
+else:
+    lines.append(
+        "panel_selection_bias=0 kind=genome_scale n_input=%d: "
+        "输入规模接近全基因组量级，degree 中心性可作常规 hub 分析解读。" % n_input
+    )
+lines.append("edge_scope=%s (both=限定网络, any=一端在内会引入外部蛋白)" % SCOPE)
 lines.append("outputs=ppi_edges.tsv, ppi_hubs.tsv, ../figures/l1_07_ppi_network.png, ../figures/l1_08_ppi_hubs.png, ppi_report.txt")
 lines.append("elapsed_seconds=%.1f" % (time.time() - START))
 with open("ppi_report.txt", "w", encoding="utf-8") as fh:
