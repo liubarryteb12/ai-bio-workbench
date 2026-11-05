@@ -194,7 +194,9 @@ for gene in targets:
         ax.imshow(img)
         sp = ax.scatter(xy[:, 0], xy[:, 1], c=np.clip(expr, 0, vmax), s=6,
                         cmap=cmap, vmin=0, vmax=vmax, linewidths=0)
-        ax.set_title("%s / %s（>0 表达 %d spot）" % (gene, s, int((expr > 0).sum())), fontsize=8.5)
+        # 标题一律纯英文：K40 容器里 matplotlib 没有中文字体，中文会渲染成方框（豆腐块）。
+        # 这也符合 docs/figure_spec.md 的英文标签口径。
+        ax.set_title("%s / %s | >0 expression: %d spots" % (gene, s, int((expr > 0).sum())), fontsize=8.5)
         ax.axis("off")
         cax = fig.add_axes([0.82, 0.24, 0.02, 0.66])
         cb = fig.colorbar(sp, cax=cax)
