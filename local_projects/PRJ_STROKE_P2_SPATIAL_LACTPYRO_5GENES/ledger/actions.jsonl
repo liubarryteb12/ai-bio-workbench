@@ -1,0 +1,1 @@
+{"detail": "创建本地项目标准目录、治理文件与双层五类 JSONL 台账。", "evidence": ["local_projects/PRJ_STROKE_P2_SPATIAL_LACTPYRO_5GENES"], "id": "ACT-20261106-001", "kind": "init", "line": "line3_spatial", "project": "PRJ_STROKE_P2_SPATIAL_LACTPYRO_5GENES", "refs": [], "step": null, "title": "初始化项目自包含目录", "ts": "2026-11-06T02:21:43+08:00", "type": "action"}

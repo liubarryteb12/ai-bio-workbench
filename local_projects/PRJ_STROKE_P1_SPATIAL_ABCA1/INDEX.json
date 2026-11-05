@@ -1,0 +1,20 @@
+{
+  "artifact_counts": {
+    "data": 0,
+    "debug": 0,
+    "deliverables": 0,
+    "figures": 0
+  },
+  "generated_at": "2026-11-06T02:21:43+08:00",
+  "ledger_summary": {},
+  "path_map": {
+    "data": "data",
+    "debug": "debug",
+    "deliverables": "deliverables",
+    "figure_adapt": "figures/adapt",
+    "figures": "figures",
+    "ledger": "ledger"
+  },
+  "project_id": "PRJ_STROKE_P1_SPATIAL_ABCA1",
+  "schema_version": 1
+}
