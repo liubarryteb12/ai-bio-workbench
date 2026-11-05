@@ -3,16 +3,19 @@
 #
 # 输入（同 cwd）：expr_genes.tsv + group_map.tsv + key_genes.tsv（步骤 9 交集关键基因）。
 #
-# 口径（用户 2026-10-13 拍板"样本量小也能做，容忍精度不高"）：
+# 口径：
 #   1. 特征 = 步骤 9 交集关键基因（探索性候选）。n=16 样本，用简单模型防过拟合：
 #      逻辑回归（L2, C=1, 标准化）+ 随机森林（100 树, max_depth=3）。
 #   2. 评估 = 留一交叉验证（LOOCV）：每折留 1 样本测试，其余 15 训练。
 #      小样本下 LOOCV 方差大，报告如实写明"探索性、不可当临床性能"。
 #   3. 特征重要性 = LR 系数绝对值 + RF 置换重要性。
 #   4. 若交集基因 < 5，回退用 nominal p<0.05 的 DEG top20。
+#   5. 最终逻辑回归在全部训练样本上重拟合，并把特征顺序、标准化参数、
+#      系数、截距和训练数据元信息写入 external_frozen_model.tsv。
+#      下游独立验证只允许读取该冻结表，不得在验证集重新 fit 或筛基因。
 #
 # 自校验内建：输入存在、特征数 >= 3、样本数 >= 8、类别均衡检查、
-# LOOCV 每折都训练成功、AUC 在 [0,1]。
+# LOOCV 每折都训练成功、AUC 在 [0,1]、冻结模型参数完整且有限。
 set -euo pipefail
 
 seed="${BIOANALYS_SEED:-UNSET}"
@@ -50,6 +53,7 @@ echo "bioanalys_seed=${seed}"
 
 EXPR_FILE="$expr_file" GROUP_FILE="$group_file" KEY_FILE="${key_file:-}" DEG_FILE="${deg_file:-}" \
 BIOANALYS_SEED="$seed" python3 - <<'PYSCRIPT'
+import json
 import os
 import sys
 import time
@@ -228,22 +232,54 @@ def log(m):
     print(m, flush=True)
 
 
+def project_metadata():
+    path = os.environ.get("BIOANALYS_PROJECT_JSON", "")
+    if not path or not os.path.exists(path):
+        return {}, {}
+    try:
+        with open(path, encoding="utf-8") as handle:
+            project = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return {}, {}
+    datasets = project.get("data_source", {}).get("datasets", [])
+    train = next((item for item in datasets if item.get("role") == "train"), {})
+    design = project.get("analysis_design", project.get("grouping_design", {}))
+    contrasts = design.get("contrasts", [])
+    contrast = next((item for item in contrasts if item.get("isPrimary")), {})
+    if not contrast and contrasts:
+        contrast = contrasts[0]
+    return train, contrast
+
+
 expr = pd.read_csv(os.environ["EXPR_FILE"], sep="\t", index_col=0)
 gm = pd.read_csv(os.environ["GROUP_FILE"], sep="\t")
 samples = [s for s in gm["sample"].astype(str) if s in expr.columns]
 if len(samples) < 8:
     fail("可用样本 %d < 8" % len(samples))
-y = np.array([1 if g == "LS" else 0 for g in
-              gm.set_index("sample").loc[samples, "group"].astype(str)])
+groups = gm.set_index("sample").loc[samples, "group"].astype(str)
+group_levels = sorted(groups.unique())
+if len(group_levels) != 2:
+    fail("需要恰好 2 个分组，实际 %d: %s" % (len(group_levels), group_levels))
+train_meta, contrast = project_metadata()
+case_group = str(contrast.get("case") or "")
+ctrl_group = str(contrast.get("ctrl") or "")
+if case_group not in group_levels:
+    case_group = "Disease" if "Disease" in group_levels else group_levels[1]
+if ctrl_group not in group_levels or ctrl_group == case_group:
+    ctrl_group = next(group for group in group_levels if group != case_group)
+y = np.array([1 if g == case_group else 0 for g in groups])
 if y.sum() == 0 or (1 - y).sum() == 0:
     fail("类别不均衡到只有一类")
 
 # 特征选择
 features = []
+features_source = "DEG top20 回退"
 key_file = os.environ.get("KEY_FILE", "")
 if key_file and os.path.exists(key_file):
     kt = pd.read_csv(key_file, sep="\t")
     features = [g for g in kt["gene"].astype(str) if g in expr.index]
+    if len(features) >= 5:
+        features_source = "key_genes 交集关键基因"
 if len(features) < 5:
     deg_file = os.environ.get("DEG_FILE", "")
     if deg_file and os.path.exists(deg_file):
@@ -253,8 +289,9 @@ if len(features) < 5:
         features = [g for g in cand if g in expr.index]
 if len(features) < 3:
     fail("可用特征 %d < 3" % len(features))
-log("samples=%d features=%d (n_LS=%d n_NLS=%d)"
-    % (len(samples), len(features), int(y.sum()), int((1 - y).sum())))
+log("samples=%d features=%d (case=%s:%d ctrl=%s:%d)"
+    % (len(samples), len(features), case_group, int(y.sum()),
+       ctrl_group, int((1 - y).sum())))
 
 X = expr.loc[features, samples].T.to_numpy(dtype=float)
 X = np.nan_to_num(X)
@@ -305,6 +342,43 @@ log("wrote ../figures/l1_10_ml_roc.png")
 scaler = StandardScaler().fit(X)
 lr = LogisticRegression(C=1.0, max_iter=2000, random_state=SEED).fit(scaler.transform(X), y)
 rf = RandomForestClassifier(n_estimators=100, max_depth=3, random_state=SEED).fit(X, y)
+
+# 结构化冻结表是训练与外部验证之间唯一模型接口。这里刻意不落 pickle，
+# 让跨 Python 版本审计能直接核对特征顺序、标准化统计量、系数与截距。
+frozen_rows = [
+    {"record_type": "model", "feature_index": "", "gene": "", "value_key": "model_type", "value": "logistic_regression"},
+    {"record_type": "model", "feature_index": "", "gene": "", "value_key": "penalty", "value": "l2"},
+    {"record_type": "model", "feature_index": "", "gene": "", "value_key": "C", "value": "1.0"},
+    {"record_type": "model", "feature_index": "", "gene": "", "value_key": "max_iter", "value": "2000"},
+    {"record_type": "model", "feature_index": "", "gene": "", "value_key": "seed", "value": str(SEED)},
+    {"record_type": "model", "feature_index": "", "gene": "", "value_key": "case_group", "value": case_group},
+    {"record_type": "model", "feature_index": "", "gene": "", "value_key": "control_group", "value": ctrl_group},
+    {"record_type": "model", "feature_index": "", "gene": "", "value_key": "train_dataset", "value": str(train_meta.get("gse", "unknown"))},
+    {"record_type": "model", "feature_index": "", "gene": "", "value_key": "train_platform", "value": str(train_meta.get("gpl", "unknown"))},
+    {"record_type": "model", "feature_index": "", "gene": "", "value_key": "train_samples", "value": str(len(samples))},
+    {"record_type": "model", "feature_index": "", "gene": "", "value_key": "feature_count", "value": str(len(features))},
+    {"record_type": "model", "feature_index": "", "gene": "", "value_key": "missing_value_strategy", "value": "train_mean"},
+    {"record_type": "model", "feature_index": "", "gene": "", "value_key": "decision_threshold", "value": "0.5"},
+    {"record_type": "model", "feature_index": "", "gene": "", "value_key": "intercept", "value": "%.17g" % float(lr.intercept_[0])},
+]
+for index, (gene, mean, scale, coef) in enumerate(
+        zip(features, scaler.mean_, scaler.scale_, lr.coef_[0])):
+    if not np.isfinite(mean) or not np.isfinite(scale) or scale <= 0 or not np.isfinite(coef):
+        fail("冻结参数含非法值: %s" % gene)
+    frozen_rows.append({
+        "record_type": "feature",
+        "feature_index": str(index),
+        "gene": gene,
+        "value_key": "feature_parameters",
+        "value": "scaler_mean=%.17g;scaler_scale=%.17g;coef=%.17g"
+                 % (float(mean), float(scale), float(coef)),
+    })
+frozen = pd.DataFrame(frozen_rows)
+if len(frozen) != len(features) + 14:
+    fail("冻结模型行数不符")
+frozen.to_csv("external_frozen_model.tsv", sep="\t", index=False)
+log("wrote external_frozen_model.tsv")
+
 imp = pd.DataFrame({
     "gene": features,
     "lr_coef_abs": np.abs(lr.coef_[0]),
@@ -333,15 +407,22 @@ log("wrote ../figures/l1_11_ml_importance.png")
 lines = [
     "step=ml_model",
     "seed=%d" % SEED,
-    "samples=%d features=%d (LS=%d NLS=%d)" % (len(samples), len(features), int(y.sum()), int((1 - y).sum())),
-    "features_source=%s" % ("key_genes 交集关键基因" if key_file else "DEG top20 回退"),
+    "samples=%d features=%d (%s=%d %s=%d)" % (
+        len(samples), len(features), case_group, int(y.sum()),
+        ctrl_group, int((1 - y).sum())),
+    "features_source=%s" % features_source,
     "models=logreg(L2,C=1) + randomforest(100,max_depth=3)，特征标准化",
-    "eval=留一交叉验证 LOOCV（16 样本方差大，探索性，不可当临床性能）",
+    "eval=留一交叉验证 LOOCV（%d 样本，探索性，不可当临床性能）" % len(samples),
     "logreg_auc=%.3f logreg_acc=%.3f" % (results["logreg"]["auc"], results["logreg"]["acc"]),
     "rf_auc=%.3f rf_acc=%.3f" % (results["rf"]["auc"], results["rf"]["acc"]),
-    "limitation_note=16 样本 + 探索性候选基因，AUC 高可能过拟合；需独立大样本复现",
+    "limitation_note=%d 样本 + 探索性候选基因，AUC 高可能过拟合；需独立大样本复现" % len(samples),
+    "train_dataset=%s train_platform=%s" % (
+        train_meta.get("gse", "unknown"), train_meta.get("gpl", "unknown")),
+    "frozen_model=external_frozen_model.tsv",
+    "frozen_feature_order=%s" % ",".join(features),
+    "missing_value_strategy=train_mean",
     "top_features=%s" % imp.head(10)["gene"].tolist(),
-    "outputs=ml_feature_importance.tsv, ../figures/l1_10_ml_roc.png, ../figures/l1_11_ml_importance.png, ml_report.txt",
+    "outputs=ml_feature_importance.tsv, external_frozen_model.tsv, ../figures/l1_10_ml_roc.png, ../figures/l1_11_ml_importance.png, ml_report.txt",
     "elapsed_seconds=%.1f" % (time.time() - START),
 ]
 with open("ml_report.txt", "w", encoding="utf-8") as fh:

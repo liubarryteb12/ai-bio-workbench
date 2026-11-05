@@ -1,0 +1,60 @@
+# k40 算力面脚本漂移审计（2026-11-05）
+
+## 为什么有这份文档
+
+第三十七轮基准跑动时，`ml_hub_analysis` 在真机上要求 `project.json` 的 `grouping_design` 主对照，
+而仓库母版里没有这段逻辑，整步 failed。查下来不是单个脚本的事：**仓库已经不是算力面的真源**。
+这份文档记录审计证据与收敛计划，避免下次再从一次真实失败里反推。
+
+## 审计方法
+
+拉回 `k40:/mnt/ssd/bio_data/bin/line1_bulk` 全部 27 个脚本到 `.tmp/k40_drift_audit/remote/`，
+与仓库 `src/line1_bulk/scripts/` 逐文件 sha256 对比，再按函数/产物/特征标记做语义甄别。
+
+## 审计结果（line1_bulk）
+
+- 仓库 16 个，远端 27 个；**逐字节相同 7 个，分叉 9 个，远端野生 11 个，仓库独有 0 个**。
+
+### 分叉 9 个
+
+| 脚本 | 差异规模 | 判定 | 依据 |
+|---|---|---|---|
+| ml_hub_analysis | +81/-28 | **远端更新，已吸收** | 远端多 `resolve_groups`（读 grouping_design 主对照），仓库无独有函数或产物 |
+| ml_model | +92/-11 | **远端更新，已吸收** | 远端多 `project_metadata`，仓库无独有函数或产物 |
+| bulk_figures | +68/-130 | 仓库更新 | 仓库有 `cutoffs` 阈值真源接线（T1-4 成果），远端没有 |
+| deg_limma | +24/-73 | 仓库更新 | 同上，仓库读 cutoffs |
+| cox_analysis | +39/-3 | 待甄别 | 两侧无特征标记差异 |
+| enrichment_figures | +7/-1 | 待甄别 | 差异极小，疑似排版/注释 |
+| external_validation | +274/-253 | 待甄别 | 大改，需逐段读 |
+| prep_matrix | +54/-20 | 待甄别 | 与本次基准的数据形态适配相关（counts 模式） |
+| qc_matrix | +8/-10 | 待甄别 | 差异极小 |
+
+### 远端野生 11 个（仓库无对应物）
+
+`geo_pca_scatter`、`geo_tcga_common_deg`、`gsva_pathway_score`、`lasso_cox_model`、
+`lasso_feature_select`、`limma_deg_analysis`、`multi_metric_survival_roc`、
+`multivariate_cox_model`、`roc_diagnostic_curve`、`univariate_cox_screen`、`wgcna_module_trait`。
+
+这 11 个看起来是**旧 GEO/生存分析一代**的脚本（cox/survival/ROC/lasso 组合），
+与当前 `workflows.json` 的 mod 契约不对应。判定：归档，不进母版；是否删除远端待裁定。
+
+## 收敛纪律（按 Argon 第三十七轮）
+
+1. **禁止直接用仓库旧版覆盖远端**：远端分叉里有生产必需的新逻辑（grouping_design），覆盖即回退。
+2. 逐个甄别后**把远端有效逻辑反向吸收进仓库**（本文件已做 2 个），再谈对齐。
+3. 全部收敛后加 **SHA256 同源门禁**（`ops/k40_script_parity.mjs`），把「仓库即生产、分叉即报警」变成机器判据。
+
+## 本轮已完成 / 未完成
+
+- 已完成：取证拉回 + 逐文件对比 + 2 个远端更新脚本吸收进仓库（`ml_hub_analysis`、`ml_model`），
+  仓库母版规范测试 9/9 通过。
+- 未完成：其余 7 个分叉的逐段甄别、11 个野生脚本的处置、同源门禁。
+
+## 复现
+
+```
+ssh k40-ubuntu 'cd /mnt/ssd/bio_data/bin/line1_bulk && for f in *; do echo "$(sha256sum $f | cut -c1-16) $f"; done'
+scp -r k40-ubuntu:/mnt/ssd/bio_data/bin/line1_bulk/* .tmp/k40_drift_audit/remote/
+python .tmp/k40_drift_audit/audit.py      # 逐文件对比
+python .tmp/k40_drift_audit/feature_diff.py  # 函数/产物集合差异
+```
