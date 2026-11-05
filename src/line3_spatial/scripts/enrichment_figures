@@ -84,6 +84,13 @@ UP = "#D62728"      # NES > 0（激活）
 DOWN = "#1F77B4"    # NES < 0（抑制）
 
 
+def fail(m):
+    """自校验失败：stderr 写明原因并以非零退出（与其他母版同口径，缺它会 NameError 崩栈）。"""
+    sys.stderr.write("enrichment_figures 自校验失败: %s\n" % m)
+    sys.stderr.flush()
+    sys.exit(1)
+
+
 def log(m):
     print(m, flush=True)
 
