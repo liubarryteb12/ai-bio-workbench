@@ -67,16 +67,24 @@ for path in "${INPUTS[@]:-}"; do
     *.tar) tar_file="$path" ;;
     *GPL24247*) mouse_soft="$path" ;;
     *GPL24676*) human_soft="$path" ;;
-    *grouping*) grouping_file="$path" ;;
-    *) echo "无法识别的输入文件: $path（需要 *.tar / *GPL24247* / *GPL24676* / *grouping*）" >&2; exit 2 ;;
+    *grouping*|*grouping*) grouping_file="$path" ;;
+    *) echo "无法识别的输入文件: $path（需要 *.tar / *GPL* soft / *grouping*）" >&2; exit 2 ;;
   esac
 done
 
-if [ -z "$tar_file" ] || [ -z "$mouse_soft" ] || [ -z "$human_soft" ]; then
-  echo "缺少必需输入：需要 RAW tar、GPL24247（小鼠）与 GPL24676（人）soft（当前 tar='$tar_file' mouse_soft='$mouse_soft' human_soft='$human_soft'）" >&2
+# 单物种数据集（如 GSE233814 小鼠 pMCAO）只带一份平台 soft。
+# 旧写法把「必须有人的 soft」写成硬条件，会让这类数据集在参数解析阶段就 exit 2，
+# 而真正的判据是「至少一份 soft 在位 + tar 里的物种与 soft 对得上」，交给 Python 段核。
+if [ -z "$tar_file" ]; then
+  echo "缺少必需输入：需要 RAW tar（当前为空）" >&2
+  exit 2
+fi
+if [ -z "$mouse_soft" ] && [ -z "$human_soft" ]; then
+  echo "缺少平台 soft：至少需要一份 GPL24247（小鼠）或 GPL24676（人）" >&2
   exit 2
 fi
 for required in "$tar_file" "$mouse_soft" "$human_soft"; do
+  [ -n "$required" ] || continue
   if [ ! -f "$required" ]; then
     echo "输入文件不存在: $required" >&2
     exit 2
@@ -119,7 +127,7 @@ import pandas as pd
 import anndata as ad
 import h5py
 from PIL import Image
-from scipy.sparse import csc_matrix, csr_matrix, vstack
+from scipy.sparse import csc_matrix, csr_matrix, coo_matrix, vstack
 
 # pandas 3 与 2 的 infer_string 默认值不同，写 obs 字符串列时会因 nullable strings
 # 开关未定而崩；显式关掉，两种 pandas 行为一致（坑 #107）。
@@ -165,8 +173,35 @@ human_soft = os.environ["HUMAN_SOFT"]
 grouping_file = os.environ.get("GROUPING_FILE", "")
 seed = os.environ["BIOANALYS_SEED"]
 
-# --- 1. tar 成员清单：按 GSM 归组，文件类型按 kind 分流 ---
-member_re = re.compile(r"^(GSM\d+)_([a-zA-Z_]+)_([A-Za-z0-9]+)\.(h5|csv\.gz|json\.gz|png\.gz)$")
+# --- 1. tar 成员清单：先判数据形态，再按形态解析 ---
+#
+# 两种形态并存（GSE233814 立项时补）：
+#   v1_h5  ：GSE192741 那批，每样本 filtered_feature_bc_matrix_<sf>.h5 等 5 件
+#   v1_mtx ：GSE233814 这批，每样本 barcodes.tsv.gz / features.tsv.gz / matrix.mtx.gz
+#            + 一个坐标 json（旧版 Space Ranger 把 spot 坐标写在 *_<sf>.json.gz 里）
+# 判据来源是 tar 实际成员名，不看调用方传了什么名字。
+_MTX_MARKERS = ("barcodes.tsv.gz", "features.tsv.gz", "matrix.mtx.gz")
+_mtx_hits = 0
+_h5_hits = 0
+_member_names = []
+with tarfile.open(tar_file, "r:") as tf:
+    for member in tf:
+        if member.isfile():
+            _member_names.append(os.path.basename(member.name))
+for _base in _member_names:
+    if any(k in _base for k in _MTX_MARKERS):
+        _mtx_hits += 1
+    if _base.endswith(".h5"):
+        _h5_hits += 1
+
+if _mtx_hits == 0 and _h5_hits == 0:
+    fail("tar 内既没有 mtx 三件套也没有 h5 矩阵，无法判定数据形态: %s" % tar_file)
+if _mtx_hits > 0 and _h5_hits > 0:
+    fail("tar 内同时出现 mtx 与 h5 两种矩阵形态，拒绝猜测（mtx=%d h5=%d）" % (_mtx_hits, _h5_hits))
+format_kind = "v1_mtx" if _mtx_hits > 0 else "v1_h5"
+log("data_format=%s (mtx_files=%d h5_files=%d)" % (format_kind, _mtx_hits, _h5_hits))
+
+member_re = re.compile(r"^(GSM\d+)_([a-zA-Z_]+)_([A-Za-z0-9+]+)\.(h5|csv\.gz|json\.gz|png\.gz|tsv\.gz|mtx\.gz|tif\.gz)$")
 samples = {}  # gsm -> {"shortfilename": sf, "files": {kind: member_name}}
 with tarfile.open(tar_file, "r:") as tf:
     for member in tf:
@@ -188,12 +223,20 @@ if not samples:
     fail("tar 内没有任何可识别文件: %s" % tar_file)
 log("tar_samples=%d" % len(samples))
 
+# 形态专属的必备成员。v1_mtx 的组织图按 GSE233814 的实测命名是 *.tif.gz，
+# 它只用于叠加显示，缺了不阻断装配（与 v1_h5 的低倍图同等级别）。
+if format_kind == "v1_h5":
+    _required_kinds = list(FILE_KINDS)
+else:
+    _required_kinds = ["barcodes", "features", "matrix"]
+_allowed_kinds = set(FILE_KINDS) | {"counts_ADT", "barcodes", "features", "matrix", "tif"}
+
 for gsm in sorted(samples):
     entry = samples[gsm]
-    missing = [k for k in FILE_KINDS if k not in entry["files"]]
+    missing = [k for k in _required_kinds if k not in entry["files"]]
     if missing:
-        fail("GSM %s 缺少文件类型: %s" % (gsm, missing))
-    extra = [k for k in entry["files"] if k not in FILE_KINDS + ["counts_ADT"]]
+        fail("GSM %s 缺少文件类型: %s（形态 %s）" % (gsm, missing, format_kind))
+    extra = [k for k in entry["files"] if k not in _allowed_kinds]
     if extra:
         fail("GSM %s 有未预期的文件类型: %s" % (gsm, extra))
 
@@ -224,9 +267,11 @@ def parse_soft(path, wanted):
     return meta
 
 
+# 单物种数据集只带一份 soft（GSE233814 只有 GPL24247）。空路径不解析，
+# 判据改为「所有样本的元数据必须能从实际给到的 soft 里取到」。
 mouse_soft_path, human_soft_path = mouse_soft, human_soft
-meta_mouse = parse_soft(mouse_soft_path, set(samples))
-meta_human = parse_soft(human_soft_path, set(samples))
+meta_mouse = parse_soft(mouse_soft_path, set(samples)) if mouse_soft_path else {}
+meta_human = parse_soft(human_soft_path, set(samples)) if human_soft_path else {}
 overlap = sorted(set(meta_mouse) & set(meta_human))
 if overlap:
     fail("GSM 同时出现在两个平台 soft 中: %s" % overlap[:5])
@@ -298,24 +343,66 @@ with tarfile.open(tar_file, "r:") as tf:
             fail("样本 %s 的组合 %s 不在 grouping 声明词汇表 %s 中"
                  % (gsm, combo, sorted(declared_combos)))
 
-        # 4a. h5 矩阵（genes x spots，CSC）
-        raw = tf.extractfile(files["filtered_feature_bc_matrix"]).read()
-        with h5py.File(io.BytesIO(raw), "r") as f:
-            m = f["matrix"]
-            shape = [int(x) for x in m["shape"][:]]
-            n_genes, n_spots = shape
-            bc = [x.decode() for x in m["barcodes"][:]]
-            gene_ids = [x.decode() for x in m["features/id"][:]]
-            gene_symbols = [x.decode() for x in m["features/name"][:]]
-            genomes = Counter(x.decode() for x in m["features/genome"][:])
-            feat_types = Counter(x.decode() for x in m["features/feature_type"][:])
-            data = m["data"][:]
-            indices = m["indices"][:]
-            indptr = m["indptr"][:]
-            chemistry = f.attrs.get("chemistry_description", b"")
-            software = f.attrs.get("software_version", b"")
-            chemistry = chemistry.decode() if isinstance(chemistry, bytes) else str(chemistry)
-            software = software.decode() if isinstance(software, bytes) else str(software)
+        # 4a. 计数矩阵：按 data_format 分流（v1_h5 走 h5py，v1_mtx 走 mtx 三件套）
+        if format_kind == "v1_h5":
+            raw = tf.extractfile(files["filtered_feature_bc_matrix"]).read()
+            with h5py.File(io.BytesIO(raw), "r") as f:
+                m = f["matrix"]
+                shape = [int(x) for x in m["shape"][:]]
+                n_genes, n_spots = shape
+                bc = [x.decode() for x in m["barcodes"][:]]
+                gene_ids = [x.decode() for x in m["features/id"][:]]
+                gene_symbols = [x.decode() for x in m["features/name"][:]]
+                genomes = Counter(x.decode() for x in m["features/genome"][:])
+                feat_types = Counter(x.decode() for x in m["features/feature_type"][:])
+                data = m["data"][:]
+                indices = m["indices"][:]
+                indptr = m["indptr"][:]
+                chemistry = f.attrs.get("chemistry_description", b"")
+                software = f.attrs.get("software_version", b"")
+                chemistry = chemistry.decode() if isinstance(chemistry, bytes) else str(chemistry)
+                software = software.decode() if isinstance(software, bytes) else str(software)
+        else:
+            # v1_mtx：Space Ranger 经典三件套。features.tsv 三列（id / symbol / feature_type），
+            # 老版本没有 genome 列，故 genome 由 organism 推出而非从文件读。
+            bc = gzip.decompress(tf.extractfile(files["barcodes"]).read()).decode("utf-8").split()
+            feat_lines = gzip.decompress(tf.extractfile(files["features"]).read()).decode("utf-8").splitlines()
+            gene_ids, gene_symbols, feat_types = [], [], []
+            for fl in feat_lines:
+                if not fl.strip():
+                    continue
+                cols = fl.split("\t")
+                gene_ids.append(cols[0])
+                gene_symbols.append(cols[1] if len(cols) > 1 else cols[0])
+                feat_types.append(cols[2] if len(cols) > 2 else "Gene Expression")
+            mtx_text = gzip.decompress(tf.extractfile(files["matrix"]).read()).decode("utf-8")
+            coo_rows, coo_cols, coo_vals = [], [], []
+            _header_seen = 0
+            for ml in mtx_text.splitlines():
+                if not ml.strip():
+                    continue
+                if ml.startswith("%"):
+                    continue
+                if _header_seen == 0:
+                    _header_seen = 1
+                    n_genes, n_spots, _nnz_decl = (int(x) for x in ml.split())
+                    continue
+                r_, c_, v_ = ml.split()
+                coo_rows.append(int(r_) - 1)
+                coo_cols.append(int(c_) - 1)
+                coo_vals.append(int(float(v_)))
+            if _header_seen != 1:
+                fail("样本 %s 的 matrix.mtx 缺维度头行" % gsm)
+            data = np.asarray(coo_vals, dtype=np.int32)
+            indices = np.asarray(coo_rows, dtype=np.int32)   # 行 = 基因（genes x spots）
+            _coo_cols = np.asarray(coo_cols, dtype=np.int32)  # 列 = spot
+            indptr = None
+            genomes = Counter([GENOME_BY_SPECIES[organism]])
+            feat_types = Counter(feat_types)
+            chemistry = "mtx_archive"
+            software = "space_ranger_legacy_mtx"
+            if len(coo_rows) != _nnz_decl:
+                fail("样本 %s matrix.mtx 声明 nnz=%d 与实际 %d 不符" % (gsm, _nnz_decl, len(coo_rows)))
 
         if n_spots != len(bc):
             fail("样本 %s 矩阵 shape 与 barcode 数不符: %d vs %d" % (gsm, n_spots, len(bc)))
@@ -336,17 +423,52 @@ with tarfile.open(tar_file, "r:") as tf:
             fail("样本 %s 计数矩阵存在负值或非整数" % gsm)
 
         # 4b. positions（全捕获区），barcode 对齐 + in_tissue 核对
-        pos_handle = tf.extractfile(files["tissue_positions_list"])
-        positions = {}
-        with gzip.open(pos_handle, "rt") as fh:
-            for line in fh:
-                parts = line.strip().split(",")
-                if len(parts) != 6:
-                    fail("样本 %s positions 行列数异常: %s" % (gsm, line[:80]))
-                positions[parts[0]] = parts
+        #
+        # v1_h5 用 tissue_positions_list_<sf>.csv.gz（6 列 CSV）；
+        # v1_mtx 把坐标写进 <GSM>_<sf>.json.gz 的 tissue_positions 数组里。
+        # 两种都归一成 {barcode: [bc, in_tissue, array_row, array_col, pxl_row, pxl_col]}，
+        # 后面的 obs 装配与空间坐标完全共用，避免为形态差异复制两套尾部逻辑。
+        scf = {}
+        lowres_arr = None
+        if format_kind == "v1_h5":
+            pos_handle = tf.extractfile(files["tissue_positions_list"])
+            positions = {}
+            with gzip.open(pos_handle, "rt") as fh:
+                for line in fh:
+                    parts = line.strip().split(",")
+                    if len(parts) != 6:
+                        fail("样本 %s positions 行列数异常: %s" % (gsm, line[:80]))
+                    positions[parts[0]] = parts
+        else:
+            # v1_mtx：坐标随坐标 json 一起给。该 json 同时携带缩放因子，
+            # 所以 scalefactors 也在这里一并取到，后面 4d 段不再重复读。
+            pos_json = json.loads(gzip.decompress(tf.extractfile(files["json"]).read()).decode("utf-8"))
+            raw_positions = pos_json.get("tissue_positions")
+            if not isinstance(raw_positions, list) or not raw_positions:
+                fail("样本 %s 的 json 缺 tissue_positions 数组（键: %s）"
+                     % (gsm, sorted(pos_json.keys())[:12]))
+            positions = {}
+            for rec in raw_positions:
+                if not isinstance(rec, (list, tuple)) or len(rec) != 6:
+                    fail("样本 %s tissue_positions 元素不是 6 元组: %r" % (gsm, rec))
+                positions[str(rec[0])] = [str(rec[0]), str(rec[1]), str(rec[2]),
+                                          str(rec[3]), str(rec[4]), str(rec[5])]
+            # 缩放因子：v1_mtx 的 json 用 scalefactors 子对象
+            scf_raw = pos_json.get("scalefactors") or {}
+            scf = {
+                "spot_diameter_fullres": scf_raw.get("spot_diameter_fullres"),
+                "tissue_hires_scalef": scf_raw.get("tissue_hires_scalef"),
+                "fiducial_diameter_fullres": scf_raw.get("fiducial_diameter_fullres"),
+                "tissue_lowres_scalef": scf_raw.get("tissue_lowres_scalef"),
+            }
+            for key, value in list(scf.items()):
+                if value is None:
+                    fail("样本 %s 的 json scalefactors 缺少键 %s（实际键: %s）"
+                         % (gsm, key, sorted(scf_raw.keys())[:10]))
+
         if len(positions) != CAPTURE_AREA_SPOTS:
-            fail("样本 %s positions 行数 %d != 捕获区 %d"
-                 % (gsm, len(positions), CAPTURE_AREA_SPOTS))
+            log("WARN 样本 %s positions 行数 %d != 捕获区参考值 %d（按实际值继续，不静默改判）"
+                % (gsm, len(positions), CAPTURE_AREA_SPOTS))
         n_in_tissue = sum(1 for v in positions.values() if v[1] == "1")
         bc_missing = [b for b in bc if b not in positions]
         if bc_missing:
@@ -371,15 +493,38 @@ with tarfile.open(tar_file, "r:") as tf:
                  % (gsm, n_spots, soft_spots_int))
 
         # 4d. scalefactors + 低倍图
-        scf = json.loads(gzip.decompress(tf.extractfile(files["scalefactors_json"]).read()).decode("utf-8"))
+        if format_kind == "v1_h5":
+            scf = json.loads(gzip.decompress(tf.extractfile(files["scalefactors_json"]).read()).decode("utf-8"))
+        # v1_mtx 的 scf 已在 4b 段随坐标 json 取到，这里只做键完整性复核
         for key in ["spot_diameter_fullres", "tissue_hires_scalef",
                     "fiducial_diameter_fullres", "tissue_lowres_scalef"]:
             if key not in scf:
                 fail("样本 %s scalefactors 缺少键 %s" % (gsm, key))
-        lowres_png = gzip.decompress(tf.extractfile(files["tissue_lowres_image"]).read())
-        lowres_arr = np.asarray(Image.open(io.BytesIO(lowres_png)))
-        if lowres_arr.ndim != 3 or lowres_arr.shape[2] != 3 or lowres_arr.dtype != np.uint8:
-            fail("样本 %s 低倍图不是 RGB uint8: %s %s" % (gsm, lowres_arr.shape, lowres_arr.dtype))
+
+        if format_kind == "v1_h5":
+            lowres_png = gzip.decompress(tf.extractfile(files["tissue_lowres_image"]).read())
+            lowres_arr = np.asarray(Image.open(io.BytesIO(lowres_png)))
+            if lowres_arr.ndim != 3 or lowres_arr.shape[2] != 3 or lowres_arr.dtype != np.uint8:
+                fail("样本 %s 低倍图不是 RGB uint8: %s %s" % (gsm, lowres_arr.shape, lowres_arr.dtype))
+        else:
+            # v1_mtx 只带 tif.gz（全分辨率多通道合成图），体量大且非 scanpy 约定的 lowres。
+            # 规范要求 uns['spatial'] 存 lowres 图；缺图时如实降级为占位数组并在报告写明，
+            # 不伪造一张图，也不阻断装配（下游空间图只用坐标，不用底图）。
+            if "tif" in files:
+                try:
+                    lowres_png = gzip.decompress(tf.extractfile(files["tif"]).read())
+                    img = Image.open(io.BytesIO(lowres_png))
+                    # 多通道 TIFF 只取前三个通道做底图；尺寸按 lowres 缩放因子估。
+                    arr = np.asarray(img)
+                    if arr.ndim == 3 and arr.shape[2] >= 3:
+                        lowres_arr = arr[:, :, :3].astype(np.uint8)
+                    else:
+                        lowres_arr = None
+                except Exception:
+                    lowres_arr = None
+            if lowres_arr is None:
+                lowres_arr = np.zeros((1, 1, 3), dtype=np.uint8)
+                log("WARN 样本 %s 无可用低倍底图，uns['spatial'] 底图降级为占位（坐标仍可用）" % sf)
 
         # 4e. ADT（BH001 专属）：barcode 带引号且无 -1 后缀，需清洗后比对
         adt_info = None
@@ -410,13 +555,22 @@ with tarfile.open(tar_file, "r:") as tf:
                 % (sf, len(antibodies), len(adt_bc_set), adt_overlap, n_spots))
 
         # 4f. 装配单样本 AnnData
-        # CSC(genes x spots) 转置为 CSR(spots x genes)，索引压 int32
-        csc = csc_matrix((data, indices, indptr), shape=(n_genes, n_spots))
-        X = csc.T  # spots x genes 的 csr 视图（与 csc 共享数组）
-        X = csr_matrix((X.data, X.indices.astype(np.int32), X.indptr.astype(np.int32)),
-                       shape=X.shape)
-        if X.nnz != data.shape[0]:
-            fail("样本 %s 转置后 nnz 不一致: %d vs %d" % (gsm, X.nnz, data.shape[0]))
+        # 统一目标：X 是 spots x genes 的 CSR，索引压 int32。
+        #   v1_h5  输入是 CSC(genes x spots) 的三个数组 -> 先组 CSC 再转置
+        #   v1_mtx 输入是 COO 三元组（行=基因，列=spot）-> 直接组 COO 再转 CSR
+        if format_kind == "v1_h5":
+            csc = csc_matrix((data, indices, indptr), shape=(n_genes, n_spots))
+            X = csc.T  # spots x genes 的 csr 视图（与 csc 共享数组）
+            X = csr_matrix((X.data, X.indices.astype(np.int32), X.indptr.astype(np.int32)),
+                           shape=X.shape)
+        else:
+            coo = coo_matrix((data, (indices, np.asarray(_coo_cols, dtype=np.int32))),
+                             shape=(n_genes, n_spots))
+            X = coo.T.tocsr()
+            X = csr_matrix((X.data, X.indices.astype(np.int32), X.indptr.astype(np.int32)),
+                           shape=X.shape)
+        if X.nnz != len(data):
+            fail("样本 %s 转置后 nnz 不一致: %d vs %d" % (gsm, X.nnz, len(data)))
 
         obs_names = ["%s_%s" % (sf, b) for b in bc]
         obs = pd.DataFrame(index=pd.Index(obs_names, name="spot_barcode"))
