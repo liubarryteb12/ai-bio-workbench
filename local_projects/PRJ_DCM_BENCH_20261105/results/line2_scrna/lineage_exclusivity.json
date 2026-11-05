@@ -1,0 +1,220 @@
+{
+  "step": "lineage_exclusivity",
+  "n_cells": 74883,
+  "markers_used": {
+    "B_cell": [
+      "MS4A1",
+      "CD79A",
+      "BANK1"
+    ],
+    "T_cell": [
+      "CD2",
+      "TRAC",
+      "CD247"
+    ],
+    "cardiomyocyte": [
+      "NPPA",
+      "ACTC1"
+    ],
+    "fibroblast": [
+      "COL1A1",
+      "LUM",
+      "COL1A2"
+    ],
+    "endothelial": [
+      "PECAM1",
+      "VWF",
+      "CDH5"
+    ],
+    "macrophage": [
+      "CD163",
+      "LYZ",
+      "C1QA"
+    ],
+    "smooth_muscle": [
+      "MYH11",
+      "ACTA2",
+      "TAGLN"
+    ],
+    "pericyte": [
+      "ABCC9",
+      "RGS5",
+      "PDGFRB"
+    ],
+    "schwann_nerve": [
+      "PLP1",
+      "MPZ",
+      "S100B"
+    ]
+  },
+  "threshold": "per-marker: median expression among positive cells of its target type x 0.5",
+  "thresholds_applied": {
+    "B_cell": {
+      "MS4A1": 5.0,
+      "CD79A": 5.0,
+      "BANK1": 5.0
+    },
+    "T_cell": {
+      "CD2": 4.944,
+      "TRAC": 5.0,
+      "CD247": 3.402
+    },
+    "cardiomyocyte": {
+      "NPPA": 0.646,
+      "ACTC1": 0.466
+    },
+    "fibroblast": {
+      "COL1A1": 0.583,
+      "LUM": 0.86,
+      "COL1A2": 0.626
+    },
+    "endothelial": {
+      "PECAM1": 1.229,
+      "VWF": 1.264,
+      "CDH5": 1.529
+    },
+    "macrophage": {
+      "CD163": 1.72,
+      "LYZ": 2.444,
+      "C1QA": 1.714
+    },
+    "smooth_muscle": {
+      "MYH11": 3.025,
+      "ACTA2": 1.948,
+      "TAGLN": 1.493
+    },
+    "pericyte": {
+      "ABCC9": 1.254,
+      "RGS5": 1.638,
+      "PDGFRB": 1.503
+    },
+    "schwann_nerve": {
+      "PLP1": 3.68,
+      "MPZ": 4.34,
+      "S100B": 4.444
+    }
+  },
+  "n_multi_positive": 27098,
+  "pct_multi_positive": 36.187,
+  "per_type_positive_rate_pct": {
+    "B_cell": 1.05,
+    "T_cell": 2.56,
+    "cardiomyocyte": 38.49,
+    "fibroblast": 35.71,
+    "endothelial": 18.38,
+    "macrophage": 10.26,
+    "smooth_muscle": 13.63,
+    "pericyte": 19.21,
+    "schwann_nerve": 2.68
+  },
+  "exclusive_pair_detail": [
+    {
+      "labeled_as": "B_cell",
+      "also_positive_for": "T_cell",
+      "n_cells": 135,
+      "pct_double_positive": 3.704
+    },
+    {
+      "labeled_as": "T_cell",
+      "also_positive_for": "B_cell",
+      "n_cells": 1493,
+      "pct_double_positive": 2.411
+    },
+    {
+      "labeled_as": "cardiomyocyte",
+      "also_positive_for": "fibroblast",
+      "n_cells": 30771,
+      "pct_double_positive": 9.372
+    },
+    {
+      "labeled_as": "fibroblast",
+      "also_positive_for": "cardiomyocyte",
+      "n_cells": 20608,
+      "pct_double_positive": 10.816
+    },
+    {
+      "labeled_as": "cardiomyocyte",
+      "also_positive_for": "endothelial",
+      "n_cells": 30771,
+      "pct_double_positive": 3.695
+    },
+    {
+      "labeled_as": "endothelial",
+      "also_positive_for": "cardiomyocyte",
+      "n_cells": 8271,
+      "pct_double_positive": 11.401
+    },
+    {
+      "labeled_as": "cardiomyocyte",
+      "also_positive_for": "macrophage",
+      "n_cells": 30771,
+      "pct_double_positive": 2.99
+    },
+    {
+      "labeled_as": "macrophage",
+      "also_positive_for": "cardiomyocyte",
+      "n_cells": 5781,
+      "pct_double_positive": 18.751
+    },
+    {
+      "labeled_as": "fibroblast",
+      "also_positive_for": "endothelial",
+      "n_cells": 20608,
+      "pct_double_positive": 4.561
+    },
+    {
+      "labeled_as": "endothelial",
+      "also_positive_for": "fibroblast",
+      "n_cells": 8271,
+      "pct_double_positive": 14.327
+    },
+    {
+      "labeled_as": "fibroblast",
+      "also_positive_for": "macrophage",
+      "n_cells": 20608,
+      "pct_double_positive": 3.067
+    },
+    {
+      "labeled_as": "macrophage",
+      "also_positive_for": "fibroblast",
+      "n_cells": 5781,
+      "pct_double_positive": 27.141
+    },
+    {
+      "labeled_as": "smooth_muscle",
+      "also_positive_for": "fibroblast",
+      "n_cells": 1553,
+      "pct_double_positive": 37.154
+    },
+    {
+      "labeled_as": "fibroblast",
+      "also_positive_for": "smooth_muscle",
+      "n_cells": 20608,
+      "pct_double_positive": 12.175
+    },
+    {
+      "labeled_as": "pericyte",
+      "also_positive_for": "endothelial",
+      "n_cells": 4589,
+      "pct_double_positive": 4.271
+    },
+    {
+      "labeled_as": "endothelial",
+      "also_positive_for": "pericyte",
+      "n_cells": 8271,
+      "pct_double_positive": 7.242
+    },
+    {
+      "labeled_as": "schwann_nerve",
+      "also_positive_for": "smooth_muscle",
+      "n_cells": 1240,
+      "pct_double_positive": 5.484
+    },
+    {
+      "labeled_as": "smooth_muscle",
+      "also_positive_for": "schwann_nerve",
+      "n_cells": 1553,
+      "pct_double_positive": 0.58
+    }
+  ]
+}
