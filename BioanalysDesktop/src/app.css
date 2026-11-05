@@ -435,7 +435,7 @@ body {
 }
 
 .module-title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   margin: 0 0 4px;
   padding-bottom: 8px;
@@ -501,8 +501,8 @@ body {
 }
 
 .import-notes {
-  margin: 8px 0 0 18px;
-  font-size: 12.5px;
+  margin: 8px 0 0 16px;
+  font-size: 13px;
   color: #b45309;
   line-height: 1.7;
 }
