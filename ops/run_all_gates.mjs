@@ -51,6 +51,9 @@ export const GATES = Object.freeze([
   // dist/ 存在则逐字节比对 5 个关键资产；不存在（CI 干净 Runner）显式 SKIP_NO_DIST 放行。
   { id: 'dist_parity', label: '便携包关键资产同源', exec: 'node', args: ['ops/dist_parity_gate.mjs'], cwd: '.', slow: false },
   { id: 'skip_static', label: '跳过原因白名单（静态面）', exec: 'node', args: ['ops/skip_reason_gate.mjs'], cwd: '.', slow: false },
+  // Q1（第 41 轮，抄 nf-core/modules）：项目层禁止出现与母版同名的完整脚本副本，
+  // 有 scripts/ 的项目必须逐条登记 scripts_manifest.json。拔除漂移病根。
+  { id: 'project_script', label: '项目层脚本边界（禁母版副本）', exec: 'node', args: ['ops/project_script_gate.mjs'], cwd: '.', slow: false },
   { id: 'ledger', label: '台账与真源一致', exec: 'node', args: ['ops/ledger_gen.mjs', '--check'], cwd: '.', slow: false },
   { id: 'figure_registry', label: '图件注册表与证据同步', exec: 'node', args: ['ops/build_figure_templates.cjs', '--check'], cwd: '.', slow: false },
   // T1-3 预览溯源（第三十四轮 4 Argon Q3）：T1-2 重渲染已完成，9 条分叉归零

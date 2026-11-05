@@ -66,6 +66,7 @@ export const OWNED_OUTPUT_EXEMPTIONS = Object.freeze([
   { file: 'ops/build_portable_package.mjs', reason: 'outDir 是 --out / DEFAULT_OUT 指定的构建输出根，清掉重建就是打包目的' },
   { file: 'ops/delivery_acceptance_core.mjs', reason: 'destDir 是调用方传入的 tar 解包目标，解包前清空是验收流程的既定步骤' },
   { file: 'ops/clean_workspace.mjs', reason: '清理工具本身就是「删用户指定目标」，目标由 --execute 参数决定而非夹具' },
+  { file: 'ops/clean_tmp_cache.mjs', reason: 'Q4 缓存清理器：默认 dry-run，只有显式 --apply 才删 .tmp/ 下按 mtime 筛出的陈旧条目，作用域锁死且白名单保护，不碰任何测试夹具' },
 ]);
 
 /**

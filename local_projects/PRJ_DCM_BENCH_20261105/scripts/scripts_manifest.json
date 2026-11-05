@@ -1,0 +1,218 @@
+{
+  "schema_version": 1,
+  "project_id": "PRJ_DCM_BENCH_20261105",
+  "policy": "nf-core 风格：项目层只放数据形态适配脚本，禁止与 src/line*/scripts/ 母版同名的完整副本；参数化覆盖见 project.json",
+  "generated_by": "ops/project_script_gate.mjs 配套清单",
+  "scripts": [
+    {
+      "file": "integration/l1_cohort_robustness.py",
+      "role": "data_adapter",
+      "purpose": "数据形态适配",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line2_scrna/annot_verify.py",
+      "role": "data_adapter",
+      "purpose": "注释核验（10 类 x 42 marker）",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line2_scrna/annotate_cardiac.py",
+      "role": "data_adapter",
+      "purpose": "心脏 10 类 marker 自动打分注释",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line2_scrna/annotate_cardiac.sh",
+      "role": "thin_wrapper",
+      "purpose": "心脏 10 类 marker 自动打分注释",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line2_scrna/cellcomm_adapt.py",
+      "role": "data_adapter",
+      "purpose": "LIANA 细胞通讯（内存精简版）",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line2_scrna/cellcomm_adapt.sh",
+      "role": "thin_wrapper",
+      "purpose": "LIANA 细胞通讯（内存精简版）",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line2_scrna/cluster_adapt.py",
+      "role": "data_adapter",
+      "purpose": "Harmony 整合 + Leiden 聚类（相对熵门禁）",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line2_scrna/cluster_adapt.sh",
+      "role": "thin_wrapper",
+      "purpose": "Harmony 整合 + Leiden 聚类（相对熵门禁）",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line2_scrna/deg_celltype.py",
+      "role": "data_adapter",
+      "purpose": "逐细胞类型差异表达 + 伪影筛查",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line2_scrna/deg_celltype.sh",
+      "role": "thin_wrapper",
+      "purpose": "逐细胞类型差异表达 + 伪影筛查",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line2_scrna/diag_clusters.py",
+      "role": "data_adapter",
+      "purpose": "聚类诊断",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line2_scrna/export_signatures.py",
+      "role": "data_adapter",
+      "purpose": "流式导出 L3 解卷积用细胞类型签名",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line2_scrna/export_signatures.sh",
+      "role": "thin_wrapper",
+      "purpose": "流式导出 L3 解卷积用细胞类型签名",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line2_scrna/ingest_10x.py",
+      "role": "data_adapter",
+      "purpose": "GSE185100 10x 混合压缩/明文基质流式读取",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line2_scrna/ingest_10x.sh",
+      "role": "thin_wrapper",
+      "purpose": "GSE185100 10x 混合压缩/明文基质流式读取",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line2_scrna/ko_adapt.py",
+      "role": "data_adapter",
+      "purpose": "scTenifoldKnk 虚拟敲除",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line2_scrna/ko_adapt.sh",
+      "role": "thin_wrapper",
+      "purpose": "scTenifoldKnk 虚拟敲除",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line2_scrna/normalize_hvg_adapt.py",
+      "role": "data_adapter",
+      "purpose": "大样本分块就地归一化与 HVG",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line2_scrna/normalize_hvg_adapt.sh",
+      "role": "thin_wrapper",
+      "purpose": "大样本分块就地归一化与 HVG",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line2_scrna/qc_nuclei.py",
+      "role": "data_adapter",
+      "purpose": "单细胞核 QC（nFeature/pct_mt/双细胞）",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line2_scrna/qc_nuclei.sh",
+      "role": "thin_wrapper",
+      "purpose": "单细胞核 QC（nFeature/pct_mt/双细胞）",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line3_spatial/autocorr_visium.sh",
+      "role": "thin_wrapper",
+      "purpose": "Moran I / Geary C（分块自实现）",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line3_spatial/deconv_visium.sh",
+      "role": "thin_wrapper",
+      "purpose": "NNLS 解卷积（跨物种大写同名匹配）",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line3_spatial/domains_visium.sh",
+      "role": "thin_wrapper",
+      "purpose": "空间域（原生 cKDTree 建图 + Leiden）",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line3_spatial/ingest_visium.sh",
+      "role": "thin_wrapper",
+      "purpose": "GSE218759 三切片 Visium 对齐",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line3_spatial/localization_visium.sh",
+      "role": "thin_wrapper",
+      "purpose": "靶基因空间定位",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line3_spatial/qc_visium.sh",
+      "role": "thin_wrapper",
+      "purpose": "空间 spot QC",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "line3_spatial/spatial_stats.sh",
+      "role": "thin_wrapper",
+      "purpose": "空间统计算子（分块版）",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "resume_benchmark.sh",
+      "role": "thin_wrapper",
+      "purpose": "适配脚本的 bash 薄封装",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    },
+    {
+      "file": "run_project_step.sh",
+      "role": "thin_wrapper",
+      "purpose": "适配脚本的 bash 薄封装",
+      "mother_script": null,
+      "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
+    }
+  ]
+}

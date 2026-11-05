@@ -55,6 +55,8 @@ test('豁免清单冻结且每条带理由，不许顺手扩', () => {
     'ops/build_portable_package.mjs',
     'ops/delivery_acceptance_core.mjs',
     'ops/clean_workspace.mjs',
+    // Q4 缓存清理器（第 41 轮）：默认 dry-run，仅 --apply 时删 .tmp/ 陈旧条目，作用域锁死
+    'ops/clean_tmp_cache.mjs',
   ]);
   for (const e of OWNED_OUTPUT_EXEMPTIONS) assert.ok(e.reason && e.reason.length > 10, e.file + ' 豁免必须写理由');
 });
