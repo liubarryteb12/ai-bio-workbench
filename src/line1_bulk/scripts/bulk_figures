@@ -769,6 +769,49 @@ else:
 log("figures_done count=%d out=%s elapsed=%.1fs"
     % (len(made), OUT, time.time() - START))
 
+# 输入数据溯源（Argon 第 65 轮 B4）：manifest 只记产物清单时，「这张图由哪份数据渲染」不可证，
+# 换了数据复用旧图也查不出来。这里给每个输入文件记哈希。
+# 大文件分级：超 500MB 全量读哈希会把 K40 的 I/O 拖死（手机存储 ~200MB/s，1GB 就是数秒到数十秒），
+# 改为 size + 首尾各 1MB 采样的 sha256，既能识别「换了一份数据」又不会阻塞产线。
+LARGE_FILE_BYTES = 500 * 1024 * 1024
+SAMPLE_WINDOW = 1024 * 1024
+
+
+def _sha256_of(path):
+    """常规文件全量 sha256；超大文件退回「size + 首尾各 1MB」指纹。"""
+    import hashlib
+    size = os.path.getsize(path)
+    h = hashlib.sha256()
+    if size <= LARGE_FILE_BYTES:
+        with open(path, "rb") as fh:
+            for chunk in iter(lambda: fh.read(SAMPLE_WINDOW), b""):
+                h.update(chunk)
+        return "full:" + h.hexdigest()
+    h.update(("size=%d;" % size).encode("utf-8"))
+    with open(path, "rb") as fh:
+        h.update(fh.read(SAMPLE_WINDOW))
+        if size > 2 * SAMPLE_WINDOW:
+            fh.seek(-SAMPLE_WINDOW, os.SEEK_END)
+            h.update(fh.read(SAMPLE_WINDOW))
+    return "sampled:" + h.hexdigest()
+
+
+def input_fingerprints(workdir):
+    """把工作目录里被本步读取的输入表算成指纹，键按文件名稳定排序。"""
+    names = ["expr_genes.tsv", "deg_all.tsv", "pca_scores.tsv",
+             "group_map.tsv", "sample_qc.tsv", "deg_sig.tsv"]
+    rows = []
+    for name in sorted(names):
+        p = os.path.join(workdir, name)
+        if not os.path.isfile(p):
+            continue
+        try:
+            rows.append((name, _sha256_of(p)))
+        except OSError as exc:
+            rows.append((name, "unreadable:" + type(exc).__name__))
+    return rows
+
+
 # 产物清单落盘：只打 stdout 的话，任务重跑与事后核对时清单就沦了。
 # 写一份 manifest 到 figures/，让“exit 0 但产物落别处”可核对。
 try:
@@ -778,6 +821,8 @@ try:
             os.path.basename(sys.argv[0]),
             os.environ.get("BIOANALYS_SEED", "UNSET"),
             OUT, len(made), time.time() - START, chr(10)))
+        for _name, _digest in input_fingerprints(D):
+            _fh.write("input_sha256=%s=%s%s" % (_name, _digest, chr(10)))
         for _n in made:
             _p = os.path.join(OUT, _n)
             _sz = os.path.getsize(_p) if os.path.exists(_p) else -1
