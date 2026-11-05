@@ -99,152 +99,17 @@ export async function handleProjectRoutes(req, res, url, deps) {
   if (url.pathname === '/api/projects/create' && req.method === 'POST') {
     // 建项目：建三线数据子目录 + 写 project.json，已存在则拒绝（不覆盖）
     // v2 支持四段式 manifest：basicInfo / dataSource / pipelineDag / aclAndOutput
+    // 处理体已抽到 services/create.service.js（Q2 收口），这里只做请求体采集与响应写出。
     runJsonRoute(async () => {
       // T3-7：请求体上限闸门。超限时 collectJsonBody 已回出 413 并交回 null，
       // 这里必须短路：再写第二个响应会抛 ERR_HTTP_HEADERS_SENT 打死进程。
       const body = await collectJsonBody(req, res, json, { maxBytes: JSON_BODY_LIMIT });
       if (body === null) return;
-      // T1.5：本链路里的图模板 scp 与数据文件 scp 都已改异步，回调随之变成 async。
-      // 抛错由 runJsonRoute 统一收敛成 500（T3-7），避免请求悬挂与未处理 rejection。
       try {
-        let requested;
-        try {
-          requested = JSON.parse(body || '{}');
-        } catch (cause) {
-          return json(res, 400, { error: `请求体不是合法 JSON: ${cause.message}` });
-        }
-        const projectId = sanitizeProjectId(requested.projectId);
-        if (!projectId) {
-          return json(res, 400, {
-            error: `projectId 非法（只允许字母数字 . _ -，不以 . 开头，长度 <= 64）: ${requested.projectId}`,
-          });
-        }
-        const figureSelections = requested.figure_templates === undefined
-          ? []
-          : requested.figure_templates;
-        if (!Array.isArray(figureSelections)) {
-          return json(res, 400, { error: 'figure_templates 必须是数组' });
-        }
-        let preparedFigures = { tasks: [], local_scripts: [], manifest_entries: [] };
-        try {
-          const preliminaryDag = buildPipelineDag({
-            pipelineDag: requested.pipelineDag,
-            seriesId: requested.seriesId,
-            modIds: requested.modIds,
-            koGene: requested.koGene,
-          });
-          let figureLineId = String(requested.lineId || requested.seriesId || '');
-          if (!figureLineId) {
-            figureLineId = lineFromPipeline(preliminaryDag)
-              || resolveLineFromDataType(requested.dataSource?.dataType)
-              || '';
-          }
-          if (figureSelections.length > 0) {
-            if (!LINES.includes(figureLineId)) {
-              return json(res, 400, { error: `图模板选择缺少合法分析线: ${figureLineId || '(空)'}` });
-            }
-            preparedFigures = prepareFigureProjectTasks({
-              projectId,
-              lineId: figureLineId,
-              // 模板只需与本线 linked_mods 对齐；全量 modIds 会把未关联该图的正常步骤误判为跨图。
-              selectedModIds: [],
-              selections: figureSelections,
-            });
-            if (!preparedFigures.ok) {
-              return json(res, 422, { ok: false, errors: preparedFigures.errors });
-            }
-            const sequence = buildProjectExecutionPlan({
-              line_id: figureLineId,
-              pipeline_dag: preliminaryDag || [],
-              figure_tasks: preparedFigures.tasks,
-            });
-            if (!sequence.ok) {
-              return json(res, 400, { ok: false, errors: sequence.errors });
-            }
-          }
-        } catch (cause) {
-          return json(res, 400, { error: cause instanceof Error ? cause.message : String(cause) });
-        }
-        let meta;
-        try {
-          // S24：建项入口走 strict 校验（R11 六条 + R12 联动 + line_id 枚举），
-          // 校验失败抛错由下方 catch 统一转 400；line_id 取自建项请求（aims.txt:96 契约）
-          meta = buildProjectMetaStrict({
-            id: projectId,
-            // v1 兼容
-            name: requested.name,
-            description: requested.description,
-            // v2 四段式
-            basicInfo: requested.basicInfo,
-            dataSource: requested.dataSource,
-            groupingDesign: requested.groupingDesign,
-            pipelineDag: requested.pipelineDag,
-            // mod 化客户端形态：只传 seriesId + modIds + koGene，不传 pipelineDag。
-            // buildProjectMeta 里的 buildPipelineDag 会把它合成 pipeline_dag，
-            // 这里必须透传，否则新客户端的步骤选择到服务台就丢了。
-            seriesId: requested.seriesId,
-            modIds: requested.modIds,
-            koGene: requested.koGene,
-            aclAndOutput: requested.aclAndOutput,
-            // aims v3.0 intake 四块
-            biologicalPriors: requested.biologicalPriors,
-            analysisCutoffs: requested.analysisCutoffs,
-            plotLayoutConfig: requested.plotLayoutConfig,
-            experimentalDesign: requested.experimentalDesign,
-            validationGroupMapping: requested.validationGroupMapping,
-            dataFiles: requested.dataFiles,
-            figureTasks: preparedFigures.tasks,
-            // S24/R2：WGCNA 参数契约（表单选填；normalizeWgcnaConfig 逐键回落默认）
-            wgcnaConfig: requested.wgcnaConfig,
-            // mod 化客户端用 seriesId 表达同一件事（分析线），没有单独的 lineId 字段。
-            // 两个名字都认，缺了就都空着让 strict 校验去拒。
-            lineId: requested.lineId || requested.seriesId,
-          });
-        } catch (cause) {
-          return json(res, 400, { error: cause.message });
-        }
-        const { command, remoteDir } = buildCreateProjectCommand(projectId, meta);
-        let output;
-        try {
-          output = runRemote(command);
-        } catch (cause) {
-          return json(res, 500, { error: `建项目失败: ${cause instanceof Error ? cause.message : String(cause)}` });
-        }
-        if (output.includes('EXISTS')) {
-          return json(res, 409, { error: `项目已存在: ${projectId}` });
-        }
-        if (!output.includes('CREATED')) {
-          return json(res, 500, { error: `建项目失败（无 CREATED 回执）: ${output}` });
-        }
-
-        const figureUpload = await uploadPreparedFigureScripts(preparedFigures);
-        if (!figureUpload.ok) {
-          return json(res, 503, {
-            ok: false,
-            projectId,
-            error: figureUpload.error,
-          });
-        }
-
-        // 数据文件部署：客户上传的矩阵/样本表要落到本项目本线的 raw_data/，
-        // 否则 project.json 里写的相对路径在服务器上是空的
-        const lineId = lineFromPipeline(meta.pipeline_dag)
-          || resolveLineFromDataType(meta.data_source?.data_type || requested.dataSource?.dataType);
-        const deploy = await deployDataFiles(projectId, lineId, meta.data_files);
-        const deployNote = deploy.results.length
-          ? `；数据文件 ${deploy.results.filter((r) => r.ok).length}/${deploy.results.length} 已部署到 ${lineId || '（未识别分析线）'}/raw_data/`
-          : '';
-        return json(res, deploy.ok ? 200 : 207, {
-          ok: deploy.ok,
-          projectId,
-          meta,
-          dir: remoteDir,
-          line: lineId || null,
-          dataFiles: deploy.results,
-          figureTasks: preparedFigures.tasks.length,
-          figureUploads: figureUpload.uploads,
-          message: (deploy.ok ? '建项完成' : '建项完成，但部分数据文件未部署成功') + deployNote,
+        const result = await projectService.createProject({ body }, {
+          deployDataFiles, lineFromPipeline, runRemote, uploadPreparedFigureScripts,
         });
+        return json(res, result.status, result.payload);
       } catch (cause) {
         return json(res, 500, { error: `建项处理失败: ${(cause && cause.message) || cause}` });
       }
@@ -259,16 +124,9 @@ export async function handleProjectRoutes(req, res, url, deps) {
       // 这里必须短路：再写第二个响应会抛 ERR_HTTP_HEADERS_SENT 打死进程。
       const body = await collectJsonBody(req, res, json, { maxBytes: JSON_BODY_LIMIT });
       if (body === null) return;
-      let payload;
-      try {
-        payload = JSON.parse(body || '{}');
-      } catch {
-        return json(res, 400, { error: '请求体不是合法 JSON' });
-      }
-      const result = checkTumorBlacklist(payload.text || '');
-      return json(res, 200, { hit: result.hit, matches: result.matches, hint: BLACKLIST_HINT });
+      const r = projectService.checkBlacklist({ body });
+      return json(res, r.status, r.payload);
     });
-
     return true;
   }
 
@@ -279,27 +137,13 @@ export async function handleProjectRoutes(req, res, url, deps) {
       // 这里必须短路：再写第二个响应会抛 ERR_HTTP_HEADERS_SENT 打死进程。
       const body = await collectJsonBody(req, res, json, { maxBytes: JSON_BODY_LIMIT });
       if (body === null) return;
-      // T1.5：建项链路里的图模板 scp 与数据文件 scp 都已改异步，回调随之变成 async。
-      // 抛错不再有同步 try/catch 兜底，这里统一收敛成 500，避免请求悬挂。
+      // T1.5：抛错统一收敛成 500，避免请求悬挂。
       try {
-        let parsed = {};
-        try {
-          parsed = body.trim() ? JSON.parse(body) : {};
-        } catch (cause) {
-          return json(res, 400, { error: `请求体不是合法 JSON: ${cause instanceof Error ? cause.message : String(cause)}` });
-        }
-        const seriesId = String(parsed.seriesId || parsed.series || '').trim();
-        const modIds = Array.isArray(parsed.modIds) ? parsed.modIds.map((x) => String(x)) : [];
-        const koGene = String(parsed.koGene || '').trim();
-        if (!seriesId) return json(res, 400, { error: '缺少 seriesId' });
-        if (modIds.length === 0) return json(res, 400, { error: 'modIds 不能为空' });
-        const plan = resolvePlan(seriesId, modIds, { koGene });
-        // 非法组合回 422：调用方传错了，不是服务端故障
-        return json(res, plan.ok ? 200 : 422, plan);
+        const r = projectService.resolveWorkflow({ body });
+        return json(res, r.status, r.payload);
       } catch (cause) {
         return json(res, 500, { error: `处理失败: ${(cause && cause.message) || cause}` });
       }
-
     });
     return true;
   }
@@ -308,102 +152,24 @@ export async function handleProjectRoutes(req, res, url, deps) {
   // 吞成 seriesId=resolve，返回「未知分析系列」。
   if (url.pathname.startsWith('/api/workflows/')) {
     const seriesId = url.pathname.slice('/api/workflows/'.length).split('?')[0];
-    // 只认注册表里真实存在的系列 id。不加这道闸，任何 /api/workflows/<任意串>
-    // 都会走到这里，把拼错的路由名报成「未知分析系列」，排查时极易误判。
-    const detail = describeSeries(seriesId);
-    if (!detail) {
-      json(res, 404, { error: `未知分析系列: ${seriesId}` });
-      return true;
-    }
-    json(res, 200, detail);
+    const r = projectService.workflowDetail({ seriesId });
+    json(res, r.status, r.payload);
     return true;
   }
 
   // 单个项目的关键元数据：Studio 用它显示"这批图按什么模板/阈值出的"
   if (url.pathname === '/api/projects/figures/apply' && req.method === 'POST') {
+    // 处理体已抽到 services/figures_apply.service.js（Q2 收口）。
     runJsonRoute(async () => {
       // T3-7：请求体上限闸门。超限时 collectJsonBody 已回出 413 并交回 null，
       // 这里必须短路：再写第二个响应会抛 ERR_HTTP_HEADERS_SENT 打死进程。
       const body = await collectJsonBody(req, res, json, { maxBytes: JSON_BODY_LIMIT });
       if (body === null) return;
-      // T1.5：图模板脚本上传已改异步，回调随之变成 async；抛错统一收敛成 500。
       try {
-        let requested;
-        try {
-          requested = JSON.parse(body || '{}');
-        } catch (cause) {
-          return json(res, 400, { error: `请求体不是合法 JSON: ${cause.message}` });
-        }
-        const projectId = sanitizeProjectId(requested.projectId);
-        if (!projectId) return json(res, 400, { error: 'projectId 参数非法' });
-        const selections = requested.figure_templates === undefined ? [] : requested.figure_templates;
-        if (!Array.isArray(selections)) {
-          return json(res, 400, { error: 'figure_templates 必须是数组' });
-        }
-        if (requested.pipelineDag !== undefined && !Array.isArray(requested.pipelineDag)) {
-          return json(res, 400, { error: 'pipelineDag 必须是数组' });
-        }
-        let meta;
-        try {
-          const encoded = runRemote(buildReadProjectMetaCommand(projectId));
-          if (encoded.trim()) {
-            meta = parseProjectMeta(Buffer.from(encoded.trim(), 'base64').toString('utf8'));
-          }
-        } catch (cause) {
-          return json(res, 500, { error: `读取项目元数据失败: ${cause.message}` });
-        }
-        if (!meta) return json(res, 404, { error: `项目 ${projectId} 不存在或缺少 project.json` });
-        const lineId = String(requested.lineId || meta.line_id || lineFromPipeline(meta.pipeline_dag) || '');
-        if (!LINES.includes(lineId)) {
-          return json(res, 400, { error: `项目缺少合法分析线: ${lineId || '(空)'}` });
-        }
-        const prepared = prepareFigureProjectTasks({
-          projectId,
-          lineId,
-          selectedModIds: [],
-          selections,
+        const r = await projectService.applyFigures({ body }, {
+          lineFromPipeline, runRemote, runRemoteRaw, uploadPreparedFigureScripts,
         });
-        if (!prepared.ok) {
-          return json(res, 422, { ok: false, errors: prepared.errors });
-        }
-        const mergedTasks = mergeFigureProjectTasks(meta.figure_tasks || [], prepared.tasks);
-        const plan = buildProjectExecutionPlan({
-          line_id: lineId,
-          pipeline_dag: Array.isArray(requested.pipelineDag)
-            ? requested.pipelineDag
-            : (meta.pipeline_dag || []),
-          figure_tasks: mergedTasks,
-        });
-        if (!plan.ok) return json(res, 400, { ok: false, errors: plan.errors });
-        const upload = await uploadPreparedFigureScripts(prepared);
-        if (!upload.ok) return json(res, 503, { ok: false, error: upload.error });
-
-        const updated = { ...meta, line_id: lineId, figure_tasks: mergedTasks };
-        const metaPath = `${PROJECTS_ROOT}/${projectId}/project.json`;
-        const payload = Buffer.from(JSON.stringify(updated, null, 2)).toString('base64');
-        const write = runRemoteRaw(`echo ${payload} | base64 -d > ${shellQuote(metaPath)}`);
-        if (write.code !== 0) {
-          return json(res, 503, { ok: false, error: `项目元数据写回失败: ${write.text}` });
-        }
-        let readBack = null;
-        try {
-          const encoded = runRemote(buildReadProjectMetaCommand(projectId));
-          readBack = parseProjectMeta(Buffer.from(encoded.trim(), 'base64').toString('utf8'));
-        } catch {
-          readBack = null;
-        }
-        if (!readBack || !Array.isArray(readBack.figure_tasks)
-          || readBack.figure_tasks.length !== mergedTasks.length) {
-          return json(res, 503, { ok: false, error: '项目元数据回读对账失败' });
-        }
-        return json(res, 200, {
-          ok: true,
-          projectId,
-          lineId,
-          added: prepared.tasks.length,
-          total: mergedTasks.length,
-          uploads: upload.uploads,
-        });
+        return json(res, r.status, r.payload);
       } catch (cause) {
         return json(res, 500, { error: `图件应用失败: ${(cause && cause.message) || cause}` });
       }
@@ -412,38 +178,11 @@ export async function handleProjectRoutes(req, res, url, deps) {
   }
 
   if (url.pathname === '/api/projects/execution-plan' && req.method === 'GET') {
-    const projectId = sanitizeProjectId(url.searchParams.get('project') || '');
-    if (!projectId) {
-      json(res, 400, { error: 'project 参数非法' });
-      return true;
-    }
-    let meta = null;
-    try {
-      const encoded = runRemote(buildReadProjectMetaCommand(projectId));
-      if (encoded.trim()) {
-        meta = parseProjectMeta(Buffer.from(encoded.trim(), 'base64').toString('utf8'));
-      }
-    } catch (cause) {
-      json(res, 500, {
-        error: `读取项目执行计划失败: ${cause instanceof Error ? cause.message : String(cause)}`,
-      });
-      return true;
-    }
-    if (!meta) {
-      json(res, 404, { error: `项目 ${projectId} 不存在或缺少 project.json` });
-      return true;
-    }
-    const plan = buildProjectExecutionPlan(meta);
-    if (!plan.ok) {
-      json(res, 422, { ok: false, projectId, errors: plan.errors });
-      return true;
-    }
-    json(res, 200, {
-      ok: true,
-      projectId,
-      lineId: meta.line_id || lineFromPipeline(meta.pipeline_dag) || null,
-      tasks: plan.tasks,
+    const r = projectService.getExecutionPlan({
+      project: url.searchParams.get('project'),
+      runRemote, lineFromPipeline,
     });
+    json(res, r.status, r.payload);
     return true;
   }
 
@@ -453,45 +192,16 @@ export async function handleProjectRoutes(req, res, url, deps) {
       // 这里必须短路：再写第二个响应会抛 ERR_HTTP_HEADERS_SENT 打死进程。
       const body = await collectJsonBody(req, res, json, { maxBytes: JSON_BODY_LIMIT });
       if (body === null) return;
-      let requested;
-      try {
-        requested = JSON.parse(body || '{}');
-      } catch (cause) {
-        return json(res, 400, { error: `请求体不是合法 JSON: ${cause.message}` });
-      }
-      const projectId = sanitizeProjectId(requested.projectId);
-      if (!projectId) return json(res, 400, { error: 'projectId 参数非法' });
-      if (requested.pipelineDag !== undefined && !Array.isArray(requested.pipelineDag)) {
-        return json(res, 400, { error: 'pipelineDag 必须是数组' });
-      }
-      let meta = null;
-      try {
-        const encoded = runRemote(buildReadProjectMetaCommand(projectId));
-        if (encoded.trim()) {
-          meta = parseProjectMeta(Buffer.from(encoded.trim(), 'base64').toString('utf8'));
-        }
-      } catch (cause) {
-        return json(res, 500, { error: `读取项目执行计划失败: ${cause.message}` });
-      }
-      if (!meta) return json(res, 404, { error: `项目 ${projectId} 不存在或缺少 project.json` });
-      const plan = buildProjectExecutionPlan({
-        ...meta,
-        pipeline_dag: Array.isArray(requested.pipelineDag) ? requested.pipelineDag : meta.pipeline_dag,
-      });
-      if (!plan.ok) return json(res, 422, { ok: false, projectId, errors: plan.errors });
-      return json(res, 200, {
-        ok: true,
-        projectId,
-        lineId: meta.line_id || lineFromPipeline(meta.pipeline_dag) || null,
-        tasks: plan.tasks,
-      });
+      const r = projectService.postExecutionPlan({ body, runRemote, lineFromPipeline });
+      return json(res, r.status, r.payload);
     });
     return true;
   }
 
   // 客户需求收件箱：列出 portal/inbox 下的需求文件（新建项目时导入用）
   if (url.pathname === '/api/portal/inbox') {
-    json(res, 200, listInboxManifests());
+    const r = projectService.listInbox({ listInboxManifests });
+    json(res, r.status, r.payload);
     return true;
   }
 

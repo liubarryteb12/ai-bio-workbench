@@ -20,6 +20,15 @@ import { describeSeries, loadWorkflows, validateRegistry } from '../workflow_gra
  * local_projects/default/project.json 是有内容的。远端没有该文件时接口直接 404，
  * 前端因此永远拿不到出图配置。回落只读本地这一个确定位置，不猜路径、不越界。
  */
+// Q2 收口：建项处理体已抽到 create.service.js，这里统一再导出，
+// 让路由层只依赖 projectService 一个入口（调用方无需知道内部拆成了几个文件）。
+export { createProject } from './create.service.js';
+export {
+  checkBlacklist, resolveWorkflow, workflowDetail, listInbox,
+} from './small_routes.service.js';
+export { getExecutionPlan, postExecutionPlan } from './execution_plan.service.js';
+export { applyFigures } from './figures_apply.service.js';
+
 export function readLocalProjectMeta(repoRoot, projectId) {
   if (!repoRoot) return null;
   const file = path.join(repoRoot, 'local_projects', projectId, 'project.json');
