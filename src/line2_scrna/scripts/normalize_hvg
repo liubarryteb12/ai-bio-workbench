@@ -123,13 +123,37 @@ if not np.issubdtype(counts_layer.dtype, np.integer):
 adata.layers["counts"] = counts_layer
 
 # --- 4. 归一化 + log ---
-# 库大小检查必须在 log1p 之前：normalize_total 后每细胞总和才等于 target_sum，
+# 库大小检查必须在 log1p 之前：归一化后每细胞总和才等于 target_sum，
 # log1p 之后求和对象变成 log 值，没有 1e4 语义。
-sc.pp.normalize_total(adata, target_sum=TARGET_SUM)
-lib_after = np.asarray(adata.X.sum(axis=1)).ravel()
+#
+# 为什么不用 sc.pp.normalize_total：它的实现是
+#   x.data = op(x.data, np.repeat(scaling_array, np.diff(x.indptr)))
+# 会造一个与 nnz 等长的临时数组。nnz 2.1 亿时该临时数组 802 MiB，叠加原始矩阵与
+# layers['counts'] 后顶破 7.5GB RLIMIT（2026-11-05 在 k40 上以 GSE185100 实测
+# _ArrayMemoryError）。这里按行块就地缩放，临时量只有块大小，数值语义与
+# normalize_total(target_sum=1e4) 逐字等价（每细胞先除以自身库大小再乘 target_sum）。
+BLOCK_ROWS = 4000
+X = adata.X.tocsr()
+if not np.issubdtype(X.dtype, np.floating):
+    X = X.astype(np.float32)
+indptr = X.indptr
+row_nnz = np.diff(indptr)
+lib_size = np.asarray(X.sum(axis=1)).ravel().astype(np.float64)
+if (lib_size <= 0).any():
+    fail("有 %d 个细胞库大小为 0，归一化会出 NaN" % int((lib_size <= 0).sum()))
+scaling = (TARGET_SUM / lib_size).astype(np.float32)
+data = X.data
+for start in range(0, adata.n_obs, BLOCK_ROWS):
+    stop = min(start + BLOCK_ROWS, adata.n_obs)
+    lo, hi = int(indptr[start]), int(indptr[stop])
+    block_scale = np.repeat(scaling[start:stop], row_nnz[start:stop])
+    data[lo:hi] *= block_scale
+    del block_scale
+adata.X = X
+lib_after = np.asarray(X.sum(axis=1)).ravel()
 if not np.allclose(lib_after, TARGET_SUM, rtol=1e-4, atol=1e-2):
     fail("归一化后库大小不都等于 %g（min=%.6f max=%.6f）" % (TARGET_SUM, lib_after.min(), lib_after.max()))
-sc.pp.log1p(adata)
+np.log1p(data, out=data)
 if not np.isfinite(adata.X.data).all():
     fail("log1p 后 X 含非有限值")
 if adata.X.data.size and adata.X.data.min() < 0:
