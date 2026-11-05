@@ -23,11 +23,11 @@
 | ml_model | +92/-11 | **远端更新，已吸收** | 远端多 `project_metadata`，仓库无独有函数或产物 |
 | bulk_figures | +68/-130 | 仓库更新 | 仓库有 `cutoffs` 阈值真源接线（T1-4 成果），远端没有 |
 | deg_limma | +24/-73 | 仓库更新 | 同上，仓库读 cutoffs |
-| cox_analysis | +39/-3 | 待甄别 | 两侧无特征标记差异 |
-| enrichment_figures | +7/-1 | 待甄别 | 差异极小，疑似排版/注释 |
-| external_validation | +274/-253 | 待甄别 | 大改，需逐段读 |
-| prep_matrix | +54/-20 | 待甄别 | 与本次基准的数据形态适配相关（counts 模式） |
-| qc_matrix | +8/-10 | 待甄别 | 差异极小 |
+| cox_analysis | +39/-3 | **远端更新，已吸收** | 远端多 `read_project_meta`（读 project.json 的 project_id/train_dataset），并把 GSE277173 硬编码说明改成按项目元数据取值 |
+| enrichment_figures | +7/-1 | **远端更新，已吸收** | 远端对空输入表做 `EmptyDataError` 容错并记 skip，仓库版会直接抛错 |
+| prep_matrix | +54/-20 | **远端更新，已吸收** | 远端兼容两种 grouping 结构（每样本一行 `GSM<TAB>group` 与每组一行），tissue 派生分组失败时回退用户分组表并留痕 |
+| external_validation | +274/-253 | **真双向分叉，待合并** | 仓库独有 6 个排版函数（`_install_layout_guard`/`caption`/`fit_text_edges`/`layout_fix`/`legend_out`/`wrap_label`）；远端独有 `parse_frozen_model`/`project_datasets` 与产物 `external_validation_metrics.tsv`。两侧都是有效逻辑，需人工合并 |
+| qc_matrix | +8/-10 | **待裁定（闸门放宽）** | 远端把「检出离群样本即 fail」改成「标记 review_required、保留样本、不阻断下游」。这是 QC 闸门口径变更，不能静默吸收 |
 
 ### 远端野生 11 个（仓库无对应物）
 
@@ -46,9 +46,11 @@
 
 ## 本轮已完成 / 未完成
 
-- 已完成：取证拉回 + 逐文件对比 + 2 个远端更新脚本吸收进仓库（`ml_hub_analysis`、`ml_model`），
-  仓库母版规范测试 9/9 通过。
-- 未完成：其余 7 个分叉的逐段甄别、11 个野生脚本的处置、同源门禁。
+- 已完成：取证拉回 + 逐文件对比 + **5 个远端更新脚本吸收进仓库**（`ml_hub_analysis`、`ml_model`、
+  `cox_analysis`、`enrichment_figures`、`prep_matrix`），仓库母版规范测试 9/9 通过。
+- 已完成判定：`bulk_figures`、`deg_limma` 仓库更新（有 `read_cutoffs` 阈值真源），保留仓库版，
+  部署时应以仓库覆盖远端。
+- 未完成：`external_validation` 双向合并、`qc_matrix` 闸门口径裁定、11 个野生脚本处置、同源门禁。
 
 ## 复现
 
