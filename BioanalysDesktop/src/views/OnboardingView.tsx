@@ -43,6 +43,7 @@ import type {
 import { LedgerPanel, TaskPanel } from './LedgerAuditView';
 import { FilesPanel } from './ResultStudioView';
 import { ModuleHeading, ComputeShieldCard, SelectedStepsIndicator } from '../components/onboarding/OnboardingDisplayParts';
+import { GroupDesignPanel } from '../components/onboarding/GroupDesignPanel';
 
 // 数据来源双模态（aims v2.8，与 server/domain.js DATA_SOURCE_MODES 同值）
 type DataSourceMode = 'PUBLIC_DB' | 'IN_HOUSE_UPLOAD';
@@ -1246,145 +1247,30 @@ export function OnboardingPortal({
           </div>
         </div>
 
-        {/* 分组模式选择器 */}
-        <div className="form-group">
-          <label className="form-label">分组模式</label>
-          <div className="chip-row">
-            {([
-              { value: 'two_group', label: '二分类对比 (2 Groups)' },
-              { value: 'multi_group', label: '多组无序对比 (Multi-group)' },
-              { value: 'ordered_stage', label: '有序病情阶段演进 (Ordered Stage)' },
-            ] as const).map((opt) => (
-              <button key={opt.value} type="button"
-                className={`chip${groupMode === opt.value ? ' chip-active' : ''}`}
-                onClick={() => setGroupMode(opt.value)}>
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 一键导入分组表 */}
-        <div className="form-group">
-          <button type="button" className="btn" onClick={() => setBulkPasteOpen(!bulkPasteOpen)}>
-            {bulkPasteOpen ? '取消粘贴' : '一键粘贴 2 列分组表'}
-          </button>
-        </div>
-        {bulkPasteOpen && (
-          <div className="bulk-paste-area">
-            <textarea className="form-input" rows={5} value={bulkPasteText}
-              onChange={(e) => setBulkPasteText(e.target.value)}
-              placeholder="Sample_ID,Group_Name&#10;GSM416528,Control&#10;GSM416529,Control&#10;GSM416530,Disease&#10;（逗号或 tab 分隔）"
-              style={{ fontFamily: 'monospace' }} />
-            <button type="button" className="btn btn-primary" onClick={applyBulkPaste} style={{ marginTop: 8 }}>
-              解析并填充分组
-            </button>
-          </div>
-        )}
-
-        {/* 动态分组卡片列表 */}
-        <div className="group-card-list">
-          {groups.map((group, index) => {
-            const sampleCount = parseSampleIds(group.sampleIdsText).length;
-            const hasDup = isGroupDuplicate(group);
-            return (
-              <div key={group.groupId} className={`group-card${hasDup ? ' group-card-duplicate' : ''}`}>
-                <div className="group-card-head">
-                  <span className="group-card-index">分组 {index + 1}</span>
-                  <div className="group-card-actions">
-                    {groupMode === 'ordered_stage' && (
-                      <>
-                        <button type="button" className="btn" disabled={index === 0}
-                          onClick={() => moveGroupUp(index)}>↑</button>
-                        <button type="button" className="btn" disabled={index === groups.length - 1}
-                          onClick={() => moveGroupDown(index)}>↓</button>
-                      </>
-                    )}
-                    {groups.length > 2 && (
-                      <button type="button" className="btn btn-danger"
-                        onClick={() => removeGroup(group.groupId)}>删除</button>
-                    )}
-                  </div>
-                </div>
-                <div className="form-grid-2">
-                  <div className="form-group">
-                    <label className="form-label">分组名称</label>
-                    <input className="form-input" value={group.groupName}
-                      onChange={(e) => updateGroup(group.groupId, { groupName: e.target.value })} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">角色</label>
-                    <select className="form-select" value={group.role}
-                      onChange={(e) => setGroupRole(group.groupId, e.target.value as GroupRole)}>
-                      <option value="reference">reference（基准对照）</option>
-                      <option value="disease_stage">disease_stage</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="form-grid-2">
-                  {groupMode === 'ordered_stage' && (
-                    <div className="form-group">
-                      <label className="form-label">阶段序号 (stage_order)</label>
-                      <input className="form-input" type="number" value={group.stageOrder}
-                        onChange={(e) => updateGroup(group.groupId, { stageOrder: Number(e.target.value) })} />
-                    </div>
-                  )}
-                  <div className="form-group">
-                    <label className="form-label">颜色标识</label>
-                    <div className="color-pick-row">
-                      <input type="color" className="color-picker" value={group.colorHex}
-                        onChange={(e) => updateGroup(group.groupId, { colorHex: e.target.value })} />
-                      <span className="color-hex-label">{group.colorHex}</span>
-                      <span className="color-swatch" style={{ background: group.colorHex }} />
-                    </div>
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">样本编号</label>
-                  <textarea className="form-input" rows={3} value={group.sampleIdsText}
-                    onChange={(e) => updateGroup(group.groupId, { sampleIdsText: e.target.value })}
-                    placeholder="请输入或粘贴归属本组的样本编号（如 GSM416528, GSM416529），支持逗号、空格或换行分隔"
-                    style={{ fontFamily: 'monospace' }} />
-                  <span className="subtle">已录入: {sampleCount} 个样本</span>
-                  {hasDup && (
-                    <span className="duplicate-warning">⚠ 同一样本 ID 出现在多个分组</span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {groups.length < 2 && (
-          <p className="error-text">至少需要 2 个分组。</p>
-        )}
-        <button type="button" className="btn btn-primary" onClick={addGroup} style={{ marginTop: 8 }}>
-          + 新增分组
-        </button>
-
-        {/* 显式对比对（Contrasts）生成器 */}
-        {groups.length >= 3 && contrasts.length > 0 && (
-          <div className="form-group" style={{ marginTop: 16 }}>
-            <label className="form-label">显式对比对 (Contrasts)</label>
-            <p className="subtle">自动生成所有两两对比组合，勾选启用，单选标记主对比对。</p>
-            <div className="contrast-list">
-              {contrasts.map((c) => (
-                <div key={c.name} className={`contrast-item${c.enabled ? ' contrast-enabled' : ''}`}>
-                  <label className="contrast-check">
-                    <input type="checkbox" checked={c.enabled} onChange={() => toggleContrast(c.name)} />
-                    <span className="contrast-name">{c.name}</span>
-                  </label>
-                  <label className="contrast-primary">
-                    <input type="radio" name="primary-contrast"
-                      checked={c.name === primaryContrast}
-                      onChange={() => setPrimaryContrastItem(c.name)} />
-                    主对比
-                  </label>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* T3-1 首刀：分组设计面板已抽到 components/onboarding/GroupDesignPanel.tsx。
+            抽取边界只到纯受控渲染，全部状态与回调仍留在本组件，行为等价。 */}
+        <GroupDesignPanel
+          groupMode={groupMode}
+          setGroupMode={setGroupMode}
+          groups={groups}
+          bulkPasteOpen={bulkPasteOpen}
+          setBulkPasteOpen={setBulkPasteOpen}
+          bulkPasteText={bulkPasteText}
+          setBulkPasteText={setBulkPasteText}
+          applyBulkPaste={applyBulkPaste}
+          parseSampleIds={parseSampleIds}
+          isGroupDuplicate={isGroupDuplicate}
+          moveGroupUp={moveGroupUp}
+          moveGroupDown={moveGroupDown}
+          removeGroup={removeGroup}
+          updateGroup={updateGroup}
+          setGroupRole={setGroupRole}
+          addGroup={addGroup}
+          contrasts={contrasts}
+          toggleContrast={toggleContrast}
+          primaryContrast={primaryContrast}
+          setPrimaryContrastItem={setPrimaryContrastItem}
+        />
       </div>
 
       {/* 模块 C：分析线与步骤 */}
