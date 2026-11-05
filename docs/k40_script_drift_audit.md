@@ -60,3 +60,41 @@ scp -r k40-ubuntu:/mnt/ssd/bio_data/bin/line1_bulk/* .tmp/k40_drift_audit/remote
 python .tmp/k40_drift_audit/audit.py      # 逐文件对比
 python .tmp/k40_drift_audit/feature_diff.py  # 函数/产物集合差异
 ```
+
+## 收敛结果（第 38 轮完成）
+
+起点 8 个分叉，终点 **0 个**：55 个共有脚本逐字节一致。
+
+### 判决依据（逐个甄别，不盲目覆盖）
+
+| 脚本 | 差异 | 判决 | 依据 |
+|---|---|---|---|
+| bulk_figures | 有 | 仓库更新 | 带 `read_cutoffs` 阈值真源 |
+| deg_limma | 有 | 仓库更新 | 同上 |
+| qc_matrix | 有 | 仓库更新 | 远端把「离群即失败」放宽为「仅标记」，属闸门口径变更；本轮保留仓库的严格口径，若确需放宽应由产品决定而不是靠部署覆盖 |
+| normalize_hvg | 有 | 仓库更新 | 仓库有分块就地标准化（BLOCK_ROWS=4000），远端仍是全量 `normalize_total`，大样本必 OOM |
+| enrichment_figures (line2) | 有 | 仓库更新 | 仓库配色 `#3B4992/#EE0000` 符合 `docs/figure_spec.md` 第 65/483 行；远端 `spec-v110` 的 Okabe-Ito 是旧规范 |
+| enrichment_figures (line3) | 有 | 仓库更新 | 同上 |
+| scrna_figures | 有 | 仓库更新 | 仓库版本既有规范配色又有 `read_cutoffs`；远端只有旧配色 |
+| external_validation | 有 | **双向合并** | 远端有 `project_datasets` / `parse_frozen_model`（读 project.json 训练集角色、按 record_type 拆冻结模型）；仓库有六个排版函数（`caption`/`wrap_label`/`fit_text_edges`/`legend_out`/`layout_fix`/`_install_layout_guard`）。两个增量互不重叠，merge 进仓库版本 |
+
+### 机器判据
+
+`ops/k40_script_parity.mjs`：
+
+```
+node ops/k40_script_parity.mjs            # 连真机比对（需要 ssh k40-ubuntu）
+node ops/k40_script_parity.mjs --offline  # 用上次清单，不连真机
+node ops/k40_script_parity.mjs --json     # 机器可读
+```
+
+口径：
+- 共有脚本内容不同 = 失败（打印双方短哈希）；
+- 单侧独有 = 警告（野生脚本需人工裁定，不自动删）；
+- 连不上真机 = 显式 SKIP 并 exit 2，不静默放行。
+
+结果清单落 `.ops_state/k40_script_manifest.json`（已 gitignore，是本机缓存不是真源）。
+
+### 还剩下的
+
+11 个 line1 野生脚本（`geo_pca_scatter`、`limma_deg_analysis`、`lasso_cox_model` 等旧 GEO/生存分析一代）仍在远端。它们与当前 `workflows.json` 的 mod 契约不对应，判定为**归档**而不是回流；是否从远端删除待产品确认（删除不可逆，不在本轮做）。
