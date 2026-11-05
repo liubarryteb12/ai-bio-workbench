@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "project_id": "PRJ_STROKE_P2_SPATIAL_LACTPYRO_5GENES",
+  "name": "缺血性卒中乳酸化-焦亡_5基因空间筛选",
+  "description": "GSE233814 小鼠 pMCAO 10x Visium，line3_spatial 空间转录组；focus=Myh9/Egr1/Gstp1/Epha4/Tjp1；不执行虚拟敲除",
+  "created_at": "2026-11-06T02:21:43.7438923+08:00",
+  "lines": [
+    "line3_spatial"
+  ],
+  "gse": "GSE233814",
+  "gpl": "GPL24247",
+  "species": "Mus musculus",
+  "plot_layout_config": {
+    "template_id": "template_4x3",
+    "dpi": 300
+  },
+  "analysis_cutoffs": {
+    "profile": "standard",
+    "log2fc_threshold": 1,
+    "use_adj_p": true,
+    "effective_p_field": "padj",
+    "effective_p_threshold": 0.05,
+    "max_mt_percent": 20
+  },
+  "grouping_design": {
+    "mode": "two_group",
+    "groups": [
+      {
+        "groupName": "Control",
+        "role": "reference",
+        "stageOrder": 0,
+        "colorHex": "#3B4992",
+        "sampleIds": [
+          "GSM7437221"
+        ],
+        "aliases": [
+          "control",
+          "sham"
+        ]
+      },
+      {
+        "groupName": "Disease",
+        "role": "disease_stage",
+        "stageOrder": 1,
+        "colorHex": "#EE0000",
+        "sampleIds": [
+          "GSM7437222",
+          "GSM7437223",
+          "GSM7437224",
+          "GSM7437225"
+        ],
+        "aliases": [
+          "pmcao",
+          "mcao"
+        ]
+      }
+    ],
+    "contrasts": [
+      {
+        "name": "Disease_vs_Control",
+        "case": "Disease",
+        "ctrl": "Control",
+        "isPrimary": true,
+        "enabled": true
+      }
+    ]
+  },
+  "biological_priors": {
+    "target_ko_gene": "",
+    "focus_genes": [
+      "Myh9",
+      "Egr1",
+      "Gstp1",
+      "Epha4",
+      "Tjp1"
+    ],
+    "ko_fallback_policy": "strict_abort"
+  },
+  "phenotype_modules": {
+    "module": {
+      "name": "乳酸化-细胞焦亡",
+      "genes": [
+        "Myh9",
+        "Egr1",
+        "Gstp1",
+        "Epha4",
+        "Tjp1"
+      ],
+      "mechanism": "缺血微环境无氧酵解乳酸蓄积诱发乳酸化修饰，偶联小胶质/内皮细胞焦亡及血脑屏障破坏"
+    }
+  },
+  "pipeline_steps": []
+}
