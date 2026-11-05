@@ -8,6 +8,11 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 import {
   validateRouteTable, validateQuery, dispatchRoutes, WRITE_METHODS,
@@ -78,13 +83,21 @@ test("分发器：method 不匹配也返回 false", async () => {
   assert.equal(calls.length, 0);
 });
 
-test("分发器：auth 层在参数校验之前（未认证先 401，不泄露参数错）", async () => {
-  const routes = [{ method: "GET", path: "/api/demo", querySchema: { project: "projectId" }, handler: async () => {} }];
-  const { ctx, calls } = makeCtx("/api/demo", {
-    search: "?project=../etc", authRequired: true, isAuthorized: () => false,
-  });
-  assert.equal(await dispatchRoutes(ctx, routes), true);
-  assert.equal(calls[0].status, 401, "未认证应 401 而不是先暴露 400 参数错");
+test("鉴权唯一真源在 index.js 全局入口：dispatcher 不重复实现第二道", () => {
+  // 早期 dispatcher 里有一层 ctx.authRequired && ctx.isAuthorized，但生产调用点
+  // 从不注入这两个字段，是永不执行的死代码。已移除，改为在 createServer 入口统一鉴权。
+  const dispatcherSrc = fs.readFileSync(
+    path.resolve(REPO_ROOT, "BioanalysDesktop/server/route_dispatcher.js"), "utf8");
+  // 只扫可执行代码：头部注释里保留了这段历史说明，不能算假鉴权层
+  const codeOnly = dispatcherSrc.split("\n")
+    .filter((line) => !line.trim().startsWith("*") && !line.trim().startsWith("/*"))
+    .join("\n");
+  assert.equal(codeOnly.includes("ctx.authRequired"), false,
+    "dispatcher 不应再含生产调用点永不注入的假鉴权层");
+  const indexSrc = fs.readFileSync(
+    path.resolve(REPO_ROOT, "BioanalysDesktop/server/index.js"), "utf8");
+  assert.match(indexSrc, /if \(!isAuthorized\(req\)\)/, "index.js 必须有全局鉴权");
+  assert.match(indexSrc, /res\.writeHead\(401/, "未认证必须回 401");
 });
 
 test("分发器：参数非法回 400 且 handler 不被调用", async () => {

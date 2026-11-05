@@ -8,8 +8,13 @@
  * 设计（不引入 Fastify 依赖，纯 JS ~100 行）：
  *   路由描述符 { method, path, auth, bodyLimit, querySchema, handler }
  *   分发器按固定顺序执行前置管道：
- *     鉴权(401) -> 请求体采集(413/400) -> querySchema 参数校验(400) -> handler(ctx)
+ *     querySchema 参数校验(400) -> 请求体采集(413/400) -> handler(ctx)
  *   handler 只拿 { query, body, url, req, res }，不碰前置逻辑。
+ *
+ *   鉴权由 server/index.js 在 createServer 入口统一做（HTTP Basic，/api/health 除外），
+ *   覆盖所有路由模块，不在本分发器内重复实现。早期版本这里写过一层
+ *   `ctx.authRequired && ctx.isAuthorized`，但生产调用点从不注入这两个字段，
+ *   那段是永不执行的死代码，且会让读者误以为鉴权有两道，已移除（一个含义一个真源）。
  *
  * 关键不变量（由测试静态审视 + 变异反证保护）：
  *   1. 凡 POST/PUT/PATCH 描述符必须显式声明 bodyLimit（防绕过 T3-7 的 1MB 上限）；
@@ -82,20 +87,14 @@ export async function dispatchRoutes(ctx, routes) {
   const route = routes.find((r) => r.method.toUpperCase() === method && r.path === url.pathname);
   if (!route) return false;
 
-  // ── 第 1 层：auth（默认 true，显式 false 才放行公开端点）──
-  if (route.auth !== false && ctx.authRequired === true && ctx.isAuthorized && !ctx.isAuthorized(req)) {
-    json(res, 401, { error: '未认证' });
-    return true;
-  }
-
-  // ── 第 2 层：querySchema 参数校验（400 而不是流入 service）──
+  // ── 第 1 层：querySchema 参数校验（400 而不是流入 service）──
   const q = validateQuery(url.searchParams, route.querySchema);
   if (!q.ok) {
     json(res, 400, { error: `${q.field} 参数非法` });
     return true;
   }
 
-  // ── 第 3 层：写方法的请求体采集（超限 413，非法 JSON 400）──
+  // ── 第 2 层：写方法的请求体采集（超限 413，非法 JSON 400）──
   let body = null;
   if (WRITE_METHODS.includes(method) && route.bodyLimit) {
     body = await collectJsonBody(req, res, json, { maxBytes: route.bodyLimit });
