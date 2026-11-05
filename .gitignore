@@ -258,3 +258,4 @@ vendor/
 .npmcache/
 # 绿色便携包输出（构建产物，按需重建）
 /dist/
+.ops_state/
