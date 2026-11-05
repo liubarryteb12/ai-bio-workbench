@@ -72,6 +72,9 @@ export const GATES = Object.freeze([
   // /usr/bin/python3 没有科学计算栈，真正带依赖的是 /root/venvs/bio-py ——
   // 靠 PATH 里碰巧有 venv 等于把运行环境交给运气。
   { id: 'python_interpreter', label: '母版解释器解析', exec: 'node', args: ['ops/python_interpreter_gate.mjs'], cwd: '.', slow: false },
+  // 生信代码专项审核第 4 项：出图规范合规。直接读真实 PNG 的 pHYs 块判 300 DPI，
+  // 不靠人眼。产线项目强制，历史项目（figure_spec v2.2 升级前的 150dpi 旧图）只报告。
+  { id: 'figure_spec', label: '出图规范合规（300 DPI）', exec: 'node', args: ['ops/figure_spec_gate.mjs'], cwd: '.', slow: false },
   { id: 'audit_summary', label: '交付审计流可解析', exec: 'node', args: ['ops/audit_summary.mjs'], cwd: '.', slow: false },
   // 第 8 道：变异门禁（T2-6）。它证明的不是「代码对不对」，而是「门禁会不会红」：
   // 对 7 条关键防线各注入一次真实破坏，任一条没让对应判据变红即整道失败。
