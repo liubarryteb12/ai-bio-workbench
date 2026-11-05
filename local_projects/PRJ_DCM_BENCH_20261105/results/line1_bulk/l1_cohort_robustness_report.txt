@@ -1,0 +1,11 @@
+step=l1_cohort_robustness
+input=local_projects/PRJ_DCM_BENCH_20261105/data/line1_bulk/processed\expr_genes.tsv
+samples=70（DCM 58 / Ctrl 12）genes=43098
+sex_inferred={('Ctrl', 0): 3, ('Ctrl', 1): 9, ('DCM', 0): 23, ('DCM', 1): 35}
+silent_one_side=11841 tech_or_noncoding=15557 low_detection=11942
+method=OLS（y ~ 1 + is_DCM + is_male，逐基因，BH 校正）；这是 limma 的稳健性复核，不含经验贝叶斯与 trend
+criteria=adj_p<0.05 & |log2FC|>1.0 & 非单侧沉默 & 非技术/非编码 & 检出率>=20%
+sig_ols=3603 usable_after_filters=2834
+wgcna_hub=20 ppi_hub=200 hub_candidates=109
+top5_hub=ATM,RPL7,ANKRD36C,UBN2,INO80D
+outputs=l1_ols_sex_adjusted.tsv, l1_usable_deg.tsv, l1_hub_candidates.tsv, l1_hub_top5.txt, inferred_sex_ols.tsv

@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "project_id": "PRJ_DCM_BENCH_20261105",
+  "name": "DCM 三线基准自检 2026-11-05",
+  "description": "GSE245825 bulk / GSE185100 snRNA / GSE218759 Visium 贯通测试（用户指定）",
+  "created_at": "2026-11-04T18:13:59.629Z",
+  "lines": [
+    "line1_bulk",
+    "line2_scrna",
+    "line3_spatial"
+  ],
+  "plot_layout_config": {
+    "template_id": "",
+    "dpi": 300
+  },
+  "analysis_cutoffs": {
+    "profile": "standard",
+    "log2fc_threshold": 1,
+    "effective_p_field": "padj",
+    "effective_p_threshold": 0.05
+  },
+  "grouping_design": {
+    "mode": "two_group",
+    "groups": [
+      {
+        "groupName": "DCM",
+        "label": "DCM",
+        "sampleCount": 58
+      },
+      {
+        "groupName": "Ctrl",
+        "label": "Ctrl",
+        "sampleCount": 12
+      }
+    ],
+    "contrasts": [
+      {
+        "name": "DCM_vs_Ctrl",
+        "case": "DCM",
+        "ctrl": "Ctrl",
+        "isPrimary": true,
+        "enabled": true
+      }
+    ]
+  }
+}
