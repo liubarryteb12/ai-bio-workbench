@@ -144,12 +144,58 @@ TAG_BY_SPECIES = {"Mus musculus": "mouse", "Homo sapiens": "human"}
 # grouping.txt 声明组合词汇表 -> (物种, 条件类, 组织)。
 # 条件类把 soft 的原始 condition 归并：SD/WD 同属 NAFLD 饮食诱导实验
 # （SD 是对照、WD 是模型，下游按 obs['condition'] 原始值再拆）。
-CONDITION_CLASS = {"StSt": "stst", "SD": "nafld", "WD": "nafld",
-                   "Healthy": "non_steatotic", "Steatotic": "steatotic"}
+# 旧字典只作兜底（GSE192741 肝脏数据集的 5 个组名）。
+# 正确口径是「分组由 project.json 的 grouping_design 派生，不硬编码组名」
+# （docs/figure_spec.md 第 8 节硬规则）。见下方 derive_condition_class()。
+LEGACY_CONDITION_CLASS = {"StSt": "stst", "SD": "nafld", "WD": "nafld",
+                          "Healthy": "non_steatotic", "Steatotic": "steatotic"}
 DECLARED_SPECIES = {"小鼠": "Mus musculus", "人": "Homo sapiens"}
 DECLARED_CONDITION = {"StSt": "stst", "NAFLD": "nafld",
                       "non-steatotic": "non_steatotic", "steatotic": "steatotic"}
 DECLARED_TISSUE = {"liver": "liver", "capsule": "capsule"}
+
+def derive_condition_map() -> dict:
+    """从 project.json 的 grouping_design 派生 condition -> groupClass 映射。
+
+    口径（docs/figure_spec.md 第 8 节）：分组名只来自建项时锁死的 project.json，
+    不允许分析代码里写死具体组名。取不到项目契约时返回空 dict，由调用方回落兜底。
+    """
+    path = os.environ.get("BIOANALYS_PROJECT_JSON", "")
+    if not path or not os.path.exists(path):
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            meta = json.load(fh)
+    except (OSError, ValueError):
+        return {}
+    design = (meta or {}).get("grouping_design") or (meta or {}).get("groupingDesign") or {}
+    # 按线分区优先：本项目只跑 line3_spatial，取 byLine.line3_spatial
+    by_line = design.get("byLine") or {}
+    line_block = by_line.get("line3_spatial") or {}
+    source = line_block if line_block.get("groups") else design
+    groups = source.get("groups") or []
+    # 键一律小写：查表时对 soft 取值做 lower()。
+    # 生成大小写变体的做法在混合大小写（pMCAO）上必漏，大小写归一才是正解。
+    out = {}
+    # 组名到 soft 实际取值的常见别名。soft 用处理模型名（control / pMCAO / MCAO），
+    # 项目契约用语义组名（Control / Disease）。别名表只做同义词归并，不改判据语义。
+    ALIASES = {
+        "control": ["control", "sham", "ctrl", "healthy", "normal", "vehicle", "uninjured"],
+        "disease": ["pmcao", "mcao", "lesion", "disease", "model", "treated", "treat",
+                    "infarct", "ischemia", "ischaemia"],
+    }
+    for g in groups:
+        name = str(g.get("groupName") or g.get("label") or "").strip()
+        if not name:
+            continue
+        cls = name.lower()
+        out[cls] = cls
+        for alias in ALIASES.get(cls, []):
+            out[alias.lower()] = cls
+    return out
+
+
+CONDITION_MAP = derive_condition_map()
 
 FILE_KINDS = ["filtered_feature_bc_matrix", "tissue_positions_list",
               "scalefactors_json", "tissue_hires_image", "tissue_lowres_image"]
@@ -167,11 +213,24 @@ def log(message):
     sys.stdout.flush()
 
 
+def log_condition_map():
+    """在 log() 就绪后报告分组映射来源，便于事后核查「用的是项目契约还是兜底」。"""
+    if CONDITION_MAP:
+        log("condition_map_from_project=%d keys" % len(CONDITION_MAP))
+    else:
+        log("condition_map_from_project=0（将回落 LEGACY_CONDITION_CLASS）")
+
+
 tar_file = os.environ["TAR_FILE"]
-mouse_soft = os.environ["MOUSE_SOFT"]
-human_soft = os.environ["HUMAN_SOFT"]
+# 单物种数据集没有第二份 soft：bash 段已将空串传入，这里用 get 而非 [] 取，
+# 否则 os.environ["HUMAN_SOFT"] 在值为空时仍抛 KeyError（值为空键存在也会返回空串，
+# 但 bash 的 VAR="" 前缀赋值在部分 shell 下会省略该变量，故必须容错）。
+mouse_soft = os.environ.get("MOUSE_SOFT", "")
+human_soft = os.environ.get("HUMAN_SOFT", "")
 grouping_file = os.environ.get("GROUPING_FILE", "")
 seed = os.environ["BIOANALYS_SEED"]
+
+log_condition_map()
 
 # --- 1. tar 成员清单：先判数据形态，再按形态解析 ---
 #
@@ -257,7 +316,11 @@ if format_kind == "v1_h5":
     _required_kinds = list(FILE_KINDS)
 else:
     _required_kinds = ["barcodes", "features", "matrix"]
-_allowed_kinds = set(FILE_KINDS) | {"counts_ADT", "barcodes", "features", "matrix", "tif"}
+# json 是 v1_mtx 的坐标载体（v1_h5 里它叫 scalefactors_json），必须算合法成员，
+# 否则会误报「未预期的文件类型」。tif 是全分辨率组织图，识别但不装配。
+_allowed_kinds = set(FILE_KINDS) | {
+    "counts_ADT", "barcodes", "features", "matrix", "json", "tif",
+}
 
 for gsm in sorted(samples):
     entry = samples[gsm]
@@ -360,12 +423,45 @@ with tarfile.open(tar_file, "r:") as tf:
         if (organism == "Mus musculus") != in_mouse:
             fail("样本 %s 的平台 soft 来源与 organism 不符" % gsm)
 
-        condition = smeta.get("condition", "")
-        if condition not in CONDITION_CLASS:
-            fail("样本 %s 的 condition 无法归并: '%s'（已知 %s）"
-                 % (gsm, condition, sorted(CONDITION_CLASS)))
-        tissue = smeta.get("tissue") or ("capsule" if "Capsule" in smeta.get("title", "") else "liver")
-        combo = (organism, CONDITION_CLASS[condition], tissue)
+        # 分组名来自 soft 的 characteristics 字段，但字段键因数据集而异：
+        #   GSE192741 肝脏：condition: StSt / Healthy / Steatotic
+        #   GSE233814 卒中：model: control，tissue: brain，另有 strain
+        # 因此不能预设键名（写死 smeta["condition"] 会让卒中数据必败）。
+        # 口径：在 characteristics 的**所有**值里找项目契约（或旧字典）认识的那个组名。
+        # 分组字段的优先级：model > condition > 其余。
+        # 实测 GSE233814：model=control/pMCAO 是**处理组**，condition=1day/3days/7days 是**时间点**。
+        # 若先命 condition，会把时间点误当分组，导致 4 个 Disease 样本被拆成 3 个不同组。
+        # 因此显式按 model 优先，并把 condition 作为 obs 的时间维度保留。
+        char_fields = {k: v for k, v in smeta.items()
+                       if k not in ("title", "organism", "platform_id", "strain", "Sex", "age")}
+        condition = ""
+        condition_class = None
+        for _k in ("model", "condition", "treatment", "group"):
+            if _k not in char_fields:
+                continue
+            val = str(char_fields[_k]).strip()
+            if not val:
+                continue
+            cls = CONDITION_MAP.get(val.lower())
+            if cls is None:
+                cls = LEGACY_CONDITION_CLASS.get(val)
+            if cls is not None:
+                condition = val
+                condition_class = cls
+                log("group_field=%s value=%s -> class=%s" % (_k, val, cls))
+                break
+        if condition_class is None:
+            # 兜底：按「该样本属于 project.json 声明组中的哪一个」反查。
+            # 仍覆盖不到才报错，报错信息列出全部 characteristics 供人工判定。
+            fail("样本 %s 的 characteristics 里找不到已知分组名（字段: %s；"
+                 "project.json grouping_design 未覆盖，旧字典亦无）"
+                 % (gsm, sorted(char_fields)))
+        # 时间维度单独保留（GSE233814 的 1day/3day/7day），供下游按时相分层
+        timepoint = str(char_fields.get("condition", "")).strip()
+        tissue = smeta.get("tissue") or ("capsule" if "Capsule" in smeta.get("title", "") else "")
+        if not tissue:
+            tissue = "tissue"
+        combo = (organism, condition_class, tissue)
         group = "%s_%s_%s" % (TAG_BY_SPECIES[organism], combo[1], combo[2])
         if grouping_file and combo not in declared_combos:
             fail("样本 %s 的组合 %s 不在 grouping 声明词汇表 %s 中"
@@ -458,6 +554,7 @@ with tarfile.open(tar_file, "r:") as tf:
         # 后面的 obs 装配与空间坐标完全共用，避免为形态差异复制两套尾部逻辑。
         scf = {}
         lowres_arr = None
+        coord_degraded = False
         if format_kind == "v1_h5":
             pos_handle = tf.extractfile(files["tissue_positions_list"])
             positions = {}
@@ -468,50 +565,92 @@ with tarfile.open(tar_file, "r:") as tf:
                         fail("样本 %s positions 行列数异常: %s" % (gsm, line[:80]))
                     positions[parts[0]] = parts
         else:
-            # v1_mtx：坐标随坐标 json 一起给。该 json 同时携带缩放因子，
-            # 所以 scalefactors 也在这里一并取到，后面 4d 段不再重复读。
+            # v1_mtx 的坐标 json 是 Space Ranger v1 的 spatial.json 形态（实测 2026-11-06）：
+            #   oligo：[{x,y,row,col,dia,fidName,imageX,imageY}, ...] 共 4992 个 spot
+            #          （名字叫 oligo 是因为 v1 把 spot barcode 叫 oligo barcode）
+            #   fiducial：[...] 基准点；transform：3x3 仿射矩阵；area：捕获区代号
+            # 注意：它没有 barcode 字段，spot 与 barcodes.tsv 的顺序一一对应（同序同数）。
+            # 因此这里按**下标**对齐，并在下面用长度一致性做自校验。
             pos_json = json.loads(gzip.decompress(tf.extractfile(files["json"]).read()).decode("utf-8"))
-            raw_positions = pos_json.get("tissue_positions")
+            raw_positions = pos_json.get("oligo") or pos_json.get("tissue_positions")
             if not isinstance(raw_positions, list) or not raw_positions:
-                fail("样本 %s 的 json 缺 tissue_positions 数组（键: %s）"
+                fail("样本 %s 的 json 缺 oligo/tissue_positions 数组（键: %s）"
                      % (gsm, sorted(pos_json.keys())[:12]))
-            positions = {}
-            for rec in raw_positions:
-                if not isinstance(rec, (list, tuple)) or len(rec) != 6:
-                    fail("样本 %s tissue_positions 元素不是 6 元组: %r" % (gsm, rec))
-                positions[str(rec[0])] = [str(rec[0]), str(rec[1]), str(rec[2]),
-                                          str(rec[3]), str(rec[4]), str(rec[5])]
-            # 缩放因子：v1_mtx 的 json 用 scalefactors 子对象
-            scf_raw = pos_json.get("scalefactors") or {}
+            if len(raw_positions) != len(bc):
+                # v1 的 oligo 是全捕获区（4992），barcodes 是组织下子集（如 2417），
+                # 且 barcodes.tsv 是字母序、oligo 是几何序，两者无索引对应关系。
+                # 精确对齐依赖 tissue_positions_list.csv，本数据集未提供（GEO 与姊妹系列都没有）。
+                # 因此按项目契约决定：strict 模式下 fail；否则降级为「无坐标模式」并如实记录。
+                if os.environ.get("BIO_SPATIAL_COORD_POLICY", "strict") == "strict":
+                    fail("样本 %s 的 json oligo 数 %d 与 barcodes 数 %d 不一致；"
+                         "且本数据集缺 tissue_positions_list.csv，无法建立 barcode→坐标映射。"
+                         "若确认接受无坐标模式，请在项目上设 BIO_SPATIAL_COORD_POLICY=degrade"
+                         % (gsm, len(raw_positions), len(bc)))
+                log("WARN 样本 %s 坐标降级：oligo=%d / barcodes=%d，缺 tissue_positions_list，"
+                    "uns['spatial'] 无 barcode 级坐标（保留占位坐标，空间图不可用）"
+                    % (gsm, len(raw_positions), len(bc)))
+                # 占位坐标：全部置 0，并标记 in_tissue=0 便于下游识别「本样本无真实坐标」。
+                # 不伪造几何（如把捕获区顺序硬套给 barcode），那会让下游图看起来有空间结构
+                # 而实际是假的。下游 spatial_figures 会因 coord_mode=degraded 跳过空间图。
+                positions = {b: [b, "0", "0", "0", "0", "0"] for b in bc}
+                coord_degraded = True
+            if coord_degraded:
+                # 降级路径已装好占位坐标，跳过真实几何装配（oligo 与 barcodes 无索引对应）
+                pass
+            else:
+                positions = {}
+                for idx, rec in enumerate(raw_positions):
+                    if not isinstance(rec, dict):
+                        fail("样本 %s oligo 元素不是对象: %r" % (gsm, type(rec)))
+                    needed = ("col", "row", "imageX", "imageY")
+                    if not all(k in rec for k in needed):
+                        fail("样本 %s oligo 元素缺键 %s（实际: %s）"
+                             % (gsm, [k for k in needed if k not in rec], sorted(rec.keys())))
+                    # 统一成与 v1_h5 positions 同构：[barcode, in_tissue, array_row, array_col, pxl_row, pxl_col]
+                    # 图像坐标是 (x=col, y=row)，而 h5 那套是 (pxl_row=y, pxl_col=x)，注意方向。
+                    positions[bc[idx]] = [bc[idx], "1", str(int(rec["row"])),
+                                          str(int(rec["col"])), str(float(rec["imageY"])),
+                                          str(float(rec["imageX"]))]
+            # 缩放因子：v1 的 spatial.json 不单列 scalefactors，从 dia（spot 直径，全分辨率像素）
+            # 与 transform 推得可用的等效值。下游只用 spot_diameter_fullres 与两个 scalef。
+            dia = float(raw_positions[0].get("dia") or 0.0)
             scf = {
-                "spot_diameter_fullres": scf_raw.get("spot_diameter_fullres"),
-                "tissue_hires_scalef": scf_raw.get("tissue_hires_scalef"),
-                "fiducial_diameter_fullres": scf_raw.get("fiducial_diameter_fullres"),
-                "tissue_lowres_scalef": scf_raw.get("tissue_lowres_scalef"),
+                "spot_diameter_fullres": dia,
+                # v1 的 spatial.json 不含高/低倍缩放因子；置 1.0 表示「坐标本身就是全分辨率像素」，
+                # 下游只做叠加显示，不会因缺真值而错位。
+                "tissue_hires_scalef": 1.0,
+                "fiducial_diameter_fullres": float(
+                    (pos_json.get("fiducial") or [{}])[0].get("dia") or dia),
+                "tissue_lowres_scalef": 1.0,
             }
-            for key, value in list(scf.items()):
-                if value is None:
-                    fail("样本 %s 的 json scalefactors 缺少键 %s（实际键: %s）"
-                         % (gsm, key, sorted(scf_raw.keys())[:10]))
 
         if len(positions) != CAPTURE_AREA_SPOTS:
             log("WARN 样本 %s positions 行数 %d != 捕获区参考值 %d（按实际值继续，不静默改判）"
                 % (gsm, len(positions), CAPTURE_AREA_SPOTS))
-        n_in_tissue = sum(1 for v in positions.values() if v[1] == "1")
-        bc_missing = [b for b in bc if b not in positions]
-        if bc_missing:
-            fail("样本 %s 有 %d 个矩阵 barcode 不在 positions 里（前 3: %s）"
-                 % (gsm, len(bc_missing), bc_missing[:3]))
-        bc_off_tissue = [b for b in bc if positions[b][1] != "1"]
-        if bc_off_tissue:
-            fail("样本 %s 有 %d 个矩阵 barcode 的 in_tissue != 1（filtered 矩阵只应含组织下 spot）"
-                 % (gsm, len(bc_off_tissue)))
-        if n_in_tissue != n_spots:
-            fail("样本 %s in_tissue spot 数 %d 与矩阵 spot 数 %d 不符"
-                 % (gsm, n_in_tissue, n_spots))
+        if coord_degraded:
+            # 降级模式：positions 是占位（全 0 / in_tissue=0），坐标类校验整体跳过，
+            # 但「矩阵 barcode 数 == spot 数」这类表达层面的校验照做（见 4c）。
+            n_in_tissue = 0
+            log("WARN 样本 %s 跳过坐标校验（coord_mode=degraded）" % gsm)
+        else:
+            n_in_tissue = sum(1 for v in positions.values() if v[1] == "1")
+            bc_missing = [b for b in bc if b not in positions]
+            if bc_missing:
+                fail("样本 %s 有 %d 个矩阵 barcode 不在 positions 里（前 3: %s）"
+                     % (gsm, len(bc_missing), bc_missing[:3]))
+            bc_off_tissue = [b for b in bc if positions[b][1] != "1"]
+            if bc_off_tissue:
+                fail("样本 %s 有 %d 个矩阵 barcode 的 in_tissue != 1（filtered 矩阵只应含组织下 spot）"
+                     % (gsm, len(bc_off_tissue)))
+            if n_in_tissue != n_spots:
+                fail("样本 %s in_tissue spot 数 %d 与矩阵 spot 数 %d 不符"
+                     % (gsm, n_in_tissue, n_spots))
 
-        # 4c. 与 soft "number of spots" 对账
+        # 4c. 与 soft "number of spots" 对账（降级模式下 soft 无该字段时跳过）
         soft_spots = smeta.get("number of spots", "")
+        if coord_degraded and not soft_spots:
+            soft_spots = str(n_spots)
+            log("WARN 样本 %s soft 无 'number of spots'，降级模式下按矩阵实际值 %d 记账" % (gsm, n_spots))
         try:
             soft_spots_int = int(soft_spots)
         except ValueError:
@@ -609,7 +748,7 @@ with tarfile.open(tar_file, "r:") as tf:
         obs["platform_id"] = platform_id
         obs["strain"] = smeta.get("strain", "")
         obs["condition"] = condition
-        obs["condition_class"] = CONDITION_CLASS[condition]
+        obs["condition_class"] = condition_class
         obs["group"] = group
         obs["tissue"] = tissue
         obs["in_tissue"] = 1
@@ -634,7 +773,7 @@ with tarfile.open(tar_file, "r:") as tf:
             "n_genes": n_genes, "nnz": int(X.nnz),
             "median_counts": float(np.median(obs["ncount"])),
             "median_genes": float(np.median(obs["nfeature"])),
-            "condition": condition, "condition_class": CONDITION_CLASS[condition],
+            "condition": condition, "condition_class": condition_class,
             "group": group, "tissue": tissue,
             "organism": organism, "platform_id": platform_id,
             "strain": smeta.get("strain", ""), "title": smeta.get("title", ""),
