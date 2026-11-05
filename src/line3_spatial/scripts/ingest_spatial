@@ -656,8 +656,11 @@ for organism in ("Mus musculus", "Homo sapiens"):
     adata.obsm["spatial"] = np.vstack([rec["adata"].obsm["spatial"] for rec in recs])
     adata.uns["seed"] = seed
     adata.uns["source_tar"] = tar_file
-    adata.uns["source_soft_mouse"] = mouse_soft_path
-    adata.uns["source_soft_human"] = human_soft_path
+    # 单物种数据集（GSE233814 只有 GPL24247）没有另一份 soft。下游 11 个母版把这两个键
+    # 写进 REQUIRED_UNS，但只做「键存在」检查（qc_spots:150 只比对键集合）。
+    # 所以这里写空串占位而不是省略键：既满足下游契约，又如实表达「本数据集没有该平台」。
+    adata.uns["source_soft_mouse"] = mouse_soft_path or ""
+    adata.uns["source_soft_human"] = human_soft_path or ""
     adata.uns["grouping_check"] = grouping_check
     adata.uns["species"] = organism
     adata.uns["genome"] = GENOME_BY_SPECIES[organism]

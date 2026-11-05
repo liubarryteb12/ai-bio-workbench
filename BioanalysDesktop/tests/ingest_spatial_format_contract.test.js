@@ -72,6 +72,27 @@ test("物种由 soft 元数据判定", () => {
   assert.match(code, /!Sample_organism_ch1|organism/, "必须依据 soft 的 organism 判定物种");
 });
 
+test("单物种时 uns 的 source_soft_human 写空串占位（下游 11 母版依赖键存在）", () => {
+  const code = codeOnly(read());
+  // 必须显式 or "" 兜底，否则单物种数据会在第 2 步 qc_spots 的 REQUIRED_UNS 检查处失败
+  assert.match(code, /source_soft_mouse"\]\s*=\s*mouse_soft_path\s+or\s+""/, "mouse soft 键须空串兜底");
+  assert.match(code, /source_soft_human"\]\s*=\s*human_soft_path\s+or\s+""/, "human soft 键须空串兜底");
+});
+
+test("下游母版确实只做键存在检查（不校验值为非空）", () => {
+  const qc = fs.readFileSync(path.join(REPO, "src/line3_spatial/scripts/qc_spots"), "utf8");
+  // 记录这条依赖：qc_spots 的 missing_uns 只比对键集合
+  assert.match(qc, /missing_uns/, "qc_spots 应有 missing_uns 检查");
+  assert.match(qc, /REQUIRED_UNS/, "qc_spots 应有 REQUIRED_UNS 清单");
+  // 正对照：不得出现「source_soft_human 必须非空」这类判据，否则空串兜底无效
+  const codeQc = codeOnly(qc);
+  assert.equal(
+    /source_soft_human[^\n]*!=\s*""|source_soft_human[^\n]*is not None/.test(codeQc),
+    false,
+    "下游不得校验 source_soft_human 非空（单物种时它合法为空）",
+  );
+});
+
 test("v1_h5 路径完整保留（GSE192741 回归）", () => {
   const code = codeOnly(read());
   assert.match(code, /h5py\.File/, "h5 路径必须保留 h5py 读取");
