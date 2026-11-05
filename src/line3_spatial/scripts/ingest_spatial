@@ -190,6 +190,11 @@ def derive_condition_map() -> dict:
             continue
         cls = name.lower()
         out[cls] = cls
+        # 项目显式声明的 aliases 优先（比通用别名表更精确，换数据集只改项目配置）
+        for alias in (g.get("aliases") or []):
+            if alias:
+                out[str(alias).strip().lower()] = cls
+        # 再叠加通用别名表兜底
         for alias in ALIASES.get(cls, []):
             out[alias.lower()] = cls
     return out
