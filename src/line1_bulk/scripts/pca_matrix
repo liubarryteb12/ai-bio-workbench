@@ -150,6 +150,9 @@ for (artifact in c("pca_scores.tsv", "pca_report.txt", pca_png)) {
 cat("top_variable_genes=", top_n, "\n", sep = "")
 cat("variance_explained=", paste(sprintf("PC%d:%.1f%%", 1:5, var_explained[1:5]), collapse = " "), "\n", sep = "")
 cat("pc1_range=", sprintf("%.2f-%.2f", min(scores$PC1), max(scores$PC1)), "\n", sep = "")
+# 图形设备兜底（figure_spec 第 3 节 / Argon 第 65 轮 Q3）：各图已成对 dev.off()，
+# 收尾再 graphics.off() 兜住异常分支残留的设备，防单步跑多图时峰值内存叠加。
+graphics.off()
 RSCRIPT
 
 echo "pca_matrix done: pca_scores.tsv / pca_report.txt 已写入 $(pwd)；图件 ../figures/l1_02_pca_step3.png"

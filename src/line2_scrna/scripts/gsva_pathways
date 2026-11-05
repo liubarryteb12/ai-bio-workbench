@@ -185,6 +185,9 @@ out.index.name = "gene"
 out.to_csv("_gsva_pseudobulk.tsv", sep="\t")
 pd.DataFrame(meta).to_csv("_gsva_ncells.tsv", sep="\t", index=False)
 print("pseudobulk %d genes x %d celltype-sample groups" % (out.shape[0], out.shape[1]), flush=True)
+# 句柄兜底（figure_spec 第 3 节 / Argon 第 65 轮 Q3）：逐图 close(fig) 已在 save() 内执行，
+# 这里再 close("all") 兜住异常分支的残留图，防单步跑多图时峰值内存叠加。
+plt.close("all")
 PYSCRIPT
 
 # 2) 桥接四项断言守卫（task-10 / m00939 边界②）：本母版是跨语言步骤

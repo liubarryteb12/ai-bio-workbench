@@ -436,4 +436,7 @@ lines = [
 with open("ml_report.txt", "w", encoding="utf-8") as fh:
     fh.write("\n".join(lines) + "\n")
 log("ml_model_done")
+# 句柄兜底（figure_spec 第 3 节 / Argon 第 65 轮 Q3）：逐图 close(fig) 已在 save() 内执行，
+# 这里再 close("all") 兜住异常分支的残留图，防单步跑多图时峰值内存叠加。
+plt.close("all")
 PYSCRIPT

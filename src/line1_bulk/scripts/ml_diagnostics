@@ -527,6 +527,9 @@ lines = [
 with open("ml_diagnostics_report.txt", "w") as fh:
     fh.write("\n".join(lines) + "\n")
 log("report written, figures=%d, elapsed=%.1fs" % (len(made), time.time() - START))
+# 句柄兜底（figure_spec 第 3 节 / Argon 第 65 轮 Q3）：逐图 close(fig) 已在 save() 内执行，
+# 这里再 close("all") 兜住异常分支的残留图，防单步跑多图时峰值内存叠加。
+plt.close("all")
 PYSCRIPT
 
 # ---------- 跨语言桥接守卫（task-10）：本母版为 Python 到 R 的跨语言步骤，断言先于首次 R 侧执行 ----------

@@ -276,6 +276,9 @@ caption(fig, "line2 SCENIC: top-20 regulons by celltype specificity",
 save(fig, "l2_scenic_02_top_regulons.png")
 
 log("scenic_figures_done count=%d elapsed=%.1fs" % (len(made), time.time() - START))
+# 句柄兜底（figure_spec 第 3 节 / Argon 第 65 轮 Q3）：逐图 close(fig) 已在 save() 内执行，
+# 这里再 close("all") 兜住异常分支的残留图，防单步跑多图时峰值内存叠加。
+plt.close("all")
 PYSCRIPT
 
 # sha256 产物台账后置补登：复用独立脚本，写法与其余步骤解耦。

@@ -269,4 +269,7 @@ lines <- c(
 )
 writeLines(lines, "cox_report.txt")
 say("cox_analysis_done")
+# 图形设备兜底（figure_spec 第 3 节 / Argon 第 65 轮 Q3）：各图已成对 dev.off()，
+# 收尾再 graphics.off() 兜住异常分支残留的设备，防单步跑多图时峰值内存叠加。
+graphics.off()
 RSCRIPT
