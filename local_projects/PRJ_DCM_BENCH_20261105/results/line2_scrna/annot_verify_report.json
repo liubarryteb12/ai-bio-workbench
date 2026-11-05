@@ -204,5 +204,95 @@
       "max_other_type": "T_cell"
     }
   },
+  "marker_power_notes": [
+    {
+      "celltype": "B_cell",
+      "n_cells": 135,
+      "self_marker_mean_pct": 25.68,
+      "ci95_low_pct": 19.05,
+      "ci95_high_pct": 33.65,
+      "statistical_power": "insufficient(n<200)"
+    },
+    {
+      "celltype": "T_cell",
+      "n_cells": 1493,
+      "self_marker_mean_pct": 20.65,
+      "ci95_low_pct": 18.67,
+      "ci95_high_pct": 22.77,
+      "statistical_power": "adequate"
+    },
+    {
+      "celltype": "cardiomyocyte",
+      "n_cells": 30771,
+      "self_marker_mean_pct": 79.92,
+      "ci95_low_pct": 79.47,
+      "ci95_high_pct": 80.37,
+      "statistical_power": "adequate"
+    },
+    {
+      "celltype": "endothelial",
+      "n_cells": 8271,
+      "self_marker_mean_pct": 72.97,
+      "ci95_low_pct": 72.01,
+      "ci95_high_pct": 73.92,
+      "statistical_power": "adequate"
+    },
+    {
+      "celltype": "fibroblast",
+      "n_cells": 20608,
+      "self_marker_mean_pct": 55.99,
+      "ci95_low_pct": 55.31,
+      "ci95_high_pct": 56.66,
+      "statistical_power": "adequate"
+    },
+    {
+      "celltype": "macrophage",
+      "n_cells": 5781,
+      "self_marker_mean_pct": 49.73,
+      "ci95_low_pct": 48.44,
+      "ci95_high_pct": 51.02,
+      "statistical_power": "adequate"
+    },
+    {
+      "celltype": "pericyte",
+      "n_cells": 4589,
+      "self_marker_mean_pct": 77.91,
+      "ci95_low_pct": 76.69,
+      "ci95_high_pct": 79.09,
+      "statistical_power": "adequate"
+    },
+    {
+      "celltype": "schwann_nerve",
+      "n_cells": 1240,
+      "self_marker_mean_pct": 47.61,
+      "ci95_low_pct": 44.84,
+      "ci95_high_pct": 50.4,
+      "statistical_power": "adequate"
+    },
+    {
+      "celltype": "smooth_muscle",
+      "n_cells": 1553,
+      "self_marker_mean_pct": 58.03,
+      "ci95_low_pct": 55.56,
+      "ci95_high_pct": 60.46,
+      "statistical_power": "adequate"
+    }
+  ],
+  "membrane_marker_note": {
+    "markers": [
+      "ABCC9",
+      "CD163",
+      "CD19",
+      "CD3D",
+      "CD3E",
+      "CD68",
+      "CD79A",
+      "CDH5",
+      "KCNJ8",
+      "MS4A1",
+      "PECAM1"
+    ],
+    "note": "这些 marker 主要是膜蛋白，snRNA-seq 测核内转录本时检出率天然低于细胞质 scRNA；判据看相对富集倍数而非绝对百分数。"
+  },
   "verdict": "pass"
 }
