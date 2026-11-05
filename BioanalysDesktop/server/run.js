@@ -18,7 +18,7 @@ import { runExecFile, runExecStream, sshArgv } from './proc.js';
 import { probeRemoteState, reconcileTask } from './reconcile.js';
 // Q3：失败分类学唯一真源。finishTask 不再自己发明「非零即失败」的裸判定，
 // 而是把退出码交给 FSM 得到带原因码的结果（LOCK_CONFLICT / OOM_GUARD / STEP_CONTRACT_FAIL ...）。
-import { classifyTaskOutcome } from './task_fsm.js';
+import { classifyTaskOutcome, TASK_STATES } from './task_fsm.js';
 
 const DETACHED_POLL_INTERVAL_MS = Math.max(
   60000,
@@ -160,9 +160,30 @@ export function runTask(task, handlers = {}) {
     if (!selfAudit.legal) {
       handlers.onStderr?.(`[ledger] 拒绝落盘：台账自身不合规: ${selfAudit.problems.join('; ')}\n`);
     } else {
-      persistEntry(entry, task.lineId, { sshTarget: selectedNode?.host || 'k40-ubuntu' }).catch((cause) => {
-        handlers.onStderr?.(`[ledger] 台账落盘失败: ${cause.message}\n`);
-      });
+      // Q3 收口：persistEntry 是异步 fire-and-forget，onExit 必须保持同步（既有契约），
+      // 所以这里不能 await。但「台账没落盘」不能再只打一行日志就算完：
+      // 远端无 WROTE 回执时，任务本该是 FAILED/RECEIPT_MISSING 而非 completed。
+      // 因此在 rejection 里用 FSM 把结果如实修正，并发一条可机读事件让上层知晓。
+      // entry 对象本身也同步打上标记（onExit 拿到的就是这个引用），避免上层读到假绿。
+      entry.ledger_receipt = 'pending';
+      persistEntry(entry, task.lineId, { sshTarget: selectedNode?.host || 'k40-ubuntu' })
+        .then(() => { entry.ledger_receipt = 'confirmed'; })
+        .catch((cause) => {
+          const outcome = classifyTaskOutcome({ exitCode: code, hasReceipt: false });
+          entry.ledger_receipt = 'missing';
+          entry.status = outcome.state === TASK_STATES.FAILED ? 'failed' : entry.status;
+          entry.checkpoint_status = 'failed';
+          entry.receipt_failure_reason = outcome.reason;
+          handlers.onStderr?.(`[ledger] 台账落盘失败: ${cause.message}\n`);
+          handlers.onReceiptMissing?.({
+            taskId,
+            code,
+            reason: outcome.reason,
+            state: outcome.state,
+            retryable: outcome.retryable,
+            message: cause.message,
+          });
+        });
     }
 
     handlers.onExit?.(code, entry);

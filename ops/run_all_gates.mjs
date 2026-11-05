@@ -80,6 +80,9 @@ export const GATES = Object.freeze([
   // 对 7 条关键防线各注入一次真实破坏，任一条没让对应判据变红即整道失败。
   // 变异只在 .tmp/mutation_gate/ 的临时副本上做，不碰工作树（并发安全）。
   { id: 'mutation_gate', label: '变异门禁（7 条防线反证）', exec: 'node', args: ['ops/mutation_gate.mjs'], cwd: '.', slow: false },
+  // Argon 第 42 轮锁定：Q3 状态机与 Q2 路由表各需 3 条 MUT 反证。
+  // 既有 mutation_gate 的 7 条全在 Q4/T3 域，覆盖不到这两块，故单列。
+  { id: 'q3q2_mutation', label: 'Q3/Q2 变异反证（6 条）', exec: 'node', args: ['ops/q3q2_mutation_gate.mjs'], cwd: '.', slow: false },
   { id: 'metrics', label: '全量测试 + 运行时 skip + 基线一致', exec: 'node', args: ['ops/metrics_sync.mjs', '--check'], cwd: '.', slow: true },
 ]);
 
