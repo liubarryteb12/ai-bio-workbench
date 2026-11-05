@@ -12,14 +12,17 @@ import path from 'node:path';
 
 import { GATES, runAllGates, main, REPO_ROOT } from '../../ops/run_all_gates.mjs';
 
-test('门禁清单：十一道齐全，顺序越便宜越靠前，只有最后一道是 slow', () => {
+test('门禁清单：齐全，顺序越便宜越靠前，只有最后一道是 slow', () => {
   // mutation_gate 是 T2-6 的变异门禁：它证明「改坏能让门禁红」，与红测证明的
   // 「修好能让门禁红」合成闭环。slow 标记只有 metrics 一道，快检仍然秒级。
   // preview_provenance 是 T1-3 的溯源门禁（第三十四轮 T1-2 重渲染后由 info-only 转硬阻断），
   // 它排在 figure_registry 之后：注册表先证明「字段齐全」，溯源再证明「预览与产物同一份」。
+  // ready_matrix（第 41 轮）排在 preview_provenance 之后、audit_summary 之前：
+  // 注册表先证「字段齐全」，溯源再证「预览与产物同一份」，矩阵最后证「30 条的源码与
+  // 预览哈希与登记值逐字节一致」。三者从粗到细，越便宜越靠前。
   assert.deepEqual(GATES.map((g) => g.id), [
     'preflight', 'static_gate', 'test_isolation', 'dist_parity', 'skip_static', 'ledger',
-    'figure_registry', 'preview_provenance', 'audit_summary', 'mutation_gate', 'metrics',
+    'figure_registry', 'preview_provenance', 'ready_matrix', 'audit_summary', 'mutation_gate', 'metrics',
   ]);
   assert.equal(GATES.filter((g) => g.slow).length, 1, '只能有一道 slow（全量测试）');
   assert.equal(GATES[GATES.length - 1].slow, true, '最慢的一道必须排最后');
@@ -28,7 +31,7 @@ test('门禁清单：十一道齐全，顺序越便宜越靠前，只有最后�
   }
 });
 
-test('真跑快检：--skip-tests 跳过全量测试，其余十道全绿且总耗时在秒级', () => {
+test('真跑快检：--skip-tests 跳过全量测试，其余各道全绿且总耗时在秒级', () => {
   const logs = [];
   const started = Date.now();
   const code = main(['--skip-tests'], { log: (m) => logs.push(m), error: (m) => logs.push(m) });

@@ -1,0 +1,318 @@
+{
+  "generatedAt": "2026-11-05T07:57:20.989Z",
+  "total_ready": 30,
+  "source_sha_match": 30,
+  "preview_sha_match": 30,
+  "verified_true": 30,
+  "by_level": {
+    "L1": 12,
+    "L2": 15,
+    "L3": 3
+  },
+  "by_language": {
+    "r": 16,
+    "python": 14
+  },
+  "rows": [
+    {
+      "id": "fig_l1_groupedbar",
+      "level": "L1",
+      "language": "r",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L1_基础统计图/L1_groupedbar_verified.png"
+    },
+    {
+      "id": "fig_l1_bubble",
+      "level": "L1",
+      "language": "r",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/_meta/R453_compat/L1_p0_gallery_code.R",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/_meta/R453_compat/L1_bubble_verified.png"
+    },
+    {
+      "id": "fig_l1_connectedscatter",
+      "level": "L1",
+      "language": "python",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_cellcomm_autocorr_code.py",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L3_高级组合图/L3_spatial_autocorr_verified.png"
+    },
+    {
+      "id": "fig_l1_correlogram",
+      "level": "L1",
+      "language": "r",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/_meta/R453_compat/L1_p0_gallery_code.R",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/_meta/R453_compat/L1_correlogram_verified.png"
+    },
+    {
+      "id": "fig_l2_heatmap",
+      "level": "L2",
+      "language": "r",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/_meta/R453_compat/L2_more_code.R",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L2_组学常用图/L2_heatmap_verified.png"
+    },
+    {
+      "id": "fig_l2_pca",
+      "level": "L2",
+      "language": "r",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/_meta/R453_compat/L2_more_code.R",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L2_组学常用图/L2_pca_verified.png"
+    },
+    {
+      "id": "fig_l1_scatter",
+      "level": "L1",
+      "language": "r",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L1_基础统计图/L1_scatter_verified.png"
+    },
+    {
+      "id": "fig_l2_umap",
+      "level": "L2",
+      "language": "python",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_umap_code.py",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_umap_verified.png"
+    },
+    {
+      "id": "fig_l1_boxplot",
+      "level": "L1",
+      "language": "r",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/_meta/R453_compat/L1_boxplot_code.R",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L1_基础统计图/L1_boxplot_verified.png"
+    },
+    {
+      "id": "fig_l1_density",
+      "level": "L1",
+      "language": "r",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L1_基础统计图/L1_density_verified.png"
+    },
+    {
+      "id": "fig_l1_histogram",
+      "level": "L1",
+      "language": "r",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L1_基础统计图/L1_histogram_verified.png"
+    },
+    {
+      "id": "fig_l1_ridgeline",
+      "level": "L1",
+      "language": "r",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/_meta/R453_compat/L1_p0_gallery_code.R",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/_meta/R453_compat/L1_ridgeline_verified.png"
+    },
+    {
+      "id": "fig_l1_violin",
+      "level": "L1",
+      "language": "r",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/_meta/R453_compat/L1_violin_code.R",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L1_基础统计图/L1_violin_verified.png"
+    },
+    {
+      "id": "fig_l1_upsetplot",
+      "level": "L1",
+      "language": "r",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/_meta/R453_compat/L1_p0_gallery_code.R",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/_meta/R453_compat/L1_upset_verified.png"
+    },
+    {
+      "id": "fig_l1_vennplot",
+      "level": "L1",
+      "language": "r",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/_meta/R453_compat/L1_p0_gallery_code.R",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/_meta/R453_compat/L1_venn_verified.png"
+    },
+    {
+      "id": "fig_l2_networkplot",
+      "level": "L2",
+      "language": "python",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_enrich_ko_code.py",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_konetwork_verified.png"
+    },
+    {
+      "id": "fig_l2_volcano",
+      "level": "L2",
+      "language": "r",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/_meta/R453_compat/L2_core_code.R",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L2_组学常用图/L2_volcano_verified.png"
+    },
+    {
+      "id": "fig_l2p_barplot",
+      "level": "L2",
+      "language": "python",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_stats_code.py",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_bar_verified.png"
+    },
+    {
+      "id": "fig_l2p_boxplot",
+      "level": "L2",
+      "language": "python",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_stats_code.py",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_box_verified.png"
+    },
+    {
+      "id": "fig_l2p_enrichmentplot",
+      "level": "L2",
+      "language": "python",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_enrich_ko_code.py",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_enrichment_verified.png"
+    },
+    {
+      "id": "fig_l2p_gseaplot",
+      "level": "L2",
+      "language": "python",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_enrich_ko_code.py",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_gsea_verified.png"
+    },
+    {
+      "id": "fig_l2p_heatmap",
+      "level": "L2",
+      "language": "python",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_stats_code.py",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_heatmap_verified.png"
+    },
+    {
+      "id": "fig_l3_multipanel",
+      "level": "L3",
+      "language": "r",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/L3_高级组合图/L3_multipanel_code.R",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L3_高级组合图/L3_multipanel_verified.png"
+    },
+    {
+      "id": "fig_l2p_scatterplot",
+      "level": "L2",
+      "language": "python",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_stats_code.py",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_scatter_verified.png"
+    },
+    {
+      "id": "fig_l2p_dotplot",
+      "level": "L2",
+      "language": "python",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_more_code.py",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_dotplot_verified.png"
+    },
+    {
+      "id": "fig_l2p_umap",
+      "level": "L2",
+      "language": "python",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_umap_code.py",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_umap_verified.png"
+    },
+    {
+      "id": "fig_l2p_violin",
+      "level": "L2",
+      "language": "python",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_more_code.py",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_violin_verified.png"
+    },
+    {
+      "id": "fig_l2p_volcano",
+      "level": "L2",
+      "language": "python",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_more_code.py",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_volcano_verified.png"
+    },
+    {
+      "id": "fig_l3_chorddiagram",
+      "level": "L3",
+      "language": "python",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/L2_组学常用图/L2p_cellcomm_autocorr_code.py",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L3_高级组合图/L3_cellcomm_chord_verified.png"
+    },
+    {
+      "id": "fig_l3_sankey",
+      "level": "L3",
+      "language": "r",
+      "verified": true,
+      "source_sha_match": true,
+      "source_path": "reference/05.可参考出图代码/_meta/R453_compat/L3_sankey_code.R",
+      "preview_sha_match": true,
+      "preview_path": "reference/05.可参考出图代码/L3_高级组合图/L3_sankey_verified.png"
+    }
+  ]
+}

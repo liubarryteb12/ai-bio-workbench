@@ -57,6 +57,10 @@ export const GATES = Object.freeze([
   // （相等 12 / 分叉 0），按裁定同笔转硬阻断。任何 ready 的预览与矩阵产物 sha 再次分叉，
   // 这道门禁当场红——那是「预览来自另一次渲染」的唯一可信判据。
   { id: 'preview_provenance', label: '预览与渲染产物溯源', exec: 'node', args: ['ops/figure_preview_provenance.mjs'], cwd: '.', slow: false },
+  // 第 8 道前置：30 条 Ready 模板的实证矩阵（第 41 轮）。
+  // 白名单只证明「ID 被封板」，不证明源码与预览还和登记时一致。这道门禁对每条 ready
+  // 做真实的 sha256 比对：文件被悄悄改动、预览被重渲染覆盖，都会当场红。
+  { id: 'ready_matrix', label: 'Ready 模板实证矩阵（30 条 sha 核验）', exec: 'node', args: ['ops/figure_ready_matrix.mjs'], cwd: '.', slow: false },
   { id: 'audit_summary', label: '交付审计流可解析', exec: 'node', args: ['ops/audit_summary.mjs'], cwd: '.', slow: false },
   // 第 8 道：变异门禁（T2-6）。它证明的不是「代码对不对」，而是「门禁会不会红」：
   // 对 7 条关键防线各注入一次真实破坏，任一条没让对应判据变红即整道失败。
