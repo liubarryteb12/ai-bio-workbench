@@ -37,9 +37,17 @@ for path in "${INPUTS[@]:-}"; do
     *) echo "无法识别的输入文件: $path（需要 *.h5ad）" >&2; exit 2 ;;
   esac
 done
-if [ -z "$mouse_h5ad" ] || [ -z "$human_h5ad" ]; then
-  echo "缺少必需输入：spatial_knockout_mouse.h5ad 与 spatial_knockout_human.h5ad" >&2
+# 单物种数据必须能出图（生信代码专项审核修复）。
+# 原实现强制要求 mouse 与 human 双份 knockout，，但本项目是纯小鼠 Visium（GPL24247），
+# 根本没有 human 产物，于是空间线永远出不了任何图。正确口径是：
+#   mouse 为必需（缺它确实无从出图）；human 为可选，缺席时跳过 human 专属图并如实报告。
+# 不伪造 human 文件来骗过校验，那会让「有 human 数据」变成谎言。
+if [ -z "$mouse_h5ad" ]; then
+  echo "缺少必需输入：spatial_knockout_mouse.h5ad（human 可缺席，mouse 不可）" >&2
   exit 2
+fi
+if [ -z "$human_h5ad" ]; then
+  echo "human_h5ad=(absent) 单物种模式：human 专属图跳过，仅产 mouse 图"
 fi
 
 echo "step_executed=spatial_figures"
@@ -245,8 +253,28 @@ def cat_colors(labels):
     return {c: cmap(i % 20) for i, c in enumerate(cats)}, cats
 
 
+def _uns_dict(adata, key):
+    """取 uns[key] 并归一成 dict。
+
+    本链写入端用 json.dumps 把嵌套结构存成字符串（h5ad 不接受嵌套 dict），
+    所以读端必须兼容 str 形态；直接 .get() 会 AttributeError: 'str' object has no attribute 'get'。
+    """
+    val = adata.uns.get(key)
+    if isinstance(val, str):
+        try:
+            val = json.loads(val)
+        except ValueError:
+            return {}
+    return val if isinstance(val, dict) else {}
+
+
 for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
-    path = os.environ[env_key].strip()
+    path = (os.environ.get(env_key) or "").strip()
+    # 单物种模式：human 缺席时跳过整段，而不是拿空串去 read_h5ad（那会抛异常）。
+    # 如实打印跳过原因，让"没出 human 图"这件事在日志里是可见的事实而非静默缺失。
+    if not path:
+        log("=== %s: 无输入（单物种模式，跳过该物种专属图）===" % species)
+        continue
     a = ad.read_h5ad(path)
     log("=== %s spots=%d genes=%d ===" % (species, a.shape[0], a.shape[1]))
     obs = a.obs
@@ -280,7 +308,33 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
 
     # --- 02 target gene expression（逐样本单图） ---
     tgt = obs["target_gene_expr"].to_numpy(dtype=float)
-    top_gene = a.uns.get("localization", {}).get("top_target_gene", "?")
+    # uns["localization"] 在本链里是 JSON 字符串（写入端用 json.dumps 存，h5ad 不接受
+    # 嵌套 dict）。直接 .get() 会 AttributeError: 'str' object has no attribute 'get'。
+    # 两种形态都兼容：dict 直接取，str 先 json.loads，解析失败则回落空字典。
+    # 靶基因名解析（三候选，按可信度降序）：
+    #   1) uns['localization'].top_target_gene ，， 但该字段历史上存的是 Ensembl ID，
+    #      直接标注会让图上出现 ENSMUSG… 而非读者认得的 symbol；
+    #   2) uns['localization'].targets 里第一个目标的 gene_symbol（新实现形态，dict）；
+    #      targets 也可能是旧实现的字符串列表，此时第一个元素本身就是 symbol；
+    #   3) 兜底读 obs['target_gene_expr'] 的来源列名（不可得则给 ?，但绝不编造）。
+    _loc = _uns_dict(a, "localization")
+    top_gene = "?"
+    _tgt = _loc.get("targets")
+    if isinstance(_tgt, dict):
+        for _k in sorted(_tgt):
+            _sym = str(_tgt[_k].get("gene_symbol") or "").strip()
+            if _sym:
+                top_gene = _sym
+                break
+    elif isinstance(_tgt, list) and _tgt:
+        top_gene = str(_tgt[0])
+    if top_gene == "?":
+        # 旧实现：top_target_gene 为 Ensembl ID，用 var 表反查 symbol
+        _eid = str(_loc.get("top_target_gene") or "").strip()
+        if _eid and "gene_symbol" in a.var.columns:
+            _hit = a.var["gene_symbol"][a.var_names == _eid]
+            if len(_hit):
+                top_gene = str(_hit.iloc[0])
     vmax = np.percentile(tgt, 99) if len(tgt) else 1
     for s in samples:
         m = samp == s
@@ -314,35 +368,42 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
     save(fig, "%s_08_target_gene_by_domain.png" % pre)
 
     # --- 03 ko_dr_expr（逐样本单图） ---
-    koe = obs["ko_dr_expr"].to_numpy(dtype=float)
-    vmax = np.percentile(koe, 99) if len(koe) else 1
-    ko_gene = a.uns.get("knockout", {}).get("ko_gene", "?")
-    for s in samples:
-        m = samp == s
-        fig, ax = plt.subplots(figsize=(5.5, 5.5))
-        sc = ax.scatter(xy[m, 0], xy[m, 1], c=koe[m], s=4, cmap="magma",
-                        vmin=0, vmax=vmax, linewidths=0)
-        caption(fig, "line3 %s: %s KO(%s) DR mean expr" % (species, s, ko_gene),
-                "coords = sample-local (obsm['spatial'])")
-        ax.set_aspect("equal")
-        ax.set_xticks([])
-        ax.set_yticks([])
-        fig.colorbar(sc, ax=ax, shrink=0.7, fraction=0.046, label="KO DR expr")
-        save(fig, "%s_03_ko_dr_%s.png" % (pre, s))
+    # knockout 是可选上游（spatial_knockout 步骤）。本项目未跑该步，obs 里没有
+    # ko_dr_expr 列。硬读会 KeyError 打断整条出图，让已经产出的域图/target 图白费。
+    # 缺列时跳过全部 KO 相关图并如实打印，不伪造数据充数。
+    has_ko = "ko_dr_expr" in obs.columns
+    if not has_ko:
+        log("  KO 图跳过：obs 无 ko_dr_expr（未跑 spatial_knockout 步骤）")
+    koe = obs["ko_dr_expr"].to_numpy(dtype=float) if has_ko else None
+    if has_ko:
+        vmax = np.percentile(koe, 99) if len(koe) else 1
+        ko_gene = _uns_dict(a, "knockout").get("ko_gene", "?")
+        for s in samples:
+            m = samp == s
+            fig, ax = plt.subplots(figsize=(5.5, 5.5))
+            sc = ax.scatter(xy[m, 0], xy[m, 1], c=koe[m], s=4, cmap="magma",
+                            vmin=0, vmax=vmax, linewidths=0)
+            caption(fig, "line3 %s: %s KO(%s) DR mean expr" % (species, s, ko_gene),
+                    "coords = sample-local (obsm['spatial'])")
+            ax.set_aspect("equal")
+            ax.set_xticks([])
+            ax.set_yticks([])
+            fig.colorbar(sc, ax=ax, shrink=0.7, fraction=0.046, label="KO DR expr")
+            save(fig, "%s_03_ko_dr_%s.png" % (pre, s))
 
-    # --- 03b KO DR by domain（域统计视图：规范要求表达值 + 域统计两个视图） ---
-    koe_dom = [float(koe[dom == d].mean()) for d in dom_order]
-    fig, ax = plt.subplots(figsize=(8, max(6, len(dom_order) * 0.22)))
-    y = np.arange(len(dom_order))
-    ax.barh(y, koe_dom, color="#C44E52")
-    ax.set_yticks(y)
-    ax.set_yticklabels(dom_order, fontsize=8)
-    ax.invert_yaxis()
-    ax.set_xlabel("mean KO DR expr")
-    caption(fig, "line3 %s: KO(%s) DR mean expression by spatial domain"
-            % (species, ko_gene),
-            "domain-level statistic view (paired with per-sample spatial map)")
-    save(fig, "%s_09_ko_dr_by_domain.png" % pre)
+        # --- 03b KO DR by domain（域统计视图：规范要求表达值 + 域统计两个视图） ---
+        koe_dom = [float(koe[dom == d].mean()) for d in dom_order]
+        fig, ax = plt.subplots(figsize=(8, max(6, len(dom_order) * 0.22)))
+        y = np.arange(len(dom_order))
+        ax.barh(y, koe_dom, color="#C44E52")
+        ax.set_yticks(y)
+        ax.set_yticklabels(dom_order, fontsize=8)
+        ax.invert_yaxis()
+        ax.set_xlabel("mean KO DR expr")
+        caption(fig, "line3 %s: KO(%s) DR mean expression by spatial domain"
+                % (species, ko_gene),
+                "domain-level statistic view (paired with per-sample spatial map)")
+        save(fig, "%s_09_ko_dr_by_domain.png" % pre)
 
     # --- 04 Moran's I top ---
     if "morans_i_mean" in a.var.columns:
@@ -358,8 +419,16 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         save(fig, "%s_04_morans_top.png" % pre)
 
     # --- 05 knockout top DR ---
-    ko = a.uns.get("knockout", {})
-    top = ko.get("top_dr", {})
+    # 同 uns["localization"]：knockout 也可能是 JSON 字符串，直接 .get() 会 AttributeError。
+    ko = a.uns.get("knockout")
+    if isinstance(ko, str):
+        try:
+            ko = json.loads(ko)
+        except ValueError:
+            ko = {}
+    if not isinstance(ko, dict):
+        ko = {}
+    top = ko.get("top_dr") or {}
     if top:
         genes, nss, pads = [], [], []
         for i in range(1, 11):
