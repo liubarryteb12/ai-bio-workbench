@@ -257,12 +257,26 @@ report_lines = [
     "",
 ]
 
-for species in ["mouse", "human"]:
+# 物种集合由实际存在的产物推导（GSE233814 只有小鼠）。
+# 缺席物种是「本数据集没有该物种」，不是「缺文件」；真正缺文件（提供了物种却没产物）
+# 仍走下面的 fail 路径，不静默放过残缺输入。
+SPECIES_CANDIDATES = ["mouse", "human"]
+species_present = []
+for sp in SPECIES_CANDIDATES:
+    probe_h5ad = "spatial_marker_%s.h5ad" % sp
+    probe_mk = "domain_markers_%s.tsv" % sp
+    if os.path.exists(probe_h5ad) or os.path.exists(probe_mk):
+        species_present.append(sp)
+if not species_present:
+    fail("spatial_marker_{mouse,human}.h5ad 与 domain_markers_*.tsv 全部缺席（步骤 6 产物未生成？）")
+log("species_present=%s" % ",".join(species_present))
+
+for species in species_present:
     h5ad = "spatial_marker_%s.h5ad" % species
     mk_tsv = "domain_markers_%s.tsv" % species
     for f in [h5ad, mk_tsv]:
         if not os.path.exists(f):
-            fail("缺少输入 %s（步骤 6 产物）" % f)
+            fail("物种 %s 已被识别为在位，但缺少输入 %s（步骤 6 产物）" % (species, f))
 
     a = ad.read_h5ad(h5ad)
     mk = pd.read_csv(mk_tsv, sep="\t")

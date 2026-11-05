@@ -129,7 +129,17 @@ report_lines = [
     "",
 ]
 
-for species in ["mouse", "human"]:
+# 物种集合由实际存在的 marker 产物推导（GSE233814 只有小鼠）。
+SPECIES_CANDIDATES = ["mouse", "human"]
+species_present = []
+for sp in SPECIES_CANDIDATES:
+    if os.path.exists("spatial_marker_%s.h5ad" % sp):
+        species_present.append(sp)
+if not species_present:
+    fail("spatial_marker_{mouse,human}.h5ad 全部缺席（步骤 6 产物未生成？）")
+log("species_present=%s" % ",".join(species_present))
+
+for species in species_present:
     h5ad = "spatial_marker_%s.h5ad" % species
     if not os.path.exists(h5ad):
         fail("缺少输入 %s（步骤 6 产物）" % h5ad)

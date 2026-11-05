@@ -269,7 +269,19 @@ def cat_colors(labels):
 
 TOP_N = 20
 
-for species in ["mouse", "human"]:
+# 物种集合由实际存在的 enrichment 产物推导（GSE233814 只有小鼠）。
+# 本步骤原已对缺席物种容错（rd() 返回 None 时跳过），但循环仍写死两物种；
+# 改为按产物在位推导，语义保持「缺席即跳过」，不改成报错。
+SPECIES_CANDIDATES = ["mouse", "human"]
+species_present = []
+for sp in SPECIES_CANDIDATES:
+    if os.path.exists("enrichment_ora_%s.tsv" % sp) or os.path.exists("enrichment_gsea_%s.tsv" % sp):
+        species_present.append(sp)
+if not species_present:
+    fail("enrichment_{ora,gsea}_{mouse,human}.tsv 全部缺席（步骤 14 产物未生成？）")
+log("species_present=%s" % ",".join(species_present))
+
+for species in species_present:
     # --- 12 ORA：按校正 p 排序，条形 = -log10(adj p)，按域分色，双标注 OR + adj p ---
     ora = rd("enrichment_ora_%s.tsv" % species)
     if ora is not None and len(ora) and {"domain", "Term", "Adjusted P-value"} <= set(ora.columns):

@@ -260,7 +260,18 @@ report_lines = [
     "",
 ]
 
-for species in ["mouse", "human"]:
+# 物种集合由实际存在的 knock-out 产物推导（GSE233814 只有小鼠）。
+# 缺席物种是「本数据集没有该物种」，不是「缺文件」；已识别物种若缺产物仍 fail。
+SPECIES_CANDIDATES = ["mouse", "human"]
+species_present = []
+for sp in SPECIES_CANDIDATES:
+    if os.path.exists("spatial_knockout_%s.h5ad" % sp):
+        species_present.append(sp)
+if not species_present:
+    fail("spatial_knockout_{mouse,human}.h5ad 全部缺席（步骤 13 产物未生成？）")
+log("species_present=%s" % ",".join(species_present))
+
+for species in species_present:
     h5ad = "spatial_knockout_%s.h5ad" % species
     dr_tsv = "ko_dr_genes_%s.tsv" % species
     mk_tsv = "domain_markers_%s.tsv" % species
