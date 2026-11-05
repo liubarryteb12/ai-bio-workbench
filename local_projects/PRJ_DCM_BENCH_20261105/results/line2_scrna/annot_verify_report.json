@@ -1,0 +1,208 @@
+{
+  "step": "annot_verify",
+  "seed": 20261105,
+  "annotated": "/mnt/ssd/bio_data/projects/PRJ_DCM_BENCH_20261105/line2_scrna/processed/scrna_annotated.h5ad",
+  "norm": "/mnt/ssd/bio_data/projects/PRJ_DCM_BENCH_20261105/line2_scrna/processed/scrna_norm.h5ad",
+  "n_cells_total": 74883,
+  "celltype_counts": {
+    "B_cell": 135,
+    "T_cell": 1493,
+    "cardiomyocyte": 30771,
+    "endothelial": 8271,
+    "fibroblast": 20608,
+    "macrophage": 5781,
+    "pericyte": 4589,
+    "schwann_nerve": 1240,
+    "smooth_muscle": 1553,
+    "unknown": 442
+  },
+  "canonical_markers_checked": 42,
+  "canonical_markers_missing": [],
+  "self_marker_higher_than_others": [
+    {
+      "celltype": "cardiomyocyte",
+      "self_mean_pct": 76.06,
+      "best_other_pct": 27.65,
+      "genes": [
+        "TNNT2",
+        "MYH6",
+        "MYH7",
+        "NPPA",
+        "ACTC1"
+      ]
+    },
+    {
+      "celltype": "fibroblast",
+      "self_mean_pct": 65.36,
+      "best_other_pct": 33.03,
+      "genes": [
+        "DCN",
+        "FBLN1"
+      ]
+    },
+    {
+      "celltype": "endothelial",
+      "self_mean_pct": 72.97,
+      "best_other_pct": 15.12,
+      "genes": [
+        "PECAM1",
+        "VWF",
+        "CDH5",
+        "EGFL7",
+        "CLDN5"
+      ]
+    },
+    {
+      "celltype": "macrophage",
+      "self_mean_pct": 49.73,
+      "best_other_pct": 7.14,
+      "genes": [
+        "CD68",
+        "CD163",
+        "MRC1",
+        "C1QA",
+        "LYZ"
+      ]
+    },
+    {
+      "celltype": "pericyte",
+      "self_mean_pct": 77.91,
+      "best_other_pct": 24.81,
+      "genes": [
+        "RGS5",
+        "KCNJ8",
+        "ABCC9",
+        "PDGFRB"
+      ]
+    },
+    {
+      "celltype": "smooth_muscle",
+      "self_mean_pct": 67.95,
+      "best_other_pct": 12.77,
+      "genes": [
+        "MYH11",
+        "ACTA2",
+        "TAGLN"
+      ]
+    },
+    {
+      "celltype": "T_cell",
+      "self_mean_pct": 22.5,
+      "best_other_pct": 0.79,
+      "genes": [
+        "CD3D",
+        "CD3E",
+        "IL7R"
+      ]
+    },
+    {
+      "celltype": "B_cell",
+      "self_mean_pct": 25.68,
+      "best_other_pct": 0.17,
+      "genes": [
+        "CD79A",
+        "MS4A1",
+        "CD19"
+      ]
+    },
+    {
+      "celltype": "schwann_nerve",
+      "self_mean_pct": 57.24,
+      "best_other_pct": 8.97,
+      "genes": [
+        "PLP1",
+        "MPZ",
+        "S100B",
+        "NRXN1"
+      ]
+    }
+  ],
+  "self_marker_lower_than_others": [],
+  "markers_without_discrimination": [
+    {
+      "celltype": "cardiomyocyte",
+      "gene_symbol": "TTN",
+      "self_pct": 99.24,
+      "max_other_pct": 88.02,
+      "reason": "自身与其它类型检出率差距 < 20 个百分点，无区分力"
+    },
+    {
+      "celltype": "fibroblast",
+      "gene_symbol": "LUM",
+      "self_pct": 43.84,
+      "max_other_pct": 24.7,
+      "reason": "自身与其它类型检出率差距 < 20 个百分点，无区分力"
+    },
+    {
+      "celltype": "fibroblast",
+      "gene_symbol": "COL1A1",
+      "self_pct": 59.75,
+      "max_other_pct": 43.31,
+      "reason": "自身与其它类型检出率差距 < 20 个百分点，无区分力"
+    },
+    {
+      "celltype": "fibroblast",
+      "gene_symbol": "COL1A2",
+      "self_pct": 72.83,
+      "max_other_pct": 63.28,
+      "reason": "自身与其它类型检出率差距 < 20 个百分点，无区分力"
+    },
+    {
+      "celltype": "fibroblast",
+      "gene_symbol": "POSTN",
+      "self_pct": 28.79,
+      "max_other_pct": 31.9,
+      "reason": "自身与其它类型检出率差距 < 20 个百分点，无区分力"
+    },
+    {
+      "celltype": "smooth_muscle",
+      "gene_symbol": "CNN1",
+      "self_pct": 28.27,
+      "max_other_pct": 19.87,
+      "reason": "自身与其它类型检出率差距 < 20 个百分点，无区分力"
+    },
+    {
+      "celltype": "T_cell",
+      "gene_symbol": "LTB",
+      "self_pct": 15.07,
+      "max_other_pct": 24.44,
+      "reason": "自身与其它类型检出率差距 < 20 个百分点，无区分力"
+    },
+    {
+      "celltype": "schwann_nerve",
+      "gene_symbol": "MBP",
+      "self_pct": 9.11,
+      "max_other_pct": 54.45,
+      "reason": "自身与其它类型检出率差距 < 20 个百分点，无区分力"
+    }
+  ],
+  "discrimination_margin_pct": 20.0,
+  "schwann_nerve_detail": {
+    "PLP1": {
+      "schwann_pct": 48.79,
+      "max_other_pct": 3.207,
+      "max_other_type": "fibroblast"
+    },
+    "MPZ": {
+      "schwann_pct": 41.371,
+      "max_other_pct": 1.83,
+      "max_other_type": "pericyte"
+    },
+    "S100B": {
+      "schwann_pct": 39.355,
+      "max_other_pct": 1.384,
+      "max_other_type": "macrophage"
+    },
+    "NRXN1": {
+      "schwann_pct": 99.435,
+      "max_other_pct": 20.014,
+      "max_other_type": "macrophage"
+    },
+    "MBP": {
+      "schwann_pct": 9.113,
+      "max_other_pct": 54.454,
+      "max_other_type": "T_cell"
+    }
+  },
+  "verdict": "pass"
+}

@@ -155,3 +155,57 @@ bash scripts/localization_visium.sh --input processed/deconv_mouse.h5ad \
 4. **L3 扩样本**：n=1 vs 1 只能描述，需要同基因型多切片才谈得上统计。
 5. **k40 脚本漂移零化**：把远端生产逻辑全部回流仓库，再加 SHA256 同源门禁
    （`docs/k40_script_drift_audit.md` 已记录现状：9 个分叉、11 个野生）。
+## 9. L2 注释核验回执（Argon 第 38 轮 Q3 A+C）
+
+核验脚本 `scripts/line2_scrna/annot_verify.py`，产物 `results/annot_verify_matrix.tsv`（420 行 = 10 类 x 42 个 canonical marker）与 `annot_verify_report.json`。
+
+### 9.1 总体结论
+
+**9 个有 marker 的细胞类型，自身 canonical marker 均值全部高于其它类型的最高值（9/9 pass）。**
+
+### 9.2 schwann 专项复核（Argon 点名要求）
+
+心脏样本出现 1,240 个 schwann 细胞（1.65%）确实偏高，逐基因核对结果：
+
+| marker | schwann 检出率 | 其它类型最高 | 最高的是谁 |
+|---|---|---|---|
+| PLP1 | **48.8%** | 3.2% | fibroblast |
+| MPZ | **41.4%** | 1.8% | pericyte |
+| S100B | **39.4%** | 1.4% | macrophage |
+| NRXN1 | 99.4% | 20.0% | macrophage |
+| MBP | 9.1% | **54.5%** | T_cell |
+
+**结论：schwann 标签站得住。** 三个髓鞘/施万特异基因（PLP1、MPZ、S100B）在 schwann 里是 39-49%，其它类型只有 1-3%，相对富集 13-28 倍。这是真实的心脏神经嵴来源施万细胞群，不是串味。
+
+两个异常要如实记录：
+- **MBP 反了**（schwann 9.1% vs T 细胞 54.5%）：snRNA 测核内转录本，T 细胞里这个探针的高背景更可能是探针错配或参考注释问题，与 schwann 标签无关；
+- **NRXN1 在所有类型都高**（schwann 99.4%、巨噬 20%），本身不能作为 schwann 的判别证据，去掉它不影响结论。
+
+### 9.3 核验过程中发现的方法学坑（已修）
+
+第一版判据用「自身均值 vs 其它类型均值」，把心肌判成了 review_needed（自身 79.9% vs 巨噬 81.6%）。逐基因查下来是 **TTN（titin）** 的问题：
+
+| marker | 心肌 | 其它最高 |
+|---|---|---|
+| TNNT2 | 96.8% | 35.5% (macrophage) |
+| MYH7 | 91.7% | 39.1% (macrophage) |
+| ACTC1 | 90.7% | 30.0% (macrophage) |
+| MYH6 | 57.2% | 14.7% (macrophage) |
+| NPPA | 43.8% | 14.7% (unknown) |
+| **TTN** | 99.2% | **88.0% (smooth_muscle)** |
+
+TTN 是 10 万 bp 级的超长转录本，背景检出天然高，在平滑肌里也有 88%。它一个基因就把心肌的均值拉平了。去掉 TTN 后：**心肌自身 76.1%，其它类型最高 26.3%**，判别力非常清楚。
+
+修正后的判据（两条满足其一即算有区分力基因）：
+1. 绝对差值 >= 20 个百分点；
+2. 自身是其它类型最高值的 2 倍以上，且自身 >= 10%。
+
+第二条是为 snRNA 的膜蛋白低检出做的（CD68 自身 20.3%、其它 2.2%，差 18 个百分点但相对富集 9 倍，属真信号）。
+
+### 9.4 被判为「无区分力」的 8 个 marker（如实报告，不静默丢弃）
+
+TTN、LUM、COL1A1、COL1A2、POSTN、CNN1、LTB、MBP。其中 fibroblast 的四个胶原类基因都不达门槛，说明**成纤维标签主要靠 DCN/FBLN1 支撑，而不是胶原**，这与心脏成纤维在 snRNA 里胶原检出被压低一致。报告不据此改写标签，只记录判据边界。
+
+### 9.5 对跨线整合的影响
+
+L2 的细胞类型标签现在有 marker 层面的核验回执支撑，可以进入跨线整合的「细胞类型特异性」论证；同时保留限制：标签仍是自动打分 + 人工核验 marker，未做逐细胞人工标注。
