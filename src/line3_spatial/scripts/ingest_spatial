@@ -201,7 +201,22 @@ if _mtx_hits > 0 and _h5_hits > 0:
 format_kind = "v1_mtx" if _mtx_hits > 0 else "v1_h5"
 log("data_format=%s (mtx_files=%d h5_files=%d)" % (format_kind, _mtx_hits, _h5_hits))
 
-member_re = re.compile(r"^(GSM\d+)_([a-zA-Z_]+)_([A-Za-z0-9+]+)\.(h5|csv\.gz|json\.gz|png\.gz|tsv\.gz|mtx\.gz|tif\.gz)$")
+# tar 内实际命名有两种形态（实测 2026-11-06，GSE233814）：
+#   v1_h5 ：GSM####_<kind>_<短名>.h5 / .csv.gz / .json.gz / .png.gz      <- kind 在中间
+#   v1_mtx：GSM####_<短名>_<barcodes|features|matrix>.<tsv|mtx>.gz       <- kind 在末尾
+#           GSM####_<短名>.json.gz                                         <- 坐标随 json 给
+# 短名可含连字符（如 C1-control / B1-D1 / V10M09-040-B1），故不能再用 [A-Za-z0-9+] 限制。
+member_re = re.compile(
+    r"^(GSM\d+)_(?P<part1>[A-Za-z0-9+_.-]*?)_?(?P<kind1>barcodes|features|matrix)"
+    r"\.(?:tsv|mtx)\.gz$"
+    r"|^(GSM\d+)_(?P<sf2>[A-Za-z0-9+_-]+)\.(?:json\.gz)$"
+    r"|^(GSM\d+)_(?P<kind3>filtered_feature_bc_matrix|tissue_positions_list|scalefactors_json"
+    r"|tissue_hires_image|tissue_lowres_image|counts_ADT)_(?P<sf3>[A-Za-z0-9+]+)"
+    r"\.(?:h5|csv\.gz|json\.gz|png\.gz)$"
+    # v1_mtx 的全分辨率组织图：GSM####_<任意短名>_c1+2+3.tif.gz。
+    # 1.7 GB 且只用于底图叠加，识别它只为「不因未匹配而 fail」，不参与装配。
+    r"|^(GSM\d+)_(?P<sf4>[A-Za-z0-9+_ -]+)\.(?:tif\.gz)$"
+)
 samples = {}  # gsm -> {"shortfilename": sf, "files": {kind: member_name}}
 with tarfile.open(tar_file, "r:") as tf:
     for member in tf:
@@ -211,9 +226,22 @@ with tarfile.open(tar_file, "r:") as tf:
         m = member_re.match(base)
         if not m:
             fail("tar 内存在无法解析的文件名: %s（需要 <GSM>_<kind>_<短名>.<ext>）" % base)
-        gsm, kind, sf, ext = m.groups()
+        # 多分支正则：按实际命中的分支取名，不假设 groups() 的固定顺序
+        gd = m.groupdict()
+        gsm = next(g for g in m.groups() if g and g.startswith("GSM"))
+        if gd.get("kind1"):
+            kind, sf = gd["kind1"], (gd["part1"] or "")
+        elif gd.get("sf2"):
+            kind, sf = "json", gd["sf2"]
+        elif gd.get("sf4"):
+            kind, sf = "tif", gd["sf4"]
+        else:
+            kind, sf = gd["kind3"], gd["sf3"]
         entry = samples.setdefault(gsm, {"shortfilename": sf, "files": {}})
-        if entry["shortfilename"] != sf:
+        # 短名放宽：v1_mtx 的矩阵三件套与坐标 json 是两套独立命名
+        # （如 C1-control vs mouse_control_V11A20-380-C1），同一 GSM 内不必一致；
+        # 一致性只在 v1_h5 形态（按样本分组的 5 件套）下才有意义。
+        if format_kind == "v1_h5" and entry["shortfilename"] != sf:
             fail("GSM %s 的短文件名不一致: %s vs %s" % (gsm, entry["shortfilename"], sf))
         if kind in entry["files"]:
             fail("GSM %s 的 %s 文件重复" % (gsm, kind))
