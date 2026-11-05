@@ -339,8 +339,20 @@ def resolve_case_ctrl(observed):
       3) 观测两组按字典序派生（后者为 case），并在 stdout 打印派生了什么；
       4) 以上都不成立（组数不是 2 且无可用 contrasts）→ 直接失败，拒绝猜测方向。
     """
-    gd = (load_project_json() or {}).get("grouping_design") or {}
+    project = load_project_json() or {}
+    gd = project.get("grouping_design") or {}
     obs = set(observed)
+
+    # 按线分区的分组设计（schema 的 groupingDesign.byLine）。
+    # 为什么需要：一个项目跑多条线时各线的分组维度往往不同。DCM 基准里 bulk 线是
+    # DCM 58 vs Ctrl 12（历史队列），而本线是 DCM / Fetal / NonDiseased 三个诊断组。
+    # 顶层单一 groupingDesign 无法同时表达，本线优先读 byLine["line2_scrna"]，
+    # 缺失才回落顶层（保持对单线项目的向后兼容）。
+    by_line = gd.get("byLine") or gd.get("by_line") or {}
+    line_gd = by_line.get("line2_scrna") if isinstance(by_line, dict) else None
+    if isinstance(line_gd, dict) and line_gd:
+        gd = line_gd
+        log("分组设计来源: groupingDesign.byLine.line2_scrna")
 
     valid = []
     for ctr in gd.get("contrasts") or []:

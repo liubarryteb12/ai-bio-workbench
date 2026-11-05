@@ -127,7 +127,75 @@
         "groups",
         "contrasts"
       ],
+      "description": "项目级分组设计。顶层 mode/groups/contrasts 描述「项目主维度」（通常是 bulk 线）；当三线的分组维度不同时，用 byLine 为各线单独声明，消费方应优先读 byLine[<lineId>]，缺失才回落顶层。",
       "properties": {
+        "byLine": {
+          "type": "object",
+          "description": "按分析线分区声明分组维度，键为 lineId（line1_bulk / line2_scrna / line3_spatial）。为什么需要：一个项目跑多条线时，各线的样本与分组维度往往不同。例如 DCM 基准里 bulk 线是 DCM 58 vs Ctrl 12（历史队列），而 snRNA 线是 DCM / Fetal / NonDiseased 三个诊断组（10x 样本）。顶层单一 groupingDesign 无法同时表达两者，导致母版要么拒绝猜测方向、要么把 bulk 的对比错套到 snRNA 上。",
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "mode",
+              "groups",
+              "contrasts"
+            ],
+            "properties": {
+              "mode": {
+                "type": "string"
+              },
+              "groups": {
+                "type": "array",
+                "minItems": 2,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "groupName"
+                  ],
+                  "properties": {
+                    "groupName": {
+                      "type": "string"
+                    },
+                    "is_reference": {
+                      "type": "boolean"
+                    },
+                    "sampleCount": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              },
+              "contrasts": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "name",
+                    "case",
+                    "ctrl"
+                  ],
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "case": {
+                      "type": "string"
+                    },
+                    "ctrl": {
+                      "type": "string"
+                    },
+                    "isPrimary": {
+                      "type": "boolean"
+                    },
+                    "note": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "mode": {
           "type": "string"
         },

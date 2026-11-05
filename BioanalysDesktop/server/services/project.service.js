@@ -89,6 +89,8 @@ export function getProjectMeta(projectId, { runRemote, repoRoot }) {
       projectName: meta.name || null,
       schemaVersion: meta.schema_version ?? null,
       datasets: Array.isArray(meta.data_source?.datasets) ? meta.data_source.datasets : [],
+      // 项目级分组设计。byLine 供三线各自的分组维度使用（schema 已支持），
+      // 消费方应先看 byLine[<lineId>]，缺失才回落顶层字段。
       groupingDesign: meta.grouping_design || null,
     },
   };

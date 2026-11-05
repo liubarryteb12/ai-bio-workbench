@@ -41,6 +41,35 @@
         "isPrimary": true,
         "enabled": true
       }
-    ]
+    ],
+    "byLine": {
+      "line2_scrna": {
+        "mode": "multi_group",
+        "groups": [
+          {
+            "groupName": "NonDiseased",
+            "is_reference": true,
+            "sampleCount": 3
+          },
+          {
+            "groupName": "DCM",
+            "sampleCount": 4
+          },
+          {
+            "groupName": "Fetal",
+            "sampleCount": 3
+          }
+        ],
+        "contrasts": [
+          {
+            "name": "DCM_vs_NonDiseased",
+            "case": "DCM",
+            "ctrl": "NonDiseased",
+            "isPrimary": true,
+            "note": "DCM 对非患病。Fetal 是发育期独立维度，不参与疾病对比。"
+          }
+        ]
+      }
+    }
   }
 }
