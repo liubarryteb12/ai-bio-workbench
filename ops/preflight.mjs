@@ -23,6 +23,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { tmpQuota } from './clean_workspace.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..');
@@ -127,6 +128,16 @@ function renderHuman(report) {
     lines.push(tag + ' ' + check.label + ' :: ' + check.detail);
     if (!check.found) lines.push('       → ' + check.install);
   }
+  // Q4 配额提示：附在预检报告末尾，超限时给出可执行的清理命令。
+  // 刻意不算进 report.ok：.tmp 文件多不是「依赖缺失」，而是维护提示，
+  // 判红会让每次开发都因缓存未清而卡住门禁，与预检的职责不符。
+  const quota = tmpQuota({ root: REPO_ROOT });
+  if (quota.over) {
+    lines.push('[WARN] .tmp/ 有 ' + quota.count + ' 个文件，超过配额 ' + quota.quota
+      + '（陈年夹具会拖慢全仓扫描）。清理：node ops/clean_workspace.mjs --execute');
+  } else {
+    lines.push('[ OK ] .tmp/ 文件数 ' + quota.count + ' <= 配额 ' + quota.quota);
+  }
   if (report.ok) {
     lines.push('PREFLIGHT_OK 必需项齐备' + (report.warnings.length ? '（可选缺失：' + report.warnings.join(', ') + '）' : ''));
   } else {
@@ -142,7 +153,7 @@ export function main(argv = process.argv.slice(2), io = { log: console.log, erro
   };
   const report = runPreflight({ pathValue: value('--path') });
   if (argv.includes('--json')) {
-    io.log(JSON.stringify({ ok: report.ok, missingRequired: report.missingRequired, warnings: report.warnings, checks: report.checks }, null, 2));
+    io.log(JSON.stringify({ ok: report.ok, missingRequired: report.missingRequired, warnings: report.warnings, checks: report.checks, tmpQuota: tmpQuota({ root: REPO_ROOT }) }, null, 2));
   } else {
     io.log(renderHuman(report));
   }

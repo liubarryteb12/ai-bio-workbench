@@ -46,6 +46,8 @@ export const TEST_DEPENDENCY_PACKAGES = Object.freeze([
 export const EXCLUDED_PREFIXES = Object.freeze([
   '.tmp/', 'outputs/', 'projects/', 'artifacts/', 'project_data/', 'node_modules/',
   'BioanalysDesktop/node_modules/', '.npmcache/', 'Python/', 'BioanalysDesktop/Python/',
+  // 打包的 Python 运行时已从 BioanalysDesktop/Python/ 迁到 vendor/python-win32/（第 41 轮 Q4）。
+  // 两条旧前缀留着是为了兼容尚未迁移的历史工作树，vendor/ 是迁移后的总闸。
   'vendor/', 'dist/', '.git/',
 ]);
 

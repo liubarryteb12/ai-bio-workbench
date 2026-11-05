@@ -35,6 +35,30 @@ export const DEFAULT_KEEP_DAYS = 7;
 export const SACRED_PATH_CODE = 'ERR_SACRED_PATH_PROTECTED';
 
 /**
+ * Q4 配额保护（第 41 轮，抄 pytest 的 tmp_path_retention_count 思路）：
+ * .tmp/ 的文件数超过 TMP_QUOTA_FILES 就给明确提示，避免 1.8 万个陈年夹具
+ * 拖慢全仓扫描与 IDE 索引。刻意**只提示不自动删**：清理器无法知道哪些目录
+ * 正被并行测试占用，自动 GC 会误伤运行中的用例。真删由人显式执行
+ * node ops/clean_workspace.mjs --execute。
+ */
+export const TMP_QUOTA_FILES = 500;
+
+/**
+ * 统计 .tmp/ 下的文件数，返回 { count, over, quota }。
+ * 目录不存在或读不到时返回 count=0，绝不因此抛错打断门禁。
+ */
+export function tmpQuota({ root = DEFAULT_ROOT, quota = TMP_QUOTA_FILES } = {}) {
+  const tmp = path.join(root, '.tmp');
+  let count = 0;
+  try {
+    if (fs.existsSync(tmp)) count = fs.readdirSync(tmp, { recursive: true }).length;
+  } catch {
+    return { count: 0, over: false, quota };
+  }
+  return { count, over: count > quota, quota };
+}
+
+/**
  * 神圣黑名单：出现即熔断。用「包含」判定（子路径同样禁止），大小写不敏感，
  * 分隔符统一成 / 后比较，避免 Windows 反斜杠漏判。
  */
