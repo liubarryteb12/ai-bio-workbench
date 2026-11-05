@@ -260,7 +260,14 @@ export function ResultPreviewStudio({ project }: { project: string }) {
             );
           })}
           {Object.values(figuresByLine).every((arr) => arr.length === 0) && !loading && (
-            <p className="hint">暂无图件。先跑 *_figures 步骤。</p>
+            // T3-5：空态必须有固定的机器可判锚点（data-testid），否则 E2E 只能靠文案猜，
+            // 文案一改测试就假绿。三种状态（加载中 / 真没数据 / 请求失败）各给各的锚点。
+            <p className="hint" data-testid="empty-state" data-empty-kind="figures">
+              暂无图件。先跑 *_figures 步骤。
+            </p>
+          )}
+          {loading && (
+            <p className="hint" data-testid="loading-state" data-loading-kind="figures">读取图件中...</p>
           )}
         </div>
 
@@ -589,8 +596,9 @@ export function FilesPanel({ project }: { project: string }) {
 
       {(() => {
         const state = readApiState<Exclude<FilesResponse, { error: string }>>(result as never);
-        if (state.kind === 'loading') return <p className="hint">读取中...</p>;
-        if (state.kind === 'failed') return <p className="error-text">后端错误：{state.message}</p>;
+        if (state.kind === 'loading') return <p className="hint" data-testid="loading-state" data-loading-kind="files">读取中...</p>;
+        // T3-5：请求失败与「真没数据」必须是两种不同的锚点，否则用户分不清是接口挂了还是文件真没有
+        if (state.kind === 'failed') return <p className="error-text" data-testid="error-state" data-error-kind="files">后端错误：{state.message}</p>;
         if (state.data.blocked) {
           return (
             <div className="block-box">
@@ -603,7 +611,7 @@ export function FilesPanel({ project }: { project: string }) {
           <>
             <p className="subtle">根：{state.data.root}</p>
             {state.data.tree.children.length === 0 ? (
-              <p className="hint">该目录为空。</p>
+              <p className="hint" data-testid="empty-state" data-empty-kind="files">该目录为空。</p>
             ) : (
               <div className="file-tree">{state.data.tree.children.map((node) => renderNode(node, 0))}</div>
             )}
