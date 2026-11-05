@@ -610,7 +610,11 @@ export function writeSha256Sidecars(projectId) {
       );
     }
   }
-  const written = [];
+  // T3-6：两阶段提交。先算完全部摘要（纯读，不落盘），再一次性写 sidecar；
+  // 写阶段任一步失败就把本轮已写的 sidecar 全部删掉，不留半包。
+  // 原实现边算边写：第 3 个文件写失败时，前 2 个 .sha256 已经躺在盘上，
+  // 而 CHECKSUMS 还没生成，读方会看到「有部分旁挂哈希但没有清单」的脏状态。
+  const planned = [];
   for (const name of names.sort()) {
     if (!isAllowedDeliverableName(name)) continue;
     const file = path.join(dir, name);
@@ -620,9 +624,32 @@ export function writeSha256Sidecars(projectId) {
     } catch {
       continue;
     }
-    const digest = createHash('sha256').update(bytes).digest('hex');
-    fs.writeFileSync(`${file}.sha256`, `${digest}  ${name}\n`, 'utf8');
-    written.push({ name, sha256: digest, sidecar: `${name}.sha256` });
+    planned.push({ name, file, digest: createHash('sha256').update(bytes).digest('hex') });
+  }
+
+  const written = [];
+  try {
+    for (const item of planned) {
+      const sidecar = `${item.file}.sha256`;
+      // 先写临时文件再 rename：rename 在同一文件系统内原子，
+      // 读方要么读到旧的完整文件，要么读到新的完整文件，读不到半截。
+      const tmp = `${sidecar}.tmp`;
+      fs.writeFileSync(tmp, `${item.digest}  ${item.name}\n`, 'utf8');
+      fs.renameSync(tmp, sidecar);
+      written.push({ name: item.name, sha256: item.digest, sidecar: `${item.name}.sha256` });
+    }
+  } catch (cause) {
+    // 回滚：把本轮已写的 sidecar 与可能残留的 tmp 全部清掉，让盘上回到进入前的状态
+    for (const item of written) {
+      fs.rmSync(path.join(dir, `${item.name}.sha256`), { force: true });
+    }
+    for (const item of planned) {
+      fs.rmSync(path.join(dir, `${item.name}.sha256.tmp`), { force: true });
+    }
+    throw new Error(
+      `[REPORT_INTEGRITY_FAIL] 写 sidecar 中途失败，已回滚 ${written.length} 个文件: `
+      + (cause instanceof Error ? cause.message : String(cause)),
+    );
   }
   return written;
 }

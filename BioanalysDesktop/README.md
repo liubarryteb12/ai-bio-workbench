@@ -81,7 +81,7 @@ npm run dev        # 后端 18787 + 前端 5173 同时起
 npm test
 ```
 
-当前基线 **1506 tests / 1505 pass / 0 fail / 1 skipped**（151 个测试文件；口径由 ops/metrics_sync.mjs 实测 node --test 汇总行）｜代码规模 21697 SLOC（非空行，71 个文件）
+当前基线 **1509 tests / 1507 pass / 1 fail / 1 skipped**（152 个测试文件；口径由 ops/metrics_sync.mjs 实测 node --test 汇总行）｜代码规模 21723 SLOC（非空行，71 个文件）
 唯一 skip 是条件跳过（宿主缺 python+anndata 时 `bridge_stage` 的坏 h5ad 用例），属设计行为。
 链路断开时会是 `1077 / 1073 / 3+ / 1+`：那几条红来自 `proc.test.js` 真连、`consistency.test.js` 远端目录、`link.test.js` 四段自检，全是链路信号，见下面第 2 条。
 
