@@ -259,3 +259,9 @@ vendor/
 # 绿色便携包输出（构建产物，按需重建）
 /dist/
 .ops_state/
+
+# ===== 嵌套第三方版本库归档（2026-11-06 整理，见 docs/REFERENCE_CLEANUP_LEDGER.md）=====
+# reference/ 下曾内嵌 5 个上游仓库的完整 .git（1583 文件 / 12.65 MB，主仓跟踪数 0），
+# 会制造「嵌套仓库」告警与全仓搜索噪音。已移入下述归档区，归档区本身不入库。
+_archive/nested_git_*/
+reference/**/.git/
