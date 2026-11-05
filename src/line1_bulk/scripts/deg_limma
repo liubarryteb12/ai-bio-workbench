@@ -83,6 +83,20 @@ if (!setequal(samples, group_map$sample)) fail("样本集合与 group_map 不一
 mat <- as.matrix(expr[, .SD, .SDcols = samples])
 rownames(mat) <- expr$gene
 if (any(is.na(mat))) fail("表达矩阵含 NA")
+
+# 尺度守卫（生信代码专项审核）：limma 的 lmFit/eBayes 假定输入已是 log2 尺度。
+# 若直接喂原始计数，logFC 会被算成「差值的 log2 比」，量纲完全错。
+# 实测证据（GSE316126 NanoString 原始计数，782 基因 36 样本）：
+#   原始尺度喂入 -> max|log2FC| = 15113（荒谬），min_padj = 0.869
+#   先 log2(x+1) 再喂 -> max|log2FC| = 2.47（合理），min_padj = 0.583
+# 判据用「上四分位数 > 50」：log2 尺度的表达矩阵上四分位通常是个位数到十几，
+# 而原始计数的中位数就已几百。这个阈值足够区分两种尺度，不会误伤正常的 log2 数据。
+q75 <- as.numeric(quantile(mat, 0.75, na.rm = TRUE))
+if (q75 > 50) {
+  fail(sprintf(paste0("表达矩阵疑似未经 log 变换（上四分位数 %.2f > 50）：",
+                      "limma 要求 log2 尺度输入，原始计数会让 logFC 量纲失真。",
+                      "请先做 log2(x+1) 或 voom 变换后再提交"), q75))
+}
 groups <- factor(setNames(group_map$group, group_map$sample)[samples])
 if (length(levels(groups)) != 2) fail("deg_limma 只支持两组比较")
 if (min(table(groups)) < 2) fail("有分组样本数不足 2")
