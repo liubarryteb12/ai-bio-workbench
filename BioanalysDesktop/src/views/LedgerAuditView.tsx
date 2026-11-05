@@ -407,7 +407,16 @@ export function LedgerPanel() {
       )}
 
       {result && 'error' in result && (
-        <p className="error-text" role="alert" data-testid="error-state" data-error-kind="ledger">后端错误：{result.error}</p>
+        <div className="error-card" role="alert" data-testid="error-state" data-error-kind="ledger">
+          <h3 className="error-card-title">台账读取失败</h3>
+          <p className="error-text">{result.error}</p>
+          <p className="hint">
+            巡检依赖 SSH 往返读服务器台账。请确认 K40 可达后重试；本页不会在读取失败时显示任何"合规"结论。
+          </p>
+          <button type="button" className="btn btn-primary" onClick={() => void run()} disabled={loading}>
+            {loading ? '重试中...' : '重试'}
+          </button>
+        </div>
       )}
 
       {result && 'blocked' in result && result.blocked && (
