@@ -267,18 +267,23 @@ export function FiguresPanel({ project }: { project: string }) {
 
       {(() => {
         const state = readApiState<Exclude<FiguresResponse, { error: string }>>(result as never);
-        if (state.kind === 'loading') return <p className="hint">读取中...</p>;
-        if (state.kind === 'failed') return <p className="error-text">后端错误：{state.message}</p>;
+        // 三态与空态各带固定 data-testid 锚点（T3-5 契约）。
+        // 原实现三态逻辑都在，但全是裸 <p>，E2E 只能靠文案猜，
+        // 而 t35 测试把本视图列进 VIEWS 却从未断言它，等于有一块盲区。
+        if (state.kind === 'loading') return <p className="hint" data-testid="loading-state">读取中...</p>;
+        if (state.kind === 'failed') {
+          return <p className="error-text" data-testid="error-state" data-error-kind="figures">后端错误：{state.message}</p>;
+        }
         if (state.data.blocked) {
           return (
-            <div className="block-box">
+            <div className="block-box" data-testid="error-state" data-error-kind="blocked">
               <strong>阻塞：{state.data.reason}</strong>
               <p className="hint">{state.data.hint}</p>
             </div>
           );
         }
         if (state.data.figures.length === 0) {
-          return <p className="hint">该线 figures/ 目录暂无图件。先跑该线的 *_figures 步骤。</p>;
+          return <p className="hint" data-testid="empty-state" data-empty-kind="figures">该线 figures/ 目录暂无图件。先跑该线的 *_figures 步骤。</p>;
         }
         return (
           <>

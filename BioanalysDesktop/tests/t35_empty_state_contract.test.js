@@ -62,3 +62,32 @@ test("T3-5：res.ok 必须在解析业务实体前判定（错误体是 { error 
   const setIdx = src.indexOf("setProjectMeta(");
   assert.ok(failIdx !== -1 && setIdx !== -1, "锚点缺失");
 });
+
+// 第 64 轮补：VIEWS[1]（FigureGalleryView）此前被声明在数组里却从未被任何断言引用，
+// 是明确的测试盲区。该视图的三态逻辑本来就在，但全是裸 <p>，E2E 只能靠文案猜。
+// 补锚点之后这里把它真正纳入契约覆盖。
+test("T3-5：FigureGalleryView 也必须三态可区分（补盲区）", () => {
+  const src = read(VIEWS[1]);
+  assert.ok(/data-testid="loading-state"/.test(src), "FigureGalleryView 缺 loading-state 锚点");
+  assert.ok(/data-testid="error-state"/.test(src), "FigureGalleryView 缺 error-state 锚点");
+  assert.ok(/data-testid="empty-state"/.test(src), "FigureGalleryView 缺 empty-state 锚点");
+  assert.ok(/data-empty-kind="figures"/.test(src), "空态必须注明是 figures 类空");
+  assert.ok(/data-error-kind="figures"/.test(src), "错误态必须归类 figures");
+  assert.ok(/data-error-kind="blocked"/.test(src), "阻塞态须与后端错误分开归类");
+});
+
+test("T3-5：FigureGalleryView 的 .map 前必须有 length 守卫", () => {
+  const src = read(VIEWS[1]);
+  assert.ok(/figures\.length\s*(?:===|>|!==)/.test(src), "figures.map 前缺 length 守卫");
+});
+
+test("T3-5：VIEWS 数组里每个视图都至少被一条断言覆盖（防再次留盲区）", () => {
+  const testSrc = fs.readFileSync(path.join(REPO, "BioanalysDesktop/tests/t35_empty_state_contract.test.js"), "utf8");
+  // 逐个索引检查，不用 || 兜底：兜底会让断言永远为真，反而掩盖新的盲区。
+  for (let i = 0; i < VIEWS.length; i += 1) {
+    assert.ok(
+      new RegExp("read\\(VIEWS\\[" + i + "\\]\\)").test(testSrc),
+      "VIEWS[" + i + "]（" + VIEWS[i] + "）从未被 read()，存在盲区"
+    );
+  }
+});
