@@ -17,6 +17,10 @@ import { BLACKLIST_HINT, checkTumorBlacklist } from '../tumor_blacklist.js';
 import { shellQuote } from '../proc.js';
 import { describeSeries, loadWorkflows, resolvePlan, validateRegistry } from '../workflow_graph.js';
 import { collectJsonBody, runJsonRoute, JSON_BODY_LIMIT } from '../http_body.js';
+// Q2：声明式路由表 + service 层。先迁移 4 个无副作用端点验证模式，
+// 其余 8 个（含建项/图件/执行计划等重逻辑）在后续提交里逐步迁移。
+import { dispatchRoutes } from '../route_dispatcher.js';
+import * as projectService from '../services/project.service.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -42,26 +46,55 @@ function readLocalProjectMeta(repoRoot, projectId) {
   }
 }
 
-export async function handleProjectRoutes(req, res, url, {
-  PORTAL_INBOX, deployDataFiles, isSafeManifestName, json,
-  lineFromPipeline, listInboxManifests, listProjectsWithMeta, readPackageManifest,
-  runRemote, runRemoteRaw, uploadPreparedFigureScripts,
-  REPO_ROOT = DEFAULT_REPO_ROOT,
-}) {
-  if (url.pathname === '/api/projects/list') {
-    // 项目列表：数据面按项目分文件夹后，界面据此渲染项目选择器
-    try {
-      const projects = listProjectsWithMeta();
-      json(res, 200, { defaultProject: DEFAULT_PROJECT, projects });
-      return true;
-    } catch (cause) {
-      json(res, 500, {
-        error: cause instanceof Error ? cause.message : String(cause),
-        hint: '读项目列表失败；链路不通时先跑 /api/link/check',
-      });
-      return true;
-    }
-  }
+export async function handleProjectRoutes(req, res, url, deps) {
+  const {
+    PORTAL_INBOX, deployDataFiles, isSafeManifestName, json,
+    lineFromPipeline, listInboxManifests, listProjectsWithMeta, readPackageManifest,
+    runRemote, runRemoteRaw, uploadPreparedFigureScripts,
+    REPO_ROOT = DEFAULT_REPO_ROOT,
+  } = deps;
+
+  // Q2：声明式路由表。每个描述符自带 method/path/querySchema/handler，
+  // 前置管道（鉴权/参数校验/请求体采集）由 route_dispatcher 统一执行，
+  // handler 只写业务。表里每一条都能被测试静态遍历审视。
+  const ROUTES = [
+    {
+      method: 'GET',
+      path: '/api/projects/list',
+      handler: async ({ json: reply }) => {
+        const r = projectService.listProjects({ listProjectsWithMeta });
+        reply(res, r.status, r.payload);
+      },
+    },
+    {
+      method: 'GET',
+      path: '/api/projects/steps',
+      handler: async ({ json: reply }) => {
+        const r = projectService.getProjectSteps();
+        reply(res, r.status, r.payload);
+      },
+    },
+    {
+      method: 'GET',
+      path: '/api/workflows',
+      handler: async ({ json: reply }) => {
+        const r = projectService.getWorkflows();
+        reply(res, r.status, r.payload);
+      },
+    },
+    {
+      method: 'GET',
+      path: '/api/projects/meta',
+      // projectId 的 sanitize 由分发器按 querySchema 执行；非法值 400 且不进 service
+      querySchema: { project: 'projectId' },
+      handler: async ({ query, json: reply }) => {
+        const r = projectService.getProjectMeta(query.project, { runRemote, repoRoot: REPO_ROOT });
+        reply(res, r.status, r.payload);
+      },
+    },
+  ];
+
+  if (await dispatchRoutes({ req, res, url, json, runJsonRoute }, ROUTES)) return true;
 
   if (url.pathname === '/api/projects/create' && req.method === 'POST') {
     // 建项目：建三线数据子目录 + 写 project.json，已存在则拒绝（不覆盖）
@@ -236,29 +269,6 @@ export async function handleProjectRoutes(req, res, url, {
       return json(res, 200, { hit: result.hit, matches: result.matches, hint: BLACKLIST_HINT });
     });
 
-    return true;
-  }
-
-  // 三线可选步骤列表（前端级联勾选用）
-  if (url.pathname === '/api/projects/steps') {
-    json(res, 200, { steps: LINE_STEPS, meta: PIPELINE_STEP_META });
-    return true;
-  }
-
-  // --- mod 注册表（单一事实源 src/workflows.json）---
-  // 与 /api/projects/steps 的区别：那个是「母版名」兼容视图（旧前端在用），
-  // 这三个是注册表本体，返回 mod id / 阶段 / 依赖 / 成本，供组合校验用。
-  if (url.pathname === '/api/workflows') {
-    const wf = loadWorkflows();
-    const check = validateRegistry();
-    json(res, 200, {
-      // 客户端一次拿全：系列清单 + 每条线的阶段与 mod + 全局约束
-      series: wf.series.map((s) => describeSeries(s.id)),
-      constraints: wf.constraints,
-      // 注册表自洽状态一并下发：坏了客户端能看到，而不是静默拿到半份图
-      registry_ok: check.ok,
-      registry_errors: check.errors,
-    });
     return true;
   }
 
@@ -475,51 +485,6 @@ export async function handleProjectRoutes(req, res, url, {
         lineId: meta.line_id || lineFromPipeline(meta.pipeline_dag) || null,
         tasks: plan.tasks,
       });
-    });
-    return true;
-  }
-
-  if (url.pathname === '/api/projects/meta') {
-    const projectId = sanitizeProjectId(url.searchParams.get('project') || '');
-    if (!projectId) {
-      json(res, 400, { error: 'project 参数非法' });
-      return true;
-    }
-    let meta = null;
-    try {
-      const encoded = runRemote(buildReadProjectMetaCommand(projectId));
-      if (encoded.trim()) {
-        meta = parseProjectMeta(Buffer.from(encoded.trim(), 'base64').toString('utf8'));
-      }
-    } catch (cause) {
-      json(res, 500, {
-        error: `读取 project.json 失败: ${cause instanceof Error ? cause.message : String(cause)}`,
-      });
-      return true;
-    }
-    // T3-5：远端读不到时回落本地 local_projects/<id>/project.json。
-    // 顺序刻意是「远端优先、本地兜底」：远端才是算力面真源，本地只是没同步时的可读副本。
-    if (!meta) meta = readLocalProjectMeta(REPO_ROOT, projectId);
-    if (!meta) {
-      json(res, 404, { error: `项目 ${projectId} 不存在或缺少 project.json` });
-      return true;
-    }
-    json(res, 200, {
-      projectId,
-      // 只回出图相关与解读需要的字段，避免把整份 meta（含备注原文）透给只读视图
-      plotLayoutConfig: meta.plot_layout_config || null,
-      analysisCutoffs: meta.analysis_cutoffs || null,
-      dataSourceMode: meta.data_source?.data_source_mode || 'PUBLIC_DB',
-      focusGenes: meta.biological_priors?.focus_genes || [],
-      targetKoGene: meta.biological_priors?.target_ko_gene || '',
-      stepCount: Array.isArray(meta.pipeline_dag) ? meta.pipeline_dag.length : 0,
-      // T3-8：首屏要判断「这个项目到底配了什么」，光有出图配置不够。下面三项是
-      // 建项四段式 manifest 里的核心语义，缺任何一项前端都只能猜。
-      // 缺字段一律给 null/[]，不编默认值：默认值会让「没配」和「配了空」不可区分。
-      projectName: meta.name || null,
-      schemaVersion: meta.schema_version ?? null,
-      datasets: Array.isArray(meta.data_source?.datasets) ? meta.data_source.datasets : [],
-      groupingDesign: meta.grouping_design || null,
     });
     return true;
   }
