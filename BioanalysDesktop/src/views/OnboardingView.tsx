@@ -125,6 +125,8 @@ export function OnboardingPortal({
   // 模块 C
   const [selectedLine, setSelectedLine] = useState<string>('');
   const [stepsData, setStepsData] = useState<StepsResponse['steps'] | null>(null);
+  // 三态可读（P2）：原先 catch 静默吞掉失败，用户只看到空白下拉框，分不清「还在加载」「没有步骤」「后端挂了」。
+  const [stepsError, setStepsError] = useState<string | null>(null);
   const [stepsMeta, setStepsMeta] = useState<Record<string, StepMeta>>({});
   const [selectedSteps, setSelectedSteps] = useState<string[]>([]);
   const [koGene, setKoGene] = useState('');
@@ -190,8 +192,9 @@ export function OnboardingPortal({
         const payload = (await res.json()) as StepsResponse;
         setStepsData(payload.steps);
         setStepsMeta(payload.meta || {});
-      } catch {
-        // 静默，用户选线时再看有没有
+      } catch (cause) {
+        // 不再静默：失败要能显示出来，否则用户面对空下拉框无从判断。
+        setStepsError(cause instanceof Error ? cause.message : String(cause));
       }
     })();
   }, []);
@@ -945,8 +948,25 @@ export function OnboardingPortal({
     void loadInbox();
   }, [loadInbox]);
 
+  const stepsLoading = stepsData === null && stepsError === null;
+  const stepsEmpty = stepsData !== null
+    && Object.values(stepsData).every((list) => !Array.isArray(list) || list.length === 0);
+
   return (
     <div className="view-container">
+      {stepsLoading && (
+        <p className="hint" role="status" data-testid="loading-state" data-loading-kind="projects">正在加载分析步骤目录...</p>
+      )}
+      {stepsError && (
+        <p className="error-text" role="alert" data-testid="error-state" data-error-kind="projects">
+          步骤目录加载失败：{stepsError}
+        </p>
+      )}
+      {stepsEmpty && (
+        <p className="hint" data-testid="empty-state" data-empty-kind="projects">
+          后端未返回任何分析步骤，请确认工作流清单已部署。
+        </p>
+      )}
       {/* 模块 0：从客户需求导入 */}
       <div className="module-card">
         <ModuleHeading

@@ -234,7 +234,7 @@ export function PiAgentMonitor() {
   return (
     <div className="view-container">
       {loadError && (
-        <div className="error-card" role="alert">
+        <div className="error-card" role="alert" data-testid="error-state" data-error-kind="pi-calls">
           <h3 className="error-card-title">监控数据加载失败</h3>
           <p className="error-text">{loadError}</p>
           <p className="hint">面板会每 3 秒自动重试一次；也可点下方"刷新"立即重试。</p>
@@ -243,6 +243,14 @@ export function PiAgentMonitor() {
           </button>
         </div>
       )}
+      {!loadError && !overview && (
+        <p className="hint" role="status" data-testid="loading-state" data-loading-kind="pi-calls">正在读取 Pi Agent 监控数据...</p>
+      )}
+
+      {!loadError && overview && !(calls?.calls?.length) && (
+        <p className="hint" data-testid="empty-state" data-empty-kind="pi-calls">暂无 A2A 调用记录，面板每 3 秒自动刷新。</p>
+      )}
+
       <div className="pi-status-row">
         <div className="card pi-status-card">
           <div className="card-head"><h2 className="card-title">Pi Agent 状态</h2>

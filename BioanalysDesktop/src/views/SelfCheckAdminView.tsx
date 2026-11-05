@@ -65,7 +65,7 @@ export function PreFlightDashboard() {
         </div>
 
         {error && (
-          <div className="error-card" role="alert">
+          <div className="error-card" role="alert" data-testid="error-state" data-error-kind="selfcheck">
             <h3 className="error-card-title">检测失败</h3>
             <p className="error-text">{error}</p>
             <p className="hint">
@@ -77,6 +77,14 @@ export function PreFlightDashboard() {
               {loading ? '重试中...' : '重试'}
             </button>
           </div>
+        )}
+
+        {loading && !result && (
+          <p className="hint" role="status" data-testid="loading-state" data-loading-kind="selfcheck">正在读取自检结果...</p>
+        )}
+
+        {!loading && !result && !error && (
+          <p className="hint" data-testid="empty-state" data-empty-kind="selfcheck">尚未执行自检，点击"重新检测"开始。</p>
         )}
 
         {result && (

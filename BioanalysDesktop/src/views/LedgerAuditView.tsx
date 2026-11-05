@@ -398,9 +398,17 @@ export function LedgerPanel() {
         </div>
       </div>
 
-      {!result && <p className="hint">点"开始巡检"读取服务器台账并逐条判定。</p>}
+      {loading && (
+        <p className="hint" role="status" data-testid="loading-state" data-loading-kind="ledger">正在巡检服务器台账...</p>
+      )}
 
-      {result && 'error' in result && <p className="error-text">后端错误：{result.error}</p>}
+      {!loading && !result && (
+        <p className="hint" data-testid="empty-state" data-empty-kind="ledger">点"开始巡检"读取服务器台账并逐条判定。</p>
+      )}
+
+      {result && 'error' in result && (
+        <p className="error-text" role="alert" data-testid="error-state" data-error-kind="ledger">后端错误：{result.error}</p>
+      )}
 
       {result && 'blocked' in result && result.blocked && (
         <div className="block-box">
