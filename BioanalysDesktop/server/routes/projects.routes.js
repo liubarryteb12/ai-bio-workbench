@@ -513,6 +513,13 @@ export async function handleProjectRoutes(req, res, url, {
       focusGenes: meta.biological_priors?.focus_genes || [],
       targetKoGene: meta.biological_priors?.target_ko_gene || '',
       stepCount: Array.isArray(meta.pipeline_dag) ? meta.pipeline_dag.length : 0,
+      // T3-8：首屏要判断「这个项目到底配了什么」，光有出图配置不够。下面三项是
+      // 建项四段式 manifest 里的核心语义，缺任何一项前端都只能猜。
+      // 缺字段一律给 null/[]，不编默认值：默认值会让「没配」和「配了空」不可区分。
+      projectName: meta.name || null,
+      schemaVersion: meta.schema_version ?? null,
+      datasets: Array.isArray(meta.data_source?.datasets) ? meta.data_source.datasets : [],
+      groupingDesign: meta.grouping_design || null,
     });
     return true;
   }
