@@ -67,7 +67,9 @@ test('远端命令里凡来自请求的插值都必须过 shellQuote', () => {
 test('ledger_fetch 与 query_views 的余震点已显式引号化', () => {
   const cases = [
     ['ledger_fetch.js', /shellQuote\(logsDir\)/],
-    ['ledger_fetch.js', /shellQuote\(remotePath\)/],
+    // 单次往返改造后不再有逐个 remotePath 的拼接：远端用 "$f" 变量遍历，
+    // 本地只注入一个已 shellQuote 的目录。断言改成「批量脚本里引号包住了 $f」。
+    ['ledger_fetch.js', /\[ -f \\"\$f\\" \]/],
     ['query_views.js', /shellQuote\(guard\.dir\)/],
   ];
   for (const [rel, pattern] of cases) {
