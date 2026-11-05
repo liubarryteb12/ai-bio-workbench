@@ -133,10 +133,52 @@ padj_cut <- cut$p_cut
 p_used <- if (cut$p_field == "pvalue") deg_table$P_Value else deg_table$adj_P_Val
 p_label <- if (cut$p_field == "pvalue") "p" else "adj p"
 deg_table[, is_sig := abs(log2FC) > logfc_cut & p_used < padj_cut]
+
+# --- 队列效应诊断列（生信代码专项审核 P1）---
+# 病灶：跨队列比较（如新鲜活检 vs 重新对齐的历史系列）时，某基因可能在某一组里
+# 几乎全为零（单侧沉默），它会被 limma 判成"高度显著"，但那是批次差异不是生物学差异。
+# DCM 基准实测 43,098 个基因里 11,841 个（27%）属此类，直接把 AUC 推到 1.000。
+# 这里给每行打三个可机读标记，让下游能自己过滤，而不必依赖报告里的口头说明。
+group_levels <- levels(groups)
+case_idx <- which(groups == group_levels[2])
+ctrl_idx <- which(groups == group_levels[1])
+silent_share <- function(idx) {
+  if (length(idx) == 0) return(rep(NA_real_, nrow(mat)))
+  rowSums(mat[, idx, drop = FALSE] <= 0) / length(idx)
+}
+deg_table[, case_zero_share := round(silent_share(case_idx), 4)]
+deg_table[, ctrl_zero_share := round(silent_share(ctrl_idx), 4)]
+# 单侧沉默：一组 >=95% 为零，另一组 <50% 为零
+deg_table[, is_single_side_silent :=
+  (case_zero_share >= 0.95 & ctrl_zero_share < 0.5) |
+  (ctrl_zero_share >= 0.95 & case_zero_share < 0.5)]
+# 低检出：两组中位表达都 <= 0（表达量过低，统计量不可靠）
+deg_table[, is_low_detection :=
+  (case_zero_share >= 0.5) & (ctrl_zero_share >= 0.5)]
+# 技术性非编码：基因名形如 __ ambiguous / ERCC / 无 symbol 的占位
+deg_table[, is_technical := grepl("^(ERCC|__|LOC\\d+$)", gene) | !nzchar(gene)]
+deg_table[, cohort_suspect := is_single_side_silent | is_low_detection | is_technical]
+
 sig_table <- deg_table[is_sig == TRUE][order(adj_P_Val)]
 fwrite(deg_table[, !"is_sig"], "deg_all.tsv", sep = "\t")
 # 0 显著时也要落带表头的空表：下游拿不到文件比空表更难排查
 fwrite(sig_table[, !"is_sig"], "deg_sig.tsv", sep = "\t")
+
+# 队列过滤版显著表（与 deg_sig.tsv 并行，不删原行）：审核建议的第三张表。
+# 保留 deg_all.tsv / deg_sig.tsv 的行数与字段兼容，过滤只出新文件，
+# 让"看到什么"和"信什么"两件事各自可追溯。
+sig_filtered <- sig_table[cohort_suspect == FALSE]
+fwrite(sig_filtered[, !"is_sig"], "deg_sig_cohortfiltered.tsv", sep = "\t")
+n_suspect <- sum(deg_table$cohort_suspect)
+n_sig_suspect <- sum(sig_table$cohort_suspect)
+cat("cohort_diagnostics=1\n", sep = "")
+cat("single_side_silent=", sum(deg_table$is_single_side_silent), "\n", sep = "")
+cat("low_detection=", sum(deg_table$is_low_detection), "\n", sep = "")
+cat("technical=", sum(deg_table$is_technical), "\n", sep = "")
+cat("cohort_suspect_total=", n_suspect, "\n", sep = "")
+cat("sig_before_filter=", nrow(sig_table), "\n", sep = "")
+cat("sig_after_filter=", nrow(sig_filtered), "\n", sep = "")
+cat("sig_removed=", n_sig_suspect, "\n", sep = "")
 
 # 三分类配色对齐 figure_spec v2.2 与第二十九轮 Argon 裁定：
 # 上调红 #EE0000 / 下调蓝 #3B4992 / 不显著灰 #BEBEBE。只按"显著与否"上色会让
