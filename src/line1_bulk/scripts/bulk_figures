@@ -9,7 +9,7 @@
 # 输出：写到 ../figures/（独立出图目录，不混进 processed/）
 #   l1_01_correlation.png / 02_pca.png / 03_volcano.png /
 #   04_topvar_heatmap.png / 05_qc.png / 06_ma.png
-# 口径：docs/figure_spec.md（Agg/150dpi/英文标签；PCA 带 95% 置信椭圆；
+# 口径：docs/figure_spec.md（Agg/300dpi/英文标签；PCA 带 95% 置信椭圆；
 #       火山/MA 上调红、下调蓝、非显著灰，带图例；
 #       图注置于坐标轴框外：横版图在下方横向一行，竖版图在右上角纵向多行）。
 set -euo pipefail

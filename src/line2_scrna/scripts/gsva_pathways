@@ -22,7 +22,7 @@
 # 口径：GSVA 是"通路活性打分"，与 ORA/GSEA 的"差异富集"不同，回答"哪些通路在哪些
 #   细胞类型活跃"。pseudobulk = celltype x sample 的 counts 求和后 CP10K+log1p；
 #   输入矩阵用整合对象内全基因 counts（非 scaled X，避免负值）；R GSVA 包 kcdf=Gaussian。
-# 口径：docs/figure_spec.md（Agg/150dpi/英文标签；热图行=通路列=细胞类型；
+# 口径：docs/figure_spec.md（Agg/300dpi/英文标签；热图行=通路列=细胞类型；
 #       colorbar 带 label；图注置坐标轴框外）。
 set -euo pipefail
 

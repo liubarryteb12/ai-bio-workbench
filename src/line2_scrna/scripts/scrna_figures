@@ -11,7 +11,7 @@
 #   07_marker_top5.png / 08_deg_volcano.png / 09_deg_sig_bar.png /
 #   10_pca_diagnosis.png（95% 置信椭圆）
 #
-# 口径：图件规范见 docs/figure_spec.md（Agg/150dpi/英文标签；火山图上调红下调蓝；
+# 口径：图件规范见 docs/figure_spec.md（Agg/300dpi/英文标签；火山图上调红下调蓝；
 #       PCA 带 95% 置信椭圆；图注置于坐标轴框外，横版图在下方横向一行，
 #       竖版图在右上角纵向多行）。
 set -euo pipefail

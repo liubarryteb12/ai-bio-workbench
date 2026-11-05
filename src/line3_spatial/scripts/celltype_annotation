@@ -24,7 +24,7 @@
 #   4. 不依赖外部参考数据集（白名单工具 TransferData/CARD/RCTD 需 Seurat，
 #      容器未装；本方案用域 marker 自签名，属无监督近似）。
 #
-# 口径：docs/figure_spec.md（Agg/150dpi/英文标签；图注置坐标轴框外；
+# 口径：docs/figure_spec.md（Agg/300dpi/英文标签；图注置坐标轴框外；
 #       图例不压数据；DR 角标不适用此处非敲除产物）。
 set -euo pipefail
 

@@ -7,7 +7,7 @@
 #   l3_{sp}_01_domains.png / 02_target_gene.png / 03_ko_dr.png /
 #   04_morans_top.png / 05_knockout_dr.png / 06_umap_sample.png /
 #   07_domain_composition.png
-# 口径：docs/figure_spec.md（Agg/150dpi/英文标签/逐样本空间图因像素坐标不可比；
+# 口径：docs/figure_spec.md（Agg/300dpi/英文标签/逐样本空间图因像素坐标不可比；
 #       图注置于坐标轴框外，横版图在下方横向一行，竖版图在右上角纵向多行）。
 set -euo pipefail
 

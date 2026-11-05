@@ -13,7 +13,7 @@
 #   dr_enrichment_{mouse,human}.tsv / dr_overlap_{mouse,human}.tsv / dr_post_report.txt
 #   ../figures/l3_{mouse,human}_10_dr_gsea_top.png / l3_{mouse,human}_11_dr_overlap.png
 #
-# 口径：docs/figure_spec.md（Agg/150dpi/英文标签；DR 不是 DEG；富集条形双标注；
+# 口径：docs/figure_spec.md（Agg/300dpi/英文标签；DR 不是 DEG；富集条形双标注；
 #       图注置坐标轴框外；小鼠/人源基因集分物种，不混用）。
 set -euo pipefail
 

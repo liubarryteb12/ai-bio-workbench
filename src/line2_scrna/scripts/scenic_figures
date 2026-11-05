@@ -7,7 +7,7 @@
 # 输出（写到 ../figures/）：
 #   l2_scenic_01_regulon_heatmap.png   top-30 regulon x celltype 活性热图
 #   l2_scenic_02_top_regulons.png      top-20 regulon 特异性 z 条形图（标注首选 celltype）
-# 口径：docs/figure_spec.md（Agg/150dpi/英文标签；图注置于坐标轴框外，
+# 口径：docs/figure_spec.md（Agg/300dpi/英文标签；图注置于坐标轴框外，
 #       横版图在下方横向一行，竖版图在右上角纵向多行）。
 set -euo pipefail
 

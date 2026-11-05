@@ -17,7 +17,7 @@
 #   3. prerank GSEA：每域全 top200 marker 按 logfoldchanges 排序。
 #   4. 落 tsv：enrichment_ora_{species}.tsv / enrichment_gsea_{species}.tsv / enrichment_report.txt
 #
-# 口径：docs/figure_spec.md（Agg/150dpi/英文标签；富集条形 NES/富集比 + 校正 p 双标注；
+# 口径：docs/figure_spec.md（Agg/300dpi/英文标签；富集条形 NES/富集比 + 校正 p 双标注；
 #       图注置坐标轴框外；图例不压数据）。出图由 enrichment_figures 步骤负责。
 set -euo pipefail
 

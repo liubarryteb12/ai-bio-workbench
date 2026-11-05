@@ -9,7 +9,7 @@
 # 输出：写到 ../figures/（独立出图目录，不混进 processed/）
 #   l3_mouse_12_ora_top.png / l3_mouse_13_gsea_top.png
 #   l3_human_12_ora_top.png / l3_human_13_gsea_top.png
-# 口径：docs/figure_spec.md（Agg/150dpi/英文标签；富集条形按显著性排序，
+# 口径：docs/figure_spec.md（Agg/300dpi/英文标签；富集条形按显著性排序，
 #       NES/富集比 + 校正 p 双标注；图注置于坐标轴框外；图例不压数据；域数 > 20 扩 60 色板）。
 set -euo pipefail
 

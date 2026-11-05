@@ -16,7 +16,7 @@
 #   dr_enrichment.tsv / dr_regulatory_network.tsv / dr_overlap.tsv / dr_post_report.txt
 #   ../figures/l2_15_dr_gsea_top.png / l2_16_dr_regulatory_network.png / l2_17_dr_overlap.png
 #
-# 口径：docs/figure_spec.md（Agg/150dpi/英文标签；DR 不是 DEG；富集条形双标注；
+# 口径：docs/figure_spec.md（Agg/300dpi/英文标签；DR 不是 DEG；富集条形双标注；
 #       网络边=regulon 靶向关系并注明来源；图例/colorbar 带 label；图注置轴框外）。
 set -euo pipefail
 

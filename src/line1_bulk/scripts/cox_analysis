@@ -15,7 +15,7 @@
 #   cox_univariate.tsv / cox_multivariate.tsv / cox_forest.pdf / cox_report.txt
 #   ../figures/l1_27_cox_forest.png（有生存数据时）
 #
-# 口径：docs/figure_spec.md（Agg/150dpi/英文标签；图注置坐标轴框外）。
+# 口径：docs/figure_spec.md（Agg/300dpi/英文标签；图注置坐标轴框外）。
 set -euo pipefail
 
 RSCRIPT_BIN="${BIOANALYS_RSCRIPT:-/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript}"

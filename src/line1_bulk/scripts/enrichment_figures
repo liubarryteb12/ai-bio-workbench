@@ -8,7 +8,7 @@
 #   enrichment_module_ora.tsv（WGCNA 模块 ORA，含 ont 列）/ enrichment_kegg.tsv（KEGG ORA）
 # 输出：写到 ../figures/（独立出图目录，不混进 processed/）
 #   l1_13_gsea_top.png / l1_14_module_ora_top.png / l1_15_kegg_top.png / l1_25_kegg_gsea_top.png
-# 口径：docs/figure_spec.md（Agg/150dpi/英文标签；富集条形按显著性排序，
+# 口径：docs/figure_spec.md（Agg/300dpi/英文标签；富集条形按显著性排序，
 #       NES/富集比 + 校正 p 双标注；图注置于坐标轴框外）。
 set -euo pipefail
 

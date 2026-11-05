@@ -18,7 +18,7 @@
 #   ml_cluster_samples.tsv / ml_corr_network.tsv / ml_hub_report.txt
 #   ../figures/l1_16..l1_24（9 张）
 #
-# 口径：docs/figure_spec.md（Agg/150dpi/英文标签；图注置坐标轴框外；图例/colorbar 带 label；
+# 口径：docs/figure_spec.md（Agg/300dpi/英文标签；图注置坐标轴框外；图例/colorbar 带 label；
 #       热图行=基因列=观测；富集类双标注不适用此处）。全部结论按当前样本量标注为探索性。
 set -euo pipefail
 

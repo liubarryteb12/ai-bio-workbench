@@ -16,7 +16,7 @@
 # 目标基因池口径：敲除基因 ∪ 各 celltype 组间差异最显著的 top2 基因（数据驱动代表基因）。
 # 表达口径：X 在步骤 4 已换成 scale z-score，不能直接用；从 layers['counts'] 重算
 #   log 归一化（normalize_total(1e4)+log1p，复现步骤 3），与步骤 15 deg_groups 同源。
-# 口径：docs/figure_spec.md（Agg/150dpi/英文标签；点大小=表达细胞占比，颜色=平均表达；
+# 口径：docs/figure_spec.md（Agg/300dpi/英文标签；点大小=表达细胞占比，颜色=平均表达；
 #       图例与 colorbar 带 label，图注置坐标轴框外）。
 set -euo pipefail
 
