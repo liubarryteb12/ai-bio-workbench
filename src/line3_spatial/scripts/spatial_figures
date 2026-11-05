@@ -92,6 +92,7 @@ START = time.time()
 OUT = "../figures"
 os.makedirs(OUT, exist_ok=True)
 made = []
+render_ms = []   # 逐图渲染耗时 (name, ms)，写进 figures_manifest 供超时审计
 
 
 def log(m):
@@ -99,10 +100,15 @@ def log(m):
 
 
 def save(fig, name):
+    # 逐图计时（Argon 第 65 轮 Q3/Q4）：单图 30s 设计目标 / 60s 硬上限。
+    # 计时进 manifest，超时从「不可见」变成「回执可查」，不必为查超时连 K40 真跑。
+    _t0 = time.perf_counter()
     fig.savefig(os.path.join(OUT, name))
     plt.close(fig)
+    _ms = (time.perf_counter() - _t0) * 1000.0
     made.append(name)
-    log("wrote %s" % name)
+    render_ms.append((name, _ms))
+    log("wrote %s render_ms=%.1f" % (name, _ms))
 
 
 def caption(fig, *parts):
@@ -632,6 +638,8 @@ try:
             os.path.basename(sys.argv[0]),
             os.environ.get("BIOANALYS_SEED", "UNSET"),
             OUT, len(made), time.time() - START, chr(10)))
+        for _rn, _rms in render_ms:
+            _fh.write("render_ms=%s=%.1f%s" % (_rn, _rms, chr(10)))
         for _n in made:
             _p = os.path.join(OUT, _n)
             _sz = os.path.getsize(_p) if os.path.exists(_p) else -1
