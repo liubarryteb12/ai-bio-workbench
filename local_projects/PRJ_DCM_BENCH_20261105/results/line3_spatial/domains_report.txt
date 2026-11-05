@@ -1,0 +1,60 @@
+step=domains_visium
+seed=20261105
+input_qc=/mnt/ssd/bio_data/projects/PRJ_DCM_BENCH_20261105/line3_spatial/processed/spatial_qc_mouse.h5ad
+resolution=0.6（写死；三切片只需粗结构域 LV 游离壁/室间隔/纤维化区，0.6 约每样本 4~8 域，更高会切碎域降低 marker 功效）
+spatial_graph_source=native_cKDTree（squidpy 在本机不可用：No module named 'squidpy'）
+method=每样本独立 spatial_neighbors(6 邻) + HVG2000 + PCA50 + leiden(igraph, n_iter=2)
+domains_total=47
+sample A_Ctrl: spots=1935 domains=15 mean_conn_per_spot=6.5 n_pcs=50
+sample C_TTg_HF: spots=2157 domains=15 mean_conn_per_spot=6.4 n_pcs=50
+sample D_Ctrl_HF: spots=2986 domains=17 mean_conn_per_spot=6.3 n_pcs=50
+域的解剖命名（LV wall/septum/fibrosis）是人工解读；本脚本只输出编号域（<sample>_d<k>）与每域 top10 marker 证据。
+domain A_Ctrl_d0 size=122 per_sample={"A_Ctrl": 122, "C_TTg_HF": 0, "D_Ctrl_HF": 0} top_markers=Myl2,Myl3,Cox6a2,B2m,Pttg1,Myh6,Lrtm1,Mb,Kcnip2,Mt1
+domain A_Ctrl_d1 size=199 per_sample={"A_Ctrl": 199, "C_TTg_HF": 0, "D_Ctrl_HF": 0} top_markers=Tnnt2,Myl2,Myh6,Myl3,Tnnc1,Cox6a2,Mb,Eno3,Gbp4,Pttg1
+domain A_Ctrl_d10 size=105 per_sample={"A_Ctrl": 105, "C_TTg_HF": 0, "D_Ctrl_HF": 0} top_markers=Myh6,Pln,Lpl,Atp2a2,Tnnt2,Cox7a1,Tnnc1,Ryr2,Pttg1,Cox6a2
+domain A_Ctrl_d11 size=176 per_sample={"A_Ctrl": 176, "C_TTg_HF": 0, "D_Ctrl_HF": 0} top_markers=Myh6,Myl3,Tpm2,Myl2,Clu,Cyfip2,Pln,Tnnc1,Bdh1,Fsd2
+domain A_Ctrl_d12 size=109 per_sample={"A_Ctrl": 109, "C_TTg_HF": 0, "D_Ctrl_HF": 0} top_markers=Pln,Myh6,Tnnt2,Atp2a2,Lpl,Ryr2,Eno3,Cox6a2,Lrtm1,Tnnc1
+domain A_Ctrl_d13 size=147 per_sample={"A_Ctrl": 147, "C_TTg_HF": 0, "D_Ctrl_HF": 0} top_markers=Myh6,Myl3,Myl2,Bdh1,Tnnc1,Tpm2,B2m,Gbp4,Cyfip2,Pah
+domain A_Ctrl_d14 size=62 per_sample={"A_Ctrl": 62, "C_TTg_HF": 0, "D_Ctrl_HF": 0} top_markers=Myh6,Pln,Atp2a2,Lpl,Tnnt2,Cox7a1,Ryr2,Cox6a2,Tcp11l2,Eno3
+domain A_Ctrl_d2 size=183 per_sample={"A_Ctrl": 183, "C_TTg_HF": 0, "D_Ctrl_HF": 0} top_markers=Myl2,Myl3,Cox6a2,Mb,Bdh1,Gbp4,Pttg1,Eno3,Myh6,B2m
+domain A_Ctrl_d3 size=187 per_sample={"A_Ctrl": 187, "C_TTg_HF": 0, "D_Ctrl_HF": 0} top_markers=Myl3,Myl2,Mb,Myh6,Cox6a2,Tnnc1,Cryab,Hbb-bs,Aqp1,Cyfip2
+domain A_Ctrl_d4 size=71 per_sample={"A_Ctrl": 71, "C_TTg_HF": 0, "D_Ctrl_HF": 0} top_markers=Myl2,Mb,Myh6,Myl3,Cox6a2,Tnnt2,Pln,Dmpk,Atp2a2,Fth1
+domain A_Ctrl_d5 size=86 per_sample={"A_Ctrl": 86, "C_TTg_HF": 0, "D_Ctrl_HF": 0} top_markers=Myl2,Myl3,Tnnt2,Myh6,Tpm1,Gbp4,Ryr2,Cox6a2,Pttg1,Ttn
+domain A_Ctrl_d6 size=122 per_sample={"A_Ctrl": 122, "C_TTg_HF": 0, "D_Ctrl_HF": 0} top_markers=Tnnt2,Myl3,Myh6,Mybpc3,Myl2,Atp2a2,Mb,Pln,Dmpk,Kcnip2
+domain A_Ctrl_d7 size=136 per_sample={"A_Ctrl": 136, "C_TTg_HF": 0, "D_Ctrl_HF": 0} top_markers=Tpm2,Myl3,Myh6,Myl2,Pttg1,Tnnt2,Bdh1,Tpm1,Ptms,Clu
+domain A_Ctrl_d8 size=53 per_sample={"A_Ctrl": 53, "C_TTg_HF": 0, "D_Ctrl_HF": 0} top_markers=Hspb6,Lrtm1,Pah,Myl3,Tnnc1,Bdh1,Gbp4,Myh6,B2m,Pln
+domain A_Ctrl_d9 size=177 per_sample={"A_Ctrl": 177, "C_TTg_HF": 0, "D_Ctrl_HF": 0} top_markers=Myl3,Tpm2,Myh6,Mybpc3,Mb,Cyfip2,Gbp4,Bdh1,Clu,Myl2
+domain C_TTg_HF_d0 size=118 per_sample={"A_Ctrl": 0, "C_TTg_HF": 118, "D_Ctrl_HF": 0} top_markers=Tbx5,Mef2c,Gata4,Hand2,Lrtm1,Acadl,Ckm,Eno3,Dlst,Hspb8
+domain C_TTg_HF_d1 size=180 per_sample={"A_Ctrl": 0, "C_TTg_HF": 180, "D_Ctrl_HF": 0} top_markers=Hand2,Gata4,Tbx5,Mef2c,Acadl,Nppa,Atp5a1,Slc25a20,Etfdh,Cs
+domain C_TTg_HF_d10 size=205 per_sample={"A_Ctrl": 0, "C_TTg_HF": 205, "D_Ctrl_HF": 0} top_markers=Tbx5,Gata4,Hand2,Mef2c,Hbb-bs,Pln,Tesc,Acadl,Cs,Scn5a
+domain C_TTg_HF_d11 size=124 per_sample={"A_Ctrl": 0, "C_TTg_HF": 124, "D_Ctrl_HF": 0} top_markers=Tbx5,Hand2,Gata4,Mef2c,Acadl,Hadha,Tesc,Pln,Kcnk3,Myh6
+domain C_TTg_HF_d12 size=131 per_sample={"A_Ctrl": 0, "C_TTg_HF": 131, "D_Ctrl_HF": 0} top_markers=Hand2,Tbx5,Mef2c,Gata4,Acadl,Cs,Lrtm1,Cacna2d1,Decr1,Acaa2
+domain C_TTg_HF_d13 size=132 per_sample={"A_Ctrl": 0, "C_TTg_HF": 132, "D_Ctrl_HF": 0} top_markers=Tbx5,Hand2,Mef2c,Gata4,Acadl,Nrap,Pink1,Map7d1,Ivns1abp,Acta1
+domain C_TTg_HF_d14 size=165 per_sample={"A_Ctrl": 0, "C_TTg_HF": 165, "D_Ctrl_HF": 0} top_markers=Tbx5,Mef2c,Hand2,Gata4,Myh6,Cs,Acadl,Atp5a1,Tnnt2,Acaa2
+domain C_TTg_HF_d2 size=180 per_sample={"A_Ctrl": 0, "C_TTg_HF": 180, "D_Ctrl_HF": 0} top_markers=Gata4,Tbx5,Hand2,Mef2c,Cs,Acadl,Atp5a1,Mid1ip1,Acaa2,Pink1
+domain C_TTg_HF_d3 size=160 per_sample={"A_Ctrl": 0, "C_TTg_HF": 160, "D_Ctrl_HF": 0} top_markers=Acta1,Ankrd1,Tbx5,Hspb7,Gata4,Mef2c,Hand2,Igfbp5,Hspb8,Nppa
+domain C_TTg_HF_d4 size=113 per_sample={"A_Ctrl": 0, "C_TTg_HF": 113, "D_Ctrl_HF": 0} top_markers=Tbx5,Myom2,Myl1,Hand2,Gata4,Hbb-bs,Nppa,Mef2c,Mylk3,Msrb1
+domain C_TTg_HF_d5 size=102 per_sample={"A_Ctrl": 0, "C_TTg_HF": 102, "D_Ctrl_HF": 0} top_markers=Hand2,Gata4,Tbx5,Mef2c,Acadl,Sdhb,Uqcrfs1,Etfdh,Nebl,Hadha
+domain C_TTg_HF_d6 size=106 per_sample={"A_Ctrl": 0, "C_TTg_HF": 106, "D_Ctrl_HF": 0} top_markers=Nppa,Tbx5,Myl1,Hand2,Gata4,Myom2,Mef2c,Atpif1,Tpm1,Pam
+domain C_TTg_HF_d7 size=132 per_sample={"A_Ctrl": 0, "C_TTg_HF": 132, "D_Ctrl_HF": 0} top_markers=Acta1,Hand2,Hspb7,Gata4,Tbx5,Ankrd1,Mef2c,Acadl,Hspb8,Igfbp5
+domain C_TTg_HF_d8 size=191 per_sample={"A_Ctrl": 0, "C_TTg_HF": 191, "D_Ctrl_HF": 0} top_markers=Tbx5,Mef2c,Hand2,Gata4,Acadl,Hbb-bs,Slc25a20,Lbh,Atp5a1,Tesc
+domain C_TTg_HF_d9 size=118 per_sample={"A_Ctrl": 0, "C_TTg_HF": 118, "D_Ctrl_HF": 0} top_markers=Tbx5,Hand2,Gata4,Mef2c,Acadl,Lrtm1,Atp5a1,Acta1,Slc25a20,Cyc1
+domain D_Ctrl_HF_d0 size=253 per_sample={"A_Ctrl": 0, "C_TTg_HF": 0, "D_Ctrl_HF": 253} top_markers=Fabp4,Pdk4,Cxcl14,Cd36,C3,Ech1,Angptl4,Txnip,Eef1a1,Decr1
+domain D_Ctrl_HF_d1 size=185 per_sample={"A_Ctrl": 0, "C_TTg_HF": 0, "D_Ctrl_HF": 185} top_markers=Fabp4,Pdk4,Cd36,Rbp7,Eef1a1,Cxcl14,Fabp3,Angptl4,Txnip,Ptp4a3
+domain D_Ctrl_HF_d10 size=259 per_sample={"A_Ctrl": 0, "C_TTg_HF": 0, "D_Ctrl_HF": 259} top_markers=Myh7,Pdk4,Hbb-bs,Fabp4,Ankrd23,Txnip,Ankrd1,Acta1,Idh2,Rbp7
+domain D_Ctrl_HF_d11 size=149 per_sample={"A_Ctrl": 0, "C_TTg_HF": 0, "D_Ctrl_HF": 149} top_markers=Hbb-bs,Pdk4,Hba-a2,Fabp4,Myh7,Casq2,Ptp4a3,Txnip,Angptl4,Fabp3
+domain D_Ctrl_HF_d12 size=135 per_sample={"A_Ctrl": 0, "C_TTg_HF": 0, "D_Ctrl_HF": 135} top_markers=Pdk4,Myh7,Fabp4,Hspb7,Cd36,Ech1,Txnip,Fabp3,Igfbp5,Vim
+domain D_Ctrl_HF_d13 size=107 per_sample={"A_Ctrl": 0, "C_TTg_HF": 0, "D_Ctrl_HF": 107} top_markers=Casq2,Myh7,Pdk4,Decr1,Hadhb,Fabp4,Ccdc141,Idh2,Fabp3,Myoz2
+domain D_Ctrl_HF_d14 size=161 per_sample={"A_Ctrl": 0, "C_TTg_HF": 0, "D_Ctrl_HF": 161} top_markers=Myh7,Idh2,Acta1,Fabp4,Txnip,Cd36,Pdk4,Ech1,Igfbp5,Ankrd23
+domain D_Ctrl_HF_d15 size=164 per_sample={"A_Ctrl": 0, "C_TTg_HF": 0, "D_Ctrl_HF": 164} top_markers=Pdk4,Acaa2,Decr1,Ech1,Fabp4,C3,Atp5g3,Cd36,Mt1,Cox7a1
+domain D_Ctrl_HF_d16 size=180 per_sample={"A_Ctrl": 0, "C_TTg_HF": 0, "D_Ctrl_HF": 180} top_markers=Pdk4,Ech1,Acta1,Decr1,Fabp3,Bsg,Myh7,Cd36,Txnip,Fabp4
+domain D_Ctrl_HF_d2 size=215 per_sample={"A_Ctrl": 0, "C_TTg_HF": 0, "D_Ctrl_HF": 215} top_markers=Myh7,Fabp4,Acta1,Ankrd1,Pdk4,Fabp3,Ankrd23,Nppa,Hspb7,Des
+domain D_Ctrl_HF_d3 size=132 per_sample={"A_Ctrl": 0, "C_TTg_HF": 0, "D_Ctrl_HF": 132} top_markers=Myh7,Nppa,Ankrd1,Eef1a1,Fabp4,Col1a2,Postn,Ccdc80,Mgp,Sparc
+domain D_Ctrl_HF_d4 size=165 per_sample={"A_Ctrl": 0, "C_TTg_HF": 0, "D_Ctrl_HF": 165} top_markers=Myh7,Fabp4,Ankrd1,Nppa,Pdk4,Sparc,Eef1a1,Vim,Cxcl14,Fabp3
+domain D_Ctrl_HF_d5 size=50 per_sample={"A_Ctrl": 0, "C_TTg_HF": 0, "D_Ctrl_HF": 50} top_markers=Hbb-bs,Pdk4,Fabp3,Hba-a2,Idh2,Fabp4,Decr1,Ech1,Ptp4a3,Casq2
+domain D_Ctrl_HF_d6 size=196 per_sample={"A_Ctrl": 0, "C_TTg_HF": 0, "D_Ctrl_HF": 196} top_markers=Pdk4,Fabp4,Myh7,Cd36,Casq2,Fabp3,Txnip,Ptp4a3,Eef1a1,Ankrd23
+domain D_Ctrl_HF_d7 size=203 per_sample={"A_Ctrl": 0, "C_TTg_HF": 0, "D_Ctrl_HF": 203} top_markers=Myh7,Acta1,Ankrd1,Ankrd23,Hspb6,Des,Cryab,Igfbp5,Fabp3,Hspb7
+domain D_Ctrl_HF_d8 size=207 per_sample={"A_Ctrl": 0, "C_TTg_HF": 0, "D_Ctrl_HF": 207} top_markers=Pdk4,Tnni3,Fabp4,Cd36,Hadha,Decr1,Mb,Acaa2,Stard7,Fabp3
+domain D_Ctrl_HF_d9 size=225 per_sample={"A_Ctrl": 0, "C_TTg_HF": 0, "D_Ctrl_HF": 225} top_markers=Myh7,Pdk4,Fabp4,Casq2,Ptp4a3,Hadha,Ankrd1,Cd36,Fabp3,Txnip
+limitation_note=resolution 固定 0.6 未做敏感性双跑；marker 为 wilcoxon top10 非特异列表，人工命名需对照组织图；squidpy 参数按安装版签名探测
+elapsed_sec=22.5

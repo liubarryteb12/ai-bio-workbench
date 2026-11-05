@@ -1,0 +1,12 @@
+step=localization_visium
+seed=20261105
+input_h5ad=/mnt/ssd/bio_data/projects/PRJ_DCM_BENCH_20261105/line3_spatial/processed/deconv_mouse.h5ad
+targets=ATM,RPL7,ANKRD36C,UBN2,INO80D
+targets_found=3 missing=2（RPL7,ANKRD36C；缺失如实报告不静默）
+figures_written=9（l3_20_<gene>_<sample>.png，300dpi，lowres 底图 + spot 圆点色阶）
+gene ATM: expressed_spots=215 mean=0.026 marker_for=-
+gene UBN2: expressed_spots=1336 mean=0.171 marker_for=-
+gene INO80D: expressed_spots=2170 mean=0.295 marker_for=-
+每图色阶按该样本该基因 p99 独立缩放，跨图颜色不可直接比较；横向比较用 tsv 数值
+limitation_note=主对比 n=1 vs 1，靶基因定位差异只能描述性陈述；域是编号域，纤维化域需人工对照 marker 证据认领；obs['target_gene_expr'] 只承载首靶，全量在 tsv
+elapsed_sec=5.6

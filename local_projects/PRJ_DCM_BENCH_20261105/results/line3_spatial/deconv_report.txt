@@ -1,0 +1,13 @@
+step=deconv_visium
+seed=20261105
+input_h5ad=/mnt/ssd/bio_data/projects/PRJ_DCM_BENCH_20261105/line3_spatial/processed/domains_mouse.h5ad
+signature=/mnt/ssd/bio_data/projects/PRJ_DCM_BENCH_20261105/line2_scrna/processed/results/signatures.tsv
+celltypes=B_cell,T_cell,cardiomyocyte,endothelial,fibroblast,macrophage,pericyte,schwann_nerve,smooth_muscle
+map_mode=symbol_exact_upper（无正式 ortholog 表：同名精确匹配，匹配率如实报告）
+matched_genes=14678/29317 rate=50.1% unmatched_ref_markers=14639（分母是签名基因数，未匹配如实报告，不假装正式 ortholog）
+nnls solved=7078/7078 zero_or_failed=0
+sample A_Ctrl median_fraction: B_cell=0.000, T_cell=0.000, cardiomyocyte=0.733, endothelial=0.074, fibroblast=0.000, macrophage=0.189, pericyte=0.000, schwann_nerve=0.000, smooth_muscle=0.000
+sample C_TTg_HF median_fraction: B_cell=0.000, T_cell=0.000, cardiomyocyte=0.757, endothelial=0.067, fibroblast=0.000, macrophage=0.171, pericyte=0.000, schwann_nerve=0.000, smooth_muscle=0.000
+sample D_Ctrl_HF median_fraction: B_cell=0.000, T_cell=0.000, cardiomyocyte=0.671, endothelial=0.133, fibroblast=0.000, macrophage=0.192, pericyte=0.000, schwann_nerve=0.000, smooth_muscle=0.000
+limitation_note=主对比 n=1 vs 1：纤维化区 vs 正常区的解卷积差异只能到描述级别，无组内重复不支持推断统计；签名为人源（Line 2），跨物种 symbol 映射偏差未量化；NNLS 线性混合假设作用于 log1p 域是近似；比例列仅对 solved spot 有效，zero-row 记 unknown
+elapsed_sec=9.5
