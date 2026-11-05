@@ -319,6 +319,49 @@ function gateRemoteQuoting() {
   }
   return { name: 'remote-quoting', total, failures, skipped: [] };
 }
+/**
+ * 门禁：backed 对象禁止整层物化（2026-11-05，Argon 第 38 轮 Q4 要求）。
+ *
+ * 背景（真机实测，不是推测）：anndata 在 backed 模式下做子集物化时，会先把整个
+ * layers 里的稀疏矩阵读进内存再切片。本基准 nnz = 2.1 亿，单 indices 就 802 MiB，
+ * 单层约 2.4 GB，直接触发 Android 内核 lowmemorykiller 杀掉 Termux：
+ *   lowmemorykiller: Kill "com.termux", oom_score_adj 0, reason: device is in direct reclaim
+ * Python RSS 在 12 秒内从 476MB 涨到 9,063MB。换成 h5_rows 行块读取后峰值 792MB。
+ *
+ * 判定：同一文件里既出现 backed="r" 打开，又出现对该对象的 .to_memory() 调用或
+ * 显式全量 .X[...] 切片，即判失败，要求改走 h5_rows / spatial_stats 的流式读取器。
+ * 只报「同一文件内同时出现」，避免跨文件误伤。
+ */
+function gateBackedMaterialize(files) {
+  const PY_TARGETS = files.filter((f) => /\.py$/.test(f)
+    && /src[\\/](line2_scrna|line3_spatial)[\\/]/.test(f)
+    && !/[\\/]tests[\\/]/.test(f)
+    && !/h5_rows\.py$/.test(f));
+  const failures = [];
+  for (const file of PY_TARGETS) {
+    const text = fs.readFileSync(file, "utf8");
+    const backedLines = text.split("\n").filter((l) => /backed\s*=\s*['"]r['"]/.test(l));
+    if (backedLines.length === 0) continue;
+    const offenders = [];
+    const lines = text.split("\n");
+    for (let i = 0; i < lines.length; i += 1) {
+      const line = lines[i];
+      if (/^\s*#/.test(line)) continue;
+      if (/\.to_memory\s*\(/.test(line)) {
+        offenders.push("L" + (i + 1) + " .to_memory() 会整层加载 layers");
+      } else if (/\.X\s*\[\s*(:\.*)?\s*\]/.test(line) && !/h5py|read_csr_rows/.test(line)) {
+        offenders.push("L" + (i + 1) + " 全量 .X[...] 切片");
+      }
+    }
+    if (offenders.length > 0) {
+      failures.push({
+        file: path.relative(REPO, file),
+        reason: "backed 模式下整层物化（应改用 h5_rows 行块读取）：" + offenders.join("；"),
+      });
+    }
+  }
+  return { name: "backed-materialize", total: PY_TARGETS.length, failures, skipped: [] };
+}
 function main() {
   const only = (() => {
     const i = process.argv.indexOf('--only');
@@ -336,6 +379,7 @@ function main() {
   results.push(gateShebang(allFiles));
   results.push(gateHostPollution());
   results.push(gateRemoteQuoting());
+  results.push(gateBackedMaterialize(allFiles));
   if (!only || only === 'sh') {
     results.push(gateBareRscript(collect('.sh')));
     results.push(gateShell(collect('.sh'), bash));
