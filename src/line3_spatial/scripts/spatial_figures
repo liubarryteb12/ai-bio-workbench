@@ -305,7 +305,13 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         colors, _ = cat_colors(d)
         # 域用分类色，必须给图例（规范：颜色=分类标签时图例可读）。
         # 域标签形如 <样本>_d<k>，放轴框外右侧以免压住组织点云。
-        fig, ax = plt.subplots(figsize=(6.8, 5.5))
+        # 图幅按竖版声明（高>宽）。根因修正（2026-11-06 用户指出不合规范）：
+        # 原 figsize=(6.8, 5.5) 是横版声明，但 ax.set_aspect("equal") 让数据区锁成方形，
+        # 加上 bbox="tight" 后实际落盘是 1287x1695 的竖版图。于是 legend_out / caption
+        # 按「横版」把图例放到轴框下方、图注放到左下角，与真实图幅错位，
+        # 渲染结果就是图缩在右上、大片留白、图例图注都在左下。
+        # 声明竖版后两处锚点与真实图幅同向，图例与图注都落到轴框右侧。
+        fig, ax = plt.subplots(figsize=(6.0, 7.6))
         for dd in sorted(set(d)):
             mm = d == dd
             ax.scatter(xy[m][mm, 0], xy[m][mm, 1], s=4, color=colors[dd],
@@ -352,7 +358,9 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
     vmax = np.percentile(tgt, 99) if len(tgt) else 1
     for s in samples:
         m = samp == s
-        fig, ax = plt.subplots(figsize=(5.5, 5.5))
+        # 竖版声明（高>宽）：colorbar 外挂后实际落盘是 1659x1857 竖版，
+        # 声明方形会让 caption 走横版分支、锚点落到左下角，与本图真实图幅错位。
+        fig, ax = plt.subplots(figsize=(5.6, 7.0))
         sc = ax.scatter(xy[m, 0], xy[m, 1], c=tgt[m], s=4, cmap="viridis",
                         vmin=0, vmax=vmax, linewidths=0)
         caption(fig, "line3 %s: %s target gene" % (species, s),
@@ -394,7 +402,8 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         ko_gene = _uns_dict(a, "knockout").get("ko_gene", "?")
         for s in samples:
             m = samp == s
-            fig, ax = plt.subplots(figsize=(5.5, 5.5))
+            # 同 02_target_gene：colorbar 外挂后实际是竖版，声明须同向
+            fig, ax = plt.subplots(figsize=(5.6, 7.0))
             sc = ax.scatter(xy[m, 0], xy[m, 1], c=koe[m], s=4, cmap="magma",
                             vmin=0, vmax=vmax, linewidths=0)
             caption(fig, "line3 %s: %s KO(%s) DR mean expr" % (species, s, ko_gene),
@@ -632,6 +641,122 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         plt.rcParams["figure.autolayout"] = True
     else:
         log("skip %s_16_domain_panel（缺样本或域标签）" % pre)
+
+# --- 17 celltype 注释热图（2026-11-06 补：celltype_annotation 跑了却没配图） ---
+# 数据来自同目录 celltype_scores_<sp>.tsv（行=域，列=细胞类型打分）。
+# 只画 top 15 细胞类型 × 全部域，避免全矩阵铺满；值域用 z-score 便于跨类型比较。
+_ct_path = "celltype_scores_%s.tsv" % species
+if os.path.isfile(_ct_path):
+    try:
+        _ct = pd.read_csv(_ct_path, sep="\t", index_col=0)
+        if _ct.shape[0] and _ct.shape[1]:
+            _ct = _ct.iloc[:, :15]
+            _z = (_ct - _ct.mean()) / (_ct.std(ddof=0).replace(0, 1))
+            fig, ax = plt.subplots(figsize=(7.5, 4.8))
+            im = ax.imshow(_z.to_numpy(), aspect="auto", cmap="cividis")
+            ax.set_yticks(np.arange(_ct.shape[0]))
+            ax.set_yticklabels([str(x)[:22] for x in _ct.index], fontsize=8)
+            ax.set_xticks(np.arange(_ct.shape[1]))
+            ax.set_xticklabels([str(x)[:18] for x in _ct.columns], rotation=45,
+                               ha="right", fontsize=8)
+            cb = fig.colorbar(im, ax=ax, fraction=0.036, pad=0.02)
+            cb.set_label("celltype score z-score")
+            caption(fig, "line3 %s: celltype deconvolution per spatial domain" % species,
+                    "colour = z-score across domains (row-wise)",
+                    "n=%d domains, top %d cell types" % (_ct.shape[0], _ct.shape[1]))
+            save(fig, "%s_17_celltype_heatmap.png" % pre)
+    except Exception as _e:
+        log("skip 17_celltype_heatmap: %s" % _e)
+else:
+    log("skip 17_celltype_heatmap: 缺 %s" % _ct_path)
+
+# --- 18 域共现矩阵（2026-11-06 补：spatial_cooccurrence 跑了却没配图） ---
+_co_path = "domain_cooccurrence_%s.tsv" % species
+if os.path.isfile(_co_path):
+    try:
+        _co = pd.read_csv(_co_path, sep="\t", index_col=0)
+        if _co.shape[0] and _co.shape[1]:
+            top_n = min(30, _co.shape[0])
+            _co = _co.iloc[:top_n, :top_n]
+            fig, ax = plt.subplots(figsize=(7.0, 6.0))
+            im = ax.imshow(_co.to_numpy(), cmap="magma", aspect="auto")
+            ax.set_xticks(np.arange(_co.shape[1]))
+            ax.set_xticklabels([str(x)[:16] for x in _co.columns], rotation=90, fontsize=8)
+            ax.set_yticks(np.arange(_co.shape[0]))
+            ax.set_yticklabels([str(x)[:16] for x in _co.index], fontsize=8)
+            cb = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.02)
+            cb.set_label("co-occurrence (shared boundary length)")
+            caption(fig, "line3 %s: domain co-occurrence" % species,
+                    "colour = shared-boundary co-occurrence between spatial domains",
+                    "top %d domains shown" % top_n)
+            save(fig, "%s_18_domain_cooccurrence.png" % pre)
+    except Exception as _e:
+        log("skip 18_domain_cooccurrence: %s" % _e)
+else:
+    log("skip 18_domain_cooccurrence: 缺 %s" % _co_path)
+
+# --- 19 细胞通讯强度（2026-11-06 补：spatial_communication 跑了却没配图） ---
+_cm_path = "sample_communication_%s.tsv" % species
+if os.path.isfile(_cm_path):
+    try:
+        _cm = pd.read_csv(_cm_path, sep="\t")
+        if _cm.shape[0]:
+            num_cols = [c for c in _cm.columns
+                        if pd.api.types.is_numeric_dtype(_cm[c])]
+            lab_col = next((c for c in _cm.columns if c not in num_cols), None)
+            if num_cols:
+                pick = num_cols[:8]
+                labels = (_cm[lab_col].astype(str) if lab_col
+                          else pd.Series(np.arange(len(_cm)))).tolist()
+                fig, ax = plt.subplots(figsize=(7.5, max(4.0, len(_cm) * 0.28)))
+                _mat = _cm[pick].to_numpy(dtype=float)
+                im = ax.imshow(_mat, cmap="viridis", aspect="auto")
+                ax.set_yticks(np.arange(len(_cm)))
+                ax.set_yticklabels([str(x)[:24] for x in labels], fontsize=8)
+                ax.set_xticks(np.arange(len(pick)))
+                ax.set_xticklabels([str(x)[:20] for x in pick], rotation=45,
+                                   ha="right", fontsize=8)
+                cb = fig.colorbar(im, ax=ax, fraction=0.036, pad=0.02)
+                cb.set_label("communication strength")
+                caption(fig, "line3 %s: ligand-receptor communication" % species,
+                        "colour = interaction strength per sample (top %d pairs)" % len(pick))
+                save(fig, "%s_19_communication.png" % pre)
+    except Exception as _e:
+        log("skip 19_communication: %s" % _e)
+else:
+    log("skip 19_communication: 缺 %s" % _cm_path)
+
+# --- 20 目标基因空间定位（2026-11-06 补：spatial_localization 跑了却没配图） ---
+_lc_path = "gene_localization_%s.tsv" % species
+if os.path.isfile(_lc_path):
+    try:
+        _lc = pd.read_csv(_lc_path, sep="\t")
+        if _lc.shape[0]:
+            num_cols = [c for c in _lc.columns
+                        if pd.api.types.is_numeric_dtype(_lc[c])]
+            lab_col = next((c for c in _lc.columns if c not in num_cols), None)
+            if num_cols:
+                pick = num_cols[:8]
+                labels = (_lc[lab_col].astype(str) if lab_col
+                          else pd.Series(np.arange(len(_lc)))).tolist()
+                fig, ax = plt.subplots(figsize=(7.5, max(4.0, len(_lc) * 0.30)))
+                _mat = _lc[pick].to_numpy(dtype=float)
+                im = ax.imshow(_mat, cmap="cividis", aspect="auto")
+                ax.set_yticks(np.arange(len(_lc)))
+                ax.set_yticklabels([str(x)[:24] for x in labels], fontsize=8)
+                ax.set_xticks(np.arange(len(pick)))
+                ax.set_xticklabels([str(x)[:20] for x in pick], rotation=45,
+                                   ha="right", fontsize=8)
+                cb = fig.colorbar(im, ax=ax, fraction=0.036, pad=0.02)
+                cb.set_label("localized expression")
+                caption(fig, "line3 %s: target gene spatial localization" % species,
+                        "colour = localized expression per domain / region")
+                save(fig, "%s_20_localization.png" % pre)
+    except Exception as _e:
+        log("skip 20_localization: %s" % _e)
+else:
+    log("skip 20_localization: 缺 %s" % _lc_path)
+
 
 # 输入数据溯源（Argon 第 65 轮 B4）：只记产物清单时，「这张图由哪份数据渲染」不可证。
 # 大文件分级：超 500MB 全量读哈希会把 K40 的 I/O 拖死，改为 size + 首尾各 1MB 采样。
