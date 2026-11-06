@@ -144,21 +144,14 @@ def save(fig, name):
 
 
 def caption(fig, *parts):
-    """图注置于坐标轴框外：竖版图（宽<高）在右上角纵向多行；
-    横版图（宽>=高）在图幅下方纵向多行（一条一行，不横向拼接）。"""
+    """图注默认置于图幅左下角、轴框之外（y<0），靠 savefig(bbox="tight")
+    向下扩边容纳，因此不占用、也不挤压主图数据区（2026-11-06 用户裁定）。
+    不再按图幅横竖分支选位置：旧规范把竖版图注放右上，会与图例列抢空间。"""
     parts = [str(p) for p in parts if p not in (None, "")]
     if not parts:
         return
-    w, h = fig.get_size_inches()
     text = "\n".join(parts)
-    if w >= h:
-        fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8,
-                 linespacing=1.5)
-    else:
-        fig.text(1.02, 1.0, text, ha="left", va="top", fontsize=8,
-                 linespacing=1.5)
-
-
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
 def wrap_label(text, width=18):
     """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
     import textwrap

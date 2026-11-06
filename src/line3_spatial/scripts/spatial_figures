@@ -119,21 +119,14 @@ def save(fig, name):
 
 
 def caption(fig, *parts):
-    """图注置于坐标轴框外：竖版图（宽<高）在右上角纵向多行；
-    横版图（宽>=高）在图幅下方纵向多行（一条一行，不横向拼接）。"""
+    """图注默认置于图幅左下角、轴框之外（y<0），靠 savefig(bbox="tight")
+    向下扩边容纳，因此不占用、也不挤压主图数据区（2026-11-06 用户裁定）。
+    不再按图幅横竖分支选位置：旧规范把竖版图注放右上，会与图例列抢空间。"""
     parts = [str(p) for p in parts if p not in (None, "")]
     if not parts:
         return
-    w, h = fig.get_size_inches()
     text = "\n".join(parts)
-    if w >= h:
-        fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8,
-                 linespacing=1.5)
-    else:
-        fig.text(1.02, 1.0, text, ha="left", va="top", fontsize=8,
-                 linespacing=1.5)
-
-
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
 def wrap_label(text, width=18):
     """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
     import textwrap
@@ -323,6 +316,9 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         ax.set_aspect("equal")
         ax.set_xticks([])
         ax.set_yticks([])
+        # 关掉 figure.autolayout：它是全局 rcParam，会覆盖 subplots_adjust，
+        # 导致等比例数据区被重新居中、左侧留大片空白。
+        fig.set_layout_engine("none")
         fig.subplots_adjust(left=0.04, right=0.58, top=0.97, bottom=0.03)
         # 声明手动布局，阻止 layout_fix 守卫按「横版」把图例搬回轴框下方
         ax._manual_legend = True
@@ -330,16 +326,14 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
                         bbox_to_anchor=(1.02, 1.0), borderaxespad=0,
                         frameon=False, title="domain")
         leg.get_title().set_fontsize(8)
-        # 图注放在图例正下方，且必须用「轴坐标」与图例同一列。
-        # 首版用 fig.text(1.02, ...) 是 figure 坐标，1.02 已超出画布右缘，
-        # bbox=tight 会把画布向右撑开，图注被推到最右、与图例列之间空一大片。
-        # 改用 ax.text(..., transform=ax.transAxes) 后两者锚在同一条竖线上。
-        ax.text(1.02, 0.42,
-                "line3 %s: %s spatial domains\n" % (species, s)
-                + "coords = sample-local (obsm['spatial'])\n"
-                + "n=%d domains, n=%d spots" % (len(set(d)), len(d)),
-                transform=ax.transAxes, ha="left", va="top",
-                fontsize=8, linespacing=1.5, clip_on=False)
+        # 图注默认放图幅左下角、轴框外（y<0），由 bbox="tight" 向下扩边容纳，
+        # 因此不占用也不挤压主图数据区（2026-11-06 用户裁定）。
+        # 右栏只留给图例，图注不再与图例争同一列。
+        fig.text(0.01, -0.02,
+                 "line3 %s: %s spatial domains\n" % (species, s)
+                 + "coords = sample-local (obsm['spatial'])\n"
+                 + "n=%d domains, n=%d spots" % (len(set(d)), len(d)),
+                 ha="left", va="top", fontsize=8, linespacing=1.5)
         save(fig, "%s_01_domains_%s.png" % (pre, s))
 
     # --- 02 target gene expression（逐样本单图） ---
@@ -382,20 +376,22 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         ax.set_aspect("equal")
         ax.set_xticks([])
         ax.set_yticks([])
+        # 关掉 figure.autolayout：它是全局 rcParam，会覆盖 subplots_adjust，
+        # 导致等比例数据区被重新居中、左侧留大片空白。
+        fig.set_layout_engine("none")
         fig.subplots_adjust(left=0.04, right=0.55, top=0.97, bottom=0.03)
         # colorbar 是连续量的图例，必须带 label 说明它是什么（规范：图例可读）
         _cax = fig.add_axes([0.60, 0.55, 0.022, 0.38])
         _cb = fig.colorbar(sc, cax=_cax)
         _cb.set_label("expr", fontsize=8)
         _cb.ax.tick_params(labelsize=7)
-        # 图注与 01 同法：轴坐标锚在右栏，避免 figure 坐标把画布向右撑开
+        # 图注统一放图幅左下角（轴框外），右栏只留 colorbar
         ax._manual_legend = True
-        ax.text(1.14, 0.50,
-                "line3 %s: %s target gene\n" % (species, s)
-                + "coords = sample-local (obsm['spatial'])\n"
-                + "gene=%s, colour = expr" % top_gene,
-                transform=ax.transAxes, ha="left", va="top",
-                fontsize=8, linespacing=1.5, clip_on=False)
+        fig.text(0.01, -0.02,
+                 "line3 %s: %s target gene\n" % (species, s)
+                 + "coords = sample-local (obsm['spatial'])\n"
+                 + "gene=%s, colour = expr" % top_gene,
+                 ha="left", va="top", fontsize=8, linespacing=1.5)
         save(fig, "%s_02_target_gene_%s.png" % (pre, s))
 
     # --- 02b target gene by domain（域统计视图：规范要求表达值 + 域统计两个视图） ---
@@ -434,17 +430,19 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
             ax.set_aspect("equal")
             ax.set_xticks([])
             ax.set_yticks([])
+            # 关掉 figure.autolayout：它是全局 rcParam，会覆盖 subplots_adjust，
+            # 导致等比例数据区被重新居中、左侧留大片空白。
+            fig.set_layout_engine("none")
             fig.subplots_adjust(left=0.04, right=0.55, top=0.97, bottom=0.03)
             _kax = fig.add_axes([0.60, 0.55, 0.022, 0.38])
             _kcb = fig.colorbar(sc, cax=_kax)
             _kcb.set_label("KO DR expr", fontsize=8)
             _kcb.ax.tick_params(labelsize=7)
             ax._manual_legend = True
-            ax.text(1.14, 0.50,
-                    "line3 %s: %s KO(%s) DR mean expr\n" % (species, s, ko_gene)
-                    + "coords = sample-local (obsm['spatial'])",
-                    transform=ax.transAxes, ha="left", va="top",
-                    fontsize=8, linespacing=1.5, clip_on=False)
+            fig.text(0.01, -0.02,
+                     "line3 %s: %s KO(%s) DR mean expr\n" % (species, s, ko_gene)
+                     + "coords = sample-local (obsm['spatial'])",
+                     ha="left", va="top", fontsize=8, linespacing=1.5)
             save(fig, "%s_03_ko_dr_%s.png" % (pre, s))
 
         # --- 03b KO DR by domain（域统计视图：规范要求表达值 + 域统计两个视图） ---

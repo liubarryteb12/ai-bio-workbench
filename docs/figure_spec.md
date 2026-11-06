@@ -70,30 +70,33 @@ plt.rcParams.update({
 ## 三之二、图注（caption）与图例（legend）位置
 
 图注是图的说明文字（含标题语义与关键口径），**必须置于坐标轴框（axes）之外**，
-不得压住数据点或图例。位置由图幅横竖决定：
+不得压住数据点或图例。
+
+**图注默认位置一律为图幅左下角**（2026-11-06 用户裁定：「每个图的介绍默认写在图的左下角，
+并不要影响主图展示」）。实现方式是把文字锚在 `y<0`（轴框下方、画布之外），
+由 `savefig(bbox_inches="tight")` 向下扩边容纳，因此**不占用、也不挤压主图数据区**。
 
 | 对象 | 图幅方向 | 判定 | 位置 | 排布 |
 |---|---|---|---|---|
-| 图注 caption | 横向（landscape） | 宽 >= 高 | 图幅下方（轴框外，左下起） | 纵向多行，一条一行 |
-| 图注 caption | 竖向（portrait） | 宽 < 高 | 图幅右上角（轴框外） | 纵向多行，一条一行 |
+| 图注 caption | 全部 | 不区分 | **图幅左下角（轴框外，y<0）** | 纵向多行，一条一行 |
 | 图例 legend | 横向（landscape） | 宽 >= 高 | 轴框下方 | 纵向单列；> 12 条按列分组 |
 | 图例 legend | 竖向（portrait） | 宽 < 高 | 轴框右上角 | 纵向单列，条目不重叠 |
+
+图注不再按图幅横竖分支：旧规范把竖版图注放右上，会与图例列争空间，
+且使图注落到读者视线之外。图例仍按横竖外置，与本裁定无关。
 
 统一实现（三线脚本各内嵌同名函数，落盘时由 `bbox_inches="tight"` 自动扩边包含）：
 
 ```python
 def caption(fig, *parts):
-    """图注置于坐标轴框外：竖版图（宽<高）在右上角纵向多行；
-    横版图（宽>=高）在图幅下方纵向多行（一条一行，不横向拼接）。"""
+    """图注默认置于图幅左下角、轴框之外（y<0），靠 savefig(bbox="tight")
+    向下扩边容纳，因此不占用、也不挤压主图数据区（2026-11-06 用户裁定）。
+    不再按图幅横竖分支选位置：旧规范把竖版图注放右上，会与图例列抢空间。"""
     parts = [str(p) for p in parts if p not in (None, "")]
     if not parts:
         return
-    w, h = fig.get_size_inches()
     text = "\n".join(parts)
-    if w >= h:
-        fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
-    else:
-        fig.text(1.02, 1.0, text, ha="left", va="top", fontsize=8, linespacing=1.5)
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
 ```
 
 - 调用处不再用 `ax.set_title()` / `fig.suptitle()`，一律改 `caption(fig, 条目1, 条目2, ...)`

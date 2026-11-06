@@ -52,25 +52,24 @@ test("01_domains 图例锚点在轴框右侧（x>1）", () => {
   assert.ok(Number(m[1]) > 1, "图例锚点 x 必须 >1（轴框右侧），实际 " + m[1]);
 });
 
-test("01_domains 图注用轴坐标锚在右栏，与图例同一列", () => {
+test("01_domains 图注锚在图幅左下角（轴框外），右栏只留图例", () => {
   const code = domainsBlock();
-  const m = code.match(/ax\.text\(([\d.]+),\s*([\d.]+)/);
-  assert.ok(m, "01_domains 图注必须用 ax.text 显式定位");
-  assert.ok(Number(m[1]) > 1, "图注锚点 x 必须 >1（轴框右侧），实际 " + m[1]);
-  // 必须用轴坐标，用 figure 坐标会把画布向右撑开、与图例列之间留空隙
-  assert.match(code, /transform=ax\.transAxes/,
-    "图注必须用 transform=ax.transAxes，与图例锚在同一列");
-  assert.equal(/^\s*caption\(fig,/m.test(code), false,
-    "01_domains 不得再调 caption()（它会按横竖自动选锚点，与本图固定右栏冲突）");
+  // 2026-11-06 用户裁定：图注默认左下角，不占用主图数据区
+  const m = code.match(/fig\.text\(\s*0\.01\s*,\s*(-?[\d.]+)/);
+  assert.ok(m, "01_domains 图注必须用 fig.text 锚在图幅左下角");
+  assert.ok(Number(m[1]) < 0, "图注 y 必须为负（轴框之外），实际 " + m[1]);
+  // 右栏不得再放图注文字（只留给图例）
+  assert.equal(/ax\.text\(\s*1\.\d+/.test(code), false,
+    "右栏不得再放图注文字，应改 fig.text 左下");
 });
 
-test("caption 与 legend_out 的通用分支保持规范定义", () => {
+test("caption 统一左下角；legend_out 仍按横竖分支", () => {
   const src = read();
   const cap = src.slice(src.indexOf("def caption("), src.indexOf("def caption(") + 900);
-  assert.match(cap, /fig\.text\(1\.02,\s*1\.0/, "caption 竖版分支锚点必须为 (1.02, 1.0)");
-  assert.match(cap, /fig\.text\(0\.01,\s*-0\.02/, "caption 横版分支锚点必须为 (0.01, -0.02)");
+  assert.match(cap, /fig\.text\(0\.01,\s*-0\.02/, "caption 锚点必须为左下 (0.01, -0.02)");
+  assert.equal(/if w >= h:/.test(cap), false, "caption 不得再按横竖分支");
   const lg = src.slice(src.indexOf("def legend_out("), src.indexOf("def legend_out(") + 900);
-  assert.match(lg, /if w >= h:/, "legend_out 必须按 w>=h 分横竖");
+  assert.match(lg, /if w >= h:/, "legend_out 仍须按 w>=h 分横竖");
   assert.match(lg, /bbox_to_anchor=\(1\.02,\s*1\.0\)/, "竖版图例锚点必须为 (1.02, 1.0)");
 });
 
