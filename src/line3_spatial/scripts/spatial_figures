@@ -330,12 +330,16 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
                         bbox_to_anchor=(1.02, 1.0), borderaxespad=0,
                         frameon=False, title="domain")
         leg.get_title().set_fontsize(8)
-        # 图注放在图例正下方（同一右栏），一条一行，纵向排列
-        fig.text(1.02, 0.52,
-                 "line3 %s: %s spatial domains\n" % (species, s)
-                 + "coords = sample-local (obsm['spatial'])\n"
-                 + "n=%d domains, n=%d spots" % (len(set(d)), len(d)),
-                 ha="left", va="top", fontsize=8, linespacing=1.5)
+        # 图注放在图例正下方，且必须用「轴坐标」与图例同一列。
+        # 首版用 fig.text(1.02, ...) 是 figure 坐标，1.02 已超出画布右缘，
+        # bbox=tight 会把画布向右撑开，图注被推到最右、与图例列之间空一大片。
+        # 改用 ax.text(..., transform=ax.transAxes) 后两者锚在同一条竖线上。
+        ax.text(1.02, 0.42,
+                "line3 %s: %s spatial domains\n" % (species, s)
+                + "coords = sample-local (obsm['spatial'])\n"
+                + "n=%d domains, n=%d spots" % (len(set(d)), len(d)),
+                transform=ax.transAxes, ha="left", va="top",
+                fontsize=8, linespacing=1.5, clip_on=False)
         save(fig, "%s_01_domains_%s.png" % (pre, s))
 
     # --- 02 target gene expression（逐样本单图） ---

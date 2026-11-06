@@ -52,11 +52,14 @@ test("01_domains 图例锚点在轴框右侧（x>1）", () => {
   assert.ok(Number(m[1]) > 1, "图例锚点 x 必须 >1（轴框右侧），实际 " + m[1]);
 });
 
-test("01_domains 图注用 fig.text 锚在右栏，不走 caption 自动分支", () => {
+test("01_domains 图注用轴坐标锚在右栏，与图例同一列", () => {
   const code = domainsBlock();
-  const m = code.match(/fig\.text\(([\d.]+),\s*([\d.]+)/);
-  assert.ok(m, "01_domains 图注必须用 fig.text 显式定位");
-  assert.ok(Number(m[1]) > 1, "图注锚点 x 必须 >1（右栏），实际 " + m[1]);
+  const m = code.match(/ax\.text\(([\d.]+),\s*([\d.]+)/);
+  assert.ok(m, "01_domains 图注必须用 ax.text 显式定位");
+  assert.ok(Number(m[1]) > 1, "图注锚点 x 必须 >1（轴框右侧），实际 " + m[1]);
+  // 必须用轴坐标，用 figure 坐标会把画布向右撑开、与图例列之间留空隙
+  assert.match(code, /transform=ax\.transAxes/,
+    "图注必须用 transform=ax.transAxes，与图例锚在同一列");
   assert.equal(/^\s*caption\(fig,/m.test(code), false,
     "01_domains 不得再调 caption()（它会按横竖自动选锚点，与本图固定右栏冲突）");
 });
