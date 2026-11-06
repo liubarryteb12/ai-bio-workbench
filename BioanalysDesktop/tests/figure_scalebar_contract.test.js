@@ -137,3 +137,16 @@ test("收边循环必须按轴限收敛，而不是固定轮数", () => {
   assert.match(block, /break/, "轴限稳定后必须提前退出，不能空转");
   assert.equal(/for _round in range\(2\)/.test(block), false, "不得退回固定两轮");
 });
+test("savefig 必须显式传 dpi，且 rcParams 不留第二个 dpi 真源", () => {
+  const src = read();
+  // manifest 的 bar_px 是 figure 显示像素；落盘像素由 savefig.dpi 决定。
+  // 两者若不等，bar_px 与 PNG 实测脱钩，比例尺的第三方交叉验证静默失效（DeepSeek 第 73 轮审计）。
+  // 不能用 [^)]* 匹配：savefig 的第一个实参是 os.path.join(...)，右括号会提前截断。
+  // 改为锚「调用行本身同时出现 fig.savefig 与 dpi=」。
+  const saveLine = src.split(/\r?\n/).find((l) => l.includes("fig.savefig("));
+  assert.ok(saveLine, "必须有 fig.savefig 调用");
+  assert.match(saveLine, /dpi\s*=\s*_dpi_at_save/, "savefig 必须显式传 dpi，实际：" + saveLine.trim());
+  assert.match(src, /_dpi_at_save\s*=\s*float\(fig\.dpi\)/, "dpi 取值必须来自 fig.dpi");
+  assert.equal(/["']savefig\.dpi["']\s*:/.test(src), false,
+    "rcParams 不得再保留 savefig.dpi：同一含义只留 figure.dpi 一个真源");
+});

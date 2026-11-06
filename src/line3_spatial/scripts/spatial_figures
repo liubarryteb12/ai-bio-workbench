@@ -82,7 +82,9 @@ import anndata as ad
 
 ad.settings.allow_write_nullable_strings = False
 plt.rcParams.update({
-    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 7, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "legend.title_fontsize": 7,
+    # 只保留 figure.dpi：落盘 dpi 由 save() 显式传 fig.dpi 钉死，
+    # 再留一个 savefig.dpi 就是同一含义的两个真源，容易改一处忘一处。
+    "figure.dpi": 300, "font.size": 7, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "legend.title_fontsize": 7,
     "axes.titlesize": 7, "axes.grid": False,
     "figure.autolayout": True, "savefig.bbox": "tight",
     "image.cmap": "viridis",
@@ -113,8 +115,23 @@ def save(fig, name):
     # scalebar_check 无法与任何一张 PNG 对应，外部量测也就无从比对。
     global _SAVE_NAME
     _SAVE_NAME = name
+    # 落盘 dpi 显式钉死到 figure dpi（DeepSeek 第 73 轮审计建议）。
+    # 为什么：manifest 的 bar_px 是 figure 显示像素（transData 的像素体系由 figure.dpi 决定），
+    # 而落盘像素由 savefig.dpi 决定。两者若不等，bar_px 与 PNG 实测就会脱钩，
+    # 比例尺的第三方交叉验证会静默失效。显式传参把这条依赖从「配置恰好相等」变成「结构性相等」。
+    _dpi_at_save = float(fig.dpi)
+    # DeepSeek 第 73 轮审计：量测时的 dpi 与落盘 dpi 必须显式相等，
+    # 否则 bar_px（figure 显示像素）与 PNG 像素脱钩，交叉验证会静默失效。
+    # 断言而不是依赖「两处 rcParams 恰好相等」。
+    for _rec in reversed(SCALEBAR_LOG):
+        if _rec.get("figure") == name:
+            _dpi_at_measure = _rec.get("dpi_at_measure")
+            if _dpi_at_measure is not None and abs(float(_dpi_at_measure) - _dpi_at_save) > 1e-9:
+                fail("比例尺量测 dpi (%.3f) 与落盘 dpi (%.3f) 不一致：bar_px 与 PNG 像素已脱钩"
+                     % (float(_dpi_at_measure), _dpi_at_save))
+            break
     _t0 = time.perf_counter()
-    fig.savefig(os.path.join(OUT, name))
+    fig.savefig(os.path.join(OUT, name), dpi=_dpi_at_save)
     plt.close(fig)
     _ms = (time.perf_counter() - _t0) * 1000.0
     made.append(name)
@@ -421,7 +438,8 @@ def _draw_scalebar_now(ax, x, y, um_per_px, um=500.0):
                          "actual_um": round(float(actual_um), 3),
                          "um_per_px": round(float(um_per_px), 6),
                          "bar_px": round(float(bar_disp_px), 2),
-                         "px_per_data": round(float(px_per_data), 8)})
+                         "px_per_data": round(float(px_per_data), 8),
+                         "dpi_at_measure": float(ax.figure.dpi)})
     return float(actual_um)
 
 
@@ -1055,9 +1073,11 @@ try:
         for _sb in SCALEBAR_LOG:
             # bar_px 是绘制的显示像素长度，供成品 PNG 逐像素复核：
             # 只看 actual_um 是图内自证，bar_px 让外部量测有可比对的锚。
-            _fh.write("scalebar_check=figure=%s label=%s actual=%.3f um_per_px=%s bar_px=%.2f px_per_data=%.8f%s" % (
+            # 硬判据是物理量（actual / label），bar_px 与 dpi 只是追溯字段：
+            # 物理量在任何 dpi 下都守恒，像素量只在特定 dpi 下成立（DeepSeek 第 73 轮）。
+            _fh.write("scalebar_check=figure=%s label=%s actual=%.3f um_per_px=%s bar_px=%.2f px_per_data=%.8f dpi=%.1f%s" % (
                 _sb["figure"] or "-", _sb["label_um"], _sb["actual_um"], _sb["um_per_px"],
-                _sb["bar_px"], _sb["px_per_data"], chr(10)))
+                _sb["bar_px"], _sb["px_per_data"], _sb["dpi_at_measure"], chr(10)))
         for _name, _digest in input_fingerprints([(os.environ.get(k) or "").strip() for k in ("FIG_MOUSE", "FIG_HUMAN")]):
             _fh.write("input_sha256=%s=%s%s" % (_name, _digest, chr(10)))
         for _n in made:
