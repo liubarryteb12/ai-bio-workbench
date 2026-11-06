@@ -216,11 +216,28 @@ def build(data, figdir, outpath):
                      "存在明显富尾，说明邻接权重与坐标未损坏。</p>"
                      % (ac.get("p99", 0), ac.get("median", 0)))
         parts.append(table(T["autocorr_top"][:12]))
-        mf = pick("04_morans")
+        # 只取柱状总览那一张：图名族里还有 04_morans_slice_<gene>，
+        # 用 "04_morans" 通配会按字母序先命中 slice 图，把单基因图误当总览。
+        mf = pick("04_morans_top")
         if mf:
             b64, _ = img_b64(os.path.join(figdir, mf[0]["name"]))
             parts.append(fig_block(b64, "空间自相关最高的基因",
                                    "横轴=Moran's I；数值越高空间聚集越强"))
+        # Top SVG 逐基因切片（任务 1.2 新增）：连续表达量 + 物理比例尺
+        slices = pick("04_morans_slice")
+        if slices:
+            parts.append("<h3>Top 空间变异基因的切片表达</h3>")
+            parts.append("<p>取 Moran's I 均值最高、且在全部样本上都算出 I 的基因，"
+                         "逐个画在组织切片上。颜色为 log 归一化表达量，"
+                         "右下角为 500 µm 物理比例尺；"
+                         "每张图只用一个代表样本，样本名与 I 值写在图注里。</p>")
+            parts.append('<div class="grid">')
+            for f in slices:
+                gene = f["name"].split("04_morans_slice_")[-1].replace(".png", "")
+                b64, _ = img_b64(os.path.join(figdir, f["name"]))
+                parts.append(fig_block(b64, "%s 空间表达" % gene,
+                                       "viridis 连续色阶；右下角 500 µm 标尺"))
+            parts.append("</div>")
 
     # ---- 4. 域共现 ----
     if T.get("cooccurrence"):

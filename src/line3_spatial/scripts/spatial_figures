@@ -547,6 +547,58 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         caption(fig, "line3 %s: top-20 spatially autocorrelated genes" % species)
         save(fig, "%s_04_morans_top.png" % pre)
 
+    # --- 04b Top SVG 逐基因空间表达（任务 1.2） ---
+    # 复用步骤 7 已算好的 gene_autocorr_<sp>.tsv，不重算 Moran's I。
+    # 每基因一张单栏图，取第一个样本（升序）作代表并在图注写明，便于追溯。
+    _svg_n = int(os.environ.get("BIO_SVG_TOP_N", "4"))
+    _ac_path = "gene_autocorr_%s.tsv" % species
+    if os.path.isfile(_ac_path):
+        try:
+            _ac = pd.read_csv(_ac_path, sep="\t")
+            _ac = _ac[np.isfinite(_ac["morans_i_mean"].to_numpy(dtype=float))]
+            # 只取在所有样本上都算过 Moran's I 的基因，避免单样本偶然高值入选
+            if "autocorr_n_valid_samples" in _ac.columns:
+                _ac = _ac[_ac["autocorr_n_valid_samples"] >= len(samples)]
+            _ac = _ac.sort_values("morans_i_mean", ascending=False).head(_svg_n)
+            _sym = a.var["gene_symbol"].astype(str).to_numpy()
+            _rep = samples[0]
+            _mrep = samp == _rep
+            _rx = xy[_mrep][:, 0]
+            _ry = xy[_mrep][:, 1]
+            for _, _row in _ac.iterrows():
+                _g = str(_row["gene_symbol"])
+                _hit = np.where(_sym == _g)[0]
+                if _hit.size == 0:
+                    log("skip 04b %s: 不在表达矩阵" % _g)
+                    continue
+                _col = a.X[:, int(_hit[0])]
+                _v = (np.asarray(_col.todense()).ravel() if hasattr(_col, "todense")
+                      else np.asarray(_col).ravel())
+                fig, ax = plt.subplots(figsize=(6.6, 6.0))
+                _sc = ax.scatter(_rx, _ry, c=_v[_mrep], s=4, cmap="viridis",
+                                 linewidths=0)
+                ax.set_aspect("equal")
+                ax.set_xticks([])
+                ax.set_yticks([])
+                add_scalebar(ax, _rx, _ry, _spot_um_per_px(a, _rep))
+                _cb = fig.colorbar(_sc, ax=ax, shrink=0.82, fraction=0.046, pad=0.02)
+                _cb.set_label("log-normalized expr", fontsize=6.5)
+                _cb.ax.tick_params(labelsize=6.5)
+                fig.text(0.01, -0.02,
+                         "line3 %s: top SVG slice, %s\n" % (species, _g)
+                         + "Moran's I mean = %.3f (n_valid_samples=%s)\n"
+                         % (float(_row["morans_i_mean"]),
+                            _row.get("autocorr_n_valid_samples", "?"))
+                         + "sample=%s (first ascending), n=%d spots"
+                         % (_rep, int(_mrep.sum())),
+                         ha="left", va="top", fontsize=6.5, linespacing=1.5)
+                save(fig, "%s_04_morans_slice_%s.png" % (pre, _g))
+        except Exception as _e:
+            log("skip 04b svg slices: %s" % _e)
+    else:
+        log("skip 04b svg slices: 缺 %s" % _ac_path)
+
+
     # --- 05 knockout top DR ---
     # 同 uns["localization"]：knockout 也可能是 JSON 字符串，直接 .get() 会 AttributeError。
     ko = a.uns.get("knockout")
