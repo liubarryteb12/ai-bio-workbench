@@ -39,9 +39,18 @@ while [ $# -gt 0 ]; do
     --input) INPUTS+=("$2"); shift 2 ;;
     --output) output_count=$((output_count + 1)); shift 2 ;;
     --seed) shift 2 ;;
+    # BANKSY 可选空间平滑（Argon 第 69 轮 Q2c：默认关闭受控合入）。
+    # 默认 0.0 = 完全旁路平滑，存量基准零漂移；显式给 0.2 才启用。
+    --banksy-lambda) BANKSY_LAMBDA_ARG="$2"; shift 2 ;;
     *) echo "未知参数: $1" >&2; exit 2 ;;
   esac
 done
+
+# BANKSY 平滑开关必须在参数解析之后再取值：
+# 首版写在 while 之前，BANKSY_LAMBDA_ARG 还没被赋值，永远拿到 0.0，
+# 于是 --banksy-lambda 0.2 静默失效（三次跑出同一 md5 才发现）。
+BIO_BANKSY_LAMBDA="${BANKSY_LAMBDA_ARG:-0.0}"
+export BIO_BANKSY_LAMBDA
 
 mouse_h5ad=""
 human_h5ad=""
@@ -108,6 +117,13 @@ N_PCS = 30
 RESOLUTION = 0.5
 SMALL_DOMAIN = 30
 
+# BANKSY 可选空间平滑（Argon 第 69 轮 Q2c）。默认 0.0 = 完全旁路。
+# 只在已算好的 PCA(30) 上做凸组合，绝不回全基因 21318 维：
+# 全基因平滑会把稀疏矩阵变稠密，多切片时在 8GB 设备上必 OOM。
+BANKSY_LAMBDA = float(os.environ.get("BIO_BANKSY_LAMBDA", "0.0"))
+if BANKSY_LAMBDA < 0.0 or BANKSY_LAMBDA >= 1.0:
+    fail("BANKSY_LAMBDA=%r 越界，必须在 [0, 1) 内" % BANKSY_LAMBDA)
+
 
 def fail(message):
     sys.stderr.write("spatial_domains 自校验失败: %s\n" % message)
@@ -117,6 +133,46 @@ def fail(message):
 
 def log(message):
     print(message, flush=True)
+
+
+def _banksy_smooth(adata, sample_mask, lam):
+    """对单个样本的 PCA 表示做 BANKSY 式邻域平滑。
+
+    Xs = (1 - lam) * X_pca + lam * (W_norm @ X_pca)
+
+    W 用该样本自身的像素 kNN 邻接（六角晶格，k=6），对称化后行归一化。
+    孤立点（degree=0）必须保留原始 PCA 值：否则 (1 - lam) * X 会把它们
+    整体收缩到 0.8 倍，等于凭空改变这些 spot 的坐标，下游聚类会把它们
+    单独聚成一类假域。
+
+    返回 (smoothed, n_isolated)。不修改 adata，不写 adata.X。
+    """
+    from scipy.sparse import csr_matrix
+    from scipy.spatial import cKDTree
+
+    X_pca = np.asarray(adata.obsm["X_pca"], dtype=float)[sample_mask]
+    xy = np.asarray(adata.obsm["spatial"], dtype=float)[sample_mask]
+    n = X_pca.shape[0]
+    k = min(6, n - 1)
+    if k < 1:
+        return X_pca.copy(), 0
+    tree = cKDTree(xy)
+    _, idx = tree.query(xy, k=k + 1)  # 第 0 列是自身
+    rows = np.repeat(np.arange(n), k)
+    cols = idx[:, 1:].ravel()
+    W = csr_matrix((np.ones(n * k), (rows, cols)), shape=(n, n))
+    W = W + W.T
+    deg = np.asarray((W > 0).sum(axis=1)).ravel()
+    row_sums = np.asarray(W.sum(axis=1)).ravel()
+    row_sums[row_sums == 0] = 1.0
+    W_norm = csr_matrix(W.multiply(1.0 / row_sums[:, None]))
+    Xs = (1.0 - lam) * X_pca + lam * (W_norm @ X_pca)
+    isolated = deg == 0
+    n_isolated = int(isolated.sum())
+    if n_isolated:
+        # 孤立点回填原值：它们没有邻居可借，平滑对它们只有收缩副作用
+        Xs[isolated] = X_pca[isolated]
+    return np.asarray(Xs), n_isolated
 
 
 REQUIRED_OBS = ["barcode", "sample_id", "gsm", "species", "platform_id", "strain",
@@ -164,10 +220,39 @@ for path in os.environ["NORM_INPUTS"].splitlines():
     domains = np.empty(adata.shape[0], dtype=object)
     per_sample_counts = {}
     per_sample_sizes = {}
+    banksy_total_isolated = 0
+    banksy_applied = BANKSY_LAMBDA > 0.0
+    # 进入平滑前的原始矩阵指纹：平滑只准写 obsm，绝不准碰 adata.X。
+    # 静态扫描 adata.X 赋值挡不住切片赋值/in-place 改写/别名共享等路径，
+    # 只有进出指纹比对能证明「值没有变」。
+    _mg = None
+    if banksy_applied:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        sys.path.insert(0, "/mnt/ssd/bio_data/ops")
+        try:
+            from matrix_guard import fingerprint, assert_unchanged
+            _mg = (fingerprint, assert_unchanged)
+        except ImportError as exc:
+            fail("BANKSY 开启但缺少 matrix_guard（%s）：没有指纹断言就不允许平滑" % exc)
+        _x_fp_before = fingerprint(adata.X)
     t0 = time.time()
     for sample in adata.obs["sample_id"].unique():
         mask = (adata.obs["sample_id"] == sample).to_numpy()
         sub = adata[mask].copy()
+        if banksy_applied:
+            smoothed, n_iso = _banksy_smooth(adata, mask, BANKSY_LAMBDA)
+            banksy_total_isolated += n_iso
+            sub.obsm["X_pca"] = smoothed
+            # 平滑后的表示单独存一列，供事后核对用了什么特征做聚类。
+            # 它只进 obsm，不进 X_pca、不进 adata.X。
+            if "X_banksy_pca" not in adata.obsm:
+                # 列数必须取 X_pca 的实际维度，不能用 N_PCS：
+                # N_PCS=30 只是邻居计算取前 30 个主成分，而 X_pca 本身存了 50 维。
+                # 首版按 N_PCS 分配，实测报 shape mismatch (2417,50) vs (2417,30)。
+                adata.obsm["X_banksy_pca"] = np.full(
+                    (adata.shape[0], adata.obsm["X_pca"].shape[1]),
+                    np.nan, dtype=float)
+            adata.obsm["X_banksy_pca"][mask] = smoothed
         sc.pp.neighbors(sub, n_neighbors=N_NEIGHBORS, n_pcs=N_PCS,
                         random_state=int(os.environ["BIOANALYS_SEED"]))
         sc.tl.leiden(sub, resolution=RESOLUTION, flavor="igraph", n_iterations=2,
@@ -179,6 +264,18 @@ for path in os.environ["NORM_INPUTS"].splitlines():
     elapsed = time.time() - t0
     adata.obs["domain"] = domains
     log("leiden done %.1fs domains_total=%d" % (elapsed, len(set(domains))))
+    if banksy_applied:
+        # 平滑结果只留在 obsm，供追溯；adata.X 必须与进来时逐字节一致。
+        _mg[1](_x_fp_before, adata.X, stage="spatial_domains/banksy")
+        adata.uns["banksy"] = {
+            "lambda": float(BANKSY_LAMBDA),
+            "space": "X_pca(30) from HVG2000",
+            "knn_k": 6,
+            "isolated_spots": int(banksy_total_isolated),
+            "note": "平滑仅用于域聚类输入；未写入 adata.X，下游 Moran/NNLS 读原始矩阵",
+        }
+        log("banksy lambda=%.2f isolated=%d, adata.X fingerprint unchanged"
+            % (BANKSY_LAMBDA, banksy_total_isolated))
 
     # --- 3. 诊断：逐样本空间连贯性（样本内像素 KD 树；跨样本坐标范围重叠，禁混算）---
     coherences = {}
@@ -245,6 +342,9 @@ for path in os.environ["NORM_INPUTS"].splitlines():
          "spatial_coherence_mean=%.4f min=%.4f" % (np.mean(list(coherences.values())),
                                                     np.min(list(coherences.values()))),
          "elapsed_seconds=%.1f" % elapsed,
+         "banksy_lambda=%.2f%s" % (BANKSY_LAMBDA,
+                                   "" if banksy_applied else "（0.0 = 完全旁路，未启用平滑）"),
+         "banksy_isolated_spots=%d" % banksy_total_isolated,
          "resolution_sensitivity=探针双跑：res=0.5 连贯性高于 res=1.0 且碎片域更少，取 0.5（详见操作台账续十八条）"]
     ))
 
