@@ -192,5 +192,11 @@ test("破碎阵列护栏：显著偏离第一壳层的 spot 超过 5% 必须 fai
   assert.match(block, /far_frac\s*=\s*float\(\(dist\[:, 1\]\s*>\s*1\.2\s*\*\s*nn\)\.mean\(\)\)/,
     "必须统计显著偏离第一壳层的占比");
   assert.match(block, /far_frac\s*>\s*0\.05/, "阈值必须是 5%");
+  // 与 ops/spatial_calibration._first_shell_pitch 必须同算法：
+  // 只取前 6 个邻居都在第一壳层的内部点。两处口径不同会让图上的 500um
+  // 与代码里的 200um 在不同切片上分叉。
+  assert.match(block, /interior\s*=\s*\(dist\[:, 1:7\]\s*<\s*1\.2\s*\*\s*nn\)\.all\(axis=1\)/,
+    "必须用内部点（前 6 邻居都在第一壳层）算 pitch，与标定模块同算法");
+  assert.match(block, /dist\[interior, 1\]/, "必须取内部点的最近邻中位");
   assert.match(block, /fail\(/, "越界必须 fail-closed");
 });

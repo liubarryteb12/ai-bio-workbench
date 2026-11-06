@@ -356,8 +356,17 @@ def _spot_um_per_px(a, sample):
         xy = np.asarray(a.obsm["spatial"], dtype=float)[mask]
         if len(xy) >= 2:
             from scipy.spatial import cKDTree
-            dist, _ = cKDTree(xy).query(xy, k=2)
+            kq = int(min(7, len(xy)))
+            dist, _ = cKDTree(xy).query(xy, k=kq)
             nn = float(np.median(dist[:, 1]))
+            # 与 ops/spatial_calibration._first_shell_pitch 同一算法：
+            # 只取「前 6 个邻居全部落在第一壳层（<1.2×中位）」的内部点再取中位，
+            # 避免组织边缘的 spot（最近邻跳到第二壳层，约 1.73 倍）把 pitch 抬高。
+            # 两处若用不同算法，图上的 500um 与代码里的 200um 就会在不同切片上分叉。
+            if kq >= 7 and len(xy) >= 10:
+                interior = (dist[:, 1:7] < 1.2 * nn).all(axis=1)
+                if int(interior.sum()) >= 10:
+                    nn = float(np.median(dist[interior, 1]))
     except (KeyError, TypeError, ValueError, IndexError):
         nn = None
 

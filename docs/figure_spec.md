@@ -513,6 +513,11 @@ python3 cn_debug/figure_score.py --dir outputs/PRJ_E2E_GSE277173/line1_bulk/figu
 使标注 500 µm 的条实际画出 507.9~525.5 µm（系统性偏长 1.5~5.1%）。
 按晶格标定后 500 µm = 660.0 数据单位 = 恰好 5 个晶格间距，与平台规格严格一致。
 
+**两份实现必须同算法**：出图母版的 `_spot_um_per_px` 与 `ops/spatial_calibration._first_shell_pitch`
+各有一份 pitch 计算。两处都只取「前 6 个邻居全部落在第一壳层（<1.2 倍中位）」的内部点再取中位，
+否则边缘 spot（最近邻跳到第二壳层，约 1.73 倍）会把 pitch 抬高，导致图上的 500 µm
+与代码里的 200 µm 在不同切片上分叉。合成晶格自测见 `ops/spatial_pitch_selftest.py`。
+
 **绘制时机**：比例尺必须登记后置，在 `fit_text_edges` 等所有会改 `xlim/ylim` 的布局动作
 全部收敛之后再画，画完还要再收边一轮并确认轴限不再变化。数据坐标系下的图元，
 轴限一变长度就变，先画后调布局必然失真。
