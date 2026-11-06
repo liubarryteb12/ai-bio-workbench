@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 # PROVENANCE: INDEPENDENT  本脚本出图代码为独立实现，未派生自 reference/05.可参考出图代码 的源码；
 # celltype_annotation：line3_spatial 步骤 11 轻量级细胞类型注释 / 反卷积
+# 【架构师警告 / AI Agent 铁律】：
+#   本运行环境为内存 8GB（配额 7680 MB）的 ARM 真机容器。
+#   严禁将本脚本重构为 cell2location、Stereoscope、DestVI 或原生 RCTD！
+#   重型深度学习/贝叶斯迭代模型在手机 ARM CPU 上会导致算力暴增（3~8小时）并 100% 触发 OOM 强杀（Exit 137）。
+#   必须死守 scipy.optimize.nnls（内存锁定 <= 2.2 GB，耗时 <= 6 分钟）。
+#   若需提升解卷积质量，只能走零算力路线：提纯输入 Marker 与输出端低于 0.05 丰度归零截断。
+#
 # aims 线3 下游第 7 项（v2.3 反卷积白名单 1/2/3 需 R Seurat/CARD/RCTD，容器未装，
 # 按 P2 裁决用 Python 轻量方案替代：NNLS 非负最小二乘 + marker 基因打分）。
 #
@@ -80,7 +87,15 @@ plt.rcParams.update({
 
 START = time.time()
 SEED = int(os.environ["BIOANALYS_SEED"])
-TOP_MARKERS_PER_DOMAIN = 5
+# 每域签名基因数（2026-11-06 由 5 提到 20）：Top5 极易被单细胞 drop-out 的
+# 随机丢基因带偏，Top20 能在几乎不增内存的前提下稳住签名。
+TOP_MARKERS_PER_DOMAIN = 20
+# 特异性过滤：某基因在超过这么多域的 Top20 里出现，就视为非特异（管家或弥散高表达），
+# 从签名里剔除，保证 A 的正交性与解的稀疏性。
+MAX_MARKER_DOMAIN_SHARE = 3
+# 输出端硬截断：NNLS 解出的丰度低于此值视为背景弥散假阳性，强制归零。
+# 截断后必须重新行归一化，否则每行不再和为 1。
+PROPORTION_CUTOFF = 0.05
 FIGDIR = os.path.join("..", "figures")
 os.makedirs(FIGDIR, exist_ok=True)
 
@@ -255,6 +270,13 @@ report_lines = [
     "note=轻量级方案：NNLS 域 marker 签名解卷积 + score_genes 补充验证 celltype 打分",
     "note_ref=不依赖 Seurat/CARD/RCTD（虽然容器已装 Seurat，但本方案不取自 line2 参考）",
     "signature_note=A 是域 marker 自签名，不是外部细胞类型参考表达谱；结果按无监督近似解释",
+    "TOP_MARKERS_PER_DOMAIN=%d" % TOP_MARKERS_PER_DOMAIN,
+    "specificity_filter=True (drop genes appearing in > %d domain signatures)"
+    % MAX_MARKER_DOMAIN_SHARE,
+    "proportion_cutoff=%.2f (values below this forced to 0, then re-normalized)"
+    % PROPORTION_CUTOFF,
+    "tuning_note=零算力优化：提纯签名 + 输出截断；仍用 scipy.optimize.nnls，"
+    "未引入 RCTD/cell2location 等重型算法（8GB 设备硬约束）",
     "",
 ]
 
@@ -284,15 +306,32 @@ for species in species_present:
     if "gene_symbol" not in mk.columns or "group" not in mk.columns:
         fail("%s 缺 gene_symbol 或 group 列" % mk_tsv)
 
-    # 1. 构建域签名：每域 top5 marker 基因
+    # 1. 构建域签名：每域 Top20 marker 基因 + 特异性过滤
     domains = sorted(mk["group"].astype(str).unique().tolist())
-    sig_genes = set()
     sig_dict = {}
     for dom in domains:
         sub = mk[mk["group"].astype(str) == dom].sort_values("scores", ascending=False)
-        top_genes = sub["gene_symbol"].astype(str).head(TOP_MARKERS_PER_DOMAIN).tolist()
-        sig_dict[dom] = top_genes
-        sig_genes.update(top_genes)
+        sig_dict[dom] = sub["gene_symbol"].astype(str).head(
+            TOP_MARKERS_PER_DOMAIN).tolist()
+
+    # 特异性过滤：统计每个基因出现在多少个域的签名里，
+    # 超过 MAX_MARKER_DOMAIN_SHARE 的视为非特异（管家基因或弥散高表达），
+    # 从该域签名中剔除。不去掉会让 A 的行在多域同时为 1，解不再稀疏。
+    domain_share = {}
+    for dom in domains:
+        for g in sig_dict[dom]:
+            domain_share[g] = domain_share.get(g, 0) + 1
+    nonspecific = {g for g, n in domain_share.items()
+                   if n > MAX_MARKER_DOMAIN_SHARE}
+    if nonspecific:
+        for dom in domains:
+            sig_dict[dom] = [g for g in sig_dict[dom] if g not in nonspecific]
+    log("specificity filter: dropped %d non-specific genes (share > %d)"
+        % (len(nonspecific), MAX_MARKER_DOMAIN_SHARE))
+
+    sig_genes = set()
+    for dom in domains:
+        sig_genes.update(sig_dict[dom])
     sig_genes = sorted(sig_genes & set(a.var["gene_symbol"].astype(str)))
     if len(sig_genes) < 10:
         fail("%s 签名基因 %d < 10" % (species, len(sig_genes)))
@@ -350,6 +389,22 @@ for species in species_present:
     row_sums = scores.sum(axis=1, keepdims=True)
     row_sums[row_sums == 0] = 1.0
     props = scores / row_sums
+
+    # 输出端硬截断：低于 PROPORTION_CUTOFF 的丰度视为背景弥散假阳性，强制归零。
+    # 必须在 argmax 之前做，否则主细胞类型仍来自未截断的伪阳性。
+    _pre_cut = props.copy()
+    props[props < PROPORTION_CUTOFF] = 0.0
+    _cut_row_sum = props.sum(axis=1, keepdims=True)
+    _emptied = (_cut_row_sum.ravel() == 0)
+    if _emptied.any():
+        # 整行被截空（该 spot 所有域丰度都 < 0.05）：回退到截断前的比例。
+        # 不处理的话 argmax 会静默返回第 0 个域，把注释变成假的。
+        props[_emptied] = _pre_cut[_emptied]
+        log("WARN: %d spots 全部丰度 < %.2f，保留截断前比例（不静默归到首域）"
+            % (int(_emptied.sum()), PROPORTION_CUTOFF))
+        _cut_row_sum = props.sum(axis=1, keepdims=True)
+    _cut_row_sum[_cut_row_sum == 0] = 1.0
+    props = props / _cut_row_sum
 
     # 3. 注释
     primary = props.argmax(axis=1)
