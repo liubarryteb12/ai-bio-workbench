@@ -55,5 +55,5 @@
 `ops/mutation_gate.mjs` 每次运行都会打印 `分层 infra=a/a behavior=b/b｜escaped 两层均为 0`，
 任一层出现存活即整体 FAIL。
 
-路由与边界台账的变异（删关键词、改 enforced_by、加幽灵脚本）目前由契约测与 `router_gate` 覆盖，
-下一步按 Argon 第 68 轮清单编入 `mutation_gate` 常驻运行。
+路由与边界台账的变异已编入 `mutation_gate` 常驻运行（M8 去掉最长命中词决胜、M9 放行幽灵脚本），
+当前共 9 条变异：infra 5 条、behavior 4 条。

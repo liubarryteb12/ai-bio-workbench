@@ -331,6 +331,50 @@ export const MUTATIONS = Object.freeze([
       return { green: r.code === 0, detail: 'figure_registry --check exit ' + r.code };
     },
   },
+  {
+    id: 'm8_router_tiebreak',
+    layer: 'behavior',
+    label: 'M8 router_lib 去掉「最长命中词」决胜（改回声明顺序撞大运）',
+    target: 'ops/router_lib.mjs',
+    guardLabel: 'router_eval：做空间解卷积必须命中 route-l3-deconv',
+    edits: [{
+      find: 'cand.hits === best.hits && cand.longest > best.longest',
+      replace: 'false',
+    }],
+    async guard(file) {
+      const mod = await loadModule(file);
+      const doc = mod.loadRouter(path.join(REPO, 'ops/router.yaml'));
+      const r = mod.matchRoute(doc.routes, '做空间解卷积');
+      const got = r ? r.id : null;
+      if (got !== 'route-l3-deconv') {
+        return { green: false, detail: '匹配落到 ' + got + '（应为 route-l3-deconv）' };
+      }
+      return { green: true, detail: '命中 route-l3-deconv' };
+    },
+  },
+  {
+    id: 'm9_router_ghost_script',
+    layer: 'behavior',
+    label: 'M9 router_lib 不再校验 allowed_scripts 是否存在（幽灵脚本放行）',
+    target: 'ops/router_lib.mjs',
+    guardLabel: 'router_gate：引用不存在的 Mod ID 必须报红',
+    edits: [{
+      find: 'errs.push(tag + " allowed_scripts 引用了不存在的脚本: " + s);',
+      replace: 'void s;',
+    }],
+    async guard(file) {
+      const mod = await loadModule(file);
+      const doc = mod.loadRouter(path.join(REPO, 'ops/router.yaml'));
+      const { modIds, seriesIds } = mod.loadModIds(path.join(REPO, 'src/workflows.json'));
+      const opsScripts = mod.listOpsScripts(path.join(REPO, 'ops'));
+      const probe = JSON.parse(JSON.stringify(doc));
+      probe.routes[0].allowed_scripts.push('l3_ghost_mod');
+      const errs = mod.validateRouter(probe, { modIds, opsScripts, seriesIds });
+      const hit = errs.some((e) => String(e).includes('l3_ghost_mod'));
+      if (!hit) return { green: false, detail: '幽灵脚本被放行，errs=' + JSON.stringify(errs) };
+      return { green: true, detail: '幽灵脚本被点名' };
+    },
+  },
 ]);
 
 async function runOne(mutation) {

@@ -71,6 +71,10 @@ const EXEMPT_RELPATHS = new Set([
   // K40 脚本同源门禁（第 39 轮）：它的工作就是 ssh 到真机取三线全部 sha256 再比对，
   // 必须起子进程。与 smoke_golden 同类——离线手工/CI 跑的真机驱动，不进服务运行时。
   'ops/k40_script_parity.mjs',
+  // 路由与边界台账门禁（第 68 轮）：它要起两个子进程 —— python 跑 PyYAML 做
+  // 交叉校验、git ls-files 核 enforced_by 是否被跟踪。与 test_isolation_gate 同类，
+  // 是离线静态门禁，不进服务运行时。
+  'ops/router_gate.mjs',
 ]);
 
 // 豁免清单：接缝本体。加名字进这份清单需要人裁定，不许顺手扩。
