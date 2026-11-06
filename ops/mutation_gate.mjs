@@ -204,6 +204,7 @@ function buildPreviewShaMutation(scope) {
 export const MUTATIONS = Object.freeze([
   {
     id: 'm1_clean_sacred',
+    layer: 'infra',
     label: 'M1 clean_workspace 神圣名单去掉 BioanalysDesktop/',
     target: 'ops/clean_workspace.mjs',
     guardLabel: 'T2-1 断言 1/2：BioanalysDesktop/.tmp 必须被神圣名单熔断',
@@ -223,6 +224,7 @@ export const MUTATIONS = Object.freeze([
   },
   {
     id: 'm2_clean_continue',
+    layer: 'infra',
     label: 'M2 clean_workspace 把「已跟踪则跳过」写成 return（清理退化成空转）',
     target: 'ops/clean_workspace.mjs',
     guardLabel: 'T2-1 断言 3：未跟踪的过期日志仍必须进入清理集',
@@ -249,6 +251,7 @@ export const MUTATIONS = Object.freeze([
   },
   {
     id: 'm3_metrics_substring',
+    layer: 'infra',
     label: 'M3 metrics_sync 精确相等回退成 includes 子串判定',
     target: 'ops/metrics_sync.mjs',
     guardLabel: 'T2-3 断言 1/2：基线 7 / 13 与实测 3 必须判红',
@@ -266,6 +269,7 @@ export const MUTATIONS = Object.freeze([
   },
   {
     id: 'm4_metrics_zero',
+    layer: 'infra',
     label: 'M4 metrics_sync 去掉「用例数为 0 判未实测」',
     target: 'ops/metrics_sync.mjs',
     guardLabel: 'T2-3 断言 3：测试目录清空后必须判红，不许全绿',
@@ -280,6 +284,7 @@ export const MUTATIONS = Object.freeze([
   },
   {
     id: 'm5_ledger_check',
+    layer: 'infra',
     label: 'M5 ledger_gen 废掉 --check 分支（退回打印整份台账并 exit 0）',
     target: 'ops/ledger_gen.mjs',
     guardLabel: 'T2-4 断言 1/2：--check 必须真比对，不得打印整份台账',
@@ -296,6 +301,7 @@ export const MUTATIONS = Object.freeze([
   },
   {
     id: 'm6_static_scan',
+    layer: 'behavior',
     label: 'M6 static_gate 扫描面回退成旧五目录（portal/tests/src/docs 失守）',
     target: 'ops/static_gate.mjs',
     guardLabel: 'T2-5 断言 1/3：portal/ 语法错文件必须被扫到并报红',
@@ -313,6 +319,7 @@ export const MUTATIONS = Object.freeze([
   },
   {
     id: 'm7_preview_sha',
+    layer: 'behavior',
     label: 'M7 build_figure_templates 的 preview_sha256 改一位（证据漂移）',
     target: 'ops/build_figure_templates.cjs',
     guardLabel: 'figure_registry 门禁：注册表必须与 CSV/r453 证据同步',
@@ -373,6 +380,8 @@ export async function runAllMutations() {
     const caught = outcome.greenBaseline === true && outcome.redAfterMutation === true;
     results.push({
       id: mutation.id, label: mutation.label, guardLabel: mutation.guardLabel,
+      // layer 必须从用例透传到结果：首版漏了这一步，汇总把 7 条全算成 unknown。
+      layer: mutation.layer,
       greenBaseline: outcome.greenBaseline, redAfterMutation: outcome.redAfterMutation,
       caught, detail: outcome.detail,
     });
@@ -391,6 +400,7 @@ export async function main(argv = process.argv.slice(2), io = { log: console.log
       caught: outcome.results.filter((r) => r.caught).length,
       survived: outcome.survived.map((r) => r.id),
       mutations: outcome.results,
+      layers: layerStats,
     }, null, 2));
     return outcome.ok ? 0 : 1;
   }
@@ -401,8 +411,21 @@ export async function main(argv = process.argv.slice(2), io = { log: console.log
     io.log('       守护判据: ' + r.guardLabel);
     io.log('       结果: ' + r.detail);
   }
-  if (outcome.ok) {
-    io.log('MUTATION_GATE_OK ' + outcome.results.length + ' 条变异全部被对应判据抓住（每条都先验基线绿、再验变异红）');
+  // 分层统计（Argon 第 67 轮 Q4a）：infra 与 behavior 两层的硬判据都是 escaped === 0，
+  // 分层只用于故障定界，不给任何一层放水。
+  const layerStats = {};
+  for (const r of outcome.results) {
+    const L = r.layer || 'unknown';
+    layerStats[L] = layerStats[L] || { total: 0, escaped: 0 };
+    layerStats[L].total += 1;
+    if (!r.caught) layerStats[L].escaped += 1;
+  }
+  const layerText = Object.entries(layerStats)
+    .map(([k, v]) => k + '=' + (v.total - v.escaped) + '/' + v.total)
+    .join(' ');
+  const layerOk = Object.values(layerStats).every((v) => v.escaped === 0);
+  if (outcome.ok && layerOk) {
+    io.log('MUTATION_GATE_OK ' + outcome.results.length + ' 条变异全部被对应判据抓住（每条都先验基线绿、再验变异红）｜分层 ' + layerText + '｜escaped 两层均为 0');
     return 0;
   }
   io.error('');
