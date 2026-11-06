@@ -104,3 +104,90 @@ Tjp1（紧密连接）仅微升，提示屏障结构损伤可能以蛋白定位�
 - 总门禁：17 道全绿
 - `FIGURE_READY_MATRIX_OK` 30 条 Ready 证据链完整
 - `FIGURE_SPEC_OK` 全部图件符合 300 DPI
+
+## 七、用户复核后的问题修复（2026-11-06 上午）
+
+### 7.1 图例与图注位置不合规（用户指出 l3_mouse_01_domains_* 等）
+
+**问题**：图例与图注没有落在主图框外的右侧。
+
+**根因**：`01_domains` 声明 `figsize=(6.8, 5.5)`（宽>高，横版），
+但 `ax.set_aspect("equal")` 把数据区锁成方形，配合 `savefig.bbox="tight"`
+实际落盘是 1287x1695 的**竖版** PNG。于是 `legend_out()` 与 `caption()`
+按「横版」分支把图例放到轴框下方、图注放到左下角，与真实图幅错位。
+
+**修复过程（三版）**：
+
+| 版本 | 做法 | 结果 |
+|---|---|---|
+| 一版 | 图幅改竖版声明 `(6.0, 7.6)` | 锚点对了，但方形数据区在竖版画布里留大片空白 |
+| 二版 | 横向画布 `(9.6, 5.8)` + `subplots_adjust` 预留右栏 | 图例被 `layout_fix` 守卫按横版规则搬回下方，再次错位 |
+| 三版 | 加 `ax._manual_legend = True` 豁免守卫，图例与图注都用轴坐标锚右栏 | 图例在图框右上、图注紧接其下，均在图框外右侧 |
+
+同法统一了 `02_target_gene` 与 `03_ko_dr` 的版式（横向画布，colorbar 与图注在右栏）。
+
+**契约测**：`BioanalysDesktop/tests/figure_portrait_layout_contract.test.js`（5 条），
+变异反证 4/4 变红：改回横版 figsize、图注锚点改左下、删除右栏 `subplots_adjust`、删图例锚点。
+
+### 7.2 分析模块缺配图（用户指出「出图少一部分」）
+
+**取证**：逐模块比对「有产物表」与「有图件」，确认 4 个模块跑了分析、落了表，但没有配图。
+
+| 模块 | 产物表 | 修复前 | 修复后图号 |
+|---|---|---|---|
+| `celltype_annotation` | `celltype_annotation_<sp>.tsv` | 无图 | `17_celltype_composition` |
+| `spatial_cooccurrence` | `domain_cooccurrence_<sp>.tsv` | 无图 | `18_cooccur_domain_coherence` |
+| `spatial_communication` | `sample_communication_<sp>.tsv` | 无图 | `19_communication` |
+| `spatial_localization` | `gene_localization_<sp>.tsv` | 无图 | `20_localization` |
+
+**关键教训（两处自己踩的坑）**：
+
+1. 首版把这 4 个模块的代码写在物种循环**之外**，`species` 残留循环最后一轮的 `human`，
+   结果四个模块在两个项目上全部 `skip`（日志可见 `缺 celltype_scores_human.tsv`）。
+   移入循环后正常。
+2. 首版按「矩阵」假设写图：`celltype_scores` 实为 **12097 spots × 52 域**，
+   直接 `imshow` 渲染 12097 行耗时 **136 秒**（超 60 秒硬上限）；
+   `domain_cooccurrence` 实为**长表** 52 行 7 列，不是方阵，`imshow` 直接报
+   `Image data of dtype object cannot be converted to float`。
+   改按真实形状重写（域×细胞类型交叉表、连贯性条形、通讯条形、定位条形）后，
+   四张图耗时降到 **0.2 至 0.7 秒**。
+
+**契约测**：`BioanalysDesktop/tests/figure_module_coverage_contract.test.js`（5 条），
+变异反证 2/2 变红（删 celltype 配图、删 cooccurrence 配图）。
+
+### 7.3 回归与验证
+
+- 全量测试：**1700 tests / 1699 pass / 0 fail**
+- 总门禁：`GATE_ALL_OK` 17 道全绿
+- `FIGURE_SPEC_OK` 全部图件 300 DPI
+- `FIGURE_READY_MATRIX_OK` readyCount 恒 30
+- 图件数：P1 **32** 张、P2 **23** 张（原 28 / 19，各补 4 张）
+
+**过程中契约测抓到一次真回归**：替换 17-20 代码块时把 B4 的 `input_sha256`
+辅助函数一并删除，`figure_manifest_input_hash` 与 `master_symbol_defined`
+两条测试立即变红，已补回（`52f04ba`）。
+
+## 八、HTML 综合报告
+
+| 项目 | 文件 | 大小 | 图件 | 章节 | 表格 |
+|---|---|---|---|---|---|
+| P1 | `local_projects/PRJ_STROKE_P1_SPATIAL_ABCA1/report/综合报告.html` | 7.2 MB | 32（全部内嵌） | 14 | 11 |
+| P2 | `local_projects/PRJ_STROKE_P2_SPATIAL_LACTPYRO_5GENES/report/综合报告.html` | 5.0 MB | 23（全部内嵌） | 13 | 10 |
+
+报告为**自包含单文件**：图片以 base64 内嵌，可直接分发或归档，
+不依赖外部目录。所有统计量由脚本从 K40 真机产物抽取后注入，
+HTML 里没有手写数字。
+
+生成脚本已固化到 `ops/`，可复现：
+
+```
+# 1) 在 K40 上抽取数据
+/root/venvs/bio-py/bin/python3 ops/report_extract_data.py <PID> > report_data.json
+# 2) 在本地渲染（需 Pillow）
+python ops/report_render_html.py report_data.json <figures目录> "<时间>" <输出.html>
+```
+
+报告结构：执行概览、空间域识别、细胞类型反卷积、空间自相关、域空间连贯性、
+细胞通讯、域级功能富集、先验 focus 基因验证、虚拟敲除扰动（P1）、
+基因定位广度、综合分析、诚实边界、其余图件、图件总览。
+
