@@ -28,7 +28,15 @@ if os.path.isfile(sm):
 # ---- 域统计 ----
 rep = os.path.join(PROC, "domains_report.txt")
 if os.path.isfile(rep):
-    out["tables"]["domains_report"] = open(rep, encoding="utf-8", errors="replace").read()[:4000]
+    _txt = open(rep, encoding="utf-8", errors="replace").read()
+    out["tables"]["domains_report"] = _txt[:4000]
+    # 基因数与 spot 数从报告正文解析（报告由 spatial_domains 写，格式 "spots=N genes=M"）。
+    # 之前用 markers_shape[1] 当基因数，那是 marker 表的列数（10），属误标。
+    import re as _re
+    _m = _re.search(r"spots=(\d+)\s+genes=(\d+)", _txt)
+    if _m:
+        out["tables"]["n_spots"] = int(_m.group(1))
+        out["tables"]["n_genes"] = int(_m.group(2))
 
 # ---- QC ----
 qc = os.path.join(PROC, "spot_qc_metrics.tsv")

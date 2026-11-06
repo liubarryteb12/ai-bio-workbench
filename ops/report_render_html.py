@@ -142,8 +142,8 @@ def build(data, figdir, outpath):
     kpi = [
         ("图件", str(len(figs))),
         ("样本", "%d（对照 %d / 疾病 %d）" % (len(samples), n_ctrl, n_dis)),
-        ("spot 总数", str(qc.get("n_spots", "?"))),
-        ("基因数", str((T.get("markers_shape") or ["?", "?"])[1])),
+        ("spot 总数", str(T.get("n_spots") or qc.get("n_spots", "?"))),
+        ("基因数", str(T.get("n_genes", "?"))),
         ("空间域", str(co.get("n_domains", "?"))),
     ]
     parts.append('<div class="kpi">' + "".join(
@@ -176,21 +176,35 @@ def build(data, figdir, outpath):
                 (lambda p: (img_b64(os.path.join(figdir, p))[0],))(
                     pick("16_domain_panel")[0]["name"]))))
 
-    # ---- 2. 细胞类型 ----
+    # ---- 2. 域签名反卷积 ----
     if T.get("celltype_counts"):
-        parts.append("<h2>三、细胞类型反卷积</h2>")
-        parts.append("<p>按 spot 的主细胞类型统计，占比最高的类型如下表。"
-                     "该结果用于判断各空间域的细胞构成，属参考性注释而非病理诊断。</p>")
-        parts.append(table(T["celltype_counts"], ["celltype", "n_spots"]))
+        parts.append("<h2>三、域签名反卷积（自签名近似）</h2>")
+        parts.append('<div class="card"><p style="margin:0">'
+                     "<b>口径澄清（重要）</b>：本步用的是<b>域 marker 自签名</b>，"
+                     "不是外部细胞类型参考表达谱。因此下表 "
+                     "<code>primary_celltype</code> 列里的值是<b>域编号</b>"
+                     "（如 <code>D1-D7_d2</code>），含义是"
+                     "「该 spot 的表达谱最接近哪个域的签名」，"
+                     "而不是「该 spot 是哪种细胞」。"
+                     "出图母版自己也在报告中写明："
+                     "<code>signature_note=A 是域 marker 自签名，"
+                     "不是外部细胞类型参考表达谱；结果按无监督近似解释</code>。</p></div>")
+        rows_ct = [{"域签名标签": r["celltype"], "spot 数": r["n_spots"]}
+                   for r in T["celltype_counts"]]
+        parts.append(table(rows_ct, ["域签名标签", "spot 数"]))
+        parts.append("<p>若需要真正的细胞类型注释，需接入外部参考（如 Allen Brain Atlas "
+                     "或已发表的脑细胞类型签名），属后续增强项，本轮未做。</p>")
         if T.get("celltype_by_domain"):
-            parts.append("<h3>各域的主导细胞类型</h3>")
-            parts.append(table(T["celltype_by_domain"],
-                               ["domain", "top_celltype", "fraction"]))
+            parts.append("<h3>各域的主导签名</h3>")
+            rows_dom = [{"域": r["domain"], "主导签名": r["top_celltype"],
+                         "占比": r["fraction"]}
+                        for r in T["celltype_by_domain"]]
+            parts.append(table(rows_dom, ["域", "主导签名", "占比"]))
         ct = pick("17_celltype_composition")
         if ct:
             b64, _ = img_b64(os.path.join(figdir, ct[0]["name"]))
-            parts.append(fig_block(b64, "域 × 主导细胞类型组成热图",
-                                   "颜色=该域内此细胞类型 spot 占比"))
+            parts.append(fig_block(b64, "域 × 主导签名组成热图",
+                                   "颜色=该域内此签名 spot 占比（域 marker 自签名，非细胞类型参考）"))
 
     # ---- 3. 空间自相关 ----
     if T.get("autocorr_top"):
