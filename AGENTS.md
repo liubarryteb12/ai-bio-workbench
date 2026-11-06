@@ -12,6 +12,7 @@
 | 开始一项功能、改架构、写 spec 或票 | [docs/mattpocock-workflow-spec.md](docs/mattpocock-workflow-spec.md) |
 | 写或改 skill、`AGENTS.md`、任何 agent 会读的文档 | [docs/mattpocock-writing-spec.md](docs/mattpocock-writing-spec.md) |
 | 跑 K40 / 部署 / 台账相关 | [docs/isolation.md](docs/isolation.md) 起手，再看 `ops/` 与具体线文档 |
+| 远程执行 / 设备连不上 | [docs/remote_channel_policy.md](docs/remote_channel_policy.md)（adb 为主通道，sshd 备用） |
 | 做课题设计、选题准入判定、筛数据 | [docs/topic_sieve_spec.md](docs/topic_sieve_spec.md)（规则正本：L0 到 L4 与 T1 到 T9） |
 | 派「按方向调研数据」的活 | [docs/topic_survey_sop.md](docs/topic_survey_sop.md)（模式 A 执行规程） |
 
