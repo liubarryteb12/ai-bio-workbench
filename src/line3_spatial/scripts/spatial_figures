@@ -304,26 +304,30 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         d = dom[m]
         colors, _ = cat_colors(d)
         # 域用分类色，必须给图例（规范：颜色=分类标签时图例可读）。
-        # 域标签形如 <样本>_d<k>，放轴框外右侧以免压住组织点云。
-        # 图幅按竖版声明（高>宽）。根因修正（2026-11-06 用户指出不合规范）：
-        # 原 figsize=(6.8, 5.5) 是横版声明，但 ax.set_aspect("equal") 让数据区锁成方形，
-        # 加上 bbox="tight" 后实际落盘是 1287x1695 的竖版图。于是 legend_out / caption
-        # 按「横版」把图例放到轴框下方、图注放到左下角，与真实图幅错位，
-        # 渲染结果就是图缩在右上、大片留白、图例图注都在左下。
-        # 声明竖版后两处锚点与真实图幅同向，图例与图注都落到轴框右侧。
-        fig, ax = plt.subplots(figsize=(6.0, 7.6))
+        # 版式（2026-11-06 二次修正）：横向画布 + 右栏固定布局。
+        # 首版 figsize=(6.8,5.5) 是横版声明却渲染成竖版，图例图注落到左下；
+        # 二版改竖版声明后锚点对了，但等比例坐标锁方形，画布右上留大片空白。
+        # 现在改为：数据区占左 58%，右 42% 自上而下依次放图例与图注，
+        # 显式 subplots_adjust 定位，不依赖 caption() 的横竖自动分支。
+        fig, ax = plt.subplots(figsize=(9.6, 5.8))
         for dd in sorted(set(d)):
             mm = d == dd
             ax.scatter(xy[m][mm, 0], xy[m][mm, 1], s=4, color=colors[dd],
                        label=dd, linewidths=0)
-        caption(fig, "line3 %s: %s spatial domains" % (species, s),
-                "coords = sample-local (obsm['spatial'])",
-                "n=%d domains, n=%d spots" % (len(set(d)), len(d)))
         ax.set_aspect("equal")
         ax.set_xticks([])
         ax.set_yticks([])
-        ax.legend(markerscale=5, fontsize=8, loc="upper left",
-                  bbox_to_anchor=(1.02, 1.0), borderaxespad=0, frameon=False)
+        fig.subplots_adjust(left=0.04, right=0.58, top=0.97, bottom=0.03)
+        leg = ax.legend(markerscale=5, fontsize=8, loc="upper left",
+                        bbox_to_anchor=(1.02, 1.0), borderaxespad=0,
+                        frameon=False, title="domain")
+        leg.get_title().set_fontsize(8)
+        # 图注放在图例正下方（同一右栏），一条一行，纵向排列
+        fig.text(1.02, 0.52,
+                 "line3 %s: %s spatial domains\n" % (species, s)
+                 + "coords = sample-local (obsm['spatial'])\n"
+                 + "n=%d domains, n=%d spots" % (len(set(d)), len(d)),
+                 ha="left", va="top", fontsize=8, linespacing=1.5)
         save(fig, "%s_01_domains_%s.png" % (pre, s))
 
     # --- 02 target gene expression（逐样本单图） ---
