@@ -58,6 +58,58 @@ pwsh -File ops/adb_exec.ps1 -Level ubuntu -Transport ssh -Command 'hostname'
 
 大二进制（如 h5ad）不适合经 stdin 传；这类文件仍在设备侧生成，不回传。
 
+
+## Termux 生存能力：实测清单（2026-11-06）
+
+设备为 Android 13（SDK 33）。逐项核对社区常提的保护措施，结论是**能开的都已经开了**：
+
+| 措施 | 实测状态 | 怎么查 |
+|---|---|---|
+| Phantom process killer | 已禁用 | `settings get global settings_enable_monitor_phantom_procs` → `false` |
+| phantom 进程数上限 | 已放到极大 | `device_config get activity_manager max_phantom_processes` → `2147483647` |
+| 电池优化白名单 | 已加入 | `dumpsys deviceidle whitelist` → `user,com.termux` 与 `user,com.termux.boot` |
+| wake lock | 已持有 | `dumpsys power` → `termux:service-wakelock ... ACQ=...` |
+| oom_score_adj | 已是 -1000（最高保护） | `cat /proc/self/oom_score_adj` |
+| root | 无（`su` 不存在） | `adb shell su -c id` |
+
+**因此可以确定：Termux 被「团灭」不是上述机制触发的，而是自身峰值内存把系统逼进 LMK 区间。**
+2026-11-06 当天 5 次中断，每次都能在日志里看到可用内存从数 GB 在数秒内掉到不足 1 GB。
+
+### 无 root 条件下唯一有效的护栏：给自己设地址空间上限
+
+非 root 进程只能**提高**自己的 oom_score_adj，不能降低，所以「调低 oom 优先级」这条路走不通。
+但可以反过来做：给作业设 `ulimit -v`，让超限变成该进程的 `MemoryError`，而不是全系统内存压力。
+
+实测（proot 内生效）：
+
+```
+ulimit -v 1500000          # 1.5 GB
+python3 -c "x=bytearray(3*1024**3)"
+→ MemoryError, exit=1      # 进程干净失败
+→ adb get-state = device   # 设备与 Termux 均存活
+```
+
+工具里已封装成参数：
+
+```powershell
+# 重内存作业建议加护栏（推荐值见下）
+pwsh -File ops/adb_exec.ps1 -Level ubuntu -MemLimitMB 2000 -ScriptPath .tmp/step.sh
+```
+
+推荐取值（按本机实测峰值）：
+
+| 作业类型 | 建议上限 | 依据 |
+|---|---|---|
+| 单样本 scrublet 类 | 2000 MB | 独立作业实测峰值约 1.5 GB |
+| 常规分析步骤 | 5000 MB | 输入矩阵加载 + 过滤副本峰值约 5.2 GB |
+| 不确定时 | 先不给上限，但用 `adb` 通道跑，并用外部监控看可用内存 | 避免误杀合法步骤 |
+
+### 仍然无解的部分
+
+- **无 root**：不能改 oom_score_adj，不能调 LMK 参数，不能改 cgroup 内存限制；
+- **整组回收**：Android 在极端压力下按进程组回收，单个进程的保护措施挡不住；
+- 因此**根本解法是把重内存作业放到内存充足的机器上**，本机只做轻量步骤与结果核对。
+
 ## 尚未迁移的部分
 
 `ops/06_deploy_scripts.ps1` 目前仍用 ssh/scp 做脚本同步。

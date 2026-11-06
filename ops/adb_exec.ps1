@@ -42,6 +42,12 @@ param(
   [string]$ScriptPath,
   [int]$TimeoutSec = 1800,
   [ValidateSet('auto', 'adb', 'ssh')][string]$Transport = 'auto',
+  # 给远端进程设地址空间上限（MB）。0 表示不限制。
+  # 为什么需要：本机 Termux 的 phantom killer 已关、电池白名单已加、wake lock 已持、
+  # oom_score_adj 已是 -1000，保护措施全开仍被杀 5 次 —— 真正的原因是自身峰值内存
+  # 把系统逼进 LMK 区间。加 ulimit -v 后，超限只让该进程拿到 MemoryError 并退出，
+  # 进程组存活（实测）。
+  [int]$MemLimitMB = 0,
   [switch]$RequireAdb
 )
 
@@ -114,6 +120,14 @@ function Invoke-ViaSsh([string]$payload) {
 }
 
 $payload = Get-Payload
+
+# 内存上限：只在显式给 -MemLimitMB 时注入，避免默认改变既有行为。
+if ($MemLimitMB -gt 0) {
+  $kb = $MemLimitMB * 1024
+  $limitLine = "ulimit -v " + $kb + " 2>/dev/null || true" + $NL
+  $payload = $limitLine + $payload
+}
+
 $used = $Transport
 $result = $null
 

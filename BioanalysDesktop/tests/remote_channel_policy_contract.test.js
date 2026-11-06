@@ -50,6 +50,16 @@ test("备用通道必须能自愈 adb 端口转发", () => {
   assert.match(src, /10022/, "必须覆盖 ubuntu 侧端口");
 });
 
+test("必须提供无 root 下的内存护栏参数", () => {
+  const src = fs.readFileSync(HELPER, "utf8");
+  assert.match(src, /\[int\]\$MemLimitMB/, "必须有 -MemLimitMB 参数");
+  // 锚到赋值语句本身：注释里也会出现 ulimit -v 字样，全文匹配会被注释作证
+  // （本测试首版就因此让 MUT-B 存活）。
+  assert.match(src, /\$limitLine\s*=\s*"ulimit -v "/, "必须真的把 ulimit -v 拼进注入行");
+  // 默认不注入，避免改变既有行为
+  assert.match(src, /\$MemLimitMB -gt 0/, "只有显式给值时才注入上限");
+});
+
 test("策略文档记录了 adb 优先的理由与实测故障", () => {
   const doc = path.join(REPO, "docs/remote_channel_policy.md");
   assert.ok(fs.existsSync(doc), "必须有 docs/remote_channel_policy.md");
