@@ -102,8 +102,15 @@ def um_per_px(scalefactors, xy_pixels):
                um_by_lattice, pitch_px, LATTICE_PITCH_UM, n_interior, n_total,
                ratio, RATIO_LOW, RATIO_HIGH))
 
+    # 主口径取晶格（2026-11-07 实测改判）。
+    # 理由：spot_diameter_fullres 是 Space Ranger 对光斑直径的逐图估计，
+    # 本数据集 5 个样本在 87.06~90.19 px 间波动（3.6%）；而相邻 spot 中心距
+    # 在所有样本上恒为 132.0 数据单位，是平台常量（Visium 100 µm）。
+    # 用 65/d_px 会让 500 µm 的条实际画出 507.9~525.5 µm（偏长 1.5~5.1%）。
+    # 双口径仍都返回，比值校验照旧：它守的是「坐标与 scalefactors 同一缩放级别」，
+    # 与「用哪个当主口径」是两件事。
     return {
-        "um_per_px": um_by_spot,
+        "um_per_px": um_by_lattice,
         "um_per_px_by_spot": um_by_spot,
         "um_per_px_by_lattice": um_by_lattice,
         "ratio": ratio,

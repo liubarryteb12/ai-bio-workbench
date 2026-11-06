@@ -36,7 +36,22 @@ test("光斑口径分子必须是 65.0（包络），不得写 55.0", () => {
   const code = src.split(/\r?\n/).filter((l) => !l.trim().startsWith("#")).join("\n");
   assert.match(code, /SPOT_ENVELOPE_UM\s*=\s*65\.0/, "必须定义 65.0 的光斑包络常量");
   assert.match(code, /SPOT_CAPTURE_UM\s*=\s*55\.0/, "必须同时记录 55.0 捕获孔径（供报告口径）");
-  assert.match(code, /SPOT_ENVELOPE_UM\s*\/\s*d_px/, "um/px 必须用包络口径计算");
+  // 包络口径仍需保留（它是双口径校验的一半与回退路径），但不再作主口径。
+  assert.match(code, /SPOT_ENVELOPE_UM\s*\/\s*d_px/, "包络口径必须仍然算得出来");
+});
+
+test("主口径必须是晶格 100um / pitch，包络只做交叉校验与回退", () => {
+  const src = read();
+  const code = src.split(/\r?\n/).filter((l) => !l.trim().startsWith("#")).join("\n");
+  // 2026-11-07 实测：spot_diameter_fullres 逐图波动 3.6%，最近邻恒为平台常量。
+  // 用包络当主口径会让 500um 的条实际画出 507.9~525.5um（偏长 1.5~5.1%）。
+  assert.match(code, /LATTICE_PITCH_UM\s*=\s*100\.0/, "必须定义 100um 晶格常量");
+  assert.match(code, /um_by_lattice\s*=\s*LATTICE_PITCH_UM\s*\/\s*pitch_px/,
+    "必须按 100um / 实测 pitch 算晶格口径");
+  const i = code.indexOf('"um_per_px":');
+  assert.ok(i > 0, "必须返回 um_per_px");
+  const line = code.slice(i, i + 80);
+  assert.match(line, /"um_per_px":\s*um_by_lattice/, "主口径必须是晶格值，实际：" + line.split("\n")[0]);
 });
 
 test("比值必须 fail-closed 抛错，阈值 [0.90, 1.10]", () => {
