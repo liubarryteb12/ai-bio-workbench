@@ -109,6 +109,10 @@ def log(m):
 def save(fig, name):
     # 逐图计时（Argon 第 65 轮 Q3/Q4）：单图 30s 设计目标 / 60s 硬上限。
     # 计时进 manifest，超时从「不可见」变成「回执可查」，不必为查超时连 K40 真跑。
+    # _SAVE_NAME 让比例尺自检能把结果挂到具体图名上：否则 manifest 里一串
+    # scalebar_check 无法与任何一张 PNG 对应，外部量测也就无从比对。
+    global _SAVE_NAME
+    _SAVE_NAME = name
     _t0 = time.perf_counter()
     fig.savefig(os.path.join(OUT, name))
     plt.close(fig)
@@ -318,6 +322,7 @@ def _spot_um_per_px(a, sample):
 
 
 SCALEBAR_LOG = []
+_SAVE_NAME = ""
 
 
 def add_scalebar(ax, x, y, um_per_px, um=500.0):
@@ -363,15 +368,20 @@ def _draw_scalebar_now(ax, x, y, um_per_px, um=500.0):
     label = "%d um" % int(um)
 
     # 比例尺与它的文字标注互相牵制：文字偏右会触发 fit_text_edges 扩 xlim，
-    # 而扩 xlim 又缩短比例尺。这里迭代两轮「画 -> 收边 -> 重画」，
-    # 让两者在最终轴限下一致，最后用显示像素反算真实微米长度自检。
+    # 而扩 xlim 又缩短比例尺。这里迭代「画 -> 收边 -> 重画」直到轴限稳定。
+    #
+    # 为什么必须收敛而不是固定轮数：实测真实图件里 xlim 被扩了约 6%，
+    # 两轮写完最后一轮收边仍可能再扩，条就停在扩张前的坐标上（短 5%）。
+    # 判据是「本轮收边后 xlim 与上轮一致」，不是「跑够几轮」。
     art = []
-    for _round in range(2):
+    xlim_prev = None
+    for _round in range(8):
         for a in art:
             a.remove()
         art = []
-        xa = x1 - margin_x - bar
-        xb = x1 - margin_x
+        x1_cur = float(ax.get_xlim()[1])
+        xa = x1_cur - margin_x - bar
+        xb = x1_cur - margin_x
         art.append(ax.plot([xa, xb], [yb, yb], color="black", lw=1.8,
                            solid_capstyle="butt", zorder=10)[0])
         art.append(ax.plot([xa, xa], [yb - tick / 2.0, yb + tick / 2.0],
@@ -383,15 +393,19 @@ def _draw_scalebar_now(ax, x, y, um_per_px, um=500.0):
                            bbox=dict(boxstyle="round,pad=0.12", fc="white",
                                      ec="none", alpha=0.75)))
         fit_text_edges(ax.figure, ax)
-        x1 = float(ax.get_xlim()[1])
+        x1_after = float(ax.get_xlim()[1])
+        if xlim_prev is not None and abs(x1_after - xlim_prev) <= 1e-9 * max(1.0, abs(xlim_prev)):
+            break
+        xlim_prev = x1_after
 
-    # 反算真实微米长度：先取两端点的显示像素距离，再除以「每数据单位的像素数」。
-    # 首版写成 transData 正变换紧接其逆变换，等于恒等，测出来就是 bar 本身，
-    # 自检必然通过（又一个空转变异）。
+    # 反算真实微米长度：必须读**真实 artist 的端点**，不能拿 bar 重算。
+    # 拿 bar 重算时 dxb-dxa 恒等于 bar 的像素长度，自检在数学上必然通过，
+    # 无论条被后续收边压缩成什么样（本轮实测踩到：xlim 扩 6% 而自检仍报 500.000）。
     fig_canvas = ax.figure.canvas
     fig_canvas.draw()
-    dxa = float(ax.transData.transform((x1 - margin_x - bar, yb))[0])
-    dxb = float(ax.transData.transform((x1 - margin_x, yb))[0])
+    xd = [float(v) for v in art[0].get_xdata()]
+    dxa = float(ax.transData.transform((xd[0], yb))[0])
+    dxb = float(ax.transData.transform((xd[1], yb))[0])
     bar_disp_px = abs(dxb - dxa)
     e0 = float(ax.transData.transform((0.0, 0.0))[0])
     e1 = float(ax.transData.transform((1.0, 0.0))[0])
@@ -403,8 +417,11 @@ def _draw_scalebar_now(ax, x, y, um_per_px, um=500.0):
     if not np.isfinite(actual_um) or abs(actual_um - um) / um > 0.03:
         fail("比例尺自检不通过：标注 %d um，实际 %.1f um（要求误差 <=3%%）。"
              "通常是轴限被后续布局改动或 um/px 换算口径不一致。" % (um, actual_um))
-    SCALEBAR_LOG.append({"label_um": um, "actual_um": round(float(actual_um), 3),
-                         "um_per_px": round(float(um_per_px), 6)})
+    SCALEBAR_LOG.append({"figure": _SAVE_NAME, "label_um": um,
+                         "actual_um": round(float(actual_um), 3),
+                         "um_per_px": round(float(um_per_px), 6),
+                         "bar_px": round(float(bar_disp_px), 2),
+                         "px_per_data": round(float(px_per_data), 8)})
     return float(actual_um)
 
 
@@ -1036,8 +1053,11 @@ try:
         # 比例尺自检留痕：标注微米数与实际反算微米数逐条写入 manifest，
         # 让「图上的物理尺度是否可信」成为可离线核对的事实，而不是肉眼判断。
         for _sb in SCALEBAR_LOG:
-            _fh.write("scalebar_check=label=%s actual=%.3f um_per_px=%s%s" % (
-                _sb["label_um"], _sb["actual_um"], _sb["um_per_px"], chr(10)))
+            # bar_px 是绘制的显示像素长度，供成品 PNG 逐像素复核：
+            # 只看 actual_um 是图内自证，bar_px 让外部量测有可比对的锚。
+            _fh.write("scalebar_check=figure=%s label=%s actual=%.3f um_per_px=%s bar_px=%.2f px_per_data=%.8f%s" % (
+                _sb["figure"] or "-", _sb["label_um"], _sb["actual_um"], _sb["um_per_px"],
+                _sb["bar_px"], _sb["px_per_data"], chr(10)))
         for _name, _digest in input_fingerprints([(os.environ.get(k) or "").strip() for k in ("FIG_MOUSE", "FIG_HUMAN")]):
             _fh.write("input_sha256=%s=%s%s" % (_name, _digest, chr(10)))
         for _n in made:

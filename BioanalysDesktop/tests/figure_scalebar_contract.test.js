@@ -113,3 +113,27 @@ test("自检误差门槛必须锁死在 3%%，不得被放宽", () => {
   assert.equal(/abs\(actual_um - um\) \/ um > 0\.(0[4-9]|[1-9]\d)/.test(code), false,
     "误差门槛被放宽（>0.03），防线失效");
 });
+test("自检必须读真实 artist 端点，不得用 bar 重算（否则是恒等式）", () => {
+  const src = read();
+  const i = src.indexOf("def _draw_scalebar_now");
+  assert.ok(i > 0, "必须有 _draw_scalebar_now");
+  const block = src.slice(i, i + 5000);
+  // 第 73 轮实测踩到：用 (x1 - margin_x - bar) 重算端点时，dxb-dxa 恒等于 bar
+  // 的像素长度，自检在数学上必然通过，条被收边压缩 6% 也照样报 500.000。
+  assert.match(block, /get_xdata\(\)/, "必须读 artist 的真实 xdata 才叫量测");
+  assert.equal(
+    /dxa\s*=\s*float\(ax\.transData\.transform\(\(x1 - margin_x - bar/.test(block),
+    false,
+    "不得用 bar 重算端点：那是恒等式，测不出收边压缩",
+  );
+});
+
+test("收边循环必须按轴限收敛，而不是固定轮数", () => {
+  const src = read();
+  const i = src.indexOf("def _draw_scalebar_now");
+  const block = src.slice(i, i + 5000);
+  // 固定两轮时，最后一轮收边仍可能再扩 xlim，条停在扩张前坐标上（实测短 5%）
+  assert.match(block, /xlim_prev/, "必须记录上一轮轴限用于收敛判定");
+  assert.match(block, /break/, "轴限稳定后必须提前退出，不能空转");
+  assert.equal(/for _round in range\(2\)/.test(block), false, "不得退回固定两轮");
+});

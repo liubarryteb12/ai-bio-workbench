@@ -26,12 +26,22 @@ test("manifest 必须记录比例尺自检且每条误差 <=3%", (t) => {
     "比例尺自检记录太少（应覆盖逐样本空间图），实际 " + lines.length);
   const bad = [];
   for (const l of lines) {
-    const m = /^scalebar_check=label=([0-9.]+) actual=([0-9.]+) um_per_px=([0-9.]+)$/.exec(l.trim());
+    // 格式含 figure=/bar_px=/px_per_data=：图名让记录能与具体 PNG 对应，
+    // bar_px 让外部量测有可比对的锚（第 73 轮新增）。
+    const m = /^scalebar_check=figure=(\S+) label=([0-9.]+) actual=([0-9.]+) um_per_px=([0-9.]+) bar_px=([0-9.]+) px_per_data=([0-9.]+)$/.exec(l.trim());
     if (!m) { bad.push(l + "  <-- 无法解析"); continue; }
-    const label = Number(m[1]);
-    const actual = Number(m[2]);
+    if (m[1] === "-") bad.push(l + "  <-- 缺图名，无法与 PNG 对应");
+    const label = Number(m[2]);
+    const actual = Number(m[3]);
+    const barPx = Number(m[5]);
+    const pxPerData = Number(m[6]);
     const err = Math.abs(actual - label) / label;
     if (err > 0.03) bad.push(l + "  <-- 误差 " + (err * 100).toFixed(1) + "%");
+    // 内部一致性：bar_px / px_per_data × um_per_px 必须等于 actual
+    const recomputed = (barPx / pxPerData) * Number(m[4]);
+    if (Math.abs(recomputed - actual) / actual > 0.01) {
+      bad.push(l + "  <-- bar_px 与 actual 不自洽（重算 " + recomputed.toFixed(1) + "）");
+    }
   }
   assert.deepEqual(bad, [], "比例尺实际长度与标注不一致：\n" + bad.join("\n"));
 });
