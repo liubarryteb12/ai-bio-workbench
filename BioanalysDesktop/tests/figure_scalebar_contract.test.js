@@ -1,0 +1,69 @@
+/**
+ * 空间图比例尺契约（方案 B 之后的下一步，2026-11-06）。
+ *
+ * sci.md v3.0 要求：空间转录组组织切片图必须内嵌整数物理比例尺（标明 µm）。
+ * 数据依据：uns['spatial'][sample]['scalefactors']['spot_diameter_fullres']
+ * 给出 spot 在 fullres 像素下的直径；按 Visium 标称点径 55 µm 折算 µm/px。
+ * 实测本数据集 spot_diameter_fullres = 87.16509 → 0.631 µm/px。
+ *
+ * 判据：
+ *   1. 母版必须实现比例尺函数并真的在逐样本空间图上调用；
+ *   2. 必须从 scalefactors 读 spot 直径，不得写死常数；
+ *   3. scalefactors 缺失时必须优雅跳过（返回假值），不得让整图失败。
+ */
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+const SF = path.join(REPO, "src/line3_spatial/scripts/spatial_figures");
+
+function read() {
+  return fs.readFileSync(SF, "utf8");
+}
+
+/** 剥掉整行注释：本仓库多次出现「注释里的字样替实现作证」的假绿。 */
+function codeOnly(src) {
+  return src.split(/\r?\n/).filter((l) => !l.trim().startsWith("#")).join("\n");
+}
+
+test("必须实现比例尺函数，且从 scalefactors 取 spot 直径", () => {
+  const src = codeOnly(read());
+  assert.match(src, /def add_scalebar\(/, "必须有 add_scalebar 函数");
+  // 锚到赋值语句本身：只查「文件里出现 spot_diameter_fullres」会被文档字符串满足
+  assert.match(src, /d_px\s*=\s*float\(\s*sf\[\s*["']spot_diameter_fullres["']\s*\]\s*\)/,
+    "必须真的从 scalefactors 的 spot_diameter_fullres 取值赋给 d_px");
+  assert.match(src, /return\s+55\.0\s*\/\s*d_px/,
+    "必须按 Visium 标称点径 55um 折算 um/px 并返回");
+});
+
+test("逐样本空间图（01 域图 / 02 目标基因 / 03 KO DR）都要画比例尺", () => {
+  const src = read();
+  const calls = src.match(/add_scalebar\(/g) || [];
+  // 定义处 1 次 + 至少 3 张图各 1 次
+  assert.ok(calls.length >= 4,
+    "add_scalebar 至少被调用 3 次（01/02/03 各一），加上定义共 >=4，实际 " + calls.length);
+});
+
+test("scalefactors 缺失时必须优雅跳过而不是抛异常", () => {
+  const src = codeOnly(read());
+  const i = src.indexOf("def _spot_um_per_px");
+  assert.ok(i > 0, "应有 _spot_um_per_px 辅助函数");
+  const block = src.slice(i, i + 900);
+  // 锚到「except 分支体里就是 return None」：块里别处也有 return None，
+  // 只查 /return None/ 会被另一分支满足（MUT-C 曾存活）。
+  assert.match(block, /except\s*\([^)]*\)\s*:\s*\n\s*return None/,
+    "except 分支必须直接 return None（缺失即跳过，不抛异常）");
+});
+
+test("比例尺长度按数据范围自适应，且文字标注单位", () => {
+  const src = read();
+  const i = src.indexOf("def add_scalebar");
+  const block = src.slice(i, i + 1600);
+  assert.match(block, /um_per_px/, "必须用 um/px 换算长度");
+  assert.match(block, /span_x|span_y/, "必须按数据范围定位/限长，不能写死像素");
+  assert.match(block, /ax\.plot\(/, "必须真的画线");
+  assert.match(block, /ax\.text\(/, "必须有文字标注");
+});

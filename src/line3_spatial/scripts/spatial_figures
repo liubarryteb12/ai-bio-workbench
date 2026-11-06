@@ -290,6 +290,58 @@ def cat_colors(labels):
     return {c: CAT_PALETTE[i] for i, c in enumerate(cats)}, cats
 
 
+def _spot_um_per_px(a, sample):
+    """从 uns['spatial'][sample]['scalefactors'] 取 spot 在 fullres 像素下的直径，
+    按 Visium 标称点径 55um 折算 um/px。缺失或异常时返回 None（调用方跳过比例尺）。
+
+    实测本数据集 spot_diameter_fullres = 87.16509 -> 0.631 um/px，
+    500um 比例尺约 792 像素（与坐标同为 fullres 像素口径）。"""
+    try:
+        sf = a.uns["spatial"][sample]["scalefactors"]
+        d_px = float(sf["spot_diameter_fullres"])
+    except (KeyError, TypeError, ValueError, IndexError):
+        return None
+    if not np.isfinite(d_px) or d_px <= 0:
+        return None
+    return 55.0 / d_px
+
+
+def add_scalebar(ax, x, y, um_per_px, um=500.0):
+    """在轴内右下角画物理比例尺（端点刻度 + 数值标注），返回是否绘制。
+
+    位置与长度都按该样本数据范围自适应：不同样本的坐标跨度不同，
+    写死像素偏移会在小样本上跑到框外、在大样本上细到看不见。
+    比例尺长度超过数据宽度 30% 时退到 200um，避免喧宾夺主。"""
+    if um_per_px is None:
+        return False
+    x0, x1 = float(np.min(x)), float(np.max(x))
+    y0, y1 = float(np.min(y)), float(np.max(y))
+    span_x = max(x1 - x0, 1.0)
+    span_y = max(y1 - y0, 1.0)
+    bar = um / um_per_px
+    if bar > 0.30 * span_x:
+        um = 200.0
+        bar = um / um_per_px
+    margin_x = 0.045 * span_x
+    margin_y = 0.045 * span_y
+    xa = x1 - margin_x - bar
+    xb = x1 - margin_x
+    yb = y0 + margin_y
+    ax.plot([xa, xb], [yb, yb], color="black", lw=1.8,
+            solid_capstyle="butt", zorder=10)
+    tick = 0.018 * span_y
+    ax.plot([xa, xa], [yb - tick / 2.0, yb + tick / 2.0], color="black",
+            lw=1.2, zorder=10)
+    ax.plot([xb, xb], [yb - tick / 2.0, yb + tick / 2.0], color="black",
+            lw=1.2, zorder=10)
+    ax.text((xa + xb) / 2.0, yb + tick * 1.5, "%d um" % int(um),
+            ha="center", va="bottom", fontsize=6.5, zorder=10,
+            bbox=dict(boxstyle="round,pad=0.12", fc="white", ec="none",
+                      alpha=0.75))
+    return True
+
+
+
 def _uns_dict(adata, key):
     """取 uns[key] 并归一成 dict。
 
@@ -340,6 +392,8 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         ax.set_aspect("equal")
         ax.set_xticks([])
         ax.set_yticks([])
+        # 物理比例尺（sci.md：空间切片图必须内嵌 µm 标尺）
+        add_scalebar(ax, xy[m][:, 0], xy[m][:, 1], _spot_um_per_px(a, s))
         # 关掉 figure.autolayout：它是全局 rcParam，会覆盖 subplots_adjust，
         # 导致等比例数据区被重新居中、左侧留大片空白。
         fig.set_layout_engine("none")
@@ -403,6 +457,8 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         ax.set_aspect("equal")
         ax.set_xticks([])
         ax.set_yticks([])
+        # 物理比例尺
+        add_scalebar(ax, xy[m][:, 0], xy[m][:, 1], _spot_um_per_px(a, s))
         # colorbar 是连续量的图例，必须带 label 说明它是什么（规范：图例可读）
         _cb = fig.colorbar(sc, ax=ax, shrink=0.82, fraction=0.046, pad=0.02)
         _cb.set_label("expr", fontsize=7)
@@ -452,6 +508,8 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
             ax.set_aspect("equal")
             ax.set_xticks([])
             ax.set_yticks([])
+            # 物理比例尺
+            add_scalebar(ax, xy[m][:, 0], xy[m][:, 1], _spot_um_per_px(a, s))
             _kcb = fig.colorbar(sc, ax=ax, shrink=0.82, fraction=0.046, pad=0.02)
             _kcb.set_label("KO DR expr", fontsize=7)
             _kcb.ax.tick_params(labelsize=7)
