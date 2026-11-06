@@ -10,7 +10,7 @@
 
 ## 二、对照数据：GSE316126（PBMC / NanoString）
 
-`reference/06.测试用原始数据/GSE316126`
+`reference/06.测试用原始数据/L1_Targeted_NanoString_GSE316126`（原 `GSE316126`）
 
 - 物种：人（PBMC，外周血单核细胞）
 - 平台：NanoString nCounter（GPL31904），**782 个免疫代谢基因的定制面板**
