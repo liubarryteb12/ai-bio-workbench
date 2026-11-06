@@ -25,8 +25,12 @@ test('门禁清单：齐全，顺序越便宜越靠前，只有最后一道是 s
   // 路由再证「路由表引用的 Mod 与门禁都真实存在」。毫秒级，不拖慢快检。
   assert.deepEqual(GATES.map((g) => g.id), [
     'preflight', 'static_gate', 'test_isolation', 'dist_parity', 'skip_static', 'project_script', 'router', 'ledger',
-    'figure_registry', 'preview_provenance', 'ready_matrix', 'figure_provenance', 'python_interpreter', 'figure_spec', 'audit_summary', 'mutation_gate', 'q3q2_mutation', 'metrics',
+    'figure_registry', 'preview_provenance', 'ready_matrix', 'figure_provenance', 'python_interpreter', 'figure_spec', 'audit_summary', 'mutation_gate', 'k40_parity', 'q3q2_mutation', 'metrics',
   ]);
+  // k40_parity 必须带 skipExitCodes：设备离线时以退出码 2 表达「本轮未校验」，
+  // 主链把它转成带标签的 SKIP。少了这个字段，离线机器会被它整条拖红。
+  const k40 = GATES.find((g) => g.id === 'k40_parity');
+  assert.deepEqual(k40.skipExitCodes, [2], 'k40_parity 必须把退出码 2 声明为 SKIP');
   assert.equal(GATES.filter((g) => g.slow).length, 1, '只能有一道 slow（全量测试）');
   assert.equal(GATES[GATES.length - 1].slow, true, '最慢的一道必须排最后');
   for (const gate of GATES) {
@@ -146,4 +150,27 @@ test('环境保底：gateEnv 显式补 SystemRoot/windir（并记录为何无法
   const gateSrc = fs.readFileSync(path.join(REPO_ROOT, 'ops', 'run_all_gates.mjs'), 'utf8');
   assert.ok(gateSrc.includes('SystemRoot: systemRoot'), 'gateEnv 必须显式写入 SystemRoot');
   assert.ok(gateSrc.includes('windir: process.env.windir || systemRoot'), 'gateEnv 必须显式写入 windir');
+});
+test("skipExitCodes：门禁自报环境不足时转成带标签 SKIP，不拖红主链", () => {
+  // 合成门禁：以退出码 2 表达「本轮未校验，原因 HOST_UNREACHABLE_K40: 设备不可达」
+  const synthetic = {
+    id: 'synthetic_skip',
+    label: '合成：设备离线 SKIP',
+    exec: process.execPath,
+    args: ['-e', "console.log('HOST_UNREACHABLE_K40: 合成设备不可达，本轮未校验'); process.exit(2)"],
+    cwd: '.',
+    slow: false,
+    skipExitCodes: [2],
+  };
+  const outcome = runAllGates({ skipSlow: true, gates: [synthetic] });
+  assert.equal(outcome.ok, true, '退出码 2 被声明为 SKIP 时不该判红');
+  assert.equal(outcome.failed.length, 0);
+  const r = outcome.results[0];
+  assert.equal(r.skipped, true);
+  assert.match(r.skipReason, /HOST_UNREACHABLE_K40: /,
+    'SKIP 行必须带白名单里的原因标签，实际：' + r.skipReason);
+  // 反证：同一个门禁去掉 skipExitCodes 后必须判红，否则「跳过」就没被真正约束
+  const strict = { ...synthetic, skipExitCodes: undefined };
+  const strictOutcome = runAllGates({ skipSlow: true, gates: [strict] });
+  assert.equal(strictOutcome.ok, false, '未声明 skipExitCodes 时退出码 2 必须判红');
 });

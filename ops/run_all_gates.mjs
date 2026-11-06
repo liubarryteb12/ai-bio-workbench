@@ -2,26 +2,24 @@
 /**
  * 单命令总门禁（4 Argon 第二十四轮 Q4/Q6【立即做】）。
  *
- * 存在的理由：八道门禁此前散在各处，封板前要记八条命令、看八份输出。
+ * 存在的理由：门禁此前散在各处，封板前要记十几条命令、看十几份输出。
  * 这里把它们串成一条命令，本地与私有 CI 行为 100% 同构：
  * 任何一道红即整体红，并明确点名是第几道、什么原因。
  *
- * 顺序按「越便宜越靠前」排（fail fast）：
- *   1. preflight            宿主机依赖（毫秒级，缺依赖后面全白跑）
- *   2. static_gate          静态语言门禁（2 秒）
- *   3. skip_reason_gate     跳过原因白名单静态面（毫秒级）
- *   4. ledger_gen --check   台账与真源字节级一致
- *   5. build_figure_templates --check  图件注册表与 CSV/r453 证据同步
- *   6. audit_summary        交付审计流可解析（只读）
- *   7. metrics_sync --check 全量测试 + 运行时 skip 核验 + 基线一致（最慢，约 90 秒）
+ * 清单与顺序的唯一真源是下方的 GATES 数组（不在注释里复述，避免注释与实现分叉）。
+ * 排序原则：越便宜越靠前（fail fast），全量测试固定最后一道并标记 slow。
+ *
+ * 依赖远端设备的门禁（如 k40_parity）用 skipExitCodes 声明「本机形态不具备验证条件」
+ * 的退出码，主链把它转成带 ALLOWED_SKIP_REASONS 标签的 SKIP 行：离线环境不被拖红，
+ * 但少验了什么必须作为事实打印出来。
  *
  * 刻意不含的两项（各有专门入口，不塞进封板门禁）：
  *   - 交付验收 npm run delivery:verify（要具体 tar 路径，不是仓库级门禁）
  *   - 工作区清理 npm run clean:workspace（破坏性动作，绝不能被门禁顺带触发）
  *
  * 用法：
- *   npm run gate:all          # 全量（约 100~150 秒）
- *   node ops/run_all_gates.mjs --skip-tests   # 跳过第七道（快速自检，约 5 秒）
+ *   npm run gate:all          # 全量（约 3~4 分钟，含全量测试）
+ *   node ops/run_all_gates.mjs --skip-tests   # 跳过全量测试那一道（快速自检，约 15 秒）
  *   node ops/run_all_gates.mjs --json         # 机器读
  * 退出码：0 全绿，1 有红，2 参数错误。
  */
@@ -86,6 +84,11 @@ export const GATES = Object.freeze([
   { id: 'mutation_gate', label: '变异门禁（7 条防线反证）', exec: 'node', args: ['ops/mutation_gate.mjs'], cwd: '.', slow: false },
   // Argon 第 42 轮锁定：Q3 状态机与 Q2 路由表各需 3 条 MUT 反证。
   // 既有 mutation_gate 的 7 条全在 Q4/T3 域，覆盖不到这两块，故单列。
+  // K40 脚本同源（第 73 轮回归抓到的真实漂移：17 处不同源，而 18 道门禁全绿）。
+  // 这道必须放在主链里，否则「代码侧全绿 + 设备侧落后一个版本」会长期共存。
+  // 设备离线时 k40_script_parity 以退出码 2 表达「本轮未校验」，这里转成带标签的 SKIP，
+  // 离线环境不会被它拖红，但 [SKIP] 行会明确写出少验了什么。
+  { id: 'k40_parity', label: 'K40 脚本同源（设备离线时 SKIP）', exec: 'node', args: ['ops/k40_script_parity.mjs'], cwd: '.', slow: false, skipExitCodes: [2] },
   { id: 'q3q2_mutation', label: 'Q3/Q2 变异反证（6 条）', exec: 'node', args: ['ops/q3q2_mutation_gate.mjs'], cwd: '.', slow: false },
   { id: 'metrics', label: '全量测试 + 运行时 skip + 基线一致', exec: 'node', args: ['ops/metrics_sync.mjs', '--check'], cwd: '.', slow: true },
 ]);
@@ -112,10 +115,18 @@ export function runGate(gate, { repoRoot = REPO_ROOT, env = gateEnv(), timeoutMs
   });
   const combined = ((result.stdout || '') + (result.stderr || '')).trim();
   const lines = combined.split(/\r?\n/);
+  // skipExitCodes：门禁自己判断「本机形态不具备验证条件」时用特定退出码表达，
+  // 而不是伪装成通过。典型场景是依赖远端设备的门禁在离线机器上跑。
+  // 跳过必须带 ALLOWED_SKIP_REASONS 里的标签，且原样打印门禁自己的说明，
+  // 让 [SKIP] 行能被人复核「它到底少验了什么」。
+  const skipExitCodes = Array.isArray(gate.skipExitCodes) ? gate.skipExitCodes : [];
+  const skipped = skipExitCodes.includes(result.status);
   return {
     id: gate.id,
     label: gate.label,
-    ok: result.status === 0,
+    ok: skipped ? true : result.status === 0,
+    skipped,
+    skipReason: skipped ? (lines.filter((l) => l.trim()).slice(-1)[0] || '') : '',
     exitCode: result.status,
     seconds: (Date.now() - started) / 1000,
     tail: lines.slice(-8),
@@ -161,7 +172,11 @@ export function main(argv = process.argv.slice(2), io = { log: console.log, erro
     const r = outcome.results[i];
     const tag = r.skipped ? '[SKIP]' : (r.ok ? '[ OK ]' : '[ RED]');
     io.log(tag + ' ' + (i + 1) + '. ' + r.label + (r.skipped ? '' : '（' + r.seconds.toFixed(1) + 's）'));
-    if (r.skipped) { io.log('       → --skip-tests 跳过（含全量测试，日常快检用）'); continue; }
+    if (r.skipped) {
+      // 两种跳过要分清：--skip-tests 是主动快检；门禁自己报的 skipExitCode 是环境不具备条件。
+      io.log('       → ' + (r.skipReason || '--skip-tests 跳过（含全量测试，日常快检用）'));
+      continue;
+    }
     if (!r.ok) {
       for (const line of r.tail) io.log('       ' + line);
     }
