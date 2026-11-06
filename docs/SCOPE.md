@@ -36,6 +36,7 @@
 | REJ-008 | 条件跳过测试但不写原因 | skipped 随宿主漂移，不写原因无法区分环境缺失与悄悄关掉防线 | `enforced_by: ops/skip_reason_gate.mjs` | 生效 | Argon 第 21 轮 | 无 |
 | REJ-009 | 只证明「修好能让门禁红」，不证明「改坏能让门禁红」 | 没有变异反证就无法区分真防线与恒绿的空断言 | `enforced_by: ops/mutation_gate.mjs` | 生效 | T2-6 第 8 道门禁 | 无 |
 | REJ-010 | 两个测试或门禁进程共用同一份共享资源 | 并发互删导致的假红假绿反复出现 | `enforced_by: ops/test_isolation_gate.mjs` | 生效 | Argon 第 34 轮 | 无 |
+| REJ-011 | 在标准 Visium 切片的空间邻接图上施加 200 µm 物理距离硬截断 | 实测剔除率仅 0.03%（15966→15962 边）、孤立点 0、Moran I 最大变化 0.0002，属零收益改动；却引入有向 kNN 剪枝不对称与孤立点被 (1-λ) 收缩的风险。Squidpy 对 Visium grid 模式亦明确忽略 radius | `enforced_by: ops/spatial_calibration.py` | 生效 | Argon 第 69 轮 Q1 | 无 |
 
 ## 四、维护约定
 

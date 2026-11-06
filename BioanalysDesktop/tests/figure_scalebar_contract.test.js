@@ -35,8 +35,11 @@ test("必须实现比例尺函数，且从 scalefactors 取 spot 直径", () => 
   // 锚到赋值语句本身：只查「文件里出现 spot_diameter_fullres」会被文档字符串满足
   assert.match(src, /d_px\s*=\s*float\(\s*sf\[\s*["']spot_diameter_fullres["']\s*\]\s*\)/,
     "必须真的从 scalefactors 的 spot_diameter_fullres 取值赋给 d_px");
-  assert.match(src, /return\s+55\.0\s*\/\s*d_px/,
-    "必须按 Visium 标称点径 55um 折算 um/px 并返回");
+  // 这条断言首版写的是 55.0，把错误口径锁成了「必须如此」——
+  // 断言替缺陷作证的典型例子。第 69 轮元宝调研查明 spot_diameter_fullres
+  // 对应的是 65um 光学包络直径，55um 只是捕获孔径，按 55 折算比例尺偏短 17%。
+  assert.match(src, /return\s+SPOT_ENVELOPE_UM\s*\/\s*d_px/,
+    "必须按 65um 光斑包络常量折算 um/px 并返回");
 });
 
 test("逐样本空间图（01 域图 / 02 目标基因 / 03 KO DR）都要画比例尺", () => {
@@ -60,10 +63,53 @@ test("scalefactors 缺失时必须优雅跳过而不是抛异常", () => {
 
 test("比例尺长度按数据范围自适应，且文字标注单位", () => {
   const src = read();
-  const i = src.indexOf("def add_scalebar");
-  const block = src.slice(i, i + 1600);
-  assert.match(block, /um_per_px/, "必须用 um/px 换算长度");
+  // 锚到实际执行绘制的 _draw_scalebar_now：重构后 add_scalebar 只做登记，
+  // 绘制体已移到 _draw_scalebar_now。继续从 add_scalebar 起窗口会随代码长度漂移
+  // 而截断在 ax.text 之前（本轮实测踩到）。
+  const i = src.indexOf("def _draw_scalebar_now");
+  assert.ok(i > 0, "必须存在 _draw_scalebar_now 绘制体");
+  const block = src.slice(i, i + 2200);
+  assert.match(block, /bar\s*=\s*um\s*\/\s*um_per_px/, "必须用 um/px 换算条长");
   assert.match(block, /span_x|span_y/, "必须按数据范围定位/限长，不能写死像素");
   assert.match(block, /ax\.plot\(/, "必须真的画线");
   assert.match(block, /ax\.text\(/, "必须有文字标注");
+});
+
+test("add_scalebar 只登记，绘制必须后置到布局完成之后", () => {
+  const src = read();
+  const i = src.indexOf("def add_scalebar");
+  assert.ok(i > 0, "必须存在 add_scalebar");
+  const reg = src.slice(i, i + 400);
+  // 登记器不得自己画线：否则又回到「先画后扩轴限」的几何漂移
+  assert.match(reg, /_PENDING_SCALEBARS\.append\(/, "add_scalebar 必须只入队");
+  assert.equal(/ax\.plot\(/.test(reg), false, "add_scalebar 内不得直接画线");
+  // layout_fix 必须在 fit_text_edges 之后调用延迟绘制
+  const lf = src.indexOf("def layout_fix");
+  assert.ok(lf > 0, "必须存在 layout_fix");
+  const body = src.slice(lf, lf + 1400);
+  const fitAt = body.indexOf("fit_text_edges(fig, ax0)");
+  const drawAt = body.indexOf("_draw_deferred_scalebars(fig)");
+  assert.ok(fitAt > 0 && drawAt > fitAt,
+    "延迟绘制必须排在 fit_text_edges 之后，否则比例尺仍会被轴限改动压缩");
+});
+test("比例尺口径必须与标定模块一致（65um 光斑包络）", () => {
+  const sf = fs.readFileSync(SF, "utf8");
+  const cal = fs.readFileSync(path.join(REPO, "ops", "spatial_calibration.py"), "utf8");
+  // 两处必须同为 65.0：比例尺与微米阈值一旦口径分叉，图上的 500um 与代码里的 200um
+  // 就不是同一个长度（实测按 55 折算会让比例尺偏短 17%）。
+  assert.match(sf, /SPOT_ENVELOPE_UM\s*=\s*65\.0/, "spatial_figures 必须定义 65.0 光斑包络常量");
+  assert.match(sf, /return\s+SPOT_ENVELOPE_UM\s*\/\s*d_px/, "比例尺必须用包络常量折算");
+  assert.match(cal, /SPOT_ENVELOPE_UM\s*=\s*65\.0/, "标定模块必须同为 65.0");
+  // 不得残留 55.0 折算（55 只允许作为捕获孔径被记录）
+  assert.equal(/return\s+55\.0\s*\/\s*d_px/.test(sf), false, "比例尺不得再用 55.0 作分子");
+});
+test("自检误差门槛必须锁死在 3%%，不得被放宽", () => {
+  const src = read();
+  const code = src.split(/\r?\n/).filter((l) => !l.trim().startsWith("#")).join("\n");
+  // 门槛是这条防线的全部价值所在：放宽到 50%% 就等于没有防线。
+  // 首版没锁这个常量，把 0.03 改成 0.50 后所有契约仍全绿（MUT-H 存活）。
+  assert.match(code, /abs\(actual_um - um\) \/ um > 0\.03\b/,
+    "比例尺自检误差门槛必须是 0.03");
+  assert.equal(/abs\(actual_um - um\) \/ um > 0\.(0[4-9]|[1-9]\d)/.test(code), false,
+    "误差门槛被放宽（>0.03），防线失效");
 });

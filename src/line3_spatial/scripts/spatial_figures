@@ -237,6 +237,10 @@ def layout_fix(fig):
         if leg is not None and not getattr(ax0, "_manual_legend", False):
             legend_out(ax0, fig, leg)
         fit_text_edges(fig, ax0)
+    # 比例尺必须在所有布局动作（图例搬迁、文字收边扩轴）都做完之后再画：
+    # 它画在数据坐标系里，任何后续对 xlim/ylim 的改动都会改变它的显示长度，
+    # 于是「标注 500um、实际 470um」。实测见第 69 轮量测。
+    _draw_deferred_scalebars(fig)
 
 
 def _install_layout_guard():
@@ -290,12 +294,19 @@ def cat_colors(labels):
     return {c: CAT_PALETTE[i] for i, c in enumerate(cats)}, cats
 
 
+# scalefactors 的 spot_diameter_fullres 在 Space Ranger 里定义为
+# 「theoretical 65um spot」在 fullres 图上的像素跨度：65um 是含光学弥散包络的
+# 表观直径，55um 只是捕获孔径。拿 55 当分子会让比例尺系统性偏短 17%
+# （500um 画成 792px，正确是 671px）。与 ops/spatial_calibration.py 共用同一口径。
+SPOT_ENVELOPE_UM = 65.0
+
+
 def _spot_um_per_px(a, sample):
     """从 uns['spatial'][sample]['scalefactors'] 取 spot 在 fullres 像素下的直径，
-    按 Visium 标称点径 55um 折算 um/px。缺失或异常时返回 None（调用方跳过比例尺）。
+    按 65um 光斑包络折算 um/px。缺失或异常时返回 None（调用方跳过比例尺）。
 
-    实测本数据集 spot_diameter_fullres = 87.16509 -> 0.631 um/px，
-    500um 比例尺约 792 像素（与坐标同为 fullres 像素口径）。"""
+    实测本数据集 spot_diameter_fullres = 87.22 -> 0.745 um/px，
+    500um 比例尺约 671 像素（与坐标同为 fullres 像素口径）。"""
     try:
         sf = a.uns["spatial"][sample]["scalefactors"]
         d_px = float(sf["spot_diameter_fullres"])
@@ -303,17 +314,40 @@ def _spot_um_per_px(a, sample):
         return None
     if not np.isfinite(d_px) or d_px <= 0:
         return None
-    return 55.0 / d_px
+    return SPOT_ENVELOPE_UM / d_px
+
+
+SCALEBAR_LOG = []
 
 
 def add_scalebar(ax, x, y, um_per_px, um=500.0):
-    """在轴内右下角画物理比例尺（端点刻度 + 数值标注），返回是否绘制。
+    """登记一条比例尺，实际绘制推迟到布局定稿后（见 layout_fix）。"""
+    if um_per_px is None:
+        return False
+    _PENDING_SCALEBARS.append((ax, x, y, um_per_px, um))
+    return True
+
+
+_PENDING_SCALEBARS = []
+
+
+def _draw_deferred_scalebars(fig):
+    """绘制属于该 figure 的全部待画比例尺。长度自检在 _draw_scalebar_now 内完成。"""
+    mine = [i for i in _PENDING_SCALEBARS if i[0].figure is fig]
+    for i in mine:
+        _PENDING_SCALEBARS.remove(i)
+    for ax, x, y, um_per_px, um in mine:
+        _draw_scalebar_now(ax, x, y, um_per_px, um)
+
+
+def _draw_scalebar_now(ax, x, y, um_per_px, um=500.0):
+    """在轴内右下角画物理比例尺（端点刻度 + 数值标注），返回其真实微米长度。
 
     位置与长度都按该样本数据范围自适应：不同样本的坐标跨度不同，
     写死像素偏移会在小样本上跑到框外、在大样本上细到看不见。
     比例尺长度超过数据宽度 30% 时退到 200um，避免喧宾夺主。"""
     if um_per_px is None:
-        return False
+        return None
     x0, x1 = float(np.min(x)), float(np.max(x))
     y0, y1 = float(np.min(y)), float(np.max(y))
     span_x = max(x1 - x0, 1.0)
@@ -324,21 +358,54 @@ def add_scalebar(ax, x, y, um_per_px, um=500.0):
         bar = um / um_per_px
     margin_x = 0.045 * span_x
     margin_y = 0.045 * span_y
-    xa = x1 - margin_x - bar
-    xb = x1 - margin_x
     yb = y0 + margin_y
-    ax.plot([xa, xb], [yb, yb], color="black", lw=1.8,
-            solid_capstyle="butt", zorder=10)
     tick = 0.018 * span_y
-    ax.plot([xa, xa], [yb - tick / 2.0, yb + tick / 2.0], color="black",
-            lw=1.2, zorder=10)
-    ax.plot([xb, xb], [yb - tick / 2.0, yb + tick / 2.0], color="black",
-            lw=1.2, zorder=10)
-    ax.text((xa + xb) / 2.0, yb + tick * 1.5, "%d um" % int(um),
-            ha="center", va="bottom", fontsize=6.5, zorder=10,
-            bbox=dict(boxstyle="round,pad=0.12", fc="white", ec="none",
-                      alpha=0.75))
-    return True
+    label = "%d um" % int(um)
+
+    # 比例尺与它的文字标注互相牵制：文字偏右会触发 fit_text_edges 扩 xlim，
+    # 而扩 xlim 又缩短比例尺。这里迭代两轮「画 -> 收边 -> 重画」，
+    # 让两者在最终轴限下一致，最后用显示像素反算真实微米长度自检。
+    art = []
+    for _round in range(2):
+        for a in art:
+            a.remove()
+        art = []
+        xa = x1 - margin_x - bar
+        xb = x1 - margin_x
+        art.append(ax.plot([xa, xb], [yb, yb], color="black", lw=1.8,
+                           solid_capstyle="butt", zorder=10)[0])
+        art.append(ax.plot([xa, xa], [yb - tick / 2.0, yb + tick / 2.0],
+                           color="black", lw=1.2, zorder=10)[0])
+        art.append(ax.plot([xb, xb], [yb - tick / 2.0, yb + tick / 2.0],
+                           color="black", lw=1.2, zorder=10)[0])
+        art.append(ax.text((xa + xb) / 2.0, yb + tick * 1.5, label,
+                           ha="center", va="bottom", fontsize=6.5, zorder=10,
+                           bbox=dict(boxstyle="round,pad=0.12", fc="white",
+                                     ec="none", alpha=0.75)))
+        fit_text_edges(ax.figure, ax)
+        x1 = float(ax.get_xlim()[1])
+
+    # 反算真实微米长度：先取两端点的显示像素距离，再除以「每数据单位的像素数」。
+    # 首版写成 transData 正变换紧接其逆变换，等于恒等，测出来就是 bar 本身，
+    # 自检必然通过（又一个空转变异）。
+    fig_canvas = ax.figure.canvas
+    fig_canvas.draw()
+    dxa = float(ax.transData.transform((x1 - margin_x - bar, yb))[0])
+    dxb = float(ax.transData.transform((x1 - margin_x, yb))[0])
+    bar_disp_px = abs(dxb - dxa)
+    e0 = float(ax.transData.transform((0.0, 0.0))[0])
+    e1 = float(ax.transData.transform((1.0, 0.0))[0])
+    px_per_data = abs(e1 - e0)
+    if px_per_data <= 0:
+        fail("比例尺自检无法进行：每数据单位像素数为 0（轴限退化）")
+    bar_data = bar_disp_px / px_per_data
+    actual_um = bar_data * um_per_px
+    if not np.isfinite(actual_um) or abs(actual_um - um) / um > 0.03:
+        fail("比例尺自检不通过：标注 %d um，实际 %.1f um（要求误差 <=3%%）。"
+             "通常是轴限被后续布局改动或 um/px 换算口径不一致。" % (um, actual_um))
+    SCALEBAR_LOG.append({"label_um": um, "actual_um": round(float(actual_um), 3),
+                         "um_per_px": round(float(um_per_px), 6)})
+    return float(actual_um)
 
 
 
@@ -966,6 +1033,11 @@ try:
             OUT, len(made), time.time() - START, chr(10)))
         for _rn, _rms in render_ms:
             _fh.write("render_ms=%s=%.1f%s" % (_rn, _rms, chr(10)))
+        # 比例尺自检留痕：标注微米数与实际反算微米数逐条写入 manifest，
+        # 让「图上的物理尺度是否可信」成为可离线核对的事实，而不是肉眼判断。
+        for _sb in SCALEBAR_LOG:
+            _fh.write("scalebar_check=label=%s actual=%.3f um_per_px=%s%s" % (
+                _sb["label_um"], _sb["actual_um"], _sb["um_per_px"], chr(10)))
         for _name, _digest in input_fingerprints([(os.environ.get(k) or "").strip() for k in ("FIG_MOUSE", "FIG_HUMAN")]):
             _fh.write("input_sha256=%s=%s%s" % (_name, _digest, chr(10)))
         for _n in made:
