@@ -90,3 +90,23 @@ test("静态拦截全矩阵稠密绘制：无上限的 imshow / scatter 原始�
   assert.equal(DENSE.test("ax.imshow(expr[:50, :50])"), false, "截断后的 imshow 不应误报");
   assert.equal(DENSE.test("ax.imshow(expr)"), true, "全矩阵 imshow 必须被识别");
 });
+
+// ---- 渲染时间预算口径（2026-11-06 用户裁定） ----
+// 用户原话：「部份生图慢可以容忍，单图生成不超 5min 不算问题。」
+// 因此预算从 60s 放宽到 300s。这条测试的目的不是限制速度，
+// 而是防止把「慢」当成唯一问题去优化，从而砍掉信息量；
+// 真正要拦的是「画了上万行的无意义全矩阵」这类结构错误（见上一条稠密绘制拦截）。
+test("规范把单图渲染预算记为 300s（5 分钟），不是旧的 60s", () => {
+  const spec = fs.readFileSync(path.join(REPO, "docs/figure_spec.md"), "utf8");
+  assert.match(spec, /单图渲染超\s*300\s*s/, "规范必须写明单图 300s 预算");
+  assert.equal(/单图渲染超\s*60\s*s/.test(spec), false,
+    "规范不得再出现旧的 60s 预算，否则与用户裁定冲突");
+  // 放宽时间预算不等于允许全矩阵图，可读性条款必须保留。
+  // 断言必须锚在「规则条目行」本身（以 "- 大矩阵图" 开头的条目），
+  // 不能只查全文是否出现「大矩阵图禁止」字样：说明性段落也会提到这句，
+  // 删掉规则行后仍能被散文命中而假绿（本文件首版就这样，MUT-B 存活）。
+  const ruleLine = spec.split(/\r?\n/).find((l) => l.trim().startsWith("- 大矩阵图"));
+  assert.ok(ruleLine, "必须存在以「- 大矩阵图」开头的规则条目行");
+  assert.match(ruleLine, /禁止/, "该规则条目必须明确写「禁止」");
+});
+
