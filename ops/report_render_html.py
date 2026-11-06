@@ -467,11 +467,13 @@ def build(data, figdir, outpath):
              "大小KB": round(f["bytes"] / 1024.0, 1)} for f in figs]
     parts.append(table(rows, ["序号", "文件名", "大小KB"]))
 
-    parts.append("<footer>本报告由 <code>ops/</code> 下的抽取与渲染脚本自动生成，"
-                 "所有统计量取自 K40 真机产物，无手写数字。"
-                 "图件与中间表原始位置："
-                 "<code>/mnt/ssd/bio_data/projects/%s/line3_spatial/</code></footer>"
-                 % esc(P))
+    # 页脚只写对读者有意义的事实：统计量来源与可追溯性。
+    # 严禁写入机器名、主机路径、内部脚本目录、运行环境等任何暴露分析设施的信息
+    # （2026-11-06 用户明确要求：此类字眼属透露机器信息与商业机密，一律不得出现）。
+    parts.append("<footer>本报告为本次分析的配套说明文档。"
+                 "文中统计量均取自本次分析产物，未做人工改写；"
+                 "图件与中间结果随交付包一并提供。"
+                 "数据来源：GSE233814（GEO 公共数据集）。</footer>")
     parts.append("</div></body></html>")
 
     html = "".join(parts)

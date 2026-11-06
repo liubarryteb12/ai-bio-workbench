@@ -34,7 +34,7 @@ GEO 上 `GSE233814_RAW.tar` = **1,889,648,640 字节（1.89 GB）**，来源
 
 体积构成：矩阵三件套合计约 150 MB，其余约 1.7 GB 是 `*.tif.gz` 全分辨率组织图。
 
-**运行面约束**：K40 实测下载 17 KB/s（1.89 GB 需约 29 小时，不可行）；
+**运行面约束**：分析环境 实测下载 17 KB/s（1.89 GB 需约 29 小时，不可行）；
 本地 PC 实测 450 KB/s，走「本地下载 → 传手机」。手机侧剩余空间 153 GB、可用内存 7.8 GB，够用。
 
 ## 三、已解决的阻塞：ingest_spatial 格式适配（提交 c4c4222）
@@ -57,11 +57,11 @@ GEO 上 `GSE233814_RAW.tar` = **1,889,648,640 字节（1.89 GB）**，来源
 ## 四、立项执行顺序
 
 1. 下载 1.89 GB 到 `.tmp/gse233814/`（分片 64 MB + 逐片长度校验 + 拼接后总长校验）
-2. 解包，只推需要的文件到 K40 `projects/<pid>/line3_spatial/raw_data/`（跳过 tif.gz，约 150 MB）
+2. 解包，只推需要的文件到 分析环境 `projects/<pid>/line3_spatial/raw_data/`（跳过 tif.gz，约 150 MB）
 3. 同步 GPL24247 soft（GEO 系列页可下，约几十 MB）
-4. `node ops/init_project_scaffold.py` 建两个项目骨架
+4. `node init_project_scaffold.py` 建两个项目骨架
 5. 写 `project.json`（含 `grouping_design`，按线分区不是必需，因两项目都只跑 line3）
-6. 按 pipelineDag 逐步下发 17 / 15 步，每步走 `ops/run_throttled_task.sh`
+6. 按 pipelineDag 逐步下发 17 / 15 步，每步走 `run_throttled_task.sh`
 7. 回搬产物、跑出图规范门禁、组装交付报告
 
 ## 五、诚实边界（写进报告，不粉饰）

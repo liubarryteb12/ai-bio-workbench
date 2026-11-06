@@ -32,14 +32,14 @@ Visium spot 直径约 55um，本身就可能包含多个细胞。
 
 | 组件 | 职责 |
 |---|---|
-| `ops/doublet_score.py` | 独立作业：逐样本用 h5py 只读该样本行块，跑 scrublet，输出 `row_index / sample_id / doublet_score / predicted_doublet` 表 |
-| `src/line3_spatial/scripts/qc_spots` | 读表（`BIO_DOUBLET_TABLE`），按 `row_index` 对齐并剔除预测为双细胞的 spot，处置写入 `uns['qc_doublet_disposition']` |
+| 双细胞打分作业 | 独立作业：逐样本用 h5py 只读该样本行块，跑 scrublet，输出 `row_index / sample_id / doublet_score / predicted_doublet` 表 |
+| QC 步骤 | 读表（`BIO_DOUBLET_TABLE`），按 `row_index` 对齐并剔除预测为双细胞的 spot，处置写入 `uns['qc_doublet_disposition']` |
 
 用法：
 
 ```bash
 # 1) 打分（独立作业，峰值约 1.5 GB）
-python3 ops/doublet_score.py spatial_counts_mouse.h5ad doublet_scores_mouse.tsv 1500
+python3 doublet_score.py spatial_counts_mouse.h5ad doublet_scores_mouse.tsv 1500
 
 # 2) 跑 qc_spots 时指向该表
 export BIO_DOUBLET_TABLE=$PWD/doublet_scores_mouse.tsv
@@ -51,9 +51,9 @@ export BIO_DOUBLET_TABLE=$PWD/doublet_scores_mouse.tsv
 
 2026-11-06 实测：qc_spots 主进程要持有约 2.7 GB 输入与约 2.2 GB 过滤副本，
 再起 scrublet 子进程（约 1 GB），写 2.7 GB 输出时可用内存跌破 600 MB，
-Android 的 low-memory-killer 会**杀掉整个 Termux**（不只是这一步失败，SSH 全断）。
+运行环境的 low-memory-killer 会**杀掉整个分析会话**（不只是这一步失败，连接全断）。
 
-当天因此被杀了 5 次，每次都只能靠 `adb shell am start` 重启 Termux 恢复。
+当天因此被中断 5 次，每次都需手工重启分析环境才能恢复。
 进程内实测 scrublet 峰值 9.2 GB（单样本、1500 基因、sim_doublet_ratio=1.5）。
 
 拆成独立作业后峰值约 1.5 GB，可安全跑完；主管线只读 279 KB 的表。

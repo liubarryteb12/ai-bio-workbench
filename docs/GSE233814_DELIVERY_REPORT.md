@@ -1,8 +1,8 @@
 # GSE233814 双项目交付报告（2026-11-06）
 
 > 数据：GSE233814（小鼠 pMCAO 10x Visium，GPL24247，5 样本；Control=Sham 1 例，Disease=pMCAO 4 例 Day1/3/3/7）。
-> 运行面：K40 proot Ubuntu（aarch64），`nice -n 10` 降权，seed=20261013 全程一致。
-> 出图：47 张 PNG 实测 **300 DPI** 合规，已纳入 `ops/figure_spec_gate.mjs` 强制名单。
+> 运行环境：Linux 分析环境，seed=20261013 全程一致。
+> 出图：47 张 PNG 实测 **300 DPI** 合规，已纳入 `figure_spec_gate.mjs` 强制名单。
 
 ## 一、执行结果
 
@@ -77,7 +77,7 @@ Tjp1（紧密连接）仅微升，提示屏障结构损伤可能以蛋白定位�
 
 | 位置 | 内容 |
 |---|---|
-| K40 `/mnt/ssd/bio_data/projects/<PID>/line3_spatial/{processed,figures,results}` | 全部中间产物与图件 |
+| 分析工作目录 `<PID>/line3_spatial/{processed,figures,results}` | 全部中间产物与图件 |
 | 本地 `local_projects/<PID>/figures/line3_spatial/` | 图件回搬（P1 30 文件 / P2 21 文件） |
 | `figures_manifest.txt` | 逐图 size + render_ms + input_sha256 |
 
@@ -175,16 +175,16 @@ Tjp1（紧密连接）仅微升，提示屏障结构损伤可能以蛋白定位�
 | P2 | `local_projects/PRJ_STROKE_P2_SPATIAL_LACTPYRO_5GENES/report/综合报告.html` | 5.0 MB | 23（全部内嵌） | 13 | 10 |
 
 报告为**自包含单文件**：图片以 base64 内嵌，可直接分发或归档，
-不依赖外部目录。所有统计量由脚本从 K40 真机产物抽取后注入，
+不依赖外部目录。所有统计量由脚本从本次分析产物抽取后注入，
 HTML 里没有手写数字。
 
-生成脚本已固化到 `ops/`，可复现：
+生成脚本随项目提供，可复现：
 
 ```
-# 1) 在 K40 上抽取数据
-/root/venvs/bio-py/bin/python3 ops/report_extract_data.py <PID> > report_data.json
+# 1) 抽取分析数据
+python3 report_extract_data.py <PID> > report_data.json
 # 2) 在本地渲染（需 Pillow）
-python ops/report_render_html.py report_data.json <figures目录> "<时间>" <输出.html>
+python report_render_html.py report_data.json <figures目录> "<时间>" <输出.html>
 ```
 
 报告结构：执行概览、空间域识别、细胞类型反卷积、空间自相关、域空间连贯性、
