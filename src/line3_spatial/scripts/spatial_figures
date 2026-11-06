@@ -321,19 +321,57 @@ def cat_colors(labels):
 # （500um 画成 792px，正确是 671px）。与 ops/spatial_calibration.py 共用同一口径。
 SPOT_ENVELOPE_UM = 65.0
 
+# Visium 相邻 spot 中心距的官方规格常量（v1 与 v2 均为 100 µm）。
+# 它比 spot_diameter_fullres 更适合当标定基准：后者是 Space Ranger 对光斑直径的
+# 逐图估计，会随曝光与聚焦波动；前者是载玻片阵列的物理常量。
+SPOT_PITCH_UM = 100.0
+
 
 def _spot_um_per_px(a, sample):
-    """从 uns['spatial'][sample]['scalefactors'] 取 spot 在 fullres 像素下的直径，
-    按 65um 光斑包络折算 um/px。缺失或异常时返回 None（调用方跳过比例尺）。
+    """按 Visium 晶格 pitch 反算 um/px；晶格不可用时回退到 65um 光斑包络。
 
-    实测本数据集 spot_diameter_fullres = 87.22 -> 0.745 um/px，
-    500um 比例尺约 671 像素（与坐标同为 fullres 像素口径）。"""
+    为什么以晶格为准（2026-11-07 实测改判）：
+    spot_diameter_fullres 在本数据集 5 个样本上是 87.06~90.19 px（波动 3.6%），
+    而相邻 spot 中心距在所有样本上恒为 132.0 数据单位（平台常量）。
+    用 65/d_px 会得到 0.7207~0.7466 的分散值，使标注 500 µm 的条实际画出
+    507.9~525.5 µm（系统性偏长 1.5~5.1%）。
+    以 100/nn 标定后，比例尺的物理长度与平台规格严格一致（500.0 µm）。
+
+    返回 um/px；晶格与光斑两条路都不可用时返回 None（调用方跳过比例尺）。
+    """
     try:
         sf = a.uns["spatial"][sample]["scalefactors"]
         d_px = float(sf["spot_diameter_fullres"])
     except (KeyError, TypeError, ValueError, IndexError):
-        return None
-    if not np.isfinite(d_px) or d_px <= 0:
+        d_px = None
+
+    nn = None
+    try:
+        mask = (a.obs["sample_id"].astype(str) == str(sample)).to_numpy()
+        xy = np.asarray(a.obsm["spatial"], dtype=float)[mask]
+        if len(xy) >= 2:
+            from scipy.spatial import cKDTree
+            dist, _ = cKDTree(xy).query(xy, k=2)
+            nn = float(np.median(dist[:, 1]))
+    except (KeyError, TypeError, ValueError, IndexError):
+        nn = None
+
+    if nn is not None and np.isfinite(nn) and nn > 0:
+        um_per_px = SPOT_PITCH_UM / nn
+        # 平台护栏：晶格按 100 µm 标定后，反推的光斑直径必须落在 Visium 的 50~70 µm 带内。
+        # 这道拦的是「把 Visium 的 100 µm 常量套到别的平台上」：
+        # Visium HD 是 2x2 µm 连续方格，MERFISH/CosMx/Xenium 是单分子或分割细胞中心，
+        # Slide-seq 是随机 bead 阵列，套用后反推直径会远离 50~70 µm 带，当场失败而不是静默出错图。
+        if d_px is not None and np.isfinite(d_px) and d_px > 0:
+            implied_spot_um = d_px * um_per_px
+            if not (50.0 <= implied_spot_um <= 70.0):
+                fail("样本 %s 的晶格标定反推光斑直径 %.1f µm 不在 Visium 的 50~70 µm 带内："
+                     "当前输入可能不是 Visium（HD 是 2x2 µm 连续方格，Slide-seq 是随机 bead，"
+                     "MERFISH/CosMx/Xenium 无全局等距晶格）。拒绝按 100 µm 常量出图。"
+                     % (sample, implied_spot_um))
+        return um_per_px
+
+    if d_px is None or not np.isfinite(d_px) or d_px <= 0:
         return None
     return SPOT_ENVELOPE_UM / d_px
 

@@ -50,15 +50,21 @@ test("逐样本空间图（01 域图 / 02 目标基因 / 03 KO DR）都要画比
     "add_scalebar 至少被调用 3 次（01/02/03 各一），加上定义共 >=4，实际 " + calls.length);
 });
 
-test("scalefactors 缺失时必须优雅跳过而不是抛异常", () => {
+test("scalefactors 缺失时必须优雅降级而不是抛异常", () => {
   const src = codeOnly(read());
   const i = src.indexOf("def _spot_um_per_px");
   assert.ok(i > 0, "应有 _spot_um_per_px 辅助函数");
-  const block = src.slice(i, i + 900);
-  // 锚到「except 分支体里就是 return None」：块里别处也有 return None，
-  // 只查 /return None/ 会被另一分支满足（MUT-C 曾存活）。
-  assert.match(block, /except\s*\([^)]*\)\s*:\s*\n\s*return None/,
-    "except 分支必须直接 return None（缺失即跳过，不抛异常）");
+  // 用函数边界切，不用固定字符窗口：窗口会随函数变长而截断，
+  // 本轮加晶格标定后就断在中间，导致「找不到 except」的假红。
+  const nextDef = src.indexOf("\ndef ", i + 1);
+  const block = src.slice(i, nextDef > 0 ? nextDef : i + 4000);
+  // 第 73 轮改判后的语义：scalefactors 缺失不再是「整条跳过」，
+  // 而是降级到晶格标定；只有两条路都不可用时才 return None。
+  // 静态断言锚到「读取 scalefactors 的 except 分支把 d_px 置 None」，不抛异常。
+  assert.match(block, /except\s*\([^)]*\)\s*:\s*\n\s*d_px\s*=\s*None/,
+    "读取 scalefactors 的 except 分支必须把 d_px 置 None（不抛异常）");
+  assert.match(block, /if d_px is None or not np\.isfinite\(d_px\) or d_px <= 0:\s*\n\s*return None/,
+    "两条标定路径都不可用时必须 return None");
 });
 
 test("比例尺长度按数据范围自适应，且文字标注单位", () => {
@@ -149,4 +155,28 @@ test("savefig 必须显式传 dpi，且 rcParams 不留第二个 dpi 真源", ()
   assert.match(src, /_dpi_at_save\s*=\s*float\(fig\.dpi\)/, "dpi 取值必须来自 fig.dpi");
   assert.equal(/["']savefig\.dpi["']\s*:/.test(src), false,
     "rcParams 不得再保留 savefig.dpi：同一含义只留 figure.dpi 一个真源");
+});
+test("比例尺标定必须以晶格 pitch 为准，65um 光斑包络只作回退", () => {
+  const src = codeOnly(read());
+  assert.match(src, /SPOT_PITCH_UM\s*=\s*100\.0/, "必须有 100um 晶格常量");
+  const i = src.indexOf("def _spot_um_per_px");
+  const nextDef = src.indexOf("\ndef ", i + 1);
+  const block = src.slice(i, nextDef > 0 ? nextDef : i + 4000);
+  // 第 73 轮实测：spot_diameter_fullres 在 87.06~90.19 间波动，而最近邻恒为 132.0；
+  // 用 65/d_px 会让 500um 的条实际画出 507.9~525.5um（偏长 1.5~5.1%）。
+  assert.match(block, /SPOT_PITCH_UM\s*\/\s*nn/, "首选必须按 100um / 最近邻标定");
+  const iLattice = block.indexOf("SPOT_PITCH_UM / nn");
+  const iEnvelope = block.indexOf("SPOT_ENVELOPE_UM / d_px");
+  assert.ok(iLattice > 0 && iEnvelope > iLattice, "光斑包络回退必须排在晶格标定之后");
+});
+test("平台护栏：反推光斑直径必须落在 Visium 的 50~70 µm 带内", () => {
+  const src = codeOnly(read());
+  const i = src.indexOf("def _spot_um_per_px");
+  const nextDef = src.indexOf("\ndef ", i + 1);
+  const block = src.slice(i, nextDef > 0 ? nextDef : i + 5000);
+  // 防「把 Visium 的 100um 常量套到 HD / Slide-seq / MERFISH 上」：
+  // 那些平台反推的光斑直径会远离 50~70 um，必须当场失败而不是静默出错图。
+  assert.match(block, /implied_spot_um\s*=\s*d_px\s*\*\s*um_per_px/, "必须计算反推光斑直径");
+  assert.match(block, /50\.0\s*<=\s*implied_spot_um\s*<=\s*70\.0/, "护栏带必须是 50~70 um");
+  assert.match(block, /fail\(/, "越界必须 fail-closed");
 });
