@@ -30,7 +30,7 @@ test("manifest 必须记录比例尺自检且每条误差 <=3%", (t) => {
     // 硬判据只认物理量（actual vs label）。bar_px / px_per_data / dpi 是追溯字段：
     // 物理量在任何 dpi 下守恒，像素量只在特定 dpi 下成立，不能反过来当判据
     // （DeepSeek 第 73 轮审计结论）。
-    const m = /^scalebar_check=figure=(\S+) label=([0-9.]+) actual=([0-9.]+) um_per_px=([0-9.]+) bar_px=([0-9.]+) px_per_data=([0-9.]+) dpi=([0-9.]+)$/.exec(l.trim());
+    const m = /^scalebar_check=figure=(\S+) label=([0-9.]+) actual=([0-9.]+) um_per_px=([0-9.]+) bar_px=([0-9.]+) px_per_data=([0-9.]+) dpi=([0-9.]+) calib=(\S+)$/.exec(l.trim());
     if (!m) { bad.push(l + "  <-- 无法解析"); continue; }
     if (m[1] === "-") bad.push(l + "  <-- 缺图名，无法与 PNG 对应");
     const label = Number(m[2]);
@@ -40,6 +40,10 @@ test("manifest 必须记录比例尺自检且每条误差 <=3%", (t) => {
     // 追溯字段必须齐全且非零，便于事后复盘是哪次渲染、什么 dpi
     if (!(Number(m[5]) > 0) || !(Number(m[6]) > 0) || !(Number(m[7]) > 0)) {
       bad.push(l + "  <-- 追溯字段 bar_px/px_per_data/dpi 缺失或为 0");
+    }
+    // DeepSeek 第 73 轮：任何 fallback 都必须可追溯且被门禁拦下，不得静默通过。
+    if (m[8] !== "lattice") {
+      bad.push(l + "  <-- calib=" + m[8] + "（非 lattice 标定必须拦下，不得静默降级）");
     }
   }
   assert.deepEqual(bad, [], "比例尺实际长度与标注不一致：\n" + bad.join("\n"));

@@ -35,11 +35,10 @@ test("必须实现比例尺函数，且从 scalefactors 取 spot 直径", () => 
   // 锚到赋值语句本身：只查「文件里出现 spot_diameter_fullres」会被文档字符串满足
   assert.match(src, /d_px\s*=\s*float\(\s*sf\[\s*["']spot_diameter_fullres["']\s*\]\s*\)/,
     "必须真的从 scalefactors 的 spot_diameter_fullres 取值赋给 d_px");
-  // 这条断言首版写的是 55.0，把错误口径锁成了「必须如此」——
-  // 断言替缺陷作证的典型例子。第 69 轮元宝调研查明 spot_diameter_fullres
-  // 对应的是 65um 光学包络直径，55um 只是捕获孔径，按 55 折算比例尺偏短 17%。
-  assert.match(src, /return\s+SPOT_ENVELOPE_UM\s*\/\s*d_px/,
-    "必须按 65um 光斑包络常量折算 um/px 并返回");
+  // 第 73 轮改判：spot_diameter_fullres 只用于平台护栏（反推光斑直径是否在 50~70um 带内），
+  // 不再作标定分子（它逐图波动 3.6%，用作基准会让比例尺偏长 1.5~5.1%）。
+  assert.match(src, /implied_spot_um\s*=\s*d_px\s*\*\s*um_per_px/,
+    "d_px 必须参与平台护栏的反推计算");
 });
 
 test("逐样本空间图（01 域图 / 02 目标基因 / 03 KO DR）都要画比例尺", () => {
@@ -58,13 +57,11 @@ test("scalefactors 缺失时必须优雅降级而不是抛异常", () => {
   // 本轮加晶格标定后就断在中间，导致「找不到 except」的假红。
   const nextDef = src.indexOf("\ndef ", i + 1);
   const block = src.slice(i, nextDef > 0 ? nextDef : i + 4000);
-  // 第 73 轮改判后的语义：scalefactors 缺失不再是「整条跳过」，
-  // 而是降级到晶格标定；只有两条路都不可用时才 return None。
-  // 静态断言锚到「读取 scalefactors 的 except 分支把 d_px 置 None」，不抛异常。
+  // 第 73 轮改判后的语义：scalefactors 缺失不再是「整条跳过」，而是仍可走晶格标定；
+  // 晶格也不可用时必须 fail-closed（DeepSeek 裁定：静默回退等于出一张已知偏 5% 的图）。
   assert.match(block, /except\s*\([^)]*\)\s*:\s*\n\s*d_px\s*=\s*None/,
     "读取 scalefactors 的 except 分支必须把 d_px 置 None（不抛异常）");
-  assert.match(block, /if d_px is None or not np\.isfinite\(d_px\) or d_px <= 0:\s*\n\s*return None/,
-    "两条标定路径都不可用时必须 return None");
+  assert.match(block, /fail\(/, "晶格不可用必须 fail-closed，不得静默回退");
 });
 
 test("比例尺长度按数据范围自适应，且文字标注单位", () => {
@@ -98,14 +95,15 @@ test("add_scalebar 只登记，绘制必须后置到布局完成之后", () => {
   assert.ok(fitAt > 0 && drawAt > fitAt,
     "延迟绘制必须排在 fit_text_edges 之后，否则比例尺仍会被轴限改动压缩");
 });
-test("比例尺口径必须与标定模块一致（65um 光斑包络）", () => {
+test("比例尺与标定模块必须共用同一晶格口径（100um / 实测 pitch）", () => {
   const sf = fs.readFileSync(SF, "utf8");
   const cal = fs.readFileSync(path.join(REPO, "ops", "spatial_calibration.py"), "utf8");
-  // 两处必须同为 65.0：比例尺与微米阈值一旦口径分叉，图上的 500um 与代码里的 200um
-  // 就不是同一个长度（实测按 55 折算会让比例尺偏短 17%）。
-  assert.match(sf, /SPOT_ENVELOPE_UM\s*=\s*65\.0/, "spatial_figures 必须定义 65.0 光斑包络常量");
-  assert.match(sf, /return\s+SPOT_ENVELOPE_UM\s*\/\s*d_px/, "比例尺必须用包络常量折算");
-  assert.match(cal, /SPOT_ENVELOPE_UM\s*=\s*65\.0/, "标定模块必须同为 65.0");
+  // 两处一旦口径分叉，图上的 500um 与代码里的 200um 就不是同一个长度。
+  // 第 73 轮起主口径统一为晶格 100um；65um 只保留为交叉校验常量。
+  assert.match(sf, /SPOT_PITCH_UM\s*=\s*100\.0/, "spatial_figures 必须定义 100um 晶格常量");
+  assert.match(sf, /SPOT_ENVELOPE_UM\s*=\s*65\.0/, "spatial_figures 仍需 65um 用于平台护栏");
+  assert.match(cal, /LATTICE_PITCH_UM\s*=\s*100\.0/, "标定模块必须同为 100um");
+  assert.match(cal, /SPOT_ENVELOPE_UM\s*=\s*65\.0/, "标定模块仍需 65um 用于双口径校验");
   // 不得残留 55.0 折算（55 只允许作为捕获孔径被记录）
   assert.equal(/return\s+55\.0\s*\/\s*d_px/.test(sf), false, "比例尺不得再用 55.0 作分子");
 });
@@ -164,10 +162,10 @@ test("比例尺标定必须以晶格 pitch 为准，65um 光斑包络只作回�
   const block = src.slice(i, nextDef > 0 ? nextDef : i + 4000);
   // 第 73 轮实测：spot_diameter_fullres 在 87.06~90.19 间波动，而最近邻恒为 132.0；
   // 用 65/d_px 会让 500um 的条实际画出 507.9~525.5um（偏长 1.5~5.1%）。
-  assert.match(block, /SPOT_PITCH_UM\s*\/\s*nn/, "首选必须按 100um / 最近邻标定");
-  const iLattice = block.indexOf("SPOT_PITCH_UM / nn");
-  const iEnvelope = block.indexOf("SPOT_ENVELOPE_UM / d_px");
-  assert.ok(iLattice > 0 && iEnvelope > iLattice, "光斑包络回退必须排在晶格标定之后");
+  assert.match(block, /SPOT_PITCH_UM\s*\/\s*nn/, "必须按 100um / 最近邻标定");
+  // 第 73 轮 DeepSeek 裁定：不再保留静默回退到 65/d_px 的路径。
+  assert.equal(/SPOT_ENVELOPE_UM\s*\/\s*d_px/.test(block), false,
+    "不得保留静默回退：65/d_px 已知偏 1.5~5.1%，回退应 fail-closed");
 });
 test("平台护栏：反推光斑直径必须落在 Visium 的 50~70 µm 带内", () => {
   const src = codeOnly(read());
@@ -178,5 +176,16 @@ test("平台护栏：反推光斑直径必须落在 Visium 的 50~70 µm 带内"
   // 那些平台反推的光斑直径会远离 50~70 um，必须当场失败而不是静默出错图。
   assert.match(block, /implied_spot_um\s*=\s*d_px\s*\*\s*um_per_px/, "必须计算反推光斑直径");
   assert.match(block, /50\.0\s*<=\s*implied_spot_um\s*<=\s*70\.0/, "护栏带必须是 50~70 um");
+  assert.match(block, /fail\(/, "越界必须 fail-closed");
+});
+test("破碎阵列护栏：显著偏离第一壳层的 spot 超过 5% 必须 fail", () => {
+  const src = codeOnly(read());
+  const i = src.indexOf("def _spot_um_per_px");
+  const nextDef = src.indexOf("\ndef ", i + 1);
+  const block = src.slice(i, nextDef > 0 ? nextDef : i + 6000);
+  // 破碎切片会让中位最近邻被边缘点抬高，um/px 被压小，比例尺偏长。
+  assert.match(block, /far_frac\s*=\s*float\(\(dist\[:, 1\]\s*>\s*1\.2\s*\*\s*nn\)\.mean\(\)\)/,
+    "必须统计显著偏离第一壳层的占比");
+  assert.match(block, /far_frac\s*>\s*0\.05/, "阈值必须是 5%");
   assert.match(block, /fail\(/, "越界必须 fail-closed");
 });

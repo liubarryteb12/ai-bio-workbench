@@ -357,6 +357,13 @@ def _spot_um_per_px(a, sample):
         nn = None
 
     if nn is not None and np.isfinite(nn) and nn > 0:
+        # 破碎阵列护栏：正常 Visium 切片里几乎所有 spot 的第一壳层邻居都在 1.2 倍中位距内
+        # （实测 5 个样本该比例为 0.00%，p99 只比中位大 1 px）。若显著偏离的 spot 超过 5%，
+        # 说明切片破碎或阵列不完整，中位最近邻会被边缘点抬高，um/px 被压小，比例尺随之偏长。
+        far_frac = float((dist[:, 1] > 1.2 * nn).mean())
+        if far_frac > 0.05:
+            fail("样本 %s 有 %.1f%% 的 spot 最近邻超过中位的 1.2 倍（阈值 5%%）："
+                 "切片破碎或阵列不完整，晶格 pitch 不可信，拒绝标定。" % (sample, far_frac * 100.0))
         um_per_px = SPOT_PITCH_UM / nn
         # 平台护栏：晶格按 100 µm 标定后，反推的光斑直径必须落在 Visium 的 50~70 µm 带内。
         # 这道拦的是「把 Visium 的 100 µm 常量套到别的平台上」：
@@ -371,9 +378,13 @@ def _spot_um_per_px(a, sample):
                      % (sample, implied_spot_um))
         return um_per_px
 
-    if d_px is None or not np.isfinite(d_px) or d_px <= 0:
-        return None
-    return SPOT_ENVELOPE_UM / d_px
+    # 走到这里说明晶格不可用。DeepSeek 第 73 轮裁定：默认必须 fail，不能静默回退。
+    # 理由：65/d_px 与晶格口径相差 1.5~5.1%，静默回退等于「出一张自己知道偏 5% 的图」，
+    # 而且下游无从判断。若确有「元数据缺失但必须出图」的例外，应由调用方显式开启并留痕，
+    # 不走这里。
+    fail("样本 %s 无法计算晶格 pitch（spot 少于 2 个或 spatial 坐标缺失）："
+         "比例尺标定不可信，拒绝出图。若确需在元数据缺失时出图，"
+         "须显式声明 calib_method=fallback 并在图上标注，不能静默降级。" % sample)
 
 
 SCALEBAR_LOG = []
@@ -477,7 +488,8 @@ def _draw_scalebar_now(ax, x, y, um_per_px, um=500.0):
                          "um_per_px": round(float(um_per_px), 6),
                          "bar_px": round(float(bar_disp_px), 2),
                          "px_per_data": round(float(px_per_data), 8),
-                         "dpi_at_measure": float(ax.figure.dpi)})
+                         "dpi_at_measure": float(ax.figure.dpi),
+                         "calib_method": "lattice"})
     return float(actual_um)
 
 
@@ -1113,9 +1125,10 @@ try:
             # 只看 actual_um 是图内自证，bar_px 让外部量测有可比对的锚。
             # 硬判据是物理量（actual / label），bar_px 与 dpi 只是追溯字段：
             # 物理量在任何 dpi 下都守恒，像素量只在特定 dpi 下成立（DeepSeek 第 73 轮）。
-            _fh.write("scalebar_check=figure=%s label=%s actual=%.3f um_per_px=%s bar_px=%.2f px_per_data=%.8f dpi=%.1f%s" % (
+            _fh.write("scalebar_check=figure=%s label=%s actual=%.3f um_per_px=%s bar_px=%.2f px_per_data=%.8f dpi=%.1f calib=%s%s" % (
                 _sb["figure"] or "-", _sb["label_um"], _sb["actual_um"], _sb["um_per_px"],
-                _sb["bar_px"], _sb["px_per_data"], _sb["dpi_at_measure"], chr(10)))
+                _sb["bar_px"], _sb["px_per_data"], _sb["dpi_at_measure"],
+                _sb.get("calib_method", "lattice"), chr(10)))
         for _name, _digest in input_fingerprints([(os.environ.get(k) or "").strip() for k in ("FIG_MOUSE", "FIG_HUMAN")]):
             _fh.write("input_sha256=%s=%s%s" % (_name, _digest, chr(10)))
         for _n in made:
