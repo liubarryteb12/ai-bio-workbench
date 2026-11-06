@@ -58,3 +58,40 @@ test("量测探针必须用端刻度中心与 cos30 折算（否则会把量测�
   // 六角晶格 x 投影周期 = pitch*cos30
   assert.match(src, /np\.cos\(np\.deg2rad\(30\.0\)\)/, "pitch 必须做 cos30 折算");
 });
+const PROJECT_FIG_DIRS = [
+  path.join(REPO, "local_projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial"),
+  path.join(REPO, "local_projects/PRJ_STROKE_P2_SPATIAL_LACTPYRO_5GENES/figures/line3_spatial"),
+];
+
+test("全部成品图：manifest bar_px 必须与 PNG 实测刻度间距逐张一致", (t) => {
+  const dirs = PROJECT_FIG_DIRS.filter((d) => fs.existsSync(path.join(d, "figures_manifest.txt")));
+  if (dirs.length === 0) return t.skip("HOST_MISSING_LOCAL_DATA: 缺本地 manifest");
+  const script = [
+    "import sys, json",
+    "sys.path.insert(0, 'ops')",
+    "import figure_scalebar_png_measure as m",
+    "out = {}",
+    "for d in sys.argv[1:]:",
+    "    out[d] = m.cross_check_dir(d)",
+    "print(json.dumps(out))",
+  ].join("\n");
+  let out;
+  try {
+    out = execFileSync("python", ["-c", script, ...dirs], {
+      cwd: REPO, encoding: "utf8", timeout: 300000,
+    });
+  } catch (e) {
+    return t.skip("HOST_MISSING_PYTHON: 本机无法执行像素量测（" + String(e.message || e).slice(0, 80) + "）");
+  }
+  const res = JSON.parse(out.trim().split(/\r?\n/).pop());
+  const problems = [];
+  let totalOk = 0;
+  for (const [dir, r] of Object.entries(res)) {
+    if (!r) { problems.push(dir + " 无 manifest"); continue; }
+    totalOk += r.ok;
+    for (const b of r.bad) problems.push(path.basename(dir) + "/" + b[0] + " manifest=" + b[1] + "px PNG=" + b[2] + "px");
+    if (r.missing.length) problems.push(path.basename(dir) + " 无法量测 " + r.missing.length + " 张");
+  }
+  assert.deepEqual(problems, [], "条长与 PNG 实测不一致：\n" + problems.join("\n"));
+  assert.ok(totalOk >= 30, "可核验的图件太少：" + totalOk);
+});
