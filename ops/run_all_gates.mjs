@@ -54,6 +54,10 @@ export const GATES = Object.freeze([
   // Q1（第 41 轮，抄 nf-core/modules）：项目层禁止出现与母版同名的完整脚本副本，
   // 有 scripts/ 的项目必须逐条登记 scripts_manifest.json。拔除漂移病根。
   { id: 'project_script', label: '项目层脚本边界（禁母版副本）', exec: 'node', args: ['ops/project_script_gate.mjs'], cwd: '.', slow: false },
+  // 第 18 道：声明式路由与边界台账一致性（Argon 第 66 轮 Q2b/Q3a 裁定的落地）。
+  // 校验两件此前只靠人眼的事：ops/router.yaml 引用的每个 Mod ID 与 ops 脚本真实存在；
+  // docs/SCOPE.md 每条 REJ 的 enforced_by 指向真门禁。填一个不存在的路径必须红。
+  { id: 'router', label: '路由与边界台账一致性', exec: 'node', args: ['ops/router_gate.mjs'], cwd: '.', slow: false },
   { id: 'ledger', label: '台账与真源一致', exec: 'node', args: ['ops/ledger_gen.mjs', '--check'], cwd: '.', slow: false },
   { id: 'figure_registry', label: '图件注册表与证据同步', exec: 'node', args: ['ops/build_figure_templates.cjs', '--check'], cwd: '.', slow: false },
   // T1-3 预览溯源（第三十四轮 4 Argon Q3）：T1-2 重渲染已完成，9 条分叉归零

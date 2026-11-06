@@ -1,0 +1,257 @@
+# 声明式场景路由（ops/router.yaml）
+#
+# 作用：把「用户一句话需求」映射到「该跑哪条线、哪些 Mod、什么算跑完、什么不许做」。
+# 由 ops/router_lib.mjs 解析，ops/router_gate.mjs 静态校验，
+# BioanalysDesktop/tests/router_eval.test.js 用黄金集评测匹配准确率。
+#
+# 硬约束（router_gate 强制）：
+#   1. allowed_scripts 的每一项必须是 src/workflows.json 里真实存在的 Mod ID，
+#      或者是 ops/ 下真实存在的脚本文件名；引用不存在即 FAIL。
+#   2. target_line_or_gate 必须是真实存在的线 ID 或 ops 脚本。
+#   3. id 全局唯一。
+
+version: "1.0.0"
+
+routes:
+  - id: "route-l1-bulk-full"
+    name: "线 1 GEO 常规挖掘全链"
+    trigger_intent:
+      - "线1"
+      - "GEO"
+      - "bulk"
+      - "差异表达全流程"
+      - "批量挖掘"
+    target_line_or_gate: "line1_bulk"
+    allowed_scripts:
+      - "l1_ingest_prep"
+      - "l1_qc_matrix"
+      - "l1_qc_pca"
+      - "l1_de_limma"
+      - "l1_de_wgcna"
+      - "l1_enrich_bulk"
+      - "l1_enrich_ppi"
+      - "l1_ml_keygenes"
+      - "l1_ml_model"
+      - "l1_ml_cox"
+      - "l1_figures_bulk"
+    exit_criteria:
+      - "8 个步骤全部产物落盘且非空"
+      - "l1 图件包通过 figure_spec_gate"
+    negative_constraints:
+      - "跳过 qc 直接进 de"
+      - "在项目目录复制母版副本改一版"
+
+  - id: "route-l1-de-enrich"
+    name: "线 1 差异表达与功能富集"
+    trigger_intent:
+      - "差异基因"
+      - "火山图"
+      - "GO 富集"
+      - "KEGG"
+      - "limma"
+    target_line_or_gate: "line1_bulk"
+    allowed_scripts:
+      - "l1_de_limma"
+      - "l1_enrich_bulk"
+      - "l1_enrich_figures"
+    exit_criteria:
+      - "deg 表含 logFC 与 adjusted p"
+      - "富集表含 term 与 p.adjust"
+    negative_constraints:
+      - "手改显著性阈值却不留记录"
+
+  - id: "route-l1-ml-screen"
+    name: "线 1 机器学习特征筛选与模型诊断"
+    trigger_intent:
+      - "LASSO"
+      - "核心基因"
+      - "ROC"
+      - "列线图"
+      - "外部验证"
+    target_line_or_gate: "line1_bulk"
+    allowed_scripts:
+      - "l1_ml_keygenes"
+      - "l1_ml_model"
+      - "l1_ml_hub"
+      - "l1_ml_diag"
+      - "l1_ml_external"
+      - "l1_ml_cox"
+    exit_criteria:
+      - "训练集与验证集分别出 AUC"
+      - "随机种子固定并写入报告"
+    negative_constraints:
+      - "在验证集上调参"
+
+  - id: "route-l2-scrna-full"
+    name: "线 2 单细胞转录组全链"
+    trigger_intent:
+      - "线2"
+      - "单细胞"
+      - "scRNA"
+      - "Seurat"
+      - "scanpy"
+    target_line_or_gate: "line2_scrna"
+    allowed_scripts:
+      - "l2_ingest_counts"
+      - "l2_qc_cells"
+      - "l2_qc_normalize"
+      - "l2_integrate_harmony"
+      - "l2_integrate_cluster"
+      - "l2_integrate_annotate"
+      - "l2_profile_composition"
+      - "l2_figures_scrna"
+    exit_criteria:
+      - "细胞 QC 阈值写入报告"
+      - "聚类结果与注释表落盘"
+    negative_constraints:
+      - "不写随机种子"
+
+  - id: "route-l2-ko"
+    name: "线 2 虚拟敲除与 DR 后分析"
+    trigger_intent:
+      - "虚拟敲除"
+      - "敲除"
+      - "DR 基因"
+      - "scTenifold"
+    target_line_or_gate: "line2_scrna"
+    allowed_scripts:
+      - "l2_ko_virtual"
+      - "l2_ko_summarize"
+      - "l2_ko_localization"
+      - "l2_ko_drpost"
+    exit_criteria:
+      - "敲除靶基因与 DR 基因表落盘"
+      - "DR 后富集有 NES 与 p 值"
+    negative_constraints:
+      - "把虚拟敲除结果说成湿实验敲除"
+
+  - id: "route-l3-spatial-full"
+    name: "线 3 空间转录组全链"
+    trigger_intent:
+      - "线3"
+      - "空间转录组"
+      - "Visium"
+      - "空间"
+    target_line_or_gate: "line3_spatial"
+    allowed_scripts:
+      - "l3_ingest_spatial"
+      - "l3_qc_spots"
+      - "l3_qc_normalize"
+      - "l3_dimred_reduce"
+      - "l3_dimred_domains"
+      - "l3_dimred_markers"
+      - "l3_stats_autocorr"
+      - "l3_branches_celltype"
+    exit_criteria:
+      - "逐样本 spot QC 与域识别产物落盘"
+      - "空间图内嵌物理比例尺"
+    negative_constraints:
+      - "把样本局部坐标当全局坐标做跨样本统计"
+
+  - id: "route-l3-domains"
+    name: "线 3 空间域识别与域 Marker"
+    trigger_intent:
+      - "空间域"
+      - "domain"
+      - "域 marker"
+      - "Leiden 聚类"
+    target_line_or_gate: "line3_spatial"
+    allowed_scripts:
+      - "l3_dimred_domains"
+      - "l3_dimred_markers"
+    exit_criteria:
+      - "domains_report 记录域数与每域 spot 数"
+    negative_constraints:
+      - "跨样本坐标范围重叠时全数据集建树"
+
+  - id: "route-l3-deconv"
+    name: "线 3 细胞类型解卷积"
+    trigger_intent:
+      - "解卷积"
+      - "deconvolution"
+      - "细胞类型比例"
+      - "NNLS"
+    target_line_or_gate: "line3_spatial"
+    allowed_scripts:
+      - "l3_branches_celltype"
+    exit_criteria:
+      - "保持 scipy.optimize.nnls"
+      - "报告记录 Top20 签名与 0.05 截断"
+    negative_constraints:
+      - "引入 RCTD 或 cell2location 等重型算法"
+      - "把域 marker 自签名说成外部细胞类型参考谱"
+
+  - id: "route-figure-regen"
+    name: "图件重出与版式优化"
+    trigger_intent:
+      - "重出图"
+      - "图件"
+      - "配色"
+      - "版式"
+      - "比例尺"
+    target_line_or_gate: "ops/figure_spec_gate.mjs"
+    allowed_scripts:
+      - "l1_figures_bulk"
+      - "l2_figures_scrna"
+      - "l3_figures_spatial"
+      - "figure_spec_gate.mjs"
+      - "figure_ready_matrix.mjs"
+    exit_criteria:
+      - "全部图件 300 DPI 且 PNG"
+      - "Ready 矩阵仍为 30 条"
+    negative_constraints:
+      - "突破 30 条 Ready 白名单"
+
+  - id: "route-delivery-report"
+    name: "交付与报告渲染"
+    trigger_intent:
+      - "交付"
+      - "报告"
+      - "导出"
+      - "签名"
+    target_line_or_gate: "ops/delivery_acceptance_core.mjs"
+    allowed_scripts:
+      - "delivery_acceptance_core.mjs"
+      - "verify_delivery_signature.mjs"
+      - "build_portable_package.mjs"
+      - "dist_parity_gate.mjs"
+    exit_criteria:
+      - "四关验收通过并持有效回执"
+      - "报告正文脱敏"
+    negative_constraints:
+      - "在报告里写机器名或内部脚本目录"
+
+  - id: "route-gate-triage"
+    name: "门禁排障"
+    trigger_intent:
+      - "门禁"
+      - "gate"
+      - "全绿"
+      - "报红"
+    target_line_or_gate: "ops/run_all_gates.mjs"
+    allowed_scripts:
+      - "run_all_gates.mjs"
+      - "static_gate.mjs"
+      - "mutation_gate.mjs"
+      - "skip_reason_gate.mjs"
+    exit_criteria:
+      - "GATE_ALL_OK 全绿"
+    negative_constraints:
+      - "为了变绿删掉或放宽断言"
+
+  - id: "route-device-offline"
+    name: "设备连不上或远程执行故障"
+    trigger_intent:
+      - "设备"
+      - "连不上"
+      - "adb"
+      - "ssh"
+      - "超时"
+    target_line_or_gate: "ops/preflight.mjs"
+    allowed_scripts:
+      - "preflight.mjs"
+      - "k40_script_parity.mjs"
+    exit_criteria:
+      - "adb 通道恢复并取到设备状态"
+    negative_constraints:
+      - "在 adb 会话里用 nohup 起长任务"

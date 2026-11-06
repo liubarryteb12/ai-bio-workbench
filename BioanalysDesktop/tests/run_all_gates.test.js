@@ -20,8 +20,11 @@ test('门禁清单：齐全，顺序越便宜越靠前，只有最后一道是 s
   // ready_matrix（第 41 轮）排在 preview_provenance 之后、audit_summary 之前：
   // 注册表先证「字段齐全」，溯源再证「预览与产物同一份」，矩阵最后证「30 条的源码与
   // 预览哈希与登记值逐字节一致」。三者从粗到细，越便宜越靠前。
+  // router（第 18 道，Argon 第 66 轮 Q2b/Q3a）：声明式路由与边界台账的静态一致性。
+  // 排在 project_script 之后：两者都是「边界类」静态检查，脚本边界先证「项目里没有母版副本」，
+  // 路由再证「路由表引用的 Mod 与门禁都真实存在」。毫秒级，不拖慢快检。
   assert.deepEqual(GATES.map((g) => g.id), [
-    'preflight', 'static_gate', 'test_isolation', 'dist_parity', 'skip_static', 'project_script', 'ledger',
+    'preflight', 'static_gate', 'test_isolation', 'dist_parity', 'skip_static', 'project_script', 'router', 'ledger',
     'figure_registry', 'preview_provenance', 'ready_matrix', 'figure_provenance', 'python_interpreter', 'figure_spec', 'audit_summary', 'mutation_gate', 'q3q2_mutation', 'metrics',
   ]);
   assert.equal(GATES.filter((g) => g.slow).length, 1, '只能有一道 slow（全量测试）');

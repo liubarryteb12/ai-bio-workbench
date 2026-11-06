@@ -1,0 +1,191 @@
+[
+  {
+    "id": "GR-001",
+    "input_scenario": "线1 GEO 批量挖掘，从原始矩阵一路跑到出图",
+    "expected_route_id": "route-l1-bulk-full",
+    "expected_mod_or_script": "l1_ingest_prep",
+    "expected_artifact_or_error": "line1_bulk 8 步产物全部落盘"
+  },
+  {
+    "id": "GR-002",
+    "input_scenario": "做一个 bulk 差异表达全流程",
+    "expected_route_id": "route-l1-bulk-full",
+    "expected_mod_or_script": "l1_de_limma",
+    "expected_artifact_or_error": "deg 表含 logFC 与 adjusted p"
+  },
+  {
+    "id": "GR-003",
+    "input_scenario": "GEO 数据批量挖掘，最后出一份结果",
+    "expected_route_id": "route-l1-bulk-full",
+    "expected_mod_or_script": "l1_figures_bulk",
+    "expected_artifact_or_error": "l1 图件包通过 figure_spec_gate"
+  },
+  {
+    "id": "GR-004",
+    "input_scenario": "算差异基因，出火山图",
+    "expected_route_id": "route-l1-de-enrich",
+    "expected_mod_or_script": "l1_de_limma",
+    "expected_artifact_or_error": "volcano 图 300 DPI"
+  },
+  {
+    "id": "GR-005",
+    "input_scenario": "做 GO 富集和 KEGG 通路分析",
+    "expected_route_id": "route-l1-de-enrich",
+    "expected_mod_or_script": "l1_enrich_bulk",
+    "expected_artifact_or_error": "富集表含 term 与 p.adjust"
+  },
+  {
+    "id": "GR-006",
+    "input_scenario": "跑一次 limma 差异分析",
+    "expected_route_id": "route-l1-de-enrich",
+    "expected_mod_or_script": "l1_de_limma",
+    "expected_artifact_or_error": "样本分组与对照口径写进报告"
+  },
+  {
+    "id": "GR-007",
+    "input_scenario": "用 LASSO 筛核心基因",
+    "expected_route_id": "route-l1-ml-screen",
+    "expected_mod_or_script": "l1_ml_model",
+    "expected_artifact_or_error": "随机种子固定并写入报告"
+  },
+  {
+    "id": "GR-008",
+    "input_scenario": "画 ROC 曲线和列线图",
+    "expected_route_id": "route-l1-ml-screen",
+    "expected_mod_or_script": "l1_ml_diag",
+    "expected_artifact_or_error": "训练集与验证集分别出 AUC"
+  },
+  {
+    "id": "GR-009",
+    "input_scenario": "在外部验证集上做验证",
+    "expected_route_id": "route-l1-ml-screen",
+    "expected_mod_or_script": "l1_ml_external",
+    "expected_artifact_or_error": "外部集参数冻结不再调参"
+  },
+  {
+    "id": "GR-010",
+    "input_scenario": "线2 单细胞全链跑一遍",
+    "expected_route_id": "route-l2-scrna-full",
+    "expected_mod_or_script": "l2_ingest_counts",
+    "expected_artifact_or_error": "细胞 QC 阈值写入报告"
+  },
+  {
+    "id": "GR-011",
+    "input_scenario": "scRNA 用 Seurat 处理一下",
+    "expected_route_id": "route-l2-scrna-full",
+    "expected_mod_or_script": "l2_integrate_annotate",
+    "expected_artifact_or_error": "聚类结果与注释表落盘"
+  },
+  {
+    "id": "GR-012",
+    "input_scenario": "scanpy 做单细胞降维和聚类",
+    "expected_route_id": "route-l2-scrna-full",
+    "expected_mod_or_script": "l2_integrate_cluster",
+    "expected_artifact_or_error": "UMAP 图与聚类表落盘"
+  },
+  {
+    "id": "GR-013",
+    "input_scenario": "做虚拟敲除分析",
+    "expected_route_id": "route-l2-ko",
+    "expected_mod_or_script": "l2_ko_virtual",
+    "expected_artifact_or_error": "敲除靶基因与 DR 基因表落盘"
+  },
+  {
+    "id": "GR-014",
+    "input_scenario": "跑 scTenifold 敲除",
+    "expected_route_id": "route-l2-ko",
+    "expected_mod_or_script": "l2_ko_virtual",
+    "expected_artifact_or_error": "DR 后富集有 NES 与 p 值"
+  },
+  {
+    "id": "GR-015",
+    "input_scenario": "算 DR 基因并做后分析",
+    "expected_route_id": "route-l2-ko",
+    "expected_mod_or_script": "l2_ko_drpost",
+    "expected_artifact_or_error": "DR 基因表与网络图落盘"
+  },
+  {
+    "id": "GR-016",
+    "input_scenario": "线3 空间转录组全链跑一遍",
+    "expected_route_id": "route-l3-spatial-full",
+    "expected_mod_or_script": "l3_ingest_spatial",
+    "expected_artifact_or_error": "逐样本 spot QC 产物落盘"
+  },
+  {
+    "id": "GR-017",
+    "input_scenario": "Visium 数据处理，出空间图",
+    "expected_route_id": "route-l3-spatial-full",
+    "expected_mod_or_script": "l3_qc_spots",
+    "expected_artifact_or_error": "空间图内嵌物理比例尺"
+  },
+  {
+    "id": "GR-018",
+    "input_scenario": "做空间域识别",
+    "expected_route_id": "route-l3-domains",
+    "expected_mod_or_script": "l3_dimred_domains",
+    "expected_artifact_or_error": "domains_report 记录域数与每域 spot 数"
+  },
+  {
+    "id": "GR-019",
+    "input_scenario": "找一下域 marker 基因",
+    "expected_route_id": "route-l3-domains",
+    "expected_mod_or_script": "l3_dimred_markers",
+    "expected_artifact_or_error": "域 marker 表落盘"
+  },
+  {
+    "id": "GR-020",
+    "input_scenario": "用 Leiden 聚类分域",
+    "expected_route_id": "route-l3-domains",
+    "expected_mod_or_script": "l3_dimred_domains",
+    "expected_artifact_or_error": "域编号按样本命名空间隔离"
+  },
+  {
+    "id": "GR-021",
+    "input_scenario": "做空间解卷积",
+    "expected_route_id": "route-l3-deconv",
+    "expected_mod_or_script": "l3_branches_celltype",
+    "expected_artifact_or_error": "保持 scipy.optimize.nnls"
+  },
+  {
+    "id": "GR-022",
+    "input_scenario": "用 NNLS 解卷积估细胞类型比例",
+    "expected_route_id": "route-l3-deconv",
+    "expected_mod_or_script": "l3_branches_celltype",
+    "expected_artifact_or_error": "报告记录 Top20 签名与 0.05 截断"
+  },
+  {
+    "id": "GR-023",
+    "input_scenario": "重出图，改配色和版式",
+    "expected_route_id": "route-figure-regen",
+    "expected_mod_or_script": "figure_spec_gate.mjs",
+    "expected_artifact_or_error": "全部图件 300 DPI 且 PNG"
+  },
+  {
+    "id": "GR-024",
+    "input_scenario": "给空间图加比例尺",
+    "expected_route_id": "route-figure-regen",
+    "expected_mod_or_script": "l3_figures_spatial",
+    "expected_artifact_or_error": "比例尺按 scalefactors 换算"
+  },
+  {
+    "id": "GR-025",
+    "input_scenario": "导出交付报告并签名",
+    "expected_route_id": "route-delivery-report",
+    "expected_mod_or_script": "delivery_acceptance_core.mjs",
+    "expected_artifact_or_error": "四关验收通过并持有效回执"
+  },
+  {
+    "id": "GR-026",
+    "input_scenario": "门禁报红，帮我排障",
+    "expected_route_id": "route-gate-triage",
+    "expected_mod_or_script": "run_all_gates.mjs",
+    "expected_artifact_or_error": "GATE_ALL_OK 全绿"
+  },
+  {
+    "id": "GR-027",
+    "input_scenario": "设备连不上，adb 超时",
+    "expected_route_id": "route-device-offline",
+    "expected_mod_or_script": "preflight.mjs",
+    "expected_artifact_or_error": "adb 通道恢复并取到设备状态"
+  }
+]
