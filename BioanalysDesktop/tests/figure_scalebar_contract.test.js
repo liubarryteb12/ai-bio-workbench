@@ -175,7 +175,12 @@ test("平台护栏：反推光斑直径必须落在 Visium 的 50~70 µm 带内"
   // 防「把 Visium 的 100um 常量套到 HD / Slide-seq / MERFISH 上」：
   // 那些平台反推的光斑直径会远离 50~70 um，必须当场失败而不是静默出错图。
   assert.match(block, /implied_spot_um\s*=\s*d_px\s*\*\s*um_per_px/, "必须计算反推光斑直径");
-  assert.match(block, /50\.0\s*<=\s*implied_spot_um\s*<=\s*70\.0/, "护栏带必须是 50~70 um");
+  // 带宽必须从 SPOT_ENVELOPE_UM 推出来（50 = 65-15，70 = 65+5），
+  // 否则 65 会变成「定义了但没人用」的死常量。
+  assert.match(block, /SPOT_DIAMETER_MIN_UM\s*<=\s*implied_spot_um\s*<=\s*SPOT_DIAMETER_MAX_UM/,
+    "护栏必须用 SPOT_DIAMETER_MIN_UM / MAX_UM 判定");
+  assert.match(src, /SPOT_DIAMETER_MIN_UM\s*=\s*SPOT_ENVELOPE_UM\s*-\s*15\.0/, "下界必须由 65-15 推出");
+  assert.match(src, /SPOT_DIAMETER_MAX_UM\s*=\s*SPOT_ENVELOPE_UM\s*\+\s*5\.0/, "上界必须由 65+5 推出");
   assert.match(block, /fail\(/, "越界必须 fail-closed");
 });
 test("破碎阵列护栏：显著偏离第一壳层的 spot 超过 5% 必须 fail", () => {
