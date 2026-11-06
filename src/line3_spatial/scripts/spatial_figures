@@ -234,10 +234,16 @@ def layout_fix(fig):
     if not axes:
         return
     if len(axes) == 1:
-        leg = axes[0].get_legend()
-        if leg is not None:
-            legend_out(axes[0], fig, leg)
-        fit_text_edges(fig, axes[0])
+        ax0 = axes[0]
+        # 手动布局豁免（2026-11-06）：出图母版可以用 ax._manual_legend = True 声明
+        # 「本图的图例与图注位置是我自己排好的」。守卫随后只做文字收边，不再搬图例。
+        # 为什么需要：01_domains 用 subplots_adjust 预留右栏，图例锚在右栏顶部；
+        # 而 legend_out() 按「横版 -> 轴框下方」重排，会把已排好的右栏布局推翻，
+        # 造成图例跑到左下、图注孤零零留在右边的新的错位。
+        leg = ax0.get_legend()
+        if leg is not None and not getattr(ax0, "_manual_legend", False):
+            legend_out(ax0, fig, leg)
+        fit_text_edges(fig, ax0)
 
 
 def _install_layout_guard():
@@ -318,6 +324,8 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         ax.set_xticks([])
         ax.set_yticks([])
         fig.subplots_adjust(left=0.04, right=0.58, top=0.97, bottom=0.03)
+        # 声明手动布局，阻止 layout_fix 守卫按「横版」把图例搬回轴框下方
+        ax._manual_legend = True
         leg = ax.legend(markerscale=5, fontsize=8, loc="upper left",
                         bbox_to_anchor=(1.02, 1.0), borderaxespad=0,
                         frameon=False, title="domain")
