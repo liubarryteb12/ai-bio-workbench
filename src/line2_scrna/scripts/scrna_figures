@@ -77,8 +77,8 @@ import anndata as ad
 
 ad.settings.allow_write_nullable_strings = False
 plt.rcParams.update({
-    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 9,
-    "axes.titlesize": 10, "axes.grid": False,
+    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 7, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "legend.title_fontsize": 7,
+    "axes.titlesize": 7, "axes.grid": False,
     "figure.autolayout": True, "savefig.bbox": "tight",
     "image.cmap": "viridis",
 })
@@ -151,7 +151,7 @@ def caption(fig, *parts):
     if not parts:
         return
     text = "\n".join(parts)
-    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=7, linespacing=1.5)
 def wrap_label(text, width=18):
     """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
     import textwrap
@@ -231,11 +231,11 @@ def legend_out(ax, fig, leg):
         ncol = 1 if n <= 12 else -(-n // 12)
         rows = -(-n // ncol)
         ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
-                  ncol=ncol, fontsize=8, frameon=False, title=title)
+                  ncol=ncol, fontsize=7, frameon=False, title=title)
         fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
     else:
         ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                  ncol=1, fontsize=8, frameon=False, title=title)
+                  ncol=1, fontsize=7, frameon=False, title=title)
         fig.subplots_adjust(right=0.74)
 
 
@@ -296,12 +296,20 @@ def conf_ellipse(ax, x, y, color, n_std=2.0):
 
 
 def cat_colors(labels):
-    """确定性分类配色：tab20+tab20b+tab20c 拼 60 色。
+    """确定性分类配色：Okabe-Ito 八色打底 + tab20b 扩充去重。
     leiden 簇可达 21 类，超过 tab20 的 20 色会循环撞色（同色不同类），故扩色板。"""
     cats = sorted(set(labels))
-    palette = (list(plt.get_cmap("tab20").colors)
-               + list(plt.get_cmap("tab20b").colors)
-               + list(plt.get_cmap("tab20c").colors))
+        # Okabe-Ito 八色打底（色盲友好、灰度可辨）；类别数超过 8 时用 Paired 平滑扩充并去重
+    _OKABE = ["#E69F00", "#56B4E9", "#009E73", "#F0E442",
+              "#0072B2", "#D55E00", "#CC79A7", "#000000"]
+    _seen = set()
+    palette = []
+    for _c in (_OKABE
+               + [matplotlib.colors.to_hex(x) for x in plt.get_cmap("Paired").colors]
+               + [matplotlib.colors.to_hex(x) for x in plt.get_cmap("tab20b").colors]):
+        if _c not in _seen:
+            _seen.add(_c)
+            palette.append(_c)
     return {c: palette[i % len(palette)] for i, c in enumerate(cats)}, cats
 
 
@@ -393,22 +401,23 @@ def resolve_case_ctrl(observed):
 
 def build_group_colors(groups, case, ctrl):
     """按实际组名构建取色表：case/ctrl 用 §八.5 标准色，其余组用 colorblind 友好定性色板
-    （tab20 子集，跳过与 case/ctrl 标准色视觉距离过近的候选，防第三组与 case/ctrl 撞色）。"""
+    （Okabe-Ito 打底 + tab20b 子集扩充，跳过与 case/ctrl 标准色视觉距离过近的候选，防第三组与 case/ctrl 撞色）。"""
     colors = {case: CASE_COLOR, ctrl: CTRL_COLOR}
     extras = [g for g in groups if g not in colors]
     if not extras:
         return colors
     try:
-        cmap = matplotlib.colormaps["tab20"]
+        cmap = matplotlib.colormaps["tab20b"]
     except (AttributeError, KeyError):
-        cmap = plt.get_cmap("tab20")
+        cmap = plt.get_cmap("tab20b")
     std = [mcolors.to_rgb(CASE_COLOR), mcolors.to_rgb(CTRL_COLOR)]
 
     def far_enough(hex_color):
         rgb = mcolors.to_rgb(hex_color)
         return min(sum((a - b) ** 2 for a, b in zip(rgb, s)) ** 0.5 for s in std) > 0.30
 
-    cand = [mcolors.to_hex(cmap(i)) for i in range(cmap.N)]
+    _okabe = ["#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#000000"]
+    cand = _okabe + [mcolors.to_hex(cmap(i)) for i in range(cmap.N)]
     cand = [c for c in cand if far_enough(c)] or cand
     for i, g in enumerate(extras):
         colors[g] = cand[i % len(cand)]
@@ -465,7 +474,7 @@ def annotate_perm_p(ax, x1, x2, p, values):
     ax.plot([x1, x1, x2, x2], [y, y + h, y + h, y], color="k", lw=0.8,
             clip_on=False)
     ax.text((x1 + x2) / 2.0, y + h, "perm p = %.4g" % p,
-            ha="center", va="bottom", fontsize=8)
+            ha="center", va="bottom", fontsize=7)
 
 
 def scatter_cat(ax, xy, labels, legend_ncol=2):
@@ -476,7 +485,7 @@ def scatter_cat(ax, xy, labels, legend_ncol=2):
     ax.set_xlabel("UMAP1")
     ax.set_ylabel("UMAP2")
     # 图例外置到轴框下方（figure_spec v2.2 禁止轴内 loc="best"）
-    ax.legend(markerscale=3, fontsize=8, loc="upper center",
+    ax.legend(markerscale=3, fontsize=7, loc="upper center",
               bbox_to_anchor=(0.5, -0.08), ncol=legend_ncol, frameon=False)
     ax.set_xticks([])
     ax.set_yticks([])
@@ -555,12 +564,12 @@ if comp is not None:
         bottom += prop_s[:, ci]
     ax.set_xticks(range(len(donors_s)))
     ax.set_xticklabels(["%s\n(%s)" % (d, diag[order[i]])
-                        for i, d in enumerate(donors_s)], fontsize=8)
+                        for i, d in enumerate(donors_s)], fontsize=7)
     ax.set_ylabel("celltype proportion")
     caption(fig, "line2 scrna: celltype composition per donor",
             "from step14 scrna_composition",
             "n=%d donors, diagnosis labeled" % len(donors_s))
-    ax.legend(fontsize=8, ncol=1, loc="upper left", bbox_to_anchor=(1.02, 1.0),
+    ax.legend(fontsize=7, ncol=1, loc="upper left", bbox_to_anchor=(1.02, 1.0),
               borderaxespad=0, frameon=False)
     fig.subplots_adjust(left=0.07, right=0.76, top=0.97, bottom=0.16)
     save(fig, "l2_05_composition_stack.png")
@@ -596,7 +605,7 @@ if comp is not None:
         plt.rcParams["figure.autolayout"] = False
         ax.legend([bp["boxes"][0], bp["boxes"][1], pts],
                   ["%s (box)" % labs[0], "%s (box)" % labs[1], "individual donor"],
-                  fontsize=8, loc="upper left", bbox_to_anchor=(1.02, 1.0),
+                  fontsize=7, loc="upper left", bbox_to_anchor=(1.02, 1.0),
                   borderaxespad=0, title="diagnosis")
         fig.subplots_adjust(left=0.12, right=0.70, top=0.95, bottom=0.14)
         save(fig, "l2_06_composition_box_%s.png" % c.replace("/", "_"))
@@ -639,7 +648,7 @@ if comp is not None:
             bottom += prop_s[:, ci]
         axA.set_xticks(range(len(donors_s)))
         axA.set_xticklabels(["%s\n(%s)" % (d, diag[order[i]])
-                             for i, d in enumerate(donors_s)], fontsize=8)
+                             for i, d in enumerate(donors_s)], fontsize=7)
         axA.set_ylabel("celltype proportion")
         axA.set_ylim(0, 1)
 
@@ -683,7 +692,7 @@ if comp is not None:
         h_leg, l_leg = axA.get_legend_handles_labels()
         ncol_leg = 1 if len(l_leg) <= 12 else -(-len(l_leg) // 12)
         fig.legend(h_leg, l_leg, loc="lower center", bbox_to_anchor=(0.5, 0.008),
-                   ncol=ncol_leg, fontsize=8, title="cell type", frameon=False)
+                   ncol=ncol_leg, fontsize=7, title="cell type", frameon=False)
 
         n_by_group = {g: sum(1 for x in diag if x == g) for g in [ctrl_group, case_group]}
         p_txt = ("%.4g" % p_basal) if p_basal is not None else "NA"
@@ -748,9 +757,9 @@ if isinstance(cm, pd.DataFrame) and len(cm):
         fig, ax = plt.subplots(figsize=(8, max(8, len(genes) * 0.22)))
         im = ax.imshow(z, aspect="auto", cmap="RdBu_r", vmin=-2, vmax=2)
         ax.set_yticks(range(len(genes)))
-        ax.set_yticklabels(genes, fontsize=8)
+        ax.set_yticklabels(genes, fontsize=7)
         ax.set_xticks(range(len(ct_order)))
-        ax.set_xticklabels(ct_order, rotation=45, ha="right", fontsize=8)
+        ax.set_xticklabels(ct_order, rotation=45, ha="right", fontsize=7)
         caption(fig, "line2 scrna: top-5 markers per celltype",
                 "from step6 annotate_celltypes cluster_markers",
                 "mean expr, gene-zscored (row=gene, col=celltype)")
@@ -792,12 +801,12 @@ if deg is not None:
         xlo, xhi = ax.get_xlim()
         ax.text(xlo + 0.02 * (xhi - xlo), -np.log10(p_cut),
                 "%s=%g" % (cuts["p_field"], p_cut),
-                fontsize=8, va="bottom", ha="left")
+                fontsize=7, va="bottom", ha="left")
         # log2FC 标注移到轴框顶部，避开底部密集点云与 p 标注
         ytop = ax.get_ylim()[1]
-        ax.text(-l2_cut - 0.02, ytop, "log2FC=%g" % -l2_cut, fontsize=8,
+        ax.text(-l2_cut - 0.02, ytop, "log2FC=%g" % -l2_cut, fontsize=7,
                 va="top", ha="right", rotation=90)
-        ax.text(l2_cut + 0.02, ytop, "log2FC=+%g" % l2_cut, fontsize=8,
+        ax.text(l2_cut + 0.02, ytop, "log2FC=+%g" % l2_cut, fontsize=7,
                 va="top", rotation=90)
         ax.set_xlabel("log2FC (Psoriasis vs Healthy)")
         ax.set_ylabel("-log10 adj p")
@@ -807,7 +816,7 @@ if deg is not None:
                 % (per[c].get("n_sig", 0), l2_cut, cuts["p_field"], p_cut),
                 "red = up, blue = down, grey = NS")
         # 图例外置到轴框下方（figure_spec v2.2：禁止轴内 loc）
-        ax.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.10),
+        ax.legend(fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.10),
                   ncol=1, frameon=False)
         save(fig, "l2_08_deg_volcano_%s.png" % c.replace("/", "_"))
 
@@ -817,14 +826,14 @@ if deg is not None:
     vals = [per[c].get("n_sig", 0) for c in cts]
     ax.bar(range(len(cts)), vals, color=CTRL_COLOR)   # 单序列条形，用交付基色（非组编码）
     ax.set_xticks(range(len(cts)))
-    ax.set_xticklabels(cts, rotation=45, ha="right", fontsize=8)
+    ax.set_xticklabels(cts, rotation=45, ha="right", fontsize=7)
     ax.set_ylabel("significant DEG count")
     cuts = read_cutoffs()
     caption(fig, "line2 scrna: DEG count per celltype",
             "from step15 deg_groups",
             "|log2FC|>%g & %s<%g" % (cuts["log2fc"], cuts["p_field"], cuts["p_cut"]))
     for i, v in enumerate(vals):
-        ax.text(i, v, str(v), ha="center", va="bottom", fontsize=8)
+        ax.text(i, v, str(v), ha="center", va="bottom", fontsize=7)
     save(fig, "l2_09_deg_sig_bar.png")
 
 # --- 10 PCA by diagnosis with confidence ellipse ---

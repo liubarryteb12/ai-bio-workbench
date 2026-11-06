@@ -82,8 +82,8 @@ import anndata as ad
 
 ad.settings.allow_write_nullable_strings = False
 plt.rcParams.update({
-    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 8,
-    "axes.titlesize": 9, "axes.grid": False,
+    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 7, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "legend.title_fontsize": 7,
+    "axes.titlesize": 7, "axes.grid": False,
     "figure.autolayout": True, "savefig.bbox": "tight",
     "image.cmap": "viridis",
 })
@@ -126,7 +126,7 @@ def caption(fig, *parts):
     if not parts:
         return
     text = "\n".join(parts)
-    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=7, linespacing=1.5)
 def wrap_label(text, width=18):
     """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
     import textwrap
@@ -206,11 +206,11 @@ def legend_out(ax, fig, leg):
         ncol = 1 if n <= 12 else -(-n // 12)
         rows = -(-n // ncol)
         ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
-                  ncol=ncol, fontsize=8, frameon=False, title=title)
+                  ncol=ncol, fontsize=7, frameon=False, title=title)
         fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
     else:
         ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                  ncol=1, fontsize=8, frameon=False, title=title)
+                  ncol=1, fontsize=7, frameon=False, title=title)
         fig.subplots_adjust(right=0.74)
 
 
@@ -260,10 +260,34 @@ def _install_layout_guard():
 _install_layout_guard()
 
 
+def _build_cat_palette():
+    """离散分类色板：Okabe-Ito 八色打底（色盲友好、灰度可辨），
+    类别数超过 8 时用 Paired 平滑扩充并去重。
+
+    为什么必须去重并足够长：域数可达 57（mouse），旧实现 i%20 会循环撞色，
+    同色不同域会让图例失效（规范明令禁止）。"""
+    okabe = ["#E69F00", "#56B4E9", "#009E73", "#F0E442",
+             "#0072B2", "#D55E00", "#CC79A7", "#000000"]
+    seen, out = set(), []
+    for c in (okabe
+              + [matplotlib.colors.to_hex(x) for x in plt.get_cmap("Paired").colors]
+              + [matplotlib.colors.to_hex(x) for x in plt.get_cmap("tab20b").colors]
+              + [matplotlib.colors.to_hex(x) for x in plt.get_cmap("tab20c").colors]):
+        if c not in seen:
+            seen.add(c)
+            out.append(c)
+    return out
+
+
+CAT_PALETTE = _build_cat_palette()
+
+
 def cat_colors(labels):
     cats = sorted(set(labels))
-    cmap = plt.get_cmap("tab20")
-    return {c: cmap(i % 20) for i, c in enumerate(cats)}, cats
+    if len(cats) > len(CAT_PALETTE):
+        fail("分类数 %d 超过可用色板 %d 色，拒绝循环撞色"
+             % (len(cats), len(CAT_PALETTE)))
+    return {c: CAT_PALETTE[i] for i, c in enumerate(cats)}, cats
 
 
 def _uns_dict(adata, key):
@@ -322,7 +346,7 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         fig.subplots_adjust(left=0.04, right=0.58, top=0.97, bottom=0.03)
         # 声明手动布局，阻止 layout_fix 守卫按「横版」把图例搬回轴框下方
         ax._manual_legend = True
-        leg = ax.legend(markerscale=5, fontsize=8, loc="upper left",
+        leg = ax.legend(markerscale=5, fontsize=7, loc="upper left",
                         bbox_to_anchor=(1.02, 1.0), borderaxespad=0,
                         frameon=False, title="domain")
         leg.get_title().set_fontsize(8)
@@ -333,7 +357,7 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
                  "line3 %s: %s spatial domains\n" % (species, s)
                  + "coords = sample-local (obsm['spatial'])\n"
                  + "n=%d domains, n=%d spots" % (len(set(d)), len(d)),
-                 ha="left", va="top", fontsize=8, linespacing=1.5)
+                 ha="left", va="top", fontsize=7, linespacing=1.5)
         save(fig, "%s_01_domains_%s.png" % (pre, s))
 
     # --- 02 target gene expression（逐样本单图） ---
@@ -381,14 +405,14 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         ax.set_yticks([])
         # colorbar 是连续量的图例，必须带 label 说明它是什么（规范：图例可读）
         _cb = fig.colorbar(sc, ax=ax, shrink=0.82, fraction=0.046, pad=0.02)
-        _cb.set_label("expr", fontsize=8)
+        _cb.set_label("expr", fontsize=7)
         _cb.ax.tick_params(labelsize=7)
         ax._manual_legend = True
         fig.text(0.01, -0.02,
                  "line3 %s: %s target gene\n" % (species, s)
                  + "coords = sample-local (obsm['spatial'])\n"
                  + "gene=%s, colour = expr" % top_gene,
-                 ha="left", va="top", fontsize=8, linespacing=1.5)
+                 ha="left", va="top", fontsize=7, linespacing=1.5)
         save(fig, "%s_02_target_gene_%s.png" % (pre, s))
 
     # --- 02b target gene by domain（域统计视图：规范要求表达值 + 域统计两个视图） ---
@@ -399,7 +423,7 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
     y = np.arange(len(dom_order))
     ax.barh(y, tgt_dom, color="#4C72B0")
     ax.set_yticks(y)
-    ax.set_yticklabels(dom_order, fontsize=8)
+    ax.set_yticklabels(dom_order, fontsize=7)
     ax.invert_yaxis()
     ax.set_xlabel("mean expression")
     caption(fig, "line3 %s: target gene (%s) mean by spatial domain"
@@ -429,13 +453,13 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
             ax.set_xticks([])
             ax.set_yticks([])
             _kcb = fig.colorbar(sc, ax=ax, shrink=0.82, fraction=0.046, pad=0.02)
-            _kcb.set_label("KO DR expr", fontsize=8)
+            _kcb.set_label("KO DR expr", fontsize=7)
             _kcb.ax.tick_params(labelsize=7)
             ax._manual_legend = True
             fig.text(0.01, -0.02,
                      "line3 %s: %s KO(%s) DR mean expr\n" % (species, s, ko_gene)
                      + "coords = sample-local (obsm['spatial'])",
-                     ha="left", va="top", fontsize=8, linespacing=1.5)
+                     ha="left", va="top", fontsize=7, linespacing=1.5)
             save(fig, "%s_03_ko_dr_%s.png" % (pre, s))
 
         # --- 03b KO DR by domain（域统计视图：规范要求表达值 + 域统计两个视图） ---
@@ -444,7 +468,7 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         y = np.arange(len(dom_order))
         ax.barh(y, koe_dom, color="#C44E52")
         ax.set_yticks(y)
-        ax.set_yticklabels(dom_order, fontsize=8)
+        ax.set_yticklabels(dom_order, fontsize=7)
         ax.invert_yaxis()
         ax.set_xlabel("mean KO DR expr")
         caption(fig, "line3 %s: KO(%s) DR mean expression by spatial domain"
@@ -460,7 +484,7 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         ax.barh(range(len(mi))[::-1], mi["morans_i_mean"].to_numpy(),
                 color="#4C72B0")
         ax.set_yticks(range(len(mi))[::-1])
-        ax.set_yticklabels(mi["gene_symbol"].astype(str).tolist(), fontsize=8)
+        ax.set_yticklabels(mi["gene_symbol"].astype(str).tolist(), fontsize=7)
         ax.set_xlabel("Moran's I (mean over samples)")
         caption(fig, "line3 %s: top-20 spatially autocorrelated genes" % species)
         save(fig, "%s_04_morans_top.png" % pre)
@@ -489,13 +513,13 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         x = np.arange(len(genes))
         ax.bar(x, pads, color="#C44E52")
         ax.set_xticks(x)
-        ax.set_xticklabels(genes, rotation=45, ha="right", fontsize=8)
+        ax.set_xticklabels(genes, rotation=45, ha="right", fontsize=7)
         ax.set_ylabel("-log10 adj p (min over samples)")
         caption(fig, "line3 %s: KO(%s) top-10 significant DR genes"
                 % (species, ko.get("ko_gene", "?")),
                 "n = significant samples")
         for i, (n, p) in enumerate(zip(nss, pads)):
-            ax.text(i, p, "n=%d" % n, ha="center", va="bottom", fontsize=8)
+            ax.text(i, p, "n=%d" % n, ha="center", va="bottom", fontsize=7)
         save(fig, "%s_05_knockout_dr.png" % pre)
 
     # --- 06 UMAP by sample (spatial X_umap) ---
@@ -508,7 +532,7 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
             m = labels == c
             ax.scatter(um[m, 0], um[m, 1], s=3, color=colors[c], label=c, linewidths=0)
         # 源级外置：横版图（8x6）落轴框下方（规范 §三之二）
-        ax.legend(markerscale=3, fontsize=8, ncol=2, frameon=False,
+        ax.legend(markerscale=3, fontsize=7, ncol=2, frameon=False,
                   loc="upper center", bbox_to_anchor=(0.5, -0.10))
         caption(fig, "line3 %s: UMAP (colored by sample)" % species,
                 "X_umap from step4 dim_reduce",
@@ -521,12 +545,10 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
     dom_counts = pd.crosstab(pd.Series(samp, name="sample"),
                              pd.Series(dom, name="domain"))
     prop = dom_counts.div(dom_counts.sum(axis=1), axis=0)
-    # 域数可达 57（mouse），超过 tab20 的 20 色会循环撞色；
-    # 用 tab20+tab20b+tab20c 拼成 60 色板保证每域颜色唯一，并给完整图例。
+    # 域数可达 57（mouse），统一用模块级 CAT_PALETTE（Okabe-Ito 打底 + 平滑扩充去重），
+    # 保证每域颜色唯一，并给完整图例。
     # 图例项多，放轴框外右侧两列，该图单独关 autolayout 显式留位。
-    palette = (list(plt.get_cmap("tab20").colors)
-               + list(plt.get_cmap("tab20b").colors)
-               + list(plt.get_cmap("tab20c").colors))
+    palette = CAT_PALETTE
     plt.rcParams["figure.autolayout"] = False
     fig, ax = plt.subplots(figsize=(13, 8))
     bottom = np.zeros(len(prop))
@@ -535,11 +557,11 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
                color=palette[j % len(palette)], width=0.7, label=dcol)
         bottom += prop[dcol].to_numpy()
     ax.set_xticks(range(len(prop)))
-    ax.set_xticklabels(prop.index.tolist(), rotation=45, ha="right", fontsize=8)
+    ax.set_xticklabels(prop.index.tolist(), rotation=45, ha="right", fontsize=7)
     ax.set_ylabel("domain proportion")
     caption(fig, "line3 %s: spatial domain composition per sample" % species,
             "n=%d samples, %d domains" % (len(prop), len(prop.columns)))
-    ax.legend(fontsize=8, ncol=2, loc="upper left",
+    ax.legend(fontsize=7, ncol=2, loc="upper left",
               bbox_to_anchor=(1.02, 1.0), borderaxespad=0, frameon=False)
     fig.subplots_adjust(left=0.07, right=0.70, top=0.97, bottom=0.16)
     save(fig, "%s_07_domain_composition.png" % pre)
@@ -605,7 +627,7 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
                     color=palette[j % len(palette)], width=0.7, label=dcol)
             bottom += prop[dcol].to_numpy()
         axB.set_xticks(range(len(prop)))
-        axB.set_xticklabels(prop.index.tolist(), rotation=45, ha="right", fontsize=8)
+        axB.set_xticklabels(prop.index.tolist(), rotation=45, ha="right", fontsize=7)
         axB.set_ylabel("domain proportion")
 
         # C = {sp}_08_target_gene_by_domain（同一 tgt_dom/dom_order，零重算；单图 08
@@ -614,7 +636,7 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         axC.barh(y, tgt_dom, color=[palette[j % len(palette)]
                                     for j in range(n_dom)])
         axC.set_yticks(y)
-        axC.set_yticklabels(dom_order, fontsize=8)
+        axC.set_yticklabels(dom_order, fontsize=7)
         axC.invert_yaxis()
         axC.set_xlabel("mean expression")
 
@@ -627,7 +649,7 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         # 条目 >12 按列分组（每列 <=12 行，沿用 legend_out 规则）；色板与域标签同 B 面板
         h_leg, l_leg = axB.get_legend_handles_labels()
         fig.legend(h_leg, l_leg, loc="lower center", bbox_to_anchor=(0.5, 0.006),
-                   ncol=ncol_leg, fontsize=8, title="spatial domain",
+                   ncol=ncol_leg, fontsize=7, title="spatial domain",
                    frameon=False)
 
         caption(fig,
@@ -685,10 +707,10 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
                 fig, ax = plt.subplots(figsize=(7.5, 5.2))
                 im = ax.imshow(_frac.to_numpy(), aspect="auto", cmap="cividis", vmin=0, vmax=1)
                 ax.set_yticks(np.arange(_frac.shape[0]))
-                ax.set_yticklabels([str(x)[:20] for x in _frac.index], fontsize=8)
+                ax.set_yticklabels([str(x)[:20] for x in _frac.index], fontsize=7)
                 ax.set_xticks(np.arange(_frac.shape[1]))
                 ax.set_xticklabels([str(x)[:18] for x in _frac.columns], rotation=45,
-                                   ha="right", fontsize=8)
+                                   ha="right", fontsize=7)
                 cb = fig.colorbar(im, ax=ax, fraction=0.036, pad=0.02)
                 cb.set_label("fraction of spots in domain")
                 caption(fig, "line3 %s: dominant cell type per spatial domain" % species,
@@ -714,7 +736,7 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
                 ax.barh(np.arange(len(_co)), _co["same_z"].to_numpy(dtype=float),
                         color="#4C72B0")
                 ax.set_yticks(np.arange(len(_co)))
-                ax.set_yticklabels([str(x)[:20] for x in _co["domain"]], fontsize=8)
+                ax.set_yticklabels([str(x)[:20] for x in _co["domain"]], fontsize=7)
                 ax.axvline(0, color="#BEBEBE", linewidth=0.8)
                 ax.set_xlabel("spatial coherence z-score (same-domain neighbour enrichment)")
                 caption(fig, "line3 %s: domain spatial coherence" % species,
@@ -745,9 +767,9 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
                            _cm[_c].to_numpy(dtype=float), width=_w, label=_c)
                 ax.set_xticks(_x)
                 ax.set_xticklabels([str(x)[:16] for x in _cm[_lab]], rotation=30,
-                                   ha="right", fontsize=8)
+                                   ha="right", fontsize=7)
                 ax.set_ylabel("ligand-receptor pairs")
-                ax.legend(fontsize=8, frameon=False, loc="upper left",
+                ax.legend(fontsize=7, frameon=False, loc="upper left",
                           bbox_to_anchor=(1.02, 1.0), borderaxespad=0)
                 caption(fig, "line3 %s: cell-cell communication per sample" % species,
                         "bar = active ligand-receptor pairs (n_lr_pairs = detected pairs)")
@@ -773,7 +795,7 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
                 ax.barh(np.arange(len(_lc)), _lc[_mcol].to_numpy(dtype=float),
                         color="#55A868")
                 ax.set_yticks(np.arange(len(_lc)))
-                ax.set_yticklabels([str(x)[:20] for x in _lc["gene_symbol"]], fontsize=8)
+                ax.set_yticklabels([str(x)[:20] for x in _lc["gene_symbol"]], fontsize=7)
                 ax.set_xlabel(_mcol)
                 caption(fig, "line3 %s: top localized genes" % species,
                         "bar = %s (higher = localized to more domains/samples)" % _mcol,

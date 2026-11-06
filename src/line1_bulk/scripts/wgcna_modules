@@ -86,6 +86,7 @@ enableWGCNAThreads(nThreads = 3)
 # 主题层没挂（没有 BIOANALYS_THEME / 非建项通道）时 exists 守卫保证照常出图。
 fig_png <- function(path, width_in, height_in) {
   png(path, width = width_in * 300, height = height_in * 300, res = 300)
+  par(family = "sans")  # 统一无衬线（Arial/Helvetica 族），缺失时自动回退
   if (exists("bioanalys_par", mode = "function")) bioanalys_par()
 }
 

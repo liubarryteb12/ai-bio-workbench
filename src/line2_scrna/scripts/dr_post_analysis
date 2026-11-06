@@ -91,8 +91,8 @@ import anndata as ad
 
 ad.settings.allow_write_nullable_strings = False
 plt.rcParams.update({
-    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 9,
-    "axes.titlesize": 10, "axes.grid": False,
+    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 7, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "legend.title_fontsize": 7,
+    "axes.titlesize": 7, "axes.grid": False,
     "figure.autolayout": True, "savefig.bbox": "tight",
     "image.cmap": "viridis",
 })
@@ -123,7 +123,7 @@ def caption(fig, *parts):
     if not parts:
         return
     text = "\n".join(parts)
-    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=7, linespacing=1.5)
 def wrap_label(text, width=18):
     """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
     import textwrap
@@ -203,11 +203,11 @@ def legend_out(ax, fig, leg):
         ncol = 1 if n <= 12 else -(-n // 12)
         rows = -(-n // ncol)
         ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
-                  ncol=ncol, fontsize=8, frameon=False, title=title)
+                  ncol=ncol, fontsize=7, frameon=False, title=title)
         fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
     else:
         ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                  ncol=1, fontsize=8, frameon=False, title=title)
+                  ncol=1, fontsize=7, frameon=False, title=title)
         fig.subplots_adjust(right=0.74)
 
 
@@ -355,7 +355,7 @@ plt.rcParams["figure.autolayout"] = False
 fig, ax = plt.subplots(figsize=(13, max(6, len(d) * 0.42)))
 ax.barh(y, nes, color=[UP if v > 0 else DOWN for v in nes], height=0.7)
 ax.set_yticks(y)
-ax.set_yticklabels(labels, fontsize=8)
+ax.set_yticklabels(labels, fontsize=7)
 ax.axvline(0, color="k", lw=0.6)
 ax.set_xlabel("NES (normalized enrichment score)")
 span = max(float(np.abs(nes).max()), 1e-9) * 2.4
@@ -363,11 +363,11 @@ ax.set_xlim(-span, span)
 for i, (v, q) in enumerate(zip(nes, d["FDR q-val"].to_numpy())):
     ax.text(v + (0.04 * span if v >= 0 else -0.04 * span), i,
             "NES=%.2f  FDR q=%.2g" % (v, q),
-            va="center", ha="left" if v >= 0 else "right", fontsize=8)
+            va="center", ha="left" if v >= 0 else "right", fontsize=7)
 # 图例外置到轴框下方（figure_spec v2.2 禁止轴内 loc="best"）
 ax.legend(handles=[Patch(color=UP, label="activated (NES>0)"),
                    Patch(color=DOWN, label="inhibited (NES<0)")],
-          fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.10),
+          fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.10),
           ncol=1, frameon=False)
 caption(fig, "[Virtual KO - DR Genes] line2 scrna: DR gene GSEA (KO %s) top-%d by FDR" % (ko_gene, len(d)),
         "ko_dr_genes.tsv ranked by tenifold Z (not DEG)",
@@ -433,7 +433,7 @@ if len(net):
     # 图例外置到轴框下方（figure_spec v2.2：禁止轴内 loc）
     ax.legend(handles=[Patch(color="#4C72B0", label="TF (SCENIC regulon)"),
                        Patch(color="#C44E52", label="DR gene (top %d by p)" % DR_TOP_FOR_NET)],
-              fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.06),
+              fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.06),
               ncol=2, frameon=False)
     caption(fig, "[Virtual KO - DR Genes] line2 scrna: DR regulatory network (KO %s)" % ko_gene,
             "edges = SCENIC cisTarget regulon TF->target where target is DR gene",
@@ -491,12 +491,12 @@ fig, ax = plt.subplots(figsize=(10, 5))
 bars = ax.bar(range(len(names)), vals,
               color=["#4C72B0", "#55A868", "#8172B3", "#DD8452", "#DD8452", "#DD8452", "#C44E52"])
 ax.set_xticks(range(len(names)))
-ax.set_xticklabels(names, rotation=30, ha="right", fontsize=8)
+ax.set_xticklabels(names, rotation=30, ha="right", fontsize=7)
 ax.set_ylabel("gene count")
 xmax = max(vals) if max(vals) > 0 else 1
 ax.set_ylim(0, xmax * 1.22)
 for i, v in enumerate(vals):
-    ax.text(i, v + xmax * 0.02, str(v), ha="center", va="bottom", fontsize=8)
+    ax.text(i, v + xmax * 0.02, str(v), ha="center", va="bottom", fontsize=7)
 caption(fig, "[Virtual KO - DR Genes] line2 scrna: DR / DEG / celltype-marker overlap (KO %s)" % ko_gene,
         "DR significant = adj p<%.2f & non-KO; DEG = step15 significant" % ALPHA,
         "marker = step6 annotation marker_sets")

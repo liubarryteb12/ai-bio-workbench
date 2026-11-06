@@ -72,8 +72,8 @@ from scipy.optimize import nnls
 
 ad.settings.allow_write_nullable_strings = False
 plt.rcParams.update({
-    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 9,
-    "axes.titlesize": 10, "axes.grid": False,
+    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 7, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "legend.title_fontsize": 7,
+    "axes.titlesize": 7, "axes.grid": False,
     "figure.autolayout": True, "savefig.bbox": "tight",
     "image.cmap": "viridis",
 })
@@ -103,7 +103,7 @@ def caption(fig, *parts):
     if not parts:
         return
     text = "\n".join(parts)
-    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=7, linespacing=1.5)
 def wrap_label(text, width=18):
     """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
     import textwrap
@@ -183,11 +183,11 @@ def legend_out(ax, fig, leg):
         ncol = 1 if n <= 12 else -(-n // 12)
         rows = -(-n // ncol)
         ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
-                  ncol=ncol, fontsize=8, frameon=False, title=title)
+                  ncol=ncol, fontsize=7, frameon=False, title=title)
         fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
     else:
         ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                  ncol=1, fontsize=8, frameon=False, title=title)
+                  ncol=1, fontsize=7, frameon=False, title=title)
         fig.subplots_adjust(right=0.74)
 
 
@@ -234,9 +234,17 @@ _install_layout_guard()
 def cat_colors(labels):
     """确定性分类配色：tab20+tab20b+tab20c 拼 60 色"""
     cats = sorted(set(labels))
-    palette = (list(plt.get_cmap("tab20").colors)
-               + list(plt.get_cmap("tab20b").colors)
-               + list(plt.get_cmap("tab20c").colors))
+        # Okabe-Ito 八色打底（色盲友好、灰度可辨）；类别数超过 8 时用 Paired 平滑扩充并去重
+    _OKABE = ["#E69F00", "#56B4E9", "#009E73", "#F0E442",
+              "#0072B2", "#D55E00", "#CC79A7", "#000000"]
+    _seen = set()
+    palette = []
+    for _c in (_OKABE
+               + [matplotlib.colors.to_hex(x) for x in plt.get_cmap("Paired").colors]
+               + [matplotlib.colors.to_hex(x) for x in plt.get_cmap("tab20b").colors]):
+        if _c not in _seen:
+            _seen.add(_c)
+            palette.append(_c)
     return {c: palette[i % len(palette)] for i, c in enumerate(cats)}, cats
 
 
@@ -420,8 +428,8 @@ for species in species_present:
         n_ct_show = len(uniq_cts)
         if n_ct_show <= 20:
             ax.legend(handles=[Patch(color=cmap[c], label=c) for c in uniq_cts],
-                      fontsize=8, loc="center left", bbox_to_anchor=(1.02, 0.5),
-                      frameon=False, title="celltype (NNLS)", title_fontsize=8)
+                      fontsize=7, loc="center left", bbox_to_anchor=(1.02, 0.5),
+                      frameon=False, title="celltype (NNLS)", title_fontsize=7)
             fig.subplots_adjust(left=0.08, right=0.72, top=0.96, bottom=0.09)
         else:
             caption_note = "%d celltypes colored (see celltype_annotation_%s.tsv for labels)" % (n_ct_show, species)
@@ -466,10 +474,10 @@ for species in species_present:
             ax.barh(y_pos, vals, left=bottoms, color=cmap[ct], height=0.7, label=ct)
             bottoms += vals
         ax.set_yticks(y_pos)
-        ax.set_yticklabels(dom_list, fontsize=8)
+        ax.set_yticklabels(dom_list, fontsize=7)
         ax.set_xlabel("mean proportion")
         if len(comp["celltype"].unique()) <= 20:
-            ax.legend(fontsize=8, loc="center left", bbox_to_anchor=(1.02, 0.5),
+            ax.legend(fontsize=7, loc="center left", bbox_to_anchor=(1.02, 0.5),
                       frameon=False, title="celltype")
             fig.subplots_adjust(left=0.14, right=0.68, top=0.96, bottom=0.10)
         else:

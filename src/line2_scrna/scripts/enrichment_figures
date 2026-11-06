@@ -65,8 +65,8 @@ import numpy as np
 import pandas as pd
 
 plt.rcParams.update({
-    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 9,
-    "axes.titlesize": 10, "axes.grid": False,
+    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 7, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "legend.title_fontsize": 7,
+    "axes.titlesize": 7, "axes.grid": False,
     "figure.autolayout": True, "savefig.bbox": "tight",
     "image.cmap": "viridis",
 })
@@ -106,7 +106,7 @@ def caption(fig, *parts):
     if not parts:
         return
     text = "\n".join(parts)
-    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=7, linespacing=1.5)
 def wrap_label(text, width=18):
     """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
     import textwrap
@@ -186,11 +186,11 @@ def legend_out(ax, fig, leg):
         ncol = 1 if n <= 12 else -(-n // 12)
         rows = -(-n // ncol)
         ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
-                  ncol=ncol, fontsize=8, frameon=False, title=title)
+                  ncol=ncol, fontsize=7, frameon=False, title=title)
         fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
     else:
         ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                  ncol=1, fontsize=8, frameon=False, title=title)
+                  ncol=1, fontsize=7, frameon=False, title=title)
         fig.subplots_adjust(right=0.74)
 
 
@@ -252,9 +252,17 @@ def num(series):
 def cat_colors(labels):
     """确定性分类配色：tab20+tab20b+tab20c 拼 60 色（celltype 数可能超 20）。"""
     cats = sorted(set(labels))
-    palette = (list(plt.get_cmap("tab20").colors)
-               + list(plt.get_cmap("tab20b").colors)
-               + list(plt.get_cmap("tab20c").colors))
+        # Okabe-Ito 八色打底（色盲友好、灰度可辨）；类别数超过 8 时用 Paired 平滑扩充并去重
+    _OKABE = ["#E69F00", "#56B4E9", "#009E73", "#F0E442",
+              "#0072B2", "#D55E00", "#CC79A7", "#000000"]
+    _seen = set()
+    palette = []
+    for _c in (_OKABE
+               + [matplotlib.colors.to_hex(x) for x in plt.get_cmap("Paired").colors]
+               + [matplotlib.colors.to_hex(x) for x in plt.get_cmap("tab20b").colors]):
+        if _c not in _seen:
+            _seen.add(_c)
+            palette.append(_c)
     return {c: palette[i % len(palette)] for i, c in enumerate(cats)}, cats
 
 
@@ -277,17 +285,17 @@ if ora is not None and len(ora) and {"celltype", "Term", "Adjusted P-value"} <= 
     fig, ax = plt.subplots(figsize=(13, max(6, len(d) * 0.42)))
     ax.barh(y, score, color=[cmap[c] for c in cts], height=0.7)
     ax.set_yticks(y)
-    ax.set_yticklabels(labels, fontsize=8)
+    ax.set_yticklabels(labels, fontsize=7)
     ax.set_xlabel("-log10 adjusted p")
     xmax = max(float(score.max()), 1e-9) * 2.0
     ax.set_xlim(0, xmax)
     for i, (v, p, o) in enumerate(zip(score, d["adj"].to_numpy(), d["or"].to_numpy())):
         label = ("OR=%.2f  adj p=%.2g" % (o, p)) if np.isfinite(o) else ("adj p=%.2g" % p)
-        ax.text(v + 0.02 * xmax, i, label, va="center", ha="left", fontsize=8)
+        ax.text(v + 0.02 * xmax, i, label, va="center", ha="left", fontsize=7)
     if len(uniq) > 1:
         # 图例外置到轴框下方（figure_spec v2.2：禁止轴内 loc）
         ax.legend(handles=[Patch(color=cmap[c], label=c) for c in uniq],
-                  fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.10),
+                  fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.10),
                   ncol=min(len(uniq), 4), frameon=False, title="celltype")
     caption(fig, "line2 scrna: ORA top-%d by adjusted p" % len(d),
             "enrichment_ora.tsv from step17 enrichment",
@@ -314,7 +322,7 @@ if gse is not None and len(gse) and {"celltype", "Term", "NES", "FDR q-val"} <= 
     fig, ax = plt.subplots(figsize=(13, max(6, len(d) * 0.42)))
     ax.barh(y, nes, color=colors, height=0.7)
     ax.set_yticks(y)
-    ax.set_yticklabels(labels, fontsize=8)
+    ax.set_yticklabels(labels, fontsize=7)
     ax.axvline(0, color="k", lw=0.6)
     ax.set_xlabel("NES (normalized enrichment score)")
     span = max(float(np.abs(nes).max()), 1e-9) * 2.4
@@ -322,11 +330,11 @@ if gse is not None and len(gse) and {"celltype", "Term", "NES", "FDR q-val"} <= 
     for i, (v, q) in enumerate(zip(nes, d["fdr"].to_numpy())):
         ax.text(v + (0.04 * span if v >= 0 else -0.04 * span), i,
                 "NES=%.2f  FDR q=%.2g" % (v, q),
-                va="center", ha="left" if v >= 0 else "right", fontsize=8)
+                va="center", ha="left" if v >= 0 else "right", fontsize=7)
     # 图例外置到轴框下方（figure_spec v2.2 禁止轴内 loc="best"）
     ax.legend(handles=[Patch(color=UP, label="activated (NES>0)"),
                        Patch(color=DOWN, label="inhibited (NES<0)")],
-              fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.10),
+              fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.10),
               ncol=1, frameon=False)
     caption(fig, "line2 scrna: GSEA top-%d by FDR q-val" % len(d),
             "enrichment_gsea.tsv from step17 enrichment",

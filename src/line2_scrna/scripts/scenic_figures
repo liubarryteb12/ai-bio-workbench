@@ -53,8 +53,8 @@ import numpy as np
 import pandas as pd
 
 plt.rcParams.update({
-    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 9,
-    "axes.titlesize": 10, "axes.grid": False,
+    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 7, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "legend.title_fontsize": 7,
+    "axes.titlesize": 7, "axes.grid": False,
     "figure.autolayout": True, "savefig.bbox": "tight",
     "image.cmap": "viridis",
 })
@@ -87,7 +87,7 @@ def caption(fig, *parts):
     if not parts:
         return
     text = "\n".join(parts)
-    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=7, linespacing=1.5)
 def wrap_label(text, width=18):
     """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
     import textwrap
@@ -165,11 +165,11 @@ def legend_out(ax, fig, leg):
         ncol = 1 if n <= 12 else -(-n // 12)
         rows = -(-n // ncol)
         ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
-                  ncol=ncol, fontsize=8, frameon=False, title=title)
+                  ncol=ncol, fontsize=7, frameon=False, title=title)
         fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
     else:
         ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                  ncol=1, fontsize=8, frameon=False, title=title)
+                  ncol=1, fontsize=7, frameon=False, title=title)
         fig.subplots_adjust(right=0.74)
 
 def layout_fix(fig):
@@ -286,9 +286,9 @@ z = (mat - mat.mean(axis=0)) / (mat.std(axis=0) + 1e-12)
 fig, ax = plt.subplots(figsize=(13, 10))
 im = ax.imshow(z.T.to_numpy(), aspect="auto", cmap="RdBu_r", vmin=-2, vmax=2)
 ax.set_yticks(range(len(top30)))
-ax.set_yticklabels(top30, fontsize=8)
+ax.set_yticklabels(top30, fontsize=7)
 ax.set_xticks(range(byct.shape[0]))
-ax.set_xticklabels(byct.index.tolist(), rotation=45, ha="right", fontsize=8)
+ax.set_xticklabels(byct.index.tolist(), rotation=45, ha="right", fontsize=7)
 caption(fig, "line2 SCENIC: top-30 regulons (by specificity) x celltype activity",
         "row = regulon, col = celltype, z-scored per regulon")
 fig.colorbar(im, ax=ax, shrink=0.6, label="z")
@@ -300,11 +300,11 @@ fig, ax = plt.subplots(figsize=(9, 7))
 y = np.arange(len(top20))
 ax.barh(y, top20["specificity_z"].to_numpy(), color="#4C72B0")
 ax.set_yticks(y)
-ax.set_yticklabels(top20["regulon"].tolist(), fontsize=8)
+ax.set_yticklabels(top20["regulon"].tolist(), fontsize=7)
 ax.set_xlabel("specificity z (top celltype vs mean)")
 for i, (_, r) in enumerate(top20.iterrows()):
     ax.text(r["specificity_z"] + 0.03, i, wrap_label(r["top_celltype"]),
-            va="center", fontsize=8)
+            va="center", fontsize=7)
 caption(fig, "line2 SCENIC: top-20 regulons by celltype specificity",
         "label = celltype with highest AUCell activity")
 save(fig, "l2_scenic_02_top_regulons.png")

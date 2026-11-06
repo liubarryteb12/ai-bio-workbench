@@ -61,8 +61,8 @@ import anndata as ad
 
 ad.settings.allow_write_nullable_strings = False
 plt.rcParams.update({
-    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 9,
-    "axes.titlesize": 10, "axes.grid": False,
+    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 7, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "legend.title_fontsize": 7,
+    "axes.titlesize": 7, "axes.grid": False,
     "figure.autolayout": True, "savefig.bbox": "tight",
     "image.cmap": "viridis",
 })
@@ -97,7 +97,7 @@ def caption(fig, *parts):
     if not parts:
         return
     text = "\n".join(parts)
-    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=7, linespacing=1.5)
 def wrap_label(text, width=18):
     """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
     import textwrap
@@ -177,11 +177,11 @@ def legend_out(ax, fig, leg):
         ncol = 1 if n <= 12 else -(-n // 12)
         rows = -(-n // ncol)
         ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
-                  ncol=ncol, fontsize=8, frameon=False, title=title)
+                  ncol=ncol, fontsize=7, frameon=False, title=title)
         fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
     else:
         ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                  ncol=1, fontsize=8, frameon=False, title=title)
+                  ncol=1, fontsize=7, frameon=False, title=title)
         fig.subplots_adjust(right=0.74)
 
 
@@ -339,9 +339,9 @@ fig, ax = plt.subplots(figsize=(max(11, len(celltypes) * 0.72), max(7, len(pool)
 sc_plot = ax.scatter(xs, ys, s=[30 + 320 * v for v in sizes], c=colors,
                      cmap="viridis", edgecolors="k", linewidths=0.4)
 ax.set_xticks(range(len(celltypes)))
-ax.set_xticklabels(celltypes, rotation=45, ha="right", fontsize=8)
+ax.set_xticklabels(celltypes, rotation=45, ha="right", fontsize=7)
 ax.set_yticks(range(len(gene_order)))
-ax.set_yticklabels(gene_order, fontsize=8)
+ax.set_yticklabels(gene_order, fontsize=7)
 ax.set_xlim(-0.6, len(celltypes) - 0.4)
 ax.set_ylim(-0.6, len(gene_order) - 0.4)
 ax.set_ylabel("target gene")
@@ -351,7 +351,7 @@ for frac in [0.25, 0.5, 0.75, 1.0]:
     ax.scatter([], [], s=30 + 320 * frac, facecolors="none", edgecolors="0.4",
                label="%d%%" % int(frac * 100))
 ax.legend(title="% expressing", loc="upper left", bbox_to_anchor=(1.14, 1.0),
-          borderaxespad=0, fontsize=8, labelspacing=1.1, frameon=False)
+          borderaxespad=0, fontsize=7, labelspacing=1.1, frameon=False)
 caption(fig, "line2 scrna: target gene expression localization",
         "ko gene + top%d DEG per celltype" % TOP_PER_CT,
         "dot size = %% expressing, colour = mean expr",

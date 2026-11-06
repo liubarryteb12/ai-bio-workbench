@@ -70,8 +70,8 @@ import numpy as np
 import pandas as pd
 
 plt.rcParams.update({
-    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 9,
-    "axes.titlesize": 10, "axes.grid": False,
+    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 7, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "legend.title_fontsize": 7,
+    "axes.titlesize": 7, "axes.grid": False,
     "figure.autolayout": True, "savefig.bbox": "tight",
     "image.cmap": "viridis",
 })
@@ -149,7 +149,7 @@ def caption(fig, *parts):
     if not parts:
         return
     text = "\n".join(parts)
-    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=7, linespacing=1.5)
 def wrap_label(text, width=18):
     """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
     import textwrap
@@ -229,11 +229,11 @@ def legend_out(ax, fig, leg):
         ncol = 1 if n <= 12 else -(-n // 12)
         rows = -(-n // ncol)
         ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
-                  ncol=ncol, fontsize=8, frameon=False, title=title)
+                  ncol=ncol, fontsize=7, frameon=False, title=title)
         fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
     else:
         ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                  ncol=1, fontsize=8, frameon=False, title=title)
+                  ncol=1, fontsize=7, frameon=False, title=title)
         fig.subplots_adjust(right=0.74)
 
 
@@ -365,22 +365,23 @@ def resolve_case_ctrl(observed):
 
 def build_group_colors(groups, case, ctrl):
     """按实际组名构建取色表：case/ctrl 用 §八.5 标准色，其余组用 colorblind 友好定性色板
-    （tab20 子集，跳过与 case/ctrl 标准色视觉距离过近的候选，防第三组与 case/ctrl 撞色）。"""
+    （Okabe-Ito 打底 + tab20b 子集扩充，跳过与 case/ctrl 标准色视觉距离过近的候选，防第三组与 case/ctrl 撞色）。"""
     colors = {case: CASE_COLOR, ctrl: CTRL_COLOR}
     extras = [g for g in groups if g not in colors]
     if not extras:
         return colors
     try:
-        cmap = matplotlib.colormaps["tab20"]
+        cmap = matplotlib.colormaps["tab20b"]
     except (AttributeError, KeyError):
-        cmap = plt.get_cmap("tab20")
+        cmap = plt.get_cmap("tab20b")
     std = [mcolors.to_rgb(CASE_COLOR), mcolors.to_rgb(CTRL_COLOR)]
 
     def far_enough(hex_color):
         rgb = mcolors.to_rgb(hex_color)
         return min(sum((a - b) ** 2 for a, b in zip(rgb, s)) ** 0.5 for s in std) > 0.30
 
-    cand = [mcolors.to_hex(cmap(i)) for i in range(cmap.N)]
+    _okabe = ["#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#000000"]
+    cand = _okabe + [mcolors.to_hex(cmap(i)) for i in range(cmap.N)]
     cand = [c for c in cand if far_enough(c)] or cand
     for i, g in enumerate(extras):
         colors[g] = cand[i % len(cand)]
@@ -427,9 +428,9 @@ if expr is not None:
     fig, ax = plt.subplots(figsize=(10, 9))
     im = ax.imshow(C, cmap="viridis", vmin=0.9, vmax=1.0)
     ax.set_xticks(range(len(samples)))
-    ax.set_xticklabels(samples, rotation=90, fontsize=8)
+    ax.set_xticklabels(samples, rotation=90, fontsize=7)
     ax.set_yticks(range(len(samples)))
-    ax.set_yticklabels(samples, fontsize=8)
+    ax.set_yticklabels(samples, fontsize=7)
     caption(fig, "line1: sample-sample correlation",
             "expr_genes.tsv from step2 prep_matrix",
             "expr, n=%d samples" % len(samples))
@@ -445,9 +446,9 @@ if expr is not None:
     fig, ax = plt.subplots(figsize=(11, 14))
     im = ax.imshow(z, aspect="auto", cmap="RdBu_r", vmin=-2, vmax=2)
     ax.set_xticks(range(len(samples)))
-    ax.set_xticklabels(samples, rotation=90, fontsize=8)
+    ax.set_xticklabels(samples, rotation=90, fontsize=7)
     ax.set_yticks(range(len(genes)))
-    ax.set_yticklabels(genes, fontsize=8)
+    ax.set_yticklabels(genes, fontsize=7)
     caption(fig, "line1: top-50 most variable genes",
             "expr_genes.tsv from step2 prep_matrix", "row z-scored")
     fig.colorbar(im, ax=ax, shrink=0.7, label="z")
@@ -466,7 +467,7 @@ if pca is not None:
                    label=g, edgecolors="k", linewidths=0.4, zorder=3)
         conf_ellipse(ax, pca.loc[m, "PC1"], pca.loc[m, "PC2"], col, n_std=2.0)
         for _, r in pca[m].iterrows():
-            texts.append(ax.text(r["PC1"], r["PC2"], str(r["sample"]), fontsize=8))
+            texts.append(ax.text(r["PC1"], r["PC2"], str(r["sample"]), fontsize=7))
     # 样本点密集时标签会互相重叠，用 adjustText 自动避让（规范：图内文字必须清晰可读）
     adjust_text(texts, ax=ax, expand=(1.2, 1.5),
                 arrowprops=dict(arrowstyle="-", color="0.6", lw=0.5))
@@ -537,19 +538,19 @@ if deg is not None:
         thr_label = "%s=%g" % (P_LABEL, P_CUT)
         xlo, xhi = ax.get_xlim()
         ax.text(xlo + 0.02 * (xhi - xlo), -np.log10(P_CUT), thr_label,
-                fontsize=8, va="bottom", ha="left")
+                fontsize=7, va="bottom", ha="left")
         # log2FC 标注移到轴框顶部，避开底部密集点云与 p 标注
         ytop = ax.get_ylim()[1]
-        ax.text(-L2_CUT - 0.02, ytop, "log2FC=-%g" % L2_CUT, fontsize=8,
+        ax.text(-L2_CUT - 0.02, ytop, "log2FC=-%g" % L2_CUT, fontsize=7,
                 va="top", ha="right", rotation=90)
-        ax.text(L2_CUT + 0.02, ytop, "log2FC=+%g" % L2_CUT, fontsize=8,
+        ax.text(L2_CUT + 0.02, ytop, "log2FC=+%g" % L2_CUT, fontsize=7,
                 va="top", rotation=90)
         ax.set_xlabel(log2fc_label)
         ax.set_ylabel(ylab)
         caption(fig, "line1: DEG volcano", tag, "n=%d genes" % len(deg),
                 "red = up, blue = down, grey = NS")
         # 图例外置到轴框下方（figure_spec v2.2：禁止轴内 loc）
-        ax.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.10),
+        ax.legend(fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.10),
                   ncol=1, frameon=False)
         save(fig, "l1_03_volcano_%s.png" % suffix)
 
@@ -570,16 +571,16 @@ if deg is not None:
         ax.axhline(L2_CUT, color="k", lw=0.5, ls="--")
         # 阈值线在图内注明（规范：MA 图须标注 log2FC 阈值）
         xr = ax.get_xlim()[1]
-        ax.text(xr, L2_CUT, " log2FC=+%g" % L2_CUT, fontsize=8, va="bottom",
+        ax.text(xr, L2_CUT, " log2FC=+%g" % L2_CUT, fontsize=7, va="bottom",
                 ha="right")
-        ax.text(xr, -L2_CUT, " log2FC=-%g" % L2_CUT, fontsize=8, va="top",
+        ax.text(xr, -L2_CUT, " log2FC=-%g" % L2_CUT, fontsize=7, va="top",
                 ha="right")
         ax.set_xlabel("AveExpr (mean normalized expression)")
         ax.set_ylabel(log2fc_label)
         caption(fig, "line1: MA plot", tag,
                 "red = up, blue = down, grey = NS")
         # 图例外置到轴框下方（figure_spec v2.2：禁止轴内 loc）
-        ax.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.10),
+        ax.legend(fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.10),
                   ncol=1, frameon=False)
         save(fig, "l1_06_ma_%s.png" % suffix)
 
@@ -599,10 +600,10 @@ if qc is not None:
         ys = [qc["genes_detected"].iloc[i] for i in xs]
         ax.bar(xs, ys, color=col, label=g)
     ax.set_xticks(range(len(samples)))
-    ax.set_xticklabels(samples, rotation=90, fontsize=8)
+    ax.set_xticklabels(samples, rotation=90, fontsize=7)
     ax.set_ylabel("genes detected")
     caption(fig, "line1: genes detected per sample")
-    ax.legend(fontsize=8, title="group", loc="upper left",
+    ax.legend(fontsize=7, title="group", loc="upper left",
               bbox_to_anchor=(1.02, 1.0), borderaxespad=0)
     fig.subplots_adjust(left=0.08, right=0.88, top=0.97, bottom=0.16)
     save(fig, "l1_05a_genes_detected.png")
@@ -615,10 +616,10 @@ if qc is not None:
         ax.bar(xs, ys, color=col, label=g)
     ax.axhline(0.9, color="r", lw=0.8, ls="--")
     ax.set_xticks(range(len(samples)))
-    ax.set_xticklabels(samples, rotation=90, fontsize=8)
+    ax.set_xticklabels(samples, rotation=90, fontsize=7)
     ax.set_ylabel("median within-group cor")
     caption(fig, "line1: within-group correlation", "red dashed = 0.9")
-    ax.legend(fontsize=8, title="group", loc="upper left",
+    ax.legend(fontsize=7, title="group", loc="upper left",
               bbox_to_anchor=(1.02, 1.0), borderaxespad=0)
     fig.subplots_adjust(left=0.08, right=0.88, top=0.97, bottom=0.16)
     save(fig, "l1_05b_within_group_cor.png")
@@ -669,18 +670,18 @@ if (expr is not None and pca is not None and deg is not None and ave is not None
     axA.axvline(L2_CUT, color="k", lw=0.6, ls="--")
     xlo, xhi = axA.get_xlim()
     axA.text(xlo + 0.02 * (xhi - xlo), -np.log10(P_CUT), "%s=%g" % (P_LABEL, P_CUT),
-             fontsize=8, va="bottom", ha="left")
+             fontsize=7, va="bottom", ha="left")
     ytop = axA.get_ylim()[1]
-    axA.text(-L2_CUT - 0.02, ytop, "log2FC=-%g" % L2_CUT, fontsize=8, va="top",
+    axA.text(-L2_CUT - 0.02, ytop, "log2FC=-%g" % L2_CUT, fontsize=7, va="top",
              ha="right", rotation=90)
-    axA.text(L2_CUT + 0.02, ytop, "log2FC=+%g" % L2_CUT, fontsize=8, va="top",
+    axA.text(L2_CUT + 0.02, ytop, "log2FC=+%g" % L2_CUT, fontsize=7, va="top",
              rotation=90)
     axA.set_xlabel(log2fc_label)
     axA.set_ylabel("-log10 %s" % P_LABEL)
     panel_letter(axA, "A")
     # G2：up/down/NS 是同一组色码语义，全图组只画一次（B 面板不重复），
     # 位置按横版规则置轴框下方；源级不写轴内 loc（§三之二）。
-    axA.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.09),
+    axA.legend(fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.09),
                ncol=3, frameon=False)
 
     # B = MA 图（FDR 口径；无图例，色码由 A 承载，符合 G2 的"同一色码只出现一次"）
@@ -692,8 +693,8 @@ if (expr is not None and pca is not None and deg is not None and ave is not None
     axB.axhline(-L2_CUT, color="k", lw=0.5, ls="--")
     axB.axhline(L2_CUT, color="k", lw=0.5, ls="--")
     xr = axB.get_xlim()[1]
-    axB.text(xr, L2_CUT, " log2FC=+%g" % L2_CUT, fontsize=8, va="bottom", ha="right")
-    axB.text(xr, -L2_CUT, " log2FC=-%g" % L2_CUT, fontsize=8, va="top", ha="right")
+    axB.text(xr, L2_CUT, " log2FC=+%g" % L2_CUT, fontsize=7, va="bottom", ha="right")
+    axB.text(xr, -L2_CUT, " log2FC=-%g" % L2_CUT, fontsize=7, va="top", ha="right")
     axB.set_xlabel("AveExpr (mean normalized expression)")
     axB.set_ylabel(log2fc_label)
     panel_letter(axB, "B")
@@ -709,7 +710,7 @@ if (expr is not None and pca is not None and deg is not None and ave is not None
         conf_ellipse(axC, pca.loc[m, "PC1"], pca.loc[m, "PC2"], col, n_std=2.0)
         for _, r in pca[m].iterrows():
             pca_texts.append(axC.text(r["PC1"], r["PC2"], str(r["sample"]),
-                                      fontsize=8))
+                                      fontsize=7))
     adjust_text(pca_texts, ax=axC, expand=(1.2, 1.5),
                 arrowprops=dict(arrowstyle="-", color="0.6", lw=0.5))
     axC.axhline(0, color="gray", lw=0.4)
@@ -722,9 +723,9 @@ if (expr is not None and pca is not None and deg is not None and ave is not None
     axD = fig.add_subplot(gs[1, 1])
     im = axD.imshow(z, aspect="auto", cmap="RdBu_r", vmin=-2, vmax=2)
     axD.set_xticks(range(len(samples)))
-    axD.set_xticklabels(samples, rotation=90, fontsize=8)
+    axD.set_xticklabels(samples, rotation=90, fontsize=7)
     axD.set_yticks(range(len(genes)))
-    axD.set_yticklabels(genes, fontsize=8)
+    axD.set_yticklabels(genes, fontsize=7)
     panel_letter(axD, "D")
     fig.colorbar(im, ax=axD, fraction=0.046, pad=0.02, label="z")
 
@@ -733,7 +734,7 @@ if (expr is not None and pca is not None and deg is not None and ave is not None
     if leg_handles:
         fig.legend(leg_handles, leg_labels, loc="lower center",
                    bbox_to_anchor=(0.5, 0.004),
-                   ncol=max(1, min(len(leg_labels), 4)), fontsize=9,
+                   ncol=max(1, min(len(leg_labels), 4)), fontsize=7,
                    frameon=False, title="group")
 
     # 组合图是多子图：layout_fix()/legend_out() 只接管单轴图（§三之三 / 派发单要求），

@@ -290,8 +290,8 @@ import anndata as ad
 ad.settings.allow_write_nullable_strings = False
 NORM = os.environ.get("BIO_GSVA_NORM", "scrna_norm.h5ad")
 plt.rcParams.update({
-    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 9,
-    "axes.titlesize": 10, "axes.grid": False,
+    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 7, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "legend.title_fontsize": 7,
+    "axes.titlesize": 7, "axes.grid": False,
     "figure.autolayout": True, "savefig.bbox": "tight",
     "image.cmap": "viridis",
 })
@@ -315,7 +315,7 @@ def caption(fig, *parts):
     if not parts:
         return
     text = "\n".join(parts)
-    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=7, linespacing=1.5)
 def wrap_label(text, width=18):
     """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
     import textwrap
@@ -395,11 +395,11 @@ def legend_out(ax, fig, leg):
         ncol = 1 if n <= 12 else -(-n // 12)
         rows = -(-n // ncol)
         ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
-                  ncol=ncol, fontsize=8, frameon=False, title=title)
+                  ncol=ncol, fontsize=7, frameon=False, title=title)
         fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
     else:
         ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                  ncol=1, fontsize=8, frameon=False, title=title)
+                  ncol=1, fontsize=7, frameon=False, title=title)
         fig.subplots_adjust(right=0.74)
 
 
@@ -476,9 +476,9 @@ plt.rcParams["figure.autolayout"] = False
 fig, ax = plt.subplots(figsize=(max(8, len(celltypes) * 0.62), max(8, TOP_N * 0.30)))
 im = ax.imshow(z.to_numpy(), aspect="auto", cmap="RdBu_r", vmin=-2, vmax=2)
 ax.set_yticks(range(len(short)))
-ax.set_yticklabels(short, fontsize=8)
+ax.set_yticklabels(short, fontsize=7)
 ax.set_xticks(range(len(celltypes)))
-ax.set_xticklabels(celltypes, rotation=45, ha="right", fontsize=8)
+ax.set_xticklabels(celltypes, rotation=45, ha="right", fontsize=7)
 caption(fig, "line2 scrna: GSVA pathway activity (top-%d by variance)" % len(short),
         "gsva_scores.tsv from step: gsva_pathways",
         "row = pathway, col = celltype, z-scored per pathway",

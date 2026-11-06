@@ -60,8 +60,8 @@ import gseapy
 
 ad.settings.allow_write_nullable_strings = False
 plt.rcParams.update({
-    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 8,
-    "axes.titlesize": 9, "axes.grid": False,
+    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 7, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "legend.title_fontsize": 7,
+    "axes.titlesize": 7, "axes.grid": False,
     "figure.autolayout": True, "savefig.bbox": "tight",
     "image.cmap": "viridis",
 })
@@ -101,7 +101,7 @@ def caption(fig, *parts):
     if not parts:
         return
     text = "\n".join(parts)
-    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=7, linespacing=1.5)
 def wrap_label(text, width=18):
     """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
     import textwrap
@@ -181,11 +181,11 @@ def legend_out(ax, fig, leg):
         ncol = 1 if n <= 12 else -(-n // 12)
         rows = -(-n // ncol)
         ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
-                  ncol=ncol, fontsize=8, frameon=False, title=title)
+                  ncol=ncol, fontsize=7, frameon=False, title=title)
         fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
     else:
         ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                  ncol=1, fontsize=8, frameon=False, title=title)
+                  ncol=1, fontsize=7, frameon=False, title=title)
         fig.subplots_adjust(right=0.74)
 
 
@@ -354,7 +354,7 @@ for species in species_present:
     fig, ax = plt.subplots(figsize=(12, max(6, len(d) * 0.40)))
     ax.barh(y, nes, color=[UP if v > 0 else DOWN for v in nes], height=0.7)
     ax.set_yticks(y)
-    ax.set_yticklabels(labels, fontsize=8)
+    ax.set_yticklabels(labels, fontsize=7)
     ax.axvline(0, color="k", lw=0.6)
     ax.set_xlabel("NES (normalized enrichment score)")
     span = max(float(np.abs(nes).max()), 1e-9) * 2.4
@@ -362,11 +362,11 @@ for species in species_present:
     for i, (v, q) in enumerate(zip(nes, d["FDR q-val"].to_numpy())):
         ax.text(v + (0.04 * span if v >= 0 else -0.04 * span), i,
                 "NES=%.2f  FDR q=%.2g" % (v, q),
-                va="center", ha="left" if v >= 0 else "right", fontsize=8)
+                va="center", ha="left" if v >= 0 else "right", fontsize=7)
     # 图例外置到轴框下方（figure_spec v2.2 禁止轴内 loc="best"）
     ax.legend(handles=[Patch(color=UP, label="activated (NES>0)"),
                        Patch(color=DOWN, label="inhibited (NES<0)")],
-              fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.10),
+              fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.10),
               ncol=1, frameon=False)
     caption(fig, "[Virtual KO - DR Genes] line3 %s: DR gene GSEA (KO %s) top-%d by FDR" % (species, ko_gene, len(d)),
             "ko_dr_genes_%s.tsv ranked by mean tenifold Z (not DEG)" % species,
@@ -413,12 +413,12 @@ for species in species_present:
     fig, ax = plt.subplots(figsize=(7, 5))
     ax.bar(range(len(names)), vals, color=["#C44E52", "#4C72B0", "#DD8452"])
     ax.set_xticks(range(len(names)))
-    ax.set_xticklabels(names, rotation=20, ha="right", fontsize=8)
+    ax.set_xticklabels(names, rotation=20, ha="right", fontsize=7)
     ax.set_ylabel("gene count")
     xmax = max(vals) if max(vals) > 0 else 1
     ax.set_ylim(0, xmax * 1.22)
     for i, v in enumerate(vals):
-        ax.text(i, v + xmax * 0.02, str(v), ha="center", va="bottom", fontsize=8)
+        ax.text(i, v + xmax * 0.02, str(v), ha="center", va="bottom", fontsize=7)
     caption(fig, "[Virtual KO - DR Genes] line3 %s: DR / spatial domain-marker overlap (KO %s)" % (species, ko_gene),
             "DR significant = adj p<%.2f & non-KO; marker = step6 domain_markers" % ALPHA)
     fig.subplots_adjust(left=0.12, right=0.97, top=0.95, bottom=0.20)

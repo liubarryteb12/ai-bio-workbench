@@ -229,6 +229,7 @@ if (nrow(sig_uni) >= 2) {
 if (nrow(forest_data) > 0) {
   n <- nrow(forest_data)
   png("../figures/l1_27_cox_forest.png", width = 900, height = max(400, n * 50), res = 300)
+  par(family = "sans")  # 统一无衬线（Arial/Helvetica 族），缺失时自动回退
   par(mar = c(4, 8, 3, 2), mgp = c(2, 0.5, 0))
   hr <- forest_data$HR
   lo <- forest_data$HR_lower
