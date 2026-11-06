@@ -368,24 +368,21 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
     vmax = np.percentile(tgt, 99) if len(tgt) else 1
     for s in samples:
         m = samp == s
-        # 版式与 01_domains 统一（2026-11-06）：横向画布 + 右栏固定布局。
-        # 数据区占左 55%，右栏自上而下放 colorbar（连续量的图例）与图注。
-        fig, ax = plt.subplots(figsize=(9.4, 5.6))
+        # 版式（2026-11-06 按用户反馈二次优化）：等比例数据区 + **贴轴 colorbar**。
+        # 原写法用 fig.add_axes 把 colorbar 钉在右栏上半部（y 0.55~0.93），
+        # 右栏下半截全空，tight 裁切后整张图重心偏上、右侧大片留白，不达出图标准。
+        # 改为 fig.colorbar(sc, ax=ax)：colorbar 与轴框等高对齐，
+        # 画布按内容自动收边，不再出现「上方一根条、下方一片空」。
+        fig, ax = plt.subplots(figsize=(6.6, 6.0))
         sc = ax.scatter(xy[m, 0], xy[m, 1], c=tgt[m], s=4, cmap="viridis",
                         vmin=0, vmax=vmax, linewidths=0)
         ax.set_aspect("equal")
         ax.set_xticks([])
         ax.set_yticks([])
-        # 关掉 figure.autolayout：它是全局 rcParam，会覆盖 subplots_adjust，
-        # 导致等比例数据区被重新居中、左侧留大片空白。
-        fig.set_layout_engine("none")
-        fig.subplots_adjust(left=0.04, right=0.55, top=0.97, bottom=0.03)
         # colorbar 是连续量的图例，必须带 label 说明它是什么（规范：图例可读）
-        _cax = fig.add_axes([0.60, 0.55, 0.022, 0.38])
-        _cb = fig.colorbar(sc, cax=_cax)
+        _cb = fig.colorbar(sc, ax=ax, shrink=0.82, fraction=0.046, pad=0.02)
         _cb.set_label("expr", fontsize=8)
         _cb.ax.tick_params(labelsize=7)
-        # 图注统一放图幅左下角（轴框外），右栏只留 colorbar
         ax._manual_legend = True
         fig.text(0.01, -0.02,
                  "line3 %s: %s target gene\n" % (species, s)
@@ -423,19 +420,15 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         ko_gene = _uns_dict(a, "knockout").get("ko_gene", "?")
         for s in samples:
             m = samp == s
-            # 版式与 01/02 统一：横向画布 + 右栏固定布局
-            fig, ax = plt.subplots(figsize=(9.4, 5.6))
+            # 版式与 02 同法（2026-11-06 二次优化）：贴轴 colorbar，
+            # 避免固定 add_axes 造成右栏下半截空白、整图重心偏上。
+            fig, ax = plt.subplots(figsize=(6.6, 6.0))
             sc = ax.scatter(xy[m, 0], xy[m, 1], c=koe[m], s=4, cmap="magma",
                             vmin=0, vmax=vmax, linewidths=0)
             ax.set_aspect("equal")
             ax.set_xticks([])
             ax.set_yticks([])
-            # 关掉 figure.autolayout：它是全局 rcParam，会覆盖 subplots_adjust，
-            # 导致等比例数据区被重新居中、左侧留大片空白。
-            fig.set_layout_engine("none")
-            fig.subplots_adjust(left=0.04, right=0.55, top=0.97, bottom=0.03)
-            _kax = fig.add_axes([0.60, 0.55, 0.022, 0.38])
-            _kcb = fig.colorbar(sc, cax=_kax)
+            _kcb = fig.colorbar(sc, ax=ax, shrink=0.82, fraction=0.046, pad=0.02)
             _kcb.set_label("KO DR expr", fontsize=8)
             _kcb.ax.tick_params(labelsize=7)
             ax._manual_legend = True
