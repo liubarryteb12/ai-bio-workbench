@@ -21,6 +21,14 @@
 #   样本级偏高记 warning 不过滤）。
 #   基因 <3 spot：小鼠 2 个 / 人源 0 个。
 #
+# 双细胞检测（2026-11-06 用户要求补做）：用 scanpy 自带的 pp.scrublet 逐样本检测。
+#   口径必须说清：Visium spot 直径约 55um，本身就可能包含多个细胞，
+#   因此这里的「doublet」指「表达谱像两群混合」的 spot（多细胞 / 粘连 / ambient RNA），
+#   不等同于单细胞意义上的真双细胞（那是一次捕获里进了两个完整细胞）。
+#   处置与 line2 的 qc_cells 同口径：预测为 doublet 的 spot 排除出主分析矩阵，
+#   参数与逐样本双细胞率写进 uns['qc_doublet_disposition'] 供事后审计。
+#   开关 BIO_DOUBLET_FILTER=0 可关闭，用于复现旧结果与做消融对比。
+#
 # 处置：全部 spot（含被滤）指标与去留原因落 spot_qc_metrics.tsv，可审计；
 # 保留矩阵落 spatial_qc_<species>.h5ad；uns['spatial'] 图与 scalefactors
 # 随矩阵保留（下游空间作图要用；只丢 spot 不丢样本，图不受影响）。
@@ -92,6 +100,7 @@ import time
 import anndata as ad
 import numpy as np
 import pandas as pd
+import scanpy as sc
 from scipy.sparse import csr_matrix
 
 # pandas 3 与 2 的 infer_string 默认值不同，会导致 anndata 0.13 写 obs 字符串列时
@@ -106,6 +115,10 @@ MIN_FEATURES = 50
 MAX_MITO_PCT = 50.0
 GENE_MIN_SPOTS = 3
 MIN_KEEP_FRACTION = 0.75  # 每样本保留比例下限，防阈值设计失误毁数据
+
+# 双细胞检测参数（2026-11-06 用户要求补做）。默认开启，BIO_DOUBLET_FILTER=0 关闭。
+DOUBLET_ENABLED = os.environ.get("BIO_DOUBLET_FILTER", "1") != "0"
+DOUBLET_RATE = float(os.environ.get("BIO_DOUBLET_RATE", "0.06"))
 
 MITO_PREFIX = {"Mus musculus": "mt-", "Homo sapiens": "MT-"}
 SPECIES_TAG = {"Mus musculus": "mouse", "Homo sapiens": "human"}
@@ -239,6 +252,68 @@ for species in sorted(loaded):
     log("kept spots=%d genes=%d (gene filter dropped %d)"
         % (kept.n_obs, kept.n_vars, n_gene_dropped))
 
+    # 2e2. 双细胞检测（scrublet，逐样本）
+    # 用 scanpy 自带的 pp.scrublet（纯 Python 实现，不依赖额外安装 scrublet 包）。
+    # 逐样本单独跑：不同样本的捕获效率与细胞密度差异很大，合并跑会把样本间差异
+    # 误判成双细胞。样本 spot 数 < 50 时 scrublet 不稳定，跳过并如实记录。
+    doublet_info = {
+        "enabled": bool(DOUBLET_ENABLED),
+        "method": "scanpy.pp.scrublet（逐样本）",
+        "expected_doublet_rate": DOUBLET_RATE,
+        "seed": SEED,
+        "rate_by_sample": {},
+        "n_predicted": 0,
+        "overall_rate": 0.0,
+        "note": ("Visium spot 直径约 55um，本身可能含多个细胞；此处 doublet 指"
+                 "表达谱像两群混合的 spot（多细胞/粘连/ambient RNA），"
+                 "不等同于单细胞意义上的真双细胞"),
+    }
+    if DOUBLET_ENABLED:
+        pred_all = np.zeros(kept.n_obs, dtype=bool)
+        score_all = np.full(kept.n_obs, np.nan)
+        for sf in list(kept.uns["samples"]):
+            idx = np.where(kept.obs["sample_id"].to_numpy() == sf)[0]
+            if idx.size < 50:
+                log("skip doublet %s: spot 数 %d 过少（scrublet 需 >=50）"
+                    % (sf, idx.size))
+                doublet_info["rate_by_sample"][sf] = None
+                continue
+            sub = kept[idx].copy()
+            try:
+                sc.pp.scrublet(sub, expected_doublet_rate=DOUBLET_RATE,
+                               random_state=int(SEED), verbose=False)
+            except Exception as exc:
+                log("WARN: %s scrublet 失败（%s），该样本不做双细胞过滤" % (sf, exc))
+                doublet_info["rate_by_sample"][sf] = None
+                continue
+            s_score = np.asarray(sub.obs["doublet_score"], dtype=float)
+            s_pred = np.asarray(sub.obs["predicted_doublet"], dtype=bool)
+            score_all[idx] = s_score
+            pred_all[idx] = s_pred
+            rate = float(s_pred.mean())
+            doublet_info["rate_by_sample"][sf] = round(rate, 4)
+            log("doublet %s: predicted=%d/%d (%.2f%%)"
+                % (sf, int(s_pred.sum()), idx.size, rate * 100))
+        doublet_info["n_predicted"] = int(pred_all.sum())
+        doublet_info["overall_rate"] = round(float(pred_all.mean()), 4)
+        kept.obs["doublet_score"] = score_all
+        kept.obs["predicted_doublet"] = pred_all
+        if pred_all.any():
+            kept = kept[~pred_all].copy()
+        log("doublet filter: dropped %d, kept %d"
+            % (int(pred_all.sum()), kept.n_obs))
+        # 某样本若被双细胞过滤清空，从 uns 里一并摘掉，避免下游样本集不一致
+        alive = set(kept.obs["sample_id"].unique())
+        if set(kept.uns["samples"]) != alive:
+            gone = sorted(set(kept.uns["samples"]) - alive)
+            log("WARN: 样本 %s 双细胞过滤后无剩余 spot，从 uns 移除" % gone)
+            kept.uns["samples"] = sorted(alive)
+            for _g in gone:
+                kept.uns["spatial"].pop(_g, None)
+    else:
+        log("doublet filter: DISABLED (BIO_DOUBLET_FILTER=0)")
+
+
     # 2f. 落盘前自校验
     if kept.n_obs == 0:
         fail("%s 过滤后无剩余 spot" % species)
@@ -290,8 +365,14 @@ for species in sorted(loaded):
         "genes_dropped_by_spot_filter": n_gene_dropped,
         "n_mito_genes": n_mito_genes,
         "median_pct_mito_before": sample_med_mito,
+        "doublet_enabled": bool(DOUBLET_ENABLED),
+        "doublet_predicted": int(doublet_info["n_predicted"]),
+        "doublet_rate": float(doublet_info["overall_rate"]),
         "warnings": list(warnings_list),
     }
+    # 双细胞处置与逐样本率单独成键，便于事后审计与复现（对齐 line2 的
+    # qc_doublet_disposition 命名，跨线口径一致）
+    kept.uns["qc_doublet_disposition"] = doublet_info
 
     tag = SPECIES_TAG[species]
     out_path = os.path.join(os.environ["QC_OUTDIR"], "spatial_qc_%s.h5ad" % tag)
