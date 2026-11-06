@@ -45,7 +45,10 @@ async function spawnServer(port) {
   });
   let stderrText = '';
   child.stderr.on('data', (chunk) => { stderrText += chunk.toString(); });
-  const deadline = Date.now() + 10000;
+  // 启动预算 30s：本仓库的测试常与远端设备操作并发跑（8GB 机器上还要起 ssh/scp）。
+  // 10s 预算在并发负载下会假红（实测出现 10.1s 超时、单跑 0 失败的抖动）。
+  // 放宽的是「等服务起来」的等待，不是断言标准：起不来仍然 fail 而不是 skip。
+  const deadline = Date.now() + 30000;
   while (Date.now() < deadline) {
     if (child.exitCode !== null) return null;
     try {
@@ -63,7 +66,8 @@ async function jsonRequest(path, { method = 'GET', body } = {}) {
   const options = {
     method,
     headers: {},
-    signal: AbortSignal.timeout(5000),
+    // 5s 在并发负载下同样会假红；/api/workflows 要汇总注册表健康，留 20s。
+    signal: AbortSignal.timeout(20000),
   };
   if (body !== undefined) {
     options.headers['Content-Type'] = 'application/json';
@@ -87,8 +91,8 @@ function networkTest(name, fn) {
     const child = await spawnServer(port);
     if (!child) {
       // 08 号书第 7 项：启动失败转 skip 等于把「服务起不来」伪装成「本机不跑这条用例」，
-      // 超时回退到 10s 后必须让启动失败直接变红，并带上子进程 stderr 便于定位。
-      assert.fail(`无法在 10s 内启动本地服务 ${activeBaseUrl}；stderr=${lastSpawnStderr.slice(-800) || '（空）'}`);
+      // 超时回退到 30s 后必须让启动失败直接变红，并带上子进程 stderr 便于定位。
+      assert.fail(`无法在 30s 内启动本地服务 ${activeBaseUrl}；stderr=${lastSpawnStderr.slice(-800) || '（空）'}`);
     }
     t.after(() => { child.kill(); });
     await fn(t);

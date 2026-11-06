@@ -181,7 +181,10 @@ before(async () => {
     return fakeSshChild(shim.taskExit);
   });
   await import('../server/index.js');
-  const deadline = Date.now() + 10000;
+  // 启动预算 30s：与 workflow_api 同一理由——测试常与远端设备操作并发跑，
+  // 10s 预算在 8GB 机器上会假红（实测出现 10.0s 超时、单跑 15/15 通过）。
+// 放宽的是等待，不是断言：起不来仍 fail。
+const deadline = Date.now() + 30000;
   for (;;) {
     try {
       const response = await fetch(`${BASE}/api/health`, { signal: AbortSignal.timeout(1000) });
