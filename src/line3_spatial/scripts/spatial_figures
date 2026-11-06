@@ -315,11 +315,16 @@ def cat_colors(labels):
     return {c: CAT_PALETTE[i] for i, c in enumerate(cats)}, cats
 
 
-# scalefactors 的 spot_diameter_fullres 在 Space Ranger 里定义为
-# 「theoretical 65um spot」在 fullres 图上的像素跨度：65um 是含光学弥散包络的
-# 表观直径，55um 只是捕获孔径。拿 55 当分子会让比例尺系统性偏短 17%
-# （500um 画成 792px，正确是 671px）。与 ops/spatial_calibration.py 共用同一口径。
+# spot_diameter_fullres 的语义在官方文档里只写到「theoretical 65um spot」，
+# 没有 PSF / 弥散 / 间隙的明确定义（第 73 轮元宝调研）。55um 是捕获孔径。
+# 该字段逐图波动（本数据集 87.06~90.19 px，3.6%），所以只用来做平台护栏，
+# 不作标定基准；标定基准是下面的晶格常量。
 SPOT_ENVELOPE_UM = 65.0
+# 平台护栏带：以 65 µm 光斑包络为锚，下浮 15、上浮 5，得 [50, 70]。
+# 实测本数据集反推光斑直径 66.0~68.3 µm，全部落在带内；非 Visium 平台会远离此带。
+# 把带宽从常量推出来，避免 65 变成「定义了但没人用」的死常量。
+SPOT_DIAMETER_MIN_UM = SPOT_ENVELOPE_UM - 15.0
+SPOT_DIAMETER_MAX_UM = SPOT_ENVELOPE_UM + 5.0
 
 # Visium 相邻 spot 中心距的官方规格常量（v1 与 v2 均为 100 µm）。
 # 它比 spot_diameter_fullres 更适合当标定基准：后者是 Space Ranger 对光斑直径的
@@ -328,7 +333,7 @@ SPOT_PITCH_UM = 100.0
 
 
 def _spot_um_per_px(a, sample):
-    """按 Visium 晶格 pitch 反算 um/px；晶格不可用时回退到 65um 光斑包络。
+    """按 Visium 晶格 pitch 反算 um/px；晶格不可用时 fail-closed（不回退）。
 
     为什么以晶格为准（2026-11-07 实测改判）：
     spot_diameter_fullres 在本数据集 5 个样本上是 87.06~90.19 px（波动 3.6%），
@@ -371,7 +376,7 @@ def _spot_um_per_px(a, sample):
         # Slide-seq 是随机 bead 阵列，套用后反推直径会远离 50~70 µm 带，当场失败而不是静默出错图。
         if d_px is not None and np.isfinite(d_px) and d_px > 0:
             implied_spot_um = d_px * um_per_px
-            if not (50.0 <= implied_spot_um <= 70.0):
+            if not (SPOT_DIAMETER_MIN_UM <= implied_spot_um <= SPOT_DIAMETER_MAX_UM):
                 fail("样本 %s 的晶格标定反推光斑直径 %.1f µm 不在 Visium 的 50~70 µm 带内："
                      "当前输入可能不是 Visium（HD 是 2x2 µm 连续方格，Slide-seq 是随机 bead，"
                      "MERFISH/CosMx/Xenium 无全局等距晶格）。拒绝按 100 µm 常量出图。"
