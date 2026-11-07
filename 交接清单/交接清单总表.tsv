@@ -1,0 +1,45 @@
+Category	Item_ID	Item_Name	Specification	Verification_Command	Primary_File	Current_Status	Acceptance_Standard
+架构拓扑	ARCH-01	本地零算力硬接缝	本地进程仅放行 ssh/scp/adb	node --test tests/proc.test.js	BioanalysDesktop/server/proc.js	已闭环	非白名单命令调用直接抛错拦截
+架构拓扑	ARCH-02	三线数据物理隔离	线1/线2/线3在数据、运行、结果物理隔离	node --test tests/audit.test.js	BioanalysDesktop/server/audit.js	已闭环	跨线指令由 audit.js 硬拦截拒绝执行
+架构拓扑	ARCH-03	微内核依赖注入	后端路由采用 routeCtx 依赖注入微内核	node --test tests/projects_routes.test.js	BioanalysDesktop/server/index.js	已闭环	子路由之间零横向直接引用依赖
+架构拓扑	ARCH-04	跨端共享契约注入	数据格式与需求规则由 shared/ 动态注入	node --test tests/contract.test.js	shared/requirement_schema.mjs	已闭环	Portal 与 Admin 规则 100% 同源无漂移
+运行环境	ENV-01	K40 物理手机硬件规格	骁龙870 / 8GB RAM / Android 13 SDK 33	pwsh -File ops/00_link_check.ps1	configs/k40/device_profile.json	已闭环	四段链路自检与硬件探针全绿
+运行环境	ENV-02	ADB 端口映射三通道	转发 10022(容器)/8022(宿主)/9910(Pi)	adb forward --list	docs/remote_channel_policy.md	已闭环	本地回环 127.0.0.1 端口直通手机
+运行环境	ENV-03	K40 容器科学计算环境	Python 3.10 (/root/venvs/bio-py) + R 4.5.3	ssh k40-ubuntu '/root/venvs/bio-py/bin/python3 -V'	docs/software_versions.json	已闭环	包含 Scanpy 1.12.4 与 Squidpy 1.8.3
+质量门禁	GATE-01	G01 宿主机依赖预检	Node >= 22 / Git 依赖在位	node ops/preflight.mjs	ops/preflight.mjs	已闭环	退出码为 0，环境项全满足
+质量门禁	GATE-02	G02 静态语言门禁	四语种语法静态审查 (PS1/Shell/Python/R)	node ops/static_gate.mjs	ops/static_gate.mjs	已闭环	无语法错误，无非白名单 CRLF
+质量门禁	GATE-03	G03 临时目录隔离门禁	防并发互删：递归删除带 mkdtemp/pid	node ops/test_isolation_gate.mjs	ops/test_isolation_gate.mjs	已闭环	全部临时操作具备进程级隔离标记
+质量门禁	GATE-04	G04 便携包关键资产同源	dist/ 关键 5 资产与源码逐字节一致	node ops/dist_parity_gate.mjs	ops/dist_parity_gate.mjs	已闭环	无分叉或显式 SKIP_NO_DIST 放行
+质量门禁	GATE-05	G05 跳过原因白名单	严禁无理由的裸跳过测试	node ops/skip_reason_gate.mjs	ops/skip_reason_gate.mjs	已闭环	仅允许 1 条白名单 bad h5ad 条件跳过
+质量门禁	GATE-06	G06 项目层脚本边界	严禁在项目目录复制母版同名副本	node ops/project_script_gate.mjs	ops/project_script_gate.mjs	已闭环	项目 scripts/ 副本率为 0
+质量门禁	GATE-07	G07 路由与边界台账一致性	Mod ID 必须存在；REJ 必须绑定真门禁	node ops/router_gate.mjs	ops/router_gate.mjs	已闭环	12 条路由与 11 条 REJ 引用 100% 真实有效
+质量门禁	GATE-08	G08 台账与真源一致	不可变动作台账 actions.jsonl 完整性	node ops/ledger_gen.mjs --check	con_hf/ledger/actions.jsonl	已闭环	SHA256 签名链完整无篡改
+质量门禁	GATE-09	G09 图件注册表证据同步	82 个 SCI 图件模板注册表与产物证据	node ops/build_figure_templates.cjs --check	src/figure_templates.json	已闭环	注册表字段与实际文件完全闭环
+质量门禁	GATE-10	G10 预览与渲染产物溯源	预览图与矩阵渲染产物 SHA256 必须一致	node ops/figure_preview_provenance.mjs	ops/figure_preview_provenance.mjs	已闭环	分叉数为 0，杜绝假预览图件
+质量门禁	GATE-11	G11 Ready 模板实证矩阵	30 条封板模板逐图真实 SHA256 比对	node ops/figure_ready_matrix.mjs	ops/figure_ready_matrix.mjs	已闭环	30/30 条实证哈希 100% 吻合
+质量门禁	GATE-12	G12 出图溯源诚实性	显式声明 DERIVED/INSPIRED/INDEPENDENT	node ops/figure_source_provenance.mjs	ops/figure_source_provenance.mjs	已闭环	严禁虚假声称派生自外部参考库
+质量门禁	GATE-13	G13 母版解释器动态解析	严禁硬编码 python3，强制解析到 venv	node ops/python_interpreter_gate.mjs	ops/python_interpreter_gate.mjs	已闭环	47 个母版全部符合解释器解析规范
+质量门禁	GATE-14	G14 出图规范合规 (300 DPI)	直读 PNG pHYs 数据块断言 300 DPI	node ops/figure_spec_gate.mjs	ops/figure_spec_gate.mjs	已闭环	产线项目 100% 达成 300 DPI 出图标准
+质量门禁	GATE-15	G15 交付审计流可解析	交付动作日志与数字签名验签解析	node ops/audit_summary.mjs	ops/audit_summary.mjs	已闭环	审计字段格式规范且可回溯
+质量门禁	GATE-16	G16 变异门禁 (7 防线反证)	对 7 条关键防线注入真实破坏反证必红	node ops/mutation_gate.mjs	ops/mutation_gate.mjs	已闭环	escaped 严格等于 0，无恒绿假断言
+质量门禁	GATE-17	G17 K40 脚本逐字节同源	校验仓库与 K40 远端 57 母版字节一致	node ops/k40_script_parity.mjs	ops/k40_script_parity.mjs	已闭环	双向集合恒等 + 57 脚本逐字节一致
+质量门禁	GATE-18	G18 Q3/Q2 变异反证 (6 条)	状态机与路由最长命中词 6 条变异反证	node ops/q3q2_mutation_gate.mjs	ops/q3q2_mutation_gate.mjs	已闭环	escaped 严格等于 0
+质量门禁	GATE-19	G19 全量测试与基线一致	全量 1823 测试 + README 实测基线一致	node ops/metrics_sync.mjs --check	BioanalysDesktop/README.md	已闭环	1823 tests 全绿，基线字符完全吻合
+测试体系	TEST-01	全量测试用例套件	212 个测试文件涵盖单元/集成/契约	npm test	BioanalysDesktop/tests/	已闭环	1823 tests / 1822 pass / 0 fail / 1 skipped
+测试体系	TEST-02	路由黄金集准确率	27 条真实复杂业务场景意图精准映射	node --test tests/router_eval.test.js	BioanalysDesktop/tests/eval/golden_routing.json	已闭环	27/27 匹配准确率 100.0%
+生信流水线	PIPE-01	Line 1 Bulk 常规挖掘	15 个分析母版，涵盖 limma/WGCNA/ML	pwsh -File ops/06_deploy_scripts.ps1 -Line line1_bulk	src/line1_bulk/scripts/	已闭环	11 个编排 Mod 步骤全链通畅
+生信流水线	PIPE-02	Line 2 scRNA 单细胞转录组	22 个分析母版，涵盖 Harmony/CellChat/KO	pwsh -File ops/06_deploy_scripts.ps1 -Line line2_scrna	src/line2_scrna/scripts/	已闭环	21 个编排 Mod 步骤全链通畅
+生信流水线	PIPE-03	Line 3 Spatial 空间转录组	17 个分析母版，涵盖 BANKSY/NNLS/比例尺	pwsh -File ops/06_deploy_scripts.ps1 -Line line3_spatial	src/line3_spatial/scripts/	已闭环	17 个编排 Mod 步骤全链通畅
+算力红线	PERF-01	7680 MB 容器内存软熔断	K40 8GB RAM 物理限制，禁止超额占用	ssh k40-ubuntu 'free -m'	ops/run_throttled_task.sh	已闭环	任务降权运行，单步内存 <= 4.5 GB
+算力红线	PERF-02	轻量 NNLS 空间解卷积	仅允许 scipy.optimize.nnls (REJ-006)	node ops/python_interpreter_gate.mjs	src/line3_spatial/scripts/celltype_annotation	已闭环	单步内存 <= 2.2 GB，严禁重型回归
+物理标定	SCAL-01	Visium 100 µm 晶格标定	um_per_px = 100.0 / NN (0.757554 um/px)	python ops/spatial_pitch_selftest.py	ops/spatial_calibration.py	已闭环	六角晶格已知 pitch 还原误差 0.00%
+物理标定	SCAL-02	延迟比例尺抗布局漂移	排版收敛后绘制 + 真实 Line2D 端点读取	node --test tests/figure_scalebar_contract.test.js	src/line3_spatial/scripts/spatial_figures	已闭环	实测误差超出 3% 立即 Fail-Closed
+物理标定	SCAL-03	33 张空间切片图实测对账	PNG 刻度间距与 manifest bar_px 逐图核对	python ops/figure_scalebar_png_measure.py local_projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial	ops/figure_scalebar_png_measure.py	已闭环	33/33 张图实测 0 像素误差 (0.00%)
+交付资产	PRJ-01	PRJ_STROKE_P1 卒中 ABCA1 轴	GSE233814 小鼠卒中 MCAO 5 切片线粒体分析	python ops/report_render_html.py ...	local_projects/PRJ_STROKE_P1_SPATIAL_ABCA1/	已交付	38 图 + 综合报告.html (10479 KB)
+交付资产	PRJ-02	PRJ_STROKE_P2 卒中焦亡 5 基因	GSE233814 乳酸化-焦亡 5 调控基因共定位	python ops/report_render_html.py ...	local_projects/PRJ_STROKE_P2_SPATIAL_LACTPYRO_5GENES/	已交付	29 图 + 综合报告.html (7960 KB)
+交付资产	PRJ-03	交付报告商业机密级脱敏	严禁出现机器名/内网IP/容器/路径信息	node --test tests/report_redaction_contract.test.js	BioanalysDesktop/tests/report_redaction_contract.test.js	已闭环	3/3 契约测试全绿，脱敏合规率 100%
+参考归档	REF-01	非生产参考代码独立隔离	3,000+ 历史参考代码移入可用代码预筛选	Test-Path '可用代码预筛选/功能-出图对应索引表.md'	可用代码预筛选/	已闭环	生产目录零污染，配套 51KB 结构化索引
+框架演进	ROAD-01	外部通用框架三审联动	元宝调研 + DeepSeek审计 + 4 Argon终裁	cat .tmp/argon74_final.txt	.tmp/argon74_final.txt	已终裁	Q1~Q7 裁决完成，签发精简封板与路线图
+框架演进	ROAD-02	Phase 0 只读影子与台账	schema_gateway.py + expires_at <= 180天	node ops/router_gate.mjs	ops/schema_gateway.py	待排期	验收标准：MUT-P0-A/B 两条变异反证必红
+框架演进	ROAD-03	Phase 1 旁路编排与强杀	accept_degraded 显式短路 + 进程组强杀	node --test tests/task_fsm.test.js	BioanalysDesktop/server/task_fsm.js	待排期	验收标准：MUT-P1-A/B 两条变异反证必红
+框架演进	ROAD-04	Phase 2 受控写与原子回滚	Fail-Closed 网关拦截 + 中途强杀原子写保护	node ops/run_all_gates.mjs	BioanalysDesktop/server/run.js	待排期	验收标准：MUT-P2-A/B 两条变异反证必红
