@@ -38,7 +38,7 @@ $ErrorActionPreference = 'Continue'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $dataRoot = Join-Path $repoRoot 'test_use_data'
 
-# 三套可用数据与三条线的映射（工作区盘点结论，计划 con_hf/2026-10-13_plan_goal全量推进.md 1.1 节）
+# 三套可用数据与三条线的映射（工作区盘点结论，计划 workspace/handoff/archive/2026-10-13_plan_goal全量推进.md 1.1 节）
 # Source 是本地既有目录名（用户资产，不重命名），只在这张表里出现一次；
 # Files 列本地文件名，推到 Linux 前按 $RemoteNameMap 换成英文名。
 $datasets = @(

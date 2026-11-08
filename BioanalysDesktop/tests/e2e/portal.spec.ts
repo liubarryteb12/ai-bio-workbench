@@ -426,7 +426,7 @@ test('result view physically separates built-in previews from project result fig
   await advanceToSubmission(page);
 
   const getSubmitted = await mockSubmission(page, [
-    { path: 'local_projects/e2e_project/figures/line1_bulk/l1_02_pca.png' },
+    { path: 'workspace/projects/e2e_project/figures/line1_bulk/l1_02_pca.png' },
   ]);
   await page.locator('#btn-gen').click();
   await expect(page.locator('#result-card')).toBeVisible();
@@ -439,7 +439,7 @@ test('result view physically separates built-in previews from project result fig
   await expect(page.getByTestId('result-real-zone')).toBeVisible();
   await expect(page.getByTestId('result-real-zone')).toContainText('项目真实图');
   await expect(page.getByTestId('result-real-zone')).toContainText(
-    'local_projects/e2e_project/figures/line1_bulk/l1_02_pca.png',
+    'workspace/projects/e2e_project/figures/line1_bulk/l1_02_pca.png',
   );
 });
 

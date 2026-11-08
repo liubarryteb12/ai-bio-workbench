@@ -9,27 +9,29 @@
 
 ```
 参考与研究            reference/        只读出图规范与代码库（772 条 catalog）
-分析母版              src/              三线脚本 + engines
+分析母版              tools/bio/        三线脚本与注册表
 工作台（服务端+前端）  BioanalysDesktop/ 整个 Web 应用
-运维与门禁            ops/              92 个脚本（PowerShell 运维 / node 门禁 / sh 算力面）
-项目产物              local_projects/   每个项目一个目录（6 个现存）
-台账                  con_hf/           dispatch / ledger / runs / sync / topic_survey
+控制面工具            tools/dev/ tools/reporting/ tools/ops/
+                                     门禁、报告交付链、运维入口
+项目产物              workspace/projects/   每个项目一个目录（6 个现存）
+台账                  ledger/           JSONL 与运维/坑位台账
+交接与历史            workspace/handoff/ 交接、决策、派单与调研快照
+运行记录              docs/runs/        历史验证证据
 文档                  docs/             规范正本（coding-standards / isolation / directories / figure_spec）
 交付                  deliverables/ outputs/ artifacts/ dist/
 其它                  bin/ portal/ projects/ shared/ tests/ Python/ vendor/ configs/ aims/
 临时与归档            .tmp/ _archive/ cn_debug/
 ```
 
-### 1.2 `src/` 分析母版层
+### 1.2 `tools/bio/` 分析母版层
 
 ```
-src/line1_bulk/     21 文件   bulk RNA-seq 线（R 为主）
-src/line2_scrna/    29 文件   单细胞线（Python 为主）
-src/line3_spatial/  26 文件   空间转录组线（Python + R）
-src/engines/        3 个引擎  a2a-rpc / artifact-sync / security-audit
-src/workflows.json           步骤注册表（54 个已登记 mod）
-src/figure_templates.json    92 条出图模板（39 条 Ready 单图）
-src/bridge_guard.sh          跨语言桥接守卫
+tools/bio/line1_bulk/     21 文件   bulk RNA-seq 线（R 为主）
+tools/bio/line2_scrna/    29 文件   单细胞线（Python 为主）
+tools/bio/line3_spatial/  26 文件   空间转录组线（Python + R）
+tools/bio/workflows.json           步骤注册表（54 个已登记 mod）
+tools/bio/figure_templates.json    92 条出图模板（39 条 Ready 单图）
+core/bridge_guard.sh               跨语言桥接守卫
 ```
 
 **目录即契约**：`src/<line>/scripts/` 下除 README.md 与两个共享库外，每个文件都必须是可提交的步骤母版，
@@ -53,13 +55,13 @@ Python/           2418 文件  打包的 Python 运行时
 dist/             3 文件    构建产物
 ```
 
-### 1.4 `local_projects/` 项目产物层（每个项目一个）
+### 1.4 `workspace/projects/` 项目产物层（每个项目一个）
 
 ```
 <project>/
   project.json     四段式 manifest：basicInfo / data_source / pipeline_dag / acl_and_output
   data/            输入数据（按线分目录）
-  scripts/         本项目适配脚本（与 src 母版的差异层）
+  scripts/         本项目适配脚本（与 tools/bio 母版的差异层）
   results/         按线分目录：line1_bulk/ line2_scrna/ line3_spatial/
   figures/         图件产物
   *.md             报告
@@ -92,7 +94,7 @@ dist/             3 文件    构建产物
    ▼
 [server/run.js]  persistEntry()
    │ 读远端回执（WROTE '<path>' <bytes>）
-   │ 写台账 con_hf/ledger/*.jsonl
+   │ 写台账 ledger/*.jsonl
    ▼
 [server/reconcile.js]  reconcileTask()
    │ 探针复查（RECONCILE_END 哨兵）：进程还在？产物在不在？
@@ -127,8 +129,8 @@ dist/             3 文件    构建产物
 
 | 类型 | 位置 | 内容 | 生命周期 |
 |---|---|---|---|
-| **台账**（authoritative） | `con_hf/ledger/*.jsonl` | 每次任务执行的权威记录 | 永久，append-only |
-| **产物**（derived） | `local_projects/<id>/results|figures` | 分析结果 | 随项目 |
+| **台账**（authoritative） | `ledger/*.jsonl` | 每次任务执行的权威记录 | 永久，append-only |
+| **产物**（derived） | `workspace/projects/<id>/results|figures` | 分析结果 | 随项目 |
 | **缓存**（disposable） | `.tmp/ .ops_state/ node_modules` | 临时与可重建 | 可随时删 |
 
 ### 4.2 远端算力面存储
@@ -137,7 +139,7 @@ dist/             3 文件    构建产物
 /mnt/ssd/bio_data/
   bin/<line>/            部署的母版（与仓库 src 双向同源，门禁校验）
   bin/_legacy_wild/      已归档的野生脚本（11 个）
-  projects/<id>/         项目产物（与本地 local_projects 对应）
+  projects/<id>/         项目产物（与本地 workspace/projects 对应）
   system_logs/_running/  运行标记
   system_logs/_locks/    幂等锁
   system_logs/*_ledger.json  台账回执
@@ -151,12 +153,12 @@ dist/             3 文件    构建产物
 | 图件模板 | `src/figure_templates.json` | 92 条模板，39 条 Ready 单图 |
 | Ready 白名单 | `ops/figure_ready_allowlist.json` | 封板的 39 个 ID |
 | Ready 实证矩阵 | `ops/figure_ready_matrix.json` | 39 条的 sha256 核验结果 |
-| 项目 manifest | `local_projects/<id>/project.json` | 分组设计、阈值、pipeline_dag |
+| 项目 manifest | `workspace/projects/<id>/project.json` | 分组设计、阈值、pipeline_dag |
 | 门禁清单 | `ops/run_all_gates.mjs` | 门禁顺序与参数的唯一真源 |
 
 ## 五、当前架构的已知问题（客观陈述，供优化时参考）
 
-1. **项目适配脚本与母版的分层没有机器约束**：`local_projects/<id>/scripts/` 可以任意改，没有一致性检查。漂移事故就是这么来的（远端被改、母版没跟上，导致真机失败）。
+1. **项目适配脚本与母版的分层没有机器约束**：`workspace/projects/<id>/scripts/` 可以任意改，没有一致性检查。漂移事故就是这么来的（远端被改、母版没跟上，导致真机失败）。
 2. **路由层仍在膨胀**：`projects.routes.js` 已 27KB（27,332 字节），**12 个端点**挤在一个文件里。这是 T3-1「巨石」问题的服务端版本。
 3. **判定点分散**：11 层判定分散在 6 个模块，没有统一的状态机描述。新增判定点容易漏。
 4. **`.tmp/` 有 18,713 个文件**：本地临时目录没有清理策略，已经影响文件扫描类工具的性能（实测一次全仓色值扫描要遍历它们）。

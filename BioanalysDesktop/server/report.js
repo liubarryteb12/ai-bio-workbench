@@ -35,14 +35,14 @@ import {
 const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
 /**
- * 本地交付缓存根：显式环境变量优先；默认收敛到本地项目根 local_projects/。
+ * 本地交付缓存根：显式环境变量优先；默认收敛到本地项目根 workspace/projects/。
  * localDeliverDir 再按项目落到 <project>/deliverables，避免回搬结果散到仓库根。
  */
 export const LOCAL_DELIVER_ROOT = process.env.BIO_LOCAL_DELIVERABLES
   ? path.resolve(process.env.BIO_LOCAL_DELIVERABLES)
   : process.env.BIO_LOCAL_PROJECTS
     ? path.resolve(process.env.BIO_LOCAL_PROJECTS)
-    : path.join(REPO_ROOT, 'local_projects');
+    : path.join(REPO_ROOT, 'workspace/projects');
 
 /**
  * 本项目在本地交付缓存里的目录。
@@ -176,7 +176,7 @@ function verifyPulledSubset(dir, names) {
 export function readAdaptManifest(root, projectId) {
   const safe = sanitizeProjectId(projectId);
   if (!safe) throw new Error(`projectId 非法: ${projectId}`);
-  const base = path.resolve(String(root ?? REPO_ROOT), 'local_projects', safe);
+  const base = path.resolve(String(root ?? REPO_ROOT), 'workspace/projects', safe);
   const file = path.join(base, 'figures', 'adapt', 'manifest.json');
   try {
     const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -195,7 +195,7 @@ export function readAdaptManifest(root, projectId) {
 export function buildAdaptUploadPairs(root, projectId) {
   const safe = sanitizeProjectId(projectId);
   if (!safe) throw new Error(`projectId 非法: ${projectId}`);
-  const adaptDir = path.resolve(String(root ?? REPO_ROOT), 'local_projects', safe, 'figures', 'adapt');
+  const adaptDir = path.resolve(String(root ?? REPO_ROOT), 'workspace/projects', safe, 'figures', 'adapt');
   const manifest = readAdaptManifest(root, safe);
   const errors = [];
   const pairs = [];

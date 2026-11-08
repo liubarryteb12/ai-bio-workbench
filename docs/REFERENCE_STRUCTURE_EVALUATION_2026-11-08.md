@@ -38,9 +38,9 @@ execution_and_defense（Pydantic schemas + 白名单工具）、runtime_controls
 |---|---|---|
 | ROUTER.yaml 事件路由 | `ROUTER.yaml` + `router_gate.mjs` + `route_dispatcher.js` | 已有，且门禁校验路径存在性 |
 | Pydantic schemas 防火墙 | `ops/schema_gateway.py` + task FSM + 任务提交校验 | 已有，跨 JS/Py 双语言 |
-| workspace 三态数据面 | 服务器 `projects/<线>/{raw_data,processed,results}` + `local_projects/` 回搬 + 交付打包 | 已有，服务器侧为英文路径 |
+| workspace 三态数据面 | 服务器 `projects/<线>/{raw_data,processed,results}` + `workspace/projects/` 回搬 + 交付打包 | 已有，服务器侧为英文路径 |
 | checkpoint 断点续跑 | `src/*/checkpoint/` + `verify_bridge_checkpoint.py` + bridge_guard | 已有 |
-| 知识台账 ledger | `con_hf/ledger/` 五类 JSONL + 项目级 ledger | 已有，粒度更细 |
+| 知识台账 ledger | `ledger/` 五类 JSONL + 项目级 ledger | 已有，粒度更细 |
 | REJ 已否决设计台账 | `SCOPE.md` 12 条 REJ，`enforced_by` 由门禁校验 | 本项目更强（含有效期与撤销链） |
 | hooks 安全/审计钩子 | 25 道门禁 + audit.js + 变异反证 mutation_gate | 本项目更强（含变异反证纪律） |
 | references 参考资产库 | `reference/` 编号目录 + inventory + gen_reference_index | 已有，规模更大 |

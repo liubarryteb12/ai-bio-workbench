@@ -88,7 +88,7 @@ test('adapt_vars 路径守卫：绝对路径、穿越、跨项目、非法根目
     ['/etc/passwd', /必须使用本项目相对路径/],
     ['data/../../etc/passwd', /禁止跨项目/],
     ['data/line1_bulk/processed/../../../other/x.tsv', /禁止跨项目/],
-    ['local_projects/PRJ_OTHER/figures/a.png', /禁止跨项目，发现 prj_other/],
+    ['workspace/projects/PRJ_OTHER/figures/a.png', /禁止跨项目，发现 prj_other/],
     ['etc/shadow', /必须位于本项目/],
   ];
   for (const [value, pattern] of cases) {
@@ -100,9 +100,9 @@ test('adapt_vars 路径守卫：绝对路径、穿越、跨项目、非法根目
   }
 });
 
-test('adapt_vars 允许值不误伤：本项目 local_projects 与常规根通过', () => {
+test('adapt_vars 允许值不误伤：本项目 workspace/projects 与常规根通过', () => {
   const ok = resolveFigure('fig_l2_pca', 'line1_bulk', 'PRJ_X',
-    { input_data: 'local_projects/PRJ_X/figures/adapt/a.R', group_col: 'group' }, []);
+    { input_data: 'workspace/projects/PRJ_X/figures/adapt/a.R', group_col: 'group' }, []);
   assert.equal(ok.ok, true, JSON.stringify(ok.errors));
 });
 

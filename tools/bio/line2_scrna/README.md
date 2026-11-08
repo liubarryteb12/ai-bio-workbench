@@ -310,7 +310,7 @@ HLF/ARID5B -> T_cell、MAFB -> suprabasal_keratinocyte。
 
 **环境变更**：容器 dask/distributed 2026.8.0 -> 2024.8.0（pyscenic 0.12.1 兼容，
 只动 dask 栈，核心科学栈零变更）；cisTarget hg38 库 722MB 常驻
-`public_references/cistarget/`。详见 `con_hf/踩坑台账.md` #123。
+`public_references/cistarget/`。详见 `ledger/踩坑台账.md` #123。
 
 **验证**：回读 11 项全 PASS；台账 completed/passed；04 巡检 PASS；产物 07 回搬
 `outputs/`。

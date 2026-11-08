@@ -39,8 +39,11 @@ const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 // 2026-11-08 W3：三线母版迁 tools/bio/，src/ 清空，扫描面换 tools/bio。
 const SCAN_DIRS = ['tools', 'shared', 'bin', 'BioanalysDesktop/server', 'BioanalysDesktop/tests', 'BioanalysDesktop/src', 'portal', 'docs'];
 const SKIP_DIR_NAMES = new Set(['node_modules', 'dist', 'encoding_backup', '_archive', 'artifacts', 'test-results', '.tmp', '__pycache__']);
+const SKIP_REL_PREFIXES = ['docs/runs'];
 
 function walk(dir, out = []) {
+  const rel = path.relative(REPO, dir).split(path.sep).join('/');
+  if (SKIP_REL_PREFIXES.some((prefix) => rel === prefix || rel.startsWith(prefix + '/'))) return out;
   let entries = [];
   try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return out; }
   for (const entry of entries) {

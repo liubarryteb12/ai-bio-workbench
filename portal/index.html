@@ -696,7 +696,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
         </section>
         <section class="result-figure-zone real" id="result-real-zone" data-testid="result-real-zone" aria-labelledby="real-zone-title" style="display:none;">
           <h3 id="real-zone-title">项目真实图</h3>
-          <p>这些是 Sync 回传的 local_projects/<项目>/figures/<line>/ 本项目结果图。</p>
+          <p>这些是 Sync 回传的 workspace/projects/<项目>/figures/<line>/ 本项目结果图。</p>
           <ul class="result-figure-list" id="result-real-list"></ul>
         </section>
         <div class="deliver-actions">
@@ -1126,7 +1126,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
 
   /**
    * 样本编号输入时的就地刷新：只改已存在的卡片内的计数文字、has-dup 高亮与重复提示行，
-   * 不重建卡片（重建会销毁正在输入的元素 → 逐字符丢焦点，坑见 con_hf/踩坑台账.md #145）。
+   * 不重建卡片（重建会销毁正在输入的元素 → 逐字符丢焦点，坑见 ledger/踩坑台账.md #145）。
    * 卡片与 state.groups 按下标一一对应（renderGroups 顺序 append，无重排）。
    */
   function refreshGroupSampleUi() {

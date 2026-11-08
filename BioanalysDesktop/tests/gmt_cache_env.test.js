@@ -76,7 +76,7 @@ test('D-22：母版保持 LF-only（P-01：CRLF 会让 awk 数值比较退化）
 });
 
 test('D-22：SPEC_DECISIONS.md 有 D-22 条目且写明三个备选', () => {
-  const text = fs.readFileSync(path.join(REPO, 'con_hf', 'SPEC_DECISIONS.md'), 'utf8');
+  const text = fs.readFileSync(path.join(REPO, 'workspace', 'handoff', 'SPEC_DECISIONS.md'), 'utf8');
   assert.match(text, /### D-22 /, '缺 D-22 条目');
   const d22 = text.slice(text.indexOf('### D-22'));
   assert.ok(d22.includes('BIO_GMT_CACHE'), 'D-22 要点名环境变量');

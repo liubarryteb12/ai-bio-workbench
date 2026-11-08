@@ -679,7 +679,7 @@ def main(argv=None):
         "--output",
         type=Path,
         default=Path(
-            "con_hf/runs/2026-10-27_figure_catalog_adaptation/python_batch"
+            "docs/runs/2026-10-27_figure_catalog_adaptation/python_batch"
         ),
     )
     parser.add_argument("--seed", type=int, default=None)

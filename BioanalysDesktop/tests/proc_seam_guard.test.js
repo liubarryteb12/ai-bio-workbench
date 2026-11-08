@@ -85,6 +85,9 @@ const EXEMPT_RELPATHS = new Set([
   'tools/dev/module_ablation_matrix_gate.mjs',
   'tools/dev/project_content_ablation_gate.mjs',
   'tools/dev/work_order_orchestrator_gate.mjs',
+  // skills 契约门禁：起 python 做 PyYAML 交叉解析，与 router_gate 同类，
+  // 是离线静态门禁，不进服务运行时。
+  'tools/dev/skills_contract_gate.mjs',
   // 传输适配器（2026-11-08 W1 基线收编）：ADB 链路适配器，起 pwsh/scp 走 ops/adb_exec
   // 等白名单包装器，与 proc.js 的接缝语义一致（算力与文件传输默认走 ADB 通道）。
   'BioanalysDesktop/server/adb_transfer.js',

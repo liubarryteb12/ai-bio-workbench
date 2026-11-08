@@ -140,8 +140,8 @@ function validateReadyMapping(item, mods, modsAll, errors) {
   if (typeof item.canonical_output !== 'string' || !item.canonical_output) {
     errors.push(`${item.id}: ready 模板 canonical_output 缺失`);
   }
-  if (typeof item.sample_project_output !== 'string' || !item.sample_project_output.startsWith('local_projects/')) {
-    errors.push(`${item.id}: ready 模板 sample_project_output 必须指向 local_projects`);
+  if (typeof item.sample_project_output !== 'string' || !item.sample_project_output.startsWith('workspace/projects/')) {
+    errors.push(`${item.id}: ready 模板 sample_project_output 必须指向 workspace/projects`);
   } else if (!fs.existsSync(path.join(REPO, item.sample_project_output))) {
     errors.push(`${item.id}: sample_project_output 磁盘缺失`);
   }
@@ -265,17 +265,18 @@ function validateAdaptValue(value, lineId, projectId, context, errors) {
       errors.push(`${context}: adapt_vars 路径禁止跨线取值，发现 ${foreign}`);
     }
   }
-  if (normalized.includes('local_projects/')) {
-    const after = normalized.slice(normalized.indexOf('local_projects/') + 'local_projects/'.length);
+  if (normalized.includes('workspace/projects/')) {
+    const after = normalized.slice(normalized.indexOf('workspace/projects/') + 'workspace/projects/'.length);
     const segment = after.split('/')[0];
     if (segment !== projectId.toLowerCase()) {
       errors.push(`${context}: adapt_vars 路径禁止跨项目，发现 ${segment || 'unknown'}`);
     }
   }
   const segments = normalized.replace(/^\.\/+/, '').split('/').filter(Boolean);
-  const allowedRoots = new Set(['data', 'figures', 'processed', 'results', 'local_projects']);
-  if (segments.length > 1 && !allowedRoots.has(segments[0])) {
-    errors.push(`${context}: adapt_vars 路径必须位于本项目 data、figures、processed、results 或 local_projects 下`);
+  const allowedRoots = new Set(['data', 'figures', 'processed', 'results']);
+  const workspaceRoot = segments[0] === 'workspace' && segments[1] === 'projects';
+  if (segments.length > 1 && !allowedRoots.has(segments[0]) && !workspaceRoot) {
+    errors.push(`${context}: adapt_vars 路径必须位于本项目 data、figures、processed、results 或 workspace/projects 下`);
   }
 }
 
@@ -380,7 +381,7 @@ export function buildAdaptedFigureTasks({
       validateAdaptValue(value, lineId, projectId, `${templateId}.${key}`, errors);
     }
     const extension = template.language === 'python' ? '.py' : '.R';
-    const localScript = `local_projects/${projectId}/figures/adapt/adapt_${templateId}${extension}`;
+    const localScript = `workspace/projects/${projectId}/figures/adapt/adapt_${templateId}${extension}`;
     const remoteScript = `${PROJECTS_ROOT}/${projectId}/${lineId}/scripts/adapt_${templateId}${extension}`;
     const customOutput = (template.produces || [`custom_${templateId}.png`])[0];
     tasks.push({

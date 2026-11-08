@@ -62,9 +62,10 @@ test('三层目录、项目自包含与适配副本契约保留', () => {
     'src/core/',
     'src/engines/',
     'src/mods/',
-    'local_projects/<project_id>/',
+    'workspace/projects/<project_id>/',
     'figures/adapt/',
-    'con_hf/',
+    'workspace/handoff/',
+    'ledger/',
   ], 'v3.1 目录契约');
   for (const relative of [
     'docs/directories.md',
@@ -100,11 +101,11 @@ test('工作台默认端口在 aims、服务端、前端代理、守护与 Sync 
 
 test('v3.1 关键产物与门禁文件已落盘', () => {
   for (const relative of [
-    'con_hf/SPEC_DECISIONS.md',
-    'con_hf/ledger/actions.jsonl',
-    'con_hf/ledger/changes.jsonl',
+    'workspace/handoff/SPEC_DECISIONS.md',
+    'ledger/actions.jsonl',
+    'ledger/changes.jsonl',
     'reference/05.可参考生信代码/可用代码预筛选/源码/_meta/script_plot_matrix.json',
-    'local_projects/PRJ_AIMS_V3_20261027/handoff.md',
+    'workspace/projects/PRJ_AIMS_V3_20261027/handoff.md',
   ]) {
     assert.ok(fs.existsSync(path.join(ROOT, relative)), '关键产物不存在：' + relative);
   }

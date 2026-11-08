@@ -4,7 +4,7 @@
  * 背景（2026-10-22 实测）：容器 rootfs/tmp 堆积 873 项 / 4.9G，proot 的 --link2symlink
  * 在逐层解析这些路径时触发 path/path.c:546 compare_paths2 断言，造成
  * 严格 15 秒周期的 SIGABRT（共 514 次）。proot 容器没有 systemd，/tmp 永远不会自动清。
- * 规范依据：con_hf/pitfalls_ledger.md P-28。
+ * 规范依据：ledger/pitfalls_ledger.md P-28。
  */
 
 import test from 'node:test';

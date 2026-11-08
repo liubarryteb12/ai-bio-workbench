@@ -3,7 +3,7 @@
  * cn_debug/2026-10-19_verification_wgcna_v1_v10.mjs
  *
  * WGCNA 模块 P0-1 ~ P0-5 修复的量化验收工具（V1–V10）。
- * 依据：con_hf/2026-10-19_wgcna_audit_report.md §5.4 可量化验证标准。
+ * 依据：workspace/handoff/archive/2026-10-19_wgcna_audit_report.md §5.4 可量化验证标准。
  *
  * 输入：本地回搬存档 outputs/<项目>/line1_bulk/{processed,figures} + outputs/system_logs；
  *       V9 需要远端可写（通过工作台 API 重跑一次，同 seed 比对产物指纹）。

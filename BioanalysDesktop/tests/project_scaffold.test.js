@@ -68,7 +68,7 @@ test('scaffold creates the self-contained project, init action, and global sync 
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.payload.ok, true);
 
-  const projectRoot = path.join(root, 'local_projects', 'PRJ_20261026_DEMO');
+  const projectRoot = path.join(root, 'workspace/projects', 'PRJ_20261026_DEMO');
   for (const name of ['project.json', 'handoff.md', 'README.md', 'INDEX.json']) {
     assert.ok(fs.statSync(path.join(projectRoot, name)).isFile(), name);
   }
@@ -109,13 +109,13 @@ test('scaffold creates the self-contained project, init action, and global sync 
   assert.ok(Array.isArray(initAction.refs));
   assert.equal(Object.hasOwn(initAction, 'status'), false);
 
-  const globalLedger = path.join(root, 'con_hf', 'ledger');
+  const globalLedger = path.join(root, 'ledger');
   for (const name of LEDGER_NAMES) {
     assert.ok(fs.statSync(path.join(globalLedger, `${name}.jsonl`)).isFile());
   }
-  assert.ok(fs.statSync(path.join(root, 'con_hf', 'sync', 'inbox')).isDirectory());
-  assert.ok(fs.statSync(path.join(root, 'con_hf', 'sync', 'outbox')).isDirectory());
-  assert.ok(fs.statSync(path.join(root, 'con_hf', 'sync', 'daemon.log')).isFile());
+  assert.ok(fs.statSync(path.join(root, 'ledger', 'sync', 'inbox')).isDirectory());
+  assert.ok(fs.statSync(path.join(root, 'ledger', 'sync', 'outbox')).isDirectory());
+  assert.ok(fs.statSync(path.join(root, 'ledger', 'sync', 'daemon.log')).isFile());
 });
 
 test('scaffold is idempotent and preserves user content', { skip: PYTHON_SKIP }, () => {
@@ -123,7 +123,7 @@ test('scaffold is idempotent and preserves user content', { skip: PYTHON_SKIP },
   const args = ['--project', 'PRJ_IDEMPOTENT', '--line', 'line2_scrna'];
   assert.equal(runScaffold(root, args).status, 0);
 
-  const projectRoot = path.join(root, 'local_projects', 'PRJ_IDEMPOTENT');
+  const projectRoot = path.join(root, 'workspace/projects', 'PRJ_IDEMPOTENT');
   fs.writeFileSync(path.join(projectRoot, 'README.md'), 'KEEP_ME\n', 'utf8');
   const second = runScaffold(root, args);
   assert.equal(second.status, 0, second.stderr);
@@ -138,7 +138,7 @@ test('scaffold is idempotent and preserves user content', { skip: PYTHON_SKIP },
 
 test('scaffold appends init after a preexisting action without a trailing newline', { skip: PYTHON_SKIP }, () => {
   const root = makeRoot();
-  const projectLedger = path.join(root, 'local_projects', 'PRJ_NO_NEWLINE', 'ledger');
+  const projectLedger = path.join(root, 'workspace/projects', 'PRJ_NO_NEWLINE', 'ledger');
   fs.mkdirSync(projectLedger, { recursive: true });
   const existing = '{"id":"ACT-EXISTING","type":"action","kind":"run"}';
   fs.writeFileSync(path.join(projectLedger, 'actions.jsonl'), existing, 'utf8');
@@ -165,7 +165,7 @@ test('scaffold rejects invalid project identifiers and line names', { skip: PYTH
     assert.equal(result.status, 2);
     assert.equal(result.payload.ok, false);
   }
-  assert.equal(fs.existsSync(path.join(root, 'local_projects', 'safe_project')), false);
+  assert.equal(fs.existsSync(path.join(root, 'workspace/projects', 'safe_project')), false);
 });
 
 test('scaffold rejects roots outside the workspace or outside its QA root', { skip: PYTHON_SKIP }, () => {
@@ -174,6 +174,6 @@ test('scaffold rejects roots outside the workspace or outside its QA root', { sk
     assert.equal(result.status, 2);
     assert.equal(result.payload.ok, false);
     assert.match(result.payload.error, /outside allowed workspace roots/);
-    assert.equal(fs.existsSync(path.join(root, 'local_projects', 'SAFE_PROJECT')), false);
+    assert.equal(fs.existsSync(path.join(root, 'workspace/projects', 'SAFE_PROJECT')), false);
   }
 });

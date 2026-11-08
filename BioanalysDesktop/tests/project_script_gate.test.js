@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const GATE = path.join(REPO, "tools", "dev", "project_script_gate.mjs");
-const MANIFEST = path.join(REPO, "local_projects", "PRJ_DCM_BENCH_20261105", "scripts", "scripts_manifest.json");
+const MANIFEST = path.join(REPO, "workspace/projects", "PRJ_DCM_BENCH_20261105", "scripts", "scripts_manifest.json");
 
 test("Q1：门禁可通过（项目层无母版副本）", () => {
   const out = execFileSync(process.execPath, [GATE], { cwd: REPO, encoding: "utf8" });
@@ -36,7 +36,7 @@ test("Q1：项目 scripts/ 下没有与 src 母版同名的文件", () => {
     const dir = path.join(REPO, "tools", "bio", line, "scripts");
     for (const f of fs.readdirSync(dir)) master.add(f);
   }
-  const dir = path.join(REPO, "local_projects", "PRJ_DCM_BENCH_20261105", "scripts");
+  const dir = path.join(REPO, "workspace/projects", "PRJ_DCM_BENCH_20261105", "scripts");
   const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => {
     const p = path.join(d, e.name);
     return e.isDirectory() ? (e.name === "__pycache__" ? [] : walk(p)) : [p];

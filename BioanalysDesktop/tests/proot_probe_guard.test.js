@@ -1,7 +1,7 @@
 /**
  * 回归守卫：容器内禁用 ps / pgrep / pkill（会 abort proot，杀掉在跑任务）。
  *
- * 背景（con_hf/pitfalls_ledger.md P-23）：2026-10-21 在 k40-ubuntu 容器里跑
+ * 背景（ledger/pitfalls_ledger.md P-23）：2026-10-21 在 k40-ubuntu 容器里跑
  * `ps -eo ...` / `pgrep -a python3` 三次触发 proot 的
  * `./path/path.c:546: ... assertion "length1 > 0" failed`，
  * proot 收到 SIGABRT 整体退出，容器内正在跑的分析任务（已跑 31 分钟的 SCENIC）全部消失且不留台账。
@@ -97,7 +97,7 @@ test('line2 全链取证脚本用 echo ALIVE 判活，不再读 proot etime', ()
 });
 
 test('P-23 台账条目记录了断言原文与禁令', () => {
-  const text = fs.readFileSync(path.join(REPO, 'con_hf', 'pitfalls_ledger.md'), 'utf8');
+  const text = fs.readFileSync(path.join(REPO, 'ledger', 'pitfalls_ledger.md'), 'utf8');
   assert.ok(/### P-23 /.test(text), '缺 P-23 条目');
   assert.ok(/path\.c:546/.test(text), '要留 proot 断言原文定位（path.c:546）');
   assert.ok(/length1 > 0/.test(text), '要留断言原文（length1 > 0）');
@@ -107,7 +107,7 @@ test('P-23 台账条目记录了断言原文与禁令', () => {
 });
 
 test('P-22 的「容器从不重启」结论已标注作废并指向 P-23', () => {
-  const text = fs.readFileSync(path.join(REPO, 'con_hf', 'pitfalls_ledger.md'), 'utf8');
+  const text = fs.readFileSync(path.join(REPO, 'ledger', 'pitfalls_ledger.md'), 'utf8');
   const p22 = text.slice(text.indexOf('### P-22'), text.indexOf('### P-23'));
   assert.ok(p22.includes('更正') && p22.includes('P-23'), 'P-22 里要更正并指向 P-23');
 });
@@ -121,7 +121,7 @@ test('tools/ops/README.md 有「容器内禁用递归遍历命令」小节与替
 });
 
 test('P-24：判活不得用 /proc/loadavg（读的是 Android 宿主负载）', () => {
-  const text = fs.readFileSync(path.join(REPO, 'con_hf', 'pitfalls_ledger.md'), 'utf8');
+  const text = fs.readFileSync(path.join(REPO, 'ledger', 'pitfalls_ledger.md'), 'utf8');
   assert.ok(/### P-24 /.test(text), '缺 P-24 条目');
   const p24 = text.slice(text.indexOf('### P-24'));
   assert.ok(p24.includes('/proc/loadavg'), '要写明 loadavg 是宿主负载');
@@ -151,7 +151,7 @@ test('P-24：链路取证脚本不得用 loadavg 判活', () => {
   }
 });
 test('P-25：proot abort 不限于「容器内跑 ps」，崩溃取证口径已写进台账', () => {
-  const text = fs.readFileSync(path.join(REPO, 'con_hf', 'pitfalls_ledger.md'), 'utf8');
+  const text = fs.readFileSync(path.join(REPO, 'ledger', 'pitfalls_ledger.md'), 'utf8');
   assert.ok(/### P-25 /.test(text), '缺 P-25 条目');
   const p25 = text.slice(text.indexOf('### P-25'));
   assert.ok(p25.includes('13:44:42'), '要点名第二次崩溃的时间点');
@@ -175,7 +175,7 @@ test('P-25：链路 runner 必须用「快照 + 只认新增台账」而不是�
 });
 
 test('P-25：D-20 运行中标记是中断取证的兜底（不许被 tie 掉）', () => {
-  const text = fs.readFileSync(path.join(REPO, 'con_hf', 'pitfalls_ledger.md'), 'utf8');
+  const text = fs.readFileSync(path.join(REPO, 'ledger', 'pitfalls_ledger.md'), 'utf8');
   const p25 = text.slice(text.indexOf('### P-25'));
   assert.ok(p25.includes('_running'), 'P-25 要指向运行中标记目录');
   assert.ok(p25.includes('D-20'), 'P-25 要指向 D-20 裁定');

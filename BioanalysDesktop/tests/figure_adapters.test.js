@@ -385,7 +385,7 @@ const CASES = {
 };
 
 function readHeader(relativePath) {
-  const absolute = path.join(REPO, 'local_projects', PROJECT_ID, relativePath);
+  const absolute = path.join(REPO, 'workspace/projects', PROJECT_ID, relativePath);
   return fs.readFileSync(absolute, 'utf8').split('\n')[0].split('\t');
 };
 
@@ -401,7 +401,7 @@ function buildSource(templateId) {
   });
 }
 
-test('all ready templates have real project inputs with expected extensions', { skip: !fs.existsSync(path.join(REPO, 'local_projects', PROJECT_ID, 'data/line1_bulk/processed/pca_scores.tsv')) && 'HOST_MISSING_LOCAL_DATA: real project data lives on remote SSD; local copy pruned 2026-10-31' }, () => {
+test('all ready templates have real project inputs with expected extensions', { skip: !fs.existsSync(path.join(REPO, 'workspace/projects', PROJECT_ID, 'data/line1_bulk/processed/pca_scores.tsv')) && 'HOST_MISSING_LOCAL_DATA: real project data lives on remote SSD; local copy pruned 2026-10-31' }, () => {
   assert.deepEqual(
     registry.templates.filter((item) => item.deps_status === 'ready').map((item) => item.id).sort(),
     [...SUPPORTED_IDS].sort(),
@@ -517,7 +517,7 @@ test('project, line and input path boundaries reject cross-context values', () =
   });
 
   assert.throws(
-    () => call({ inputPath: 'local_projects/PRJ_OTHER/figures/line1_bulk/pca.tsv' }),
+    () => call({ inputPath: 'workspace/projects/PRJ_OTHER/figures/line1_bulk/pca.tsv' }),
     /inputPath.*跨项目|跨项目.*inputPath/,
   );
   assert.throws(() => call({ projectId: 'bad id' }), /projectId/);

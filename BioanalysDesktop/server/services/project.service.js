@@ -14,10 +14,10 @@ import { LINE_STEPS, PIPELINE_STEP_META, buildReadProjectMetaCommand, parseProje
 import { describeSeries, loadWorkflows, validateRegistry } from '../workflow_graph.js';
 
 /**
- * 读本地项目元数据（local_projects/<id>/project.json）。
+ * 读本地项目元数据（workspace/projects/<id>/project.json）。
  *
  * T3-5：meta 接口历史上只读远端 K40 的 project.json，而默认项目 default 在本机
- * local_projects/default/project.json 是有内容的。远端没有该文件时接口直接 404，
+ * workspace/projects/default/project.json 是有内容的。远端没有该文件时接口直接 404，
  * 前端因此永远拿不到出图配置。回落只读本地这一个确定位置，不猜路径、不越界。
  */
 // Q2 收口：建项处理体已抽到 create.service.js，这里统一再导出，
@@ -31,7 +31,7 @@ export { applyFigures } from './figures_apply.service.js';
 
 export function readLocalProjectMeta(repoRoot, projectId) {
   if (!repoRoot) return null;
-  const file = path.join(repoRoot, 'local_projects', projectId, 'project.json');
+  const file = path.join(repoRoot, 'workspace/projects', projectId, 'project.json');
   try {
     if (!fs.existsSync(file)) return null;
     return JSON.parse(fs.readFileSync(file, 'utf8'));

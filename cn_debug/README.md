@@ -9,16 +9,16 @@
 1. **新增探针必须登记**到本文件对应分区，写清"验证什么 / 结论 / 是否可删"。
 2. 命名沿用 `YYYY-MM-DD_<类别>_<主题>.<ext>`，类别取 `debug` / `verification` / `e2e` / `probe`。
 3. `*.log` 已被 `.gitignore` 忽略（第 52 行），可随时删除，不进版本库。
-4. 判决证据（审计 CSV、负对照样本、验证脚本）**不许删**——`con_hf/dispatch/` 的报告按文件名逐条引用。
+4. 判决证据（审计 CSV、负对照样本、验证脚本）**不许删**——`workspace/handoff/dispatch/` 的报告按文件名逐条引用。
 
 ## 一、判决证据（保留，勿删）
 
 | 文件 | 用途 | 引用处 |
 |---|---|---|
-| `figure_audit_all.csv` / `figure_audit_line1.csv` / `figure_score.csv` | 137 张图的布局审计与评分底表 | `con_hf/dispatch/` 出图相关报告、`docs/figure_spec.md` |
+| `figure_audit_all.csv` / `figure_audit_line1.csv` / `figure_score.csv` | 137 张图的布局审计与评分底表 | `workspace/handoff/dispatch/` 出图相关报告、`docs/figure_spec.md` |
 | `figure_score.py` / `figure_code_audit.py` / `figure_audit_scan.py` | 上述底表的生成器 | 同上 |
 | `figure_negctrl/`、`figure_audit_sweep/`、`is_fig_audit/` | 负对照样本与逐轮审计产物 | 出图规范验收记录 |
-| `GSE30528_*`、`GPL571.*`、`build_gpl571.py` | 线 1 外部验证集原始数据与注释探针（约 18MB） | `con_hf/` 数据集调研、外部验证集冻结评估 |
+| `GSE30528_*`、`GPL571.*`、`build_gpl571.py` | 线 1 外部验证集原始数据与注释探针（约 18MB） | `workspace/handoff/archive/` 数据集调研、外部验证集冻结评估 |
 | `s10_before_*.md5` | 改动前产物指纹（可复算回归） | S10 报告 |
 
 ## 二、验证脚本（按切片归档，跑过的都留）

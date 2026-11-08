@@ -64,11 +64,14 @@
 | `ops` 出图与报告脚本 | `tools/reporting/` | W5 |
 | `ops` PowerShell 运维入口 | `tools/ops/` | W5 |
 | `ops/work_order_orchestrator.mjs` | `skills/stable/ops/` 绑定的工具 | W7 |
-| `con_hf/ledger/` | `ledger/` | W8 |
-| `local_projects/` | `workspace/projects/` | W8 |
+| `con_hf/ledger/` | `ledger/` | W8 已完成 |
+| `local_projects/` | `workspace/projects/` | W8 已完成 |
 | `reference/` | `references/` | W9 |
 | `BioanalysDesktop/` | 原地保留 | W6 已裁定 |
-| `con_hf/` 其余（handoff、sync、runs、SPEC-*） | `workspace/handoff/`、`ledger/sync/`、`docs/runs/` | W8 |
+| `con_hf/handoff.md`、`con_hf/SPEC*.md`、`con_hf/dispatch/`、`con_hf/topic_survey/`、根级计划与汇报快照 | `workspace/handoff/` | W8 已完成 |
+| `con_hf/ops_ledger.md`、`con_hf/pitfalls_ledger.md`、`con_hf/踩坑台账.md`、图件台账 | `ledger/` | W8 已完成 |
+| `con_hf/runs/` | `docs/runs/` | W8 已完成 |
+| `con_hf/sync/` | `ledger/sync/` | W8 已完成 |
 | `docs/` | 保留原地 | 不迁 |
 
 映射表执行时逐波细化到文件级，波内用 `git mv` 保留历史。
@@ -109,7 +112,20 @@
 | W5b | 已完成（21cfa5e + 9a1a0af + e17bb9b） |
 | W6 | 已裁定（评估与契约收口） |
 | W7 | 已完成（工单 skill + skills 契约门禁，门禁数 24 增至 25） |
-| W8 到 W10 | 排队 |
+| W8 | 已完成（数据面与台账迁入 workspace/ 与 ledger/） |
+| W9 到 W10 | 排队 |
+
+### W8 评估结论
+
+仓库侧改为 `workspace/projects/` 与 `ledger/`，设备侧固定布局不变。核心事实：
+
+1. 本地项目根只服务开发与回搬视图，设备侧项目根仍是 `/mnt/ssd/bio_data/projects/`。
+   两侧语义对应，路径不互相推导。
+2. `con_hf/ledger/` 五类 JSONL 迁 `ledger/`，`con_hf/sync/` 迁 `ledger/sync/`。
+   追加式台账的历史条目保留写入时路径原文，作为当时事实的证据，不做回写。
+3. 交接、决策、历史派单与调研快照归 `workspace/handoff/`；历史运行记录归 `docs/runs/`。
+4. 历史 QA 事故隔离脚本继续使用设备侧原始路径与固定哈希，不随仓库目录重构改写。
+5. 历史交接、结项与评审文档保留写入时的路径原文，作为当时事实的证据；活文档与代码常量使用新结构。
 
 ### W6 评估结论
 

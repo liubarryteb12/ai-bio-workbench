@@ -186,7 +186,7 @@ def ensure_init_action(path, project_id, line, ticket_id):
             return False
 
     now = datetime.datetime.now().astimezone()
-    evidence = ["local_projects/%s" % project_id]
+    evidence = ["workspace/projects/%s" % project_id]
     if ticket_id:
         evidence.append(ticket_id)
     record = {
@@ -214,7 +214,7 @@ def scaffold(root, project_id, line, ticket_id):
         raise WorkspaceError("invalid line: %r" % (line,))
     safe_ticket = validate_ticket(ticket_id)
 
-    projects_dir = safe_path(root, "local_projects")
+    projects_dir = safe_path(root, "workspace/projects")
     ensure_directory(projects_dir)
     project_root = safe_path(projects_dir, safe_id)
     if project_root.exists() and project_root.is_symlink():
@@ -276,27 +276,27 @@ def scaffold(root, project_id, line, ticket_id):
         if ensure_empty_file(safe_path(project_root, relative), ""):
             created.append(relative)
 
-    global_ledger = safe_path(root, "con_hf/ledger")
+    global_ledger = safe_path(root, "ledger")
     if not global_ledger.exists():
         ensure_directory(global_ledger)
-        created.append("con_hf/ledger")
+        created.append("ledger")
     for name in LEDGER_NAMES:
-        relative = "con_hf/ledger/%s.jsonl" % name
+        relative = "ledger/%s.jsonl" % name
         if ensure_empty_file(safe_path(root, relative), ""):
             created.append(relative)
 
-    sync_root = safe_path(root, "con_hf/sync")
+    sync_root = safe_path(root, "ledger/sync")
     if not sync_root.exists():
         ensure_directory(sync_root)
-        created.append("con_hf/sync")
+        created.append("ledger/sync")
     for name in SYNC_DIRS:
-        relative = "con_hf/sync/%s" % name
+        relative = "ledger/sync/%s" % name
         path = safe_path(root, relative)
         if not path.exists():
             ensure_directory(path)
             created.append(relative)
-    if ensure_empty_file(safe_path(root, "con_hf/sync/daemon.log"), ""):
-        created.append("con_hf/sync/daemon.log")
+    if ensure_empty_file(safe_path(root, "ledger/sync/daemon.log"), ""):
+        created.append("ledger/sync/daemon.log")
 
     action_created = ensure_init_action(
         safe_path(project_root, "ledger/actions.jsonl"),

@@ -56,7 +56,7 @@ export function validateAuditLine(entry) {
 /** 找出所有审计流文件：[{ projectDir, path }]。只认白名单位置，不做全仓通扫。 */
 export function findAuditLedgers({ root = DEFAULT_ROOT } = {}) {
   const out = [];
-  const projectsDir = path.join(root, 'local_projects');
+  const projectsDir = path.join(root, 'workspace/projects');
   let pids = [];
   try { pids = fs.readdirSync(projectsDir); } catch { return out; }
   for (const pid of pids.sort()) {

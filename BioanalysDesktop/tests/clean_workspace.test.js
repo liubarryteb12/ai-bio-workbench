@@ -32,7 +32,7 @@ function seedWorkspace(root) {
   fs.mkdirSync(path.join(root, 'BioanalysDesktop', '.tmp'), { recursive: true });
   fs.writeFileSync(path.join(root, 'BioanalysDesktop', '.tmp', 'b.txt'), 'y'.repeat(50), 'utf8');
 
-  const del = path.join(root, 'local_projects', 'PRJ_X', 'deliverables');
+  const del = path.join(root, 'workspace/projects', 'PRJ_X', 'deliverables');
   fs.mkdirSync(path.join(del, 'unpacked', 'inner'), { recursive: true });
   fs.writeFileSync(path.join(del, 'unpacked', 'inner', 'c.bin'), 'z'.repeat(20), 'utf8');
   // 受保护的审计流必须留在原地
@@ -81,7 +81,7 @@ test('黑名单：命中即抛 ERR_SACRED_PATH_PROTECTED，覆盖裁定点名的
   }
   // 正常目标不得误伤
   assertNotSacred('/repo/.tmp/x.txt');
-  assertNotSacred('/repo/local_projects/PRJ_X/deliverables/unpacked');
+  assertNotSacred('/repo/workspace/projects/PRJ_X/deliverables/unpacked');
 });
 
 test('扫描面：只挑白名单三类，且跳过受保护文件', () => {
@@ -128,7 +128,7 @@ test('默认第 2 类护栏：不传 --execute 时磁盘零改动', () => {
     assert.match(text, /CLEAN_DRY_RUN/);
     assert.equal(text.includes('CLEAN_OK'), false, '演练模式不得报 CLEAN_OK');
     assert.ok(fs.existsSync(path.join(root, '.tmp', 'a.txt')), '演练必须不动盘');
-    assert.ok(fs.existsSync(path.join(root, 'local_projects', 'PRJ_X', 'deliverables', 'unpacked')));
+    assert.ok(fs.existsSync(path.join(root, 'workspace/projects', 'PRJ_X', 'deliverables', 'unpacked')));
     assert.ok(fs.existsSync(path.join(root, 'logs', 'old.log')));
     // 演练阶段也要把「神圣目标被跳过」这件事说出来，不能静默
     assert.match(text, /神圣黑名单/, '演练输出必须留一行 BioanalysDesktop/.tmp 被跳过');
@@ -150,12 +150,12 @@ test('--execute 真删：白名单目标被删，受保护审计流与回执目�
       fs.existsSync(path.join(root, 'BioanalysDesktop', '.tmp', 'b.txt')),
       'BioanalysDesktop/.tmp 命中神圣名单，必须原样保留'
     );
-    assert.equal(fs.existsSync(path.join(root, 'local_projects', 'PRJ_X', 'deliverables', 'unpacked')), false);
+    assert.equal(fs.existsSync(path.join(root, 'workspace/projects', 'PRJ_X', 'deliverables', 'unpacked')), false);
     assert.equal(fs.existsSync(path.join(root, 'logs', 'old.log')), false, '过期日志应被删');
     assert.ok(fs.existsSync(path.join(root, 'logs', 'new.log')), '保留期内日志不该被删');
-    assert.ok(fs.existsSync(path.join(root, 'local_projects', 'PRJ_X', 'deliverables', 'acceptance_audit.jsonl')),
+    assert.ok(fs.existsSync(path.join(root, 'workspace/projects', 'PRJ_X', 'deliverables', 'acceptance_audit.jsonl')),
       '审计流必须原样保留（这是裁定点名的神圣路径）');
-    assert.ok(fs.existsSync(path.join(root, 'local_projects', 'PRJ_X', 'deliverables', 'acceptance', 'PRJ_X.receipt.json')),
+    assert.ok(fs.existsSync(path.join(root, 'workspace/projects', 'PRJ_X', 'deliverables', 'acceptance', 'PRJ_X.receipt.json')),
       '回执目录不在白名单，不该被删');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

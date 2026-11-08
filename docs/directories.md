@@ -6,7 +6,7 @@
 ## 一句话原则
 
 **本地控制面保留代码、治理台账与轻量回搬的项目产物；原始大数据、运行环境和计算都在服务器侧。**
-单个项目的数据、图件、调试、交付与台账统一收口在 `local_projects/<项目>/`。
+单个项目的数据、图件、调试、交付与台账统一收口在 `workspace/projects/<项目>/`。
 
 ## 本地工程目录（本仓库）
 
@@ -19,22 +19,30 @@ AI辅助生信分析流程工作台/
 │                             # 参考结构骨架目录（分波迁入，占位 README 见各目录）
 ├── skills/                   # SOP 规约资产（W7 起迁入，stable 与 in-progress 分级）
 │   └── stable/{bio,dev,ops}/ # 已验收技能，每个技能含 skill.yaml 与 prompt.md
-├── local_projects/          # 本地项目唯一根，结构与远端项目语义对应
-│   ├── INDEX.md             # 全项目机读摘要入口
-│   └── <项目>/              # 自包含项目目录，见下节
+├── workspace/               # 数据与制品工作区（客户数据与控制面物理隔离）
+│   ├── projects/            # 本地项目唯一根，结构与远端项目语义对应
+│   │   ├── INDEX.md         # 全项目机读摘要入口
+│   │   └── <项目>/          # 自包含项目目录，见下节
+│   └── handoff/             # 跨会话交接、决策、历史派单与调研快照
+│       ├── handoff.md
+│       ├── SPEC.md
+│       ├── SPEC_DECISIONS.md
+│       ├── dispatch/
+│       ├── topic_survey/
+│       └── archive/
+├── ledger/                  # 统一知识台账（追加式 JSONL 与运维/坑位台账）
+│   ├── actions.jsonl / changes.jsonl / errors.jsonl / fixes.jsonl / pitfalls.jsonl
+│   ├── ops_ledger.md / pitfalls_ledger.md / 踩坑台账.md
+│   └── sync/                # inbox、outbox、daemon.log
 ├── outputs/
 │   └── system_logs/         # 仅存回搬的机器执行台账，与 JSONL 台账独立
 ├── reference/               # 参考资料唯一存放地，内容只读，结构可整理（约定见下）
-├── con_hf/                  # 全局治理与同步根（治理文件已上移根目录）
-│   ├── SPEC.md              # 阶段规格
-│   ├── handoff.md           # 跨会话交接快照（接活先读它）
-│   ├── ledger/              # 全局五类 JSONL 追加式台账
-│   └── sync/                # inbox、outbox、daemon.log
 ├── docs/                    # 工程规范与架构文档
 │   ├── directories.md       # 本文件
 │   ├── coding-standards.md  # 分析代码规范（Linux 运行面，tools/bio/ 动工前必读）
 │   ├── isolation.md         # 三线隔离约束与校验
-│   └── ledger-schema.md     # 任务台账 JSON schema
+│   ├── ledger-schema.md     # 任务台账 JSON schema
+│   └── runs/                # 历史运行记录与验证证据
 ├── tools/
 │   ├── bio/                 # 三条线分析母版与注册表（W3 已迁入，git 历史保留）
 │   │   ├── line1_bulk/
@@ -47,6 +55,18 @@ AI辅助生信分析流程工作台/
 │   └── ops/                 # 运维入口与算力面脚本（W5b 已迁入）
 └── BioanalysDesktop/        # 管理员工作台应用（W6 评估保留）
 ```
+
+## 路径双轨
+
+仓库内路径与设备路径语义分开，二者不互相推导：
+
+| 面 | 项目根 | 台账根 | 同步目录 |
+|---|---|---|---|
+| 仓库 | `workspace/projects/` | `ledger/` | `ledger/sync/` |
+| 设备 | `/mnt/ssd/bio_data/projects/` | `/mnt/ssd/bio_data/system_logs/` | 设备侧运行目录 |
+
+仓库侧改目录只影响本地开发与回搬视图。设备侧固定布局由 `docs/isolation.md` 与
+`tools/bio/` 注册表约束，不随仓库目录改名。
 
 ## 服务器侧目录
 
@@ -83,16 +103,16 @@ AI辅助生信分析流程工作台/
 `bash /mnt/ssd/bio_data/ops/run_throttled_task.sh <task_id> <line> <step> <R|Python> <项目内脚本绝对路径>`。
 
 本地回搬入口（`tools/ops/07_pull_outputs.ps1`）按项目写入
-`local_projects/<项目>/data/<line>/{processed,results}` 与
-`local_projects/<项目>/figures/<line>/`；机器执行台账独立落 `outputs/system_logs/`。
+`workspace/projects/<项目>/data/<line>/{processed,results}` 与
+`workspace/projects/<项目>/figures/<line>/`；机器执行台账独立落 `outputs/system_logs/`。
 
 ## 本地项目存档与 sync 运行态
 
-`local_projects/` 是本地项目唯一根，只接轻量回传与项目台账，不替代算力面工作目录。
+`workspace/projects/` 是本地项目唯一根，只接轻量回传与项目台账，不替代算力面工作目录。
 每个项目由 `tools/ops/init_project_scaffold.py` 幂等创建：
 
 ```text
-local_projects/<项目>/
+workspace/projects/<项目>/
 ├── project.json
 ├── handoff.md
 ├── README.md
@@ -114,28 +134,28 @@ python tools/ops/init_project_scaffold.py --root . --project <项目> --line <li
 `figures/<line>/` 收真实结果图，`figures/adapt/` 收项目内模板派生副本，两者不得混用。
 脚手架重复运行只补缺失项，不覆盖项目元数据、README、交接文档或已有台账内容。
 
-全局 `con_hf/ledger/` 与项目级 `ledger/` 分离：前者只收跨项目结论和全局动作，
+全局 `ledger/` 与项目级 `ledger/` 分离：前者只收跨项目结论和全局动作，
 后者只收本项目事实。`outputs/system_logs/` 或服务器侧 `system_logs/` 是独立机器台账，
 不与 JSONL 台账合并。
 
-`con_hf/sync/` 是工作区内的 sync 运行态，只放 `inbox/`、`outbox/`、`daemon.log`。
+`ledger/sync/` 是工作区内的 sync 运行态，只放 `inbox/`、`outbox/`、`daemon.log`。
 它是 spool，不是数据仓库。
 
 存量 `default`、`PRJ_20261019_IS_lactylation` 及分散项目资产由 `WP-2.1` 执行零损迁移。
-迁移完成前，旧 `outputs/` 项目产物只作兼容存量，新任务一律按 `local_projects/<项目>/`
+迁移完成前，旧 `outputs/` 项目产物只作兼容存量，新任务一律按 `workspace/projects/<项目>/`
 落盘并单独记录迁移前后的文件数与 SHA256。
 
 ## 归档分类（写文件前先判断类别）
 
 | 类别 | 落点 |
 |---|---|
-| 交接上下文 | `con_hf/` |
+| 交接上下文 | `workspace/handoff/` |
 | 工程规范、架构文档 | `docs/` |
 | 运维脚本 | `tools/ops/` |
 | 分析代码 | `tools/bio/<line_id>/` |
-| 项目专属调试与日志 | `local_projects/<项目>/debug/` |
+| 项目专属调试与日志 | `workspace/projects/<项目>/debug/` |
 | 跨项目临时探针 | `cn_debug/` |
-| 运行记录、验证报告 | `con_hf/runs/` |
+| 运行记录、验证报告 | `docs/runs/` |
 
 运行记录命名：`YYYY-MM-DD_[类型]_[简短说明]`，类型 ∈ `initial` 基线 / `debug` 调试 / `failed` 失败现场 / `verification` 验证 / `formal` 正式产物。
 

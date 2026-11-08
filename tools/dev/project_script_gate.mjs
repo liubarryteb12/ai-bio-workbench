@@ -5,7 +5,7 @@
  * 对标：nf-core 严禁在项目目录放工具脚本副本，项目定制只准通过 conf/modules.config
  * 注入 ext.args；代码是 100% 不可变的只读母版。
  *
- * 本仓库实情（审计 6 个 local_projects/ 后确认）：只有 PRJ_DCM_BENCH_20261105 有
+ * 本仓库实情（审计 6 个 workspace/projects/ 后确认）：只有 PRJ_DCM_BENCH_20261105 有
  * scripts/（31 个文件），且**没有一个是母版同名副本**，全部是数据形态适配层
  * （10x 混合压缩读取、Visium 三切片对齐、L2/L3 流程编排）。所以这里要防的不是
  * "已经发生的副本"，而是"未来有人把母版整份拷进项目目录调参"这条漂移老路。
@@ -22,7 +22,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const REPO = path.resolve(import.meta.dirname, "..", "..");
-const PROJECTS = path.join(REPO, "local_projects");
+const PROJECTS = path.join(REPO, "workspace/projects");
 const LINES = ["line1_bulk", "line2_scrna", "line3_spatial"];
 
 const problems = [];

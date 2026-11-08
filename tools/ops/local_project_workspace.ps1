@@ -180,17 +180,17 @@ function Invoke-LocalScaffold {
     }
     Assert-NoReparsePath -Path $RepoRoot
 
-    $localProjectsRoot = Join-Path $RepoRoot 'local_projects'
+    $localProjectsRoot = Join-Path $RepoRoot 'workspace/projects'
     $projectRoot = Join-Path $localProjectsRoot $Value
     Assert-PathWithin -Path $projectRoot -Base $localProjectsRoot
     Assert-NoReparsePath -Path $projectRoot
 
     $created = [System.Collections.Generic.List[string]]::new()
     if (Ensure-Directory -Path $localProjectsRoot) {
-        $created.Add('local_projects')
+        $created.Add('workspace/projects')
     }
     if (Ensure-Directory -Path $projectRoot) {
-        $created.Add("local_projects/$Value")
+        $created.Add("workspace/projects/$Value")
     }
 
     $metaPath = Join-Path $projectRoot 'project.json'
@@ -281,19 +281,19 @@ function Invoke-LocalScaffold {
         }
     }
 
-    $globalLedger = Join-Path $RepoRoot 'con_hf/ledger'
+    $globalLedger = Join-Path $RepoRoot 'ledger'
     Assert-PathWithin -Path $globalLedger -Base $RepoRoot
     if (Ensure-Directory -Path $globalLedger) {
-        $created.Add('con_hf/ledger')
+        $created.Add('ledger')
     }
     foreach ($name in $LedgerNames) {
         if (Write-Utf8FileIfMissing -Path (Join-Path $globalLedger ($name + '.jsonl')) -Text '') {
-            $created.Add("con_hf/ledger/$name.jsonl")
+            $created.Add("ledger/$name.jsonl")
         }
     }
 
     foreach ($name in @('inbox', 'outbox')) {
-        $relative = "con_hf/sync/$name"
+        $relative = "ledger/sync/$name"
         $path = Join-Path $RepoRoot $relative
         Assert-PathWithin -Path $path -Base $RepoRoot
         if (Ensure-Directory -Path $path) {

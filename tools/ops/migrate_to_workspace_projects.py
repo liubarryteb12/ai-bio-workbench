@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Migrate legacy Markdown ledgers and project assets into local_projects."""
+"""Migrate legacy Markdown ledgers and project assets into workspace/projects."""
 
 import argparse
 import datetime
@@ -21,10 +21,10 @@ from local_project_workspace import (
 
 
 SCHEMA_VERSION = 1
-LEDGER_DIR = "con_hf/ledger"
+LEDGER_DIR = "ledger"
 LEDGER_NAMES = ("actions", "changes", "errors", "fixes", "pitfalls")
-PITFALL_SOURCE = "con_hf/pitfalls_ledger.md"
-OPS_SOURCE = "con_hf/ops_ledger.md"
+PITFALL_SOURCE = "ledger/pitfalls_ledger.md"
+OPS_SOURCE = "ledger/ops_ledger.md"
 FIGURE_SOURCE = "outputs/figures"
 LEGACY_PROJECT_ROOT = "outputs"
 
@@ -176,7 +176,7 @@ def migrate_ledgers(root):
 
 
 def migrate_project_assets(root, project_id):
-    project_root = safe_path(safe_path(root, "local_projects"), project_id)
+    project_root = safe_path(safe_path(root, "workspace/projects"), project_id)
     scaffold(root, project_id)
     legacy_project = safe_path(root, "%s/%s" % (LEGACY_PROJECT_ROOT, project_id))
     figure_root = safe_path(root, FIGURE_SOURCE)

@@ -85,7 +85,7 @@
     "python_venv": "/root/venvs/bio-py",
     "r_library": "/opt/R/4.5.3-site-library"
   },
-  "validation_records": "con_hf/runs/2026-10-27_final_gate",
+  "validation_records": "docs/runs/2026-10-27_final_gate",
   "open_items": [
     {
       "item": "aims_alignment",
@@ -165,10 +165,10 @@
       "report": "reference/05.可参考出图代码/_meta/r453_public_references_report.json"
     },
     {
-      "item": "jsonl_ledgers_and_local_projects",
+      "item": "jsonl_ledgers_and_workspace/projects",
       "status": "complete",
       "detail": "JSONL ledgers, P-01 through P-30 preservation, local project indexes, and hash-verified asset migration are complete.",
-      "report": "con_hf/runs/2026-10-27_wp21_migrations"
+      "report": "docs/runs/2026-10-27_wp21_migrations"
     },
     {
       "item": "figure_template_registry",
@@ -180,13 +180,13 @@
       "item": "portal_sync_and_ci",
       "status": "complete",
       "detail": "Six portal Sync endpoints, daemon stub mode, remote dual-target SHA256 reconciliation and CI gates are in place.",
-      "report": "con_hf/runs/2026-10-27_gate2"
+      "report": "docs/runs/2026-10-27_gate2"
     },
     {
       "item": "final_gate",
       "status": "complete",
       "detail": "55/55 K40 scripts completed with exit 0. npm test 946/946, TypeScript, Vite build and Playwright 12/12 passed. The signed delivery package verified 302 files with Ed25519. A real portal ticket reached done with 12 real PNG files and HTML/Markdown reports. Remote drift was 0/35.",
-      "report": "con_hf/runs/2026-10-27_final_gate/REPORT.md"
+      "report": "docs/runs/2026-10-27_final_gate/REPORT.md"
     }
   ]
 }

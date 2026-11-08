@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Create and audit the self-contained local project workspace.
 
-This tool is the K40-side contract for the planned ``local_projects/`` tree.
+This tool is the K40-side contract for the planned ``workspace/projects/`` tree.
 It never migrates legacy ``outputs/`` or ``projects/`` data.
 """
 
@@ -83,15 +83,15 @@ def workspace_root(raw_root, extra_allowed_roots=()):
     return normalized
 
 
-def local_projects_dir(root):
-    return safe_path(root, "local_projects")
+def workspace_projects_dir(root):
+    return safe_path(root, "workspace/projects")
 
 
 def project_root_for(root, project_id):
     safe_id = sanitize_project_id(project_id)
     if not safe_id:
         raise WorkspaceError("invalid project_id: %r" % (project_id,))
-    return safe_path(local_projects_dir(root), safe_id)
+    return safe_path(workspace_projects_dir(root), safe_id)
 
 
 def project_path(project_root, relative):
@@ -99,7 +99,7 @@ def project_path(project_root, relative):
 
 
 def global_ledger_dir(root):
-    return safe_path(root, "con_hf/ledger")
+    return safe_path(root, "ledger")
 
 
 def ensure_directory(path):
@@ -204,7 +204,7 @@ def scaffold(root, project_id):
     if not safe_id:
         raise WorkspaceError("invalid project_id: %r" % (project_id,))
 
-    projects_dir = local_projects_dir(root)
+    projects_dir = workspace_projects_dir(root)
     project_root = safe_path(projects_dir, safe_id)
     if project_root.is_symlink():
         raise WorkspaceError("project root is a symlink: %s" % project_root)
@@ -389,7 +389,7 @@ def project_index(root, project_id):
 
 
 def project_roots(root):
-    projects_dir = local_projects_dir(root)
+    projects_dir = workspace_projects_dir(root)
     if not projects_dir.exists():
         return []
     entries = []
@@ -453,7 +453,7 @@ def render_global_index(root, indexes):
         ]
     )
     text = "\n".join(lines)
-    path = safe_path(local_projects_dir(root), "INDEX.md")
+    path = safe_path(workspace_projects_dir(root), "INDEX.md")
     atomic_write_text(path, text)
     return path
 

@@ -22,7 +22,7 @@ const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const PROBE = path.join(REPO, "tools", "reporting", "figure_scalebar_png_measure.py");
 const PNG = path.join(
   REPO,
-  "local_projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial/l3_mouse_01_domains_B1-D1.png",
+  "workspace/projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial/l3_mouse_01_domains_B1-D1.png",
 );
 
 test("PNG 像素量测：比例尺物理长度与 500um 标注一致（±3%）", (t) => {
@@ -59,8 +59,8 @@ test("量测探针必须用端刻度中心与 cos30 折算（否则会把量测�
   assert.match(src, /np\.cos\(np\.deg2rad\(30\.0\)\)/, "pitch 必须做 cos30 折算");
 });
 const PROJECT_FIG_DIRS = [
-  path.join(REPO, "local_projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial"),
-  path.join(REPO, "local_projects/PRJ_STROKE_P2_SPATIAL_LACTPYRO_5GENES/figures/line3_spatial"),
+  path.join(REPO, "workspace/projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial"),
+  path.join(REPO, "workspace/projects/PRJ_STROKE_P2_SPATIAL_LACTPYRO_5GENES/figures/line3_spatial"),
 ];
 
 test("全部成品图：manifest bar_px 必须与 PNG 实测刻度间距逐张一致", (t) => {

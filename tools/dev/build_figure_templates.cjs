@@ -175,7 +175,7 @@ const TEMPLATE_MAPPINGS = {
     produces: ["custom_fig_l2p_scatterplot.png"],
     output_glob: "figures/line2_scrna/custom_fig_l2p_scatterplot.png",
     canonical_output: "L2p_scatter_verified.png",
-    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_scatterplot.png",
+    sample_project_output: "workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_scatterplot.png",
   },
   // r_l1_p0_gallery 三合一 runner 准入（2026-11-02，k40 真机验证 seed=20261013，
   // 两次实跑 PNG sha256 逐字节一致；4 Argon 第十一轮批次 A 裁定）
@@ -193,7 +193,7 @@ const TEMPLATE_MAPPINGS = {
     output_glob: "figures/line2_scrna/L3_cellcomm_chord_verified.png",
     canonical_output: "L3_cellcomm_chord_verified.png",
     source_runner_id: "py_l2p_cellcomm_autocorr",
-    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l3_cellcomm_chord.png",
+    sample_project_output: "workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l3_cellcomm_chord.png",
   },
   fig_l1_connectedscatter: {
     // 用 L1 的连接散点槽位承载 Line 3 的空间自相关：Moran's I × -Geary's C 正是双变量关系图，
@@ -207,7 +207,7 @@ const TEMPLATE_MAPPINGS = {
     output_glob: "figures/line3_spatial/L3_spatial_autocorr_verified.png",
     canonical_output: "L3_spatial_autocorr_verified.png",
     source_runner_id: "py_l2p_cellcomm_autocorr",
-    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/custom_fig_l1_connectedscatter.png",
+    sample_project_output: "workspace/projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/custom_fig_l1_connectedscatter.png",
   },
   fig_l1_correlogram: {
     lines: ['line1_bulk'],
@@ -219,7 +219,7 @@ const TEMPLATE_MAPPINGS = {
     output_glob: "figures/line1_bulk/L1_correlogram_verified.png",
     canonical_output: "L1_correlogram_verified.png",
     source_runner_id: "r_l1_p0_gallery",
-    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_correlogram.png",
+    sample_project_output: "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_correlogram.png",
   },
   fig_l1_bubble: {
     lines: ['line1_bulk'],
@@ -229,7 +229,7 @@ const TEMPLATE_MAPPINGS = {
     output_glob: "figures/line1_bulk/L1_bubble_verified.png",
     canonical_output: "L1_bubble_verified.png",
     source_runner_id: "r_l1_p0_gallery",
-    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_bubble.png",
+    sample_project_output: "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_bubble.png",
   },
   fig_l1_ridgeline: {
     lines: ['line1_bulk'],
@@ -239,7 +239,7 @@ const TEMPLATE_MAPPINGS = {
     output_glob: "figures/line1_bulk/L1_ridgeline_verified.png",
     canonical_output: "L1_ridgeline_verified.png",
     source_runner_id: "r_l1_p0_gallery",
-    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_ridgeline.png",
+    sample_project_output: "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_ridgeline.png",
   },
   fig_l1_upsetplot: {
     lines: ['line1_bulk'],
@@ -252,7 +252,7 @@ const TEMPLATE_MAPPINGS = {
     output_glob: "figures/line1_bulk/L1_upset_verified.png",
     canonical_output: "L1_upset_verified.png",
     source_runner_id: "r_l1_p0_gallery",
-    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_upsetplot.png",
+    sample_project_output: "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_upsetplot.png",
   },
   fig_l1_vennplot: {
     lines: ['line1_bulk'],
@@ -262,7 +262,7 @@ const TEMPLATE_MAPPINGS = {
     output_glob: "figures/line1_bulk/L1_venn_verified.png",
     canonical_output: "L1_venn_verified.png",
     source_runner_id: "r_l1_p0_gallery",
-    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_vennplot.png",
+    sample_project_output: "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_vennplot.png",
   },
   // py_l2p_enrich_ko 三合一 runner 准入（2026-11-02，k40 真机实跑两次 sha256 一致）
   fig_l2p_gseaplot: {
@@ -273,7 +273,7 @@ const TEMPLATE_MAPPINGS = {
     output_glob: "figures/line2_scrna/L2p_gsea_verified.png",
     canonical_output: "L2p_gsea_verified.png",
     source_runner_id: "py_l2p_enrich_ko",
-    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_gseaplot.png",
+    sample_project_output: "workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_gseaplot.png",
   },
   fig_l2p_enrichmentplot: {
     lines: ['line2_scrna'],
@@ -283,7 +283,7 @@ const TEMPLATE_MAPPINGS = {
     output_glob: "figures/line2_scrna/L2p_enrichment_verified.png",
     canonical_output: "L2p_enrichment_verified.png",
     source_runner_id: "py_l2p_enrich_ko",
-    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_enrichmentplot.png",
+    sample_project_output: "workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_enrichmentplot.png",
   },
   fig_l2_networkplot: {
     // 母版是 L2p_enrich_ko_code.py（Python 三合一 runner）。CSV 的语言列写的是 r，
@@ -300,7 +300,7 @@ const TEMPLATE_MAPPINGS = {
     output_glob: "figures/line2_scrna/L2p_konetwork_verified.png",
     canonical_output: "L2p_konetwork_verified.png",
     source_runner_id: "py_l2p_enrich_ko",
-    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2_networkplot.png",
+    sample_project_output: "workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2_networkplot.png",
   },
   fig_l2p_barplot: {
     lines: ['line2_scrna'],
@@ -309,7 +309,7 @@ const TEMPLATE_MAPPINGS = {
     produces: ["custom_fig_l2p_barplot.png"],
     output_glob: "figures/line2_scrna/custom_fig_l2p_barplot.png",
     canonical_output: "L2p_bar_verified.png",
-    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_barplot.png",
+    sample_project_output: "workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_barplot.png",
   },
   fig_l2p_boxplot: {
     lines: ['line2_scrna'],
@@ -318,7 +318,7 @@ const TEMPLATE_MAPPINGS = {
     produces: ["custom_fig_l2p_boxplot.png"],
     output_glob: "figures/line2_scrna/custom_fig_l2p_boxplot.png",
     canonical_output: "L2p_box_verified.png",
-    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_boxplot.png",
+    sample_project_output: "workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_boxplot.png",
   },
   fig_l2p_heatmap: {
     lines: ['line2_scrna'],
@@ -327,7 +327,7 @@ const TEMPLATE_MAPPINGS = {
     produces: ["custom_fig_l2p_heatmap.png"],
     output_glob: "figures/line2_scrna/custom_fig_l2p_heatmap.png",
     canonical_output: "L2p_heatmap_verified.png",
-    sample_project_output: "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_heatmap.png",
+    sample_project_output: "workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_heatmap.png",
   },
   fig_l2_heatmap: {
     lines: ['line1_bulk'],
@@ -336,7 +336,7 @@ const TEMPLATE_MAPPINGS = {
     produces: ['custom_fig_l2_heatmap.png'],
     output_glob: 'figures/line1_bulk/custom_fig_l2_heatmap.png',
     canonical_output: 'L2_heatmap_verified.png',
-    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_04_topvar_heatmap.png',
+    sample_project_output: 'workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_04_topvar_heatmap.png',
   },
   fig_l2_pca: {
     lines: ['line1_bulk'],
@@ -345,7 +345,7 @@ const TEMPLATE_MAPPINGS = {
     produces: ['custom_fig_l2_pca.png'],
     output_glob: 'figures/line1_bulk/custom_fig_l2_pca.png',
     canonical_output: 'L2_pca_verified.png',
-    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_02_pca.png',
+    sample_project_output: 'workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_02_pca.png',
   },
   fig_l2_volcano: {
     lines: ['line1_bulk'],
@@ -354,7 +354,7 @@ const TEMPLATE_MAPPINGS = {
     produces: ['custom_fig_l2_volcano.png'],
     output_glob: 'figures/line1_bulk/custom_fig_l2_volcano.png',
     canonical_output: 'L2_volcano_verified.png',
-    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_03_volcano_limma.png',
+    sample_project_output: 'workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_03_volcano_limma.png',
   },
   fig_l2p_dotplot: {
     lines: ['line2_scrna'],
@@ -363,7 +363,7 @@ const TEMPLATE_MAPPINGS = {
     produces: ['custom_fig_l2p_dotplot.png'],
     output_glob: 'figures/line2_scrna/custom_fig_l2p_dotplot.png',
     canonical_output: 'figures/dotplot__L2p_dotplot_verified.png',
-    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/l2_13_target_gene_dotplot.png',
+    sample_project_output: 'workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/l2_13_target_gene_dotplot.png',
   },
   fig_l2p_umap: {
     lines: ['line3_spatial'],
@@ -372,7 +372,7 @@ const TEMPLATE_MAPPINGS = {
     produces: ['custom_fig_l2p_umap.png'],
     output_glob: 'figures/line3_spatial/custom_fig_l2p_umap.png',
     canonical_output: 'umap_L2p_umap_verified.png',
-    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/l3_human_06_umap_sample.png',
+    sample_project_output: 'workspace/projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/l3_human_06_umap_sample.png',
   },
   fig_l2p_volcano: {
     lines: ['line2_scrna'],
@@ -381,7 +381,7 @@ const TEMPLATE_MAPPINGS = {
     produces: ['custom_fig_l2p_volcano.png'],
     output_glob: 'figures/line2_scrna/custom_fig_l2p_volcano.png',
     canonical_output: 'L2p_volcano_verified.png',
-    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/l2_08_deg_volcano_basal_keratinocyte.png',
+    sample_project_output: 'workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/l2_08_deg_volcano_basal_keratinocyte.png',
   },
   fig_l1_groupedbar: {
     lines: ['line1_bulk'], analysis_step: 'l1_enrich_bulk',
@@ -389,7 +389,7 @@ const TEMPLATE_MAPPINGS = {
     produces: ['custom_fig_l1_groupedbar.png'],
     output_glob: 'figures/line1_bulk/custom_fig_l1_groupedbar.png',
     canonical_output: 'L1_groupedbar_verified.png',
-    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_groupedbar.png',
+    sample_project_output: 'workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_groupedbar.png',
     adapt_vars: {
       input_data: '项目本线只读输入文件路径，相对于本项目根目录',
       x_col: '横轴类别列名',
@@ -403,7 +403,7 @@ const TEMPLATE_MAPPINGS = {
     produces: ['custom_fig_l1_scatter.png'],
     output_glob: 'figures/line1_bulk/custom_fig_l1_scatter.png',
     canonical_output: 'L1_scatter_verified.png',
-    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_scatter.png',
+    sample_project_output: 'workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_scatter.png',
     adapt_vars: {
       input_data: '项目本线只读输入文件路径，相对于本项目根目录',
       x_col: '横轴数值列名',
@@ -417,7 +417,7 @@ const TEMPLATE_MAPPINGS = {
     produces: ['custom_fig_l1_boxplot.png'],
     output_glob: 'figures/line1_bulk/custom_fig_l1_boxplot.png',
     canonical_output: 'L1_boxplot_verified.png',
-    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_boxplot.png',
+    sample_project_output: 'workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_boxplot.png',
     adapt_vars: {
       input_data: '项目本线只读输入文件路径，相对于本项目根目录',
       value_col: '效应量列名',
@@ -429,7 +429,7 @@ const TEMPLATE_MAPPINGS = {
     produces: ['custom_fig_l1_density.png'],
     output_glob: 'figures/line1_bulk/custom_fig_l1_density.png',
     canonical_output: 'L1_density_verified.png',
-    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_density.png',
+    sample_project_output: 'workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_density.png',
     adapt_vars: {
       input_data: '项目本线只读输入文件路径，相对于本项目根目录',
     },
@@ -440,7 +440,7 @@ const TEMPLATE_MAPPINGS = {
     produces: ['custom_fig_l1_histogram.png'],
     output_glob: 'figures/line1_bulk/custom_fig_l1_histogram.png',
     canonical_output: 'L1_histogram_verified.png',
-    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_histogram.png',
+    sample_project_output: 'workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_histogram.png',
     adapt_vars: {
       input_data: '项目本线只读输入文件路径，相对于本项目根目录',
     },
@@ -451,7 +451,7 @@ const TEMPLATE_MAPPINGS = {
     produces: ['custom_fig_l1_violin.png'],
     output_glob: 'figures/line1_bulk/custom_fig_l1_violin.png',
     canonical_output: 'L1_violin_verified.png',
-    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_violin.png',
+    sample_project_output: 'workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_violin.png',
     adapt_vars: {
       input_data: '项目本线只读输入文件路径，相对于本项目根目录',
       value_col: '效应量列名',
@@ -463,7 +463,7 @@ const TEMPLATE_MAPPINGS = {
     produces: ['custom_fig_l2_umap.png'],
     output_glob: 'figures/line2_scrna/custom_fig_l2_umap.png',
     canonical_output: 'umap_L2p_umap_verified.png',
-    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2_umap.png',
+    sample_project_output: 'workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2_umap.png',
     language: 'python',
     linked_mods: ['l2_figures_scrna'],
     source_runner_id: 'py_l2p_umap',
@@ -480,7 +480,7 @@ const TEMPLATE_MAPPINGS = {
     produces: ['custom_fig_l3_multipanel.png'],
     output_glob: 'figures/line1_bulk/custom_fig_l3_multipanel.png',
     canonical_output: 'L3_multipanel_verified.png',
-    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l3_multipanel.png',
+    sample_project_output: 'workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l3_multipanel.png',
     adapt_vars: {
       input_data: '项目本线只读输入文件路径，相对于本项目根目录',
       group_col: '真实标签列名',
@@ -493,7 +493,7 @@ const TEMPLATE_MAPPINGS = {
     produces: ['custom_fig_l2p_violin.png'],
     output_glob: 'figures/line2_scrna/custom_fig_l2p_violin.png',
     canonical_output: 'figures/violin_L2p_violin_verified.png',
-    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_violin.png',
+    sample_project_output: 'workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_violin.png',
     adapt_vars: {
       input_data: '项目本线只读输入文件路径，相对于本项目根目录',
       group_col: '细胞类型列名',
@@ -506,7 +506,7 @@ const TEMPLATE_MAPPINGS = {
     produces: ['custom_fig_l3_sankey.png'],
     output_glob: 'figures/line1_bulk/custom_fig_l3_sankey.png',
     canonical_output: 'L3_sankey_verified.png',
-    sample_project_output: 'local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l3_sankey.png',
+    sample_project_output: 'workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l3_sankey.png',
     adapt_vars: {
       input_data: '项目本线只读输入文件路径，相对于本项目根目录',
       module_col: '模块列名',
@@ -532,16 +532,16 @@ const V2_MASTER_DIR = `${FIGURE_ROOT}/_v2_masters`;
 // Argon 第 75 轮首批产线实证模板（L3 Top5 + L2 Top5）。
 // analysis_step 的 produces 必须覆盖 input_tables；linked_mods 为本线同语言出图 Mod。
 const V2_EXTRA_SPECS = [
-  { id: 'fig_l3_banksy_domain', name: '空间功能域切片分布图', level: 'L3', category: 'Spatial', line: 'line3_spatial', renderMod: 'l3_figures_spatial', master: 'spatial_figures.py', analysis_step: 'l3_dimred_domains', input_tables: ['spatial_domains_mouse.h5ad'], canonical: 'l3_mouse_01_domains_B1-D1.png', sample: 'local_projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial/l3_mouse_01_domains_B1-D1.png', project: 'PRJ_STROKE_P1_SPATIAL_ABCA1', scalebar: true, adapt_vars: { input_data: 'BANKSY 空间域 h5ad 路径', group_col: '空间域分组列名' } },
-  { id: 'fig_l3_nnls_deconv_pie', name: '空间Spot细胞亚型解卷积构成图', level: 'L3', category: 'Composition', line: 'line3_spatial', renderMod: 'l3_figures_spatial', master: 'spatial_figures.py', analysis_step: 'l3_branches_celltype', input_tables: ['celltype_scores_mouse.tsv'], canonical: 'l3_mouse_15_deconv_composition.png', sample: 'local_projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial/l3_mouse_15_deconv_composition.png', project: 'PRJ_STROKE_P1_SPATIAL_ABCA1', scalebar: false, adapt_vars: { input_data: 'NNLS 解卷积比例表路径', group_col: '细胞亚型列名' } },
-  { id: 'fig_l3_multigene_coloc', name: '核心靶基因空间共定位切片图', level: 'L3', category: 'Spatial', line: 'line3_spatial', renderMod: 'l3_figures_spatial', master: 'spatial_figures.py', analysis_step: 'l3_branches_localization', input_tables: ['gene_localization_mouse.tsv'], canonical: 'l3_mouse_02_target_gene_B1-D1.png', sample: 'local_projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial/l3_mouse_02_target_gene_B1-D1.png', project: 'PRJ_STROKE_P1_SPATIAL_ABCA1', scalebar: true, adapt_vars: { input_data: '靶基因空间定位 h5ad 路径', label_genes: '共定位靶基因清单' } },
-  { id: 'fig_l3_morans_i_spatial', name: '空间高变自相关基因排序图', level: 'L3', category: 'SpatialStatistics', line: 'line3_spatial', renderMod: 'l3_figures_spatial', master: 'spatial_figures.py', analysis_step: 'l3_stats_autocorr', input_tables: ['gene_autocorr_mouse.tsv'], canonical: 'l3_mouse_04_morans_top.png', sample: 'local_projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial/l3_mouse_04_morans_top.png', project: 'PRJ_STROKE_P1_SPATIAL_ABCA1', scalebar: false, adapt_vars: { input_data: "Moran's I 自相关表路径", value_col: 'morans_i 列名' } },
-  { id: 'fig_l3_niche_comm_spatial', name: '空间微环境配受体互作热点图', level: 'L3', category: 'CellCommunication', line: 'line3_spatial', renderMod: 'l3_figures_spatial', master: 'spatial_figures.py', analysis_step: 'l3_stats_communication', input_tables: ['sample_communication_mouse.tsv'], canonical: 'l3_mouse_19_communication.png', sample: 'local_projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial/l3_mouse_19_communication.png', project: 'PRJ_STROKE_P1_SPATIAL_ABCA1', scalebar: false, adapt_vars: { input_data: '空间配受体互作得分表路径', group_col: '微环境分组列名' } },
-  { id: 'fig_l2_harmony_umap_entropy', name: 'Harmony批次校正UMAP与供体熵对照图', level: 'L2', category: 'DimReduction', line: 'line2_scrna', renderMod: 'l2_figures_scrna', master: 'scrna_figures.py', analysis_step: 'l2_integrate_cluster', input_tables: ['scrna_clustered.h5ad'], canonical: 'l2_01_umap_celltype.png', sample: 'local_projects/PRJ_AIMS_V3_20261027/deliverables/PRJ_AIMS_V3_20261027_Client_Delivery/02_Figures_and_Tables/figures/line2_scrna/l2_01_umap_celltype.png', project: 'PRJ_AIMS_V3_20261027', scalebar: false, adapt_vars: { input_data: 'Harmony 聚类 h5ad 路径', group_col: '细胞类型或供体列名' } },
-  { id: 'fig_l2_liana_lr_dotplot', name: '细胞亚群配受体通讯气泡图', level: 'L2', category: 'CellCommunication', line: 'line2_scrna', renderMod: 'l2_figures_scrna', master: 'scrna_figures.py', analysis_step: 'l2_branches_cellcomm', input_tables: ['cellcomm_interactions.tsv'], canonical: 'l2_07_comm_top.png', sample: 'local_projects/PRJ_20261019_IS_lactylation/figures/line2_scrna/l2_07_comm_top.png', project: 'PRJ_20261019_IS_lactylation', scalebar: false, adapt_vars: { input_data: 'LIANA 配受体互作表路径', group_col: '细胞亚群列名' } },
-  { id: 'fig_l2_canonical_marker_dotplot', name: '细胞类型CanonicalMarker表达核验图', level: 'L2', category: 'Annotation', line: 'line2_scrna', renderMod: 'l2_figures_scrna', master: 'scrna_figures.py', analysis_step: 'l2_integrate_annotate', input_tables: ['cluster_markers.tsv'], canonical: 'l2_07_marker_top5.png', sample: 'local_projects/PRJ_AIMS_V3_20261027/deliverables/PRJ_AIMS_V3_20261027_Client_Delivery/02_Figures_and_Tables/figures/line2_scrna/l2_07_marker_top5.png', project: 'PRJ_AIMS_V3_20261027', scalebar: false, adapt_vars: { input_data: '聚类标记基因表路径', group_col: '细胞类型列名' } },
-  { id: 'fig_l2_dr_trajectory_post', name: '亚群降维后处理与调控网络图', level: 'L2', category: 'Downstream', line: 'line2_scrna', renderMod: 'l2_figures_scrna', master: 'scrna_figures.py', analysis_step: 'l2_ko_drpost', input_tables: ['dr_regulatory_network.tsv'], canonical: 'custom_fig_l2_networkplot.png', sample: 'local_projects/PRJ_AIMS_V3_20261027/deliverables/PRJ_AIMS_V3_20261027_Client_Delivery/02_Figures_and_Tables/figures/line2_scrna/custom_fig_l2_networkplot.png', project: 'PRJ_AIMS_V3_20261027', scalebar: false, adapt_vars: { input_data: '降维后调控网络表路径', group_col: '调控模块列名' } },
-  { id: 'fig_l2_celltype_deg_volcano', name: '细胞类型特异差异表达火山图', level: 'L2', category: 'DifferentialExpression', line: 'line2_scrna', renderMod: 'l2_figures_scrna', master: 'scrna_figures.py', analysis_step: 'l2_profile_deg', input_tables: ['deg_all_by_celltype.tsv'], canonical: 'l2_08_deg_volcano_mitotic.png', sample: 'local_projects/PRJ_AIMS_V3_20261027/deliverables/PRJ_AIMS_V3_20261027_Client_Delivery/02_Figures_and_Tables/figures/line2_scrna/l2_08_deg_volcano_mitotic.png', project: 'PRJ_AIMS_V3_20261027', scalebar: false, adapt_vars: { input_data: '细胞类型差异表达表路径', group_col: '比较方向分组列名', log2fc_cutoff: '差异倍数阈值', padj_cutoff: '显著性阈值' } },
+  { id: 'fig_l3_banksy_domain', name: '空间功能域切片分布图', level: 'L3', category: 'Spatial', line: 'line3_spatial', renderMod: 'l3_figures_spatial', master: 'spatial_figures.py', analysis_step: 'l3_dimred_domains', input_tables: ['spatial_domains_mouse.h5ad'], canonical: 'l3_mouse_01_domains_B1-D1.png', sample: 'workspace/projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial/l3_mouse_01_domains_B1-D1.png', project: 'PRJ_STROKE_P1_SPATIAL_ABCA1', scalebar: true, adapt_vars: { input_data: 'BANKSY 空间域 h5ad 路径', group_col: '空间域分组列名' } },
+  { id: 'fig_l3_nnls_deconv_pie', name: '空间Spot细胞亚型解卷积构成图', level: 'L3', category: 'Composition', line: 'line3_spatial', renderMod: 'l3_figures_spatial', master: 'spatial_figures.py', analysis_step: 'l3_branches_celltype', input_tables: ['celltype_scores_mouse.tsv'], canonical: 'l3_mouse_15_deconv_composition.png', sample: 'workspace/projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial/l3_mouse_15_deconv_composition.png', project: 'PRJ_STROKE_P1_SPATIAL_ABCA1', scalebar: false, adapt_vars: { input_data: 'NNLS 解卷积比例表路径', group_col: '细胞亚型列名' } },
+  { id: 'fig_l3_multigene_coloc', name: '核心靶基因空间共定位切片图', level: 'L3', category: 'Spatial', line: 'line3_spatial', renderMod: 'l3_figures_spatial', master: 'spatial_figures.py', analysis_step: 'l3_branches_localization', input_tables: ['gene_localization_mouse.tsv'], canonical: 'l3_mouse_02_target_gene_B1-D1.png', sample: 'workspace/projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial/l3_mouse_02_target_gene_B1-D1.png', project: 'PRJ_STROKE_P1_SPATIAL_ABCA1', scalebar: true, adapt_vars: { input_data: '靶基因空间定位 h5ad 路径', label_genes: '共定位靶基因清单' } },
+  { id: 'fig_l3_morans_i_spatial', name: '空间高变自相关基因排序图', level: 'L3', category: 'SpatialStatistics', line: 'line3_spatial', renderMod: 'l3_figures_spatial', master: 'spatial_figures.py', analysis_step: 'l3_stats_autocorr', input_tables: ['gene_autocorr_mouse.tsv'], canonical: 'l3_mouse_04_morans_top.png', sample: 'workspace/projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial/l3_mouse_04_morans_top.png', project: 'PRJ_STROKE_P1_SPATIAL_ABCA1', scalebar: false, adapt_vars: { input_data: "Moran's I 自相关表路径", value_col: 'morans_i 列名' } },
+  { id: 'fig_l3_niche_comm_spatial', name: '空间微环境配受体互作热点图', level: 'L3', category: 'CellCommunication', line: 'line3_spatial', renderMod: 'l3_figures_spatial', master: 'spatial_figures.py', analysis_step: 'l3_stats_communication', input_tables: ['sample_communication_mouse.tsv'], canonical: 'l3_mouse_19_communication.png', sample: 'workspace/projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial/l3_mouse_19_communication.png', project: 'PRJ_STROKE_P1_SPATIAL_ABCA1', scalebar: false, adapt_vars: { input_data: '空间配受体互作得分表路径', group_col: '微环境分组列名' } },
+  { id: 'fig_l2_harmony_umap_entropy', name: 'Harmony批次校正UMAP与供体熵对照图', level: 'L2', category: 'DimReduction', line: 'line2_scrna', renderMod: 'l2_figures_scrna', master: 'scrna_figures.py', analysis_step: 'l2_integrate_cluster', input_tables: ['scrna_clustered.h5ad'], canonical: 'l2_01_umap_celltype.png', sample: 'workspace/projects/PRJ_AIMS_V3_20261027/deliverables/PRJ_AIMS_V3_20261027_Client_Delivery/02_Figures_and_Tables/figures/line2_scrna/l2_01_umap_celltype.png', project: 'PRJ_AIMS_V3_20261027', scalebar: false, adapt_vars: { input_data: 'Harmony 聚类 h5ad 路径', group_col: '细胞类型或供体列名' } },
+  { id: 'fig_l2_liana_lr_dotplot', name: '细胞亚群配受体通讯气泡图', level: 'L2', category: 'CellCommunication', line: 'line2_scrna', renderMod: 'l2_figures_scrna', master: 'scrna_figures.py', analysis_step: 'l2_branches_cellcomm', input_tables: ['cellcomm_interactions.tsv'], canonical: 'l2_07_comm_top.png', sample: 'workspace/projects/PRJ_20261019_IS_lactylation/figures/line2_scrna/l2_07_comm_top.png', project: 'PRJ_20261019_IS_lactylation', scalebar: false, adapt_vars: { input_data: 'LIANA 配受体互作表路径', group_col: '细胞亚群列名' } },
+  { id: 'fig_l2_canonical_marker_dotplot', name: '细胞类型CanonicalMarker表达核验图', level: 'L2', category: 'Annotation', line: 'line2_scrna', renderMod: 'l2_figures_scrna', master: 'scrna_figures.py', analysis_step: 'l2_integrate_annotate', input_tables: ['cluster_markers.tsv'], canonical: 'l2_07_marker_top5.png', sample: 'workspace/projects/PRJ_AIMS_V3_20261027/deliverables/PRJ_AIMS_V3_20261027_Client_Delivery/02_Figures_and_Tables/figures/line2_scrna/l2_07_marker_top5.png', project: 'PRJ_AIMS_V3_20261027', scalebar: false, adapt_vars: { input_data: '聚类标记基因表路径', group_col: '细胞类型列名' } },
+  { id: 'fig_l2_dr_trajectory_post', name: '亚群降维后处理与调控网络图', level: 'L2', category: 'Downstream', line: 'line2_scrna', renderMod: 'l2_figures_scrna', master: 'scrna_figures.py', analysis_step: 'l2_ko_drpost', input_tables: ['dr_regulatory_network.tsv'], canonical: 'custom_fig_l2_networkplot.png', sample: 'workspace/projects/PRJ_AIMS_V3_20261027/deliverables/PRJ_AIMS_V3_20261027_Client_Delivery/02_Figures_and_Tables/figures/line2_scrna/custom_fig_l2_networkplot.png', project: 'PRJ_AIMS_V3_20261027', scalebar: false, adapt_vars: { input_data: '降维后调控网络表路径', group_col: '调控模块列名' } },
+  { id: 'fig_l2_celltype_deg_volcano', name: '细胞类型特异差异表达火山图', level: 'L2', category: 'DifferentialExpression', line: 'line2_scrna', renderMod: 'l2_figures_scrna', master: 'scrna_figures.py', analysis_step: 'l2_profile_deg', input_tables: ['deg_all_by_celltype.tsv'], canonical: 'l2_08_deg_volcano_mitotic.png', sample: 'workspace/projects/PRJ_AIMS_V3_20261027/deliverables/PRJ_AIMS_V3_20261027_Client_Delivery/02_Figures_and_Tables/figures/line2_scrna/l2_08_deg_volcano_mitotic.png', project: 'PRJ_AIMS_V3_20261027', scalebar: false, adapt_vars: { input_data: '细胞类型差异表达表路径', group_col: '比较方向分组列名', log2fc_cutoff: '差异倍数阈值', padj_cutoff: '显著性阈值' } },
 ];
 
 function buildV2Extra() {

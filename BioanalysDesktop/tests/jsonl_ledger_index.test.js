@@ -78,7 +78,7 @@ test('JSONL ledger index covers append overwrite, refs, artifacts, and machine l
   const root = makeRoot();
   const result = scaffoldProject(root, 'PRJ_JS_LEDGER');
   assert.equal(result.status, 0, result.stderr);
-  const projectRoot = path.join(root, 'local_projects', 'PRJ_JS_LEDGER');
+  const projectRoot = path.join(root, 'workspace/projects', 'PRJ_JS_LEDGER');
   const ledger = path.join(projectRoot, 'ledger');
 
   writeJsonl(path.join(ledger, 'actions.jsonl'), [
@@ -109,6 +109,6 @@ test('JSONL ledger index covers append overwrite, refs, artifacts, and machine l
   assert.deepEqual(issues['ERR-2'].related_fixes.map((item) => item.id), ['FIX-1', 'FIX-2']);
   assert.equal(index.artifact_counts.figures, 2);
   assert.equal(index.machine_logs.count, 2);
-  const globalIndex = fs.readFileSync(path.join(root, 'local_projects', 'INDEX.md'), 'utf8');
+  const globalIndex = fs.readFileSync(path.join(root, 'workspace/projects', 'INDEX.md'), 'utf8');
   assert.match(globalIndex, /\| PRJ_JS_LEDGER \| 0 \| 2 \| 0 \| 0 \| 5 \| 2 \|/);
 });

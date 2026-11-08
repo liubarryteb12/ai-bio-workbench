@@ -11,9 +11,9 @@ import unittest
 from pathlib import Path
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT = REPO_ROOT / "tools" / "ops" / "ledger_indexer.py"
-MIGRATE_SCRIPT = REPO_ROOT / "tools" / "ops" / "migrate_to_local_projects.py"
+MIGRATE_SCRIPT = REPO_ROOT / "tools" / "ops" / "migrate_to_workspace_projects.py"
 LOCAL_WS_SCRIPT = REPO_ROOT / "tools" / "ops" / "local_project_workspace.py"
 TEST_ROOT = REPO_ROOT / "artifacts" / "local_project_workspace_tests" / "wp21_ledger_index_tests"
 
@@ -72,7 +72,7 @@ class LedgerIndexAndMigrationTest(unittest.TestCase):
 
     @property
     def ledger_dir(self):
-        return self.root / "local_projects" / "PRJ_WP21" / "ledger"
+        return self.root / "workspace/projects" / "PRJ_WP21" / "ledger"
 
     def test_append_only_ledger_uses_last_record_by_id(self):
         self.scaffold()
@@ -86,7 +86,7 @@ class LedgerIndexAndMigrationTest(unittest.TestCase):
         ])
         proc = run_cli(SCRIPT, self.root, ["index", "--project-id", "PRJ_WP21"])
         self.assertEqual(proc.returncode, 0, proc.stderr)
-        index = json.loads((self.root / "local_projects" / "PRJ_WP21" / "INDEX.json").read_text(encoding="utf-8"))
+        index = json.loads((self.root / "workspace/projects" / "PRJ_WP21" / "INDEX.json").read_text(encoding="utf-8"))
         self.assertEqual(index["ledger_summary"]["actions"]["aggregated"][0]["title"], "second")
         self.assertEqual(index["ledger_summary"]["errors"]["aggregated"][0]["status"], "resolved")
 
@@ -103,7 +103,7 @@ class LedgerIndexAndMigrationTest(unittest.TestCase):
         ])
         proc = run_cli(SCRIPT, self.root, ["index", "--project-id", "PRJ_WP21"])
         self.assertEqual(proc.returncode, 0, proc.stderr)
-        index = json.loads((self.root / "local_projects" / "PRJ_WP21" / "INDEX.json").read_text(encoding="utf-8"))
+        index = json.loads((self.root / "workspace/projects" / "PRJ_WP21" / "INDEX.json").read_text(encoding="utf-8"))
         issues_by_id = {issue["id"]: issue for issue in index["issues"]}
         self.assertEqual([item["id"] for item in issues_by_id["ERR-1"]["related_fixes"]], ["F-1"])
         self.assertEqual([item["id"] for item in issues_by_id["ERR-2"]["related_fixes"]], ["F-1", "F-2"])
@@ -112,7 +112,7 @@ class LedgerIndexAndMigrationTest(unittest.TestCase):
 
     def test_index_counts_artifacts_and_machine_logs(self):
         self.scaffold()
-        figures = self.root / "local_projects" / "PRJ_WP21" / "figures"
+        figures = self.root / "workspace/projects" / "PRJ_WP21" / "figures"
         (figures / "line1_bulk" / "a.png").write_text("png-a\n", encoding="utf-8", newline="\n")
         (figures / "line2_scrna" / "b.png").write_text("png-b\n", encoding="utf-8", newline="\n")
         write_machine_log(self.root / "outputs" / "system_logs" / "case_a.json", "task-a", "PRJ_WP21")
@@ -121,16 +121,16 @@ class LedgerIndexAndMigrationTest(unittest.TestCase):
         write_machine_log(self.root / "outputs" / "system_logs" / "legacy.json", "task-legacy", "")
         proc = run_cli(SCRIPT, self.root, ["index", "--project-id", "PRJ_WP21"])
         self.assertEqual(proc.returncode, 0, proc.stderr)
-        index = json.loads((self.root / "local_projects" / "PRJ_WP21" / "INDEX.json").read_text(encoding="utf-8"))
+        index = json.loads((self.root / "workspace/projects" / "PRJ_WP21" / "INDEX.json").read_text(encoding="utf-8"))
         self.assertEqual(index["artifact_counts"]["figures"], 2)
         self.assertEqual(index["machine_logs"]["count"], 2)
-        readme = (self.root / "local_projects" / "PRJ_WP21" / "README.md").read_text(encoding="utf-8")
+        readme = (self.root / "workspace/projects" / "PRJ_WP21" / "README.md").read_text(encoding="utf-8")
         self.assertIn("| figures | 2 |", readme)
         self.assertIn("条目数：`2`。", readme)
 
     def test_check_handoff_requires_four_substantive_sections(self):
         self.scaffold()
-        handoff = self.root / "local_projects" / "PRJ_WP21" / "handoff.md"
+        handoff = self.root / "workspace/projects" / "PRJ_WP21" / "handoff.md"
 
         missing = run_cli(
             SCRIPT,
@@ -163,19 +163,19 @@ class LedgerIndexAndMigrationTest(unittest.TestCase):
         )
 
     def test_ledger_migration_preserves_existing_id_and_is_idempotent(self):
-        ledger_dir = self.root / "con_hf" / "ledger"
+        ledger_dir = self.root / "ledger"
         ledger_dir.mkdir(parents=True, exist_ok=True)
         custom_p30 = {"id": "P-30", "title": "KEEP_ME", "detail": "KEEP_ME"}
         write_jsonl(ledger_dir / "pitfalls.jsonl", [custom_p30])
-        atomic_write = self.root / "con_hf" / "ledger" / "actions.jsonl"
+        atomic_write = self.root / "ledger" / "actions.jsonl"
         atomic_write.write_text("", encoding="utf-8", newline="\n")
-        pitfall_source = self.root / "con_hf" / "pitfalls_ledger.md"
+        pitfall_source = self.root / "ledger" / "pitfalls_ledger.md"
         pitfall_source.write_text(
             "# 踩坑与故障复盘台账\n\n字段顺序固定。\n\n## P-01 CRLF\n\n- 现象：CRLF\n- 修复：LF\n\n## P-02 端口\n\n- 现象：端口冲突\n- 修复：随机端口\n",
             encoding="utf-8",
             newline="\n",
         )
-        ops_source = self.root / "con_hf" / "ops_ledger.md"
+        ops_source = self.root / "ledger" / "ops_ledger.md"
         ops_source.write_text(
             "# 运维同步台账\n\n| 时间 | 状态 | 目标 | 一致 | 漂移 | manifest |\n| --- | --- | --- | --- | --- | --- |\n- 2026-10-21T18:10:24+08:00 | OK | k40-ubuntu:/mnt/ssd/bio_data | 1/1 一致 | 漂移 0 | 未执行 | ops/a.sh | manifest: entries=1\n",
             encoding="utf-8",
@@ -205,9 +205,9 @@ class LedgerIndexAndMigrationTest(unittest.TestCase):
         self.assertEqual(first["ok"], True)
         self.assertEqual(first["source_file_count"], 2)
         self.assertEqual(first["copied_file_count"], 2)
-        target = self.root / "local_projects" / "demo_project" / "data" / "line1_bulk" / "results"
+        target = self.root / "workspace/projects" / "demo_project" / "data" / "line1_bulk" / "results"
         self.assertEqual((target / "a.txt").read_text(encoding="utf-8"), "A\n")
-        processed = self.root / "local_projects" / "demo_project" / "data" / "line1_bulk" / "processed"
+        processed = self.root / "workspace/projects" / "demo_project" / "data" / "line1_bulk" / "processed"
         self.assertEqual((processed / "b.txt").read_text(encoding="utf-8"), "B\n")
         self.assertTrue((self.root / "outputs" / "demo_project" / "line1_bulk" / "results" / "a.txt").is_file())
         second = parse_json(run_cli(MIGRATE_SCRIPT, self.root, ["projects", "--project-id", "demo_project"]))

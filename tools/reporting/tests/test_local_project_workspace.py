@@ -15,7 +15,7 @@ import unittest
 from pathlib import Path
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT = REPO_ROOT / "tools" / "ops" / "local_project_workspace.py"
 INIT_SCRIPT = REPO_ROOT / "tools" / "ops" / "init_project_scaffold.py"
 TEST_ROOT = REPO_ROOT / "artifacts" / "local_project_workspace_tests"
@@ -34,6 +34,7 @@ def run_cli(args, root, script=SCRIPT):
         stderr=subprocess.PIPE,
         text=True,
         encoding="utf-8",
+        env={**os.environ, "PYTHONIOENCODING": "utf-8"},
     )
     return proc
 
@@ -64,12 +65,13 @@ def init_scaffold(root, project_id="demo_project", line="line1_bulk"):
         stderr=subprocess.PIPE,
         text=True,
         encoding="utf-8",
+        env={**os.environ, "PYTHONIOENCODING": "utf-8"},
     )
 
 
 def make_fixture_repo(base, name="fixture_repo"):
     fixture_repo = base / name
-    fixture_ops = fixture_repo / "ops"
+    fixture_ops = fixture_repo / "tools" / "ops"
     fixture_ops.mkdir(parents=True)
     fixture_script = fixture_ops / SCRIPT.name
     shutil.copy2(SCRIPT, fixture_script)
@@ -95,7 +97,7 @@ class LocalProjectWorkspaceTest(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         payload = parse_json(proc)
         self.assertTrue(payload["ok"])
-        project_root = self.root / "local_projects" / "demo_project"
+        project_root = self.root / "workspace/projects" / "demo_project"
         self.assertTrue(project_root.is_dir())
         for name in ("project.json", "handoff.md", "README.md", "INDEX.json"):
             self.assertTrue((project_root / name).is_file())
@@ -121,11 +123,11 @@ class LocalProjectWorkspaceTest(unittest.TestCase):
         self.assertEqual(validate_proc.returncode, 0, validate_proc.stderr)
         payload = parse_json(validate_proc)
         self.assertTrue(payload["ok"])
-        self.assertFalse((self.root / "local_projects" / "demo_project" / "data" / "line1_bulk" / "figures").exists())
+        self.assertFalse((self.root / "workspace/projects" / "demo_project" / "data" / "line1_bulk" / "figures").exists())
 
     def test_scaffold_is_idempotent_and_keeps_user_content(self):
         self.assertEqual(scaffold(self.root).returncode, 0)
-        project_root = self.root / "local_projects" / "demo_project"
+        project_root = self.root / "workspace/projects" / "demo_project"
         (project_root / "README.md").write_text("KEEP_ME\n", encoding="utf-8", newline="\n")
         (project_root / "ledger" / "actions.jsonl").write_text(
             json.dumps({"id": "A-1", "kind": "init"}) + "\n",
@@ -142,7 +144,7 @@ class LocalProjectWorkspaceTest(unittest.TestCase):
 
     def test_scaffold_rejects_existing_project_id_mismatch(self):
         self.assertEqual(scaffold(self.root).returncode, 0)
-        project_root = self.root / "local_projects" / "demo_project"
+        project_root = self.root / "workspace/projects" / "demo_project"
         (project_root / "project.json").write_text(
             json.dumps({"project_id": "different_project", "schema_version": 1,
                         "lines": ["line1_bulk", "line2_scrna", "line3_spatial"]}) + "\n",
@@ -167,18 +169,19 @@ class LocalProjectWorkspaceTest(unittest.TestCase):
 
     def test_scaffold_rejects_corrupt_project_json(self):
         self.assertEqual(scaffold(self.root).returncode, 0)
-        project_root = self.root / "local_projects" / "demo_project"
+        project_root = self.root / "workspace/projects" / "demo_project"
         (project_root / "project.json").write_text("{broken", encoding="utf-8", newline="\n")
         proc = scaffold(self.root)
         self.assertEqual(proc.returncode, 2)
         self.assertFalse(parse_json(proc)["ok"])
 
+    @unittest.skipIf(os.name == "nt", "symlink contract runs on K40 Linux")
     def test_scaffold_rejects_symlink_parent(self):
-        local_projects = self.root / "local_projects"
+        projects_root = self.root / "workspace/projects"
         outside = self.root / "outside"
         outside.mkdir()
-        local_projects.mkdir()
-        target = local_projects / "demo_project"
+        projects_root.mkdir(parents=True)
+        target = projects_root / "demo_project"
         target.symlink_to(outside, target_is_directory=True)
         proc = scaffold(self.root)
         self.assertEqual(proc.returncode, 2)
@@ -188,13 +191,13 @@ class LocalProjectWorkspaceTest(unittest.TestCase):
         self.assertEqual(scaffold(self.root).returncode, 0)
         proc = run_cli(["index"], self.root)
         self.assertEqual(proc.returncode, 0, proc.stderr)
-        project_root = self.root / "local_projects" / "demo_project"
+        project_root = self.root / "workspace/projects" / "demo_project"
         index = json.loads((project_root / "INDEX.json").read_text(encoding="utf-8"))
         self.assertEqual(index["project_id"], "demo_project")
         self.assertIn("path_map", index)
         self.assertIn("artifact_counts", index)
         self.assertIn("ledger_summary", index)
-        self.assertTrue((self.root / "local_projects" / "INDEX.md").is_file())
+        self.assertTrue((self.root / "workspace/projects" / "INDEX.md").is_file())
 
     def test_index_project_id_keeps_global_index_for_all_projects(self):
         self.assertEqual(scaffold(self.root, "project_a").returncode, 0)
@@ -203,7 +206,7 @@ class LocalProjectWorkspaceTest(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         payload = parse_json(proc)
         self.assertEqual(payload["projects"], ["project_a", "project_b"])
-        global_index = (self.root / "local_projects" / "INDEX.md").read_text(encoding="utf-8")
+        global_index = (self.root / "workspace/projects" / "INDEX.md").read_text(encoding="utf-8")
         self.assertIn("| project_a |", global_index)
         self.assertIn("| project_b |", global_index)
 
@@ -216,12 +219,13 @@ class LocalProjectWorkspaceTest(unittest.TestCase):
         self.assertFalse(payload["ok"])
         self.assertIn("requested project not found", payload["error"])
 
+    @unittest.skipIf(os.name == "nt", "symlink contract runs on K40 Linux")
     def test_index_rejects_symlinked_project_workspace(self):
-        local_projects = self.root / "local_projects"
+        projects_root = self.root / "workspace/projects"
         outside = self.root / "outside"
         outside.mkdir()
-        local_projects.mkdir()
-        (local_projects / "demo_project").symlink_to(outside, target_is_directory=True)
+        projects_root.mkdir(parents=True)
+        (projects_root / "demo_project").symlink_to(outside, target_is_directory=True)
         proc = run_cli(["index"], self.root)
         self.assertEqual(proc.returncode, 2)
         payload = parse_json(proc)
@@ -230,7 +234,7 @@ class LocalProjectWorkspaceTest(unittest.TestCase):
 
     def test_index_rejects_project_without_ledger(self):
         self.assertEqual(scaffold(self.root).returncode, 0)
-        project_root = self.root / "local_projects" / "demo_project"
+        project_root = self.root / "workspace/projects" / "demo_project"
         (project_root / "ledger" / "errors.jsonl").unlink()
         proc = run_cli(["index"], self.root)
         self.assertEqual(proc.returncode, 2)
@@ -245,14 +249,15 @@ class LocalProjectWorkspaceTest(unittest.TestCase):
         self.assertFalse(payload["ok"])
         self.assertIn("invalid project_id", payload["error"])
 
+    @unittest.skipIf(os.name == "nt", "symlink contract runs on K40 Linux")
     def test_index_does_not_touch_preexisting_atomic_tmp_sentinel(self):
         self.assertEqual(scaffold(self.root).returncode, 0)
-        local_projects = self.root / "local_projects"
+        projects_root = self.root / "workspace/projects"
         outside = self.root / "outside"
         outside.mkdir()
         sentinel = outside / "SENTINEL"
         sentinel.write_text("OUTSIDE\n", encoding="utf-8", newline="\n")
-        project_root = local_projects / "demo_project"
+        project_root = projects_root / "demo_project"
         tmp_path = project_root / "INDEX.json.tmp"
         tmp_path.symlink_to(sentinel, target_is_directory=False)
         proc = run_cli(["index"], self.root)
@@ -260,14 +265,14 @@ class LocalProjectWorkspaceTest(unittest.TestCase):
         self.assertTrue(tmp_path.is_symlink())
         self.assertEqual(os.readlink(tmp_path), str(sentinel))
         self.assertEqual(sentinel.read_text(encoding="utf-8"), "OUTSIDE\n")
-        self.assertIn("| demo_project |", (local_projects / "INDEX.md").read_text(encoding="utf-8"))
+        self.assertIn("| demo_project |", (projects_root / "INDEX.md").read_text(encoding="utf-8"))
 
     def test_index_is_idempotent_across_two_runs(self):
         self.assertEqual(scaffold(self.root, "project_a").returncode, 0)
         self.assertEqual(scaffold(self.root, "project_b").returncode, 0)
         first = run_cli(["index"], self.root)
         self.assertEqual(first.returncode, 0, first.stderr)
-        global_path = self.root / "local_projects" / "INDEX.md"
+        global_path = self.root / "workspace/projects" / "INDEX.md"
         first_text = global_path.read_text(encoding="utf-8")
         second = run_cli(["index"], self.root)
         self.assertEqual(second.returncode, 0, second.stderr)
@@ -276,7 +281,7 @@ class LocalProjectWorkspaceTest(unittest.TestCase):
 
     def test_index_does_not_trust_out_of_bounds_existing_paths(self):
         self.assertEqual(scaffold(self.root).returncode, 0)
-        project_root = self.root / "local_projects" / "demo_project"
+        project_root = self.root / "workspace/projects" / "demo_project"
         (project_root / "INDEX.json").write_text(
             json.dumps({"path_map": {"data": "../outside"}}) + "\n",
             encoding="utf-8",
@@ -325,7 +330,7 @@ class LocalProjectWorkspaceTest(unittest.TestCase):
         self.assertEqual(proc.returncode, 2, proc.stderr)
         payload = parse_json(proc)
         self.assertIs(payload["ok"], False)
-        for name in ("local_projects", "qa", "con_hf"):
+        for name in ("workspace/projects", "qa", "ledger"):
             self.assertFalse(
                 (fixture_repo / name).exists(),
                 "empty root created %s in the script REPO_ROOT" % name,
@@ -349,12 +354,12 @@ class LocalProjectWorkspaceTest(unittest.TestCase):
         self.assertTrue(payload["ok"])
         self.assertEqual(payload["root"], str(fixture_repo))
         self.assertTrue(
-            (fixture_repo / "local_projects" / "empty_root_probe").is_dir()
+            (fixture_repo / "workspace/projects" / "empty_root_probe").is_dir()
         )
 
     def test_validate_rejects_corrupt_project_json(self):
         self.assertEqual(scaffold(self.root).returncode, 0)
-        project_root = self.root / "local_projects" / "demo_project"
+        project_root = self.root / "workspace/projects" / "demo_project"
         (project_root / "project.json").write_text("{broken", encoding="utf-8", newline="\n")
         proc = run_cli(["validate"], self.root)
         self.assertEqual(proc.returncode, 2)
@@ -362,7 +367,7 @@ class LocalProjectWorkspaceTest(unittest.TestCase):
 
     def test_validate_rejects_missing_or_symlinked_project_files(self):
         self.assertEqual(scaffold(self.root).returncode, 0)
-        project_root = self.root / "local_projects" / "demo_project"
+        project_root = self.root / "workspace/projects" / "demo_project"
         for name in ("README.md", "handoff.md"):
             with self.subTest(file=name, scenario="missing"):
                 path = project_root / name
@@ -380,6 +385,8 @@ class LocalProjectWorkspaceTest(unittest.TestCase):
                     path.write_bytes(original)
         for name in ("README.md", "handoff.md"):
             with self.subTest(file=name, scenario="symlink"):
+                if os.name == "nt":
+                    continue
                 path = project_root / name
                 original = path.read_bytes()
                 try:
@@ -397,7 +404,7 @@ class LocalProjectWorkspaceTest(unittest.TestCase):
 
     def test_ledger_aggregation_uses_last_record_by_id(self):
         self.assertEqual(scaffold(self.root).returncode, 0)
-        ledger = self.root / "local_projects" / "demo_project" / "ledger"
+        ledger = self.root / "workspace/projects" / "demo_project" / "ledger"
         records = [
             {"id": "E-1", "status": "open", "title": "first"},
             {"id": "E-1", "status": "resolved", "title": "last"},

@@ -34,7 +34,7 @@ test('real mode exposes the four hard workbench seams', () => {
   assert.ok(text.includes('tools/ops/07_pull_outputs.ps1'));
   assert.ok(text.includes('/api/report/build'));
   assert.ok(text.includes('/api/sync/result'));
-  assert.ok(text.includes("Join-Path $RepoRoot 'local_projects'"));
+  assert.ok(text.includes("Join-Path $RepoRoot 'workspace/projects'"));
   assert.match(text, /files\s*=\s*@\(\$resultFiles\)/);
   assert.match(text, /figureRoot/);
   assert.match(text, /png\|jpg\|jpeg\|webp/);
@@ -64,8 +64,8 @@ test('real mode resolves lineId with PowerShell-safe fallback and uses sync outb
     text,
     /\$lineId\s*=\s*if\s*\(\s*-not\s*\[string\]::IsNullOrWhiteSpace\(\$Requirement\.lineId\)\s*\)\s*\{\s*\[string\]\$Requirement\.lineId\s*\}\s*else\s*\{\s*\[string\]\$Requirement\.seriesId\s*\}/s,
   );
-  assert.match(text, /\[string\]\$SpoolRoot\s*=\s*'con_hf\/sync\/outbox'/);
-  assert.ok(!text.includes('con_hf/sync/spool'));
+  assert.match(text, /\[string\]\$SpoolRoot\s*=\s*'ledger\/sync\/outbox'/);
+  assert.ok(!text.includes('ledger/sync/spool'));
 });
 
 test('real mode consumes the server execution plan and dispatches adapted figure tasks', () => {

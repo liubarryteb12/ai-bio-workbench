@@ -14,7 +14,7 @@
       4. 传输：ssh mkdir -p 后 scp -q 覆盖；
       5. 远端对账：远端 sha256sum 回读，与本地逐文件比对，任一不一致即失败。
 
-    每次运行追加一条记录到 con_hf/ops_ledger.md（运维台账），并把机器可读清单
+    每次运行追加一条记录到 ledger/ops_ledger.md（运维台账），并把机器可读清单
     合并进远端 system_logs/sync_manifest.json（保留最近 50 次）。
 
 .PARAMETER Files
@@ -45,7 +45,7 @@ param(
     [switch]$FailOnDrift,
     [string]$SshTarget = 'k40-ubuntu',
     [string]$RemoteRoot = '/mnt/ssd/bio_data',
-    [string]$LedgerPath = 'con_hf/ops_ledger.md'
+    [string]$LedgerPath = 'ledger/ops_ledger.md'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -407,7 +407,7 @@ if ($LASTEXITCODE -eq 0) {
 Remove-Item $tmpJson -Force -ErrorAction SilentlyContinue
 Remove-Item $tmpPy -Force -ErrorAction SilentlyContinue
 
-# 本地运维台账（con_hf/ops_ledger.md，追加不重写）
+# 本地运维台账（ledger/ops_ledger.md，追加不重写）
 $ledgerFile = Join-Path $RepoRoot $LedgerPath
 $ledgerDir = Split-Path -Parent $ledgerFile
 if (-not (Test-Path $ledgerDir)) { New-Item -ItemType Directory -Path $ledgerDir -Force | Out-Null }

@@ -163,5 +163,5 @@ test('静态契约：服务端审计落点在 deliverables（gitignore 区），
     '服务端审计流必须落在 localDeliverDir（deliverables/，gitignore 区）');
   assert.ok(server.includes('BIO_DELIVERY_AUDIT_PATH'), '必须支持环境变量覆盖（测试与抽检隔离）');
   const gitignore = fs.readFileSync(path.join(path.resolve(import.meta.dirname, '..', '..'), '.gitignore'), 'utf8');
-  assert.match(gitignore, /local_projects\/\*\/deliverables\//, 'deliverables 必须在 gitignore 内');
+  assert.match(gitignore, /workspace\/projects\/\*\/deliverables\//, 'deliverables 必须在 gitignore 内');
 });

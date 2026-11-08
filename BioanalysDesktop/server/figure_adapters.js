@@ -69,9 +69,12 @@ function validateBoundaries({ projectId, lineId, inputPath, template }) {
   }
 
   const segments = inputPath.split('/').filter(Boolean);
-  const localProjectsIndex = segments.indexOf('local_projects');
-  if (localProjectsIndex >= 0 && segments[localProjectsIndex + 1] !== projectId) {
-    throw new Error(`inputPath 跨项目: 期望 ${projectId}，收到 ${segments[localProjectsIndex + 1] || 'unknown'}`);
+  const workspaceIndex = segments.indexOf('workspace');
+  const localProjectsIndex = workspaceIndex >= 0 && segments[workspaceIndex + 1] === 'projects'
+    ? workspaceIndex
+    : -1;
+  if (localProjectsIndex >= 0 && segments[localProjectsIndex + 2] !== projectId) {
+    throw new Error(`inputPath 跨项目: 期望 ${projectId}，收到 ${segments[localProjectsIndex + 2] || 'unknown'}`);
   }
   const foreignLine = LINES.find((candidate) => candidate !== lineId && inputPath.includes(candidate));
   if (foreignLine) throw new Error(`inputPath 跨线: ${lineId} 出现 ${foreignLine}`);

@@ -43,14 +43,14 @@ function readProjectMetaFile(file) {
 }
 
 /**
- * 列出仓库根 local_projects/ 下的本地项目。
+ * 列出仓库根 workspace/projects/ 下的本地项目。
  *
  * 只扫一层目录。目录名必须通过 sanitizeProjectId，符号链接与非目录条目一律跳过。
  * project.json 缺失或损坏时 meta=null，不把一个真实存在的目录藏掉。
  */
 export function listLocalProjectsWithMeta({ repoRoot } = {}) {
   if (!repoRoot) return [];
-  const projectsRoot = path.resolve(String(repoRoot), 'local_projects');
+  const projectsRoot = path.resolve(String(repoRoot), 'workspace/projects');
   let entries;
   try {
     entries = fs.readdirSync(projectsRoot, { withFileTypes: true });

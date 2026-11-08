@@ -197,7 +197,7 @@ function sendJson(res, status, payload) {
  * 与 /api/submit 的分工：那份收的是"已定课题要跑分析"的完整需求（要素卡级别），
  * 本端点只收"一个方向"，要素卡由调研过程自己填。两者不可互相替代。
  *
- * 字段口径来自 con_hf/topic_survey/request_schema.json，两边同步修改。
+ * 字段口径来自 workspace/handoff/topic_survey/request_schema.json，两边同步修改。
  * 落盘形态沿用 inbox 的 JSON 约定，文件名带 ticket_id，结果页按它取。
  *
  * @returns {{ok: boolean, error?: string, ticketId?: string, file?: string}}

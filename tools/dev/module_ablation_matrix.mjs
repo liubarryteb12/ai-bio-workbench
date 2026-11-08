@@ -307,7 +307,22 @@ function reportText(matrix) {
 export function main() {
   const matrix = buildMatrix();
   fs.mkdirSync(path.dirname(REPORT), { recursive: true });
-  fs.writeFileSync(REPORT, reportText(matrix), 'utf8');
+  const payload = reportText(matrix);
+  let writeError = null;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      fs.writeFileSync(REPORT, payload, 'utf8');
+      writeError = null;
+      break;
+    } catch (cause) {
+      writeError = cause;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100 * (attempt + 1));
+    }
+  }
+  if (writeError) {
+    console.error(`[RED] 报告落盘: ${writeError.message || writeError}`);
+    return 1;
+  }
   for (const issue of matrix.issues.slice(0, 20)) console.error(`[RED] ${issue}`);
   if (!matrix.ok) return 1;
   console.log(`MODULE_ABLATION_MATRIX_OK modules=${matrix.counts.modules} edges=${matrix.counts.edges} scenarios=${matrix.counts.scenarios}`);

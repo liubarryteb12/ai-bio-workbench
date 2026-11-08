@@ -5,11 +5,11 @@
   分析产物（processed/ results/ figures/ 下的文件）与任务台账（system_logs/）必须
   回搬到本地电脑存档，服务器只保留运行态正本。本脚本是这条回搬通道：
     服务器 /mnt/ssd/bio_data/projects/<项目>/<line>/processed/*
-        ->  本地 local_projects/<项目>/data/<line>/processed/
+        ->  本地 workspace/projects/<项目>/data/<line>/processed/
     服务器 /mnt/ssd/bio_data/projects/<项目>/<line>/results/*
-        ->  本地 local_projects/<项目>/data/<line>/results/
+        ->  本地 workspace/projects/<项目>/data/<line>/results/
     服务器 /mnt/ssd/bio_data/projects/<项目>/<line>/figures/*
-        ->  本地 local_projects/<项目>/figures/<line>/
+        ->  本地 workspace/projects/<项目>/figures/<line>/
     服务器 /mnt/ssd/bio_data/system_logs/*_<项目>_*.json
         ->  本地 outputs/system_logs/
 
@@ -36,7 +36,7 @@ param(
 
 $ErrorActionPreference = 'Continue'
 $repoRoot = Split-Path -Parent $PSScriptRoot
-if ($LocalRoot -eq '') { $LocalRoot = Join-Path $repoRoot 'local_projects' }
+if ($LocalRoot -eq '') { $LocalRoot = Join-Path $repoRoot 'workspace/projects' }
 $machineLogRoot = Join-Path $repoRoot 'outputs/system_logs'
 
 # 项目 ID 校验（与后端 server/domain.js 的 sanitizeProjectId 同规则）

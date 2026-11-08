@@ -8,7 +8,7 @@
   与 git 的分工：git 恢复后仍是权威版本史；本脚本是过渡期的保险，不是替代品。
 
   打包范围（只收文本本体，不收数据）：
-    src/ ops/ shared/ portal/ cn_debug/ con_hf/ docs/ aims/ deliverables/ projects/
+    core/ schemas/ skills/ tools/ shared/ portal/ cn_debug/ ledger/ workspace/handoff/ docs/ aims/ deliverables/ projects/
     BioanalysDesktop/{server,src,tests,public} 顶层散文件（AGENTS.md、.bat、.gitattributes 等）
 
   排除（三类，逐类写明理由）：
@@ -54,7 +54,7 @@ if ([string]::IsNullOrWhiteSpace($OutDir)) {
 # 用显式目录清单而不是"排除法扫全盘"：这个仓库有 18GB 的 outputs/ 与 1GB 的
 # test_use_data/，扫全盘再排除既慢又容易漏。白名单新增目录时要显式加进来。
 $includeDirs = @(
-  'src', 'ops', 'shared', 'portal', 'cn_debug', 'con_hf', 'docs', 'aims',
+  'core', 'schemas', 'skills', 'tools', 'shared', 'portal', 'cn_debug', 'ledger', 'workspace/handoff', 'docs', 'aims',
   'deliverables', 'projects',
   'BioanalysDesktop/server', 'BioanalysDesktop/src',
   'BioanalysDesktop/tests', 'BioanalysDesktop/public'

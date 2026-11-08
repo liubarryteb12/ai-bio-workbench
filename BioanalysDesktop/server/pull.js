@@ -2,7 +2,7 @@
  * 产物回搬通道（手机端 k40 → 本地电脑）
  *
  * 规范（aims §3.2 视图 4 / §7.3）：计算全部在手机容器内完成，但**图件必须回搬到
- * 本地** `local_projects/<项目>/figures/<线>/`，工作台视图 4 优先读本地副本；没回搬时
+ * 本地** `workspace/projects/<项目>/figures/<线>/`，工作台视图 4 优先读本地副本；没回搬时
  * 才回落远端实时读取，并在界面标注来源，不能让"本地没图"被误读成"分析没出图"。
  *
  * 本地零算力红线不变：这里只用 ssh 列目录 + scp 传文件，不启动任何分析程序。
@@ -15,10 +15,10 @@ import { fileURLToPath } from 'node:url';
 import { LINES, projectLineDir, sanitizeProjectId } from './domain.js';
 import { runSync } from './proc.js';
 
-/** 本地项目根：仓库根 local_projects/，与 tools/ops/07_pull_outputs.ps1 同一位置 */
+/** 本地项目根：仓库根 workspace/projects/，与 tools/ops/07_pull_outputs.ps1 同一位置 */
 export const LOCAL_OUTPUTS_ROOT = process.env.BIO_LOCAL_OUTPUTS
   ? path.resolve(process.env.BIO_LOCAL_OUTPUTS)
-  : fileURLToPath(new URL('../../local_projects/', import.meta.url));
+  : fileURLToPath(new URL('../../workspace/projects/', import.meta.url));
 
 /** 默认回搬的产物子目录。processed/ 可能有 h5ad/rds 大检查点，不默认回搬 */
 export const PULL_SUBDIRS = ['figures', 'results'];

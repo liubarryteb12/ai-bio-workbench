@@ -230,7 +230,7 @@ cat <<RUNEOF > "$RUNNING_JSON"
   "start_time": "$START_TIME",
   "wrapper_pid": $$,
   "wrapper_pgid": "$(awk '{ sub(/^[0-9]+ \([^)]*\) /, ""); print $3 }' /proc/$$/stat 2>/dev/null)",
-  "note": "运行中标记：正常结束会删除；若残留说明任务被中断（容器 abort / kill），见 con_hf/pitfalls_ledger.md P-23"
+  "note": "运行中标记：正常结束会删除；若残留说明任务被中断（容器 abort / kill），见 ledger/pitfalls_ledger.md P-23"
 }
 RUNEOF
 echo "[wrapper] 运行中标记已落盘: $RUNNING_JSON"

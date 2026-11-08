@@ -132,7 +132,7 @@ test('wrapper still declares the public key parameter with the repo default', ()
 });
 
 test('the reference drill package still carries its sidecar and signature', () => {
-  const drill = path.join(REPO, 'con_hf', 'runs', '2026-10-31_phase3_delivery_drill');
+  const drill = path.join(REPO, 'docs', 'runs', '2026-10-31_phase3_delivery_drill');
   if (!fs.existsSync(drill)) return; // 演练目录是运行产物，缺失时该测试不主张
   for (const need of ['tar_sha256_sidecar.txt', 'CHECKSUMS.sha256', 'CHECKSUMS.sig', 'delivery_manifest.json']) {
     assert.ok(fs.existsSync(path.join(drill, need)), '演练包缺 ' + need);
@@ -146,7 +146,7 @@ test('the reference drill package still carries its sidecar and signature', () =
 // 这两条断言钉住顺序与关键句，防止将来有人把 README 挪到签名之后或删掉分工说明。
 
 test('packaged README explains the two registries and is itself signed', () => {
-  const delivery = path.join(REPO, 'local_projects', 'PRJ_AIMS_V3_20261027',
+  const delivery = path.join(REPO, 'workspace/projects', 'PRJ_AIMS_V3_20261027',
     'deliverables', 'PRJ_AIMS_V3_20261027_Client_Delivery');
   const readme = path.join(delivery, 'README.md');
   if (!fs.existsSync(readme)) return; // 交付目录是运行产物，缺失时不主张
@@ -189,7 +189,7 @@ test('acceptance can reuse an existing unpack without re-extracting', () => {
 
 // ── 功能级反证：直接在真演练包上跑四关 + 篡改探针（第十八轮的 -SkipExtract 演练，
 //    现在同一份核心同时被内联与手敲复用，演练一次两侧都算数）。演练目录不在时跳过。
-const DRILL = path.join(REPO, 'con_hf', 'runs', '2026-10-31_phase3_delivery_drill');
+const DRILL = path.join(REPO, 'docs', 'runs', '2026-10-31_phase3_delivery_drill');
 test('drill package passes all four gates, tamper probes each turn a dedicated gate red', async () => {
   const tar = path.join(DRILL, 'Client_Delivery.tar.gz');
   if (!fs.existsSync(tar)) return; // 演练包是运行产物，缺失时不主张

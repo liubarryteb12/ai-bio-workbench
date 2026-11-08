@@ -59,7 +59,7 @@ export function readPngSize(buf) {
 /**
  * 门禁作用域：只对「当前产线项目」判红，历史遗留项目只报告。
  *
- * 为什么分档：local_projects/default/ 有 107 张 2026-10-14 的图，产自 150 DPI 时代
+ * 为什么分档：workspace/projects/default/ 有 107 张 2026-10-14 的图，产自 150 DPI 时代
  * （figure_spec v2.2 升级前），且未被 git 跟踪。把它们判红会让门禁永远红着，
  * 而重跑那些旧样例项目没有任何价值。真正要守住的是「新产出的图必须 300 DPI」。
  * 新增产线项目时把它加进 STRICT_PROJECTS。
@@ -75,7 +75,7 @@ function main() {
   const dirArg = process.argv.indexOf("--dir");
   const roots = dirArg > -1
     ? [path.join(REPO, process.argv[dirArg + 1] || "")]
-    : [path.join(REPO, "local_projects")];
+    : [path.join(REPO, "workspace/projects")];
   const pngs = [];
   const walk = (d) => {
     if (!fs.existsSync(d)) return;
@@ -94,7 +94,7 @@ function main() {
   for (const file of pngs) {
     const rel = path.relative(REPO, file).split(path.sep).join("/");
     // 该图属于哪个项目；不属于任何产线项目则降级为提示
-    const _m = rel.match(/local_projects\/([^/]+)\//);
+    const _m = rel.match(/workspace\/projects\/([^/]+)\//);
     const project = _m ? _m[1] : "";
     const strict = STRICT_PROJECTS.includes(project);
     const report = strict ? (m) => problems.push(m) : (m) => warnings.push("[历史项目] " + m);

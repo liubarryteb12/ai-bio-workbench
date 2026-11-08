@@ -6,7 +6,7 @@
  * 客户端项目发现、图件清单、来源清单接口与出图门禁仍然自洽。
  *
  * 边界：
- *   1. 只在 .tmp/project_content_ablation/ 下的临时副本上删除，绝不碰真实 local_projects；
+ *   1. 只在 .tmp/project_content_ablation/ 下的临时副本上删除，绝不碰真实 workspace/projects；
  *   2. 不重跑生信分析代码，不改母版；
  *   3. 每个场景独立建副本，互不影响；
  *   4. 清理前校验绝对路径仍在 workspace 的 .tmp 内。
@@ -29,7 +29,7 @@ import { fileURLToPath } from 'node:url';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const REAL_PROJECT_ID = 'PRJ_DCM_BENCH_20261105';
-const REAL_PROJECT_DIR = path.join(REPO, 'local_projects', REAL_PROJECT_ID);
+const REAL_PROJECT_DIR = path.join(REPO, 'workspace/projects', REAL_PROJECT_ID);
 const LINES = Object.freeze(['line1_bulk', 'line2_scrna', 'line3_spatial']);
 const TMP_CONTAINER = path.join(REPO, '.tmp', 'project_content_ablation');
 const RUN_ROOT = path.join(TMP_CONTAINER, `${process.pid}-${crypto.randomUUID()}`);
@@ -608,11 +608,11 @@ function writeReport(results, reportBuilder, fatal) {
   lines.push('');
   lines.push('日期 2026-11-08｜目标项目 `' + REAL_PROJECT_ID + '`｜隔离根 `.tmp/project_content_ablation/<run_id>/`');
   lines.push('');
-  lines.push('> 本实验只在 `.tmp/project_content_ablation/` 的临时副本上删除内容。真实 `local_projects` 未改动，母版未改动，生信分析代码未重跑。');
+  lines.push('> 本实验只在 `.tmp/project_content_ablation/` 的临时副本上删除内容。真实 `workspace/projects` 未改动，母版未改动，生信分析代码未重跑。');
   lines.push('');
   lines.push('## 1. 方法与边界');
   lines.push('');
-  lines.push('- 每个消融场景独立建一份最小骨架副本，副本位于 `.tmp/project_content_ablation/<run_id>/scenarios/<scenario>/local_projects/' + REAL_PROJECT_ID + '/`。');
+  lines.push('- 每个消融场景独立建一份最小骨架副本，副本位于 `.tmp/project_content_ablation/<run_id>/scenarios/<scenario>/workspace/projects/' + REAL_PROJECT_ID + '/`。');
   lines.push('- 骨架包含 `project.json`、三条线的 PNG 名称、`FIGURE_SOURCE_MANIFEST.tsv`、`README_FIGURE_SOURCES.md`、`BENCHMARK_REPORT.md`、`INTEGRATED_REPORT.md`、`FINAL_SEAL_REPORT.md`，以及 `scripts/resume_benchmark.sh`（存在时复制）。已退役组图会显式补出占位文件，确保组图消融场景有物可删。');
   lines.push('- PNG 默认写成声明 300 DPI 的 tiny 占位图；设置 `ABLATION_COPY_REAL_PNGS=1` 可改为复制少量真实 PNG，复制上限由 `ABLATION_MAX_REAL_PNGS` 控制。');
   lines.push('- 项目发现判据复刻 `listLocalProjectsWithMeta` 的目录扫描与 `project.json` 读取逻辑，不启动服务。');
@@ -681,7 +681,18 @@ function writeReport(results, reportBuilder, fatal) {
   }
   lines.push(allOk && !fatal ? PROJECT_CONTENT_ABLATION_OK : PROJECT_CONTENT_ABLATION_FAILED);
   fs.mkdirSync(path.dirname(REPORT_PATH), { recursive: true });
-  fs.writeFileSync(REPORT_PATH, lines.join('\n') + '\n', 'utf8');
+  const payload = lines.join('\n') + '\n';
+  let lastError = null;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      fs.writeFileSync(REPORT_PATH, payload, 'utf8');
+      return null;
+    } catch (cause) {
+      lastError = cause;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100 * (attempt + 1));
+    }
+  }
+  return lastError;
 }
 
 export function main(argv = process.argv.slice(2), io = {
@@ -701,7 +712,7 @@ export function main(argv = process.argv.slice(2), io = {
     reportBuilder = checkReportBuilderIndependence();
     for (const scenario of SCENARIOS) {
       const projectDir = path.join(
-        RUN_ROOT, 'scenarios', scenario.id, 'local_projects', REAL_PROJECT_ID
+        RUN_ROOT, 'scenarios', scenario.id, 'workspace/projects', REAL_PROJECT_ID
       );
       io.log('[ablation] 场景 ' + scenario.id + '：' + scenario.label);
       buildSkeleton(projectDir, {

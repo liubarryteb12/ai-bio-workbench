@@ -19,10 +19,10 @@ const BIOANALYS_DIR = path.resolve(import.meta.dirname, '..');
 const REPO = path.resolve(BIOANALYS_DIR, '..');
 
 function tmpRoot(tag) {
-  // 夹具必须完全隔离：只建 local_projects 子树，绝不指向仓库根。
-  // （首版把 root 设成 .tmp 下的目录，仍会被仓库真实 local_projects 干扰，实测踩到）
+  // 夹具必须完全隔离：只建 workspace/projects 子树，绝不指向仓库根。
+  // （首版把 root 设成 .tmp 下的目录，仍会被仓库真实 workspace/projects 干扰，实测踩到）
   const base = path.join(REPO, '.tmp', 'audit-sum-' + tag + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8));
-  fs.mkdirSync(base, { recursive: true });   // 只建根；local_projects 由各用例按需创建
+  fs.mkdirSync(base, { recursive: true });   // 只建根；workspace/projects 由各用例按需创建
   return base;
 }
 
@@ -39,7 +39,7 @@ function validEntry({ projectHash, tarHash, at, verified = 100 }) {
 }
 
 function writeLedger(root, pid, entries) {
-  const dir = path.join(root, 'local_projects', pid, 'deliverables');
+  const dir = path.join(root, 'workspace/projects', pid, 'deliverables');
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, AUDIT_NAME), entries.map((e) => JSON.stringify(e)).join('\n') + '\n', 'utf8');
   return path.join(dir, AUDIT_NAME);
@@ -86,8 +86,8 @@ test('多项目合并：跨目录收集、按时间升序、唯一项目去重�
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
-test('空目录：local_projects 完全不存在时优雅返回 0，不抛错', () => {
-  // 这条必须覆盖「目录根本不存在」：首版 tmpRoot 预建了 local_projects，
+test('空目录：workspace/projects 完全不存在时优雅返回 0，不抛错', () => {
+  // 这条必须覆盖「目录根本不存在」：首版 tmpRoot 预建了 workspace/projects，
   // 结果 M5（把 catch 去掉）存活——空目录断言名不副实，实测修正。
   const root = tmpRoot('empty');
   try {
@@ -106,7 +106,7 @@ test('空目录：local_projects 完全不存在时优雅返回 0，不抛错', 
 test('损坏行精准拦截：bad JSON 与非法键集都报 INVALID_AUDIT_LINE 并计数', () => {
   const root = tmpRoot('bad');
   try {
-    const dir = path.join(root, 'local_projects', 'PRJ_BAD', 'deliverables');
+    const dir = path.join(root, 'workspace/projects', 'PRJ_BAD', 'deliverables');
     fs.mkdirSync(dir, { recursive: true });
     const good = validEntry({ projectHash: 'c'.repeat(16), tarHash: 'd'.repeat(64), at: '2026-11-01T00:00:00.000Z' });
     fs.writeFileSync(path.join(dir, AUDIT_NAME), [
@@ -166,6 +166,6 @@ test('只读契约：不写任何文件（跑完夹具目录 mtime 与内容不�
 test('静态契约：不侵入 server/ 运行时，只做只读扫描', () => {
   const src = fs.readFileSync(path.join(REPO, 'tools', 'reporting', 'audit_summary.mjs'), 'utf8');
   assert.equal(/writeFileSync|appendFileSync|rmSync/.test(src), false, '汇总脚本禁止任何写操作');
-  assert.ok(src.includes("path.join(root, 'local_projects')"), '只认白名单扫描位置');
+  assert.ok(src.includes("path.join(root, 'workspace/projects')"), '只认白名单扫描位置');
   assert.ok(src.includes('INVALID_AUDIT_LINE'));
 });

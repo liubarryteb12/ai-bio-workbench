@@ -69,9 +69,9 @@
 
 | Stage | 工作台落点 | 状态 | 缺口/适配 |
 |---|---|---|---|
-| 0 | portal 建项契约（项目名/疾病/描述） | ✅ | 假设链条 + 结论上限建项时以文档落 `con_hf/` |
-| 1 | portal datasets 配对（GSE↔GPL↔role）+ dataType→line | ✅ 骨架 | GSE 审查表（16 字段，含三重判据列 + raw 可得性列）与剔除日志无字段——建项时落 con_hf/ 文档 |
-| 2 | portal 分组/对比对/样本绑定 | ✅ 骨架 | 分组表（13 字段）"判定依据字段"列缺失——同上落 con_hf/ |
+| 0 | portal 建项契约（项目名/疾病/描述） | ✅ | 假设链条 + 结论上限建项时以文档落 `workspace/projects/<project>/` |
+| 1 | portal datasets 配对（GSE↔GPL↔role）+ dataType→line | ✅ 骨架 | GSE 审查表（16 字段，含三重判据列 + raw 可得性列）与剔除日志无字段——建项时落 workspace/projects/<project>/ 文档 |
+| 2 | portal 分组/对比对/样本绑定 | ✅ 骨架 | 分组表（13 字段）"判定依据字段"列缺失——同上落 workspace/projects/<project>/ |
 | 3 | line1 `prep_matrix`（series matrix+GPL / counts 双模式） | ✅ | counts 模式已拒已归一化矩阵；raw/processed 分层规则见附录 B 裁决 2 |
 | 4 | `qc_matrix` + `pca_matrix` | ✅（单数据集内） | 跨 GSE ComBat 未实现（sva 包容器有无未验证）；首批可走"独立分析后 meta/外部验证"路线 |
 | 5 | `deg_limma` + `enrichment_bulk`（GO 三本体/KEGG/GSEA） | ✅ | 阈值固定值已合规；GSVA 样本级评分 line1 无（line2 有 `gsva_pathways`） |
@@ -115,7 +115,7 @@
 
 - 课题从 **portal 用户提交台**进入：客户填数据类型（microarray/bulk_rnaseq/scrna/spatial，枚举锁定分析线）→ datasets 配对表（GSE↔GPL↔role train/validation）→ 分组与样本绑定 → 对比对 → 参考文献（≤5 篇）→ 备注（≤4000 字）→ 落盘 `portal/inbox/`。
 - 管理员在工作台「从客户需求导入」读 inbox 建项：自动派生项目 ID、按 dataType 选线、母版步骤重排、黑名单合规校验（非肿瘤拦截在 `server/tumor_blacklist.js`）。
-- 正文 Stage 0 的"假设链条 + 结论上限声明"与 Stage 1 的 **GSE 审查表（16 字段）**、Stage 2 的**分组表（13 字段）+ 剔除日志 + 混杂决策表**：工作台数据库无这些字段，一律落 `con_hf/` 项目文档（运行记录命名 `YYYY-MM-DD_[类型]_[说明]`），作为 C2 溯源的证据链组成部分。
+- 正文 Stage 0 的"假设链条 + 结论上限声明"与 Stage 1 的 **GSE 审查表（16 字段）**、Stage 2 的**分组表（13 字段）+ 剔除日志 + 混杂决策表**：工作台数据库无这些字段，一律落 `workspace/projects/<project>/` 项目文档（运行记录命名 `YYYY-MM-DD_[类型]_[说明]`），作为 C2 溯源的证据链组成部分。
 - 分组字段的判定依据：GSE soft/series matrix 的 `!Sample_characteristics_ch1`（正文 Stage 2 动作 1 原样执行）；工作台既有先例——GSE254707 用 grouping.txt、GSE277173 从 soft 的 tissue 字段、GSE131882 用 disease state 字段。
 
 ### 适配 2 · 数据与执行链路（正文 Stage 3–8 的工作台形态）
@@ -131,7 +131,7 @@
 | 正文要求 | 工作台执行形态 |
 |---|---|
 | 00_config/params.yaml | `envs/<line>/manifest.txt` + BIOANALYS_SEED（参数正本，禁止脚本硬编码魔法数字） |
-| 01_raw / 02_meta | `projects/<id>/<line>/raw_data/`；审查表/分组表落 `con_hf/` |
+| 01_raw / 02_meta | `projects/<id>/<line>/raw_data/`；审查表/分组表落 `workspace/projects/<project>/` |
 | 03_scripts 按 Stage 编号 | 全局 `bin/<line>/<step>`（母版）+ 项目内 `scripts/` 适配副本（ops 直跑） |
 | 04_results / 05_figures | `processed/` 与 `figures/`；产物回搬本地 `outputs/default/<line>/` |
 | 06_report | `*_report.txt` 随步产出 + 交付时 `ops/09` 三大件（规范见 `docs/delivery_package_spec.md`，脚本未实现待首个项目触发） |
@@ -143,7 +143,7 @@
 - 硬件：红米 K40 proot ubuntu，5 核 11G，**单进程峰值 ≤5GB**（超限会被 RLIMIT_AS/LMK 杀，症状是 ssh 断连、台账停在旧时间戳）；长任务由本地后台 terminal 持有 ssh 连接；绑核契约已实测变更为"默认不绑核 + 3 线程甜点"（`docs/k40_cpu_affinity.md`）。
 - 环境：R 4.5.3 + Python 3.12.3；Bioc 版本与包可用性待实测，以 `docs/software_versions.json` 的实测记录为准。**torch 生态不可行** → 正文 Stage 10 的 cell2location/RCTD/scVI 类去卷积在工作台不可用（line3 已豁免）；scVI 系整合同样不可行，整合用 Harmony（已实测）。
 - 已实测可用：scanpy 1.12.4 / anndata / liana 1.10.0 / scTenifoldpy / gseapy 1.3.1（Enrichr 五库可达）/ pyscenic 0.12.1（dask 须钉 2024.8.0）/ glmnet / shap / clusterProfiler / hgu133plus2.db。
-- **禁用/易崩清单**：zellkonverter（reticulate 易崩）、anndataR（该 Bioc 版本无）、harmonypy 参数是 ncores、singscore 无 rankScore、UCell 不认 Seurat v5、CellChat 与 SeuratObject 5.x 不兼容、monocle2 的 phenoData 须 AnnotatedDataFrame、clusterProfiler 默认按 ENTREZID（传 SYMBOL 静默返回 0 条）。踩坑全录 `con_hf/踩坑台账.md`，动工前必搜。
+- **禁用/易崩清单**：zellkonverter（reticulate 易崩）、anndataR（该 Bioc 版本无）、harmonypy 参数是 ncores、singscore 无 rankScore、UCell 不认 Seurat v5、CellChat 与 SeuratObject 5.x 不兼容、monocle2 的 phenoData 须 AnnotatedDataFrame、clusterProfiler 默认按 ENTREZID（传 SYMBOL 静默返回 0 条）。踩坑全录 `ledger/踩坑台账.md`，动工前必搜。
 - raw 处理工具（oligo/affy、sva）容器有无**未验证**——Stage 3 分层规则动工前先探针。
 
 ### 适配 5 · 隔离、冻结与安全纪律（正文未覆盖，工作台级硬约束）
@@ -157,8 +157,8 @@
 
 | Stage | 正文要求 | 工作台增量 |
 |---|---|---|
-| 0 | 科学问题 + 假设链条 | 落 con_hf/ 项目文档；C1 三重判据在建项时过 tumor_blacklist + 人工复核；DKD 类课题结论主轴设计阶段锁定实质细胞/ECM/代谢轴 |
-| 1 | GSE 审查表 16 字段 | datasets 配对进 portal；审查表/剔除理由落 con_hf/；raw 可得性列须写明 supplementary 文件实测大小与格式 |
+| 0 | 科学问题 + 假设链条 | 落 workspace/projects/<project>/ 项目文档；C1 三重判据在建项时过 tumor_blacklist + 人工复核；DKD 类课题结论主轴设计阶段锁定实质细胞/ECM/代谢轴 |
+| 1 | GSE 审查表 16 字段 | datasets 配对进 portal；审查表/剔除理由落 workspace/projects/<project>/；raw 可得性列须写明 supplementary 文件实测大小与格式 |
 | 2 | 分组表 13 字段 | 判定依据字段来自 soft 实读；每组 n≥3 卡点沿用；失衡声明抽样策略 |
 | 3 | raw/processed 分层 | 裁决 2 分层规则；多 GPL 基因交集过小 → 独立分析后 meta（Stage 4 不合并） |
 | 4 | ComBat 批次校正 | sva 未验证 → 首批走"各数据集独立分析 + meta/外部验证"路线（DKD 设计即此形态）；日后确需合并再探针装包 |
@@ -173,5 +173,5 @@
 ### 适配 7 · 汇报与交接
 
 - 每个任务收尾按工作台汇报格式：改动/验证/剩余；失败或中断时报受阻阶段、实测错误、已完成排查、临时成果路径、恢复步骤——不把"静态阅读"说成测试通过。
-- 跨会话/中断任务更新 `con_hf/handoff.md`；踩坑沉淀 `con_hf/踩坑台账.md`（编号顺延，不撞车）。
+- 跨会话/中断任务更新 `workspace/handoff/handoff.md`；踩坑沉淀 `ledger/踩坑台账.md`（编号顺延，不撞车）。
 - 本 SOP 的一切修订：正文改动须用户确认；附录 A/B/C 随工作台演进由工程会话维护并在 handoff 记录。

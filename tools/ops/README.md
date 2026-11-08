@@ -18,7 +18,7 @@
 | `05_push_testdata.ps1` | PC | 测试数据一键上盘（P1-2 预案）：探测 SSD 挂载面 → 建三线目录骨架 → scp 直送三线 raw_data（中文文件名换英文）→ 字节校验 | 完整链路已演练实测：11 文件 905 MB 全过 exit 0（2026-10-13，演练目录已清理）；SSD 在位后跑一次即正式上数 |
 | `06_deploy_scripts.ps1` | PC | 步骤脚本部署通道：`tools/bio/<line>/scripts/` → 服务器 `<line>/bin/`，scp 直送 + chmod 755 + 字节校验 + `test -x` 复核。`-Line` 单线 / `-Force` 覆盖 / `-Rehearse` 演练 | line1_bulk 首脚本 probe_env 部署 exit 0；复验任务全链路 completed exit 0（2026-10-13） |
 | `bio_watchdog.sh` | 手机 Termux | 保活看护（runit 监管）：每分钟重申 `termux-wake-lock` + 检查 5 个服务非 run 则 `sv up`。部署到 `~/p_actions/bin/`，服务目录 `$PREFIX/var/service/bio-watchdog/` | 2026-10-18 实测：唤醒锁 LONG 常驻；`sv down crond` 49 秒内被拉起；`kill -9` 后 runsv 5 秒自愈 |
-| `fix_runsvdir.sh` | 手机 Termux | 双 runsvdir 抢锁修复（R15）：杀双 runsvdir+runsv+补杀 proot → 单实例 `runsvdir -P` 重拉 → `sv up` 六服务。**执行方式必须 `run-as com.termux sh <script>`**（直接 exec bash 被 Android W^X 拦） | 2026-10-20 真机 reboot 实战：R15 爆发后用本脚本修复，runsvdir 恢复为 1、六服务全 run（报告 `con_hf/2026-10-20_reboot_test.md`） |
+| `fix_runsvdir.sh` | 手机 Termux | 双 runsvdir 抢锁修复（R15）：杀双 runsvdir+runsv+补杀 proot → 单实例 `runsvdir -P` 重拉 → `sv up` 六服务。**执行方式必须 `run-as com.termux sh <script>`**（直接 exec bash 被 Android W^X 拦） | 2026-10-20 真机 reboot 实战：R15 爆发后用本脚本修复，runsvdir 恢复为 1、六服务全 run（报告 `workspace/handoff/archive/2026-10-20_reboot_test.md`） |
 | `08_migrate_to_projects.sh`（+ `.ps1` 一键入口） | 服务器 | 数据面引入项目维度后的一次性迁移：顶层平铺三线 `mv` 进 `projects/default/`，`bin/` `envs/` 提到顶层全局，旧台账 `io_files` 加 `projects/<项目>/` 前缀并补 `project_id`。同分区 rename 秒级完成，迁移前后逐线比对文件数与字节；幂等（已迁移直接 `ALREADY_MIGRATED` 退出 0） | 2026-10-14 迁移实测：文件数与字节逐线一致，旧台账重写后 04 巡检全过 |
 | `render_report_html.py` | 服务器 | 把交付目录的 `Analysis_Report.md` 渲染成单文件出版级 HTML（内联 CSS、零外部依赖、含目录锚点与七章结构）。`--self-test` 跑内建用例（转义 / 死锚点 / 缺输入抛 `InputError`）；写盘前自校验，不自行容错 | 远端已部署；`BioanalysDesktop/tests/report_html.test.js` 覆盖 |
 | `port_preflight.ps1` | PC | 端口占用预检：读取全部 TCP 状态，按进程命令行白名单区分本项目 Node 服务与外部进程。退出码 `0=free / 10=expected / 20=foreign / 2=error`，只有 `expected` 允许进入停止流程 | 2026-10-28 fixture 覆盖 free、Bound foreign、Listen expected；迁移后真机识别 18787 为本项目 Node expected |
@@ -88,7 +88,7 @@
 **分层记忆法**：PC 侧 `*.ps1` 管"在 Windows 上点什么"；服务器侧 `*.sh`/`*.py` 管
 "在 K40 上执行什么"；手机 Termux 侧管"Android 层保活"。三层各司其职，
 **没有一个是另一个的替代品**——2026-10-20 架构评审曾误判"六套管家重复建设"，
-逐项核查后确认全部在职（`con_hf/architecture_review_2026-10-20.md` §2.3）。
+逐项核查后确认全部在职（`workspace/handoff/archive/architecture_review_2026-10-20.md` §2.3）。
 
 
 ## 日常用法
@@ -99,7 +99,7 @@
 pwsh -File tools/ops/00_link_check.ps1
 ```
 
-它会告诉你断在哪一段。若 FAIL，先搜 `con_hf/踩坑台账.md` 再动手。
+它会告诉你断在哪一段。若 FAIL，先搜 `ledger/踩坑台账.md` 再动手。
 
 重启手机后若 `sv status` 出现 `down: log`（坑 #88 复发），从归档区取回修复器再跑：
 
@@ -168,7 +168,7 @@ ssh k40-ubuntu "chmod 755 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript"
 
 ## 部署落点与一致性（远端镜像 vs `bin/` 执行）
 
-远端有**两个落点**，别把它们搞混（裁定见 `con_hf/SPEC_DECISIONS.md` D-17）：
+远端有**两个落点**，别把它们搞混（裁定见 `workspace/handoff/SPEC_DECISIONS.md` D-17）：
 
 | 落点 | 谁写 | 谁用 | 权限 | 说明 |
 | --- | --- | --- | --- | --- |
@@ -185,7 +185,7 @@ ssh k40-ubuntu "chmod 755 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript"
 [WARN] 部署漂移 3/55：仓库已改但 bin/ 未重新部署，引擎仍跑旧版本；跑 tools/ops/06_deploy_scripts.ps1 -Force 修复
 ```
 
-漂移结论同时写进远端 `system_logs/sync_manifest.json` 的 `deploy` 字段与 `con_hf/ops_ledger.md`
+漂移结论同时写进远端 `system_logs/sync_manifest.json` 的 `deploy` 字段与 `ledger/ops_ledger.md`
 台账的「部署」列；带 `-FailOnDrift` 时漂移即 exit 1（可用于提交前检查）。`README.md` 这类文档
 不进 `bin/`，不计入漂移。
 
@@ -243,7 +243,7 @@ info 表缺失时保留 `9606.ENSP...` 原始 ID 并打 warning，不中断。
 这类**递归目录遍历**命令（`ps`/`pgrep` 遍历 `/proc`，`grep -r`/`find` 走 fts(3) 逐层下降），
 会触发 proot 的路径断言并让**整个容器退出**（Termux 侧 `$PREFIX/var/log/ubuntu-sshd/current` 里留下
 `./path/path.c:546: ... assertion "length1 > 0" failed` + `proot warning: signal 6 received`），
-容器内正在跑的分析任务（含已跑 31 分钟的 SCENIC）随之消失、不留台账。详见 con_hf/pitfalls_ledger.md P-23。
+容器内正在跑的分析任务（含已跑 31 分钟的 SCENIC）随之消失、不留台账。详见 ledger/pitfalls_ledger.md P-23。
 
 判活 / 取证的替代手段（都在容器内安全）：
 
@@ -285,7 +285,7 @@ info 表缺失时保留 `9606.ENSP...` 原始 ID 并打 warning，不中断。
 安全的旁证：本机 `Get-CimInstance Win32_Process` 看 ssh.exe 的 CommandLine（能看到引擎下发的完整远端命令，可用于手工复现），
 以及 Termux 宿主侧 `ssh k40 'ps -eo pid,etime,args \| grep -i proot'`（只判容器是否换 pid）。
 
-详见 con_hf/pitfalls_ledger.md 的 P-23（递归遍历会 abort proot）与 P-24（loadavg 是宿主负载）。
+详见 ledger/pitfalls_ledger.md 的 P-23（递归遍历会 abort proot）与 P-24（loadavg 是宿主负载）。
 
 ## 路径速查
 
@@ -315,23 +315,23 @@ info 表缺失时保留 `9606.ENSP...` 原始 ID 并打 warning，不中断。
    根目录隐藏探针脚本（`.probe_*.sh`、`.run_*.sh`、`.tmp_probe.sh`）、
    `BioanalysDesktop` 下 `.tmp`（ko-gene 测试目录会积累数百个）、`.Temp`、`.uploads`、
    `artifacts`、`console`、`test-results`、`tests\.build`、`server\runtime\.generated`。
-2. 逐项确认零引用：在代码（排除 node_modules/dist）、`docs`、`con_hf` 台账文本里搜目录名。
+2. 逐项确认零引用：在代码（排除 node_modules/dist）、`docs`、`ledger` 与 `workspace/handoff` 文本里搜目录名。
    零引用才进删除清单；有引用的单独记录原因。
 3. 删除必须走带路径守卫的脚本：先 `Resolve-Path`，断言结果以工作区根开头，越界直接跳过。
    删除脚本用完即删，不留工作区。
-4. E2E spool 类（`con_hf/sync/e2e_*`、`portal/inbox/sync_results`）按 mtime 清 7 天前的。
+4. E2E spool 类（`ledger/sync/e2e_*`、`portal/inbox/sync_results`）按 mtime 清 7 天前的。
 
 ### 阶段 B：重复与大体量裁定
 
 1. 重复核查交给子代理做哈希级比对（文件名+大小全量匹配，抽样 SHA256），禁止凭文件名目测判重复。
 2. 大体量目录（>100MB）删除必须用户裁定，逐项列「体量 / 真源在哪 / 删除后果」三要素。
-3. 远端 SSD 为真源的本地回搬副本（`outputs/<项目>`、`local_projects/<项目>/data`），
+3. 远端 SSD 为真源的本地回搬副本（`outputs/<项目>`、`workspace/projects/<项目>/data`），
    删除前确认 `tools/ops/07_pull_outputs.ps1` 可随时拉回。
 4. 不可逆参考数据（如 `cn_debug/scenic_db`）默认保留，重下需要网络的都算不可逆。
-5. 每次清理后：更新 `con_hf/handoff.md` 头部与第二十轮式清理小节，记录删除清单、
+5. 每次清理后：更新 `workspace/handoff/handoff.md` 头部与第二十轮式清理小节，记录删除清单、
    保留裁定与前后磁盘空间；`.gitignore` 同步增补忽略声明，防止已删目录复活。
 
 ### 台账与验收
 
 - 验收判据：`git status --untracked-files=normal` 中临时目录残留为 0；handoff 有本轮记录；磁盘空间变化有数字。
-- 本轮执行记录：2026-10-31 第二十轮，释放约 37 GB（D 盘 47.3→84 GB），详见 `con_hf/handoff.md`。
+- 本轮执行记录：2026-10-31 第二十轮，释放约 37 GB（D 盘 47.3→84 GB），详见 `workspace/handoff/handoff.md`。

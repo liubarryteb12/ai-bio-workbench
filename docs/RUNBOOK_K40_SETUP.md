@@ -81,7 +81,7 @@ cd <项目>_Client_Delivery && sha256sum -c CHECKSUMS.sha256   # 关 3：逐文�
 ## 六点五、交付总账的归档约定（每年一次，不需要代码）
 
 代理侧的脱敏审计流是 append-only 的一行一单，落在
-`local_projects/<项目>/deliverables/acceptance_audit.jsonl`（gitignore 区）。
+`workspace/projects/<项目>/deliverables/acceptance_audit.jsonl`（gitignore 区）。
 单行约 400 字节，一千单也只有 400 KB，所以**不写自动轮转代码**（对抗过度工程化）。
 每年一月开工时手工归档一次即可：
 

@@ -26,7 +26,7 @@ test('listLocalProjectsWithMeta 能发现本地 PRJ_DCM_BENCH_20261105', () => {
 test('listLocalProjectsWithMeta 跳过非法目录名，缺 project.json 时 meta=null，且不递归', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'local-project-list-'));
   try {
-    const root = path.join(tmp, 'local_projects');
+    const root = path.join(tmp, 'workspace/projects');
     fs.mkdirSync(path.join(root, 'PRJ_SAFE'), { recursive: true });
     fs.writeFileSync(
       path.join(root, 'PRJ_SAFE', 'project.json'),
@@ -95,7 +95,7 @@ test('listProjects 成功时合并本地项目，并按 projectId 保留远端 m
 test('/api/projects/list 在远端失败时通过路由注入返回本地项目', async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'projects-list-fallback-'));
   try {
-    const dir = path.join(tmp, 'local_projects', 'PRJ_LOCAL_ONLY');
+    const dir = path.join(tmp, 'workspace/projects', 'PRJ_LOCAL_ONLY');
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(
       path.join(dir, 'project.json'),
@@ -143,7 +143,7 @@ test('/api/figures/source_manifest 静态契约固定项目与线校验及本地
 
   assert.match(block, /resolveProjectParam\(url\)/);
   assert.match(block, /LINES\.includes\(lineId\)/);
-  assert.match(block, /'local_projects'/);
+  assert.match(block, /'workspace\/projects'/);
   assert.match(block, /FIGURE_SOURCE_MANIFEST\.tsv/);
   assert.match(block, /README_FIGURE_SOURCES\.md/);
   assert.doesNotMatch(block, /searchParams\.get\(['"](?:path|file|dir)['"]\)/);
@@ -180,7 +180,7 @@ async function callSourceManifest(repoRoot, query) {
 test('/api/figures/source_manifest 读取本地 manifest 与 README', async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'figure-source-manifest-'));
   try {
-    const dir = path.join(tmp, 'local_projects', 'PRJ_SOURCE', 'figures', 'line3_spatial');
+    const dir = path.join(tmp, 'workspace/projects', 'PRJ_SOURCE', 'figures', 'line3_spatial');
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'FIGURE_SOURCE_MANIFEST.tsv'), 'figure\tsource\nl3_a\tprocessed/a.h5ad\n', 'utf8');
     fs.writeFileSync(path.join(dir, 'README_FIGURE_SOURCES.md'), '# Sources\nLocal provenance\n', 'utf8');

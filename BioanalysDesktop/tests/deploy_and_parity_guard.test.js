@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // 2026-10-21 加固：部署通道与「仓库 -> 引擎实际执行落点」一致性校验的静态守卫。
-// 背景见 con_hf/pitfalls_ledger.md P-20 / P-21 与 con_hf/SPEC_DECISIONS.md D-17 / D-18。
+// 背景见 ledger/pitfalls_ledger.md P-20 / P-21 与 workspace/handoff/SPEC_DECISIONS.md D-17 / D-18。
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..', '..');
 const deployPath = path.join(repoRoot, 'tools', 'ops', '06_deploy_scripts.ps1');

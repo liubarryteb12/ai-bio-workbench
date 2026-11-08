@@ -7,7 +7,7 @@
  * 本文件把这条规范针在母版范围内，防止再次潓现。
  *
  * 范围只包 src/<line>/scripts/ 下的步骤脚本 + core/bridge_guard.sh：
- * reference/ 是只读参考资料（规范不适用），con_hf/ 是台账，docs/ 是规范本身。
+ * reference/ 是只读参考资料（规范不适用），ledger/ 是台账，workspace/handoff/ 是交接，docs/ 是规范本身。
  */
 
 import test from 'node:test';

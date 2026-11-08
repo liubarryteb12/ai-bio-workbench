@@ -146,7 +146,7 @@ test('临时项目交付包包含适配代码、对账报告、公钥与二进�
   fs.rmSync(root, { recursive: true, force: true });
 });
 
-test('local_projects 新目录布局会把 data 与 figures 纳入交付包', { skip: SKIP }, () => {
+test('workspace/projects 新目录布局会把 data 与 figures 纳入交付包', { skip: SKIP }, () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'wp-delivery-layout-'));
   const projectId = 'PRJ_LOCAL_LAYOUT';
   const projectDir = path.join(root, projectId);

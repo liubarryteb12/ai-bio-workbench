@@ -51,7 +51,7 @@ scripts/<step_name>
 ## 壳层书写纪律（写母版与运维脚本时同样适用）
 
 三条来自 2026-10-25 实测的约定：同一难度的活，违反时三次失败，遵守后一次通过。
-完整提示词见 `con_hf/2026-10-25_shell_discipline_prompt.md`，可整段贴给新 agent。
+完整提示词见 `workspace/handoff/archive/2026-10-25_shell_discipline_prompt.md`，可整段贴给新 agent。
 
 1. **多行内容落盘成文件再执行。** 超二十行的代码写进 `.cjs` / `.ps1` / `.md` / `.json`，
    再用 `node 文件` / `pwsh -File 文件` 跑。命令行里出现 `${...}`、`$_`、`$env:`、

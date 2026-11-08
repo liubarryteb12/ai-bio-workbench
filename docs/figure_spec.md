@@ -262,7 +262,7 @@ SCI 期刊对图件的通用要求与本规范的对应关系。**本规范覆�
 `cn_debug/figure_code_audit.py`（源码级静态扫描）。
 
 
-**2026-10-14 全量核查修复**（对照本规范逐条，见 `con_hf/操作台账.md` 续三十）：
+**2026-10-14 全量核查修复**（对照本规范逐条，见 `ledger/操作台账.md` 续三十）：
 
 - 图内字号统一 `>= 8pt`：原多处 5/6/7pt 的 tick 标签、图例、数值标注全部提至 8pt，
   图幅相应放大以免重叠（如 topvar 热图 50 基因名 5pt→8pt，figsize 加高至 14in）。
@@ -277,7 +277,7 @@ SCI 期刊对图件的通用要求与本规范的对应关系。**本规范覆�
 - marker 热图改为行=基因、列=观测（原为行=细胞类型，违反热图方向规范）。
 - line2 图名统一加 `l2_` 前缀，与 line1（`l1_`）/ line3（`l3_`）风格一致。
 
-**2026-10-14 二次核查修复（图例缺失专项，见 `con_hf/踩坑台账.md` #126/#127）**：
+**2026-10-14 二次核查修复（图例缺失专项，见 `ledger/踩坑台账.md` #126/#127）**：
 
 - line3 `01_domains` 逐样本空间域图：补域图例（原只有颜色无说明），图例置轴框外右侧。
 - line3 `02_target_gene` / `03_ko_dr` 逐样本图：colorbar 补 `label`（`expr` / `KO DR expr`）。
@@ -288,7 +288,7 @@ SCI 期刊对图件的通用要求与本规范的对应关系。**本规范覆�
 - 规范图例条升级为硬约束：任何颜色编码分类的图都必须有图例；colorbar 必须带 label；
   分类数超 20 色必须扩色板。
 
-**2026-10-14 三次核查修复（全量 102 张逐张目视审查，见 `con_hf/踩坑台账.md` #128）**：
+**2026-10-14 三次核查修复（全量 102 张逐张目视审查，见 `ledger/踩坑台账.md` #128）**：
 
 - **审查方式**：102 张全部逐张读图（非抽查），4 个审查单元并行，每条线/每张图给出 PASS 或具体问题。
 - line1 `02_pca`：样本标签在点密集处互相重叠 → 引入 `adjustText` 自动避让（新增依赖 adjustText 1.4.0，仅新增自身）。
@@ -298,7 +298,7 @@ SCI 期刊对图件的通用要求与本规范的对应关系。**本规范覆�
 - 误报复核：`l2_07_marker_top5` / `l2_scenic_01` 的 colorbar 实际带 label `z`，`l1_05b` 图例在空白区，三者原本合规，未改动。
 - 复核：修复后对受影响的 line1（15）+ line2（30）再次全量逐张复核，全 PASS。
 
-**2026-10-14 富集出图补齐（见 `con_hf/操作台账.md` 续三十五）**：
+**2026-10-14 富集出图补齐（见 `ledger/操作台账.md` 续三十五）**：
 
 - 新增 `src/line1_bulk/scripts/enrichment_figures`：`l1_13_gsea_top`（GSEA GO BP top20）、
   `l1_14_module_ora_top`（WGCNA 模块 ORA top20）、`l1_15_kegg_top`（KEGG top20）。
@@ -310,7 +310,7 @@ SCI 期刊对图件的通用要求与本规范的对应关系。**本规范覆�
   ORA/KEGG 标 GeneRatio 或 odds ratio + 校正 p）；图注置于轴框外；图例不压数据。
 - 图件数：line1 15→18，line2 30→32，三线合计 102→107。
 
-**2026-10-14 高级分析补图（见 `con_hf/操作台账.md` 续三十六）**：
+**2026-10-14 高级分析补图（见 `ledger/操作台账.md` 续三十六）**：
 
 - 新增 line2 `target_gene_localization`：`l2_13_target_gene_dotplot`（点大小=%表达，颜色=平均表达，
   colorbar 带 label `mean expr (log-norm)`，尺寸图例 `% expressing`）。
@@ -326,7 +326,7 @@ SCI 期刊对图件的通用要求与本规范的对应关系。**本规范覆�
   ctx 原生 repr，含 `np.float64(...)` 调用节点，`ast.literal_eval` 全解析失败）→ 改正则提取
   基因名，修复后 59 边 / 29 TF / 9 DR 靶。
 
-**2026-10-14 line1 hub 基因 ML 模块（见 `con_hf/操作台账.md` 续三十七）**：
+**2026-10-14 line1 hub 基因 ML 模块（见 `ledger/操作台账.md` 续三十七）**：
 
 - 新增 `src/line1_bulk/scripts/ml_hub_analysis`：第一类筛选（LASSO/RFE/单因素）+ 第二类
   重要性评估（RF/GBDT/SHAP/聚类/相关网络），9 张图 `l1_16`–`l1_24`。
@@ -343,7 +343,7 @@ SCI 期刊对图件的通用要求与本规范的对应关系。**本规范覆�
 - `l1_24_corr_network`：共表达网络，边色=Spearman r（RdBu_r + colorbar），边宽∝|r|。
 - 图件数：line1 18→27，三线合计 116→125。
 
-**2026-10-14 功能富集三线补齐（见 `con_hf/操作台账.md` 续三十八）**：
+**2026-10-14 功能富集三线补齐（见 `ledger/操作台账.md` 续三十八）**：
 
 - 核查发现三类缺口：GO CC/MF 三线全缺（line1 `gseGO`/`enrichGO` 只传 ont="BP"，
   line2 库列表只有 GO_BP）；line1 缺 KEGG/Reactome GSEA；line3 完全没有功能富集步骤
@@ -362,7 +362,7 @@ SCI 期刊对图件的通用要求与本规范的对应关系。**本规范覆�
   l1_14 y 标签带本体前缀；新增 l1_25 KEGG GSEA。
 - 图件数：line1 27→28，line3 61→65，三线合计 125→130。
 
-**2026-10-14 line1 ML 配色优化 + SHAP 瀑布图（见 `con_hf/操作台账.md` 续三十九）**：
+**2026-10-14 line1 ML 配色优化 + SHAP 瀑布图（见 `ledger/操作台账.md` 续三十九）**：
 
 - 用户新分析方案对照核查：核心流程（DEG→富集→PPI→hub→LASSO→RF）与进阶分析
   （共表达网络/SHAP/聚类）已全落地，缺的实现项只有 SHAP 瀑布图；其余为配色差异性问题。
@@ -381,7 +381,7 @@ SCI 期刊对图件的通用要求与本规范的对应关系。**本规范覆�
   字号 >= 8pt、colorbar 带 label）。
 - 图件数：line1 28→29，三线合计 130→131。
 
-**2026-10-18 版式统一收口（见 `con_hf/踩坑台账.md` #140–#143）**：
+**2026-10-18 版式统一收口（见 `ledger/踩坑台账.md` #140–#143）**：
 
 用户审图反馈四类版式问题，本轮按 §三之二 / §三之三 收口，17 个出图脚本全部内嵌同一份
 canonical helper（`caption`/`wrap_label`/`fit_text_edges`/`legend_out`/`layout_fix`/`_install_layout_guard`）：
@@ -404,7 +404,7 @@ canonical helper（`caption`/`wrap_label`/`fit_text_edges`/`legend_out`/`layout_
   反而压字，整体回退，并在 §三之三 写明"tick 标签一律不换行"的理由。
 - 图件数不变（line1 29 / line2 37 / line3 69，三线合计 135），本轮为版式重渲染。
 
-**2026-10-19 全量核查与打分系统上线（见 `con_hf/踩坑台账.md` #180、#181–#183）**：
+**2026-10-19 全量核查与打分系统上线（见 `ledger/踩坑台账.md` #180、#181–#183）**：
 
 用户提出五项要求：规范预核查、代码+图片全维度合规、质量打分系统（>=75 达标）、
 WGCNA 分组逻辑专项、统一错误台账。本轮全部落地：
@@ -465,7 +465,7 @@ python3 cn_debug/figure_score.py --dir <图件目录> \
 
 **已知边界**：几何审计靠 patch `matplotlib.Figure.savefig`，**只覆盖 Python 出图**；
 R `png()` 设备的图件（`pca_matrix` / `deg_limma` / `wgcna_modules` 等）跑出来的 `figs=0`
-不代表合规，必须走人工审查登记，或补 R 侧审计（方案待定，见 `con_hf/2026-10-19_figure_polish_plan.md` §待决策）。
+不代表合规，必须走人工审查登记，或补 R 侧审计（方案待定，见 `workspace/handoff/archive/2026-10-19_figure_polish_plan.md` §待决策）。
 
 **实测基线（2026-10-19，PRJ_E2E_GSE277173 / line1_bulk，外部判决导入后）**：
 
@@ -478,7 +478,7 @@ python3 cn_debug/figure_score.py --dir outputs/PRJ_E2E_GSE277173/line1_bulk/figu
 
 9 个 UNVERIFIED 的来源与处置（**不接受"看着没问题就改 PASS"**）：
 6 张 R 图（`l1_02_pca_step3` / `l1_03_volcano_limma` / `l1_28`~`l1_31`，几何审计不覆盖 R，
-走 `con_hf/figure_manual_review.md` 人工清单）、2 张 PPI 图（`ppi_string` 每次重取 STRING API
+走 `ledger/figure_manual_review.md` 人工清单）、2 张 PPI 图（`ppi_string` 每次重取 STRING API
 不可复现，禁跑审计）、1 张陈旧副本（`l1_27_wgcna_mm_gs.png`，远端已无此图，见 FE-017）。
 
 **配套工具链**（三者互补，缺一不可）：

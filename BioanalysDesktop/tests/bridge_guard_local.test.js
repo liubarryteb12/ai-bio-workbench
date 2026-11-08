@@ -4,7 +4,7 @@
  * 真机事故（2026-10-21）：母版跑在计算节点 k40-ubuntu 容器内，守卫却去 ssh k40-ubuntu，
  * 容器里不解析该主机名 → exit 255 → 守卫恒打印 [BRIDGE SKIP]，四项断言在真实主路径上
  * 形同空转（与 D1「桥接断言空转」同一类问题，只是从提交层搬到了执行层）。
- * 修法与口径见 con_hf/SPEC_DECISIONS.md D-14 与 con_hf/pitfalls_ledger.md P-15。
+ * 修法与口径见 workspace/handoff/SPEC_DECISIONS.md D-14 与 ledger/pitfalls_ledger.md P-15。
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

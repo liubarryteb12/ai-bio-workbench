@@ -168,8 +168,8 @@ export function scanTargets({ root = DEFAULT_ROOT, keepDays = DEFAULT_KEEP_DAYS,
   addIfExists('tmp', path.join(root, '.tmp'), '工作区临时目录');
   addIfExists('tmp', path.join(root, 'BioanalysDesktop', '.tmp'), '前后端临时目录');
 
-  // ② 过期解包临时目录：只在 local_projects/<pid>/deliverables 下找
-  const projectsDir = path.join(root, 'local_projects');
+  // ② 过期解包临时目录：只在 workspace/projects/<pid>/deliverables 下找
+  const projectsDir = path.join(root, 'workspace/projects');
   if (fs.existsSync(projectsDir)) {
     for (const pid of fs.readdirSync(projectsDir)) {
       const delDir = path.join(projectsDir, pid, 'deliverables');

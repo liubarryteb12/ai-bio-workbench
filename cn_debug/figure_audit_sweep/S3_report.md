@@ -2,7 +2,7 @@
 
 - 执行时间：2026-10-19 18:25–18:40（本地 CST）/ 10:25–10:35 UTC（远端）
 - 执行者：子 Agent（切片 S3）
-- 依据：`con_hf/dispatch/SUBAGENT_CONTRACT.md`、`con_hf/2026-10-19_figure_polish_plan.md`、`con_hf/踩坑台账.md` #190、本派发单
+- 依据：`workspace/handoff/dispatch/SUBAGENT_CONTRACT.md`、`workspace/handoff/archive/2026-10-19_figure_polish_plan.md`、`ledger/踩坑台账.md` #190、本派发单
 - 结论一句话：3 个脚本审计全部跑通、exit 0，**13 张图全 PASS、fail=0**，`figures/` 32/32 字节未变；`processed/` 仅 `ml_hub_report.txt` 的 `elapsed_seconds` 一行漂移（`seed=20261013` 未被污染），无数据表字节变化、无新增/消失文件；合并后 `figure_audit_line1.csv` 27 行全 PASS，打分 `PASS=11 FAIL=0 UNVERIFIED=22 avg=89.6`（UNVERIFIED 全部来自台账归因缺口 + R 图 + 禁跑的 ppi_string，非本轮审计失败）。
 
 ---
@@ -15,7 +15,7 @@
 （含 S2 的 4 个）与既有 `cn_debug/figure_audit_line1.csv` 合并成一份，喂 `cn_debug/figure_score.py` 取尾部结论。
 
 执行边界（已遵守）：
-- 未跑 `ppi_string`；未 scp 覆盖 `bin/`；未装/升级包；未联网；未改 `src/ ops/ docs/ con_hf/` 下任何文件。
+- 未跑 `ppi_string`；未 scp 覆盖 `bin/`；未装/升级包；未联网；未改 `src/ ops/ docs/ workspace/handoff/archive/` 下任何文件。
 - 审计一律不带 `--write`（输出行均 `write=False`），不落图。
 - 每次审计后立即做双 md5 对照；`processed/` 侧用审计前快照 `/tmp/s3_proc_snapshot_19342/` 做逐行 diff。
 - 本地只写 `cn_debug/figure_audit_sweep/`（CSV + 本 md + 1 个打分日志）与派发单第 5 项明确要求的 `cn_debug/figure_audit_line1.csv`（已先备份，见 §3 与 §9 第 1 条）。
@@ -44,7 +44,7 @@
 - 新建 `cn_debug/figure_audit_sweep/S3_report.md`（本文件）
 - **修改** `cn_debug/figure_audit_line1.csv`：14 行 → 27 行（追加 13 行，全部 PASS；CRLF 保持）
 
-本地（未触碰）：`src/`、`ops/`、`docs/`、`con_hf/`、`cn_debug/figure_score.py`、`cn_debug/figure_code_audit.py`、`cn_debug/code_audit.csv`、`outputs/` 下所有图件与台账。
+本地（未触碰）：`src/`、`ops/`、`docs/`、`workspace/handoff/archive/`、`cn_debug/figure_score.py`、`cn_debug/figure_code_audit.py`、`cn_debug/code_audit.csv`、`outputs/` 下所有图件与台账。
 
 远端（仅 `/tmp` 临时文件，非仓库路径）：
 - `/tmp/s3_figs_before.md5`（32 条）、`/tmp/s3_proc_before.md5`（45 条）、`/tmp/s3_proc_snapshot_19342/`（45 文件 6.2 MB 快照，供 diff）

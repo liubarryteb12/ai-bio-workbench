@@ -3,7 +3,7 @@
 > version 1 | 2026-10-24
 > 上位规范：`docs/topic_sieve_spec.md`（筛子全文，规则正本）。
 > 本文件是**模式 A 的执行规程**：客户给一个方向，AI 按筛子 L0 到 L4 外出调研，回一份带留痕的报告。
-> 与模式 B 的分界见 `con_hf/2026-10-24_topic_sieve_landing_plan.md` 第一节：
+> 与模式 B 的分界见 `workspace/handoff/archive/2026-10-24_topic_sieve_landing_plan.md` 第一节：
 > 模式 A 产出「做什么课题、用哪些数据」这个决策，模式 B 产出「把已定的课题跑出结果」。
 > 本文件不含规则正文，只规定怎么执行；规则判定一律回筛子正本查，不在此复述。
 
@@ -118,7 +118,7 @@ https://ftp.ncbi.nlm.nih.gov/geo/series/GSE<编号去掉末3位>nnn/<GSE>/matrix
 > 不要静默当作空要素卡继续跑 L2 和 L4，那会产出全无推荐的假结论。
 > 根因定位前，把"下钻失败"如实写进报告，比给出一个看起来完整的课题清单更诚实。
 
-> 验证脚本只认 `con_hf/2026-10-24_topic_survey_probe/fetch.cjs`。
+> 验证脚本只认 `workspace/handoff/topic_survey_probe/fetch.cjs`。
 > 同目录的 `probe.cjs` 是调试中间产物，它的 `parseMatrix` 正是坑 2 的错误写法，
 > 运行会静默产出全 UNMAPPED 的分组，**不要用**。
 
@@ -141,14 +141,14 @@ https://ftp.ncbi.nlm.nih.gov/geo/series/GSE<编号去掉末3位>nnn/<GSE>/matrix
 
 ## 六、可执行 runner
 
-本 SOP 的步 2 到步 7 有机器实现，位置 `con_hf/topic_survey/survey_run.mjs`：
+本 SOP 的步 2 到步 7 有机器实现，位置 `workspace/handoff/topic_survey/survey_run.mjs`：
 
 ```bash
-node con_hf/topic_survey/survey_run.mjs "<疾病名>" [--kinds bulk,scrna] [--ticket TSV-xxx]
+node workspace/handoff/topic_survey/survey_run.mjs "<疾病名>" [--kinds bulk,scrna] [--ticket TSV-xxx]
 ```
 
 它做四件事：L0 两道闸、esearch 到 esummary 检索、短名单下钻 series_matrix 填卡、
-L2 六维评分与 L4 九类课题反推。产物落 `con_hf/topic_survey/runs/<疾病>_<日期>.json`，
+L2 六维评分与 L4 九类课题反推。产物落 `workspace/handoff/topic_survey/runs/<疾病>_<日期>.json`，
 结构与结果页 `portal/survey_result.html` 消费的 `result` 字段一致。
 
 **它是参考实现，不是唯一实现**。runner 的价值是给出字段口径与判定顺序，

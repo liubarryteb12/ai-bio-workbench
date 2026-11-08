@@ -29,7 +29,7 @@ const DEFAULT_COMPUTE_NODES = Object.freeze([
 ]);
 
 const DEFAULT_ACTION_FILE = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'con_hf', 'ledger', 'actions.jsonl',
+  path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'ledger', 'actions.jsonl',
 );
 
 const SSH_TARGET_RE = /^[A-Za-z0-9._@:-]+$/;
@@ -545,13 +545,13 @@ function adaptFileName(template) {
   return `adapt_${template.id}${extension}`;
 }
 
-/** 本地项目根可由测试重定向；生产默认仍是仓库 local_projects/ */
+/** 本地项目根可由测试重定向；生产默认仍是仓库 workspace/projects/ */
 export function localAdaptPath(root = process.env.BIO_LOCAL_PROJECTS || REPO_ROOT, projectId, templateId, language = 'r') {
   const safeProject = sanitizeProjectId(projectId);
   if (!safeProject) throw new Error(`project_id 非法: ${projectId}`);
   return path.resolve(
     String(root),
-    'local_projects',
+    'workspace/projects',
     safeProject,
     'figures',
     'adapt',
@@ -562,7 +562,7 @@ export function localAdaptPath(root = process.env.BIO_LOCAL_PROJECTS || REPO_ROO
 function adaptManifestPath(root = process.env.BIO_LOCAL_PROJECTS || REPO_ROOT, projectId) {
   const safeProject = sanitizeProjectId(projectId);
   if (!safeProject) throw new Error(`project_id 非法: ${projectId}`);
-  return path.resolve(String(root), 'local_projects', safeProject, 'figures', 'adapt', 'manifest.json');
+  return path.resolve(String(root), 'workspace/projects', safeProject, 'figures', 'adapt', 'manifest.json');
 }
 
 function readManifest(manifestFile) {
@@ -617,7 +617,7 @@ export function deriveAdaptedFigure({
   }
 
   const safeLine = LINES.includes(lineId) ? lineId : null;
-  const adaptDir = path.resolve(String(root), 'local_projects', safeProject, 'figures', 'adapt');
+  const adaptDir = path.resolve(String(root), 'workspace/projects', safeProject, 'figures', 'adapt');
   fs.mkdirSync(adaptDir, { recursive: true });
   const localPath = path.join(adaptDir, adaptFileName(template));
   let adapted;

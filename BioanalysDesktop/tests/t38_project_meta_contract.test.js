@@ -1,7 +1,7 @@
 /**
  * T3-8 契约：GET /api/projects/meta 的状态码与载荷（第 41 轮，Argon 第 40 轮判据）。
  *
- * 病灶（第 31 轮第四节实测）：磁盘上 local_projects/default/project.json 真实存在，
+ * 病灶（第 31 轮第四节实测）：磁盘上 workspace/projects/default/project.json 真实存在，
  * 但前端首屏请求 meta?project=default 时拿到 404，首屏因此拿不到项目元数据。
  *
  * 本文件钉死三条：
@@ -44,7 +44,7 @@ function makeDeps({ repoRoot, runRemote } = {}) {
 function tmpRepoWithProject(id, payload) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "t38meta-"));
   if (payload !== null) {
-    const dir = path.join(root, "local_projects", id);
+    const dir = path.join(root, "workspace/projects", id);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, "project.json"), JSON.stringify(payload, null, 2));
   }

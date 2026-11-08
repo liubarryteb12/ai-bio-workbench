@@ -10,7 +10,7 @@
  *   6. 报告构建不依赖 BENCHMARK_REPORT.md / INTEGRATED_REPORT.md；
  *   7. 占位 PNG 是合法 300 DPI PNG，清单模式展开正确。
  *
- * 本测试只用临时目录夹具，不读写真实 local_projects。
+ * 本测试只用临时目录夹具，不读写真实 workspace/projects。
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -142,7 +142,7 @@ test('清单模式展开：精确名、星号、编号区间', () => {
 test('sourceManifestStatus 缺文件时返回 ok=false 且不抛异常', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ablation-contract-'));
   try {
-    const projectDir = path.join(tmp, 'local_projects', 'PRJ_X');
+    const projectDir = path.join(tmp, 'workspace/projects', 'PRJ_X');
     fs.mkdirSync(path.join(projectDir, 'figures', 'line3_spatial'), { recursive: true });
     fs.writeFileSync(path.join(projectDir, 'project.json'), '{}', 'utf8');
     let result;
@@ -160,7 +160,7 @@ test('sourceManifestStatus 缺文件时返回 ok=false 且不抛异常', () => {
 test('旧报告缺失时项目仍可被本地发现', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ablation-discover-'));
   try {
-    const projectsRoot = path.join(tmp, 'local_projects');
+    const projectsRoot = path.join(tmp, 'workspace/projects');
     const projectDir = path.join(projectsRoot, 'PRJ_X');
     fs.mkdirSync(projectDir, { recursive: true });
     fs.writeFileSync(
@@ -181,7 +181,7 @@ test('旧报告缺失时项目仍可被本地发现', () => {
 test('sourceManifestStatus 有清单时返回 ok=true', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ablation-manifest-'));
   try {
-    const projectDir = path.join(tmp, 'local_projects', 'PRJ_X');
+    const projectDir = path.join(tmp, 'workspace/projects', 'PRJ_X');
     const lineDir = path.join(projectDir, 'figures', 'line3_spatial');
     fs.mkdirSync(lineDir, { recursive: true });
     fs.writeFileSync(path.join(lineDir, 'FIGURE_SOURCE_MANIFEST.tsv'), 'figure\tsource\tstatus\n', 'utf8');

@@ -17,7 +17,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
 
 /**
- * 目录导入的 materialized 产物（library/figures 与 con_hf/runs/2026-10-27_figure_catalog_adaptation
+ * 目录导入的 materialized 产物（library/figures 与 docs/runs/2026-10-27_figure_catalog_adaptation
  * 的 600+ 文件）全部被 gitignore——catalog.json 登记的是本机导入现场。
  * 便携包与新克隆没有这些数据，pilot 解析与逐项校验必须如实跳过，
  * 而不是把「数据缺失」报成「代码错误」。

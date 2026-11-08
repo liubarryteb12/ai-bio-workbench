@@ -317,7 +317,7 @@ export async function handleFiguresRoutes(req, res, url, {
     }
 
     // 只读固定的本地项目图件目录，project 与 line 都已通过白名单校验。
-    const localRoot = path.resolve(REPO_ROOT, 'local_projects');
+    const localRoot = path.resolve(REPO_ROOT, 'workspace/projects');
     const figureDir = path.resolve(localRoot, projectId, 'figures', lineId);
     if (!figureDir.startsWith(localRoot + path.sep)) {
       json(res, 400, { error: '图件来源路径越界' });

@@ -63,7 +63,7 @@ function check(name, ok, detail = '') {
 /**
  * 容器活性：能跑通一条最小命令即视为活着。
  * 刻意不用 ps / pgrep —— 它们遍历 /proc 会触发 proot 的 path.c 断言并 abort 整个容器，
- * 把正在跑的分析任务一起杀掉（2026-10-21 实测，见 con_hf/pitfalls_ledger.md P-23）。
+ * 把正在跑的分析任务一起杀掉（2026-10-21 实测，见 ledger/pitfalls_ledger.md P-23）。
  */
 function containerAlive() {
   try {

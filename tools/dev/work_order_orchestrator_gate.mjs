@@ -10,7 +10,17 @@ const LEDGER = path.join(REPO, 'docs', 'WORK_ORDER_ORCHESTRATOR_REPORT.md');
 
 function writeLedger(text) {
   fs.mkdirSync(path.dirname(LEDGER), { recursive: true });
-  fs.writeFileSync(LEDGER, text, 'utf8');
+  let lastError = null;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    try {
+      fs.writeFileSync(LEDGER, text, 'utf8');
+      return null;
+    } catch (cause) {
+      lastError = cause;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100 * (attempt + 1));
+    }
+  }
+  return lastError;
 }
 
 async function main() {
@@ -109,7 +119,11 @@ async function main() {
     '',
     failed.length ? 'WORK_ORDER_ORCHESTRATOR_GATE_FAILED' : 'WORK_ORDER_ORCHESTRATOR_GATE_OK',
   ];
-  writeLedger(lines.join('\n') + '\n');
+  const writeError = writeLedger(lines.join('\n') + '\n');
+  if (writeError) {
+    console.error(`[RED] 报告落盘: ${writeError.message || writeError}`);
+    return 1;
+  }
   for (const item of failed) console.error(`[RED] ${item.name}: ${item.detail}`);
   if (failed.length) return 1;
   console.log('WORK_ORDER_ORCHESTRATOR_GATE_OK');

@@ -29,8 +29,8 @@ param(
     [string]$PortalBase = ($env:PORTAL_BASE ? $env:PORTAL_BASE : 'http://127.0.0.1:8080'),
     [string]$SyncToken = $env:SYNC_TOKEN,
     [int]$BatchSize = ($env:SYNC_BATCH ? [int]$env:SYNC_BATCH : 1),
-    [string]$SpoolRoot = 'con_hf/sync/outbox',
-    [string]$ActionsPath = 'con_hf/ledger/actions.jsonl',
+    [string]$SpoolRoot = 'ledger/sync/outbox',
+    [string]$ActionsPath = 'ledger/actions.jsonl',
     [switch]$Once,
     [int]$IntervalSec = 30,
     [int]$BackoffSeconds = 1,
@@ -246,7 +246,7 @@ function Build-RealResultFiles {
     param([string]$ProjectId, [object]$ReportResult)
     $resultFiles = @()
     $totalBytes = 0
-    $projectRoot = Join-Path (Join-Path $RepoRoot 'local_projects') $ProjectId
+    $projectRoot = Join-Path (Join-Path $RepoRoot 'workspace/projects') $ProjectId
     $deliverRoot = Join-Path $projectRoot 'deliverables'
     foreach ($file in @($ReportResult.response.files)) {
         $leaf = Split-Path -Leaf ([string]$file.name)

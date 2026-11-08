@@ -179,19 +179,19 @@ test('adapt manifest maps project-local copies to per-line delivery paths', () =
     pairs[0].remote,
     '/mnt/ssd/bio_data/projects/project_alpha/line1_bulk/scripts/adapt_fig_l2_volcano.R',
   );
-  assert.ok(!path.relative(path.join(localRoot, 'local_projects', projectId), pairs[0].local).startsWith('..'));
+  assert.ok(!path.relative(path.join(localRoot, 'workspace/projects', projectId), pairs[0].local).startsWith('..'));
 });
 
 test('adapt manifest rejects corrupted paths and foreign lines', () => {
   const localRoot = makeLocalRoot('corrupt-');
   const projectId = 'project_alpha';
-  fs.mkdirSync(path.join(localRoot, 'local_projects', projectId, 'figures', 'adapt'), { recursive: true });
+  fs.mkdirSync(path.join(localRoot, 'workspace/projects', projectId, 'figures', 'adapt'), { recursive: true });
   fs.writeFileSync(
-    path.join(localRoot, 'local_projects', projectId, 'figures', 'adapt', 'manifest.json'),
+    path.join(localRoot, 'workspace/projects', projectId, 'figures', 'adapt', 'manifest.json'),
     JSON.stringify([
-      { local_path: 'local_projects/project_alpha/figures/adapt/fig.R', line_id: 'line1_bulk' },
-      { local_path: 'local_projects/project_beta/figures/adapt/fig.R', line_id: 'line1_bulk' },
-      { local_path: 'local_projects/project_alpha/figures/adapt/fig.R', line_id: 'line2_scrna' },
+      { local_path: 'workspace/projects/project_alpha/figures/adapt/fig.R', line_id: 'line1_bulk' },
+      { local_path: 'workspace/projects/project_beta/figures/adapt/fig.R', line_id: 'line1_bulk' },
+      { local_path: 'workspace/projects/project_alpha/figures/adapt/fig.R', line_id: 'line2_scrna' },
     ]),
     'utf8',
   );

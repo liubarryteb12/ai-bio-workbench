@@ -2,11 +2,11 @@
 
 日期 2026-11-08｜目标项目 `PRJ_DCM_BENCH_20261105`｜隔离根 `.tmp/project_content_ablation/<run_id>/`
 
-> 本实验只在 `.tmp/project_content_ablation/` 的临时副本上删除内容。真实 `local_projects` 未改动，母版未改动，生信分析代码未重跑。
+> 本实验只在 `.tmp/project_content_ablation/` 的临时副本上删除内容。真实 `workspace/projects` 未改动，母版未改动，生信分析代码未重跑。
 
 ## 1. 方法与边界
 
-- 每个消融场景独立建一份最小骨架副本，副本位于 `.tmp/project_content_ablation/<run_id>/scenarios/<scenario>/local_projects/PRJ_DCM_BENCH_20261105/`。
+- 每个消融场景独立建一份最小骨架副本，副本位于 `.tmp/project_content_ablation/<run_id>/scenarios/<scenario>/workspace/projects/PRJ_DCM_BENCH_20261105/`。
 - 骨架包含 `project.json`、三条线的 PNG 名称、`FIGURE_SOURCE_MANIFEST.tsv`、`README_FIGURE_SOURCES.md`、`BENCHMARK_REPORT.md`、`INTEGRATED_REPORT.md`、`FINAL_SEAL_REPORT.md`，以及 `scripts/resume_benchmark.sh`（存在时复制）。已退役组图会显式补出占位文件，确保组图消融场景有物可删。
 - PNG 默认写成声明 300 DPI 的 tiny 占位图；设置 `ABLATION_COPY_REAL_PNGS=1` 可改为复制少量真实 PNG，复制上限由 `ABLATION_MAX_REAL_PNGS` 控制。
 - 项目发现判据复刻 `listLocalProjectsWithMeta` 的目录扫描与 `project.json` 读取逻辑，不启动服务。

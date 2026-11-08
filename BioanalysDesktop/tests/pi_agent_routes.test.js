@@ -191,7 +191,7 @@ test('POST 成功后按远程实际状态回显并写台账', async () => {
     model: 'glm-5.3-flash',
   });
   const entry = JSON.parse(
-    fs.readFileSync(path.join(ledgerRoot, 'con_hf', 'ledger', 'actions.jsonl'), 'utf8').trim()
+    fs.readFileSync(path.join(ledgerRoot, 'ledger', 'actions.jsonl'), 'utf8').trim()
   );
   assert.deepEqual(entry.detail, {
     actual_provider: 'zai',
@@ -224,7 +224,7 @@ test('POST 远程实际模型与请求不一致时返回 509 并写台账', asyn
     actual: { provider: 'deepseek', model: 'deepseek-v4.1-flash' },
   });
   const entry = JSON.parse(
-    fs.readFileSync(path.join(ledgerRoot, 'con_hf', 'ledger', 'actions.jsonl'), 'utf8').trim()
+    fs.readFileSync(path.join(ledgerRoot, 'ledger', 'actions.jsonl'), 'utf8').trim()
   );
   assert.deepEqual(entry.detail, {
     requested_provider: 'zai',
@@ -296,7 +296,7 @@ test('dispatch 兼容 JSON-RPC result 包裹的任务对象', async () => {
     '/api/pi-agent/task?id=task-123'
   );
   const entry = JSON.parse(
-    fs.readFileSync(path.join(ledgerRoot, 'con_hf', 'ledger', 'actions.jsonl'), 'utf8').trim()
+    fs.readFileSync(path.join(ledgerRoot, 'ledger', 'actions.jsonl'), 'utf8').trim()
   );
   assert.deepEqual(entry.detail, {
     prompt: 'ping',
@@ -309,7 +309,7 @@ test('dispatch 兼容 JSON-RPC result 包裹的任务对象', async () => {
 test('GET task 通过 GetTask 读取异步任务状态', async () => {
   const captureSink = capture();
   let observedId = '';
-  // ledgerRoot 注入临时目录：task_poll 会写 actions 台账，测试不得污染 con_hf/ledger/ 正本
+  // ledgerRoot 注入临时目录：task_poll 会写 actions 台账，测试不得污染 ledger/ 正本
   const ledgerRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'pi-task-ledger-'));
   await handlePiAgentRoutes(
     makeRequest('GET', '/api/pi-agent/task?id=task-456'),
@@ -406,7 +406,7 @@ test('daemon logs 保留原始行，不按 transcript 解析成空数组', async
 test('appendPiLedger 追加 JSONL，解析失败电池字段降级', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pi-ledger-'));
   appendPiLedger('probe', { ok: true }, root);
-  const lines = fs.readFileSync(path.join(root, 'con_hf', 'ledger', 'actions.jsonl'), 'utf8')
+  const lines = fs.readFileSync(path.join(root, 'ledger', 'actions.jsonl'), 'utf8')
     .trim()
     .split('\n');
   assert.equal(lines.length, 1);

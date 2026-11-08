@@ -37,7 +37,7 @@ function textOf(html) {
 }
 
 function reportFiles() {
-  const base = path.join(REPO, "local_projects");
+  const base = path.join(REPO, "workspace/projects");
   const out = [];
   if (!fs.existsSync(base)) return out;
   for (const proj of fs.readdirSync(base)) {

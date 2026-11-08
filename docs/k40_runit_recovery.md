@@ -1,7 +1,7 @@
 # K40 Termux 宿主面 runit 故障根因与恢复手册
 
 > 2026-11-01 实测结论。本文件记录**已验证的事实**，不写推测。
-> 相关：con_hf/pitfalls_ledger.md P-23/P-26，技术债 5.3。
+> 相关：ledger/pitfalls_ledger.md P-23/P-26，技术债 5.3。
 
 ## 一、已验证的根因链（按实测顺序）
 

@@ -22,16 +22,16 @@ import { fileURLToPath } from 'node:url';
 const DEFAULT_REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
 /**
- * 读本地项目元数据（local_projects/<id>/project.json）。
+ * 读本地项目元数据（workspace/projects/<id>/project.json）。
  *
  * 为什么需要它（T3-5）：meta 接口历史上只读远端 K40 的 project.json，
- * 而默认项目 default 在本机 local_projects/default/project.json 是有内容的。
+ * 而默认项目 default 在本机 workspace/projects/default/project.json 是有内容的。
  * 远端没有该文件时接口直接 404，前端因此永远拿不到出图配置。
  * 回落只读本地这一个确定位置，不猜路径、不越界。
  */
 function readLocalProjectMeta(repoRoot, projectId) {
   if (!repoRoot) return null;
-  const file = path.join(repoRoot, 'local_projects', projectId, 'project.json');
+  const file = path.join(repoRoot, 'workspace/projects', projectId, 'project.json');
   try {
     if (!fs.existsSync(file)) return null;
     return JSON.parse(fs.readFileSync(file, 'utf8'));

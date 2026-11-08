@@ -74,7 +74,7 @@ export function checkTumorBlacklist(text) {
  * keys 只列"固定语义字段"作为保底；调用方传入的其余 key（group_* / focus_gene_*）
  * 一律全量扫描。此前这里把 keys 当成唯一扫描范围，导致分组名与关注基因
  * 虽然被调用方塞进 fields 却从未真正过检（字段白名单硬编码的经典坑，
- * 见 con_hf/踩坑台账.md #153）。
+ * 见 ledger/踩坑台账.md #153）。
  * @param {object} fields
  * @returns {{hit: boolean, matches: string[], field: string|null}}
  */

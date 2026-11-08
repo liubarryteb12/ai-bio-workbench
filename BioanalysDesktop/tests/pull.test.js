@@ -16,7 +16,7 @@ const { LINES, projectLineDir } = await import('../server/domain.js');
 
 test.after(() => fs.rmSync(TMP_ROOT, { recursive: true, force: true }));
 
-test('本地项目根可被 BIO_LOCAL_OUTPUTS 覆盖（测试不污染真实 local_projects）', () => {
+test('本地项目根可被 BIO_LOCAL_OUTPUTS 覆盖（测试不污染真实 workspace/projects）', () => {
   assert.equal(LOCAL_OUTPUTS_ROOT, path.resolve(TMP_ROOT));
 });
 
@@ -54,7 +54,7 @@ test('planPull：force=true 时全部重拉', () => {
   assert.equal(pull.length, 1);
 });
 
-test('localLineDir：图件落点固定在 local_projects/<项目>/figures/<线>', () => {
+test('localLineDir：图件落点固定在 workspace/projects/<项目>/figures/<线>', () => {
   for (const line of LINES) {
     assert.equal(localLineDir('PRJ_X', line), path.join(TMP_ROOT, 'PRJ_X', 'figures', line));
     assert.equal(localDataDir('PRJ_X', line, 'results'),

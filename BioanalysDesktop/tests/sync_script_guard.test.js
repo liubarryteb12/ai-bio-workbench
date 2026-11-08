@@ -1,8 +1,8 @@
 /**
  * 同步脚本与进程接缝的防回归断言（静态）。
  *
- * 这些坑都是真机上真踩出来的，修法写在 con_hf/SPEC_DECISIONS.md D-08/D-09 与
- * con_hf/pitfalls_ledger.md P-04/P-07/P-08/P-09/P-10 里。本文件只做静态文本断言，
+ * 这些坑都是真机上真踩出来的，修法写在 workspace/handoff/SPEC_DECISIONS.md D-08/D-09 与
+ * ledger/pitfalls_ledger.md P-04/P-07/P-08/P-09/P-10 里。本文件只做静态文本断言，
  * 不执行 PowerShell、不连远端，保证在任何机器上都能跑。
  */
 import test from 'node:test';
@@ -78,8 +78,8 @@ test('同步脚本保留 LF 校验与远端预检两个前置步骤', () => {
   assert.ok(syncText.includes('[PRE ]'), '缺远端预检输出（先比后传才能发现漂移）');
 });
 
-test('同步脚本把每次同步追加进 con_hf/ops_ledger.md', () => {
-  assert.ok(syncText.includes('con_hf/ops_ledger.md'), '缺台账落点');
+test('同步脚本把每次同步追加进 ledger/ops_ledger.md', () => {
+  assert.ok(syncText.includes('ledger/ops_ledger.md'), '缺台账落点');
   assert.ok(
     syncText.includes('AppendAllText') || syncText.includes('Add-Content'),
     '台账不是追加写'

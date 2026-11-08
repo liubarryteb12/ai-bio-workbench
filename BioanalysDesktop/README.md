@@ -1,7 +1,7 @@
 # BioanalysDesktop — 本地交互层
 
 > 本目录是工作台的**本地交互层**，按用户指定的软件形态构建。
-> 规格见 `con_hf/SPEC-bioanalysdesktop.md`（v0.2），术语见 `GLOSSARY.md`。
+> 规格见 `workspace/handoff/SPEC-bioanalysdesktop.md`（v0.2），术语见 `GLOSSARY.md`。
 
 ## 一句话定位
 

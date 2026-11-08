@@ -446,7 +446,7 @@ function fakeReq(chunks) {
   return req;
 }
 
-/** ledgerRoot 注入临时目录：心跳会写 actions 台账，测试不得污染 con_hf/ledger 正本 */
+/** ledgerRoot 注入临时目录：心跳会写 actions 台账，测试不得污染 ledger 正本 */
 function tempLedgerRoot() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'pi-body-limit-'));
 }

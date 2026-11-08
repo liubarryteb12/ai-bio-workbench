@@ -64,7 +64,7 @@ export function parseBattery(raw) {
 
 export function appendPiLedger(action, details, root = process.cwd()) {
   try {
-    const dir = path.join(root, 'con_hf', 'ledger');
+    const dir = path.join(root, 'ledger');
     fs.mkdirSync(dir, { recursive: true });
     fs.appendFileSync(
       path.join(dir, 'actions.jsonl'),

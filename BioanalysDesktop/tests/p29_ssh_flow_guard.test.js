@@ -1,7 +1,7 @@
 /**
  * 回归守卫：runner 不得用高频/并发 ssh 把 proot 的 15 秒 abort 环喂着（P-29）。
  *
- * 背景（con_hf/pitfalls_ledger.md P-29，2026-10-23 实测）：
+ * 背景（ledger/pitfalls_ledger.md P-29，2026-10-23 实测）：
  * proot 每 15 秒 abort 的充分条件是 ssh 连接流，不是 /tmp 堆积（P-28 已推翻），
  * 也不是计算负载。停轮询后静默 3 分钟 abort 零增长，而 12 个并发 Accepted 之后
  * 71 秒内 abort 立刻恢复。

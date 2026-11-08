@@ -22,7 +22,7 @@ test("门禁可通过：全部产线图件 300 DPI", () => {
 });
 
 test("pHYs 解析正确：已知 300dpi PNG 读出的 DPI 是 300", () => {
-  const png = path.join(REPO, "local_projects", "PRJ_DCM_BENCH_20261105", "figures", "line1_bulk", "l1_01_correlation.png");
+  const png = path.join(REPO, "workspace/projects", "PRJ_DCM_BENCH_20261105", "figures", "line1_bulk", "l1_01_correlation.png");
   assert.ok(fs.existsSync(png), "测试夹具缺失");
   const buf = fs.readFileSync(png);
   const dpi = readPngDpi(buf);
@@ -32,7 +32,7 @@ test("pHYs 解析正确：已知 300dpi PNG 读出的 DPI 是 300", () => {
 });
 
 test("IHDR 解析正确：尺寸与实际像素一致", () => {
-  const png = path.join(REPO, "local_projects", "PRJ_DCM_BENCH_20261105", "figures", "line1_bulk", "l1_01_correlation.png");
+  const png = path.join(REPO, "workspace/projects", "PRJ_DCM_BENCH_20261105", "figures", "line1_bulk", "l1_01_correlation.png");
   const size = readPngSize(fs.readFileSync(png));
   assert.ok(size);
   assert.ok(size.width > 0 && size.height > 0);
@@ -52,7 +52,7 @@ test("门禁分档：产线项目强制、历史项目只报告", () => {
 });
 
 test("产线项目单独扫描全部合规", () => {
-  const out = execFileSync(process.execPath, [GATE, "--dir", "local_projects/PRJ_DCM_BENCH_20261105"],
+  const out = execFileSync(process.execPath, [GATE, "--dir", "workspace/projects/PRJ_DCM_BENCH_20261105"],
     { cwd: REPO, encoding: "utf8" });
   assert.match(out, /FIGURE_SPEC_OK/);
   assert.doesNotMatch(out, /FIGURE_SPEC_FAIL/);

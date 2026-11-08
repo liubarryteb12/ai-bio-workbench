@@ -1,6 +1,6 @@
 """出图主题层 · Python 侧（只补模板与 guard 都没覆盖的两项：字体族、线宽/点大小）。
 
-为什么只有两项：见 con_hf/dispatch/S4_python_theme_gap.md 的覆盖对照表——
+为什么只有两项：见 workspace/handoff/dispatch/S4_python_theme_gap.md 的覆盖对照表——
 DPI/画幅/字号/图例外置/spines/tick 旋转/脚注栏/角标已由
 tools/ops/layout_autoload/sitecustomize.py + tools/reporting/layout_helper.py 的 SCI 模板实现，
 长标签折行/文本收边/落盘收口已由脚本内嵌 layout guard 实现。

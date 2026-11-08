@@ -35,7 +35,7 @@ export const DATA_EXT = SHARED_DATA_EXT;
 
 /**
  * 单文件体积上限（字节）。2026-10-20 用户拍板 5 GiB；依据：单细胞/空间 RAW tar
- * 常见 1–3GB，IS 项目 line3 原始包实测 1.89GB（con_hf/handoff.md 有记录）。
+ * 常见 1–3GB，IS 项目 line3 原始包实测 1.89GB（workspace/handoff/handoff.md 有记录）。
  * 默认值（5 GiB）的唯一来源是 shared/data_formats.mjs 的 MAX_DATA_BYTES；
  * 可用环境变量 PORTAL_MAX_DATA_BYTES（字节数）覆盖，仅为让超限负路径可被真测，
  * 默认行为不变；validateDataFiles 与 serve.mjs 均 import 本常量，覆盖后两端同步生效。

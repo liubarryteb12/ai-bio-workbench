@@ -175,7 +175,7 @@ pwsh -File ops/09_package_delivery.ps1 -Project <project_id> [-Line <line_id>] [
 | `tools/ops/07_pull_outputs.ps1` | 本地回搬通道，与本脚本正交：07 是"服务器到本地存档"，09 是"服务器到客户交付包" |
 | `run_throttled_task.sh` | 不调用。打包是 IO 轻任务，不走绑核包装器，也不产生任务台账 |
 | `system_logs/` | 只读，用于门禁判断与摘要，不写入新台账 |
-| `con_hf/` 台账 | 打包完成后由代理追加一条操作台账（做了什么 / 包路径 / 文件数 / 校验结果） |
+| `ledger/ops_ledger.md` 台账 | 打包完成后由代理追加一条操作台账（做了什么 / 包路径 / 文件数 / 校验结果） |
 | 工作台前端 | 无交互入口，纯命令行工具；后续如需按钮，再单独评估 |
 
 ## 十、验收清单（实现后自测项）

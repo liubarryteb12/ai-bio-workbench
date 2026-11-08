@@ -48,12 +48,12 @@ workbench:
   rationale: MIGRATION.md W6 评估结论
 
 workspace:
-  status: "W8 待迁入"
-  planned_from: [local_projects]
+  status: "W8 已迁入（projects + handoff）"
+  assets: [workspace/projects/INDEX.md, workspace/handoff/handoff.md]
 
 ledger:
-  status: "W8 待迁入"
-  planned_from: [con_hf/ledger]
+  status: "W8 已迁入（五类 JSONL + 运维台账 + sync）"
+  assets: [ledger/actions.jsonl, ledger/sync]
 
 references:
   status: "W9 改名自 reference/"

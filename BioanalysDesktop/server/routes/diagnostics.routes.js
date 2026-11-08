@@ -156,7 +156,7 @@ export async function handleDiagnosticsRoutes(req, res, url, {
     } catch (cause) {
       json(res, 500, {
         error: cause instanceof Error ? cause.message : String(cause),
-        hint: '先跑一次链路自检定位，或查看 con_hf/踩坑台账.md',
+        hint: '先跑一次链路自检定位，或查看 ledger/踩坑台账.md',
       });
       return true;
     }

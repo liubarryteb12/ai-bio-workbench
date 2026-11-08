@@ -34,7 +34,7 @@
 5. 逐项调 `/api/tasks/submit`，串行等待 `/api/tasks` 与 `/api/ledger/check`，完成回执必须满足：项目、线、步骤、状态、退出码、seed、台账回执与产物清单吻合。
 6. 上游失败即停止派发，不继续下游，不构建报告。
 7. 全部成功后调 `/api/report/build`，要求四关验收哨兵，再用 `/api/report/files` 复核 `delivery_verified=true` 与两份解读报告、交付 tar 包。
-8. 通过后在 `local_projects/<projectId>/report/` 写 `Project_Summary.md` 与 `work_order.receipt.json`。汇总与回执只含业务状态、产物名与机密脱敏后的相对路径，不含机器名、运行环境、绝对路径或内部脚本目录。
+8. 通过后在 `workspace/projects/<projectId>/report/` 写 `Project_Summary.md` 与 `work_order.receipt.json`。汇总与回执只含业务状态、产物名与机密脱敏后的相对路径，不含机器名、运行环境、绝对路径或内部脚本目录。
 
 ## 运行
 

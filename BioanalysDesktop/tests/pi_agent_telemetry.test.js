@@ -176,7 +176,7 @@ test('重建路由在侧车拉起后返回 200 并写审计台账', async () => 
   assert.equal(payload.after_code, '200');
   assert.equal(payload.telemetry_status, 'ok');
 
-  const ledger = fs.readFileSync(path.join(ledgerRoot, 'con_hf', 'ledger', 'actions.jsonl'), 'utf8');
+  const ledger = fs.readFileSync(path.join(ledgerRoot, 'ledger', 'actions.jsonl'), 'utf8');
   assert.match(ledger, /pi_agent_telemetry_restart/);
   fs.rmSync(ledgerRoot, { recursive: true, force: true });
 });

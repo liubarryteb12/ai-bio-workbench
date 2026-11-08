@@ -433,7 +433,7 @@ function blockedStages() {
 }
 
 function writeLocalArtifacts(repoRoot, projectId, summary, receipt) {
-  const projectDir = path.join(repoRoot, 'local_projects', projectId);
+  const projectDir = path.join(repoRoot, 'workspace/projects', projectId);
   const reportDir = path.join(projectDir, 'report');
   fs.mkdirSync(reportDir, { recursive: true });
   const summaryFile = path.join(reportDir, 'Project_Summary.md');

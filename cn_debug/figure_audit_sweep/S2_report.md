@@ -2,7 +2,7 @@
 
 - 执行时间：2026-10-19 17:39–17:52（本地 CST）/ 09:39–09:52 UTC（远端）
 - 执行者：子 Agent（切片 S2）
-- 依据：`con_hf/dispatch/SUBAGENT_CONTRACT.md`、`con_hf/2026-10-19_figure_polish_plan.md`、本派发单
+- 依据：`workspace/handoff/dispatch/SUBAGENT_CONTRACT.md`、`workspace/handoff/archive/2026-10-19_figure_polish_plan.md`、本派发单
 - 结论一句话：4 个脚本的审计命令全部跑通、CSV 全部回收；**其中 2 个（pca_matrix / deg_limma）实为 R 脚本，几何审计 figs=0，属派发单前提错误 + 已知 R 覆盖缺口，非代码故障**；另发现 1 个 P0 级副作用（见 §5.6、§6），必须由主 Agent 裁决处理。
 
 ---
@@ -16,7 +16,7 @@
 - 只读 `bin/line1_bulk/`、`projects/PRJ_E2E_GSE277173/line1_bulk/`；未 scp 覆盖任何 `bin/` 文件；未装包；未联网。
 - 未跑 `ppi_string` / `ml_model` / `external_validation` / `ml_hub_analysis`（主 Agent 保留项）。
 - 审计未传 `--write`（输出行均为 `write=False`），图件未被重渲染落盘（md5 佐证见 §5.3）。
-- 本地只写 `cn_debug/figure_audit_sweep/` 下 4 个 CSV + 本 md；未改 `src/` `ops/` `docs/` `con_hf/`。
+- 本地只写 `cn_debug/figure_audit_sweep/` 下 4 个 CSV + 本 md；未改 `src/` `ops/` `docs/` `workspace/handoff/archive/`。
 
 ## 2. 实现摘要
 
@@ -193,7 +193,7 @@ INFO 提示（不计 FAIL）：`l1_02_pca`/`l1_05a`/`l1_05b`/`l1_09` 各有 1–
 | ppi_string / ml_model / external_validation / ml_hub_analysis | 按派发单跳过 | — | 主 Agent 保留项 |
 
 **派发单前提与实测冲突**：派发单称这 4 个都是「Python 出图脚本」，实测 pca_matrix、deg_limma 无任何 python3 块，是纯 R 脚本；
-`con_hf/2026-10-19_figure_polish_plan.md` §0 缺口 1 也已把 `l1_02_pca_step3` / `l1_03_volcano_limma` 归为「6 张 R 图无机器判决」。
+`workspace/handoff/archive/2026-10-19_figure_polish_plan.md` §0 缺口 1 也已把 `l1_02_pca_step3` / `l1_03_volcano_limma` 归为「6 张 R 图无机器判决」。
 两者矛盾，按契约不擅自选边：本切片照跑留证（figs=0 即证据），判决方案交主 Agent（S3）。
 
 ### 5.6 A3 补充：图件未被改写 + 意外副作用

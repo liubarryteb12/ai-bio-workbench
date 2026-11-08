@@ -13,7 +13,7 @@ import { fileURLToPath } from "url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const SCRIPT = path.join(REPO, ".tmp", "dcm_bench", "l2", "lineage_exclusivity.py");
-const REPORT = path.join(REPO, "local_projects", "PRJ_DCM_BENCH_20261105", "results", "line2_scrna", "lineage_exclusivity.json");
+const REPORT = path.join(REPO, "workspace/projects", "PRJ_DCM_BENCH_20261105", "results", "line2_scrna", "lineage_exclusivity.json");
 const src = fs.readFileSync(SCRIPT, "utf8");
 const j = JSON.parse(fs.readFileSync(REPORT, "utf8"));
 

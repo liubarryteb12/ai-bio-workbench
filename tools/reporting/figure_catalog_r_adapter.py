@@ -661,7 +661,7 @@ def main(argv=None):
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("con_hf/runs/2026-10-27_figure_catalog_adaptation/r_adapter"),
+        default=Path("docs/runs/2026-10-27_figure_catalog_adaptation/r_adapter"),
     )
     parser.add_argument("--seed", default=None)
     parser.add_argument("--host", default="k40-ubuntu")

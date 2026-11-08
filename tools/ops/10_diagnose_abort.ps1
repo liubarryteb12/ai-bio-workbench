@@ -1,7 +1,7 @@
 <#
   tools/ops/10_diagnose_abort.ps1  :   proot abort 分诊器（只读诊断，不改任何状态）
 
-  判据来自 con_hf/pitfalls_ledger.md 的 P-23、P-28、P-29 三条，按下列同形现象分诊：
+  判据来自 ledger/pitfalls_ledger.md 的 P-23、P-28、P-29 三条，按下列同形现象分诊：
     P-29  ssh 连接流喂饱 abort 环：严格 15 秒周期，无人操作也崩，abort pid 每次不同
     P-23  容器内跑了 proot 敏感命令：自己敲过 find / ps / grep -r / proc 遍历后当场崩
     P-28  /tmp 堆积（已推翻为根因，仅作卫生项复查）
@@ -133,7 +133,7 @@ if ($hasSensitive) {
 } else {
   Write-Host ''
   Write-Host '[abort-diag] 判定 = 未归类（有 abort 但不同形于 P-23 / P-29）' -ForegroundColor Yellow
-  Write-Host '  下一步：贴 logcat 原始行进 con_hf/pitfalls_ledger.md 追加新条目，'
+  Write-Host '  下一步：贴 logcat 原始行进 ledger/pitfalls_ledger.md 追加新条目，'
   Write-Host '          先建 tight red 反馈环再建理论（AGENTS.md 第五节）。'
   $script:Verdict = 'unclassified'
 }

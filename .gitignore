@@ -26,53 +26,53 @@ ops/encoding_backup/
 inbox/
 portal/inbox/
 runs/
-con_hf/runs/
+docs/runs/
 agent_bio_stack/index/
 agent_bio_stack/n8n/.runtime/
 uploads/
 .uploads/
 
 # ===== 本地项目运行载荷，保留项目元数据与台账 =====
-local_projects/*/data/
-local_projects/*/figures/
-local_projects/*/debug/
-local_projects/*/deliverables/
-local_projects/default/
-local_projects/PRJ_20261019_IS_lactylation/
-!local_projects/PRJ_AIMS_V3_20261027/figures/
-!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/
-!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l2_heatmap.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l2_pca.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l2_volcano.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_groupedbar.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_scatter.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_boxplot.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_density.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_histogram.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_violin.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l3_multipanel.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l3_sankey.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_04_topvar_heatmap.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_02_pca.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_03_volcano_limma.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_ridgeline.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_upsetplot.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_vennplot.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/
-!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_dotplot.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_volcano.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2_umap.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_violin.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_scatterplot.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_barplot.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_boxplot.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_heatmap.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/l2_13_target_gene_dotplot.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/l2_08_deg_volcano_basal_keratinocyte.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/
-!local_projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/custom_fig_l2p_umap.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/l3_human_06_umap_sample.png
-con_hf/sync/
+workspace/projects/*/data/
+workspace/projects/*/figures/
+workspace/projects/*/debug/
+workspace/projects/*/deliverables/
+workspace/projects/default/
+workspace/projects/PRJ_20261019_IS_lactylation/
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l2_heatmap.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l2_pca.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l2_volcano.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_groupedbar.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_scatter.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_boxplot.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_density.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_histogram.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_violin.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l3_multipanel.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l3_sankey.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_04_topvar_heatmap.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_02_pca.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/l1_03_volcano_limma.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_ridgeline.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_upsetplot.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_vennplot.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_dotplot.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_volcano.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2_umap.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_violin.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_scatterplot.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_barplot.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_boxplot.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_heatmap.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/l2_13_target_gene_dotplot.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/l2_08_deg_volcano_basal_keratinocyte.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/custom_fig_l2p_umap.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/l3_human_06_umap_sample.png
+ledger/sync/
 
 # ===== 大型数据资产（本地/远端已有副本，git 只管文本与规格）=====
 outputs/
@@ -243,23 +243,23 @@ BioanalysDesktop/Python/
 !reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_gsea_verified.png
 !reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_enrichment_verified.png
 !reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_konetwork_verified.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_gseaplot.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_enrichmentplot.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2_networkplot.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_gseaplot.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_enrichmentplot.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2_networkplot.png
 
 # 收官批（第十三轮）
 !reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_correlogram_verified.png
 !reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_bubble_verified.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_correlogram.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_bubble.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_correlogram.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_bubble.png
 
 # 第 29/30 张（第十五轮）
 !reference/05.可参考生信代码/可用代码预筛选/源码/L3_高级组合图/L3_cellcomm_chord_code.R
 !reference/05.可参考生信代码/可用代码预筛选/源码/L3_高级组合图/L3_cellcomm_chord_verified.png
 !reference/05.可参考生信代码/可用代码预筛选/源码/L3_高级组合图/L3_spatial_autocorr_code.R
 !reference/05.可参考生信代码/可用代码预筛选/源码/L3_高级组合图/L3_spatial_autocorr_verified.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l3_cellcomm_chord.png
-!local_projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/custom_fig_l1_connectedscatter.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l3_cellcomm_chord.png
+!workspace/projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/custom_fig_l1_connectedscatter.png
 !reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_cellcomm_autocorr_code.py
 
 # 自包含运行时工具（体积大，按机器重铺；是否入库待裁定）

@@ -15,7 +15,7 @@ from local_project_workspace import (
     atomic_write_text,
     count_files,
     ledger_summary,
-    local_projects_dir,
+    workspace_projects_dir,
     project_path,
     project_root_for,
     project_roots,
@@ -210,7 +210,7 @@ def build_project_index(root, project_id):
         "generated_by": INDEXER,
         "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "path_map": {
-            "project": "local_projects/%s" % project_id,
+            "project": "workspace/projects/%s" % project_id,
             "project_json": "project.json",
             "readme": "README.md",
             "index": "INDEX.json",
@@ -278,8 +278,8 @@ def render_global_index(indexes):
 
 
 def build_global_index(root, indexes):
-    global_index_path = safe_path(local_projects_dir(root), "INDEX.md")
-    local_projects_dir(root).mkdir(parents=True, exist_ok=True)
+    global_index_path = safe_path(workspace_projects_dir(root), "INDEX.md")
+    workspace_projects_dir(root).mkdir(parents=True, exist_ok=True)
     atomic_write_text(global_index_path, render_global_index(indexes))
     return global_index_path
 

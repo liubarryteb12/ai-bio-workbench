@@ -3,11 +3,11 @@
  *
  * 背景取证：buildReadProjectMetaCommand 拼的是远端
  * /mnt/ssd/bio_data/projects/<id>/project.json（BioanalysDesktop/server/project.js:819），
- * 而本地 REPO_ROOT/local_projects/default/project.json 实测存在（202 字节、schema_version 1）。
+ * 而本地 REPO_ROOT/workspace/projects/default/project.json 实测存在（202 字节、schema_version 1）。
  * 远端读不到时接口直接 404，本地那份从不参与，前端 ResultPreviewStudio 因此静默空态。
  *
  * 本红测证明两件事：
- *   A. 路由在「远端读回空串」时，必须回落到本地 local_projects/<id>/project.json；
+ *   A. 路由在「远端读回空串」时，必须回落到本地 workspace/projects/<id>/project.json；
  *      回 200 且只回出图相关字段（sanitizeProjectId / base64 中转 / 白名单契约不变）。
  *   B. 前端 ResultStudioView.tsx 的 loadProjectMeta 必须判 res.ok，
  *      meta 读失败时要给用户可见的空态/错误提示（不能只 setProjectMeta(null)）。
@@ -57,10 +57,10 @@ async function callMeta(url, deps) {
 // A. 路由回落契约
 // ---------------------------------------------------------------------------
 
-test('T3-5 红：远端读回空串时回落到本地 local_projects/default/project.json 并回 200', async () => {
+test('T3-5 红：远端读回空串时回落到本地 workspace/projects/default/project.json 并回 200', async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'meta-fallback-red-'));
   try {
-    const localDir = path.join(tmp, 'local_projects', 'default');
+    const localDir = path.join(tmp, 'workspace/projects', 'default');
     fs.mkdirSync(localDir, { recursive: true });
     const localMeta = {
       schema_version: 1,
@@ -110,7 +110,7 @@ test('T3-5 红：远端与本地都缺 project.json 仍回 404（回落不是凭
 test('T3-5 红：远端有 meta 时仍以远端为准（base64 中转契约不变）', async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'meta-remote-red-'));
   try {
-    const localDir = path.join(tmp, 'local_projects', 'default');
+    const localDir = path.join(tmp, 'workspace/projects', 'default');
     fs.mkdirSync(localDir, { recursive: true });
     fs.writeFileSync(path.join(localDir, 'project.json'), JSON.stringify({ project_id: 'default', plot_layout_config: { from: 'local' } }));
     const remoteMeta = { project_id: 'default', plot_layout_config: { from: 'remote' }, pipeline_dag: [] };

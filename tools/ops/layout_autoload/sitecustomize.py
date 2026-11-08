@@ -151,7 +151,7 @@ def _install():
     except Exception as cause:  # noqa: BLE001
         _warn("挂载失败: %s" % cause)
     # 主题层（字体族/线宽）：与模板同一处、同一套纪律；默认关，BIOANALYS_PY_THEME=1 才生效。
-    # 只补覆盖对照表里两个真缺口，见 con_hf/dispatch/S4_python_theme_gap.md
+    # 只补覆盖对照表里两个真缺口，见 workspace/handoff/dispatch/S4_python_theme_gap.md
     if os.environ.get("BIOANALYS_PY_THEME", "").strip() == "1":
         try:
             # fig_theme.py 在 ops/ 下（与 layout_autoload/ 同级），插上级目录

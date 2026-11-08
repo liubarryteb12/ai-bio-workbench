@@ -13,7 +13,7 @@ import { fileURLToPath } from "url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const SCRIPT = path.join(REPO, ".tmp", "dcm_bench", "l2", "annot_verify.py");
-const REPORT = path.join(REPO, "local_projects", "PRJ_DCM_BENCH_20261105", "results", "line2_scrna", "annot_verify_report.json");
+const REPORT = path.join(REPO, "workspace/projects", "PRJ_DCM_BENCH_20261105", "results", "line2_scrna", "annot_verify_report.json");
 
 test("源码含 Wilson 置信区间实现与功效警示", () => {
   const src = fs.readFileSync(SCRIPT, "utf8");
