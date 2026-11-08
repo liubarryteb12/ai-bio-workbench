@@ -33,13 +33,17 @@ AI辅助生信分析流程工作台/
 │   ├── coding-standards.md  # 分析代码规范（Linux 运行面，tools/bio/ 动工前必读）
 │   ├── isolation.md         # 三线隔离约束与校验
 │   └── ledger-schema.md     # 任务台账 JSON schema
-├── ops/                     # 链路运维脚本（PC 侧 PowerShell 入口 + 手机/容器侧执行体）
-└── tools/bio/               # 三条线分析母版与注册表（W3 已迁入，git 历史保留）
-    ├── line1_bulk/
-    ├── line2_scrna/
-    ├── line3_spatial/
-    ├── workflows.json
-    └── figure_templates.json
+├── tools/
+│   ├── bio/                 # 三条线分析母版与注册表（W3 已迁入，git 历史保留）
+│   │   ├── line1_bulk/
+│   │   ├── line2_scrna/
+│   │   ├── line3_spatial/
+│   │   ├── workflows.json
+│   │   └── figure_templates.json
+│   ├── dev/                 # 门禁、库与工单编排（W5a 已迁入）
+│   ├── reporting/           # 报告、交付与验证链（W5b 已迁入）
+│   └── ops/                 # 运维入口与算力面脚本（W5b 已迁入）
+└── BioanalysDesktop/        # 管理员工作台应用（W6 评估保留）
 ```
 
 ## 服务器侧目录
@@ -71,10 +75,10 @@ AI辅助生信分析流程工作台/
 | `projects/<项目>/<line>/scripts/` | 客户数据需适配时，从 `bin/<line>/` 复制母版到此改，跑通后留档；不改母版 | 代理 `mkdir -p` |
 | `projects/<项目>/deliverables/` | 客户交付包三大件（适配代码 / 图表与表格 / 解读报告） | 代理 `mkdir -p` |
 
-交付包结构与打包规则见 `docs/delivery_package_spec.md`（v1.0，**实现现状见该文「零」节**）：打包由服务器侧 `tools/reporting/build_client_report.py` 承担，工作台入口是 `POST /api/report/build`（`BioanalysDesktop/server/report.js`，含存储水位 / 进行中任务 / 失败台账三道前置门禁与 `.sha256` 旁挂）；原规划的 `ops/09_package_delivery.ps1` 已作废，不再实现。
+交付包结构与打包规则见 `docs/delivery_package_spec.md`（v1.0，**实现现状见该文「零」节**）：打包由服务器侧 `tools/reporting/build_client_report.py` 承担，工作台入口是 `POST /api/report/build`（`BioanalysDesktop/server/report.js`，含存储水位 / 进行中任务 / 失败台账三道前置门禁与 `.sha256` 旁挂）；原规划的 `tools/ops/09_package_delivery.ps1` 已作废，不再实现。
 
-适配副本不经工作台任务引擎（它只认全局 `bin/<line>/`），而是直跑 ops 包装器：
-`bash /mnt/ssd/bio_data/tools/ops/run_throttled_task.sh <task_id> <line> <step> <R|Python> <项目内脚本绝对路径>`。
+适配副本不经工作台任务引擎（它只认全局 `bin/<line>/`），而是直跑运维包装器：
+`bash /mnt/ssd/bio_data/ops/run_throttled_task.sh <task_id> <line> <step> <R|Python> <项目内脚本绝对路径>`。
 
 本地回搬入口（`tools/ops/07_pull_outputs.ps1`）按项目写入
 `local_projects/<项目>/data/<line>/{processed,results}` 与
@@ -125,8 +129,8 @@ python tools/ops/init_project_scaffold.py --root . --project <项目> --line <li
 |---|---|
 | 交接上下文 | `con_hf/` |
 | 工程规范、架构文档 | `docs/` |
-| 运维脚本 | `ops/` |
-| 分析代码 | `src/<line_id>/` |
+| 运维脚本 | `tools/ops/` |
+| 分析代码 | `tools/bio/<line_id>/` |
 | 项目专属调试与日志 | `local_projects/<项目>/debug/` |
 | 跨项目临时探针 | `cn_debug/` |
 | 运行记录、验证报告 | `con_hf/runs/` |
