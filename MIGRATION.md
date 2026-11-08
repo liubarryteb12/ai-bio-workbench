@@ -59,7 +59,7 @@
 | `src/line2_scrna` | `tools/bio/line2_scrna` | W3 已完成（git mv 保留历史） |
 | `src/line3_spatial` | `tools/bio/line3_spatial` | W3 已完成（git mv 保留历史） |
 | `src/workflows.json`、`src/figure_templates.json` | `tools/bio/` | W3 已完成（git mv 保留历史） |
-| `ops/*.mjs` 门禁与库 | `tools/dev/` | W5 |
+| `ops/*.mjs` 门禁与库 | `tools/dev/` | W5a 已完成（31 件 + work_order 两件 + lib/diagnostics） |
 | `ops` 出图与报告脚本 | `tools/reporting/` | W5 |
 | `ops` PowerShell 运维入口 | `tools/ops/` | W5 |
 | `ops/work_order_orchestrator.mjs` | `skills/stable/ops/` 绑定的工具 | W7 |
@@ -80,7 +80,8 @@
 | W2 | 三线与注册表迁 `tools/bio/` | 全量测试绿；`k40_script_parity` 绿；`workflows.json` 路径全解析 |
 | W3 | 引擎与桥接守卫迁 `core/`，三线母版物理迁 `tools/bio/` | 全量测试 1953 对齐基线；24 门禁全绿；k40 parity 绿 |
 | W4 | 契约网关迁 `schemas/` | `schema_gateway` 契约绿；短命 IPC 三态退出码不变 |
-| W5 | `ops/` 分流 `tools/{dev,reporting,ops}/` | `run_all_gates --skip-tests` 24/24 绿；`enforced_by` 白名单同步更新 |
+| W5a | `ops/*.mjs` 门禁与库迁 `tools/{dev,reporting}/` | `run_all_gates --skip-tests` 24/24 绿；1953 tests 对齐基线；`enforced_by` 白名单已换 tools/dev |
+| W5b | 报告与运维脚本迁 `tools/{reporting,ops}/` | 全量测试绿；K40 同步契约同步更新 |
 | W6 | 门户应用落位评估 | 出评估记录；两种落位方案的回归全绿者胜出 |
 | W7 | SOP 转 `skills/` 规约资产 | 首个 skill（工单编排）YAML 解析绿；exit_criteria 与门禁一一对应 |
 | W8 | 台账与数据面迁 `ledger/`、`workspace/` | ledger 契约绿；服务器侧路径同步方案落地 |
@@ -104,4 +105,4 @@
 | W2 | 已完成（fe0cdcf，k40 双向同源） |
 | W3 | 已完成（fb866c7，物理迁移 + 全量对齐） |
 | W4 | 已完成（schema_gateway 迁入 schemas/） |
-| W5 到 W10 | 排队 |
+| W5b 到 W10 | 排队 |

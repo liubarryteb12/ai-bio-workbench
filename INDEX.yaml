@@ -14,7 +14,7 @@ governance:
 
 router:
   table: ROUTER.yaml
-  gate: ops/router_gate.mjs
+  gate: tools/dev/router_gate.mjs
   dispatcher: BioanalysDesktop/server/route_dispatcher.js
 
 core:
@@ -37,10 +37,9 @@ tools:
     status: "W2 待迁入"
     planned_from: [src/line1_bulk, src/line2_scrna, src/line3_spatial]
   dev:
-    status: "W5 待迁入"
-    planned_from: [ops/*.mjs]
+    status: "W5a 已迁入（门禁与库 + work_order）"
   reporting:
-    status: "W5 待迁入"
+    status: "W5a 已迁入（交付链四件）"
   ops:
     status: "W5 待迁入"
     planned_from: [ops/*.ps1, ops/*.sh]
