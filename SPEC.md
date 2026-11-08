@@ -23,7 +23,7 @@
 代码、门禁、规约在控制面（core / tools / skills / schemas / ops）；客户数据、中间态、
 交付物只在数据面（workspace、服务器 projects）。算力与传输默认走 ADB 通道。
 
-执行门禁：`tools/ops/02_check_isolation.ps1`、`ops/test_isolation_gate.mjs`、
+执行门禁：`tools/ops/02_check_isolation.ps1`、`tools/dev/test_isolation_gate.mjs`、
 `docs/remote_channel_policy.md` 契约测试。
 
 ### 原则三：Fail-Closed 与真源唯一
@@ -31,9 +31,9 @@
 网关故障即拒绝（CI 传 bypass 必红）；一个含义一个真源；已否决设计进 `SCOPE.md` REJ
 台账，每条绑定可执行门禁与 180 天有效期上限。
 
-执行门禁：`ops/router_gate.mjs`（REJ 生命周期与 enforced_by 校验）、
+执行门禁：`tools/dev/router_gate.mjs`（REJ 生命周期与 enforced_by 校验）、
 `BioanalysDesktop/tests/schema_gateway.test.js`（MUT-P2-A bypass 必红）、
-`ops/mutation_gate.mjs`（变异反证）。
+`tools/dev/mutation_gate.mjs`（变异反证）。
 
 ## 边界与红线索引
 
