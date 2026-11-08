@@ -3,7 +3,7 @@
 > version 0.2 | 2026-10-12
 > 本规格覆盖第二阶段：**把 BioanalysDesktop 做成可用的本地交互终端**。
 > 三条线的分析代码仍不在本规格范围内（属后续阶段），但本阶段要打通"下发任务 → 看日志 → 看产物 → 看台账"的闭环。
-> 术语一律用 `con_hf/CONTEXT.md`，不得另造同义词。
+> 术语一律用 `GLOSSARY.md`，不得另造同义词。
 
 ## Problem Statement
 
@@ -129,4 +129,4 @@
 - 服务器 `~/p_actions/` 已有 GEO 资产与本工作台三线体系的关系待用户澄清，影响 T 功能的"步骤清单"来源
   （线1 可直接用 `src/line1_bulk/README.md` 的步骤序，与 `~/p_actions/` 是否复用无关）。
 - 复用的既有资产：`ops/00_link_check.ps1`、`ops/03_check_logs_remote.sh`、`ops/04_check_logs.ps1`、
-  `docs/ledger-schema.md`、`docs/isolation.md`、`con_hf/CONTEXT.md`。
+  `docs/ledger-schema.md`、`docs/isolation.md`、`GLOSSARY.md`。

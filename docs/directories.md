@@ -12,14 +12,18 @@
 
 ```
 AI辅助生信分析流程工作台/
+├── SPEC.md / ROUTER.yaml / SCOPE.md / GLOSSARY.md /
+│   MIGRATION.md / INDEX.yaml / LICENSES.md / AGENT.md
+│                             # 治理文件（2026-11-08 整体重构 W1 上移，契约见 MIGRATION.md）
+├── core/ hooks/ schemas/ skills/ tools/ workspace/ ledger/
+│                             # 参考结构骨架目录（分波迁入，占位 README 见各目录）
 ├── local_projects/          # 本地项目唯一根，结构与远端项目语义对应
 │   ├── INDEX.md             # 全项目机读摘要入口
 │   └── <项目>/              # 自包含项目目录，见下节
 ├── outputs/
 │   └── system_logs/         # 仅存回搬的机器执行台账，与 JSONL 台账独立
 ├── reference/               # 参考资料唯一存放地，内容只读，结构可整理（约定见下）
-├── con_hf/                  # 全局治理与同步根
-│   ├── CONTEXT.md           # 领域术语表（唯一权威，改词先改这里）
+├── con_hf/                  # 全局治理与同步根（治理文件已上移根目录）
 │   ├── SPEC.md              # 阶段规格
 │   ├── handoff.md           # 跨会话交接快照（接活先读它）
 │   ├── ledger/              # 全局五类 JSONL 追加式台账

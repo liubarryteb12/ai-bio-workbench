@@ -1,6 +1,6 @@
 # 线2 / 单细胞转录组 + 虚拟敲除线
 
-> 术语见 `con_hf/CONTEXT.md`，隔离约束见 `docs/isolation.md`。
+> 术语见 `GLOSSARY.md`，隔离约束见 `docs/isolation.md`。
 > 本目录只放线2 代码。线1、线3 代码不得出现在这里，本目录脚本也不得引用另外两条线。
 
 ## 输入
@@ -44,7 +44,7 @@ cell x gene 稀疏矩阵（`scrna_counts.h5ad`）。
 ## 虚拟敲除约束
 
 - 虚拟敲除在本线末端执行，输入必须是本线 `results/` 内的中间产物。
-- 产出叫 **DR genes**，不是 DEG，不得与差异分析概念混用（见 `con_hf/CONTEXT.md`）。
+- 产出叫 **DR genes**，不是 DEG，不得与差异分析概念混用（见 `GLOSSARY.md`）。
 - 敲除对象来自本线注释或本线 hub 基因，**不得引用线1 的 GEO 交集基因作输入**。
 
 ## 产出去向

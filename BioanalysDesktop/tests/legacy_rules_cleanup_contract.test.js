@@ -23,7 +23,7 @@ test('旧规则台账列明保留、停用、对齐三类规则及运行影响',
 });
 
 test('SCOPE 的 Ready 基线与单图红线同步到 39', () => {
-  const scope = read('docs/SCOPE.md');
+  const scope = read('SCOPE.md');
   assert.match(scope, /REJ-012 \| 突破 Ready 模板实证棘轮（当前基线 39）/);
   assert.match(scope, /组合图与 Draft 模板严禁进入 Ready/);
   assert.equal(scope.includes('基线 >= 40'), false);

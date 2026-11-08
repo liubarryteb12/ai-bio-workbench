@@ -1,6 +1,6 @@
 # 线3 / 单细胞空间转录组 + 虚拟敲除线
 
-> 术语见 `con_hf/CONTEXT.md`，隔离约束见 `docs/isolation.md`。
+> 术语见 `GLOSSARY.md`，隔离约束见 `docs/isolation.md`。
 > 本目录只放线3 代码。虚拟敲除是本线**末端模块**，不是独立一条线。
 
 ## 输入

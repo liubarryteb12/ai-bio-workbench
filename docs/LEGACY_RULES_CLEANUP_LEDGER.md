@@ -9,7 +9,7 @@
 | 旧规则 | 原位置 | 对当前运行的实际影响 | 处置 | 当前状态 |
 | :--- | :--- | :--- | :--- | :--- |
 | G1 到 G5 组图契约，组合图是正式产出 | `docs/figure_spec.md` v2.2 及母版注释 | 会让 `l2_20_composition_panel` 等组合图继续生成，与“只要单图”冲突 | v2.3 明确作废，`l1_32`、`l3_16`、L2 组合图生成段退役，Ready 降为 39 | 已停用 |
-| Ready 基线 30 条或棘轮 `>=40` | `docs/SCOPE.md`、`docs/ARCHITECTURE_OVERVIEW.md`、旧测试注释 | 与当前 39 条 Ready 单图白名单冲突，容易让审计误判基线漂移 | 统一改为 39，图件模板总数 92，组合图模板保持 draft/pending | 已对齐 |
+| Ready 基线 30 条或棘轮 `>=40` | `SCOPE.md`、`docs/ARCHITECTURE_OVERVIEW.md`、旧测试注释 | 与当前 39 条 Ready 单图白名单冲突，容易让审计误判基线漂移 | 统一改为 39，图件模板总数 92，组合图模板保持 draft/pending | 已对齐 |
 | 默认 SSH，ADB 失败自动回落 SSH | `docs/ARCHITECTURE_OVERVIEW.md`、README、前端类型、服务端旧注释 | 设备侧 sshd 掉线会让任务、上传、回搬、报告链路静默改走不稳定通道 | 默认 ADB，所有 ssh/scp argv 在 `proc.js` 翻译成 ADB，SSH 仅 `BIO_COMPUTE_ADAPTER=ssh` 特殊启用 | 已停用 |
 | 旧来源配置与旧报告是交付依赖 | 项目 `PRJ_DCM_BENCH_20261105` 历史资产 | 容易让报告、图廊、客户端发现依赖过时文件 | 项目内容消融五场景验证删除后仍自洽 | 已隔离为历史资产 |
 | `scripts/resume_benchmark.sh` 是续跑入口 | 封存项目脚本 | 继续依赖 SSH 轮询，和 ADB 主通道口径冲突 | 消融验证删除后客户端、报告、门禁无依赖 | 已隔离为历史资产 |

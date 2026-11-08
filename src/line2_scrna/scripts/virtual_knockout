@@ -34,7 +34,7 @@
 #   random_state 用引擎 seed（nc/td 两处都传，RRandom 复现 R 的抽样序列）。
 #
 # DR genes（Differentially Regulated Gene）不是 DEG：衡量的是敲除后调控关系的
-# 变化，不是表达量差异。不得与差异分析概念混用（见 con_hf/CONTEXT.md）。
+# 变化，不是表达量差异。不得与差异分析概念混用（见 GLOSSARY.md）。
 #
 # 自校验内建：三输入的契约（norm 全基因+counts、annotated 的 diagnosis+annotation、
 # hvg 清单是 norm var 子集）、细胞集合一致、敲除基因过 QC 表达闸、QC/网络基因数

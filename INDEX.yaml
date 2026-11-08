@@ -1,0 +1,63 @@
+# 全局导航中枢（INDEX.yaml）
+version: "1.0.0"
+updated: "2026-11-08"
+structure_contract: MIGRATION.md
+
+governance:
+  constitution: SPEC.md
+  scope_and_rejections: SCOPE.md
+  glossary: GLOSSARY.md
+  agent_entry: AGENT.md
+  agent_truth: AGENTS.md
+  licenses: LICENSES.md
+  migration_contract: MIGRATION.md
+
+router:
+  table: ROUTER.yaml
+  gate: ops/router_gate.mjs
+  dispatcher: BioanalysDesktop/server/route_dispatcher.js
+
+core:
+  status: "W3 待迁入"
+  planned_from: [src/engines, src/bridge_guard.sh]
+
+hooks:
+  status: "W5 与 tools 分流一起评估"
+
+schemas:
+  status: "W4 待迁入"
+  planned_from: [ops/schema_gateway.py]
+
+skills:
+  status: "W7 首个规约试点（工单编排）"
+  layout: [stable/bio, stable/dev, stable/ops, in-progress]
+
+tools:
+  bio:
+    status: "W2 待迁入"
+    planned_from: [src/line1_bulk, src/line2_scrna, src/line3_spatial]
+  dev:
+    status: "W5 待迁入"
+    planned_from: [ops/*.mjs]
+  reporting:
+    status: "W5 待迁入"
+  ops:
+    status: "W5 待迁入"
+    planned_from: [ops/*.ps1, ops/*.sh]
+  portal:
+    status: "W6 评估（BioanalysDesktop 落位）"
+
+workspace:
+  status: "W8 待迁入"
+  planned_from: [local_projects]
+
+ledger:
+  status: "W8 待迁入"
+  planned_from: [con_hf/ledger]
+
+references:
+  status: "W9 改名自 reference/"
+
+engineering_docs:
+  path: docs
+  note: 活的工程规范层，保留原地

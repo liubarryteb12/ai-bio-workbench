@@ -7,6 +7,7 @@
 
 | 当你 | 读 |
 |---|---|
+| 要知道架构宪法、路由表、范围红线、术语、重构契约在哪 | 根目录 `SPEC.md`、`ROUTER.yaml`、`SCOPE.md`、`GLOSSARY.md`、`MIGRATION.md`（2026-11-08 整体重构 W1 已上移，判据见 `MIGRATION.md`） |
 | 动 `src/` 下任何分析代码前 | [docs/coding-standards.md](docs/coding-standards.md)（Linux 运行面、seed 契约、退出码） |
 | 跨线搬数据、定文件放哪 | [docs/isolation.md](docs/isolation.md)（三线隔离）、[docs/directories.md](docs/directories.md)（文件放哪） |
 | 开始一项功能、改架构、写 spec 或票 | [docs/mattpocock-workflow-spec.md](docs/mattpocock-workflow-spec.md) |

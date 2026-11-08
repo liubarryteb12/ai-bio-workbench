@@ -8,7 +8,7 @@
  * 判据（Argon 定的硬底线）：
  *   1. 确定性匹配器在黄金集上准确率必须 100%（27/27），不接受 96%；
  *   2. 每条 case 引用的 expected_mod_or_script 必须真实存在；
- *   3. 改坏 ops/router.yaml 任一条 trigger_intent，本测试必须变红。
+ *   3. 改坏 ROUTER.yaml 任一条 trigger_intent，本测试必须变红。
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -20,7 +20,7 @@ import { loadRouter, loadModIds, listOpsScripts, matchRoute } from "../../ops/ro
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "../..");
 const GOLDEN = path.join(HERE, "eval/golden_routing.json");
-const ROUTER = path.join(REPO, "ops/router.yaml");
+const ROUTER = path.join(REPO, "ROUTER.yaml");
 
 function loadCases() {
   return JSON.parse(fs.readFileSync(GOLDEN, "utf8"));

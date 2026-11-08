@@ -3,9 +3,9 @@
  * router_gate.mjs —— 声明式路由与边界台账的静态一致性门禁（第 18 道）。
  *
  * 校验五件事，任一不过即 FAIL：
- *   1. ops/router.yaml 结构合法，required 字段齐全，id 唯一；
+ *   1. ROUTER.yaml 结构合法，required 字段齐全，id 唯一；
  *   2. allowed_scripts 与 target_line_or_gate 引用的 Mod ID / ops 脚本真实存在；
- *   3. docs/SCOPE.md 每条 REJ 的 enforced_by 指向真实「文件」，且不逃出仓库根、
+ *   3. SCOPE.md 每条 REJ 的 enforced_by 指向真实「文件」，且不逃出仓库根、
  *      落在受控目录白名单内（Argon 第 67 轮代码审计加固点 3）；
  *   4. REJ 生命周期字段合法（status / reviewed_by / superseded_by）；
  *   5. 黄金集并列度：ambiguous_tie 必须为 0，near_tie 占比不得超过 15%
@@ -111,13 +111,13 @@ function checkEnforcedPath(repoRoot, rel) {
 export function checkRouterAndScope(repoRoot) {
   const errs = [];
   const notes = [];
-  const ROUTER = path.join(repoRoot, "ops/router.yaml");
-  const SCOPE = path.join(repoRoot, "docs/SCOPE.md");
+  const ROUTER = path.join(repoRoot, "ROUTER.yaml");
+  const SCOPE = path.join(repoRoot, "SCOPE.md");
   const WORKFLOWS = path.join(repoRoot, "src/workflows.json");
   const GOLDEN = path.join(repoRoot, "BioanalysDesktop/tests/eval/golden_routing.json");
 
-  if (!fs.existsSync(ROUTER)) errs.push("缺 ops/router.yaml");
-  if (!fs.existsSync(SCOPE)) errs.push("缺 docs/SCOPE.md");
+  if (!fs.existsSync(ROUTER)) errs.push("缺 ROUTER.yaml");
+  if (!fs.existsSync(SCOPE)) errs.push("缺 SCOPE.md");
   if (!fs.existsSync(WORKFLOWS)) errs.push("缺 src/workflows.json");
 
   let doc = { routes: [] };

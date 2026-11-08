@@ -87,7 +87,7 @@ k=6 的邻居本来就都在 200 µm 内，没有长程伪边可砍。
 
 | 事项 | 裁定 | 落地 |
 |---|---|---|
-| 2.1 200 µm 截断 | 批准写入 `docs/SCOPE.md` **REJ-011**，封存不重开 | 已写入，`router_gate` 校验通过（rej=11） |
+| 2.1 200 µm 截断 | 批准写入 `SCOPE.md` **REJ-011**，封存不重开 | 已写入，`router_gate` 校验通过（rej=11） |
 | 2.2 BANKSY | 采纳 (c)：受控可选合入，**默认关闭** | `spatial_domains --banksy-lambda`，默认 0.0 完全旁路 |
 
 ### BANKSY 合入约束（Argon 定的三条铁律）

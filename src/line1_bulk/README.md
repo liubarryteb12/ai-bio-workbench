@@ -1,6 +1,6 @@
 # 线1 / GEO bulk 线
 
-> 术语见 `con_hf/CONTEXT.md`，隔离约束见 `docs/isolation.md`。
+> 术语见 `GLOSSARY.md`，隔离约束见 `docs/isolation.md`。
 > 本目录只放线1 代码。线2、线3 代码不得出现在这里，本目录脚本也不得引用另外两条线。
 
 ## 输入

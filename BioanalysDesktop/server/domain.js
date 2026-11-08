@@ -1,7 +1,7 @@
 /**
  * BioanalysDesktop 本地交互层 · 领域常量
  *
- * 术语唯一权威是 con_hf/CONTEXT.md，这里只做实现层映射，不得另造同义词。
+ * 术语唯一权威是 GLOSSARY.md，这里只做实现层映射，不得另造同义词。
  *
  * 数据面组织（2026-10-14 引入项目维度）：
  *   /mnt/ssd/bio_data/

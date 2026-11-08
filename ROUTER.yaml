@@ -1,4 +1,4 @@
-# 声明式场景路由（ops/router.yaml）
+# 声明式场景路由（ROUTER.yaml）
 #
 # 作用：把「用户一句话需求」映射到「该跑哪条线、哪些 Mod、什么算跑完、什么不许做」。
 # 由 ops/router_lib.mjs 解析，ops/router_gate.mjs 静态校验，

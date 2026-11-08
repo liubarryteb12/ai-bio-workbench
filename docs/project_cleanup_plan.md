@@ -70,7 +70,7 @@
 |---|---|
 | `con_hf/ledger/actions.jsonl` | `BioanalysDesktop/server/task.js:31`、`server/pi_agent_routes.js:62` 运行期追加；`ops/init_project_scaffold.py:261-266` 与 `ops/local_project_workspace.py:102` 创建；`tests/project_scaffold.test.js:109-115`、`tests/pi_agent_routes.test.js:157/190/262/372` 断言 |
 | `con_hf/sync/{inbox,outbox,daemon.log}` | `ops/init_project_scaffold.py:270-281`、`ops/sync_daemon.ps1:32`、`tests/project_scaffold.test.js:113-115` |
-| `con_hf/CONTEXT.md` | 术语唯一权威：`server/domain.js:4`、`src/line1_bulk/README.md:3`、`src/line2_scrna/README.md:3,47`、`src/line3_spatial/README.md:3`、`src/line2_scrna/scripts/summarize_dr:265` |
+| `GLOSSARY.md` | 术语唯一权威：`server/domain.js:4`、`src/line1_bulk/README.md:3`、`src/line2_scrna/README.md:3,47`、`src/line3_spatial/README.md:3`、`src/line2_scrna/scripts/summarize_dr:265` |
 | `con_hf/SPEC_DECISIONS.md` | `tests/gmt_cache_env.test.js:79` 读取并断言、`tests/aims_drift_guard.test.js:103` |
 | `con_hf/pitfalls_ledger.md` | `tests/proot_probe_guard.test.js:100,110,124,154,178` 读取并断言、`ops/migrate_to_local_projects.py:26` |
 | `con_hf/ops_ledger.md` | `ops/sync_and_verify_remote.ps1:48`、`ops/migrate_to_local_projects.py:27`、`tests/sync_script_guard.test.js:82` |

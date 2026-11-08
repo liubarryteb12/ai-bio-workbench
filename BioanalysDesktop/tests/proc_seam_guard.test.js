@@ -75,6 +75,22 @@ const EXEMPT_RELPATHS = new Set([
   // 交叉校验、git ls-files 核 enforced_by 是否被跟踪。与 test_isolation_gate 同类，
   // 是离线静态门禁，不进服务运行时。
   'ops/router_gate.mjs',
+  // 工单编排与内容消融库（2026-11-08 W1 基线收编）：离线门禁库，被同名 gate 起子进程调用，
+  // 与 work_order_orchestrator_gate 同属离线手工/CI 工具，不进服务运行时。
+  'ops/work_order_orchestrator.mjs',
+  'ops/project_content_ablation.mjs',
+  // 以下四道门禁各自的工作就是起子进程跑被测脚本或 PyYAML 交叉校验，
+  // 与 router_gate / mutation_gate 同类：离线门禁编排者，不进服务运行时。
+  'ops/figure_code_gate.mjs',
+  'ops/module_ablation_matrix_gate.mjs',
+  'ops/project_content_ablation_gate.mjs',
+  'ops/work_order_orchestrator_gate.mjs',
+  // 传输适配器（2026-11-08 W1 基线收编）：ADB 链路适配器，起 pwsh/scp 走 ops/adb_exec
+  // 等白名单包装器，与 proc.js 的接缝语义一致（算力与文件传输默认走 ADB 通道）。
+  'BioanalysDesktop/server/adb_transfer.js',
+  // Schema 网关客户端：起短命 python 子进程跑 ops/schema_gateway.py 的文件 IPC 协议
+  //（0=ALLOW、2=DENY、1=ERROR），是三明治架构的正式防线，不是绕过接缝的旁路。
+  'BioanalysDesktop/server/schema_gateway_client.js',
 ]);
 
 // 豁免清单：接缝本体。加名字进这份清单需要人裁定，不许顺手扩。

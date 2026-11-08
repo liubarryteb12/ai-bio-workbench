@@ -35,17 +35,17 @@ execution_and_defense（Pydantic schemas + 白名单工具）、runtime_controls
 
 | 参考概念 | 本项目现状 | 对比 |
 |---|---|---|
-| ROUTER.yaml 事件路由 | `ops/router.yaml` + `router_gate.mjs` + `route_dispatcher.js` | 已有，且门禁校验路径存在性 |
+| ROUTER.yaml 事件路由 | `ROUTER.yaml` + `router_gate.mjs` + `route_dispatcher.js` | 已有，且门禁校验路径存在性 |
 | Pydantic schemas 防火墙 | `ops/schema_gateway.py` + task FSM + 任务提交校验 | 已有，跨 JS/Py 双语言 |
 | workspace 三态数据面 | 服务器 `projects/<线>/{raw_data,processed,results}` + `local_projects/` 回搬 + 交付打包 | 已有，服务器侧为英文路径 |
 | checkpoint 断点续跑 | `src/*/checkpoint/` + `verify_bridge_checkpoint.py` + bridge_guard | 已有 |
 | 知识台账 ledger | `con_hf/ledger/` 五类 JSONL + 项目级 ledger | 已有，粒度更细 |
-| REJ 已否决设计台账 | `docs/SCOPE.md` 12 条 REJ，`enforced_by` 由门禁校验 | 本项目更强（含有效期与撤销链） |
+| REJ 已否决设计台账 | `SCOPE.md` 12 条 REJ，`enforced_by` 由门禁校验 | 本项目更强（含有效期与撤销链） |
 | hooks 安全/审计钩子 | 24 道 ops 门禁 + audit.js + 变异反证 mutation_gate | 本项目更强（含变异反证纪律） |
 | references 参考资产库 | `reference/` 编号目录 + inventory + gen_reference_index | 已有，规模更大 |
 | skills/stable 规约资产（skill.yaml + prompt.md） | 无独立 skills 层，SOP 散在 docs/*.md | **缺口，值得吸收** |
 | 一键接单入口 run_order_easy.py | BioanalysDesktop 门户 + 工单编排器 + 交付打包 | 已有且更完整 |
-| GLOSSARY 术语表 | `con_hf/CONTEXT.md`（唯一权威） | 已有，避免重复建真源 |
+| GLOSSARY 术语表 | `GLOSSARY.md`（唯一权威，2026-11-08 由 con_hf/CONTEXT.md 迁入） | 已有，避免重复建真源 |
 | AGENT.md 入职导航 | 根 `AGENTS.md`（导航指针模式） | 已有且更精炼 |
 
 ## 四、参考快照的完整性缺口
@@ -65,7 +65,7 @@ execution_and_defense（Pydantic schemas + 白名单工具）、runtime_controls
 ---|---|---|---|
 | A1 技能规约层 | 挑一个成熟 SOP（建议工单编排器）试点转成 `skill.yaml` + `prompt.md` 机器可读规约，含 allowed_tools、exit_criteria、verify_commands | `skills/stable/ops/work_order/`（新目录，不动现有代码） | 规约文件通过 YAML 解析；exit_criteria 与现有门禁一一对应 |
 | A2 概念映射表 | 把第三节映射表并入 `docs/ARCHITECTURE_OVERVIEW.md` 末尾，标注各机制的等价实现位置 | `docs/ARCHITECTURE_OVERVIEW.md` | 表内路径全部真实存在 |
-| A3 术语别名登记 | 把「三明治架构、三态数据面、技能规约」作为别名登记进领域术语表，注明来源为 reference/08 | `con_hf/CONTEXT.md` | 术语表新增条目含定义与出处 |
+| A3 术语别名登记 | 把「三明治架构、三态数据面、技能规约」作为别名登记进领域术语表，注明来源为 reference/08 | `GLOSSARY.md` | 术语表新增条目含定义与出处 |
 | A4 迁移六步 SOP 吸收 | 把参考 MIGRATION 的「脚手架、搬迁、Schema、E11/E12 验收、注册路由、扫描合规」六步融合进现有工作流规范 | `docs/mattpocock-workflow-spec.md` | 工作流规范出现六步骨架且引用本项目真实工具 |
 
 不建议做的：根目录按 core/hooks/schemas/tools/workspace 重排；`src/` 三线拆进 `tools/`；

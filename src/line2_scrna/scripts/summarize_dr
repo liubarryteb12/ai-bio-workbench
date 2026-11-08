@@ -280,7 +280,7 @@ report_lines += [
     "",
     "--- 口径与局限（结论解释前必读）---",
     "1. 本表是 DR genes（Differentially Regulated，虚拟敲除后调控距离变化），",
-    "   不是 DEG（差异表达基因），两者概念不可混用（见 con_hf/CONTEXT.md）。",
+    "   不是 DEG（差异表达基因），两者概念不可混用（见 GLOSSARY.md）。",
     "2. 基因空间限于步骤 3 的 HVG %d 个内的 %d 个网络基因：HVG 之外的基因"
     % (uns["n_genes_input"], uns["n_genes_network"]),
     "   即使受调控也不会出现在本表，本表不是全基因组的调控结论。",

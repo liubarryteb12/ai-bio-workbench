@@ -65,8 +65,8 @@ export const GATES = Object.freeze([
   // public_references/celltype_signatures/<project_id>/ 冻结签名表。
   { id: 'isolated_bridge', label: '受控桥接事实源', exec: 'node', args: ['ops/isolated_bridge_gate.mjs'], cwd: '.', slow: false },
   // 第 18 道：声明式路由与边界台账一致性（Argon 第 66 轮 Q2b/Q3a 裁定的落地）。
-  // 校验两件此前只靠人眼的事：ops/router.yaml 引用的每个 Mod ID 与 ops 脚本真实存在；
-  // docs/SCOPE.md 每条 REJ 的 enforced_by 指向真门禁。填一个不存在的路径必须红。
+  // 校验两件此前只靠人眼的事：ROUTER.yaml 引用的每个 Mod ID 与 ops 脚本真实存在；
+  // SCOPE.md 每条 REJ 的 enforced_by 指向真门禁。填一个不存在的路径必须红。
   { id: 'router', label: '路由与边界台账一致性', exec: 'node', args: ['ops/router_gate.mjs'], cwd: '.', slow: false },
   { id: 'ledger', label: '台账与真源一致', exec: 'node', args: ['ops/ledger_gen.mjs', '--check'], cwd: '.', slow: false },
   { id: 'figure_registry', label: '图件注册表与证据同步', exec: 'node', args: ['ops/build_figure_templates.cjs', '--check'], cwd: '.', slow: false },

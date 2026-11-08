@@ -343,7 +343,7 @@ export const MUTATIONS = Object.freeze([
     }],
     async guard(file) {
       const mod = await loadModule(file);
-      const doc = mod.loadRouter(path.join(REPO, 'ops/router.yaml'));
+      const doc = mod.loadRouter(path.join(REPO, 'ROUTER.yaml'));
       const r = mod.matchRoute(doc.routes, '做空间解卷积');
       const got = r ? r.id : null;
       if (got !== 'route-l3-deconv') {
@@ -364,7 +364,7 @@ export const MUTATIONS = Object.freeze([
     }],
     async guard(file) {
       const mod = await loadModule(file);
-      const doc = mod.loadRouter(path.join(REPO, 'ops/router.yaml'));
+      const doc = mod.loadRouter(path.join(REPO, 'ROUTER.yaml'));
       const { modIds, seriesIds } = mod.loadModIds(path.join(REPO, 'src/workflows.json'));
       const opsScripts = mod.listOpsScripts(path.join(REPO, 'ops'));
       const probe = JSON.parse(JSON.stringify(doc));

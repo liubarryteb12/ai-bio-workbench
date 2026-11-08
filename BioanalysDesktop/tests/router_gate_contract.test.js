@@ -18,15 +18,14 @@ const REPO = path.resolve(HERE, "../..");
 function makeTree() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "router-gate-" + process.pid + "-"));
   fs.mkdirSync(path.join(root, "ops"), { recursive: true });
-  fs.mkdirSync(path.join(root, "docs"), { recursive: true });
   fs.mkdirSync(path.join(root, "src"), { recursive: true });
   for (const f of fs.readdirSync(path.join(REPO, "ops"))) {
     if (f.endsWith(".mjs")) {
       fs.copyFileSync(path.join(REPO, "ops", f), path.join(root, "ops", f));
     }
   }
-  fs.copyFileSync(path.join(REPO, "ops/router.yaml"), path.join(root, "ops/router.yaml"));
-  fs.copyFileSync(path.join(REPO, "docs/SCOPE.md"), path.join(root, "docs/SCOPE.md"));
+  fs.copyFileSync(path.join(REPO, "ROUTER.yaml"), path.join(root, "ROUTER.yaml"));
+  fs.copyFileSync(path.join(REPO, "SCOPE.md"), path.join(root, "SCOPE.md"));
   fs.copyFileSync(path.join(REPO, "src/workflows.json"), path.join(root, "src/workflows.json"));
   return root;
 }
@@ -39,7 +38,7 @@ test("真实仓库必须通过", () => {
 test("负向：enforced_by 指向不存在的门禁必须报红", (t) => {
   const root = makeTree();
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const p = path.join(root, "docs/SCOPE.md");
+  const p = path.join(root, "SCOPE.md");
   const md = fs.readFileSync(p, "utf8").replace(
     "enforced_by: ops/mutation_gate.mjs",
     "enforced_by: ops/this_gate_does_not_exist.mjs"
@@ -55,7 +54,7 @@ test("负向：enforced_by 指向不存在的门禁必须报红", (t) => {
 test("负向：allowed_scripts 引用不存在的脚本必须报红", (t) => {
   const root = makeTree();
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const p = path.join(root, "ops/router.yaml");
+  const p = path.join(root, "ROUTER.yaml");
   fs.writeFileSync(
     p,
     fs.readFileSync(p, "utf8").replace(
@@ -71,7 +70,7 @@ test("负向：allowed_scripts 引用不存在的脚本必须报红", (t) => {
 test("负向：target_line_or_gate 指向不存在的线必须报红", (t) => {
   const root = makeTree();
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const p = path.join(root, "ops/router.yaml");
+  const p = path.join(root, "ROUTER.yaml");
   fs.writeFileSync(
     p,
     fs.readFileSync(p, "utf8").replace(
@@ -87,7 +86,7 @@ test("负向：target_line_or_gate 指向不存在的线必须报红", (t) => {
 test("负向：路由 id 重复必须报红", (t) => {
   const root = makeTree();
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const p = path.join(root, "ops/router.yaml");
+  const p = path.join(root, "ROUTER.yaml");
   fs.writeFileSync(
     p,
     fs.readFileSync(p, "utf8").replace('id: "route-l3-deconv"', 'id: "route-l3-domains"'),
@@ -99,7 +98,7 @@ test("负向：路由 id 重复必须报红", (t) => {
 test("负向：YAML 标量陷阱必须被交叉校验抓到（NO 被官方解析器转成布尔）", (t) => {
   const root = makeTree();
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const p = path.join(root, "ops/router.yaml");
+  const p = path.join(root, "ROUTER.yaml");
   // 故意不加引号：自写解析器保持字符串 "NO"，PyYAML 会转成 False
   fs.writeFileSync(
     p,
@@ -115,7 +114,7 @@ test("负向：YAML 标量陷阱必须被交叉校验抓到（NO 被官方解析
 test("负向：REJ 的 status 非法必须报红", (t) => {
   const root = makeTree();
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const p = path.join(root, "docs/SCOPE.md");
+  const p = path.join(root, "SCOPE.md");
   fs.writeFileSync(
     p,
     fs.readFileSync(p, "utf8").replace("| 生效 | Argon 第 41 轮 |", "| 也许生效 | Argon 第 41 轮 |"),
@@ -128,7 +127,7 @@ test("负向：REJ 的 status 非法必须报红", (t) => {
 test("负向：已撤销但不写被替代者必须报红", (t) => {
   const root = makeTree();
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const p = path.join(root, "docs/SCOPE.md");
+  const p = path.join(root, "SCOPE.md");
   fs.writeFileSync(
     p,
     fs.readFileSync(p, "utf8").replace("| 生效 | Argon 第 41 轮 | 无 |", "| 已撤销 | Argon 第 41 轮 | 无 |"),
@@ -141,7 +140,7 @@ test("负向：已撤销但不写被替代者必须报红", (t) => {
 test("负向：REJ 缺 expires_at 必须报红", (t) => {
   const root = makeTree();
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const p = path.join(root, "docs/SCOPE.md");
+  const p = path.join(root, "SCOPE.md");
   fs.writeFileSync(
     p,
     fs.readFileSync(p, "utf8").replace("| 2027-05-01 |", "| |"),
@@ -154,7 +153,7 @@ test("负向：REJ 缺 expires_at 必须报红", (t) => {
 test("负向 (MUT-P0-A)：REJ 的 expires_at 超过 180 天上限必须报红", (t) => {
   const root = makeTree();
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const p = path.join(root, "docs/SCOPE.md");
+  const p = path.join(root, "SCOPE.md");
   fs.writeFileSync(
     p,
     fs.readFileSync(p, "utf8").replace("| 2027-05-01 |", "| 2029-01-01 |"),
@@ -170,7 +169,7 @@ test("负向 (MUT-P0-A)：REJ 的 expires_at 超过 180 天上限必须报红", 
 test("负向：REJ 的 expires_at 已过期必须报红", (t) => {
   const root = makeTree();
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  const p = path.join(root, "docs/SCOPE.md");
+  const p = path.join(root, "SCOPE.md");
   fs.writeFileSync(
     p,
     fs.readFileSync(p, "utf8").replace("| 2027-05-01 |", "| 2020-01-01 |"),
