@@ -87,7 +87,7 @@
 | W7 | SOP 转 `skills/` 规约资产 | 首个 skill（工单编排）YAML 解析绿；exit_criteria 与门禁一一对应 |
 | W8 | 台账与数据面迁 `ledger/`、`workspace/` | ledger 契约绿；服务器侧路径同步方案落地 |
 | W9 | `reference/` 改名 `references/` | 索引双向匹配；gitignore 白名单同步 |
-| W10 | 总收口 | 官方全量测试对齐基线；24 门禁全绿；便携包重建一致；AGENTS.md 与 docs 导航全更新 |
+| W10 | 总收口 | 官方全量测试对齐基线；全量门禁（当前 25 道）全绿；便携包重建一致；AGENTS.md 与 docs 导航全更新 |
 
 ## 六、外部项目迁入六步 SOP（面向后续新项目）
 
@@ -108,7 +108,8 @@
 | W4 | 已完成（schema_gateway 迁入 schemas/） |
 | W5b | 已完成（21cfa5e + 9a1a0af + e17bb9b） |
 | W6 | 已裁定（评估与契约收口） |
-| W7 到 W10 | 排队 |
+| W7 | 已完成（工单 skill + skills 契约门禁，门禁数 24 增至 25） |
+| W8 到 W10 | 排队 |
 
 ### W6 评估结论
 

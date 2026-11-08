@@ -29,8 +29,9 @@ schemas:
   assets: [schemas/schema_gateway.py]
 
 skills:
-  status: "W7 首个规约试点（工单编排）"
+  status: "W7 已完成首个规约试点（工单编排），契约门禁 tools/dev/skills_contract_gate.mjs"
   layout: [stable/bio, stable/dev, stable/ops, in-progress]
+  assets: [skills/stable/ops/work_order/skill.yaml, skills/stable/ops/work_order/prompt.md]
 
 tools:
   bio:

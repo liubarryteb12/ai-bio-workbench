@@ -15,8 +15,10 @@ AI辅助生信分析流程工作台/
 ├── SPEC.md / ROUTER.yaml / SCOPE.md / GLOSSARY.md /
 │   MIGRATION.md / INDEX.yaml / LICENSES.md / AGENT.md
 │                             # 治理文件（2026-11-08 整体重构 W1 上移，契约见 MIGRATION.md）
-├── core/ hooks/ schemas/ skills/ tools/ workspace/ ledger/
+├── core/ hooks/ schemas/ tools/ workspace/ ledger/
 │                             # 参考结构骨架目录（分波迁入，占位 README 见各目录）
+├── skills/                   # SOP 规约资产（W7 起迁入，stable 与 in-progress 分级）
+│   └── stable/{bio,dev,ops}/ # 已验收技能，每个技能含 skill.yaml 与 prompt.md
 ├── local_projects/          # 本地项目唯一根，结构与远端项目语义对应
 │   ├── INDEX.md             # 全项目机读摘要入口
 │   └── <项目>/              # 自包含项目目录，见下节

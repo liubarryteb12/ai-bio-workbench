@@ -59,6 +59,9 @@ export const GATES = Object.freeze([
   // 结构化工单编排器：用确定性合成工单验证建项、上传、DAG、完成回执、报告验收与
   // 汇总回执的单入口闭环。全程 mock HTTP，不连接设备，不触发分析计算。
   { id: 'work_order_orchestrator', label: '结构化工单编排闭环', exec: 'node', args: ['tools/dev/work_order_orchestrator_gate.mjs'], cwd: '.', slow: false },
+  // SOP 规约资产：skills/stable 下每个 skill.yaml 的字段、引用路径、prompt 配套与
+  // 工单 skill 的 exit_criteria 双射。YAML 用内置严格子集解析，本机有 PyYAML 时交叉核对。
+  { id: 'skills_contract', label: 'skills 规约资产契约', exec: 'node', args: ['tools/dev/skills_contract_gate.mjs'], cwd: '.', slow: false },
   // 54 模块功能级消融与相邻兼容性矩阵：确定性静态核对，不重跑分析，不连接设备。
   { id: 'module_ablation_matrix', label: '54 模块消融与兼容性矩阵', exec: 'node', args: ['tools/dev/module_ablation_matrix_gate.mjs'], cwd: '.', slow: false },
   // 受控桥接事实源：默认仍禁止跨线读取，只允许 workflows.json 声明的

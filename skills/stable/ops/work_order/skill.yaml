@@ -1,0 +1,43 @@
+name: "work_order"
+version: "1.0.0"
+status: "stable"
+invocation_mode: ["event", "user"]
+category: "ops"
+title: "结构化工单自动执行与验收规约"
+description: "输入一份结构化工单，顺序完成建项、上传、DAG 派发、逐任务回执核对、报告验收、项目汇总与工单回执。"
+
+required_references:
+  - "docs/WORK_ORDER_ORCHESTRATOR.md"
+  - "tools/bio/workflows.json"
+  - "tools/dev/figure_ready_allowlist.json"
+
+allowed_tools:
+  - "tools/dev/work_order_orchestrator.mjs"
+  - "tools/dev/work_order_orchestrator_gate.mjs"
+
+verify_commands:
+  - "node tools/dev/work_order_orchestrator_gate.mjs"
+  - "node --test BioanalysDesktop/tests/work_order_orchestrator_contract.test.js"
+
+exit_criteria:
+  - "`单入口存在`：tools/dev/work_order_orchestrator.mjs 存在，工单只经这一个入口执行。"
+  - "`ADB 默认`：工单缺省计算通道为 adb，不依赖调用方显式声明。"
+  - "`SSH 特殊开关`：只有工单显式写 computeAdapter=ssh 且 allowSsh=true 才允许 SSH。"
+  - "`无 SSH 直接调用`：编排器不导入远端执行接缝，不启动 SSH，不自动回落。"
+  - "`Ready 单图准入`：图件只接受 Ready 单图，退役组图与 draft 模板在编译期拒绝。"
+  - "`DAG 串行派发`：任务按编译后的 DAG 顺序逐个派发，前序失败时下游保持 blocked。"
+  - "`完成回执校验`：每个任务的项目、线、步骤、状态、退出码、seed、台账回执与产物清单全部吻合。"
+  - "`报告验收`：报告构建返回四关验收哨兵，报告文件接口复核 delivery_verified=true。"
+  - "`汇总与回执落盘`：Project_Summary.md 与 work_order.receipt.json 写入项目 report 目录，且完成机密脱敏。"
+  - "`编译闭包`：必需上游阶段自动补齐，编译 DAG 与执行计划逐项一致。"
+  - "`默认通道`：未声明通道的工单编译结果为 adb。"
+  - "`SSH fail closed`：未带 allowSsh 的 SSH 工单以 ERR_SSH_DISABLED 拒绝。"
+  - "`组图 fail closed`：退役组图以 ERR_RETIRED_FIGURE 拒绝。"
+  - "`契约测试`：work_order_orchestrator_contract.test.js 全绿。"
+
+negative_constraints:
+  - "图件仅允许 Ready 单图，组图与 draft 模板一律拒绝。"
+  - "计算通道默认 ADB，SSH 仅在 allowSsh=true 的特殊场景启用。"
+  - "上游失败即短路，下游任务保持 blocked，部分产物不写成成功。"
+  - "汇总与回执只写业务状态、产物名与脱敏相对路径，机器名、运行环境、绝对路径与内部脚本目录一律剔除。"
+  - "跨线 Mod 在编译期拒绝，上游闭包只允许同线补齐。"

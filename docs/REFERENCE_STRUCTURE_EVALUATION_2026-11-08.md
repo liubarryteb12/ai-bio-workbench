@@ -13,7 +13,7 @@
 
 1. **参考是一个 46 文件的通用 MVP 骨架，当前项目是 1953 tests 全绿的成熟体系。**
    参考定位是领域无关的 Ops-Agent-Platform 底座模板；本项目是三条生信线的生产工作台，
-   已带 228 个桌面端契约测试、99 个 ops 测试、24 道门禁与 K40 部署 parity 校验。
+   已带 228 个桌面端契约测试、99 个 ops 测试、25 道门禁与 K40 部署 parity 校验。
    整体搬迁等于用骨架替换成品。
 2. **参考的核心机制本项目大多已有等价或更强的实现**（见第三节映射表）。
    物理换目录不带来新能力，只带来路径、真源与部署面的全面重写。
@@ -42,7 +42,7 @@ execution_and_defense（Pydantic schemas + 白名单工具）、runtime_controls
 | checkpoint 断点续跑 | `src/*/checkpoint/` + `verify_bridge_checkpoint.py` + bridge_guard | 已有 |
 | 知识台账 ledger | `con_hf/ledger/` 五类 JSONL + 项目级 ledger | 已有，粒度更细 |
 | REJ 已否决设计台账 | `SCOPE.md` 12 条 REJ，`enforced_by` 由门禁校验 | 本项目更强（含有效期与撤销链） |
-| hooks 安全/审计钩子 | 24 道 ops 门禁 + audit.js + 变异反证 mutation_gate | 本项目更强（含变异反证纪律） |
+| hooks 安全/审计钩子 | 25 道门禁 + audit.js + 变异反证 mutation_gate | 本项目更强（含变异反证纪律） |
 | references 参考资产库 | `reference/` 编号目录 + inventory + gen_reference_index | 已有，规模更大 |
 | skills/stable 规约资产（skill.yaml + prompt.md） | 无独立 skills 层，SOP 散在 docs/*.md | **缺口，值得吸收** |
 | 一键接单入口 run_order_easy.py | BioanalysDesktop 门户 + 工单编排器 + 交付打包 | 已有且更完整 |
@@ -79,7 +79,7 @@ execution_and_defense（Pydantic schemas + 白名单工具）、runtime_controls
 1. 以当前 1953 tests 全绿快照为基线，先打 git tag 与便携包快照；
 2. 出全量路径映射表（git mv 清单），过 `router_gate`、`k40_script_parity`、`dist_parity_gate` 预检；
 3. 只允许一次原子迁移窗口，同步更新 `workflows.json`、AGENTS.md 导航表与 docs 真源；
-4. 迁移后全量测试 + 24 门禁 + 便携包重建全部对齐基线才许收口。
+4. 迁移后全量测试 + 全量门禁 + 便携包重建全部对齐基线才许收口。
 
 预估代价：数百个路径引用重写、K40 部署面全量重推、历史 git blame 断链。收益仅为目录名可读性，
 而该收益通过 A2 概念映射表即可获得大部分。
