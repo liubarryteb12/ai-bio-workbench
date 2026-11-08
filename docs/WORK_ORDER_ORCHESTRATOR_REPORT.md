@@ -1,6 +1,6 @@
 # 结构化工单编排器门禁报告
 
-日期 2026-11-08T15:59:01.909Z
+日期 2026-11-08T16:33:35.649Z
 
 本门禁只使用确定性合成工单与本地 mock 客户端，不连接远端设备，不启动分析任务。
 
@@ -19,7 +19,7 @@
 | 默认通道 | 通过 |  |
 | SSH fail closed | 通过 | SSH 仅在工单显式 allowSsh=true 的特殊场景启用 |
 | 组图 fail closed | 通过 | 组图已退役，禁止选择: fig_l3_multipanel |
-| 契约测试 | 通过 | ℹ tests 8 \| ℹ suites 0 \| ℹ pass 8 \| ℹ fail 0 \| ℹ cancelled 0 \| ℹ skipped 0 \| ℹ todo 0 \| ℹ duration_ms 102.4088 |
+| 契约测试 | 通过 | ℹ tests 8 \| ℹ suites 0 \| ℹ pass 8 \| ℹ fail 0 \| ℹ cancelled 0 \| ℹ skipped 0 \| ℹ todo 0 \| ℹ duration_ms 102.2047 |
 
 合计 14 项，通过 14 项，失败 0 项。
 

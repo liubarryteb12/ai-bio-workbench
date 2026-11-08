@@ -18,7 +18,7 @@ anndata 在 backed 模式下做子集物化（`adata[rows, cols].to_memory()`）
 同一任务峰值 792MB。
 
 使用纪律（静态门禁会检查）：
-  在 src/line2_scrna/ 与 src/line3_spatial/ 的脚本里，一旦以 backed="r" 打开 h5ad，
+  在两条线（本库服务的全部消费方）的脚本里，一旦以 backed="r" 打开 h5ad，
   就不允许对该对象调用 .to_memory() 或对它做全量 .X[...] 切片；必须走本模块的
   read_csr_rows / read_var_column。
 """

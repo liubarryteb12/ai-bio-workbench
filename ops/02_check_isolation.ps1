@@ -2,7 +2,7 @@
   ops/02_check_isolation.ps1 — 三线隔离约束校验（PC 侧入口）
 
   按 docs/isolation.md 执行：
-    [代码] src/<line>/ 下脚本不得引用其他两条线的目录名或 line_id
+    [代码] tools/bio/<line>/ 下脚本不得引用其他两条线的目录名或 line_id
     [台账] 不在此处跑：台账在服务器 system_logs/，由 03_check_logs_remote.sh 在容器/底座侧执行
 
   用法：  pwsh -File ops/02_check_isolation.ps1
@@ -20,9 +20,9 @@ Set-Location $repoRoot
 
 $failed = $false
 
-Write-Host '=== 检查：src/ 代码跨线引用 ==='
+Write-Host '=== 检查：tools/bio/ 代码跨线引用 ==='
 foreach ($line in $lines) {
-  $dir = Join-Path $repoRoot "src/$line"
+  $dir = Join-Path $repoRoot "tools/bio/$line"
   if (-not (Test-Path $dir)) {
     Write-Host ("[code:{0}] SKIP 目录不存在" -f $line) -ForegroundColor DarkGray
     continue
