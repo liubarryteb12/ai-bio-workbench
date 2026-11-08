@@ -11,10 +11,10 @@ import { execFileSync } from "child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { pythonMasters, REQUIRED_MARKERS, REWRITTEN_CALL } from "../../ops/python_interpreter_gate.mjs";
+import { pythonMasters, REQUIRED_MARKERS, REWRITTEN_CALL } from "../../tools/dev/python_interpreter_gate.mjs";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const GATE = path.join(REPO, "ops", "python_interpreter_gate.mjs");
+const GATE = path.join(REPO, "tools", "dev", "python_interpreter_gate.mjs");
 
 test("门禁可通过：47 个 python 母版均用 PATH 注入", () => {
   const out = execFileSync(process.execPath, [GATE], { cwd: REPO, encoding: "utf8" });

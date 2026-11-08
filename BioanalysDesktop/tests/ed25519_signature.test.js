@@ -7,9 +7,9 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
-const VERIFY = path.join(ROOT, 'ops', 'verify_delivery_signature.mjs');
+const VERIFY = path.join(ROOT, 'tools', 'reporting', 'verify_delivery_signature.mjs');
 
-import { signDelivery, verifyDelivery, writeChecksums } from '../../ops/ed25519_tools.mjs';
+import { signDelivery, verifyDelivery, writeChecksums } from '../../tools/reporting/ed25519_tools.mjs';
 
 function delivery() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bio-signature-'));

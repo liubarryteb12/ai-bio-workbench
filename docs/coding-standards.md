@@ -130,5 +130,5 @@ shell 母版写完用 `bash -n <脚本>` 查语法（bash 位于 `D:\Git\bin\bas
 | `#!/usr/bin/env Rscript` | `.R` |
 | `#!/usr/bin/env node` | `.js` / `.mjs` / `.cjs` |
 
-判据：`node ops/static_gate.mjs` 的 `shebang` 门禁（读前 128 字节，逐文件比对）。
+判据：`node tools/dev/static_gate.mjs` 的 `shebang` 门禁（读前 128 字节，逐文件比对）。
 新增脚本时若扩展名写错，这条门禁会在 CI 与本地同时拦下。

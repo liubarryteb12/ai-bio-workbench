@@ -13,7 +13,7 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseRouterYaml } from "../../ops/router_lib.mjs";
+import { parseRouterYaml } from "../../tools/dev/router_lib.mjs";
 
 const BASE = [
   'version: "1.0.0"',

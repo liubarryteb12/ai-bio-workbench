@@ -16,7 +16,7 @@ const BIOANALYS_DIR = path.resolve(import.meta.dirname, '..');
 const REPO = path.resolve(BIOANALYS_DIR, '..');
 const RUNBOOK = path.join(REPO, 'docs', 'RUNBOOK_K40_SETUP.md');
 const PACKAGER = path.join(REPO, 'ops', 'build_client_report.py');
-const CORE = path.join(REPO, 'ops', 'delivery_acceptance_core.mjs');
+const CORE = path.join(REPO, 'tools', 'reporting', 'delivery_acceptance_core.mjs');
 
 test('RUNBOOK 存在且一页式（控制在 120 行内，超了就拆文档）', () => {
   assert.ok(fs.existsSync(RUNBOOK), 'docs/RUNBOOK_K40_SETUP.md 缺失');
@@ -40,7 +40,7 @@ test('RUNBOOK 的四条命令入口都真实存在（脚本路径可执行）', 
   const text = fs.readFileSync(RUNBOOK, 'utf8');
   const scripts = [
     'ops/00_link_check.ps1',
-    'ops/preflight.mjs',
+    'tools/dev/preflight.mjs',
     'ops/fix_runsvdir.sh',
     'docs/k40_service_contract.md',
     'docs/k40_heartbeat.md',

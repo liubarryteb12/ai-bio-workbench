@@ -12,12 +12,12 @@
     "start": "node server/index.js",
     "test": "node --test --test-concurrency=1 tests/*.test.js",
     "test:e2e": "node node_modules/@playwright/test/cli.js test --config playwright.config.ts",
-    "delivery:verify": "node ../ops/delivery_acceptance_core.mjs",
-    "test:skip-gate": "node ../ops/skip_reason_gate.mjs",
-    "preflight": "node ../ops/preflight.mjs",
-    "clean:workspace": "node ../ops/clean_workspace.mjs",
-    "delivery:audit": "node ../ops/audit_summary.mjs",
-    "gate:all": "node ../ops/run_all_gates.mjs"
+    "delivery:verify": "node ../tools/reporting/delivery_acceptance_core.mjs",
+    "test:skip-gate": "node ../tools/dev/skip_reason_gate.mjs",
+    "preflight": "node ../tools/dev/preflight.mjs",
+    "clean:workspace": "node ../tools/dev/clean_workspace.mjs",
+    "delivery:audit": "node ../tools/reporting/audit_summary.mjs",
+    "gate:all": "node ../tools/dev/run_all_gates.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

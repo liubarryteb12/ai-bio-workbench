@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { judgeSource, checkTestIsolation, ISOLATION_TOKENS, OWNED_OUTPUT_EXEMPTIONS } from '../../ops/test_isolation_gate.mjs';
+import { judgeSource, checkTestIsolation, ISOLATION_TOKENS, OWNED_OUTPUT_EXEMPTIONS } from '../../tools/dev/test_isolation_gate.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -52,18 +52,18 @@ test('豁免清单冻结且每条带理由，不许顺手扩', () => {
   assert.equal(Object.isFrozen(OWNED_OUTPUT_EXEMPTIONS), true);
   assert.equal(Object.isFrozen(ISOLATION_TOKENS), true);
   assert.deepEqual([...OWNED_OUTPUT_EXEMPTIONS].map((e) => e.file), [
-    'ops/build_portable_package.mjs',
-    'ops/delivery_acceptance_core.mjs',
-    'ops/clean_workspace.mjs',
+    'tools/dev/build_portable_package.mjs',
+    'tools/reporting/delivery_acceptance_core.mjs',
+    'tools/dev/clean_workspace.mjs',
     // Q4 缓存清理器（第 41 轮）：默认 dry-run，仅 --apply 时删 .tmp/ 陈旧条目，作用域锁死
-    'ops/clean_tmp_cache.mjs',
+    'tools/dev/clean_tmp_cache.mjs',
   ]);
   for (const e of OWNED_OUTPUT_EXEMPTIONS) assert.ok(e.reason && e.reason.length > 10, e.file + ' 豁免必须写理由');
 });
 
 test('主入口信号：违规时 exit 1 且打出 [FAIL]', () => {
   // 用真实工作树跑 CLI（当前全绿），再单独验证「红门禁经 CLI 时 exit 1」由变异脚本覆盖。
-  const r = spawnSync(process.execPath, ['ops/test_isolation_gate.mjs'], { cwd: REPO, encoding: 'utf8', timeout: 60000 });
+  const r = spawnSync(process.execPath, ['tools/dev/test_isolation_gate.mjs'], { cwd: REPO, encoding: 'utf8', timeout: 60000 });
   assert.equal(r.status, 0, (r.stdout || '') + (r.stderr || ''));
   assert.match(r.stdout, /共享资源隔离通过|临时目录隔离通过/);
 });

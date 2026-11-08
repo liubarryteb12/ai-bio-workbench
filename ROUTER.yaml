@@ -189,7 +189,7 @@ routes:
       - "配色"
       - "版式"
       - "比例尺"
-    target_line_or_gate: "ops/figure_spec_gate.mjs"
+    target_line_or_gate: "tools/dev/figure_spec_gate.mjs"
     allowed_scripts:
       - "l1_figures_bulk"
       - "l2_figures_scrna"
@@ -209,7 +209,7 @@ routes:
       - "报告"
       - "导出"
       - "签名"
-    target_line_or_gate: "ops/delivery_acceptance_core.mjs"
+    target_line_or_gate: "tools/reporting/delivery_acceptance_core.mjs"
     allowed_scripts:
       - "delivery_acceptance_core.mjs"
       - "verify_delivery_signature.mjs"
@@ -228,7 +228,7 @@ routes:
       - "gate"
       - "全绿"
       - "报红"
-    target_line_or_gate: "ops/run_all_gates.mjs"
+    target_line_or_gate: "tools/dev/run_all_gates.mjs"
     allowed_scripts:
       - "run_all_gates.mjs"
       - "static_gate.mjs"
@@ -247,7 +247,7 @@ routes:
       - "adb"
       - "ssh"
       - "超时"
-    target_line_or_gate: "ops/preflight.mjs"
+    target_line_or_gate: "tools/dev/preflight.mjs"
     allowed_scripts:
       - "preflight.mjs"
       - "k40_script_parity.mjs"

@@ -19,7 +19,7 @@ import { indexMods } from '../server/workflow_graph.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
-const GENERATOR = path.join(REPO, 'ops', 'build_figure_templates.cjs');
+const GENERATOR = path.join(REPO, 'tools', 'dev', 'build_figure_templates.cjs');
 const REGISTRY = path.join(REPO, 'tools', 'bio', 'figure_templates.json');
 const BOXPLOT_MASTERS = [
   path.join(REPO, 'reference', '05.可参考生信代码', '可用代码预筛选', '源码', 'L1_基础统计图', 'L1_boxplot_code.R'),
@@ -27,7 +27,7 @@ const BOXPLOT_MASTERS = [
 ];
 const PLOT_MATRIX = path.join(REPO, 'reference', '05.可参考生信代码', '可用代码预筛选', '源码', '_meta', 'script_plot_matrix.json');
 // git 经工具链解析（净化 PATH 下 spawnSync('git') 直接 ENOENT）；解析不到时整类断言跳过
-import { resolveTool } from '../../ops/toolchain.mjs';
+import { resolveTool } from '../../tools/dev/toolchain.mjs';
 const GIT = resolveTool('git').path;
 
 /**
@@ -55,7 +55,7 @@ function needGit(testContext) {
   if (!gitUsable()) { testContext.skip('HOST_MISSING_GIT: 不在开发仓工作树根（如便携包/客户机），check-ignore 断言只属于开发仓'); return false; }
   return true;
 }
-const READY_ALLOWLIST = path.join(REPO, 'ops', 'figure_ready_allowlist.json');
+const READY_ALLOWLIST = path.join(REPO, 'tools', 'dev', 'figure_ready_allowlist.json');
 
 /**
  * 封板白名单闸门（4 Argon 第二十轮 Q3）：deps_status=ready 的 ID 全集真源。
@@ -75,7 +75,7 @@ function readyAllowlistIds() {
 function readyDiffMessage(actual, allowlist) {
   const extra = actual.filter((id) => !allowlist.includes(id));
   const gone = allowlist.filter((id) => !actual.includes(id));
-  return 'ready 集合与 ops/figure_ready_allowlist.json 不恒等。'
+  return 'ready 集合与 tools/dev/figure_ready_allowlist.json 不恒等。'
     + '多出的（未经准入）：' + (extra.join(', ') || '无') + '；'
     + '丢失的（已封板却退化）：' + (gone.join(', ') || '无') + '。'
     + '准入 = 显式改白名单（git diff 即审批记录）+ k40 验证证据进 registry；'
@@ -91,7 +91,7 @@ function resolveRepoFile(relative) {
 }
 
 test('registry is generated from bizard index and r453 evidence', () => {
-  assert.ok(fs.existsSync(GENERATOR), 'ops/build_figure_templates.cjs missing');
+  assert.ok(fs.existsSync(GENERATOR), 'tools/dev/build_figure_templates.cjs missing');
   assert.ok(fs.existsSync(REGISTRY), 'tools/bio/figure_templates.json missing');
   execFileSync(process.execPath, [GENERATOR, '--check'], { cwd: REPO, stdio: 'pipe' });
 });

@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 import {
   ALLOWED_SKIP_REASONS, scanTestSource, scanTestSources, checkTapSkips,
   parseTapSkipReasons, skipReasonIsAllowed, main,
-} from '../../ops/skip_reason_gate.mjs';
+} from '../../tools/dev/skip_reason_gate.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');

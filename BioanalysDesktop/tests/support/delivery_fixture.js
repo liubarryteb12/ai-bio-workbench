@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import crypto from 'node:crypto';
-import { writeChecksums, signDelivery, writeDeliveryPublicKey } from '../../../ops/ed25519_tools.mjs';
+import { writeChecksums, signDelivery, writeDeliveryPublicKey } from '../../../tools/reporting/ed25519_tools.mjs';
 
 export function sha256Hex(bytes) {
   return crypto.createHash('sha256').update(bytes).digest('hex');

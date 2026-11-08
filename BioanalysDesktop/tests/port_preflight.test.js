@@ -11,7 +11,7 @@ const SCRIPT = path.join(REPO, 'ops', 'port_preflight.ps1');
 
 // pwsh 在多数 Windows 机器上不存在（PowerShell 7 不是系统自带），净化 PATH 下
 // spawnSync('pwsh') 直接 ENOENT。走工具链解析器：pwsh 7 优先，退回 Windows PowerShell。
-import { resolveTool } from '../../ops/toolchain.mjs';
+import { resolveTool } from '../../tools/dev/toolchain.mjs';
 const POWERSHELL = resolveTool('pwsh').path;
 
 function needShell(testContext) {

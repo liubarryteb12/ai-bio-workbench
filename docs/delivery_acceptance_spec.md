@@ -76,7 +76,7 @@ Argon 裁定：放弃「人记得敲的命令」形态，四关验收成为打�
 
 | 件 | 职责 |
 |---|---|
-| `ops/delivery_acceptance_core.mjs` | 四道关判据的唯一真源：侧车 → 解包 → 验签 → 双向差集/覆盖/counts，纯 Node（zlib + ustar，进程接缝门禁不许 server 起子进程） |
+| `tools/reporting/delivery_acceptance_core.mjs` | 四道关判据的唯一真源：侧车 → 解包 → 验签 → 双向差集/覆盖/counts，纯 Node（zlib + ustar，进程接缝门禁不许 server 起子进程） |
 | `ops/delivery_acceptance.ps1` | 人用的一行包装：找 tar、透传开关、透传退出码。判据词（ghosts/missingFiles/Get-FileHash 等）已不在其中，测试钉住这条委托关系 |
 | `server/report.js` `runInlineAcceptance` | 打包末尾后置条件：全绿才写回执，红时路由回 500 且回执绝不落盘 |
 | `server/routes/report.routes.js` | 下载门禁：放行前校验回执存在且 `tar_sha256` == 当前包实时哈希，否则 409 `ERR_DELIVERY_UNVERIFIED`；`/api/report/files` 同响应带 `delivery_verified` 供前端先显示再点 |

@@ -17,7 +17,7 @@ import path from 'node:path';
 import {
   appendAuditEntry, readAuditLedger, hashedProjectId, auditPathFor,
   AUDIT_LEDGER_NAME, writeReceipt, acceptDelivery,
-} from '../../ops/delivery_acceptance_core.mjs';
+} from '../../tools/reporting/delivery_acceptance_core.mjs';
 import { buildMiniDeliveryPackage } from './support/delivery_fixture.js';
 import crypto from 'node:crypto';
 

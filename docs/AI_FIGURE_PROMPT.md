@@ -135,18 +135,18 @@ docs/figure_spec.md（v2.2），以及你要改的那一线 scripts/README.md。
    输入输出路径只允许本项目本线目录、`public_references/`、`system_logs/`。
    跨语言桥接必须过 checkpoint 四项校验（基因名、矩阵方向、细胞名、embedding）。
 2. **溯源诚实性**：每个出图脚本头部必须写 `# PROVENANCE: DERIVED|INSPIRED|INDEPENDENT`；
-   声明 DERIVED 必须真引用参考库路径，缺声明由 `ops/figure_source_provenance.mjs` 判红。
+   声明 DERIVED 必须真引用参考库路径，缺声明由 `tools/dev/figure_source_provenance.mjs` 判红。
 3. **解释器解析**：含 python heredoc 的母版必须有 `BIO_PY_BIN` PATH 前置注入块并校验可执行，
    不得把调用行改写成 `"$PY" - <<` 形态（会破坏 bilingual 行级计数）。
    容器真环境是 `/root/venvs/bio-py/bin/python3`，系统 `/usr/bin/python3` 无科学计算栈。
 4. **注册表与封板**：`src/figure_templates.json` 82 模板中 30 个 ready 由
-   `ops/figure_ready_allowlist.json` 精确锁死，集合恒等，readyCount 恒 30；
-   预览与渲染产物 sha 必须相等（`ops/figure_preview_provenance.mjs`）。
+   `tools/dev/figure_ready_allowlist.json` 精确锁死，集合恒等，readyCount 恒 30；
+   预览与渲染产物 sha 必须相等（`tools/dev/figure_preview_provenance.mjs`）。
    无真实客户订单不得激活 pending 模板。
 5. **便携包同源**：改 `shared/`、`server/`、`src/figure_templates.json` 等入包资产后，
-   必须重建 `dist/portable/BioanalysWorkbench`，否则 `ops/dist_parity_gate.mjs` 判红。
-6. **门禁清单**：`node ops/run_all_gates.mjs` 现为 17 道串联；改任何出图代码后跑
-   `node ops/figure_spec_gate.mjs`（产线项目强制 300 DPI）、
+   必须重建 `dist/portable/BioanalysWorkbench`，否则 `tools/dev/dist_parity_gate.mjs` 判红。
+6. **门禁清单**：`node tools/dev/run_all_gates.mjs` 现为 17 道串联；改任何出图代码后跑
+   `node tools/dev/figure_spec_gate.mjs`（产线项目强制 300 DPI）、
    `python3 ops/audit_figure_layout.py --script <脚本> --cwd <数据目录>`（A~E 几何判定）、
    `python3 cn_debug/figure_score.py --dir <图件目录> --audit-csv ... --code-csv ...`（>=75 PASS，
    UNVERIFIED 不得交付）。全量回归 `cd BioanalysDesktop; npm test`，判据 fail=0。
@@ -176,20 +176,20 @@ docs/figure_spec.md（v2.2），以及你要改的那一线 scripts/README.md。
 
 | 用户规则 | 项目真源 | 已有机器判据 | 现状 |
 |---|---|---|---|
-| shebang + set -euo pipefail / LF / POSIX / 755 | `docs/coding-standards.md` 第一条 | `ops/static_gate.mjs`（shebang、语法、防污染、命令引号） | 已覆盖 |
+| shebang + set -euo pipefail / LF / POSIX / 755 | `docs/coding-standards.md` 第一条 | `tools/dev/static_gate.mjs`（shebang、语法、防污染、命令引号） | 已覆盖 |
 | BIOANALYS_SEED 缺失 exit 3 | `docs/coding-standards.md` 退出码表；各母版头部 | 单元测试 + 引擎注入 | 已覆盖 |
-| Agg / 300 DPI / 8pt / 英文 | `docs/figure_spec.md` 第 1、3 节；各 `*_figures` rcParams | `ops/figure_spec_gate.mjs`（读 PNG pHYs）、`cn_debug/figure_code_audit.py` C2/C3/C4/C7 | 已覆盖 |
+| Agg / 300 DPI / 8pt / 英文 | `docs/figure_spec.md` 第 1、3 节；各 `*_figures` rcParams | `tools/dev/figure_spec_gate.mjs`（读 PNG pHYs）、`cn_debug/figure_code_audit.py` C2/C3/C4/C7 | 已覆盖 |
 | plt.close / dev.off | `docs/figure_spec.md` 第 3 节 | `cn_debug/figure_code_audit.py` 源码扫描 | **口径分叉**：脚本实际用 `plt.close(fig)` 逐图释放，用户要求 `plt.close("all")`。见第四节 1 |
 | 图例外置 / 图注分行 / 阈值靠边 / adjustText | `docs/figure_spec.md` 第 3 节之二、之三 | `ops/audit_figure_layout.py` A~E（容差 3px）、17 脚本内嵌 canonical helper | 已覆盖 |
 | 配色 #3B4992 / #EE0000 / viridis / 60 色板 / 禁 jet | `docs/figure_spec.md` 第 3、8 节 | `cn_debug/figure_code_audit.py`、像素采样测试 | 已覆盖 |
 | 禁全基因热图 / Top N / 60s 上限 | `docs/figure_spec.md` 第 4 节 | 无独立计时门禁 | **待补**：仅规范文字，无超时判据 |
-| 黄金数据集 / 拒绝全灰 | `docs/figure_spec.md` 第 10 节；round29/30 重渲染；round44 尺度守卫 | `ops/figure_preview_provenance.mjs`、ready_matrix、`deg_limma` 尺度守卫契约 | 已覆盖 |
+| 黄金数据集 / 拒绝全灰 | `docs/figure_spec.md` 第 10 节；round29/30 重渲染；round44 尺度守卫 | `tools/dev/figure_preview_provenance.mjs`、ready_matrix、`deg_limma` 尺度守卫契约 | 已覆盖 |
 | 多核降权 nice -n 10 / taskset | `docs/figure_spec.md` 第 4 节；`ops/run_throttled_task.sh` | 真机部署对账 | 已覆盖 |
 | `*_report.txt` 含输入哈希/耗时/口径/种子 | `docs/coding-standards.md` 步骤脚本结构 | 无专门断言 | **待核**：现报告口径齐，输入 sha256 与 seed 字段需逐脚本核对 |
-| 溯源声明 / 解释器 PATH 注入 | `ops/figure_source_provenance.mjs`、`ops/python_interpreter_gate.mjs` | 两道门禁（17 道之列） | **有覆盖缺口**：见第四节 5 |
+| 溯源声明 / 解释器 PATH 注入 | `tools/dev/figure_source_provenance.mjs`、`tools/dev/python_interpreter_gate.mjs` | 两道门禁（17 道之列） | **有覆盖缺口**：见第四节 5 |
 | 三线隔离 | `docs/isolation.md` | `ops/02_check_isolation.ps1`、台账检查、运行时路径断言 | 已覆盖 |
-| 30 ready 封板 / 预览 sha 恒等 | `ops/figure_ready_allowlist.json` | ready_matrix、preview_provenance、parity 断言 | 已覆盖 |
-| 便携包同源 | `ops/dist_parity_gate.mjs` | 第 4 道门禁 | 已覆盖 |
+| 30 ready 封板 / 预览 sha 恒等 | `tools/dev/figure_ready_allowlist.json` | ready_matrix、preview_provenance、parity 断言 | 已覆盖 |
+| 便携包同源 | `tools/dev/dist_parity_gate.mjs` | 第 4 道门禁 | 已覆盖 |
 | 12x8 英寸基准 | `docs/figure_spec.md` 第 1 节「尺寸按 12x8 英寸基准缩放」 | `cn_debug/figure_score.py` A3（最短边 >=1200px） | **口径需明示**：实际脚本按内容密度用 6.8x5.5、13x8 等，见第四节 2 |
 
 ---
@@ -207,7 +207,7 @@ docs/figure_spec.md（v2.2），以及你要改的那一线 scripts/README.md。
 4. **绝对 POSIX 路径与 `../figures/`**：用户首段要求绝对 POSIX 路径，第四节自校验又允许相对/绝对。
    裁定：跨步骤输入用引擎注入的绝对路径；出图落点按项目契约写 `../figures/`（相对），
    report 登记绝对路径。禁止为了「绝对」改动落点契约，那会破坏 07 回搬与图件注册表。
-5. **溯源门禁覆盖缺口（真缺陷，待本轮修）**：`ops/figure_source_provenance.mjs` 的
+5. **溯源门禁覆盖缺口（真缺陷，待本轮修）**：`tools/dev/figure_source_provenance.mjs` 的
    `FIGURE_SCRIPTS` 只登记 6 份脚本（line1 bulk_figures / enrichment_figures，
    line2 scrna_figures / enrichment_figures / scenic_figures，line3 enrichment_figures），
    `src/line3_spatial/scripts/spatial_figures` 未登记且头部无 `# PROVENANCE:` 声明，

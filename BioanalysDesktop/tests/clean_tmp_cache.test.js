@@ -15,7 +15,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const GATE = path.join(REPO, "ops", "clean_tmp_cache.mjs");
+const GATE = path.join(REPO, "tools", "dev", "clean_tmp_cache.mjs");
 
 function run(args = []) {
   try {

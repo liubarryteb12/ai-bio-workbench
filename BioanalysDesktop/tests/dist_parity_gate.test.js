@@ -7,7 +7,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { checkDistParity, PARITY_ASSETS } from '../../ops/dist_parity_gate.mjs';
+import { checkDistParity, PARITY_ASSETS } from '../../tools/dev/dist_parity_gate.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const sha = (p) => crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
@@ -88,7 +88,7 @@ test('真实 dist 若存在必须全部一致（CI 无盘时由存在性守卫�
 });
 
 test('CLI 信号：当前真实 dist 存在时 exit 0 且打印逐字节一致', () => {
-  const r = spawnSync(process.execPath, ['ops/dist_parity_gate.mjs'], { cwd: REPO, encoding: 'utf8', timeout: 60000 });
+  const r = spawnSync(process.execPath, ['tools/dev/dist_parity_gate.mjs'], { cwd: REPO, encoding: 'utf8', timeout: 60000 });
   assert.equal(r.status, 0, (r.stdout || '') + (r.stderr || ''));
   assert.match(r.stdout, /逐字节一致|SKIP_NO_DIST|dist not built/);
 });

@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   FIGURE_SCRIPTS, discoverFigureProducers, parseProvenance,
-} from "../../ops/figure_source_provenance.mjs";
+} from "../../tools/dev/figure_source_provenance.mjs";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 

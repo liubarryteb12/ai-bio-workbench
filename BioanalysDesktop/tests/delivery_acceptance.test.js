@@ -17,16 +17,16 @@ const SCRIPT = path.join(REPO, 'ops', 'delivery_acceptance.ps1');
 //   3. 清单哈希 + Ed25519 验签返回 VERIFIED
 //   4. 清单计数与磁盘实际文件数核对
 
-// ── 第二十轮 Q1：四关判据真源移进 ops/delivery_acceptance_core.mjs ──
+// ── 第二十轮 Q1：四关判据真源移进 tools/reporting/delivery_acceptance_core.mjs ──
 //
 // ps1 退化为人用的一行包装。理由：打包链路的内联后置条件（server/report.js）不可能
 // 起 pwsh 子进程（进程单接缝门禁），四关必须有一份纯 Node 真源；若 ps1 继续自带
 // 一套判据，两条路会漂移，服务端绿/手敲红无法自证。下面这组断言把「真源在内联处」
 // 与「包装只做委托」钉死。
-const CORE = path.join(REPO, 'ops', 'delivery_acceptance_core.mjs');
+const CORE = path.join(REPO, 'tools', 'reporting', 'delivery_acceptance_core.mjs');
 
 test('acceptance core exists and pins all four gates (single source of truth)', () => {
-  assert.ok(fs.existsSync(CORE), 'ops/delivery_acceptance_core.mjs 缺失');
+  assert.ok(fs.existsSync(CORE), 'tools/reporting/delivery_acceptance_core.mjs 缺失');
   const text = fs.readFileSync(CORE, 'utf8');
   // 关 1：侧车命名两套都要认（演练包 legacy + 打包器 .sha256）
   assert.ok(text.includes('tar_sha256_sidecar.txt'), '关 1 缺失：未校验 legacy 侧车命名');
@@ -193,7 +193,7 @@ const DRILL = path.join(REPO, 'con_hf', 'runs', '2026-10-31_phase3_delivery_dril
 test('drill package passes all four gates, tamper probes each turn a dedicated gate red', async () => {
   const tar = path.join(DRILL, 'Client_Delivery.tar.gz');
   if (!fs.existsSync(tar)) return; // 演练包是运行产物，缺失时不主张
-  const core = await import('../../ops/delivery_acceptance_core.mjs');
+  const core = await import('../../tools/reporting/delivery_acceptance_core.mjs');
   const work = fs.mkdtempSync(path.join(REPO, '.tmp', 'acc-drill-'));
   try {
     // 基线：绿（复用既有 unpacked，避免动演练目录原件）
@@ -260,7 +260,7 @@ test('drill package passes all four gates, tamper probes each turn a dedicated g
 test('tampered tar cannot earn a receipt nor pass the download gate', async () => {
   // Q1 裁定的完整闭环：传输层全绿（侧车按篡改包重算）时红线必须落在关 3；
   // 且 writeReceipt 拒收红 verdict、verifyTarReceipt 对换过的包拒绝放行。
-  const core = await import('../../ops/delivery_acceptance_core.mjs');
+  const core = await import('../../tools/reporting/delivery_acceptance_core.mjs');
   const fixture = await import('./support/delivery_fixture.js');
   const crypto = await import('node:crypto');
   const zlib = await import('node:zlib');
@@ -306,7 +306,7 @@ test('tampered tar cannot earn a receipt nor pass the download gate', async () =
 
 test('zip-slip and traversal entries are rejected before any write', async () => {
   // 核心解包器面对恶意 tar 的第一红线：条目名含 .. / 绝对路径 / 盘符，必须在写盘前拒。
-  const core = await import('../../ops/delivery_acceptance_core.mjs');
+  const core = await import('../../tools/reporting/delivery_acceptance_core.mjs');
   const zlib = await import('node:zlib');
   const os = await import('node:os');
   const fixture = await import('./support/delivery_fixture.js');

@@ -11,7 +11,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const GATE = path.join(REPO, "ops", "project_script_gate.mjs");
+const GATE = path.join(REPO, "tools", "dev", "project_script_gate.mjs");
 const MANIFEST = path.join(REPO, "local_projects", "PRJ_DCM_BENCH_20261105", "scripts", "scripts_manifest.json");
 
 test("Q1：门禁可通过（项目层无母版副本）", () => {

@@ -2411,7 +2411,7 @@ def sign_checksums(delivery_dir, required=False):
     node = shutil.which("node")
     if not node:
         raise RuntimeError("node 不可用，无法生成 CHECKSUMS.sig")
-    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ed25519_tools.mjs")
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tools", "reporting", "ed25519_tools.mjs")
     result = subprocess.run(
         [node, script, "--delivery-dir", delivery_dir, "--sign-only"]
         + (["--required"] if required else []),
@@ -2430,7 +2430,7 @@ def generate_selftest_ed25519_keys(root):
     node = shutil.which("node")
     if not node:
         raise RuntimeError("node 不可用，无法生成自检 Ed25519 密钥")
-    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ed25519_tools.mjs")
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tools", "reporting", "ed25519_tools.mjs")
     private_path = os.path.join(root, ".selftest_private_key")
     public_path = os.path.join(root, ".selftest_public_key")
     result = subprocess.run(

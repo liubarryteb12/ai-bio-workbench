@@ -34,7 +34,7 @@ pwsh -File ops/00_link_check.ps1    # 设备→forward→Termux sshd→容器 ss
 ## 三、每天开工前（30 秒）
 
 ```powershell
-pwsh -File ops/preflight.mjs              # 宿主机依赖：node>=22 / ssh / scp 齐不齐
+pwsh -File tools/dev/preflight.mjs              # 宿主机依赖：node>=22 / ssh / scp 齐不齐
 node ops/../.tmp/hb_probe.mjs             # 零 SSH 心跳（不经 sshd，断了也能读）
 ```
 

@@ -11,10 +11,10 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import { readPngDpi, readPngSize, REQUIRED_DPI, STRICT_PROJECTS } from "../../ops/figure_spec_gate.mjs";
+import { readPngDpi, readPngSize, REQUIRED_DPI, STRICT_PROJECTS } from "../../tools/dev/figure_spec_gate.mjs";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const GATE = path.join(REPO, "ops", "figure_spec_gate.mjs");
+const GATE = path.join(REPO, "tools", "dev", "figure_spec_gate.mjs");
 
 test("门禁可通过：全部产线图件 300 DPI", () => {
   const out = execFileSync(process.execPath, [GATE], { cwd: REPO, encoding: "utf8" });

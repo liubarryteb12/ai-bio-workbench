@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { verifyDelivery } from '../../ops/ed25519_tools.mjs';
+import { verifyDelivery } from '../../tools/reporting/ed25519_tools.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
 const SCRIPT = path.join(ROOT, 'ops', 'build_client_report.py');

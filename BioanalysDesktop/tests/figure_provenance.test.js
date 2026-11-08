@@ -12,10 +12,10 @@ import { fileURLToPath } from "node:url";
 
 import {
   parseProvenance, referencesLibrary, PROVENANCE_KINDS, REFERENCE_PATH_MARKERS,
-} from "../../ops/figure_source_provenance.mjs";
+} from "../../tools/dev/figure_source_provenance.mjs";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const GATE = path.join(REPO, "ops", "figure_source_provenance.mjs");
+const GATE = path.join(REPO, "tools", "dev", "figure_source_provenance.mjs");
 const NL = String.fromCharCode(10);
 const QT = String.fromCharCode(34);
 

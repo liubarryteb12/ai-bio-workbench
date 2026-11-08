@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { REPO_ROOT, buildMatrix } from '../../ops/module_ablation_matrix.mjs';
+import { REPO_ROOT, buildMatrix } from '../../tools/dev/module_ablation_matrix.mjs';
 
 const read = (relativePath) => fs.readFileSync(path.join(REPO_ROOT, relativePath), 'utf8');
 
@@ -69,7 +69,7 @@ test('跨线桥只放行 public_references 冻结签名表', () => {
   const bridges = workflows.constraints.allowed_cross_series_bridges || [];
   assert.equal(bridges.length, 1);
   assert.match(bridges[0].path, /^public_references\/celltype_signatures\//);
-  assert.equal(read('ops/isolated_bridge_gate.mjs').includes('public_references/celltype_signatures'), true);
+  assert.equal(read('tools/dev/isolated_bridge_gate.mjs').includes('public_references/celltype_signatures'), true);
 });
 
 test('报告与门禁包装器存在且以成功哨兵结束', () => {
@@ -77,7 +77,7 @@ test('报告与门禁包装器存在且以成功哨兵结束', () => {
   assert.match(report, /MODULE_ABLATION_MATRIX_OK/);
   assert.match(report, /## 逐模块表/);
   assert.match(report, /## 缺口清单/);
-  const gate = read('ops/module_ablation_matrix_gate.mjs');
+  const gate = read('tools/dev/module_ablation_matrix_gate.mjs');
   assert.match(gate, /MODULE_ABLATION_MATRIX_GATE_OK/);
 });
 
@@ -85,7 +85,7 @@ test('静态守卫与现有门禁真源相接，不另造第二份规则', () =>
   const matrix = buildMatrix();
   assert.equal(matrix.counts.guards, 4);
   assert.ok(matrix.guards.every((guard) => guard.exists && guard.guard_pattern));
-  const source = read('ops/module_ablation_matrix.mjs');
+  const source = read('tools/dev/module_ablation_matrix.mjs');
   assert.match(source, /workflows\.json/);
   assert.match(source, /figure_templates\.json/);
   assert.match(source, /isolated_bridge_gate/);
@@ -124,7 +124,7 @@ test('tSV 与 h5ad 兼容性检查覆盖声明的必需列和键', () => {
 });
 
 test('总门禁清单纳入模块消融门禁', () => {
-  const gates = read('ops/run_all_gates.mjs');
+  const gates = read('tools/dev/run_all_gates.mjs');
   assert.match(gates, /module_ablation_matrix/);
   const test = read('BioanalysDesktop/tests/run_all_gates.test.js');
   assert.match(test, /'module_ablation_matrix'/);

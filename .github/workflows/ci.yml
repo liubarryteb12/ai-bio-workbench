@@ -35,13 +35,13 @@ jobs:
         # gate:all 内含 preflight/static/skip_static/ledger/figure_registry/audit_summary/
         # mutation_gate/metrics 八道；任一道红即整体红，exit 非 0 会直接让 job 失败。
         # mutation_gate 在 CI 上同样只在临时副本上变异，不写工作树。
-        run: node ops/run_all_gates.mjs --json
+        run: node tools/dev/run_all_gates.mjs --json
       - name: 门禁结果留档
         if: always()
         # 留档步骤与门禁步骤跑同一套判据，失败时它也必须红。此前这里用「或裸 true」的
         # 短路兜底吞掉退出码，结果日志里写着 GATE_ALL_FAILED 而 job 仍绿，
         # 事后翻日志的人会以为失败被容忍了。
-        run: node ops/run_all_gates.mjs --skip-tests
+        run: node tools/dev/run_all_gates.mjs --skip-tests
 
   e2e:
     # Playwright 单列一个 job：浏览器二进制下载与安装要 1~2 分钟，

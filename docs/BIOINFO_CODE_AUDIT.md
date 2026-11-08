@@ -158,7 +158,7 @@ line1:  prep_matrix  -> expr_genes.tsv + group_map.tsv
 # 验证出图脚本未引用参考库
 Select-String -Path src/line1_bulk/scripts/bulk_figures -Pattern '05.可参考出图代码|R453'
 # 查看参考库状态分布
-node ops/figure_ready_matrix.mjs
+node tools/dev/figure_ready_matrix.mjs
 # 三线脚本规模
 Get-ChildItem src/line1_bulk/scripts,src/line2_scrna/scripts,src/line3_spatial/scripts -File
 ```

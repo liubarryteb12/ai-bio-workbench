@@ -17,13 +17,13 @@
 | `projectId` | 是 | 合法项目 ID，只允许字母数字、点、下划线、连字符 |
 | `lineId` | 是 | `line1_bulk`、`line2_scrna`、`line3_spatial` 之一 |
 | `modIds` | 是 | 选择的 Mod，编排器按 `src/workflows.json` 补齐必需上游闭包 |
-| `figureSelections` | 否 | 只允许 `ops/figure_ready_allowlist.json` 中的 Ready 单图，组图与 draft 一律拒绝 |
+| `figureSelections` | 否 | 只允许 `tools/dev/figure_ready_allowlist.json` 中的 Ready 单图，组图与 draft 一律拒绝 |
 | `uploads` | 否 | `filename` 与 `content_base64`，按线上传到项目 raw data |
 | `seed` | 否 | 缺省用该线 `src/workflows.json` 的固定 seed |
 | `computeAdapter` | 否 | `adb` 默认，`ssh` 需 `allowSsh=true`，`mock` 仅测试 |
 | 建项字段 | 视服务端契约 | `basicInfo`、`dataSource`、`groupingDesign`、`analysisCutoffs` 等原样透传给 `/api/projects/create` |
 
-样例见 `ops/examples/work_order.example.json`。
+样例见 `tools/examples/work_order.example.json`。
 
 ## 执行判据
 
@@ -39,7 +39,7 @@
 ## 运行
 
 ```powershell
-node ops/work_order_orchestrator.mjs ops/examples/work_order.example.json --base-url http://127.0.0.1:18787
+node ops/work_order_orchestrator.mjs tools/examples/work_order.example.json --base-url http://127.0.0.1:18787
 ```
 
 需要鉴权时由环境变量 `BIO_WORKBENCH_USER` 与 `BIO_WORKBENCH_PASS` 提供，凭证不写入工单和回执。CLI 成功输出 `WORK_ORDER_ORCHESTRATOR_OK`，失败输出错误码并以退出码 1 结束。

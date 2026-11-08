@@ -16,7 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { computeSystemLedger } from '../../ops/ledger_gen.mjs';
+import { computeSystemLedger } from '../../tools/dev/ledger_gen.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
@@ -38,11 +38,11 @@ function stableStringify(value) {
 
 test('台账与代码实态字节级一致（改了真源必须重跑生成器）', () => {
   assert.equal(fs.existsSync(LEDGER_FILE), true,
-    '缺少 docs/generated/SYSTEM_LEDGER.json；运行 node ops/ledger_gen.mjs --write 生成');
+    '缺少 docs/generated/SYSTEM_LEDGER.json；运行 node tools/dev/ledger_gen.mjs --write 生成');
   const diskRaw = fs.readFileSync(LEDGER_FILE, 'utf8');
   const freshRaw = stableStringify(computeSystemLedger());
   assert.equal(freshRaw, diskRaw,
-    '台账与代码实态脱节，请运行 node ops/ledger_gen.mjs --write');
+    '台账与代码实态脱节，请运行 node tools/dev/ledger_gen.mjs --write');
 });
 
 test('54 个 Mod 的母版引用零断链', () => {
@@ -58,12 +58,12 @@ test('92 个图件模板的就绪数与封板白名单恒等（第二十轮 Q3 /
   assert.equal(fresh.figureTemplates.total, 92, 'figure_templates.json 应登记 92 个模板');
   // 旧口径 readyCount >= 16 与 figure_templates_parity.test.js 同步作废：
   // 下限断言放行第 31 个偷翻 ready，也放行 30 退化到 16。台账侧改为锚定
-  // ops/figure_ready_allowlist.json 条数（ID 集合恒等由 parity 测试把关，
+  // tools/dev/figure_ready_allowlist.json 条数（ID 集合恒等由 parity 测试把关，
   // 这里守「台账数字与闸门不脱节」这一层）。
-  const gate = JSON.parse(fs.readFileSync(path.join(REPO, 'ops', 'figure_ready_allowlist.json'), 'utf8'));
+  const gate = JSON.parse(fs.readFileSync(path.join(REPO, 'tools', 'dev', 'figure_ready_allowlist.json'), 'utf8'));
   assert.equal(fresh.figureTemplates.readyCount, gate.ids.length,
     '台账就绪数与封板白名单不符：台账=' + fresh.figureTemplates.readyCount + ' 白名单=' + gate.ids.length
-    + '（registry 改了记得重跑 node ops/ledger_gen.mjs --write）');
+    + '（registry 改了记得重跑 node tools/dev/ledger_gen.mjs --write）');
   assert.equal(
     fresh.figureTemplates.readyCount + fresh.figureTemplates.pendingCount,
     fresh.figureTemplates.total,

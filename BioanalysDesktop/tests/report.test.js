@@ -23,7 +23,7 @@ import { Readable, Writable } from 'node:stream';
 import childProcess from 'node:child_process';
 import { createHash, generateKeyPairSync } from 'node:crypto';
 import zlib from 'node:zlib';
-import { signDelivery, writeChecksums } from '../../ops/ed25519_tools.mjs';
+import { signDelivery, writeChecksums } from '../../tools/reporting/ed25519_tools.mjs';
 import { buildMiniDeliveryPackage, sha256Hex } from './support/delivery_fixture.js';
 
 // 环境变量必须在 import 服务端模块之前设好（report.js / index.js 在模块加载时读）

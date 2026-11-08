@@ -8,7 +8,7 @@
 // 这条红测现在应当红：实测 EQ=3 / NEQ=9 / 无证据=18。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { checkPreviewProvenance } from '../../ops/figure_preview_provenance.mjs';
+import { checkPreviewProvenance } from '../../tools/dev/figure_preview_provenance.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

@@ -22,7 +22,7 @@
 
 注册表 `figure_templates.json` 里 30 条 ready 模板**都登记了 source 指向参考库**，但 6 个真实出图脚本一处都没引用。溯源只是元数据关系，不是代码派生关系。
 
-**已落地 `ops/figure_source_provenance.mjs`**（第 11 道门禁）：要求每个出图脚本显式声明
+**已落地 `tools/dev/figure_source_provenance.mjs`**（第 11 道门禁）：要求每个出图脚本显式声明
 `DERIVED / INSPIRED / INDEPENDENT`，并抓「声称派生却不引用库」的假溯源。
 6 个脚本已按实测如实标注 `INDEPENDENT`。
 
@@ -123,9 +123,9 @@ network 4 条（我们已是生产级 igraph）、wordcloud 2 条（场景无需
 ## 十、复跑入口
 
 ```powershell
-node ops/run_all_gates.mjs                 # 16 道门禁
-node ops/figure_source_provenance.mjs      # 溯源诚实性
-node ops/python_interpreter_gate.mjs       # 解释器解析
-node ops/figure_spec_gate.mjs              # 300 DPI 合规
-node ops/figure_ready_matrix.mjs           # 30 条 Ready 证据链
+node tools/dev/run_all_gates.mjs                 # 16 道门禁
+node tools/dev/figure_source_provenance.mjs      # 溯源诚实性
+node tools/dev/python_interpreter_gate.mjs       # 解释器解析
+node tools/dev/figure_spec_gate.mjs              # 300 DPI 合规
+node tools/dev/figure_ready_matrix.mjs           # 30 条 Ready 证据链
 ```

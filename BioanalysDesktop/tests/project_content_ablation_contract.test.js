@@ -26,16 +26,16 @@ import {
   expandFigurePattern,
   discoverLocalProjects,
   sourceManifestStatus,
-} from '../../ops/project_content_ablation.mjs';
-import { readPngDpi, readPngSize, REQUIRED_DPI } from '../../ops/figure_spec_gate.mjs';
+} from '../../tools/dev/project_content_ablation.mjs';
+import { readPngDpi, readPngSize, REQUIRED_DPI } from '../../tools/dev/figure_spec_gate.mjs';
 
 const REPO = path.resolve(import.meta.dirname, '..', '..');
-const SCRIPT = path.join(REPO, 'ops', 'project_content_ablation.mjs');
-const GATE = path.join(REPO, 'ops', 'project_content_ablation_gate.mjs');
+const SCRIPT = path.join(REPO, 'tools', 'dev', 'project_content_ablation.mjs');
+const GATE = path.join(REPO, 'tools', 'dev', 'project_content_ablation_gate.mjs');
 
 test('消融脚本与门禁包装器存在', () => {
-  assert.ok(fs.existsSync(SCRIPT), '缺少 ops/project_content_ablation.mjs');
-  assert.ok(fs.existsSync(GATE), '缺少 ops/project_content_ablation_gate.mjs');
+  assert.ok(fs.existsSync(SCRIPT), '缺少 tools/dev/project_content_ablation.mjs');
+  assert.ok(fs.existsSync(GATE), '缺少 tools/dev/project_content_ablation_gate.mjs');
   const gateSrc = fs.readFileSync(GATE, 'utf8');
   assert.match(gateSrc, /spawnSync/);
   assert.ok(gateSrc.includes(PROJECT_CONTENT_ABLATION_OK), '包装器必须检查成功哨兵');

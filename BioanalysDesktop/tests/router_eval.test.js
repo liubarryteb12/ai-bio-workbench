@@ -15,7 +15,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadRouter, loadModIds, listOpsScripts, matchRoute } from "../../ops/router_lib.mjs";
+import { loadRouter, loadModIds, listOpsScripts, matchRoute } from "../../tools/dev/router_lib.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "../..");
@@ -41,7 +41,7 @@ test("黄金集至少 25 条，且字段齐全", () => {
 
 test("每条 case 期望的 Mod/脚本必须真实存在", () => {
   const { modIds } = loadModIds(path.join(REPO, "tools/bio/workflows.json"));
-  const ops = new Set(listOpsScripts(path.join(REPO, "ops")));
+  const ops = new Set([...listOpsScripts(path.join(REPO, "ops")), ...listOpsScripts(path.join(REPO, "tools", "dev")), ...listOpsScripts(path.join(REPO, "tools", "reporting"))]);
   const mods = new Set(modIds);
   const bad = [];
   for (const c of loadCases()) {

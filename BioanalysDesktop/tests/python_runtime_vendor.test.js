@@ -38,7 +38,7 @@ test("Q4：新位置未被 git 跟踪（是缓存不是源码）", () => {
 });
 
 test("Q4：构建排除清单同时覆盖新位置与旧位置（兼容历史工作树）", () => {
-  const src = fs.readFileSync(path.join(REPO, "ops", "build_portable_package.mjs"), "utf8");
+  const src = fs.readFileSync(path.join(REPO, "tools", "dev", "build_portable_package.mjs"), "utf8");
   assert.match(src, /['"]vendor\/['"]/, "排除清单缺 vendor/");
   assert.match(src, /BioanalysDesktop\/Python\//, "排除清单缺旧位置前缀（历史工作树兼容）");
 });

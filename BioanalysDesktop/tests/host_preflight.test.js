@@ -12,7 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { CHECKS, MIN_NODE_MAJOR, findExecutable, nodeVersionOk, runPreflight, main }
-  from '../../ops/preflight.mjs';
+  from '../../tools/dev/preflight.mjs';
 
 const BIOANALYS_DIR = path.resolve(import.meta.dirname, '..');
 const REPO = path.resolve(BIOANALYS_DIR, '..');
@@ -93,7 +93,7 @@ test('CLI 双出口：人读带 PREFLIGHT 哨兵，--json 给机器读且可解�
 });
 
 test('静态契约：预检不 spawn 子进程（只查 PATH 与版本，天然离线）', () => {
-  const src = fs.readFileSync(path.join(REPO, 'ops', 'preflight.mjs'), 'utf8');
+  const src = fs.readFileSync(path.join(REPO, 'tools', 'dev', 'preflight.mjs'), 'utf8');
   const code = src.split('\n').filter((line) => {
     const trimmed = line.trim();
     return !trimmed.startsWith('*') && !trimmed.startsWith('//');

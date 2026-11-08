@@ -12,8 +12,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const GATE = path.join(REPO, "ops", "figure_ready_matrix.mjs");
-const MATRIX = path.join(REPO, "ops", "figure_ready_matrix.json");
+const GATE = path.join(REPO, "tools", "dev", "figure_ready_matrix.mjs");
+const MATRIX = path.join(REPO, "tools", "dev", "figure_ready_matrix.json");
 
 test("ready 矩阵门禁可通过（39 条证据链完整）", () => {
   const out = execFileSync(process.execPath, [GATE], { cwd: REPO, encoding: "utf8" });
@@ -24,7 +24,7 @@ test("ready 矩阵门禁可通过（39 条证据链完整）", () => {
 });
 
 test("矩阵产物含逐条记录，且每条都标了哈希是否匹配", () => {
-  assert.ok(fs.existsSync(MATRIX), "缺 ops/figure_ready_matrix.json");
+  assert.ok(fs.existsSync(MATRIX), "缺 tools/dev/figure_ready_matrix.json");
   const m = JSON.parse(fs.readFileSync(MATRIX, "utf8"));
   assert.equal(m.total_ready, 39);
   assert.equal(m.rows.length, 39);

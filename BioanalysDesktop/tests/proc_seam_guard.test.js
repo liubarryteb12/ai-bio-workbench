@@ -29,7 +29,7 @@ const RUNTIME_DIRS = [
   path.join(REPO_ROOT, 'BioanalysDesktop', 'src-tauri'),
   path.join(REPO_ROOT, 'portal'),
   path.join(REPO_ROOT, 'shared'),
-  path.join(REPO_ROOT, 'ops'),
+  path.join(REPO_ROOT, 'tools'),
   path.join(REPO_ROOT, 'bin'),
 ];
 
@@ -47,44 +47,44 @@ const EXEMPT_RELPATHS = new Set([
   'BioanalysDesktop/server/proc.js',       // 接缝本体
   'BioanalysDesktop/server/ssh.js',        // 纯字符串构造
   'BioanalysDesktop/tests/proc_seam_guard.test.js', // 本测试自身
-  'ops/metrics_sync.mjs',                  // 离线统计工具（手工跑，不进服务运行时）
-  'ops/static_gate.mjs',                   // 离线静态门禁（手工/CI 跑，不进服务运行时）
-  'ops/smoke_golden.mjs',                   // 离线真机冒烟驱动（手工/CI 跑，经 ssh 下发生产包装器）
-  'ops/ledger_gen.mjs',                    // 离线台账生成（纯 node:fs，无子进程；列入以防将来引入）
+  'tools/dev/metrics_sync.mjs',                  // 离线统计工具（手工跑，不进服务运行时）
+  'tools/dev/static_gate.mjs',                   // 离线静态门禁（手工/CI 跑，不进服务运行时）
+  'tools/dev/smoke_golden.mjs',                   // 离线真机冒烟驱动（手工/CI 跑，经 ssh 下发生产包装器）
+  'tools/dev/ledger_gen.mjs',                    // 离线台账生成（纯 node:fs，无子进程；列入以防将来引入）
   // 总门禁串联器（Argon 第二十四轮 Q4）：它**本身就是**门禁的编排者，必须起子进程
   // 才能把八道门禁一道道跑起来；与 metrics_sync/static_gate 同属「手工/CI 跑、
   // 不进服务运行时」的离线工具类。它起的每个子进程都走白名单脚本，不碰远端算力。
-  'ops/run_all_gates.mjs',
+  'tools/dev/run_all_gates.mjs',
   // 便携包构建器：必须起 git（列跟踪清单）与包内 node（自检），与 run_all_gates
   // 同类——离线手工/CI 工具，不进服务运行时。
-  'ops/build_portable_package.mjs',
+  'tools/dev/build_portable_package.mjs',
   // 清理器：T2-1 要求用 git ls-files 判定「文件是否已被版本控制跟踪」，
   // 这必须起 git 子进程。它是离线手工/CI 工具，不进服务运行时。
-  'ops/clean_workspace.mjs',
+  'tools/dev/clean_workspace.mjs',
   // 变异门禁（T2-6，第 8 道）：它本身的工作就是「跑测试、跑门禁、看变没变红」，
   // 必然要起子进程。与 run_all_gates 同类——门禁的编排者。
-  'ops/mutation_gate.mjs',
+  'tools/dev/mutation_gate.mjs',
   // 临时目录隔离门禁（第三十四轮 Q4）与便携包同源门禁（第三十五轮 Q4）：
   // 两者都要用 git ls-files 列「被跟踪的源码」，离线静态门禁，不进服务运行时。
-  'ops/test_isolation_gate.mjs',
-  'ops/dist_parity_gate.mjs',
+  'tools/dev/test_isolation_gate.mjs',
+  'tools/dev/dist_parity_gate.mjs',
   // K40 脚本同源门禁（第 39 轮）：它的工作就是 ssh 到真机取三线全部 sha256 再比对，
   // 必须起子进程。与 smoke_golden 同类——离线手工/CI 跑的真机驱动，不进服务运行时。
-  'ops/k40_script_parity.mjs',
+  'tools/dev/k40_script_parity.mjs',
   // 路由与边界台账门禁（第 68 轮）：它要起两个子进程 —— python 跑 PyYAML 做
   // 交叉校验、git ls-files 核 enforced_by 是否被跟踪。与 test_isolation_gate 同类，
   // 是离线静态门禁，不进服务运行时。
-  'ops/router_gate.mjs',
+  'tools/dev/router_gate.mjs',
   // 工单编排与内容消融库（2026-11-08 W1 基线收编）：离线门禁库，被同名 gate 起子进程调用，
   // 与 work_order_orchestrator_gate 同属离线手工/CI 工具，不进服务运行时。
-  'ops/work_order_orchestrator.mjs',
-  'ops/project_content_ablation.mjs',
+  'tools/dev/work_order_orchestrator.mjs',
+  'tools/dev/project_content_ablation.mjs',
   // 以下四道门禁各自的工作就是起子进程跑被测脚本或 PyYAML 交叉校验，
   // 与 router_gate / mutation_gate 同类：离线门禁编排者，不进服务运行时。
-  'ops/figure_code_gate.mjs',
-  'ops/module_ablation_matrix_gate.mjs',
-  'ops/project_content_ablation_gate.mjs',
-  'ops/work_order_orchestrator_gate.mjs',
+  'tools/dev/figure_code_gate.mjs',
+  'tools/dev/module_ablation_matrix_gate.mjs',
+  'tools/dev/project_content_ablation_gate.mjs',
+  'tools/dev/work_order_orchestrator_gate.mjs',
   // 传输适配器（2026-11-08 W1 基线收编）：ADB 链路适配器，起 pwsh/scp 走 ops/adb_exec
   // 等白名单包装器，与 proc.js 的接缝语义一致（算力与文件传输默认走 ADB 通道）。
   'BioanalysDesktop/server/adb_transfer.js',
@@ -164,7 +164,7 @@ test('接缝门禁：server/ 除 proc.js 外不得有任何 child_process 直连
     // 用仓库相对路径精确匹配，不用 basename：同名文件放在别处就不会被误豁免
     if (EXEMPT_RELPATHS.has(relPath)) continue;
     /**
-     * ops/diagnostics/ 整目录豁免，而不是逐个文件列名单。
+     * tools/dev/diagnostics/ 整目录豁免，而不是逐个文件列名单。
      *
      * 这里的脚本是**一次性诊断探针**（原 BioanalysDesktop/.tmp_probe_*.mjs，第三十四轮
      * 归档进来）：它们的工作方式就是起子进程去拉起服务/浏览器并取证，天然要直连
@@ -172,7 +172,7 @@ test('接缝门禁：server/ 除 proc.js 外不得有任何 child_process 直连
      * 门禁假红——比假绿更招人烦，最后必然被整体豁免掉。
      * 整目录豁免的前提是这个目录**从不被服务运行时 import**，由下面的反向断言守住。
      */
-    if (relPath.startsWith('ops/diagnostics/')) continue;
+    if (relPath.startsWith('tools/dev/diagnostics/')) continue;
     const rel = path.relative(SERVER_DIR, file).split(path.sep).join('/');
     const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/);
     lines.forEach((line, i) => {
@@ -187,8 +187,8 @@ test('接缝门禁：server/ 除 proc.js 外不得有任何 child_process 直连
   assert.deepEqual(violations, [], '发现绕过 proc.js 的直连（' + violations.length + ' 处）:\n' + violations.join('\n'));
 });
 
-test('ops/diagnostics 是离线探针目录，服务端不得 import 它（豁免的前提）', () => {
-  // 上一条测试把整个 ops/diagnostics/ 从接缝门禁里豁免了。豁免要成立，
+test('tools/dev/diagnostics 是离线探针目录，服务端不得 import 它（豁免的前提）', () => {
+  // 上一条测试把整个 tools/dev/diagnostics/ 从接缝门禁里豁免了。豁免要成立，
   // 必须保证这个目录永远不会进入服务运行时——否则就是给绕开 proc.js 留了后门。
   const serverDir = path.join(REPO_ROOT, 'BioanalysDesktop', 'server');
   const offenders = [];

@@ -16,7 +16,7 @@ import crypto from "node:crypto";
 import assert from "node:assert/strict";
 
 const REPO = path.resolve(import.meta.dirname, "..", "..");
-const SCRIPT = path.join(REPO, "ops", "k40_script_parity.mjs");
+const SCRIPT = path.join(REPO, "tools", "dev", "k40_script_parity.mjs");
 const REAL_MANIFEST = path.join(REPO, ".ops_state", "k40_script_manifest.json");
 const LINES = ["line1_bulk", "line2_scrna", "line3_spatial"];
 

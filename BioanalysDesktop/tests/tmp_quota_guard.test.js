@@ -13,10 +13,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const PREFLIGHT = path.join(REPO, "ops", "preflight.mjs");
+const PREFLIGHT = path.join(REPO, "tools", "dev", "preflight.mjs");
 
 test("Q4：tmpQuota 是纯函数，空目录返回 0 且不超限", async () => {
-  const { tmpQuota } = await import("../../ops/clean_workspace.mjs");
+  const { tmpQuota } = await import("../../tools/dev/clean_workspace.mjs");
   const empty = fs.mkdtempSync(path.join(os.tmpdir(), "q4empty-"));
   const r = tmpQuota({ root: empty, quota: 500 });
   assert.equal(r.count, 0);
@@ -26,7 +26,7 @@ test("Q4：tmpQuota 是纯函数，空目录返回 0 且不超限", async () => 
 });
 
 test("Q4：超过配额时 over=true", async () => {
-  const { tmpQuota } = await import("../../ops/clean_workspace.mjs");
+  const { tmpQuota } = await import("../../tools/dev/clean_workspace.mjs");
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "q4full-"));
   fs.mkdirSync(path.join(dir, ".tmp"), { recursive: true });
   for (let i = 0; i < 6; i += 1) fs.writeFileSync(path.join(dir, ".tmp", "f" + i), "x");

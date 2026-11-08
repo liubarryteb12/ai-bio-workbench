@@ -15,7 +15,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { FIGURE_SCRIPTS, SCRIPT_LINES, FIGURE_CALL_RE } from "../../ops/figure_source_provenance.mjs";
+import { FIGURE_SCRIPTS, SCRIPT_LINES, FIGURE_CALL_RE } from "../../tools/dev/figure_source_provenance.mjs";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 

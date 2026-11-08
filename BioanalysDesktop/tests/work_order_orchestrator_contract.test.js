@@ -9,7 +9,7 @@ import {
   WORK_ORDER_SCHEMA_VERSION,
   compileWorkOrderPlan,
   runWorkOrder,
-} from '../../ops/work_order_orchestrator.mjs';
+} from '../../tools/dev/work_order_orchestrator.mjs';
 
 function syntheticFacts() {
   const stages = [
@@ -328,7 +328,7 @@ test('验收回执无效：报告已生成也不判工单成功', async () => {
 });
 
 test('静态契约：编排器单入口不直接调用 SSH 或远端进程', () => {
-  const source = fs.readFileSync(path.join(REPO_ROOT, 'ops', 'work_order_orchestrator.mjs'), 'utf8');
+  const source = fs.readFileSync(path.join(REPO_ROOT, 'tools', 'dev', 'work_order_orchestrator.mjs'), 'utf8');
   assert.equal(/from ['"].*remote_exec\.js['"]/.test(source), false);
   assert.equal(/runSshRaw|runSshAsync|sshArgv|scpArgv/.test(source), false);
   assert.match(source, /computeAdapter \|\| 'adb'/);

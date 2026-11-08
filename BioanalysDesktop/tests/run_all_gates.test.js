@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 
-import { GATES, runAllGates, main, REPO_ROOT } from '../../ops/run_all_gates.mjs';
+import { GATES, runAllGates, main, REPO_ROOT } from '../../tools/dev/run_all_gates.mjs';
 
 test('门禁清单：齐全，顺序越便宜越靠前，只有最后一道是 slow', () => {
   // mutation_gate 是 T2-6 的变异门禁：它证明「改坏能让门禁红」，与红测证明的
@@ -115,7 +115,7 @@ test('主入口信号：红门禁经 main 时 exit 1 且打 GATE_ALL_FAILED', ()
 });
 
 test('静态契约：不含破坏性动作，不触发交付验收与清理', () => {
-  const src = fs.readFileSync(path.join(REPO_ROOT, 'ops', 'run_all_gates.mjs'), 'utf8');
+  const src = fs.readFileSync(path.join(REPO_ROOT, 'tools', 'dev', 'run_all_gates.mjs'), 'utf8');
   assert.equal(/clean_workspace|delivery_acceptance_core|rmSync/.test(src), false,
     '总门禁不得触发清理或验收（各有专门入口）');
   assert.ok(src.includes('GATE_ALL_OK') && src.includes('GATE_ALL_FAILED'), '两个哨兵必须都在');
@@ -149,7 +149,7 @@ test('环境保底：gateEnv 显式补 SystemRoot/windir（并记录为何无法
   assert.equal(typeof payload.sr, 'string', '子进程必须拿到 SystemRoot');
   assert.equal(typeof payload.wd, 'string', '子进程必须拿到 windir');
   // 源码契约（不是行为断言）：gateEnv 必须真的做合并，而不是依赖 OS 注入
-  const gateSrc = fs.readFileSync(path.join(REPO_ROOT, 'ops', 'run_all_gates.mjs'), 'utf8');
+  const gateSrc = fs.readFileSync(path.join(REPO_ROOT, 'tools', 'dev', 'run_all_gates.mjs'), 'utf8');
   assert.ok(gateSrc.includes('SystemRoot: systemRoot'), 'gateEnv 必须显式写入 SystemRoot');
   assert.ok(gateSrc.includes('windir: process.env.windir || systemRoot'), 'gateEnv 必须显式写入 windir');
 });

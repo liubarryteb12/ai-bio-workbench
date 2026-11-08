@@ -19,7 +19,7 @@ import { createHash, generateKeyPairSync, sign } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { Readable, Writable } from 'node:stream';
 import childProcess from 'node:child_process';
-import { signDelivery, writeChecksums } from '../../ops/ed25519_tools.mjs';
+import { signDelivery, writeChecksums } from '../../tools/reporting/ed25519_tools.mjs';
 
 // report.js 在模块加载时读 BIO_LOCAL_DELIVERABLES，必须在 import 前设好
 const LOCAL_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 's33-preflight-root-'));

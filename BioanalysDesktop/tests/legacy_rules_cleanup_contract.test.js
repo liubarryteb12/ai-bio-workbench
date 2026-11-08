@@ -68,7 +68,7 @@ test('图件说明不再把组图当正式产物', () => {
 });
 
 test('旧规则当前真源：39 Ready、默认 ADB、项目内容消融、工单闭环', () => {
-  const allowlist = JSON.parse(read('ops/figure_ready_allowlist.json'));
+  const allowlist = JSON.parse(read('tools/dev/figure_ready_allowlist.json'));
   assert.equal(allowlist.ready_baseline, 39);
   assert.equal(allowlist.ids.length, 39);
   const proc = read('BioanalysDesktop/server/proc.js');

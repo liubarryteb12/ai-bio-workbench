@@ -13,7 +13,7 @@ import path from 'node:path';
 import {
   summarizeAudits, findAuditLedgers, parseAuditLedger, validateAuditLine, main,
   REQUIRED_AUDIT_KEYS, INVALID_LINE_CODE, AUDIT_NAME,
-} from '../../ops/audit_summary.mjs';
+} from '../../tools/reporting/audit_summary.mjs';
 
 const BIOANALYS_DIR = path.resolve(import.meta.dirname, '..');
 const REPO = path.resolve(BIOANALYS_DIR, '..');
@@ -164,7 +164,7 @@ test('只读契约：不写任何文件（跑完夹具目录 mtime 与内容不�
 });
 
 test('静态契约：不侵入 server/ 运行时，只做只读扫描', () => {
-  const src = fs.readFileSync(path.join(REPO, 'ops', 'audit_summary.mjs'), 'utf8');
+  const src = fs.readFileSync(path.join(REPO, 'tools', 'reporting', 'audit_summary.mjs'), 'utf8');
   assert.equal(/writeFileSync|appendFileSync|rmSync/.test(src), false, '汇总脚本禁止任何写操作');
   assert.ok(src.includes("path.join(root, 'local_projects')"), '只认白名单扫描位置');
   assert.ok(src.includes('INVALID_AUDIT_LINE'));

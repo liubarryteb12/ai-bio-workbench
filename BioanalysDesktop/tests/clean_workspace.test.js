@@ -13,7 +13,7 @@ import path from 'node:path';
 import {
   assertNotSacred, scanTargets, executeTargets, main,
   SACRED_PATTERNS, SACRED_PATH_CODE, DEFAULT_KEEP_DAYS,
-} from '../../ops/clean_workspace.mjs';
+} from '../../tools/dev/clean_workspace.mjs';
 
 const BIOANALYS_DIR = path.resolve(import.meta.dirname, '..');
 const REPO = path.resolve(BIOANALYS_DIR, '..');
@@ -222,7 +222,7 @@ test('参数与出口：--json 可解析、坏 --keep-days 返回 2、默认保�
 });
 
 test('静态契约：全仓通扫不存在（白名单目标硬编码在这一个文件里）', () => {
-  const src = fs.readFileSync(path.join(REPO, 'ops', 'clean_workspace.mjs'), 'utf8');
+  const src = fs.readFileSync(path.join(REPO, 'tools', 'dev', 'clean_workspace.mjs'), 'utf8');
   assert.ok(src.includes("path.join(root, '.tmp')"), '必须显式指向工作区 .tmp');
   assert.ok(src.includes('_unpacked_'), '必须显式认过期解包目录前缀');
   assert.ok(src.includes('assertNotSacred(full)'), '扫描阶段必须熔断');

@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkFigureCode, BLOCKING_KINDS } from '../../ops/figure_code_gate.mjs';
+import { checkFigureCode, BLOCKING_KINDS } from '../../tools/dev/figure_code_gate.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const AUDIT = path.join(REPO, 'cn_debug', 'figure_code_audit.py');

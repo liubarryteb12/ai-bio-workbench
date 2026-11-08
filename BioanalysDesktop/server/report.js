@@ -26,11 +26,11 @@ import { createHash, verify as cryptoVerify } from 'node:crypto';
 import { HOSTS, SSD_ROOT, PROJECTS_ROOT, SYSTEM_LOGS, LINES, sanitizeProjectId } from './domain.js';
 import { runStream, shellQuote } from './proc.js';
 import { stripSshNoise } from './run.js';
-import { readPublicKey } from '../../ops/ed25519_tools.mjs';
+import { readPublicKey } from '../../tools/reporting/ed25519_tools.mjs';
 import {
   acceptDelivery, writeReceipt, verifyTarReceipt, loadReceipt, ACCEPTANCE_VERSION, RECEIPT_SUBDIR,
   auditPathFor, readAuditLedger,
-} from '../../ops/delivery_acceptance_core.mjs';
+} from '../../tools/reporting/delivery_acceptance_core.mjs';
 
 const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 

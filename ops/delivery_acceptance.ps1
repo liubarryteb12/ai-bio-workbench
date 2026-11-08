@@ -1,5 +1,5 @@
 ﻿#!/usr/bin/env pwsh
-# 交付包端到端验收：人用的一行包装，四道关判据的唯一真源是 ops/delivery_acceptance_core.mjs。
+# 交付包端到端验收：人用的一行包装，四道关判据的唯一真源是 tools/reporting/delivery_acceptance_core.mjs。
 #
 # 本文件必须存为 UTF-8 带 BOM：Windows PowerShell 5.1 无 BOM 时按 ANSI 代码页解码，
 # 中文注释的尾字节会吃掉紧邻的引号导致解析断裂（第 21 轮实测：无 BOM 时 node 收到
@@ -28,9 +28,9 @@ $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
 Set-Location $repo
 
-$core = Join-Path $PSScriptRoot 'delivery_acceptance_core.mjs'
+$core = Join-Path $PSScriptRoot '..\tools\reporting\delivery_acceptance_core.mjs'
 if (-not (Test-Path $core)) {
-  Write-Host '[ RED ] 缺 ops/delivery_acceptance_core.mjs（四关判据真源）' -ForegroundColor Red
+  Write-Host '[ RED ] 缺 tools/reporting/delivery_acceptance_core.mjs（四关判据真源）' -ForegroundColor Red
   Write-Host 'ACCEPTANCE_FAILED 1 项' -ForegroundColor Red
   exit 1
 }
