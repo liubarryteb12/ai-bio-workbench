@@ -335,7 +335,7 @@ function gateRemoteQuoting() {
  */
 function gateBackedMaterialize(files) {
   const PY_TARGETS = files.filter((f) => /\.py$/.test(f)
-    && /src[\\/](line2_scrna|line3_spatial)[\\/]/.test(f)
+    && /tools[\\/]bio[\\/](line2_scrna|line3_spatial)[\\/]/.test(f)
     && !/[\\/]tests[\\/]/.test(f)
     && !/h5_rows\.py$/.test(f));
   const failures = [];
