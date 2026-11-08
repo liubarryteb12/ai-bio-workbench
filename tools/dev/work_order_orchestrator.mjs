@@ -786,7 +786,7 @@ export function loadWorkOrder(file) {
 export function main(argv = process.argv.slice(2)) {
   const file = argv.find((item) => !item.startsWith('--'));
   if (!file) {
-    console.error('用法: node ops/work_order_orchestrator.mjs <work_order.json> [--base-url <url>]');
+    console.error('用法: node tools/dev/work_order_orchestrator.mjs <work_order.json> [--base-url <url>]');
     return 2;
   }
   const baseIndex = argv.indexOf('--base-url');

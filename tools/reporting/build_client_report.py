@@ -65,7 +65,7 @@ DEG_TAG = "[DEG · 转录本丰度消长]"
 DR_TAG = "[DR Genes · 虚拟敲除调控网络拓扑微扰]"
 
 # 步骤目录：只列关键产物与解读要点。
-# 为什么内置而不是去读 project.js：本脚本部署在服务器 ops/ 下，
+# 为什么内置而不是去读 project.js：本脚本部署在服务器 tools/ops/ 下，
 # 服务器上没有工作台源码；跨端共享代码会让部署多一个隐式依赖。
 #
 # 为什么按分析线分两层（STEP_CATALOG[line_id][step_id]）：`enrichment`、
@@ -658,7 +658,7 @@ def load_manifest(env_key, candidates, label):
 
 
 def load_software_versions():
-    """软件版本清单。服务器上由 ops/ 部署副本提供，仓库内读 docs/。"""
+    """软件版本清单。服务器上由 tools/ops/ 部署副本提供，仓库内读 docs/。"""
     here = os.path.dirname(os.path.abspath(__file__))
     return load_manifest(SOFTWARE_VERSIONS_ENV, [
         os.path.join(here, "software_versions.json"),
@@ -668,7 +668,7 @@ def load_software_versions():
 
 
 def load_reference_citations():
-    """方法学文献索引（citations.json）。服务器上由 ops/ 部署副本提供。"""
+    """方法学文献索引（citations.json）。服务器上由 tools/ops/ 部署副本提供。"""
     here = os.path.dirname(os.path.abspath(__file__))
     return load_manifest(REFERENCE_CITATIONS_ENV, [
         os.path.join(here, "reference_citations.json"),
@@ -1252,7 +1252,7 @@ def chapter2(ctx):
         blocks.append(("p", "⚠ **版本清单缺失，方法学引用不完整**：%s。"
                             "当前只能依赖第七章任务台账的 `environment` 字段给出语言与版本，"
                             "无法给出逐包版本表与方法学引用。把 `docs/software_versions.json` 部署到服务器 "
-                            "`ops/` 后重新生成本报告。"
+                            "`tools/ops/` 后重新生成本报告。"
                        % desensitize(ver_manifest["error"], ctx["project_dir"])))
 
     blocks.append(("h3", "随机种子"))
@@ -1303,7 +1303,7 @@ def chapter2(ctx):
     else:
         blocks.append(("p", "⚠ **文献索引缺失，方法学引用不完整**：%s。"
                             "版本表照常输出，但不给出引用条目；补部署 `reference_citations.json` 到服务器 "
-                            "`ops/` 后重新生成。"
+                            "`tools/ops/` 后重新生成。"
                        % desensitize(cite_manifest["error"], ctx["project_dir"])))
 
     blocks.append(("h3", "English Methods Paragraph（可直接粘贴进论文）"))
@@ -2411,7 +2411,7 @@ def sign_checksums(delivery_dir, required=False):
     node = shutil.which("node")
     if not node:
         raise RuntimeError("node 不可用，无法生成 CHECKSUMS.sig")
-    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tools", "reporting", "ed25519_tools.mjs")
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ed25519_tools.mjs")
     result = subprocess.run(
         [node, script, "--delivery-dir", delivery_dir, "--sign-only"]
         + (["--required"] if required else []),
@@ -2430,7 +2430,7 @@ def generate_selftest_ed25519_keys(root):
     node = shutil.which("node")
     if not node:
         raise RuntimeError("node 不可用，无法生成自检 Ed25519 密钥")
-    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tools", "reporting", "ed25519_tools.mjs")
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ed25519_tools.mjs")
     private_path = os.path.join(root, ".selftest_private_key")
     public_path = os.path.join(root, ".selftest_public_key")
     result = subprocess.run(

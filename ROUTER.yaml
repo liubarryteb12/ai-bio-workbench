@@ -1,7 +1,7 @@
 # 声明式场景路由（ROUTER.yaml）
 #
 # 作用：把「用户一句话需求」映射到「该跑哪条线、哪些 Mod、什么算跑完、什么不许做」。
-# 由 ops/router_lib.mjs 解析，ops/router_gate.mjs 静态校验，
+# 由 tools/dev/router_lib.mjs 解析，tools/dev/router_gate.mjs 静态校验，
 # BioanalysDesktop/tests/router_eval.test.js 用黄金集评测匹配准确率。
 #
 # 硬约束（router_gate 强制）：

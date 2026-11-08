@@ -123,7 +123,7 @@ async function loadModule(file) {
 function buildMetricsProbeRepo(scope, metricsFile, { emptyTests = false, baseline }) {
   const dir = path.join(scope, 'probe_repo');
   fs.rmSync(dir, { recursive: true, force: true });
-  for (const sub of ['ops', 'tools/dev', 'shared', 'BioanalysDesktop/tests']) {
+  for (const sub of ['tools/dev', 'tools/ops', 'shared', 'BioanalysDesktop/tests']) {
     fs.mkdirSync(path.join(dir, sub), { recursive: true });
   }
   // 探针仓里的 metrics_sync 用当前待测的那一份（基线跑原实现、变异跑改写副本）
@@ -306,8 +306,8 @@ export const MUTATIONS = Object.freeze([
     target: 'tools/dev/static_gate.mjs',
     guardLabel: 'T2-5 断言 1/3：portal/ 语法错文件必须被扫到并报红',
     edits: [{
-      find: "const SCAN_DIRS = ['ops', 'tools', 'shared', 'bin', 'BioanalysDesktop/server', 'BioanalysDesktop/tests', 'BioanalysDesktop/src', 'portal', 'docs'];",
-      replace: "const SCAN_DIRS = ['ops', 'tools', 'shared', 'bin', 'BioanalysDesktop/server'];",
+      find: "const SCAN_DIRS = ['tools', 'shared', 'bin', 'BioanalysDesktop/server', 'BioanalysDesktop/tests', 'BioanalysDesktop/src', 'portal', 'docs'];",
+      replace: "const SCAN_DIRS = ['tools', 'shared', 'bin', 'BioanalysDesktop/server'];",
     }],
     async guard(file, scope) {
       const probe = buildStaticProbe(scope || path.dirname(file), file);

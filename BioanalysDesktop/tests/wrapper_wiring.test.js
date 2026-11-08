@@ -121,6 +121,6 @@ test('静态：task.js 不再把 rawCmd 当 $5 传（D-21 根因不许回潮）'
 
 test('K40 上包装器与母版落点确实存在（静态路径自洽）', () => {
   const script = buildTaskScript({ ...BASE, throttled: true });
-  assert.ok(script.includes('bash /mnt/ssd/bio_data/tools/ops/run_throttled_task.sh'), '包装器路径不对');
+  assert.ok(script.includes('bash /mnt/ssd/bio_data/ops/run_throttled_task.sh'), '包装器路径不对');
   assert.ok(script.includes(binDir('line2_scrna') + '/scenic_tf'), '母版落点路径不对');
 });

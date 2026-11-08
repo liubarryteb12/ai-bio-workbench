@@ -2,7 +2,7 @@
  * 生产脱敏审计流契约测试（Argon 第二十一轮 Q2，2026-11-03）。
  *
  * 裁定要求三个硬点，缺一不可：
- *   1. 生产回执绝不往 git 跟踪的 ops/delivery_acceptance/records/ 自动写（污染工作区 +
+ *   1. 生产回执绝不往 git 跟踪的 tools/ops/delivery_acceptance/records/ 自动写（污染工作区 +
  *      泄漏项目号与交付节奏）；
  *   2. 代理侧留一份 append-only 的脱敏总账（删掉旧包后仍能追溯历史交付）；
  *   3. 审计行不含宿主机绝对路径、不含明文项目号（只留哈希）。

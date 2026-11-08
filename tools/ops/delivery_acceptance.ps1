@@ -1,4 +1,4 @@
-#!/usr/bin/env pwsh
+﻿#!/usr/bin/env pwsh
 # 交付包端到端验收：人用的一行包装，四道关判据的唯一真源是 tools/reporting/delivery_acceptance_core.mjs。
 #
 # 本文件必须存为 UTF-8 带 BOM：Windows PowerShell 5.1 无 BOM 时按 ANSI 代码页解码，
@@ -12,9 +12,9 @@
 #
 # 用法：
 #   pwsh -File tools/ops/delivery_acceptance.ps1 -DeliveryDir <含 tar 的目录>
-#   可选 -PublicKeyPath 指定公钥（默认 ops/secrets/ed25519_public.pem）
+#   可选 -PublicKeyPath 指定公钥（默认 tools/ops/secrets/ed25519_public.pem）
 #   可选 -SkipExtract 复用既有 unpacked（篡改探针专用）
-#   可选 -ProjectId 验收通过时写回执 ops/delivery_acceptance/records/<id>.receipt.json
+#   可选 -ProjectId 验收通过时写回执 tools/ops/delivery_acceptance/records/<id>.receipt.json
 
 param(
   [Parameter(Mandatory = $true)][string]$DeliveryDir,

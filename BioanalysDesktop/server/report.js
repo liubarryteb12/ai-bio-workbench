@@ -121,12 +121,12 @@ async function remoteFileSha256(remotePath) {
 }
 
 /**
- * 验签用的受信公钥：环境变量显式指定优先，否则用仓库内 ops/secrets 的本地信任锚。
+ * 验签用的受信公钥：环境变量显式指定优先，否则用仓库内 tools/ops/secrets 的本地信任锚。
  * 两者都没有时返回 undefined，verifyDelivery 会按「公钥不可用」失败，保持 fail-closed。
  */
 function trustedPublicKeyPath() {
   if (process.env.BIO_ED25519_PUBLIC_KEY_PATH) return process.env.BIO_ED25519_PUBLIC_KEY_PATH;
-  const localAnchor = path.join(REPO_ROOT, 'ops', 'secrets', 'ed25519_public.pem');
+  const localAnchor = path.join(REPO_ROOT, 'tools', 'ops', 'secrets', 'ed25519_public.pem');
   return fs.existsSync(localAnchor) ? localAnchor : undefined;
 }
 
@@ -659,7 +659,7 @@ export function writeSha256Sidecars(projectId) {
 //
 // 形态：(a)+(b) 混合态。四关验收作为打包链路的最后一步后置条件内联执行
 // （第十八轮实测打包+签名 4.5 秒、验收 <1 秒，没有理由靠人记得敲 npm run），
-// 通过后落回执 ops/delivery_acceptance/records/<project_id>.receipt.json；
+// 通过后落回执 tools/ops/delivery_acceptance/records/<project_id>.receipt.json；
 // 下载路由放行前必须校验回执存在且 tar_sha256 与当前包实时哈希相等，
 // 否则 409 ERR_DELIVERY_UNVERIFIED。回执严禁混入 docs/generated/SYSTEM_LEDGER.json
 // ——那是架构模具台账，回执是业务运行时产物。

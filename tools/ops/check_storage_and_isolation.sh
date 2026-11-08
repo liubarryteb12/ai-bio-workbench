@@ -1,6 +1,6 @@
 #!/bin/bash
 # check_storage_and_isolation.sh：容器侧存储水位门禁 + FUSE 红线 + 跨线隔离静态扫描
-# 用法: bash /mnt/ssd/bio_data/tools/ops/check_storage_and_isolation.sh <line_id> <script_path>
+# 用法: bash /mnt/ssd/bio_data/ops/check_storage_and_isolation.sh <line_id> <script_path>
 # 与本地 02_check_isolation.ps1 形成双保险：本地在提交前扫，容器在执行前再扫
 # pipefail 是硬要求：df 失败时管道尾的 tr 仍回 0，只看 $? 的 set -e 不会触发，
 # 于是空测量往下走，被当成健康水位放过（P-15 假绿灯，真机 2026-11-01 复现）。

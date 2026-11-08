@@ -2,7 +2,7 @@
 
 本文件回答两个问题：这个项目做什么、不做什么；哪些方案已经被否决过，不许再提。
 
-强制机制：每条否决都绑定一个真实存在的门禁脚本（`enforced_by`），由 `ops/router_gate.mjs`
+强制机制：每条否决都绑定一个真实存在的门禁脚本（`enforced_by`），由 `tools/dev/router_gate.mjs`
 校验路径存在性，填一个不存在的门禁会直接报红。生命周期字段（`status` / `reviewed_by` /
 `superseded_by`）同样是机器可读的，`status=已撤销` 时必须写明 `superseded_by`。
 
@@ -41,7 +41,7 @@
 
 ## 四、维护约定
 
-- 新增一条否决：先在表里加行，再补 `enforced_by` 指向的门禁；门禁不存在则 `ops/router_gate.mjs` 报红。
+- 新增一条否决：先在表里加行，再补 `enforced_by` 指向的门禁；门禁不存在则 `tools/dev/router_gate.mjs` 报红。
 - 撤销一条否决：`状态` 改为 `已撤销`，并把 `被替代者` 填成新编号或替代方案；只删行不留痕是不允许的。
 - 本文件的 REJ 编号不复用，删掉的编号留空。
 ## 五、变异反证的分层约定（Argon 第 67 轮 Q4a）
@@ -54,7 +54,7 @@
 | `behavior` | 静态语言扫描、出图证据漂移、路由匹配 | 业务阈值或规则偏了 |
 
 分层的价值只在于「红的时候先看哪一层」，不构成给任何一层放水的理由。
-`ops/mutation_gate.mjs` 每次运行都会打印 `分层 infra=a/a behavior=b/b｜escaped 两层均为 0`，
+`tools/dev/mutation_gate.mjs` 每次运行都会打印 `分层 infra=a/a behavior=b/b｜escaped 两层均为 0`，
 任一层出现存活即整体 FAIL。
 
 路由与边界台账的变异已编入 `mutation_gate` 常驻运行（M8 去掉最长命中词决胜、M9 放行幽灵脚本），

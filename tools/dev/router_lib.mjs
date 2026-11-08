@@ -1,5 +1,5 @@
 /**
- * ops/router_lib.mjs —— 声明式路由的解析与确定性匹配。
+ * tools/dev/router_lib.mjs —— 声明式路由的解析与确定性匹配。
  *
  * 为什么自己写解析器：本项目 Node 侧没有 YAML 依赖，为一份受控格式的路由表
  * 引入第三方解析器会抬高安装负担。这里只支持 router.yaml 实际用到的构造：
@@ -7,7 +7,7 @@
  *   顶层 key: 后接 2 空格缩进的列表
  *   列表项 "- key: value" 开启一个对象，其后 4 空格缩进的 key: value 为字段
  *   4 空格 key: 后接 6 空格缩进的 "- value" 为字符串列表
- * ops/router_gate.mjs 会用 PyYAML（若可用）交叉校验解析结果，防解析器漂移。
+ * tools/dev/router_gate.mjs 会用 PyYAML（若可用）交叉校验解析结果，防解析器漂移。
  *
  * 匹配是纯确定性打分：命中 trigger_intent 的条数优先，命中词更长者次优先，
  * 仍相同则按路由声明顺序。没有命中返回 null，绝不猜。

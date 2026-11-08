@@ -32,7 +32,7 @@
 .EXAMPLE
     pwsh -File tools/ops/sync_and_verify_remote.ps1 -DryRun
     pwsh -File tools/ops/sync_and_verify_remote.ps1
-    pwsh -File tools/ops/sync_and_verify_remote.ps1 -Files ops/verify_bridge_checkpoint.py,core/bridge_guard.sh
+    pwsh -File tools/ops/sync_and_verify_remote.ps1 -Files tools/reporting/verify_bridge_checkpoint.py,core/bridge_guard.sh
 
 .NOTES
     退出码：0 全部一致 / 1 有文件不一致或传输失败 / 2 参数或前置条件错误。

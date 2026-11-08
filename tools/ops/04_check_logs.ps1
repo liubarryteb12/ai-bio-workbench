@@ -18,7 +18,7 @@ param(
   [string]$RemoteHost = 'k40-ubuntu',
   # 待校验的日志目录，默认指向 SSD 数据面；数据面未挂载时脚本会明确报错而不静默
   [string]$LogsDir = '/mnt/ssd/bio_data/system_logs',
-  # 服务器侧中转目录（不用 Termux home，proot 读不到，见 ops/README.md 已知限制）
+  # 服务器侧中转目录（不用 Termux home，proot 读不到，见 tools/ops/README.md 已知限制）
   [string]$RemoteTmp = '/tmp'
 )
 

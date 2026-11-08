@@ -105,7 +105,7 @@ def main(argv=None):
     parser.add_argument("--public-root", type=Path, default=Path("/mnt/ssd/bio_data/public_references"))
     parser.add_argument("--string-manifest", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--rscript", default="/mnt/ssd/bio_data/tools/ops/layout_autoload/bin/Rscript")
+    parser.add_argument("--rscript", default="/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript")
     parser.add_argument("--site-library", default="/opt/R/4.5.3-site-library")
     args = parser.parse_args(argv)
 

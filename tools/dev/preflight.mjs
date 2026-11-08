@@ -10,7 +10,7 @@
  *   REQUIRED  缺失即 exit 1（没有它根本无法跑验收/打包）
  *   OPTIONAL  缺失只 warn（少了它功能退化，但核心链路仍可走）
  *
- * 关于 tar：解包已由 ops/delivery_acceptance_core.mjs 用 Node 内置 zlib 接管，
+ * 关于 tar：解包已由 tools/reporting/delivery_acceptance_core.mjs 用 Node 内置 zlib 接管，
  * 但打包引擎（build_client_report.py）仍用 Python 标准库 tarfile，不需要系统 tar。
  * 所以系统 tar 归 OPTIONAL，写清「谁在用它」比笼统要求更有用。
  *

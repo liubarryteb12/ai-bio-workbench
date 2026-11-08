@@ -300,7 +300,7 @@ export async function handleTasksRoutes(req, res, url, {
       }
 
       // ── 桥接四项断言检查点（S28 / 架构评审 D1）──────────────────────────
-      // aims §一.3：每次跨语言转换必须过 ops/verify_bridge_checkpoint.py。
+      // aims §一.3：每次跨语言转换必须过 tools/reporting/verify_bridge_checkpoint.py。
       // 58 个分析脚本 0 调用（铁律空转），接线位置定为提交层 -  - 只有这里全知
       // "这一步是不是跨语言步骤"。母版缺失不阻断提交（保持既有行为），但必须
       // warn 可观测；K40 不可达时明确 503，绝不静默放过。

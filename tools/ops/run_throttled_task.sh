@@ -2,11 +2,11 @@
 # run_throttled_task.sh：统一绑核降权执行包装器 + 自动台账 JSON 落盘
 # 用法（两种执行体，见下方「执行体形态」）：
 #   ① 脚本路径模式（手工直跑）：
-#      nohup bash /mnt/ssd/bio_data/tools/ops/run_throttled_task.sh \
+#      nohup bash /mnt/ssd/bio_data/ops/run_throttled_task.sh \
 #          <task_id> <line_id> <step_name> <R|Python> <script_path> [script_args...] &
 #   ② 命令串模式（工作台引擎下发）：
 #      BIO_EXEC_CMD='<完整命令>' BIO_WRAPPER_LEDGER=0 \
-#          bash /mnt/ssd/bio_data/tools/ops/run_throttled_task.sh \
+#          bash /mnt/ssd/bio_data/ops/run_throttled_task.sh \
 #          <task_id> <line_id> <step_name> self <母版绝对路径> &
 #
 # 执行体形态（2026-10-21 新增，D-21）：
@@ -30,7 +30,7 @@
 #   自动降级为不绑核，不让任务因绑核失败而夭折；降级事件打 stdout 供 SSE 日志流可见。
 set -e
 
-RSCRIPT_BIN="${BIOANALYS_RSCRIPT:-/mnt/ssd/bio_data/tools/ops/layout_autoload/bin/Rscript}"
+RSCRIPT_BIN="${BIOANALYS_RSCRIPT:-/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript}"
 THERMAL_ROOT="${BIO_THERMAL_ROOT:-/sys/class/thermal}"
 THERMAL_HOT_C="${BIO_THERMAL_HOT_C:-90}"
 THERMAL_COOL_C="${BIO_THERMAL_COOL_C:-78}"
@@ -150,7 +150,7 @@ trap 'cleanup_wrapper_lock || true; cleanup_wrapper_pgroup || true' EXIT
 trap 'cleanup_wrapper_lock || true; cleanup_wrapper_pgroup || true; exit 143' HUP INT TERM
 
 # 前置门禁
-bash "${BIO_STORAGE_GUARD:-/mnt/ssd/bio_data/tools/ops/check_storage_and_isolation.sh}" "$LINE_ID" "$SCRIPT_PATH"
+bash "${BIO_STORAGE_GUARD:-/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh}" "$LINE_ID" "$SCRIPT_PATH"
 
 # source 全局线程封顶（proot 下 profile.d 可能不存在，容错）
 if [ -f /etc/profile.d/bio_limits.sh ]; then

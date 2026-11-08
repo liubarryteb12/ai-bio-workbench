@@ -20,7 +20,7 @@ LINES = {
     "line2_scrna": "/mnt/ssd/bio_data/bin/line2_scrna",
     "line3_spatial": "/mnt/ssd/bio_data/bin/line3_spatial",
 }
-HELPER = "/mnt/ssd/bio_data/tools/ops/k40_step_sha_ledger.sh"
+HELPER = "/mnt/ssd/bio_data/ops/k40_step_sha_ledger.sh"
 MARKER = "k40_step_sha_ledger.sh"
 
 APPEND_TEMPLATE = """

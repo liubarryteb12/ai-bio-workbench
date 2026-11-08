@@ -1,4 +1,4 @@
-"""出图模板自动挂载（Python 侧）。
+﻿"""出图模板自动挂载（Python 侧）。
 
 为什么需要它：53 个母版出图脚本按"母版绝对只读"的规矩不能改，但客户在需求单上
 选的 `plot_layout_config`（Nature 侧边 / Cell 宽幅 / 临床注记）必须真的生效。
@@ -17,7 +17,7 @@
   * **零开销**：没设 `BIOANALYS_PROJECT_JSON` 时立即 return，不 import matplotlib。
   * **可关闭**：`BIOANALYS_LAYOUT_DISABLE=1` 时完全不介入（排障用）。
 
-部署：`/mnt/ssd/bio_data/tools/ops/layout_autoload/sitecustomize.py`，
+部署：`/mnt/ssd/bio_data/ops/layout_autoload/sitecustomize.py`，
 任务脚本把该目录加进 `PYTHONPATH` 即可自动加载（site 模块启动时 import sitecustomize）。
 """
 

@@ -2,7 +2,7 @@
  * 出图口径注释与真源一致（B2，Argon 第 65 轮梯队 1）。
  *
  * 病灶：15 份母版头部写「doc/figure_spec.md（Agg/150dpi/...）」，
- * 而同文件 rcParams 是 figure.dpi=300，docs/figure_spec.md 与 ops/figure_spec_gate.mjs
+ * 而同文件 rcParams 是 figure.dpi=300，docs/figure_spec.md 与 tools/dev/figure_spec_gate.mjs
  * 都锁 300 DPI。注释是接手人与 AI 读的第一口径，写 150 会诱导后人「按注释改回 150」。
  *
  * 判据：src/line*\/scripts/* 的注释里不得出现 150dpi 字面量；

@@ -24,8 +24,8 @@ const SSH_TARGET = "k40-ubuntu";
 
 function pushToRemote(t) {
   for (const f of FILES) {
-    const local = path.join(REPO, "ops", f);
-    assert.ok(fs.existsSync(local), "缺本地文件 ops/" + f);
+    const local = path.join(REPO, ...(f === "matrix_guard.py" ? ["tools", "ops", f] : ["tools", "reporting", f]));
+    assert.ok(fs.existsSync(local), "缺本地文件 " + f);
     const r = runSync(scpArgv(local, path.posix.join("/tmp", f)), { timeoutMs: 60000 });
     if (r.code !== 0) {
       t.skip("HOST_UNREACHABLE_K40: scp 上传失败（" + f + "）：" + String(r.stderr || r.error || "").slice(0, 120));

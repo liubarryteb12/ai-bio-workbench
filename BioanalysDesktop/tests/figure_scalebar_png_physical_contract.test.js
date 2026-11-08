@@ -68,7 +68,7 @@ test("全部成品图：manifest bar_px 必须与 PNG 实测刻度间距逐张�
   if (dirs.length === 0) return t.skip("HOST_MISSING_LOCAL_DATA: 缺本地 manifest");
   const script = [
     "import sys, json",
-    "sys.path.insert(0, 'ops')",
+    "sys.path.insert(0, r'tools/reporting')",
     "import figure_scalebar_png_measure as m",
     "out = {}",
     "for d in sys.argv[1:]:",

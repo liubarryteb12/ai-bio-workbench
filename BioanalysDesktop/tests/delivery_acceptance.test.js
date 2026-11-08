@@ -37,7 +37,7 @@ test('acceptance core exists and pins all four gates (single source of truth)', 
   }
   // 关 3：验签口径复用 ed25519_tools 的 verifyDelivery（不许有第二份验签实现）
   assert.ok(text.includes("import { verifyDelivery } from './ed25519_tools.mjs'"),
-    '关 3 缺失：验签必须复用 ops/ed25519_tools.mjs 的 verifyDelivery');
+    '关 3 缺失：验签必须复用 tools/reporting/ed25519_tools.mjs 的 verifyDelivery');
   assert.ok(text.includes('VERIFIED'), '关 3 判据缺失：未断言 VERIFIED');
   // 关 4：集合双向差集 + 覆盖完备 + counts（判据关键词全部在核内）
   for (const kw of ['ghosts', 'missingFiles', 'uncovered', 'phantom', 'coverageMeta', 'metaFiles']) {
@@ -62,9 +62,9 @@ test('acceptance core exists and pins all four gates (single source of truth)', 
 
 test('receipt is written only on full green, never into SYSTEM_LEDGER', () => {
   const text = fs.readFileSync(CORE, 'utf8');
-  // Argon 指定落点：ops/delivery_acceptance/records/<project_id>.receipt.json
-  assert.ok(text.includes("path.join('ops', 'delivery_acceptance', 'records')") || text.includes('RECEIPT_SUBDIR'),
-    '回执落点必须是 ops/delivery_acceptance/records');
+  // Argon 指定落点：tools/ops/delivery_acceptance/records/<project_id>.receipt.json
+  assert.ok(text.includes("path.join('tools', 'ops', 'delivery_acceptance', 'records')") || text.includes('RECEIPT_SUBDIR'),
+    '回执落点必须是 tools/ops/delivery_acceptance/records');
   // 注释里讲「严禁混入 SYSTEM_LEDGER」是正当文档；行为上必须真没写：
   assert.ok(!/writeFileSync\([^)]*SYSTEM_LEDGER/s.test(text),
     '核心不得写 SYSTEM_LEDGER（架构模具台账 vs 业务运行时产物）');
@@ -128,7 +128,7 @@ test('wrapper is UTF-8 with BOM so Windows PowerShell 5.1 parses it', () => {
 test('wrapper still declares the public key parameter with the repo default', () => {
   const text = fs.readFileSync(SCRIPT, 'utf8');
   assert.ok(text.includes('$PublicKeyPath'), '未把公钥路径参数化');
-  assert.match(text, /ops[/\\]secrets[/\\]ed25519_public\.pem/, '默认公钥路径未指向 ops/secrets');
+  assert.match(text, /tools[/\\]ops[/\\]secrets[/\\]ed25519_public\.pem/, '默认公钥路径未指向 tools/ops/secrets');
 });
 
 test('the reference drill package still carries its sidecar and signature', () => {
@@ -203,7 +203,7 @@ test('drill package passes all four gates, tamper probes each turn a dedicated g
     assert.equal(g1.ok, true, g1.detail);
     const g2 = core.gateUnpack(tar, unpackRoot, true);
     assert.equal(g2.ok, true, g2.detail);
-    const g3 = core.gateSignature(g2.delivery, path.join(REPO, 'ops', 'secrets', 'ed25519_public.pem'));
+    const g3 = core.gateSignature(g2.delivery, path.join(REPO, 'tools', 'ops', 'secrets', 'ed25519_public.pem'));
     assert.equal(g3.ok, true, g3.detail);
     assert.ok(g3.verifiedCount >= 112, '演练包受保护业务件应 >= 112：' + g3.verifiedCount);
     const g4 = core.gateSetEquality(g2.delivery);
@@ -234,12 +234,12 @@ test('drill package passes all four gates, tamper probes each turn a dedicated g
     const victimRel = path.relative(g2.delivery, victimPath).split(path.sep).join('/');
     const before = fs.readFileSync(victimPath);
     fs.appendFileSync(victimPath, 'TAMPER\n');
-    const g3tamper = core.gateSignature(g2.delivery, path.join(REPO, 'ops', 'secrets', 'ed25519_public.pem'));
+    const g3tamper = core.gateSignature(g2.delivery, path.join(REPO, 'tools', 'ops', 'secrets', 'ed25519_public.pem'));
     assert.equal(g3tamper.ok, false, '篡改后验签必须红');
     assert.ok(g3tamper.detail.includes('hash_mismatch:' + victimRel),
       '关 3 必须点名被篡改文件（期望 hash_mismatch:' + victimRel + '，实际 ' + g3tamper.detail + '）');
     fs.writeFileSync(victimPath, before);
-    const g3restored = core.gateSignature(g2.delivery, path.join(REPO, 'ops', 'secrets', 'ed25519_public.pem'));
+    const g3restored = core.gateSignature(g2.delivery, path.join(REPO, 'tools', 'ops', 'secrets', 'ed25519_public.pem'));
     assert.equal(g3restored.ok, true, '还原后验签必须回绿（探针只测篡改，不测恢复就是半条腿）');
 
     // 探针 C：tar 本体翻一字节 -> 关 1 侧车哈希当场红

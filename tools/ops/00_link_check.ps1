@@ -86,7 +86,7 @@ if ($termux -match 'TERMUX_OK') {
 }
 
 # --- 环节4：Ubuntu 容器 sshd ---
-$cont = & ssh -o ConnectTimeout=10 -o BatchMode=yes k40-ubuntu 'echo CONTAINER_OK; /mnt/ssd/bio_data/tools/ops/layout_autoload/bin/Rscript --version 2>&1 | head -1; /usr/bin/python3 --version' 2>&1 | Where-Object { $_ -match '^(CONTAINER_OK|Rscript|Python)' }
+$cont = & ssh -o ConnectTimeout=10 -o BatchMode=yes k40-ubuntu 'echo CONTAINER_OK; /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --version 2>&1 | head -1; /usr/bin/python3 --version' 2>&1 | Where-Object { $_ -match '^(CONTAINER_OK|Rscript|Python)' }
 if ($cont -match 'CONTAINER_OK') {
   $ver = ($cont | Where-Object { $_ -match 'version' }) -join ' | '
   Write-Step '环节4 容器 sshd' 'PASS' $ver.Trim()

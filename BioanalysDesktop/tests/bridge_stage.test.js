@@ -23,7 +23,7 @@ import { TEST_TMP } from './support/test_tmp.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
-const ENGINE = path.join(REPO_ROOT, 'ops', 'verify_bridge_checkpoint.py');
+const ENGINE = path.join(REPO_ROOT, 'tools', 'reporting', 'verify_bridge_checkpoint.py');
 const GUARD = path.join(REPO_ROOT, 'core', 'bridge_guard.sh');
 const GSVA = path.join(REPO_ROOT, 'tools', 'bio', 'line2_scrna', 'scripts', 'gsva_pathways');
 
@@ -85,7 +85,7 @@ function runGuardCapture(args) {
   const sshPath = path.join(dir, 'ssh');
   fs.writeFileSync(sshPath, '#!/bin/sh\nprintf "%s\\n" "$@" > "' + capture.replace(/\\/g, '/') + '"\necho "[BRIDGE OK] shim"\nexit 0\n', { mode: 0o755 });
   // BRIDGE_ENGINE_LOCAL 显式置空：本用例验证的是 ssh 分支，不能被宿主上真实存在的
-  // /mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py（本机优先）抢走。
+  // /mnt/ssd/bio_data/tools/reporting/verify_bridge_checkpoint.py（本机优先）抢走。
   const childEnv = { ...process.env, BRIDGE_SSH_CMD: sshPath.replace(/\\/g, '/'), BRIDGE_ENGINE_LOCAL: '' };
   const res = spawnSync(BASH, [GUARD, ...args], { encoding: 'utf8', env: childEnv });
   const captured = fs.existsSync(capture) ? fs.readFileSync(capture, 'utf8') : '';

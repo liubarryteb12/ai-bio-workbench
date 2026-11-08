@@ -67,7 +67,7 @@ test('送进容器的脚本里不得出现 ps / pgrep / pkill（cn_debug）', ()
 });
 
 test('送进容器的脚本里不得出现 ps / pgrep / pkill（ops）', () => {
-  const files = listFiles(path.join(REPO, 'ops'), ['.ps1', '.sh']);
+  const files = listFiles(path.join(REPO, 'tools', 'ops'), ['.ps1', '.sh']);
   assert.ok(files.length > 5, `ops 下应扫到多个脚本，实际 ${files.length}`);
   const hits = files.flatMap(findGuestProbes);
   assert.deepEqual(hits, [], `这些行会在容器里 abort proot（P-23）：\n${hits.join('\n')}`);
@@ -112,8 +112,8 @@ test('P-22 的「容器从不重启」结论已标注作废并指向 P-23', () =
   assert.ok(p22.includes('更正') && p22.includes('P-23'), 'P-22 里要更正并指向 P-23');
 });
 
-test('ops/README.md 有「容器内禁用递归遍历命令」小节与替代手段表', () => {
-  const text = fs.readFileSync(path.join(REPO, 'ops', 'README.md'), 'utf8');
+test('tools/ops/README.md 有「容器内禁用递归遍历命令」小节与替代手段表', () => {
+  const text = fs.readFileSync(path.join(REPO, 'tools', 'ops', 'README.md'), 'utf8');
   assert.ok(text.includes('## 容器内禁用递归遍历命令'), '缺该小节标题（2026-10-21 从「禁用 ps / pgrep」扩为递归遍历）');
   assert.ok(text.includes("ssh k40-ubuntu 'echo ALIVE'"), '缺 echo ALIVE 替代手段');
   assert.ok(text.includes('P-23'), '要指向 P-23');
@@ -130,8 +130,8 @@ test('P-24：判活不得用 /proc/loadavg（读的是 Android 宿主负载）',
   assert.ok(p24.includes('误杀'), '要记下误杀两次的事实');
 });
 
-test('P-24：ops/README.md 有判活小节，且四个可信手段齐全', () => {
-  const text = fs.readFileSync(path.join(REPO, 'ops', 'README.md'), 'utf8');
+test('P-24：tools/ops/README.md 有判活小节，且四个可信手段齐全', () => {
+  const text = fs.readFileSync(path.join(REPO, 'tools', 'ops', 'README.md'), 'utf8');
   assert.ok(text.includes('## 怎么判断「任务还在跑」还是「卡死了」'), '缺判活小节');
   for (const need of ['/api/tasks/logs', '_scenic_expr_tmp.csv', 'system_logs/*<PROJECT>*', 'ls -lt']) {
     assert.ok(text.includes(need), '判活小节缺手段：' + need);

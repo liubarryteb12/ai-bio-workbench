@@ -16,8 +16,8 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = REPO_ROOT / "ops" / "local_project_workspace.py"
-INIT_SCRIPT = REPO_ROOT / "ops" / "init_project_scaffold.py"
+SCRIPT = REPO_ROOT / "tools" / "ops" / "local_project_workspace.py"
+INIT_SCRIPT = REPO_ROOT / "tools" / "ops" / "init_project_scaffold.py"
 TEST_ROOT = REPO_ROOT / "artifacts" / "local_project_workspace_tests"
 
 

@@ -416,8 +416,8 @@ def child_environment():
     env.update(
         {
             "R_LIBS_USER": "/opt/R/4.5.3-site-library",
-            "R_PROFILE_USER": "/mnt/ssd/bio_data/tools/ops/layout_autoload/Rprofile",
-            "PYTHONPATH": "/mnt/ssd/bio_data/tools/ops/layout_autoload:"
+            "R_PROFILE_USER": "/mnt/ssd/bio_data/ops/layout_autoload/Rprofile",
+            "PYTHONPATH": "/mnt/ssd/bio_data/ops/layout_autoload:"
             + env.get("PYTHONPATH", ""),
             "MPLBACKEND": "Agg",
             "OMP_NUM_THREADS": "3",
@@ -836,7 +836,7 @@ def main(argv=None):
     parser.add_argument("--matrix", type=Path)
     parser.add_argument("--workspace-root", type=Path, default=Path.cwd())
     parser.add_argument("--seed", type=int, default=20261013)
-    parser.add_argument("--rscript", default="/mnt/ssd/bio_data/tools/ops/layout_autoload/bin/Rscript")
+    parser.add_argument("--rscript", default="/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript")
     parser.add_argument("--python", default="/root/venvs/bio-py/bin/python3")
     parser.add_argument("--timeout", type=int, default=300)
     args = parser.parse_args(argv)

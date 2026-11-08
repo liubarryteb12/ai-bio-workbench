@@ -7,7 +7,8 @@
 本脚本验证 1 与 2；3 由 figure_scalebar_contract 静态断言 + 真机跑图覆盖。
 """
 import sys
-sys.path.insert(0, "ops")
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import numpy as np
 from spatial_calibration import _first_shell_pitch, um_per_px, CalibrationError
 

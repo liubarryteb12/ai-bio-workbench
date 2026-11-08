@@ -19,7 +19,7 @@ LINES = ("line1_bulk", "line2_scrna", "line3_spatial")
 LEDGER_NAMES = ("actions", "changes", "errors", "fixes", "pitfalls")
 STATUS_LEDGERS = {"errors", "fixes"}
 SCHEMA_VERSION = 1
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 QA_ROOT = REPO_ROOT / "artifacts" / "local_project_workspace_tests"
 
 

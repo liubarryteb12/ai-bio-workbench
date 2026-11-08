@@ -20,7 +20,8 @@ _reference/
 *.rds
 
 # ===== 运行时产物 =====
-ops/secrets/
+tools/ops/secrets/*
+!tools/ops/secrets/ed25519_public.pem
 ops/encoding_backup/
 inbox/
 portal/inbox/

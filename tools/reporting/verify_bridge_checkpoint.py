@@ -24,7 +24,7 @@ import sys
 
 RSCRIPT_BIN = os.environ.get(
     "BIOANALYS_RSCRIPT",
-    "/mnt/ssd/bio_data/tools/ops/layout_autoload/bin/Rscript",
+    "/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript",
 )
 
 # 输出固定 UTF-8：引擎会被 Windows 宿主（自测/垫片）和 Linux 计算节点共同调用，

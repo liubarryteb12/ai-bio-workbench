@@ -86,7 +86,7 @@ export function checkTermux() {
 export function checkContainer() {
   const command = [
     'echo CONTAINER_OK',
-    '/mnt/ssd/bio_data/tools/ops/layout_autoload/bin/Rscript --version 2>&1 | head -1',
+    '/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --version 2>&1 | head -1',
     '/usr/bin/python3 --version',
     'echo "CPUS_AVAIL=$(nproc)"',
     'echo "CPUS_TOTAL=$(grep -c ^processor /proc/cpuinfo)"',

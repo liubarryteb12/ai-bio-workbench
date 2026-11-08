@@ -77,7 +77,7 @@ test('S28: 命令使用分析 venv 垫片、引擎绝对路径、--input 与 --f
     inputs: ['/mnt/ssd/bio_data/projects/default/line2_scrna/processed/scrna_annotated.h5ad'],
   });
   assert.ok(plan.command.startsWith(
-    '/mnt/ssd/bio_data/tools/ops/layout_autoload/bin/python3 /mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py',
+    '/mnt/ssd/bio_data/ops/layout_autoload/bin/python3 /mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py',
   ));
   assert.match(plan.command, /--input '\/mnt\/ssd\/bio_data\/projects\/default\/line2_scrna\/processed\/scrna_annotated\.h5ad'/);
   assert.equal(plan.fromLang, 'Python');

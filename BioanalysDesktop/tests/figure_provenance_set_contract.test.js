@@ -3,7 +3,7 @@
  *
  * 判据（Argon 原文）："在契约测试中动态扫描 src/line/scripts/*，
  * 凡含非注释产图落盘调用（savefig / gb_save / ggsave / R pdf(|png(|svg(）的脚本集合，
- * 必须与 ops/figure_source_provenance.mjs 的 FIGURE_SCRIPTS 双向集合恒等"。
+ * 必须与 tools/dev/figure_source_provenance.mjs 的 FIGURE_SCRIPTS 双向集合恒等"。
  *
  * 为什么必须「双向」：
  *   - 扫描有、注册表无 => 有新产图脚本没登记溯源，门禁看不见它；

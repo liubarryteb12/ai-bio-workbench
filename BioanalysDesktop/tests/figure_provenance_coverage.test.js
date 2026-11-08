@@ -1,7 +1,7 @@
 /**
  * 出图溯源门禁的覆盖面契约（Argon 第 65 轮 Q2 改判口径）。
  *
- * 病灶：ops/figure_source_provenance.mjs 的 FIGURE_SCRIPTS 是手写白名单，只登记 6 份。
+ * 病灶：tools/dev/figure_source_provenance.mjs 的 FIGURE_SCRIPTS 是手写白名单，只登记 6 份。
  * 实际含产图落盘调用（savefig / ggsave / png( / pdf(）的母版有 22 份，其中 16 份既没登记
  * 也没有 # PROVENANCE: 声明，却仍让门禁输出「全部出图脚本均有诚实溯源声明」。
  * 这是「按名字信人」而不是「按行为管人」：ml_hub_analysis / ppi_string / key_genes

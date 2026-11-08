@@ -13,7 +13,7 @@
  *      与 <name>.tar.gz.sha256）
  *   2. 解包成功且交付根目录含三件套 CHECKSUMS.sha256 / CHECKSUMS.sig /
  *      delivery_manifest.json
- *   3. 清单逐文件哈希 + Ed25519 验签 VERIFIED（复用 ops/ed25519_tools.mjs 的
+ *   3. 清单逐文件哈希 + Ed25519 验签 VERIFIED（复用 tools/reporting/ed25519_tools.mjs 的
  *      verifyDelivery，验签口径不许有第二份）
  *   4. 清单与磁盘双向差集（幽灵 ghosts / 漂移 missingFiles）、CHECKSUMS
  *      覆盖完备性、counts 逐类一致
@@ -41,7 +41,7 @@ export const ACCEPTANCE_VERSION = 'delivery-acceptance-core/1.0.0';
 export const AUDIT_LEDGER_NAME = 'acceptance_audit.jsonl';
 /** project_id 在审计流里的哈希盐前缀：只防一眼看穿的明文枚举，不是保密承诺。 */
 const AUDIT_ID_SALT = 'bioanalys-delivery-audit/v1';
-export const RECEIPT_SUBDIR = path.join('ops', 'delivery_acceptance', 'records');
+export const RECEIPT_SUBDIR = path.join('tools', 'ops', 'delivery_acceptance', 'records');
 
 function sha256File(file) {
   return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
@@ -316,7 +316,7 @@ function summarize(gates, deliveryDir) {
   };
 }
 
-// ── 回执：落 ops/delivery_acceptance/records/<project_id>.receipt.json（Argon 指定的独立落点，
+// ── 回执：落 tools/ops/delivery_acceptance/records/<project_id>.receipt.json（Argon 指定的独立落点，
 // 严禁混入 docs/generated/SYSTEM_LEDGER.json——那是架构模具台账，回执是业务运行时产物） ──
 export function receiptPathFor(projectId, recordsDir) {
   const safe = String(projectId || '');

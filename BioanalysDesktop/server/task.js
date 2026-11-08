@@ -309,7 +309,7 @@ const FIGURE_MASTER_ROOT = path.resolve(REPO_ROOT, 'reference', '05.可参考生
 /** 桥接四项断言引擎（aims §一.3 钦定；ops/ 属另一会话域，只调用不修改） */
 export const BRIDGE_ENGINE_REMOTE = '/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py';
 /** 桥接校验必须使用带 anndata 的分析 venv，避免系统 python3 缺包造成假红 */
-export const BRIDGE_PYTHON_REMOTE = '/mnt/ssd/bio_data/tools/ops/layout_autoload/bin/python3';
+export const BRIDGE_PYTHON_REMOTE = '/mnt/ssd/bio_data/ops/layout_autoload/bin/python3';
 
 /** 桥接校验 ssh 同步超时：引擎内部 RDS 分支自带 120s，h5ad 大文件读取留足余量 */
 export const BRIDGE_SSH_TIMEOUT_MS = 300000;
@@ -463,7 +463,7 @@ export function needsBridgeCheck(lineId, stepName) {
 /**
  * 构造桥接四项断言的远端执行命令。
  *
- * 引擎 CLI 契约（ops/verify_bridge_checkpoint.py）要求 --input 指向一个真实存在的
+ * 引擎 CLI 契约（tools/reporting/verify_bridge_checkpoint.py）要求 --input 指向一个真实存在的
  * .h5ad/.rds 文件，因此 inputs 必须参与构造：提交层拿到的就是本次任务声明的输入，
  * 不是编造：取第一个 .h5ad/.rds 输入；相对路径按该项目该线 processed/ 解析。
  * --from/--to 按引擎自身语义定：check_h5ad 用 anndata（Python 产物）、check_rds 用 R（R 产物）。
@@ -735,7 +735,7 @@ export function buildTaskScript(task) {
   // R 端还需要一个 Rscript 垫片：母版 R 脚本统一写 `Rscript --vanilla`，
   // 而 --vanilla 会跳过 R_PROFILE_USER，模板挂载会静默失效（踩坑 #169）。
   // 垫片把 --vanilla 降级为等价组合并保留 user profile，必须排在 PATH 最前。
-  lines.push('export PATH="/mnt/ssd/bio_data/tools/ops/layout_autoload/bin:${PATH}"');
+  lines.push('export PATH="/mnt/ssd/bio_data/ops/layout_autoload/bin:${PATH}"');
   lines.push(`export PATH="${binDir(lineId)}:$PATH"`);
 
   // 出图模板注入：客户在需求单选的 plot_layout_config 必须真的生效。
@@ -745,8 +745,8 @@ export function buildTaskScript(task) {
   // 两者都只在 BIOANALYS_PROJECT_JSON 存在时介入，非出图步骤零影响。
   lines.push(`export BIOANALYS_PROJECT_JSON="${projectMetaPath(projectId)}"`);
   lines.push('export BIOANALYS_LAYOUT_LIB="/mnt/ssd/bio_data/bin"');
-  lines.push('export PYTHONPATH="/mnt/ssd/bio_data/tools/ops/layout_autoload:${PYTHONPATH:-}"');
-  lines.push('export R_PROFILE_USER="/mnt/ssd/bio_data/tools/ops/layout_autoload/Rprofile"');
+  lines.push('export PYTHONPATH="/mnt/ssd/bio_data/ops/layout_autoload:${PYTHONPATH:-}"');
+  lines.push('export R_PROFILE_USER="/mnt/ssd/bio_data/ops/layout_autoload/Rprofile"');
 
   // inputs/outputs 必须是数组；调用方传了裸字符串时归一化为空数组而不是抛 TypeError
   // （TypeError 会顺着事件回调打死整个 Node 进程，2026-10-19 实测踩到）。
@@ -819,7 +819,7 @@ export function buildTaskScript(task) {
     if (detached) {
       lines.push(`export BIO_WRAPPER_LEDGER_PATH="/tmp/${resolvedWrapperTaskId}_ledger.json"`);
     }
-    const wrapperCommand = `bash /mnt/ssd/bio_data/tools/ops/run_throttled_task.sh ${resolvedWrapperTaskId} ${lineId} ${shellQuote(stepName)} self ${shellQuote(gatePath)}`;
+    const wrapperCommand = `bash /mnt/ssd/bio_data/ops/run_throttled_task.sh ${resolvedWrapperTaskId} ${lineId} ${shellQuote(stepName)} self ${shellQuote(gatePath)}`;
     if (detached) {
       lines.push(
         `setsid nohup ${wrapperCommand} > ${SYSTEM_LOGS}/${resolvedWrapperTaskId}.wrapper.log 2>&1 < /dev/null &`,

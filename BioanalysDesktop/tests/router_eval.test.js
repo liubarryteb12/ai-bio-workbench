@@ -41,12 +41,12 @@ test("黄金集至少 25 条，且字段齐全", () => {
 
 test("每条 case 期望的 Mod/脚本必须真实存在", () => {
   const { modIds } = loadModIds(path.join(REPO, "tools/bio/workflows.json"));
-  const ops = new Set([...listOpsScripts(path.join(REPO, "ops")), ...listOpsScripts(path.join(REPO, "tools", "dev")), ...listOpsScripts(path.join(REPO, "tools", "reporting"))]);
+  const ops = new Set([...listOpsScripts(path.join(REPO, "tools", "dev")), ...listOpsScripts(path.join(REPO, "tools", "reporting"))]);
   const mods = new Set(modIds);
   const bad = [];
   for (const c of loadCases()) {
     const s = c.expected_mod_or_script;
-    const norm = s.startsWith("ops/") ? s.slice(4) : s;
+    const norm = s;
     if (!mods.has(s) && !ops.has(norm)) bad.push(c.id + " -> " + s);
   }
   assert.deepEqual(bad, [], "期望脚本不存在：" + bad.join("; "));

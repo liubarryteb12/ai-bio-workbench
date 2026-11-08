@@ -128,7 +128,7 @@ function launcherBody(command) {
 function writeLaunchers(outDir) {
   const files = {
     'gate.cmd': launcherBody('"%~dp0runtime/node.exe" "%~dp0ops/run_all_gates.mjs" %*'),
-    'delivery.cmd': launcherBody('"%~dp0runtime/node.exe" "%~dp0ops/delivery_acceptance_core.mjs" %*'),
+    'delivery.cmd': launcherBody('"%~dp0runtime/node.exe" "%~dp0tools/reporting/delivery_acceptance_core.mjs" %*'),
     'toolchain.cmd': launcherBody('"%~dp0runtime/node.exe" "%~dp0ops/toolchain.mjs" %*'),
     'start-workbench.cmd': launcherBody('"%~dp0runtime/node.exe" "%~dp0BioanalysDesktop/server/index.js" %*'),
     'test.cmd': launcherBody('"%~dp0runtime/node.exe" --test --test-concurrency=1 "%~dp0BioanalysDesktop/tests/*.test.js" %*'),
@@ -171,7 +171,7 @@ function writeReadme(outDir, stats) {
     '- 运行时文件：' + stats.runtime + ' 个（Node.js ' + stats.nodeVersion + ' + MSYS 工具链）',
     '- 包体积：约 ' + stats.totalMb + ' MB',
     '- MANIFEST.sha256 覆盖包内每一个文件，可用 sha256sum -c 或 certutil 校验完整性',
-    '- 公开验签公钥：ops/secrets/ed25519_public.pem（' + stats.publicKeyFiles + ' 个）。公钥不是机密，随包带走；私钥与访问 token 永不进包',
+    '- 公开验签公钥：tools/ops/secrets/ed25519_public.pem（' + stats.publicKeyFiles + ' 个）。公钥不是机密，随包带走；私钥与访问 token 永不进包',
     '',
     '## 不包含什么',
     '',
@@ -244,10 +244,10 @@ export function buildPackage({ repoRoot = REPO_ROOT, outDir = DEFAULT_OUT, env =
     manifest.push([rel, sha256File(path.join(outDir, rel))]);
   }
   // 公开验签公钥：公钥不是机密，随包带走，让干净机器上 delivery.cmd 开箱即可验签。
-  // 私钥永不进包（ops/secrets/ 整目录被 .gitignore 忽略，这里只挑出 *_public.pem）。
+  // 私钥永不进包（tools/ops/secrets/ 整目录被 .gitignore 忽略，这里只挑出 *_public.pem）。
   let publicKeyFiles = 0;
   for (const name of ['ed25519_public.pem']) {
-    const rel = 'ops/secrets/' + name;
+    const rel = 'tools/ops/secrets/' + name;
     const from = path.join(repoRoot, rel);
     if (!fs.existsSync(from)) continue;
     copyFile(from, path.join(outDir, rel));
@@ -279,7 +279,7 @@ export function buildPackage({ repoRoot = REPO_ROOT, outDir = DEFAULT_OUT, env =
   io.log('  L2 真源与台账 ' + counts['L2-truth'] + ' 个');
   io.log('  L3 便携运行时 ' + runtime.length + ' 个（' + nodeVersion + '）');
   io.log('  L1 附加：测试依赖闭包 ' + depFiles + ' 个文件');
-  io.log('  公开验签公钥 ' + publicKeyFiles + ' 个（仅 ops/secrets/ed25519_public.pem，私钥不进包）');
+  io.log('  公开验签公钥 ' + publicKeyFiles + ' 个（仅 tools/ops/secrets/ed25519_public.pem，私钥不进包）');
   io.log('  L4 已排除 ' + counts['L4-runtime-artifact'] + ' 个');
   io.log('  清单 MANIFEST.sha256 覆盖 ' + manifest.length + ' 个文件，合计约 ' + stats.totalMb + ' MB');
   if (verify) result.verify = verifyPackage({ outDir, io });

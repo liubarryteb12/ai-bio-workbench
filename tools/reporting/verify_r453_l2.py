@@ -215,7 +215,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--bridge-engine", type=Path, required=True)
-    parser.add_argument("--rscript", default="/mnt/ssd/bio_data/tools/ops/layout_autoload/bin/Rscript")
+    parser.add_argument("--rscript", default="/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript")
     parser.add_argument("--python", default="/root/venvs/bio-py/bin/python3")
     parser.add_argument("--site-library", default="/opt/R/4.5.3-site-library")
     args = parser.parse_args(argv)

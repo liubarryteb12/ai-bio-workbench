@@ -9,4 +9,4 @@
 | Node 依赖 | `BioanalysDesktop/package-lock.json` | 以各包声明为准，升级时复查 |
 | 文档与自有代码 | 仓库本体 | 对外交付前按 `docs/delivery_package_spec.md` 验收 |
 
-对外交付任何包之前，交付验收四关（`ops/delivery_acceptance.ps1`）包含许可复核。
+对外交付任何包之前，交付验收四关（`tools/ops/delivery_acceptance.ps1`）包含许可复核。

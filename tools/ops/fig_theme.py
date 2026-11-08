@@ -12,7 +12,7 @@ tools/ops/layout_autoload/sitecustomize.py + tools/reporting/layout_helper.py �
   * 任何异常只 warning，不中断出图——出图失败才是事故
   * 幂等：重复合并只生效一次
 
-部署：/mnt/ssd/bio_data/tools/ops/fig_theme.py，由 sitecustomize.py 调用。
+部署：/mnt/ssd/bio_data/ops/fig_theme.py，由 sitecustomize.py 调用。
 """
 
 # ---- 主题片段：字体族 + 线宽/点大小（SCI 常见口径）----

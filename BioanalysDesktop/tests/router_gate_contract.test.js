@@ -17,13 +17,13 @@ const REPO = path.resolve(HERE, "../..");
 
 function makeTree() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "router-gate-" + process.pid + "-"));
-  fs.mkdirSync(path.join(root, "ops"), { recursive: true });
+  fs.mkdirSync(path.join(root, "tools", "ops"), { recursive: true });
   fs.mkdirSync(path.join(root, "tools", "bio"), { recursive: true });
   fs.mkdirSync(path.join(root, "tools", "dev"), { recursive: true });
   fs.mkdirSync(path.join(root, "tools", "reporting"), { recursive: true });
-  for (const f of fs.readdirSync(path.join(REPO, "ops"))) {
+  for (const f of fs.readdirSync(path.join(REPO, "tools", "ops"))) {
     if (f.endsWith(".mjs")) {
-      fs.copyFileSync(path.join(REPO, "ops", f), path.join(root, "ops", f));
+      fs.copyFileSync(path.join(REPO, "tools", "ops", f), path.join(root, "tools", "ops", f));
     }
   }
   for (const f of fs.readdirSync(path.join(REPO, "tools", "dev"))) {
@@ -53,7 +53,7 @@ test("负向：enforced_by 指向不存在的门禁必须报红", (t) => {
   const p = path.join(root, "SCOPE.md");
   const md = fs.readFileSync(p, "utf8").replace(
     "enforced_by: tools/dev/mutation_gate.mjs",
-    "enforced_by: ops/this_gate_does_not_exist.mjs"
+    "enforced_by: tools/dev/this_gate_does_not_exist.mjs"
   );
   fs.writeFileSync(p, md, "utf8");
   const { errs } = checkRouterAndScope(root);

@@ -36,8 +36,8 @@ const HASH_D = 'd'.repeat(64);
 const TARGETS = [
   { repo: 'core/bridge_guard.sh', remote: '/mnt/ssd/bio_data/core/bridge_guard.sh' },
   { repo: 'core/bridge_guard.sh', remote: '/mnt/ssd/bio_data/ops/bridge_guard.sh' },
-  { repo: 'tools/ops/check_storage_and_isolation.sh', remote: '/mnt/ssd/bio_data/tools/ops/check_storage_and_isolation.sh' },
-  { repo: 'ops/verify_bridge_checkpoint.py', remote: '/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py' },
+  { repo: 'tools/ops/check_storage_and_isolation.sh', remote: '/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh' },
+  { repo: 'tools/reporting/verify_bridge_checkpoint.py', remote: '/mnt/ssd/bio_data/tools/reporting/verify_bridge_checkpoint.py' },
 ];
 
 /** 四个远端路径全部回读为给定哈希 */
@@ -62,7 +62,7 @@ test('CORE_SYNC_FILES：守卫母版与 ops 镜像都在清单里，远端路径
   assert.ok(remotes.includes('/mnt/ssd/bio_data/core/bridge_guard.sh'), '缺守卫母版远端路径');
   assert.ok(remotes.includes('/mnt/ssd/bio_data/ops/bridge_guard.sh'), '缺守卫镜像远端路径');
   assert.ok(CORE_SYNC_FILES.some((item) => item.repo === 'tools/ops/check_storage_and_isolation.sh'));
-  assert.ok(CORE_SYNC_FILES.some((item) => item.repo === 'ops/verify_bridge_checkpoint.py'));
+  assert.ok(CORE_SYNC_FILES.some((item) => item.repo === 'tools/reporting/verify_bridge_checkpoint.py'));
 });
 
 test('buildSha256Command：逐文件 -f 判断，缺失打印 MISSING，结尾带哨兵', () => {
@@ -81,14 +81,14 @@ test('parseSha256Output：逐行解析 64 位 hex + 两空格 + 路径，MISSING
   const text = [
     HASH_A + '  /mnt/ssd/bio_data/core/bridge_guard.sh',
     HASH_B + '  /mnt/ssd/bio_data/ops/bridge_guard.sh',
-    'MISSING /mnt/ssd/bio_data/tools/ops/check_storage_and_isolation.sh',
+    'MISSING /mnt/ssd/bio_data/ops/check_storage_and_isolation.sh',
     SHA256_SENTINEL,
   ].join('\n');
   const parsed = parseSha256Output(text);
   assert.equal(parsed.hashes.size, 2);
   assert.equal(parsed.hashes.get('/mnt/ssd/bio_data/core/bridge_guard.sh'), HASH_A);
   assert.equal(parsed.hashes.get('/mnt/ssd/bio_data/ops/bridge_guard.sh'), HASH_B);
-  assert.deepEqual(parsed.missing, ['/mnt/ssd/bio_data/tools/ops/check_storage_and_isolation.sh']);
+  assert.deepEqual(parsed.missing, ['/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh']);
   assert.equal(parsed.sawSentinel, true);
 });
 
@@ -119,9 +119,9 @@ test('evaluateSha256Parity：本地与远端全一致 → pass', () => {
 
 test('evaluateSha256Parity：哈希不一致 → fail，reason 带两个哈希前 12 位', () => {
   const localHashes = localForAll(HASH_A);
-  localHashes.set('ops/verify_bridge_checkpoint.py', HASH_A);
+  localHashes.set('tools/reporting/verify_bridge_checkpoint.py', HASH_A);
   const parsed = parsedAll(HASH_A);
-  parsed.hashes.set('/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py', HASH_B);
+  parsed.hashes.set('/mnt/ssd/bio_data/tools/reporting/verify_bridge_checkpoint.py', HASH_B);
   const light = evaluateSha256Parity({ targets: TARGETS, localHashes, parsed, sshExitCode: 0 });
   assert.equal(light.status, 'fail');
   assert.match(light.detail, /不一致/);
@@ -132,8 +132,8 @@ test('evaluateSha256Parity：哈希不一致 → fail，reason 带两个哈希�
 
 test('evaluateSha256Parity：远端文件不存在 → warn，reason 写 MISSING', () => {
   const parsed = parsedAll(HASH_A);
-  parsed.hashes.delete('/mnt/ssd/bio_data/tools/ops/check_storage_and_isolation.sh');
-  parsed.missing = ['/mnt/ssd/bio_data/tools/ops/check_storage_and_isolation.sh'];
+  parsed.hashes.delete('/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh');
+  parsed.missing = ['/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh'];
   const light = evaluateSha256Parity({ targets: TARGETS, localHashes: localForAll(HASH_A), parsed, sshExitCode: 0 });
   assert.equal(light.status, 'warn');
   assert.match(light.detail, /MISSING/);
@@ -177,11 +177,11 @@ test('evaluateSha256Parity：本地核心文件缺失 → unknown，reason 写 L
 
 test('evaluateSha256Parity：同时有不一致与缺失 → fail（已测出的坏优先）', () => {
   const localHashes = localForAll(HASH_A);
-  localHashes.set('ops/verify_bridge_checkpoint.py', HASH_A);
+  localHashes.set('tools/reporting/verify_bridge_checkpoint.py', HASH_A);
   const parsed = parsedAll(HASH_A);
-  parsed.hashes.set('/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py', HASH_B);
-  parsed.hashes.delete('/mnt/ssd/bio_data/tools/ops/check_storage_and_isolation.sh');
-  parsed.missing = ['/mnt/ssd/bio_data/tools/ops/check_storage_and_isolation.sh'];
+  parsed.hashes.set('/mnt/ssd/bio_data/tools/reporting/verify_bridge_checkpoint.py', HASH_B);
+  parsed.hashes.delete('/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh');
+  parsed.missing = ['/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh'];
   const light = evaluateSha256Parity({ targets: TARGETS, localHashes, parsed, sshExitCode: 0 });
   assert.equal(light.status, 'fail');
 });

@@ -21,7 +21,7 @@ test('官方测试入口必须串行执行（--test-concurrency=1）', () => {
 });
 
 test('ops 门禁里的全量测试同样必须串行', () => {
-  const ops = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'ops');
+  const ops = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'tools', 'dev');
   const candidates = ['run_all_gates.mjs', 'metrics_sync.mjs'];
   const offenders = [];
   for (const name of candidates) {

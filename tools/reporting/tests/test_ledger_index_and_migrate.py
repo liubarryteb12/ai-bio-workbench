@@ -12,9 +12,9 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = REPO_ROOT / "ops" / "ledger_indexer.py"
-MIGRATE_SCRIPT = REPO_ROOT / "ops" / "migrate_to_local_projects.py"
-LOCAL_WS_SCRIPT = REPO_ROOT / "ops" / "local_project_workspace.py"
+SCRIPT = REPO_ROOT / "tools" / "ops" / "ledger_indexer.py"
+MIGRATE_SCRIPT = REPO_ROOT / "tools" / "ops" / "migrate_to_local_projects.py"
+LOCAL_WS_SCRIPT = REPO_ROOT / "tools" / "ops" / "local_project_workspace.py"
 TEST_ROOT = REPO_ROOT / "artifacts" / "local_project_workspace_tests" / "wp21_ledger_index_tests"
 
 
