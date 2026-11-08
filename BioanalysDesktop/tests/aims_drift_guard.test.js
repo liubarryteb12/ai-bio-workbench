@@ -69,7 +69,7 @@ test('三层目录、项目自包含与适配副本契约保留', () => {
   for (const relative of [
     'docs/directories.md',
     'ops/init_project_scaffold.py',
-    'src/figure_templates.json',
+    'tools/bio/figure_templates.json',
     'BioanalysDesktop/server/figure_graph.js',
   ]) {
     assert.ok(fs.existsSync(path.join(ROOT, relative)), '落点不存在：' + relative);

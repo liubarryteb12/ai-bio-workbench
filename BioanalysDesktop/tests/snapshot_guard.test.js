@@ -3,7 +3,7 @@
  *
  * 背景：本仓库 .git 只读，无法 commit，未提交改动没有回滚点。09_snapshot.ps1 用
  * zip 快照补上这个缺口。它踩过一个必须钉死的坑：Compress-Archive 只取 basename
- * 当条目名，777 个文件被拍平到根目录，src/workflows.json 变成 workflows.json，
+ * 当条目名，777 个文件被拍平到根目录，tools/bio/workflows.json 变成 workflows.json，
  * 同名文件互相覆盖，解压只剩 695 个且目录结构全丢，等于不可还原。
  *
  * 本文件钉住三件事：打包方式必须保留相对路径、排除口径必须与 .gitignore 一致、
@@ -96,7 +96,7 @@ test('保留策略只删本脚本产的快照，按时间从最旧开始', () =>
 });
 
 test('scripts/ 母版契约仍然成立（上一轮闸门不回潮）', () => {
-  const registry = JSON.parse(fs.readFileSync(path.join(REPO, 'src', 'workflows.json'), 'utf8'));
+  const registry = JSON.parse(fs.readFileSync(path.join(REPO, 'tools', 'bio', 'workflows.json'), 'utf8'));
   const registered = new Set();
   for (const series of registry.series) {
     for (const stage of series.stages) {
@@ -107,7 +107,7 @@ test('scripts/ 母版契约仍然成立（上一轮闸门不回潮）', () => {
   const SHARED_LIBS = new Set(['h5_rows.py', 'spatial_stats.py']);
   const stray = [];
   for (const line of ['line1_bulk', 'line2_scrna', 'line3_spatial']) {
-    const dir = path.join(REPO, 'src', line, 'scripts');
+    const dir = path.join(REPO, 'tools', 'bio', line, 'scripts');
     for (const name of fs.readdirSync(dir)) {
       if (name === 'README.md' || name === 'probe_env') continue;
       if (SHARED_LIBS.has(name)) continue;

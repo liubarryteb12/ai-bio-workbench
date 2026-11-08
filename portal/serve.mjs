@@ -702,7 +702,7 @@ function figurePreviewState(item) {
 }
 
 function figureTemplatesPayload() {
-  const registryPath = path.resolve(REPO_ROOT, 'src', 'figure_templates.json');
+  const registryPath = path.resolve(REPO_ROOT, 'tools', 'bio', 'figure_templates.json');
   const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
   const templates = (Array.isArray(registry.templates) ? registry.templates : []).map((item) => {
     const state = figurePreviewState(item);
@@ -746,7 +746,7 @@ function handleFigureTemplatePreview(req, res, url) {
   let template;
   try {
     const registry = JSON.parse(fs.readFileSync(
-      path.resolve(REPO_ROOT, 'src', 'figure_templates.json'), 'utf8'));
+      path.resolve(REPO_ROOT, 'tools', 'bio', 'figure_templates.json'), 'utf8'));
     template = (registry.templates || []).find((item) => item.id === id);
   } catch {
     return sendJson(res, 500, { ok: false, error: '读取图模板注册表失败' });
@@ -784,7 +784,7 @@ function handleFigureProjectPreview(req, res, url) {
   let template;
   try {
     const registry = JSON.parse(fs.readFileSync(
-      path.resolve(REPO_ROOT, 'src', 'figure_templates.json'), 'utf8'));
+      path.resolve(REPO_ROOT, 'tools', 'bio', 'figure_templates.json'), 'utf8'));
     template = (registry.templates || []).find((item) => item.id === id);
   } catch {
     return sendJson(res, 500, { ok: false, error: '读取图模板注册表失败' });
@@ -1779,12 +1779,12 @@ const server = http.createServer((req, res) => {
 
   // 工作流定义（只读）：让客户端的步骤勾选有唯一数据源。
   // 为什么 portal 自己读文件而不转发工作台：本服务与工作台彻底解耦是既有设计
-  // （见文件头），不挂工作台任何 API。注册表 src/workflows.json 是静态文件，
+  // （见文件头），不挂工作台任何 API。注册表 tools/bio/workflows.json 是静态文件，
   // 直读既不破坏解耦，也避免"工作台没起客户端就点不了步骤"。
   // 只暴露展示必需字段，不透出依赖图内部结构。
   if (url.pathname === '/api/workflows') {
     try {
-      const regPath = path.resolve(REPO_ROOT, 'src', 'workflows.json');
+      const regPath = path.resolve(REPO_ROOT, 'tools', 'bio', 'workflows.json');
       const reg = JSON.parse(fs.readFileSync(regPath, 'utf8'));
       const series = reg.series.map((s) => ({
         id: s.id,
@@ -1843,7 +1843,7 @@ const server = http.createServer((req, res) => {
       if (!modIds.length) return sendJson(res, 400, { error: 'modIds 不能为空' });
 
       try {
-        const regPath = path.resolve(REPO_ROOT, 'src', 'workflows.json');
+        const regPath = path.resolve(REPO_ROOT, 'tools', 'bio', 'workflows.json');
         const reg = JSON.parse(fs.readFileSync(regPath, 'utf8'));
         const result = resolveLocally(reg, seriesId, modIds, koGene);
         // 非法组合回 422：调用方传错了，不是服务端故障（与工作台一致）

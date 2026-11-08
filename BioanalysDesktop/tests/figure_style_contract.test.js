@@ -24,7 +24,7 @@ const OKABE = ["#E69F00", "#56B4E9", "#009E73", "#F0E442",
 function figureMasters() {
   const out = [];
   for (const line of LINES) {
-    const dir = path.join(REPO, "src", line, "scripts");
+    const dir = path.join(REPO, "tools", "bio", line, "scripts");
     if (!fs.existsSync(dir)) continue;
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       if (!e.isFile() || e.name === "README.md") continue;
@@ -124,12 +124,12 @@ test("红线：savefig.bbox 必须是 tight（图注与图例靠它扩边）", (
 });
 
 test("红线：单图原则，生产母版不得输出组合图", () => {
-  const bulk = fs.readFileSync(path.join(REPO, "src/line1_bulk/scripts/bulk_figures"), "utf8");
-  const spatial = fs.readFileSync(path.join(REPO, "src/line3_spatial/scripts/spatial_figures"), "utf8");
+  const bulk = fs.readFileSync(path.join(REPO, "tools/bio/line1_bulk/scripts/bulk_figures"), "utf8");
+  const spatial = fs.readFileSync(path.join(REPO, "tools/bio/line3_spatial/scripts/spatial_figures"), "utf8");
   assert.doesNotMatch(bulk, /l1_32_deg_overview\.png/, "l1_32_deg_overview 组合图必须退役");
   assert.doesNotMatch(spatial, /16_domain_panel\.png/, "16_domain_panel 组合图必须退役");
 
-  const registry = JSON.parse(fs.readFileSync(path.join(REPO, "src/figure_templates.json"), "utf8"));
+  const registry = JSON.parse(fs.readFileSync(path.join(REPO, "tools/bio/figure_templates.json"), "utf8"));
   const compositeReady = registry.templates
     .filter((t) => t.deps_status === "ready")
     .filter((t) => /multipanel|combinationpanel|sankeybubbleplot|composite|组合图|多面板/.test(t.id + " " + t.name));

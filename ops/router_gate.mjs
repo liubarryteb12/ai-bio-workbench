@@ -113,12 +113,12 @@ export function checkRouterAndScope(repoRoot) {
   const notes = [];
   const ROUTER = path.join(repoRoot, "ROUTER.yaml");
   const SCOPE = path.join(repoRoot, "SCOPE.md");
-  const WORKFLOWS = path.join(repoRoot, "src/workflows.json");
+  const WORKFLOWS = path.join(repoRoot, "tools/bio/workflows.json");
   const GOLDEN = path.join(repoRoot, "BioanalysDesktop/tests/eval/golden_routing.json");
 
   if (!fs.existsSync(ROUTER)) errs.push("缺 ROUTER.yaml");
   if (!fs.existsSync(SCOPE)) errs.push("缺 SCOPE.md");
-  if (!fs.existsSync(WORKFLOWS)) errs.push("缺 src/workflows.json");
+  if (!fs.existsSync(WORKFLOWS)) errs.push("缺 tools/bio/workflows.json");
 
   let doc = { routes: [] };
   if (fs.existsSync(ROUTER)) {

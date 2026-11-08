@@ -6,7 +6,7 @@
  * 其中 ml_diagnostics 那处在字符串字面里里（会进交付报告正文），已改为全角冒号。
  * 本文件把这条规范针在母版范围内，防止再次潓现。
  *
- * 范围只包 src/<line>/scripts/ 下的步骤脚本 + src/bridge_guard.sh：
+ * 范围只包 src/<line>/scripts/ 下的步骤脚本 + core/bridge_guard.sh：
  * reference/ 是只读参考资料（规范不适用），con_hf/ 是台账，docs/ 是规范本身。
  */
 
@@ -34,7 +34,7 @@ const SHARED_LIBS = new Set(['h5_rows.py', 'spatial_stats.py']);
 function masterFiles() {
   const out = [];
   for (const line of ['line1_bulk', 'line2_scrna', 'line3_spatial']) {
-    const dir = path.join(REPO, 'src', line, 'scripts');
+    const dir = path.join(REPO, 'tools', 'bio', line, 'scripts');
     for (const name of fs.readdirSync(dir)) {
       // README.md 不部署（ops/06_deploy_scripts.ps1 明确排除），不是步骤脚本，不受母版规范约束
       if (name === 'README.md') continue;
@@ -46,7 +46,7 @@ function masterFiles() {
       out.push(full);
     }
   }
-  out.push(path.join(REPO, 'src', 'bridge_guard.sh'));
+  out.push(path.join(REPO, 'core', 'bridge_guard.sh'));
   return out;
 }
 
@@ -240,12 +240,12 @@ test('出图步骤必须落产物清单 figures_manifest.txt（本轮新增）',
   // 背景：出图步骤以前只把清单打到 stdout，任务重跑与事后核对时清单就沦了。
   // 规范依据：coding-standards.md “自校验内建 + 产物结构对账”，以及 aims §五 出图规范的可核对要求。
   const FIG_STEPS = [
-    'src/line1_bulk/scripts/bulk_figures',
-    'src/line1_bulk/scripts/enrichment_figures',
-    'src/line2_scrna/scripts/enrichment_figures',
-    'src/line2_scrna/scripts/scenic_figures',
-    'src/line3_spatial/scripts/enrichment_figures',
-    'src/line3_spatial/scripts/spatial_figures',
+    'tools/bio/line1_bulk/scripts/bulk_figures',
+    'tools/bio/line1_bulk/scripts/enrichment_figures',
+    'tools/bio/line2_scrna/scripts/enrichment_figures',
+    'tools/bio/line2_scrna/scripts/scenic_figures',
+    'tools/bio/line3_spatial/scripts/enrichment_figures',
+    'tools/bio/line3_spatial/scripts/spatial_figures',
   ];
   const problems = [];
   for (const rel of FIG_STEPS) {

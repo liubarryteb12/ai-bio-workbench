@@ -31,7 +31,7 @@ const DIST_ROOT = path.join(REPO, 'dist', 'portable', 'BioanalysWorkbench');
  */
 export const PARITY_ASSETS = Object.freeze([
   'BioanalysDesktop/server/figure_adapters.js',
-  'src/figure_templates.json',
+  'tools/bio/figure_templates.json',
   'shared/requirement_schema.json',
   'reference/05.可参考生信代码/可用代码预筛选/源码/_meta/script_plot_matrix.json',
   'BioanalysDesktop/server/project.js',

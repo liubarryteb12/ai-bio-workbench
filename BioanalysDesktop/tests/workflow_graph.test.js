@@ -1,5 +1,5 @@
 /**
- * 回归守卫：mod 注册表（src/workflows.json）+ 组合判定（server/workflow_graph.js）。
+ * 回归守卫：mod 注册表（tools/bio/workflows.json）+ 组合判定（server/workflow_graph.js）。
  *
  * 背景（2026-10-23 用户拍板 mod 化改造）：
  * 客户端、服务台、取证 runner 三方共读同一份依赖图，否则依赖关系三处漂移。

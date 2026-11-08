@@ -5,8 +5,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const SCRIPT = path.join(REPO, "src", "line1_bulk", "scripts", "external_validation");
-const WORKFLOWS = path.join(REPO, "src", "workflows.json");
+const SCRIPT = path.join(REPO, "tools", "bio", "line1_bulk", "scripts", "external_validation");
+const WORKFLOWS = path.join(REPO, "tools", "bio", "workflows.json");
 const src = fs.readFileSync(SCRIPT, "utf8");
 
 function findModule(node, id) {

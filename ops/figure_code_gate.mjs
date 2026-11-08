@@ -47,7 +47,7 @@ export function checkFigureCode(repoRoot = REPO) {
   const csvPath = path.join(tmpDir, 'audit.csv');
   let proc;
   try {
-    proc = spawnSync('python', [auditScript, '--root', path.join(repoRoot, 'src'), '--csv', csvPath], {
+    proc = spawnSync('python', [auditScript, '--root', path.join(repoRoot, 'tools', 'bio'), '--csv', csvPath], {
       cwd: repoRoot, encoding: 'utf8', timeout: 60000,
     });
   } catch (cause) {

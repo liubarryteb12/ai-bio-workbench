@@ -26,7 +26,7 @@ const LINES = ["line1_bulk", "line2_scrna", "line3_spatial"];
 function captionMasters() {
   const out = [];
   for (const line of LINES) {
-    const dir = path.join(REPO, "src", line, "scripts");
+    const dir = path.join(REPO, "tools", "bio", line, "scripts");
     if (!fs.existsSync(dir)) continue;
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       if (!e.isFile() || e.name === "README.md") continue;
@@ -92,7 +92,7 @@ test("图注锚点必须在轴框之外（y 为负），不占用主图数据区
 
 test("spatial_figures 的逐样本图图注也改左下，图例仍在右侧", () => {
   const src = fs.readFileSync(
-    path.join(REPO, "src/line3_spatial/scripts/spatial_figures"), "utf8");
+    path.join(REPO, "tools/bio/line3_spatial/scripts/spatial_figures"), "utf8");
   // 逐样本图（01/02/03）不得再用轴坐标把图注放右栏
   const rightColCaption = /ax\.text\(\s*1\.\d+/.test(src);
   assert.equal(rightColCaption, false,

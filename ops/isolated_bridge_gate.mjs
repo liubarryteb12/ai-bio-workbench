@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const ROOT = process.cwd();
-const WORKFLOWS = path.join(ROOT, 'src', 'workflows.json');
+const WORKFLOWS = path.join(ROOT, 'tools', 'bio', 'workflows.json');
 
 function fail(message) {
   console.error(`ISOLATED_BRIDGE_GATE_FAIL ${message}`);

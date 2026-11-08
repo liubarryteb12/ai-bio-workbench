@@ -38,7 +38,7 @@ function sha256(buf) {
 }
 
 function localScripts(line) {
-  const dir = path.join(REPO, "src", line, "scripts");
+  const dir = path.join(REPO, "tools", "bio", line, "scripts");
   if (!fs.existsSync(dir)) return {};
   const out = {};
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

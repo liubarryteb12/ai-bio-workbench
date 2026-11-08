@@ -12,7 +12,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const SRC = path.join(REPO, "src", "line3_spatial", "scripts", "spatial_domains");
+const SRC = path.join(REPO, "tools", "bio", "line3_spatial", "scripts", "spatial_domains");
 
 function read() {
   return fs.readFileSync(SRC, "utf8");

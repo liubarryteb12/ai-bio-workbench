@@ -2,7 +2,7 @@
 /**
  * figure_source_provenance.mjs —— 出图代码与参考库的溯源诚实性门禁（生信代码专项审核）。
  *
- * 审核发现的核心问题：注册表 src/figure_templates.json 里 30 条 ready 模板都登记了
+ * 审核发现的核心问题：注册表 tools/bio/figure_templates.json 里 30 条 ready 模板都登记了
  * source 指向 reference/05.可参考出图代码，但真实出图脚本一处都没引用参考库。
  * 也就是说「溯源」目前只是元数据关系，不是代码的派生关系。
  *
@@ -23,7 +23,7 @@ import path from "node:path";
 
 const REPO = path.resolve(import.meta.dirname, "..");
 
-/** 三条分析线的脚本目录（隔离红线：只扫本仓 src/，不跨线取数）。 */
+/** 三条分析线的脚本目录（隔离红线：只扫本仓 tools/bio/，不跨线取数）。 */
 export const SCRIPT_LINES = Object.freeze(["line1_bulk", "line2_scrna", "line3_spatial"]);
 
 /**
@@ -79,7 +79,7 @@ export function discoverFigureProducers(opts = {}) {
     return out;
   }
   for (const lineId of SCRIPT_LINES) {
-    const dir = path.join(REPO, "src", lineId, "scripts");
+    const dir = path.join(REPO, "tools", "bio", lineId, "scripts");
     if (!fs.existsSync(dir)) continue;
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       if (!e.isFile()) continue;
@@ -95,7 +95,7 @@ export function discoverFigureProducers(opts = {}) {
 }
 
 /**
- * 出图脚本清单（相对 src/）。
+ * 出图脚本清单（相对 tools/bio/）。
  *
  * 由 discoverFigureProducers() 在模块加载时算好并冻结：新增产图母版会自动进来，
  * 不需要人工登记，也就不会出现「新增脚本悄悄脱离审查而门禁仍绿」。
@@ -140,9 +140,9 @@ function main() {
   const problems = [];
   const rows = [];
   for (const rel of FIGURE_SCRIPTS) {
-    // rel 形如 line1_bulk/bulk_figures，实际路径是 src/<line>/scripts/<script>
+    // rel 形如 line1_bulk/bulk_figures，实际路径是 tools/bio/<line>/scripts/<script>
     const [lineId, scriptName] = rel.split("/");
-    const abs = path.join(REPO, "src", lineId, "scripts", scriptName);
+    const abs = path.join(REPO, "tools", "bio", lineId, "scripts", scriptName);
     if (!fs.existsSync(abs)) {
       problems.push(rel + ": 脚本不存在（清单过期？）");
       continue;

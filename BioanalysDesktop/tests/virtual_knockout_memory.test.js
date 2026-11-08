@@ -7,7 +7,7 @@ import path from 'node:path';
 // 本机没有 R/Python 分析环境，也不许连 K40，所以这里只读源码做静态断言：
 // 断言的是「削峰结构还在、数值口径没被改」，不是运行时内存实测。
 // 运行期峰值证据由脚本自己落到输出目录的 memory_peak.tsv（VmHWM，单位 MB）。
-const SCRIPT = path.resolve(import.meta.dirname, '../../src/line2_scrna/scripts/virtual_knockout');
+const SCRIPT = path.resolve(import.meta.dirname, '../../tools/bio/line2_scrna/scripts/virtual_knockout');
 const SOURCE = fs.readFileSync(SCRIPT, 'utf8');
 
 const findIndex = (needle, from = 0) => {
@@ -166,7 +166,7 @@ test('峰值记录覆盖全流程阶段，顺序与阶段名固定', () => {
 });
 
 test('其它 line2 母版未被本切片污染：gsva_pathways 等脚本没有 record_peak/memory_peak', () => {
-  const dir = path.resolve(import.meta.dirname, '../../src/line2_scrna/scripts');
+  const dir = path.resolve(import.meta.dirname, '../../tools/bio/line2_scrna/scripts');
   const others = fs.readdirSync(dir).filter((name) => {
     if (name === 'virtual_knockout' || name === 'README.md') return false;
     // 只收文件：__pycache__ 之类的目录不是母版，readFileSync 会 EISDIR

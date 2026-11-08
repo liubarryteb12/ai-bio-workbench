@@ -27,7 +27,7 @@ function sha256File(p) {
 function localHashes() {
   const out = {};
   for (const line of LINES) {
-    const dir = path.join(REPO, "src", line, "scripts");
+    const dir = path.join(REPO, "tools", "bio", line, "scripts");
     out[line] = {};
     for (const name of fs.readdirSync(dir)) {
       if (name === "README.md") continue;

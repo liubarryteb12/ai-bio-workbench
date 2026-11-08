@@ -9,7 +9,7 @@ const REPO = path.resolve(__dirname, '..');
 const FIGURE_ROOT = 'reference/05.可参考生信代码/可用代码预筛选/源码';
 const CSV_PATH = path.join(REPO, FIGURE_ROOT, '_meta', 'bizard_index.csv');
 const REPORT_PATH = path.join(REPO, FIGURE_ROOT, '_meta', 'r453_verification_report.json');
-const REGISTRY_PATH = path.join(REPO, 'src', 'figure_templates.json');
+const REGISTRY_PATH = path.join(REPO, 'tools', 'bio', 'figure_templates.json');
 const PLOT_MATRIX_PATH = path.join(REPO, FIGURE_ROOT, '_meta', 'script_plot_matrix.json');
 
 function fail(message) {

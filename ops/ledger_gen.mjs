@@ -50,10 +50,10 @@ function readJson(relPath) {
   return JSON.parse(fs.readFileSync(path.join(REPO, relPath), 'utf8'));
 }
 
-/** 收集全部分析母版脚本的相对路径（src/<line>/scripts/ 下的无扩展名文件与脚本） */
+/** 收集全部分析母版脚本的相对路径（tools/bio/<line>/scripts/ 下的无扩展名文件与脚本） */
 function collectMasterScripts() {
   const out = new Set();
-  const srcDir = path.join(REPO, 'src');
+  const srcDir = path.join(REPO, 'tools', 'bio');
   let lines = [];
   try { lines = fs.readdirSync(srcDir, { withFileTypes: true }); } catch { return out; }
   for (const line of lines) {
@@ -65,7 +65,7 @@ function collectMasterScripts() {
       // 母版可能是无扩展名（1 步 1 母版），也可能带 .sh/.R/.py
       if (/^(README|\..*)/i.test(entry.name)) continue;
       if (/^\.(md|json|txt|log)$/i.test(path.extname(entry.name))) continue;
-      out.add(path.posix.join('src', line.name, 'scripts', entry.name));
+      out.add(path.posix.join('tools/bio', line.name, 'scripts', entry.name));
     }
   }
   return out;
@@ -95,8 +95,8 @@ function collectMods(workflows) {
  * @returns {object} 结构化台账
  */
 export function computeSystemLedger() {
-  const workflows = readJson('src/workflows.json');
-  const templates = readJson('src/figure_templates.json');
+  const workflows = readJson('tools/bio/workflows.json');
+  const templates = readJson('tools/bio/figure_templates.json');
   const masters = collectMasterScripts();
   const mods = collectMods(workflows);
 

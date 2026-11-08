@@ -2,7 +2,7 @@
  * 用户提交台（portal）GET /api/workflows 契约测试。
  *
  * 背景（2026-10-23 mod 化改造）：客户端的步骤勾选原先硬编码了一份旧步骤清单
- * （LINE_STEPS / STEP_META），与注册表 src/workflows.json 双份维护必然漂移。
+ * （LINE_STEPS / STEP_META），与注册表 tools/bio/workflows.json 双份维护必然漂移。
  * 现在 portal 自己读注册表暴露只读端点，客户端改为消费它。
  *
  * 为什么 portal 自己读文件而不转发工作台：本服务与工作台彻底解耦是既有设计
@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 
 const REPO = path.resolve(fileURLToPath(import.meta.url), '..', '..', '..');
 const PORTAL = path.join(REPO, 'portal', 'serve.mjs');
-const REGISTRY = path.join(REPO, 'src', 'workflows.json');
+const REGISTRY = path.join(REPO, 'tools', 'bio', 'workflows.json');
 
 function freePort() {
   return new Promise((resolve, reject) => {

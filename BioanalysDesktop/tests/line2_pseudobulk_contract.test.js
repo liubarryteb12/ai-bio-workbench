@@ -13,7 +13,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const SCRIPT = path.join(REPO_ROOT, "src", "line2_scrna", "scripts", "deg_groups");
+const SCRIPT = path.join(REPO_ROOT, "tools", "bio", "line2_scrna", "scripts", "deg_groups");
 
 function codeOnly(src) {
   return src

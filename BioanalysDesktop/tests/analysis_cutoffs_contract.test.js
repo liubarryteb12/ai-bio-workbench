@@ -18,8 +18,8 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
 
 const SCRIPTS = {
-  deg_limma: path.join(REPO, 'src', 'line1_bulk', 'scripts', 'deg_limma'),
-  bulk_figures: path.join(REPO, 'src', 'line1_bulk', 'scripts', 'bulk_figures'),
+  deg_limma: path.join(REPO, 'tools', 'bio', 'line1_bulk', 'scripts', 'deg_limma'),
+  bulk_figures: path.join(REPO, 'tools', 'bio', 'line1_bulk', 'scripts', 'bulk_figures'),
 };
 
 function readScript(name) {

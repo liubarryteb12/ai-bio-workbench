@@ -55,7 +55,7 @@ test('图件消费只允许 Ready 单图，退役组合图不得带证据', () =
   const matrix = buildMatrix();
   assert.equal(matrix.counts.ready_figures, 39);
   assert.deepEqual(matrix.figures.issues, []);
-  const templates = JSON.parse(read('src/figure_templates.json')).templates;
+  const templates = JSON.parse(read('tools/bio/figure_templates.json')).templates;
   for (const id of ['fig_l3_multipanel', 'fig_l3_combinationpanel', 'fig_l3_sankeybubbleplot']) {
     const template = templates.find((item) => item.id === id);
     assert.notEqual(template.status, 'ready');
@@ -65,7 +65,7 @@ test('图件消费只允许 Ready 单图，退役组合图不得带证据', () =
 });
 
 test('跨线桥只放行 public_references 冻结签名表', () => {
-  const workflows = JSON.parse(read('src/workflows.json'));
+  const workflows = JSON.parse(read('tools/bio/workflows.json'));
   const bridges = workflows.constraints.allowed_cross_series_bridges || [];
   assert.equal(bridges.length, 1);
   assert.match(bridges[0].path, /^public_references\/celltype_signatures\//);

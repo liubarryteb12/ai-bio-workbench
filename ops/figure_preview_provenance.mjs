@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const FIG_ROOT = path.join(REPO, 'reference', '05.可参考生信代码', '可用代码预筛选', '源码');
 const MATRIX = path.join(FIG_ROOT, '_meta', 'script_plot_matrix.json');
-const REGISTRY = path.join(REPO, 'src', 'figure_templates.json');
+const REGISTRY = path.join(REPO, 'tools', 'bio', 'figure_templates.json');
 
 function sha256(file) {
   return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');

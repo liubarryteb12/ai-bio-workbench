@@ -18,10 +18,10 @@
     合并进远端 system_logs/sync_manifest.json（保留最近 50 次）。
 
 .PARAMETER Files
-    仓库根相对路径列表。默认同步 src/bridge_guard.sh 与 ops/ 下的 .sh/.py/.R。
+    仓库根相对路径列表。默认同步 core/bridge_guard.sh 与 ops/ 下的 .sh/.py/.R。
 
 .PARAMETER All
-    连同 src/<line>/scripts/ 下的全部分析母版一起同步。
+    连同 tools/bio/<line>/scripts/ 下的全部分析母版一起同步。
 
 .PARAMETER DryRun
     只做 LF 校验、本地哈希与远端预检，不传输、不写台账。
@@ -32,7 +32,7 @@
 .EXAMPLE
     pwsh -File ops/sync_and_verify_remote.ps1 -DryRun
     pwsh -File ops/sync_and_verify_remote.ps1
-    pwsh -File ops/sync_and_verify_remote.ps1 -Files ops/verify_bridge_checkpoint.py,src/bridge_guard.sh
+    pwsh -File ops/sync_and_verify_remote.ps1 -Files ops/verify_bridge_checkpoint.py,core/bridge_guard.sh
 
 .NOTES
     退出码：0 全部一致 / 1 有文件不一致或传输失败 / 2 参数或前置条件错误。
@@ -55,16 +55,16 @@ Set-Location $RepoRoot
 
 function Get-DefaultFiles {
     $list = New-Object System.Collections.Generic.List[string]
-    $list.Add('src/bridge_guard.sh')
+    $list.Add('core/bridge_guard.sh')
     foreach ($f in (Get-ChildItem -Path 'ops' -File | Sort-Object Name)) {
         if ($f.Extension -in @('.sh', '.py', '.R', '.mjs')) { $list.Add(('ops/' + $f.Name)) }
     }
     if ($All) {
-        foreach ($line in (Get-ChildItem -Path 'src' -Directory)) {
+        foreach ($line in (Get-ChildItem -Path 'tools/bio' -Directory)) {
             $scripts = Join-Path $line.FullName 'scripts'
             if (-not (Test-Path $scripts)) { continue }
             foreach ($f in (Get-ChildItem -Path $scripts -File | Sort-Object Name)) {
-                $list.Add(('src/' + $line.Name + '/scripts/' + $f.Name))
+                $list.Add(('tools/bio/' + $line.Name + '/scripts/' + $f.Name))
             }
         }
     }
@@ -262,25 +262,25 @@ foreach ($rel in $Files) {
     if ($got -eq $want) { $matched++ } else { $mismatch += ('{0}（本地 {1} != 远端 {2}）' -f $rel, $want.Substring(0, 12), $got.Substring(0, 12)) }
 }
 
-# 第 5.5 步：镜像部署。src/bridge_guard.sh 在仓库里位于 src/ 根（母版按
+# 第 5.5 步：镜像部署。core/bridge_guard.sh 在仓库里位于 core/ 根（母版按
 # "$(dirname $0)/../../bridge_guard.sh" 找它），部署到 K40 后母版落在
 # /mnt/ssd/bio_data/bin/<线>/ 下，相对路径指向 /mnt/ssd/bio_data/ —— 所以同一份
 # 守卫必须再镜像一份到 ops/ 下，母版按候选路径列表自行解析。
 $mirrorOk = 0
 $mirrorTotal = 0
 $mirrorNote = '未执行'
-if ($Files -contains 'src/bridge_guard.sh') {
+if ($Files -contains 'core/bridge_guard.sh') {
     $mirrorTotal = 1
     $mirrorDest = $RemoteRoot + '/ops/bridge_guard.sh'
-    & scp -q (Join-Path $RepoRoot 'src/bridge_guard.sh') ('{0}:{1}' -f $SshTarget, $mirrorDest) 2>&1 | Out-Null
+    & scp -q (Join-Path $RepoRoot 'core/bridge_guard.sh') ('{0}:{1}' -f $SshTarget, $mirrorDest) 2>&1 | Out-Null
     if ($LASTEXITCODE -eq 0) {
         $null = Invoke-Remote -Command ("chmod 755 '" + $mirrorDest + "'")
         $mirrorParsed = Read-RemoteHashes -Text ((Invoke-Remote -Command ("sha256sum '" + $mirrorDest + "'")).Output)
         $mirrorRemote = $mirrorParsed.Map['ops/bridge_guard.sh']
-        if ($mirrorRemote -eq $local['src/bridge_guard.sh']) {
+        if ($mirrorRemote -eq $local['core/bridge_guard.sh']) {
             $mirrorOk = 1
             $mirrorNote = '镜像 1/1 一致'
-            Write-Host '[ OK ] 镜像部署：ops/bridge_guard.sh 与 src/bridge_guard.sh 一致'
+            Write-Host '[ OK ] 镜像部署：ops/bridge_guard.sh 与 core/bridge_guard.sh 一致'
         } else {
             $mirrorNote = '镜像不一致'
             Write-Host '[FAIL] 镜像部署后哈希不一致：ops/bridge_guard.sh' -ForegroundColor Red
@@ -292,14 +292,14 @@ if ($Files -contains 'src/bridge_guard.sh') {
 }
 
 # 第 6 步：部署一致性（仓库 -> 引擎真正执行的 bin/<线>/）
-# 本脚本只写 $RemoteRoot/src/...（仓库镜像，供审计与哈希对账）；任务引擎通过 PATH 执行的却是
+# 本脚本只写 $RemoteRoot/tools/bio/...（仓库镜像，供审计与哈希对账）；任务引擎通过 PATH 执行的却是
 # $RemoteRoot/bin/<线>/<步骤名>（由 ops/06_deploy_scripts.ps1 部署）。两个落点长期可能不一致
 # （2026-10-21 实测 3 个母版落后：ml_diagnostics / ml_hub_analysis / virtual_knockout），
 # 而自检第 4 维只比「仓库 vs 镜像」，看不到这种漂移 —— 所以在同步末尾单独比一次。
 $deployPairs = @()
 foreach ($rel in $Files) {
     # 只比步骤脚本：README.md 这类文档不进 bin/（部署通道只送可执行步骤），不是漂移。
-    if ($rel -notlike '*.md' -and $rel -match '^src/(line\d_[a-z0-9_]+)/scripts/(.+)$') {
+    if ($rel -notlike '*.md' -and $rel -match '^tools/bio/(line\d_[a-z0-9_]+)/scripts/(.+)$') {
         $deployPairs += [pscustomobject]@{
             Repo = $rel
             Bin  = ($RemoteRoot + '/bin/' + $Matches[1] + '/' + $Matches[2])

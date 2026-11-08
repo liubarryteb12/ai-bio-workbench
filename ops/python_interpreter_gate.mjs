@@ -29,7 +29,7 @@ export const REWRITTEN_CALL = /^\s*"\$PY" - <</m;
 export function pythonMasters() {
   const out = [];
   for (const line of LINES) {
-    const dir = path.join(REPO, "src", line, "scripts");
+    const dir = path.join(REPO, "tools", "bio", line, "scripts");
     if (!fs.existsSync(dir)) continue;
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       if (!e.isFile() || e.name === "README.md" || e.name.endsWith(".py")) continue;

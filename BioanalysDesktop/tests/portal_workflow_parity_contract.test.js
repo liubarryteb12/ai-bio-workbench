@@ -23,7 +23,7 @@ test('定律 1：workflows.json 每个 Mod 都有可达母版（门户目录无�
     for (const stage of series.stages) {
       for (const mod of stage.mods) {
         const script = mod.script || modToScript.get(mod.id);
-        const file = path.join(REPO, 'src', series.id, 'scripts', script || mod.id);
+        const file = path.join(REPO, 'tools', 'bio', series.id, 'scripts', script || mod.id);
         if (!script || !fs.existsSync(file)) orphans.push(`${series.id}/${mod.id}`);
       }
     }

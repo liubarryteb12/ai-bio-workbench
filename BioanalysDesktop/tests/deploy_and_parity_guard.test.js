@@ -90,12 +90,12 @@ test('sync 远端哈希预检必须分批，避免一次 ssh 命令过长被远�
 
 // 2026-10-24 部署闸门：scripts/ 是母版目录，落到 bin/ 后即可被 /api/tasks/submit 点名执行，
 // 而提交层只校验 step 字符集、不校验是否登记。曾把 4 个 R 测试案例落在这里，会被原样推上
-// 服务器变成线上可执行步骤。注册表 src/workflows.json 是单一事实源，闸门据此在收集文件时拦截。
+// 服务器变成线上可执行步骤。注册表 tools/bio/workflows.json 是单一事实源，闸门据此在收集文件时拦截。
 test('06_deploy_scripts.ps1 收集文件后必须按注册表闸门校验', () => {
-  assert.ok(deployText.includes('src/workflows.json'), '闸门未引用注册表');
+  assert.ok(deployText.includes('tools/bio/workflows.json'), '闸门未引用注册表');
   assert.ok(deployText.includes('$registryScripts'), '缺少注册表索引');
   assert.ok(deployText.includes('$unregistered'), '缺少未登记集合');
-  assert.ok(deployText.includes('未登记进 src/workflows.json 的件，拒绝部署'), '缺少拒绝文案');
+  assert.ok(deployText.includes('未登记进 tools/bio/workflows.json 的件，拒绝部署'), '缺少拒绝文案');
   assert.ok(deployText.includes('exit 1'), '未登记时必须中止部署');
 });
 
@@ -134,5 +134,5 @@ test('豁免名单只放已知的非步骤脚本，且逐个写明理由', () =>
 
 test('闸门把测试案例指到 cn_debug/，把新母版指到注册表', () => {
   assert.ok(deployText.includes('测试案例与一次性探针请放 cn_debug/'), '缺少测试案例的引导');
-  assert.ok(deployText.includes('正式母版请先登记进 src/workflows.json'), '缺少新母版的引导');
+  assert.ok(deployText.includes('正式母版请先登记进 tools/bio/workflows.json'), '缺少新母版的引导');
 });

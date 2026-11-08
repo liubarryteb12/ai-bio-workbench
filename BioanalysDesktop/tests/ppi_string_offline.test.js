@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
-const SCRIPT = path.join(REPO_ROOT, 'src', 'line1_bulk', 'scripts', 'ppi_string');
+const SCRIPT = path.join(REPO_ROOT, 'tools', 'bio', 'line1_bulk', 'scripts', 'ppi_string');
 const SRC = fs.readFileSync(SCRIPT, 'utf8');
 
 const DEAD_PROXY = 'http://127.0.0.1:9';

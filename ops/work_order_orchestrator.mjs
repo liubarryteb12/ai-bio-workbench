@@ -15,8 +15,8 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, '..');
-const WORKFLOWS_FILE = path.join(REPO_ROOT, 'src', 'workflows.json');
-const FIGURE_TEMPLATES_FILE = path.join(REPO_ROOT, 'src', 'figure_templates.json');
+const WORKFLOWS_FILE = path.join(REPO_ROOT, 'tools', 'bio', 'workflows.json');
+const FIGURE_TEMPLATES_FILE = path.join(REPO_ROOT, 'tools', 'bio', 'figure_templates.json');
 const ALLOWLIST_FILE = path.join(REPO_ROOT, 'ops', 'figure_ready_allowlist.json');
 export const WORK_ORDER_SCHEMA_VERSION = 'work_order/v1';
 
@@ -82,8 +82,8 @@ function readJson(file, label) {
 }
 
 function indexRegistry() {
-  const workflows = readJson(WORKFLOWS_FILE, 'src/workflows.json');
-  const templates = readJson(FIGURE_TEMPLATES_FILE, 'src/figure_templates.json');
+  const workflows = readJson(WORKFLOWS_FILE, 'tools/bio/workflows.json');
+  const templates = readJson(FIGURE_TEMPLATES_FILE, 'tools/bio/figure_templates.json');
   const allowlist = readJson(ALLOWLIST_FILE, 'ops/figure_ready_allowlist.json');
   const series = new Map();
   const mods = new Map();

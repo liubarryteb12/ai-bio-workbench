@@ -17,13 +17,13 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
 
 const PY_MASTERS = [
-  'src/line2_scrna/scripts/enrichment',
-  'src/line2_scrna/scripts/tf_activity',
-  'src/line2_scrna/scripts/dr_post_analysis',
-  'src/line3_spatial/scripts/enrichment',
-  'src/line3_spatial/scripts/dr_post_analysis',
+  'tools/bio/line2_scrna/scripts/enrichment',
+  'tools/bio/line2_scrna/scripts/tf_activity',
+  'tools/bio/line2_scrna/scripts/dr_post_analysis',
+  'tools/bio/line3_spatial/scripts/enrichment',
+  'tools/bio/line3_spatial/scripts/dr_post_analysis',
 ];
-const R_MASTERS = ['src/line2_scrna/scripts/gsva_pathways'];
+const R_MASTERS = ['tools/bio/line2_scrna/scripts/gsva_pathways'];
 
 function codeLines(file) {
   const text = fs.readFileSync(path.join(REPO, file), 'utf8');

@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
-const GUARD = path.join(REPO_ROOT, 'src', 'bridge_guard.sh');
+const GUARD = path.join(REPO_ROOT, 'core', 'bridge_guard.sh');
 
 function findBash() {
   const candidates = [process.env.BRIDGE_GUARD_BASH, 'D:\\Git\\bin\\bash.exe', 'D:\\Git\\usr\\bin\\bash.exe', 'bash']

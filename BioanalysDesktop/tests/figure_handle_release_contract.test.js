@@ -39,7 +39,7 @@ function codeLines(text) {
 function figureMasters() {
   const out = [];
   for (const line of LINES) {
-    const dir = path.join(REPO, "src", line, "scripts");
+    const dir = path.join(REPO, "tools", "bio", line, "scripts");
     if (!fs.existsSync(dir)) continue;
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       if (!e.isFile() || e.name === "README.md") continue;
@@ -64,7 +64,7 @@ test("每份产图母版都有句柄释放兜底（Python close(all) / R graphic
 });
 
 test("逐图 plt.close(fig) 的既有写法被保留（不许为凑判据删精度）", () => {
-  const text = fs.readFileSync(path.join(REPO, "src/line1_bulk/scripts/bulk_figures"), "utf8");
+  const text = fs.readFileSync(path.join(REPO, "tools/bio/line1_bulk/scripts/bulk_figures"), "utf8");
   const code = codeLines(text).join(String.fromCharCode(10));
   assert.match(code, /plt\.close\(fig\)/, "bulk_figures 必须保留逐图 close(fig)");
   assert.match(code, /plt\.close\((['"])all\1\)/, "bulk_figures 必须有 close(all) 兜底");

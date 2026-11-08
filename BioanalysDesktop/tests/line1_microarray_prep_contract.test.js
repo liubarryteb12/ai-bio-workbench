@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const SCRIPT = path.join(REPO, "src", "line1_bulk", "scripts", "prep_matrix");
+const SCRIPT = path.join(REPO, "tools", "bio", "line1_bulk", "scripts", "prep_matrix");
 const src = fs.readFileSync(SCRIPT, "utf8");
 
 test("prep_matrix 包含 safe_fread 规避 R.utils 依赖", () => {

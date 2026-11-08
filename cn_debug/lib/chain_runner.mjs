@@ -560,7 +560,7 @@ export async function runStepHttp(spec, opts = {}) {
 /**
  * 从 mod 注册表解析「mod id -> 母版名」。
  *
- * 注册表（src/workflows.json）的 mod.id 用 <系列>_<工序>_<功能> 命名，
+ * 注册表（tools/bio/workflows.json）的 mod.id 用 <系列>_<工序>_<功能> 命名，
  * 而磁盘母版与远端 bin/ 用的是原名（mod.script）。runner 的步骤表写的是母版名，
  * 两边靠这个映射对齐，避免注册表改名后 runner 静默失联。
  * @returns {Map<string,string>} modId -> script
@@ -568,7 +568,7 @@ export async function runStepHttp(spec, opts = {}) {
 /**
  * 从 mod 注册表解析「mod id -> 母版名」。
  *
- * 注册表（src/workflows.json）的 mod.id 用 <系列>_<工序>_<功能> 命名，
+ * 注册表（tools/bio/workflows.json）的 mod.id 用 <系列>_<工序>_<功能> 命名，
  * 而磁盘母版与远端 bin/ 用的是原名（mod.script）。runner 的步骤表写的是母版名，
  * 两边靠这个映射对齐，避免注册表改名后 runner 静默失联。
  *
@@ -577,7 +577,7 @@ export async function runStepHttp(spec, opts = {}) {
  * @returns {Map<string,string>} modId -> script
  */
 export function modScriptIndex() {
-  const reg = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'src', 'workflows.json');
+  const reg = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'tools', 'bio', 'workflows.json');
   const j = JSON.parse(fs.readFileSync(reg, 'utf8'));
   const out = new Map();
   for (const s of j.series) {

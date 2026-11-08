@@ -18,7 +18,7 @@ const REPO = path.resolve(HERE, "../..");
 function makeTree() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "router-gate-" + process.pid + "-"));
   fs.mkdirSync(path.join(root, "ops"), { recursive: true });
-  fs.mkdirSync(path.join(root, "src"), { recursive: true });
+  fs.mkdirSync(path.join(root, "tools", "bio"), { recursive: true });
   for (const f of fs.readdirSync(path.join(REPO, "ops"))) {
     if (f.endsWith(".mjs")) {
       fs.copyFileSync(path.join(REPO, "ops", f), path.join(root, "ops", f));
@@ -26,7 +26,7 @@ function makeTree() {
   }
   fs.copyFileSync(path.join(REPO, "ROUTER.yaml"), path.join(root, "ROUTER.yaml"));
   fs.copyFileSync(path.join(REPO, "SCOPE.md"), path.join(root, "SCOPE.md"));
-  fs.copyFileSync(path.join(REPO, "src/workflows.json"), path.join(root, "src/workflows.json"));
+  fs.copyFileSync(path.join(REPO, "tools/bio/workflows.json"), path.join(root, "tools", "bio", "workflows.json"));
   return root;
 }
 

@@ -72,7 +72,7 @@ $pending = @()
 foreach ($line in $lines) {
   # 待部署项：@(本地路径, 远端相对路径, 是否需要可执行位)
   $items = @()
-  $srcDir = Join-Path $repoRoot "src/$line/scripts"
+  $srcDir = Join-Path $repoRoot "tools/bio/$line/scripts"
   if (-not (Test-Path $srcDir)) {
     Write-Host "[deploy] FAIL 本地缺少目录: $srcDir" -ForegroundColor Red
     exit 1
@@ -80,7 +80,7 @@ foreach ($line in $lines) {
   # 只收文件（README 等文档不部署；scripts/ 下每个可执行文件即一个步骤）
   $files = Get-ChildItem -Path $srcDir -File | Where-Object { $_.Name -ne 'README.md' }
 
-  # 部署闸门：scripts/ 下的文件必须已在 src/workflows.json 注册表登记。
+  # 部署闸门：scripts/ 下的文件必须已在 tools/bio/workflows.json 注册表登记。
   #
   # 为什么加这道闸：scripts/ 是「母版」目录，落到服务器 bin/ 后即可被 /api/tasks/submit
   # 点名执行（提交层只校验 step 字符集，不校验是否登记）。2026-10-24 曾把 4 个 R 测试案例
@@ -95,7 +95,7 @@ foreach ($line in $lines) {
 }
 # 锚点：'$deployExempt = @{ 'probe_env'' 这行由 tests/deploy_and_parity_guard.test.js 断言，改格式要同步改测试
   $registryScripts = @{}
-  $workflowFile = Join-Path $repoRoot 'src/workflows.json'
+  $workflowFile = Join-Path $repoRoot 'tools/bio/workflows.json'
   if (Test-Path $workflowFile) {
     try {
       $registry = Get-Content -LiteralPath $workflowFile -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -114,18 +114,18 @@ foreach ($line in $lines) {
     }
   } else {
     Write-Host "[deploy] FAIL 缺少工作流注册表: $workflowFile" -ForegroundColor Red
-    Write-Host '  新母版必须先登记进 src/workflows.json 再部署（单一事实源）。' -ForegroundColor Red
+    Write-Host '  新母版必须先登记进 tools/bio/workflows.json 再部署（单一事实源）。' -ForegroundColor Red
     exit 1
   }
   $unregistered = @($files | Where-Object {
     -not $registryScripts.ContainsKey("$line/$($_.Name)") -and -not $deployExempt.ContainsKey($_.Name)
   })
   if ($unregistered.Count -gt 0) {
-    Write-Host "[deploy] FAIL $line 有 $($unregistered.Count) 个未登记进 src/workflows.json 的件，拒绝部署：" -ForegroundColor Red
+    Write-Host "[deploy] FAIL $line 有 $($unregistered.Count) 个未登记进 tools/bio/workflows.json 的件，拒绝部署：" -ForegroundColor Red
     foreach ($f in $unregistered) {
       Write-Host "  $($f.Name)" -ForegroundColor Red
       Write-Host '    测试案例与一次性探针请放 cn_debug/（该目录不参与部署，见 cn_debug/README.md）；' -ForegroundColor Yellow
-      Write-Host '    正式母版请先登记进 src/workflows.json 的 stages/mods 再部署。' -ForegroundColor Yellow
+      Write-Host '    正式母版请先登记进 tools/bio/workflows.json 的 stages/mods 再部署。' -ForegroundColor Yellow
     }
     exit 1
   }
@@ -138,7 +138,7 @@ foreach ($line in $lines) {
     }
   }
   # 环境清单：台账 environment 的正本，随部署通道同步到服务器 envs/<line>/
-  $manifestFile = Join-Path $repoRoot "src/$line/envs/manifest.txt"
+  $manifestFile = Join-Path $repoRoot "tools/bio/$line/envs/manifest.txt"
   if (-not (Test-Path $manifestFile)) {
     Write-Host "[deploy] FAIL 本地缺少环境清单: $manifestFile" -ForegroundColor Red
     exit 1

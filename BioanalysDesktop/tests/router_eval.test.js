@@ -40,7 +40,7 @@ test("黄金集至少 25 条，且字段齐全", () => {
 });
 
 test("每条 case 期望的 Mod/脚本必须真实存在", () => {
-  const { modIds } = loadModIds(path.join(REPO, "src/workflows.json"));
+  const { modIds } = loadModIds(path.join(REPO, "tools/bio/workflows.json"));
   const ops = new Set(listOpsScripts(path.join(REPO, "ops")));
   const mods = new Set(modIds);
   const bad = [];

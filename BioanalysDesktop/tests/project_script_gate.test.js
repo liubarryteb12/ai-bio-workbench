@@ -33,7 +33,7 @@ test("Q1：scripts_manifest.json 存在且每条都声明了用途", () => {
 test("Q1：项目 scripts/ 下没有与 src 母版同名的文件", () => {
   const master = new Set();
   for (const line of ["line1_bulk", "line2_scrna", "line3_spatial"]) {
-    const dir = path.join(REPO, "src", line, "scripts");
+    const dir = path.join(REPO, "tools", "bio", line, "scripts");
     for (const f of fs.readdirSync(dir)) master.add(f);
   }
   const dir = path.join(REPO, "local_projects", "PRJ_DCM_BENCH_20261105", "scripts");

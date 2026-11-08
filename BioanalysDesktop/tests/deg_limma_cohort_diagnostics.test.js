@@ -18,7 +18,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const SCRIPT = path.join(REPO, "src", "line1_bulk", "scripts", "deg_limma");
+const SCRIPT = path.join(REPO, "tools", "bio", "line1_bulk", "scripts", "deg_limma");
 const src = fs.readFileSync(SCRIPT, "utf8");
 
 test("诊断列齐全：单侧沉默 / 低检出 / 技术性 / 汇总", () => {

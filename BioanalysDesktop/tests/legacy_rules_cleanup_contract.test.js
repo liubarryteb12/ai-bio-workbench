@@ -44,9 +44,9 @@ test('前端计算面模式默认 ADB，兼容 SSH 特殊开关与 mock', () => 
 });
 
 test('生产母版不再生成已退役组合图', () => {
-  const l1 = read('src/line1_bulk/scripts/bulk_figures');
-  const l2 = read('src/line2_scrna/scripts/scrna_figures');
-  const l3 = read('src/line3_spatial/scripts/spatial_figures');
+  const l1 = read('tools/bio/line1_bulk/scripts/bulk_figures');
+  const l2 = read('tools/bio/line2_scrna/scripts/scrna_figures');
+  const l3 = read('tools/bio/line3_spatial/scripts/spatial_figures');
   assert.equal(/save\([^\n]*l1_32_deg_overview/.test(l1), false);
   assert.equal(/save\([^\n]*l2_20_composition_panel/.test(l2), false);
   assert.equal(/save\([^\n]*16_domain_panel/.test(l3), false);

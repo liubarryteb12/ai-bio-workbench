@@ -20,7 +20,7 @@ import { indexMods } from '../server/workflow_graph.js';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
 const GENERATOR = path.join(REPO, 'ops', 'build_figure_templates.cjs');
-const REGISTRY = path.join(REPO, 'src', 'figure_templates.json');
+const REGISTRY = path.join(REPO, 'tools', 'bio', 'figure_templates.json');
 const BOXPLOT_MASTERS = [
   path.join(REPO, 'reference', '05.可参考生信代码', '可用代码预筛选', '源码', 'L1_基础统计图', 'L1_boxplot_code.R'),
   path.join(REPO, 'reference', '05.可参考生信代码', '可用代码预筛选', '源码', '_meta', 'R453_compat', 'L1_boxplot_code.R'),
@@ -92,7 +92,7 @@ function resolveRepoFile(relative) {
 
 test('registry is generated from bizard index and r453 evidence', () => {
   assert.ok(fs.existsSync(GENERATOR), 'ops/build_figure_templates.cjs missing');
-  assert.ok(fs.existsSync(REGISTRY), 'src/figure_templates.json missing');
+  assert.ok(fs.existsSync(REGISTRY), 'tools/bio/figure_templates.json missing');
   execFileSync(process.execPath, [GENERATOR, '--check'], { cwd: REPO, stdio: 'pipe' });
 });
 

@@ -317,12 +317,12 @@ export const SHA256_SENTINEL = 'SHA256END|';
 
 /**
  * 参与比对的核心里程碑文件。repo 是仓库根相对路径，remote 是远端绝对路径。
- * 守卫有两份：仓库 src/bridge_guard.sh 同步到远端 src/，再镜像一份到远端 ops/
+ * 守卫有两份：仓库 core/bridge_guard.sh 同步到远端，再镜像一份到远端 ops/
  * （部署布局下母版按候选路径列表找守卫，见 SPEC_DECISIONS D-04）。
  */
 export const CORE_SYNC_FILES = Object.freeze([
-  Object.freeze({ repo: 'src/bridge_guard.sh', remote: '/mnt/ssd/bio_data/src/bridge_guard.sh', note: '守卫母版' }),
-  Object.freeze({ repo: 'src/bridge_guard.sh', remote: '/mnt/ssd/bio_data/ops/bridge_guard.sh', note: '守卫镜像' }),
+  Object.freeze({ repo: 'core/bridge_guard.sh', remote: '/mnt/ssd/bio_data/core/bridge_guard.sh', note: '守卫母版' }),
+  Object.freeze({ repo: 'core/bridge_guard.sh', remote: '/mnt/ssd/bio_data/ops/bridge_guard.sh', note: '守卫镜像' }),
   Object.freeze({ repo: 'ops/check_storage_and_isolation.sh', remote: '/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh', note: '跨线隔离门禁' }),
   Object.freeze({ repo: 'ops/verify_bridge_checkpoint.py', remote: '/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py', note: '桥接四项断言' }),
 ]);

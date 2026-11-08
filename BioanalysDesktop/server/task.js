@@ -301,7 +301,7 @@ export function resolveStepName(step) {
 
 /** 本地母版根：src/<line>/scripts/<step>（src 是母版，远端 bin 是部署产物） */
 const SRC_SCRIPTS_ROOT = process.env.BIOANALYS_SRC_ROOT
-  || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'src');
+  || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'tools', 'bio');
 /** 图模板派生副本读取母版时的仓库根，生产路径随安装位置解析 */
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const FIGURE_MASTER_ROOT = path.resolve(REPO_ROOT, 'reference', '05.可参考生信代码', '可用代码预筛选', '源码');
@@ -361,7 +361,7 @@ export class BridgeCheckError extends Error {
 const RSCRIPT_CALL_RE = /(^|[\s;&|"])(?:\$RSCRIPT_BIN|\$\{RSCRIPT_BIN\}|Rscript)(?=[\s"']|$)/;
 /** 命令位的 python/python3 调用（heredoc 首行 `python3 - <<'PYSCRIPT'` 即此形态） */
 const PYTHON_CALL_RE = /(^|[\s;&|])python3?(?=[\s"']|$)/;
-/** 母版内部是否调用了桥接守卫（src/bridge_guard.sh，task-10） */
+/** 母版内部是否调用了桥接守卫（core/bridge_guard.sh，task-10） */
 const GUARD_CALL_RE = /bridge_guard\.sh/;
 
 /**

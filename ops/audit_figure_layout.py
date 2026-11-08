@@ -8,7 +8,7 @@
 用法（必须 Agg，无显示面；本地与服务器容器均可）：
 
     # 审计单个出图脚本（用当前目录的数据重渲染，但不落盘）
-    python3 audit_figure_layout.py --script src/line2_scrna/scripts/scenic_figures \
+    python3 audit_figure_layout.py --script tools/bio/line2_scrna/scripts/scenic_figures \
         --cwd /mnt/ssd/bio_data/projects/default/line2_scrna/processed
 
     # 批量（默认不写盘，只判定）

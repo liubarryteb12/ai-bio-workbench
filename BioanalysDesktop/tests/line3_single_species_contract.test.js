@@ -14,7 +14,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const DIR = path.join(REPO, "src/line3_spatial/scripts");
+const DIR = path.join(REPO, "tools/bio/line3_spatial/scripts");
 
 const DUAL_SPECIES_STEPS = [
   "dim_reduce", "spatial_autocorr", "spatial_communication", "spatial_composition",

@@ -1,6 +1,6 @@
 # 用途：把 K40 上的 line1_bulk 改造资产拉回本地工作区，保证双端一致。
 # 背景：改造脚本的唯一母版在 K40 /mnt/ssd/bio_data/bin/line1_bulk/，本地
-# src/line1_bulk/scripts/ 只是副本。任何远端改动都要用本脚本回灌，避免手工搬运出错。
+# tools/bio/line1_bulk/scripts/ 只是副本。任何远端改动都要用本脚本回灌，避免手工搬运出错。
 #
 # 用法：pwsh -File ops/sync_line1_assets.ps1
 # 可选：pwsh -File ops/sync_line1_assets.ps1 -CheckOnly

@@ -5,8 +5,8 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, '..');
-const WORKFLOWS = path.join(REPO_ROOT, 'src', 'workflows.json');
-const TEMPLATES = path.join(REPO_ROOT, 'src', 'figure_templates.json');
+const WORKFLOWS = path.join(REPO_ROOT, 'tools', 'bio', 'workflows.json');
+const TEMPLATES = path.join(REPO_ROOT, 'tools', 'bio', 'figure_templates.json');
 const FIGURE_GATE = path.join(REPO_ROOT, 'ops', 'figure_ready_matrix.mjs');
 const ROUTER_GATE = path.join(REPO_ROOT, 'ops', 'router_gate.mjs');
 const BRIDGE_GATE = path.join(REPO_ROOT, 'ops', 'isolated_bridge_gate.mjs');
@@ -45,7 +45,7 @@ function collectMods(workflows) {
           orderInStage,
           stageRequired: stage.required === true,
           seed: series.seed,
-          scriptPath: path.join(REPO_ROOT, 'src', series.id, 'scripts', mod.script || mod.id),
+          scriptPath: path.join(REPO_ROOT, 'tools', 'bio', series.id, 'scripts', mod.script || mod.id),
         });
       }
     }
@@ -208,8 +208,8 @@ function staticGuards() {
 
 export function buildMatrix(options = {}) {
   const root = options.repoRoot || REPO_ROOT;
-  const workflows = readJson(path.join(root, 'src/workflows.json'));
-  const templates = readJson(path.join(root, 'src/figure_templates.json'));
+  const workflows = readJson(path.join(root, 'tools/bio/workflows.json'));
+  const templates = readJson(path.join(root, 'tools/bio/figure_templates.json'));
   const mods = collectMods({ ...workflows, _root: root });
   const producers = producerMap(mods);
   producers._mods = mods;
@@ -262,7 +262,7 @@ function reportText(matrix) {
     '',
     `日期 ${new Date().toISOString()}`,
     '',
-    '本报告按 `src/workflows.json` 真源逐模块检查母版、输入、产物、seed、退出码、独立运行闭包、相邻模块承接与故障注入判据。脚本不重跑生信分析，不连接设备。',
+    '本报告按 `tools/bio/workflows.json` 真源逐模块检查母版、输入、产物、seed、退出码、独立运行闭包、相邻模块承接与故障注入判据。脚本不重跑生信分析，不连接设备。',
     '',
     '## 汇总',
     '',

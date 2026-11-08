@@ -14,7 +14,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const INGEST = path.join(REPO, "src/line3_spatial/scripts/ingest_spatial");
+const INGEST = path.join(REPO, "tools/bio/line3_spatial/scripts/ingest_spatial");
 
 const WRITE_RE = /^[ ]*adata\.uns\["warnings"\][ ]*=[ ]*list\(warnings_list\)/;
 const COND_RE = /^if[ ]+warnings_list[ ]*:/;

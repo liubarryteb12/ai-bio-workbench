@@ -175,13 +175,13 @@ function buildStaticProbe(scope, gateFile) {
 function buildPreviewShaMutation(scope) {
   let src = fs.readFileSync(path.join(REPO, 'ops', 'build_figure_templates.cjs'), 'utf8');
   const repoLine = "const REPO = path.resolve(__dirname, '..');";
-  const registryLine = "const REGISTRY_PATH = path.join(REPO, 'src', 'figure_templates.json');";
+  const registryLine = "const REGISTRY_PATH = path.join(REPO, 'tools', 'bio', 'figure_templates.json');";
   if (!src.includes(repoLine) || !src.includes(registryLine)) {
     throw new Error('变异锚点未命中（build_figure_templates 的 REPO/REGISTRY_PATH 已漂移）');
   }
-  const copyJson = path.join(scope, 'src', 'figure_templates.json');
+  const copyJson = path.join(scope, 'tools', 'bio', 'figure_templates.json');
   fs.mkdirSync(path.dirname(copyJson), { recursive: true });
-  fs.copyFileSync(path.join(REPO, 'src', 'figure_templates.json'), copyJson);
+  fs.copyFileSync(path.join(REPO, 'tools', 'bio', 'figure_templates.json'), copyJson);
   src = src.replace(repoLine, 'const REPO = ' + JSON.stringify(REPO) + ';');
   src = src.replace(registryLine, 'const REGISTRY_PATH = ' + JSON.stringify(copyJson) + ';');
   const patched = path.join(scope, 'build_check.cjs');
@@ -365,7 +365,7 @@ export const MUTATIONS = Object.freeze([
     async guard(file) {
       const mod = await loadModule(file);
       const doc = mod.loadRouter(path.join(REPO, 'ROUTER.yaml'));
-      const { modIds, seriesIds } = mod.loadModIds(path.join(REPO, 'src/workflows.json'));
+      const { modIds, seriesIds } = mod.loadModIds(path.join(REPO, 'tools/bio/workflows.json'));
       const opsScripts = mod.listOpsScripts(path.join(REPO, 'ops'));
       const probe = JSON.parse(JSON.stringify(doc));
       probe.routes[0].allowed_scripts.push('l3_ghost_mod');
@@ -443,15 +443,15 @@ export const MUTATIONS = Object.freeze([
     id: 'm14_figcode_font',
     layer: 'behavior',
     label: 'MUT-FIGCODE-A 母版字号回归 fontsize=7 必须被第 20 道门禁检出',
-    target: 'src/line1_bulk/scripts/bulk_figures',
+    target: 'tools/bio/line1_bulk/scripts/bulk_figures',
     guardLabel: 'figure_code_gate：母版出现 fontsize=7 时 blocking>0',
     edits: [{ find: 'fontsize=8', replace: 'fontsize=7' }],
     async guard(file, scope) {
       const probe = path.join(scope, 'probe_a');
       fs.mkdirSync(path.join(probe, 'cn_debug'), { recursive: true });
-      fs.mkdirSync(path.join(probe, 'src', 'line1_bulk', 'scripts'), { recursive: true });
+      fs.mkdirSync(path.join(probe, 'tools', 'bio', 'line1_bulk', 'scripts'), { recursive: true });
       fs.copyFileSync(path.join(REPO, 'cn_debug', 'figure_code_audit.py'), path.join(probe, 'cn_debug', 'figure_code_audit.py'));
-      fs.copyFileSync(file, path.join(probe, 'src', 'line1_bulk', 'scripts', 'bulk_figures'));
+      fs.copyFileSync(file, path.join(probe, 'tools', 'bio', 'line1_bulk', 'scripts', 'bulk_figures'));
       const gate = await loadModule(path.join(REPO, 'ops', 'figure_code_gate.mjs'));
       const res = gate.checkFigureCode(probe);
       return { green: res.blocking === 0, detail: 'blocking=' + res.blocking };
@@ -467,10 +467,10 @@ export const MUTATIONS = Object.freeze([
     async guard(file, scope) {
       const probe = path.join(scope, 'probe_b');
       fs.mkdirSync(path.join(probe, 'cn_debug'), { recursive: true });
-      fs.mkdirSync(path.join(probe, 'src', 'line1_bulk', 'scripts'), { recursive: true });
+      fs.mkdirSync(path.join(probe, 'tools', 'bio', 'line1_bulk', 'scripts'), { recursive: true });
       fs.copyFileSync(path.join(REPO, 'cn_debug', 'figure_code_audit.py'), path.join(probe, 'cn_debug', 'figure_code_audit.py'));
       const master = '#!/usr/bin/env bash\nset -euo pipefail\npython3 - <<\'PYSCRIPT\'\nimport matplotlib\nmatplotlib.use("Agg")\nimport matplotlib.pyplot as plt\nplt.rcParams.update({"savefig.dpi": 300})\nfig = plt.figure()\nfig.text(0.01, -0.02, "x", fontsize=6)\nfig.savefig("figures/x.png", dpi=300)\nplt.close("all")\nPYSCRIPT\n';
-      fs.writeFileSync(path.join(probe, 'src', 'line1_bulk', 'scripts', 'probe_fig'), master);
+      fs.writeFileSync(path.join(probe, 'tools', 'bio', 'line1_bulk', 'scripts', 'probe_fig'), master);
       const gate = await loadModule(file);
       const res = gate.checkFigureCode(probe);
       return { green: res.ok === false, detail: 'ok=' + res.ok + ' blocking=' + res.blocking };
@@ -486,10 +486,10 @@ export const MUTATIONS = Object.freeze([
     async guard(file, scope) {
       const probe = path.join(scope, 'probe_c');
       fs.mkdirSync(path.join(probe, 'cn_debug'), { recursive: true });
-      fs.mkdirSync(path.join(probe, 'src', 'line1_bulk', 'scripts'), { recursive: true });
+      fs.mkdirSync(path.join(probe, 'tools', 'bio', 'line1_bulk', 'scripts'), { recursive: true });
       fs.copyFileSync(file, path.join(probe, 'cn_debug', 'figure_code_audit.py'));
       const master = '#!/usr/bin/env bash\nset -euo pipefail\npython3 - <<\'PYSCRIPT\'\nimport matplotlib\nmatplotlib.use("Agg")\nimport matplotlib.pyplot as plt\nplt.rcParams.update({"savefig.dpi": 300})\nfig = plt.figure()\nfig.savefig("figures/x.png", dpi=300)\nPYSCRIPT\n';
-      fs.writeFileSync(path.join(probe, 'src', 'line1_bulk', 'scripts', 'probe_fig'), master);
+      fs.writeFileSync(path.join(probe, 'tools', 'bio', 'line1_bulk', 'scripts', 'probe_fig'), master);
       const gate = await loadModule(path.join(REPO, 'ops', 'figure_code_gate.mjs'));
       const res = gate.checkFigureCode(probe);
       return { green: res.blocking > 0, detail: 'blocking=' + res.blocking + ' kinds=' + JSON.stringify(res.byKind) };

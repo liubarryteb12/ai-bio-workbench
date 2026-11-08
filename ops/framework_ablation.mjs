@@ -47,9 +47,9 @@ const DEFECT_DESC = {
 function masterProbe(defectId) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), `abl-master-${process.pid}-`));
   fs.mkdirSync(path.join(root, 'cn_debug'), { recursive: true });
-  fs.mkdirSync(path.join(root, 'src', 'line1_bulk', 'scripts'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'tools', 'bio', 'line1_bulk', 'scripts'), { recursive: true });
   fs.copyFileSync(AUDIT, path.join(root, 'cn_debug', 'figure_code_audit.py'));
-  fs.writeFileSync(path.join(root, 'src', 'line1_bulk', 'scripts', 'probe_fig'), DEFECT_MASTER[defectId] || COMPLIANT_MASTER);
+  fs.writeFileSync(path.join(root, 'tools', 'bio', 'line1_bulk', 'scripts', 'probe_fig'), DEFECT_MASTER[defectId] || COMPLIANT_MASTER);
   return root;
 }
 function styleContractDetects(masterText) {

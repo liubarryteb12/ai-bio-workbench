@@ -308,11 +308,11 @@ export async function handleTasksRoutes(req, res, url, {
       if (!adapted && !bridgeNeed.masterExists) {
         console.warn(`[bridge] ${lineId}/${requested.step} 母版缺失，跳过桥接判定: ${bridgeNeed.reason}`);
       }
-      // task-10 / m00939 边界②：母版自己也要调 src/bridge_guard.sh，否则直连 K40
+      // task-10 / m00939 边界②：母版自己也要调 core/bridge_guard.sh，否则直连 K40
       // 跑母版时断言仍空转。这里只 warn 不阻断：老母版不该因为新规突然提交失败，
       // 但不变量测试 tests/bridge_guard_invariant.test.js 会把缺口钉在 CI 上。
       if (!adapted && bridgeNeed.bilingual && !bridgeNeed.guardWired) {
-        console.warn(`[bridge] ${lineId}/${requested.step} 是跨语言母版但未调用 src/bridge_guard.sh，`
+        console.warn(`[bridge] ${lineId}/${requested.step} 是跨语言母版但未调用 core/bridge_guard.sh，`
           + `提交层仍会执行断言，直连 K40 跑母版则不会；请按 task-10 接线`);
       }
       if (!adapted && needsBridgeCheck(lineId, requested.step)) {

@@ -24,8 +24,8 @@ import { TEST_TMP } from './support/test_tmp.js';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
 const ENGINE = path.join(REPO_ROOT, 'ops', 'verify_bridge_checkpoint.py');
-const GUARD = path.join(REPO_ROOT, 'src', 'bridge_guard.sh');
-const GSVA = path.join(REPO_ROOT, 'src', 'line2_scrna', 'scripts', 'gsva_pathways');
+const GUARD = path.join(REPO_ROOT, 'core', 'bridge_guard.sh');
+const GSVA = path.join(REPO_ROOT, 'tools', 'bio', 'line2_scrna', 'scripts', 'gsva_pathways');
 
 function findBash() {
   const candidates = [process.env.BRIDGE_GUARD_BASH, 'D:\\Git\\bin\\bash.exe', 'D:\\Git\\usr\\bin\\bash.exe', 'bash']

@@ -8,7 +8,7 @@
 
  * 0 调用。本测试用仓库事实把不变量钉住：
 
- *   1. 凡按 task.js 口径判定为 bilingual 的母版，必须调用 src/bridge_guard.sh；
+ *   1. 凡按 task.js 口径判定为 bilingual 的母版，必须调用 core/bridge_guard.sh；
 
  *   2. 该调用必须出现在第一次 Rscript 之前（断言先于跨语言数据交接）；
 
@@ -43,9 +43,9 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 const REPO_ROOT = path.resolve(HERE, '..', '..');
 
-const SRC_ROOT = path.join(REPO_ROOT, 'src');
+const SRC_ROOT = path.join(REPO_ROOT, 'tools', 'bio');
 
-const GUARD = path.join(SRC_ROOT, 'bridge_guard.sh');
+const GUARD = path.join(REPO_ROOT, 'core', 'bridge_guard.sh');
 
 
 

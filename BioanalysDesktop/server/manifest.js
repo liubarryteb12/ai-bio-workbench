@@ -1,7 +1,7 @@
 /**
  * 环境清单 manifest：台账 environment 字段的唯一来源
  *
- * 正本在本地 src/<line>/envs/manifest.txt，服务器侧副本由部署通道
+ * 正本在本地 tools/bio/<line>/envs/manifest.txt，服务器侧副本由部署通道
  * （ops/06_deploy_scripts.ps1）落到 <line>/envs/，两边字节一致。
  * 存在意义：环境声明"分析中途不更换"，台账要记的是声明值而不是各处写死的默认值。
  */
@@ -45,7 +45,7 @@ export function parseEnvironmentManifest(text) {
  *   不抛异常：调用点在 runTask 的 exit handler 里，抛错会杀进程。
  */
 export function readEnvironmentManifest(lineId) {
-  const manifestPath = fileURLToPath(new URL(`../../src/${lineId}/envs/manifest.txt`, import.meta.url));
+  const manifestPath = fileURLToPath(new URL(`../../tools/bio/${lineId}/envs/manifest.txt`, import.meta.url));
   let text;
   try {
     text = readFileSync(manifestPath, 'utf8');

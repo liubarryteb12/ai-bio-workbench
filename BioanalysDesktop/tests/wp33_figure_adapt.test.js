@@ -40,7 +40,7 @@ function makeLocalRoot(name) {
 }
 
 test('derived adapt copy keeps the master byte-for-byte unchanged', () => {
-  const registry = JSON.parse(fs.readFileSync(path.join(REPO, 'src', 'figure_templates.json'), 'utf8'));
+  const registry = JSON.parse(fs.readFileSync(path.join(REPO, 'tools', 'bio', 'figure_templates.json'), 'utf8'));
   const template = registry.templates.find((item) => item.id === 'fig_l2_volcano');
   const master = path.join(REPO, template.source);
   const before = sha256(master);
@@ -70,7 +70,7 @@ test('derived adapt copy keeps the master byte-for-byte unchanged', () => {
 });
 
 test('derived adapt copy carries a verifiable master header and adapt values', () => {
-  const registry = JSON.parse(fs.readFileSync(path.join(REPO, 'src', 'figure_templates.json'), 'utf8'));
+  const registry = JSON.parse(fs.readFileSync(path.join(REPO, 'tools', 'bio', 'figure_templates.json'), 'utf8'));
   const template = registry.templates.find((item) => item.id === 'fig_l2_volcano');
   const master = path.join(REPO, template.source);
   const localRoot = makeLocalRoot('header-');

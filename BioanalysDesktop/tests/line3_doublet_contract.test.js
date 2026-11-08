@@ -21,7 +21,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const QC = path.join(REPO, "src/line3_spatial/scripts/qc_spots");
+const QC = path.join(REPO, "tools/bio/line3_spatial/scripts/qc_spots");
 const TOOL = path.join(REPO, "ops/doublet_score.py");
 
 function codeOf(p) {

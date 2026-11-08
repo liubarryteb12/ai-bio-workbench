@@ -21,7 +21,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const MASTER = path.join(REPO, "src/line3_spatial/scripts/ingest_spatial");
+const MASTER = path.join(REPO, "tools/bio/line3_spatial/scripts/ingest_spatial");
 
 function read() {
   return fs.readFileSync(MASTER, "utf8");
@@ -80,7 +80,7 @@ test("单物种时 uns 的 source_soft_human 写空串占位（下游 11 母版�
 });
 
 test("下游母版确实只做键存在检查（不校验值为非空）", () => {
-  const qc = fs.readFileSync(path.join(REPO, "src/line3_spatial/scripts/qc_spots"), "utf8");
+  const qc = fs.readFileSync(path.join(REPO, "tools/bio/line3_spatial/scripts/qc_spots"), "utf8");
   // 记录这条依赖：qc_spots 的 missing_uns 只比对键集合
   assert.match(qc, /missing_uns/, "qc_spots 应有 missing_uns 检查");
   assert.match(qc, /REQUIRED_UNS/, "qc_spots 应有 REQUIRED_UNS 清单");

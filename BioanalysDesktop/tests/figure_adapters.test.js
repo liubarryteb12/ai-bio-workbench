@@ -9,7 +9,7 @@ const REPO = path.resolve(HERE, '..', '..');
 const { buildAdaptedFigureSource } = await import('../server/figure_adapters.js');
 
 const registry = JSON.parse(
-  fs.readFileSync(path.join(REPO, 'src', 'figure_templates.json'), 'utf8'),
+  fs.readFileSync(path.join(REPO, 'tools', 'bio', 'figure_templates.json'), 'utf8'),
 );
 const registryById = new Map(
   registry.templates.map((item) => [item.id, item]),

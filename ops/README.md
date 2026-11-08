@@ -152,7 +152,7 @@ pwsh -File ops/06_deploy_scripts.ps1 -Line line1_bulk
 
 部署目标 `<line>/bin/` 已由任务引擎注入 PATH（见 `BioanalysDesktop/server/task.js`），
 step 名即文件名。字节校验与同名拒绝逻辑同 `05`；确认覆盖加 `-Force`。
-目录约定（一个文件一个步骤、shebang、工作目录）见 `src/line1_bulk/scripts/README.md`。
+目录约定（一个文件一个步骤、shebang、工作目录）见 `tools/bio/line1_bulk/scripts/README.md`。
 
 修改出图模板挂载（`ops/layout_autoload/`）后需单独部署，不走 `06`：
 
@@ -191,7 +191,7 @@ ssh k40-ubuntu "chmod 755 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript"
 
 ## 离线参考数据：STRING v12.0（line1 步骤 8 用）
 
-`src/line1_bulk/scripts/ppi_string` 是**离线优先**的：先读本机 STRING 边表，只有离线文件
+`tools/bio/line1_bulk/scripts/ppi_string` 是**离线优先**的：先读本机 STRING 边表，只有离线文件
 完全不存在时才回落 `https://string-db.org/api/tsv/network`。K40 的外网不稳，生产跑批前应把
 两份文件预下载好，放在：
 

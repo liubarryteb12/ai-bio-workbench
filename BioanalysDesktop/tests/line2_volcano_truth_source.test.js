@@ -1,7 +1,7 @@
 // T1-4 line2 火山接真源：配色与阈值不许再散落硬编码。
 //
 // 背景（第三十二轮 4 Argon Q2/Q4 裁定 + figure-provenance 实测）：
-//   src/line2_scrna/scripts/scrna_figures:81-83 仍是旧三色 #D62728/#1F77B4/#BBBBBB；
+//   tools/bio/line2_scrna/scripts/scrna_figures:81-83 仍是旧三色 #D62728/#1F77B4/#BBBBBB；
 //   :718-719 硬编码 padj<0.05 与 |l2|>1；:727/733/760 还有三处字面量；
 //   :269-270 早已有 CASE_COLOR=#EE0000 / CTRL_COLOR=#3B4992 却没被火山段复用；
 //   line2 全部 scripts 读 analysis_cutoffs 命中 0，而 line1 的 bulk_figures 早已接真源。
@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const L2 = path.join(REPO_ROOT, 'src', 'line2_scrna', 'scripts');
+const L2 = path.join(REPO_ROOT, 'tools', 'bio', 'line2_scrna', 'scripts');
 
 function readScript(name) {
   return fs.readFileSync(path.join(L2, name), 'utf8');

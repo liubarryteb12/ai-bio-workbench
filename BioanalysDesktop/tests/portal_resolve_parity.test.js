@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const WORKBENCH = path.join(REPO, 'BioanalysDesktop', 'server', 'index.js');
 const PORTAL = path.join(REPO, 'portal', 'serve.mjs');
-const REGISTRY = path.join(REPO, 'src', 'workflows.json');
+const REGISTRY = path.join(REPO, 'tools', 'bio', 'workflows.json');
 
 function freePort() {
   return new Promise((resolve, reject) => {

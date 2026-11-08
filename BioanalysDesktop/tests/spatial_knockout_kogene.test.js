@@ -14,7 +14,7 @@ import { TEST_TMP } from './support/test_tmp.js';
 // 本测试分两半：静态断言解析顺序，真跑断言解析结果（把解析块整段抽出来执行）。
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
-const SCRIPT = path.join(REPO_ROOT, 'src', 'line3_spatial', 'scripts', 'spatial_knockout');
+const SCRIPT = path.join(REPO_ROOT, 'tools', 'bio', 'line3_spatial', 'scripts', 'spatial_knockout');
 const SOURCE = fs.readFileSync(SCRIPT, 'utf8');
 
 const BLOCK_START = '# 敲除基因解析（顺序与 line2 步骤 9 同口径）';

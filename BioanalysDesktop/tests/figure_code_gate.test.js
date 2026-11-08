@@ -17,10 +17,10 @@ function makeProbe(t, masterBody) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), `figcode-test-${process.pid}-`));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, 'cn_debug'), { recursive: true });
-  fs.mkdirSync(path.join(root, 'src', 'line1_bulk', 'scripts'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'tools', 'bio', 'line1_bulk', 'scripts'), { recursive: true });
   fs.copyFileSync(AUDIT, path.join(root, 'cn_debug', 'figure_code_audit.py'));
   if (masterBody !== null) {
-    fs.writeFileSync(path.join(root, 'src', 'line1_bulk', 'scripts', 'probe_fig'), masterBody);
+    fs.writeFileSync(path.join(root, 'tools', 'bio', 'line1_bulk', 'scripts', 'probe_fig'), masterBody);
   }
   return root;
 }

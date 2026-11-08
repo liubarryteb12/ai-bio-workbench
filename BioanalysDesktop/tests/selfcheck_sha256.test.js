@@ -34,8 +34,8 @@ const HASH_C = 'c'.repeat(64);
 const HASH_D = 'd'.repeat(64);
 
 const TARGETS = [
-  { repo: 'src/bridge_guard.sh', remote: '/mnt/ssd/bio_data/src/bridge_guard.sh' },
-  { repo: 'src/bridge_guard.sh', remote: '/mnt/ssd/bio_data/ops/bridge_guard.sh' },
+  { repo: 'core/bridge_guard.sh', remote: '/mnt/ssd/bio_data/core/bridge_guard.sh' },
+  { repo: 'core/bridge_guard.sh', remote: '/mnt/ssd/bio_data/ops/bridge_guard.sh' },
   { repo: 'ops/check_storage_and_isolation.sh', remote: '/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh' },
   { repo: 'ops/verify_bridge_checkpoint.py', remote: '/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py' },
 ];
@@ -59,7 +59,7 @@ function parsedAll(hash = HASH_A) {
 
 test('CORE_SYNC_FILES：守卫母版与 ops 镜像都在清单里，远端路径带部署根', () => {
   const remotes = CORE_SYNC_FILES.map((item) => item.remote);
-  assert.ok(remotes.includes('/mnt/ssd/bio_data/src/bridge_guard.sh'), '缺守卫母版远端路径');
+  assert.ok(remotes.includes('/mnt/ssd/bio_data/core/bridge_guard.sh'), '缺守卫母版远端路径');
   assert.ok(remotes.includes('/mnt/ssd/bio_data/ops/bridge_guard.sh'), '缺守卫镜像远端路径');
   assert.ok(CORE_SYNC_FILES.some((item) => item.repo === 'ops/check_storage_and_isolation.sh'));
   assert.ok(CORE_SYNC_FILES.some((item) => item.repo === 'ops/verify_bridge_checkpoint.py'));
@@ -79,14 +79,14 @@ test('buildSha256Command：逐文件 -f 判断，缺失打印 MISSING，结尾�
 
 test('parseSha256Output：逐行解析 64 位 hex + 两空格 + 路径，MISSING 单独收集', () => {
   const text = [
-    HASH_A + '  /mnt/ssd/bio_data/src/bridge_guard.sh',
+    HASH_A + '  /mnt/ssd/bio_data/core/bridge_guard.sh',
     HASH_B + '  /mnt/ssd/bio_data/ops/bridge_guard.sh',
     'MISSING /mnt/ssd/bio_data/ops/check_storage_and_isolation.sh',
     SHA256_SENTINEL,
   ].join('\n');
   const parsed = parseSha256Output(text);
   assert.equal(parsed.hashes.size, 2);
-  assert.equal(parsed.hashes.get('/mnt/ssd/bio_data/src/bridge_guard.sh'), HASH_A);
+  assert.equal(parsed.hashes.get('/mnt/ssd/bio_data/core/bridge_guard.sh'), HASH_A);
   assert.equal(parsed.hashes.get('/mnt/ssd/bio_data/ops/bridge_guard.sh'), HASH_B);
   assert.deepEqual(parsed.missing, ['/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh']);
   assert.equal(parsed.sawSentinel, true);
@@ -95,13 +95,13 @@ test('parseSha256Output：逐行解析 64 位 hex + 两空格 + 路径，MISSING
 test('parseSha256Output：混入 ssh Warning 行仍能解析（P-04 / P-10）', () => {
   const text = [
     'Warning: Permanently added \'10.0.0.5\' (ED25519) to the list of known hosts.',
-    HASH_A + '  /mnt/ssd/bio_data/src/bridge_guard.sh',
+    HASH_A + '  /mnt/ssd/bio_data/core/bridge_guard.sh',
     HASH_B + '  /mnt/ssd/bio_data/ops/bridge_guard.sh',
     SHA256_SENTINEL,
   ].join('\n');
   const parsed = parseSha256Output(text);
   assert.equal(parsed.hashes.size, 2, 'Warning 行不应破坏逐行解析');
-  assert.equal(parsed.hashes.get('/mnt/ssd/bio_data/src/bridge_guard.sh'), HASH_A);
+  assert.equal(parsed.hashes.get('/mnt/ssd/bio_data/core/bridge_guard.sh'), HASH_A);
   assert.equal(parsed.sawSentinel, true);
 });
 
@@ -169,7 +169,7 @@ test('parseSha256Output + evaluateSha256Parity：空输出 → unknown', () => {
 
 test('evaluateSha256Parity：本地核心文件缺失 → unknown，reason 写 LOCAL_MISSING', () => {
   const localHashes = localForAll(HASH_A);
-  localHashes.set('src/bridge_guard.sh', null);
+  localHashes.set('core/bridge_guard.sh', null);
   const light = evaluateSha256Parity({ targets: TARGETS, localHashes, parsed: parsedAll(HASH_A), sshExitCode: 0 });
   assert.equal(light.status, 'unknown');
   assert.match(light.detail, /LOCAL_MISSING/);
@@ -210,7 +210,7 @@ test('runSha256ParityCheck：mock spawnSync 后一致 → pass，命令确实走
 test('runSha256ParityCheck：mock 远端哈希被改 → fail（端到端判据）', () => {
   const local = collectLocalSha256(CORE_SYNC_FILES);
   const lines = CORE_SYNC_FILES.map((item) => {
-    const hash = item.repo === 'src/bridge_guard.sh' && item.remote.endsWith('/ops/bridge_guard.sh')
+    const hash = item.repo === 'core/bridge_guard.sh' && item.remote.endsWith('/ops/bridge_guard.sh')
       ? HASH_D
       : local.get(item.repo);
     return hash + '  ' + item.remote;
@@ -243,7 +243,7 @@ test('四档名字不漂移：所有判定结果都落在 pass/warn/fail/unknown
   assert.deepEqual([...SELFCHECK_STATUSES], ['pass', 'warn', 'fail', 'unknown']);
   const scenarios = [
     evaluateSha256Parity({ targets: TARGETS, localHashes: localForAll(HASH_A), parsed: parsedAll(HASH_A), sshExitCode: 0 }),
-    evaluateSha256Parity({ targets: TARGETS, localHashes: localForAll(HASH_A), parsed: { hashes: new Map(), missing: ['/mnt/ssd/bio_data/src/bridge_guard.sh'], sawSentinel: true }, sshExitCode: 0 }),
+    evaluateSha256Parity({ targets: TARGETS, localHashes: localForAll(HASH_A), parsed: { hashes: new Map(), missing: ['/mnt/ssd/bio_data/core/bridge_guard.sh'], sawSentinel: true }, sshExitCode: 0 }),
     evaluateSha256Parity({ targets: TARGETS, localHashes: localForAll(HASH_A), parsed: parsedAll(HASH_B), sshExitCode: 0 }),
     evaluateSha256Parity({ targets: TARGETS, localHashes: localForAll(HASH_A), parsed: { hashes: new Map(), missing: [], sawSentinel: false }, sshExitCode: 1 }),
   ];

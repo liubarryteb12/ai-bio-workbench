@@ -18,7 +18,7 @@ export const FIGURE_STATUS = Object.freeze({
 
 /** 从 workflows.json 收集所有 mod.id */
 function collectModIds() {
-  const wfPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'src', 'workflows.json');
+  const wfPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'tools', 'bio', 'workflows.json');
   if (!fs.existsSync(wfPath)) return new Set();
   const wf = JSON.parse(fs.readFileSync(wfPath, 'utf8'));
   const ids = new Set();
@@ -79,7 +79,7 @@ export function partitionByStatus(templates) {
 const invokedDirectly = process.argv[1]
   && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
 if (invokedDirectly) {
-  const REGISTRY_PATH = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'src', 'figure_templates.json');
+  const REGISTRY_PATH = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'tools', 'bio', 'figure_templates.json');
   const registry = JSON.parse(fs.readFileSync(REGISTRY_PATH, 'utf8'));
   const templates = Array.isArray(registry) ? registry : (registry.templates || registry.entries || []);
   const { ready, draft, invalid } = partitionByStatus(templates);

@@ -22,7 +22,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const SF = path.join(REPO, "src/line3_spatial/scripts/spatial_figures");
+const SF = path.join(REPO, "tools/bio/line3_spatial/scripts/spatial_figures");
 
 function read() {
   return fs.readFileSync(SF, "utf8");

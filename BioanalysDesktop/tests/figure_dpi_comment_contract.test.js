@@ -20,7 +20,7 @@ const LINES = ["line1_bulk", "line2_scrna", "line3_spatial"];
 function masterFiles() {
   const out = [];
   for (const line of LINES) {
-    const dir = path.join(REPO, "src", line, "scripts");
+    const dir = path.join(REPO, "tools", "bio", line, "scripts");
     if (!fs.existsSync(dir)) continue;
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       if (!e.isFile()) continue;
@@ -49,7 +49,7 @@ test("母版注释里不出现 150dpi 陈旧口径", () => {
 });
 
 test("改口径的母版确实声明 300dpi（正对照，防误删整段口径注释）", () => {
-  const text = fs.readFileSync(path.join(REPO, "src/line1_bulk/scripts/bulk_figures"), "utf8");
+  const text = fs.readFileSync(path.join(REPO, "tools/bio/line1_bulk/scripts/bulk_figures"), "utf8");
   const header = text.split(/\r?\n/).slice(0, 25).join(String.fromCharCode(10));
   assert.match(header, /300\s*dpi/i, "bulk_figures 头部应写明 300dpi 口径");
   // 同时 rcParams 必须仍是 300，防「只改注释不改代码」两头都错

@@ -11,7 +11,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const SCRIPT = path.join(REPO, "src", "line1_bulk", "scripts", "ppi_string");
+const SCRIPT = path.join(REPO, "tools", "bio", "line1_bulk", "scripts", "ppi_string");
 const src = fs.readFileSync(SCRIPT, "utf8");
 
 test("scan_links 支持 any 与 both 两种口径", () => {

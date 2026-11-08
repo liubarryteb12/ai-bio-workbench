@@ -9,7 +9,7 @@ const REPO = path.resolve(HERE, '..', '..');
 
 test('celltype_annotation 对重复 symbol 只取首个表达列，并拒绝全零求解', () => {
   const text = fs.readFileSync(
-    path.join(REPO, 'src', 'line3_spatial', 'scripts', 'celltype_annotation'),
+    path.join(REPO, 'tools', 'bio', 'line3_spatial', 'scripts', 'celltype_annotation'),
     'utf8',
   );
   assert.match(text, /symbol_to_idx/);
@@ -20,7 +20,7 @@ test('celltype_annotation 对重复 symbol 只取首个表达列，并拒绝全�
 
 test('spatial_figures 无任何图件时失败，不写零产物绿灯', () => {
   const text = fs.readFileSync(
-    path.join(REPO, 'src', 'line3_spatial', 'scripts', 'spatial_figures'),
+    path.join(REPO, 'tools', 'bio', 'line3_spatial', 'scripts', 'spatial_figures'),
     'utf8',
   );
   const manifestAt = text.indexOf('figures_manifest.txt');
@@ -30,7 +30,7 @@ test('spatial_figures 无任何图件时失败，不写零产物绿灯', () => {
 
 test('spatial_cooccurrence 接受少量近零噪声，拒绝整体聚集性失效', () => {
   const text = fs.readFileSync(
-    path.join(REPO, 'src', 'line3_spatial', 'scripts', 'spatial_cooccurrence'),
+    path.join(REPO, 'tools', 'bio', 'line3_spatial', 'scripts', 'spatial_cooccurrence'),
     'utf8',
   );
   assert.match(text, /neg_frac/);
@@ -40,7 +40,7 @@ test('spatial_cooccurrence 接受少量近零噪声，拒绝整体聚集性失�
 
 test('spatial_communication 允许孤立单 spot 域无自邻域质量，但不允许样本整体无质量', () => {
   const text = fs.readFileSync(
-    path.join(REPO, 'src', 'line3_spatial', 'scripts', 'spatial_communication'),
+    path.join(REPO, 'tools', 'bio', 'line3_spatial', 'scripts', 'spatial_communication'),
     'utf8',
   );
   assert.match(text, /zero_mass_diag/);
@@ -50,7 +50,7 @@ test('spatial_communication 允许孤立单 spot 域无自邻域质量，但不�
 
 test('celltype_annotation 在落图前幂等创建 figures 目录', () => {
   const text = fs.readFileSync(
-    path.join(REPO, 'src', 'line3_spatial', 'scripts', 'celltype_annotation'),
+    path.join(REPO, 'tools', 'bio', 'line3_spatial', 'scripts', 'celltype_annotation'),
     'utf8',
   );
   assert.match(text, /os\.makedirs\(FIGDIR,\s*exist_ok=True\)/);

@@ -22,7 +22,7 @@ const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 function independentScan() {
   const found = [];
   for (const line of SCRIPT_LINES) {
-    const dir = path.join(REPO, "src", line, "scripts");
+    const dir = path.join(REPO, "tools", "bio", line, "scripts");
     if (!fs.existsSync(dir)) continue;
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       if (!e.isFile() || e.name === "README.md") continue;
@@ -57,7 +57,7 @@ test("每个产图脚本都必须有诚实溯源声明", () => {
     // FIGURE_SCRIPTS 的 rel 形如 "line3_spatial/spatial_figures"，
     // 实际文件在 src/<line>/scripts/<script>，中间那层 scripts 必须补上。
     const [line, name] = rel.split("/");
-    const text = fs.readFileSync(path.join(REPO, "src", line, "scripts", name), "utf8");
+    const text = fs.readFileSync(path.join(REPO, "tools", "bio", line, "scripts", name), "utf8");
     if (!/^\s*#\s*PROVENANCE:\s*(DERIVED|INSPIRED|INDEPENDENT)\b/m.test(text)) {
       bad.push(rel);
     }

@@ -18,8 +18,8 @@ router:
   dispatcher: BioanalysDesktop/server/route_dispatcher.js
 
 core:
-  status: "W3 待迁入"
-  planned_from: [src/engines, src/bridge_guard.sh]
+  status: "已迁入 bridge_guard.sh（2026-11-08 W3）"
+  assets: [core/bridge_guard.sh]
 
 hooks:
   status: "W5 与 tools 分流一起评估"

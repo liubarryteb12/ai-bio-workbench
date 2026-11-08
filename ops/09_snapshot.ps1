@@ -127,7 +127,7 @@ $zipPath = Join-Path $OutDir "workbench_$stamp.zip"
 # 逐文件写入 zip，条目名用「相对 repoRoot 的路径」。
 #
 # 为什么不用 Compress-Archive：它只取 basename 当条目名，777 个文件会被拍平到根目录，
-# src/workflows.json 变成 workflows.json，同名文件（README.md / index.js / project.json）
+# tools/bio/workflows.json 变成 workflows.json，同名文件（README.md / index.js / project.json）
 # 互相覆盖，解压出来只剩 695 个且目录结构全丢，等于不可还原（2026-10-24 实测踩坑）。
 # ZipFile.CreateEntry 让我们自己定条目名，结构才能原样保住。
 Add-Type -AssemblyName System.IO.Compression.FileSystem

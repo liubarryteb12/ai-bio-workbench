@@ -12,7 +12,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const SCRIPT = path.join(REPO, "src", "line1_bulk", "scripts", "ppi_string");
+const SCRIPT = path.join(REPO, "tools", "bio", "line1_bulk", "scripts", "ppi_string");
 const src = fs.readFileSync(SCRIPT, "utf8");
 
 test("n_sig < 2 时短路跳过而非 fail（缺输入是上游结论，不是本步失败）", () => {

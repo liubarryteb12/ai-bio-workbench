@@ -19,7 +19,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const DIR = path.join(REPO, "src/line3_spatial/scripts");
+const DIR = path.join(REPO, "tools/bio/line3_spatial/scripts");
 
 /** 实测含硬性物种循环的步骤。 */
 const LOOP_STEPS = ["celltype_annotation", "dr_post_analysis", "enrichment", "enrichment_figures"];

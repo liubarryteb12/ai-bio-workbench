@@ -45,7 +45,7 @@ export function getProjectSteps() {
   return { status: 200, payload: { steps: LINE_STEPS, meta: PIPELINE_STEP_META } };
 }
 
-/* ─────────────── mod 注册表本体（单一事实源 src/workflows.json） ─────────────── */
+/* ─────────────── mod 注册表本体（单一事实源 tools/bio/workflows.json） ─────────────── */
 export function getWorkflows() {
   const wf = loadWorkflows();
   const check = validateRegistry();

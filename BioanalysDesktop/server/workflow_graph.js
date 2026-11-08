@@ -1,7 +1,7 @@
 /**
  * workflow_graph.js —— mod 注册表的加载、校验与组合合法性判定。
  *
- * 单一事实源：`src/workflows.json`。客户端（portal）、服务台（BioanalysDesktop）、
+ * 单一事实源：`tools/bio/workflows.json`。客户端（portal）、服务台（BioanalysDesktop）、
  取证 runner（cn_debug/lib/chain_runner.mjs）三方共读同一份，避免依赖关系三处漂移。
  *
  * 校验的四类硬错误（任一不过即拒绝该组合）：
@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
-const REGISTRY = path.join(REPO, 'src', 'workflows.json');
+const REGISTRY = path.join(REPO, 'tools', 'bio', 'workflows.json');
 
 let cache = null;
 
@@ -96,9 +96,9 @@ export function validateRegistry() {
         // 母版必须真实存在。mod.id 是注册表命名（<系列>_<工序>_<功能>），
         // 与磁盘上的母版文件名不同——母版名走 mod.script，两者不能混。
         const scriptName = mod.script || mod.id;
-        const scriptPath = path.join(REPO, 'src', series.id, 'scripts', scriptName);
+        const scriptPath = path.join(REPO, 'tools', 'bio', series.id, 'scripts', scriptName);
         if (!fs.existsSync(scriptPath)) {
-          errors.push(`${where}: 母版缺失 src/${series.id}/scripts/${scriptName}`);
+          errors.push(`${where}: 母版缺失 tools/bio/${series.id}/scripts/${scriptName}`);
         }
         // requires 不得为空
         if (!mod.requires || mod.requires.length === 0) {

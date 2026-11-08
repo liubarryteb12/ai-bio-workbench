@@ -42,7 +42,7 @@ test('无矩阵证据的条目只能进 INFO，不许进分叉桶', () => {
   assert.deepEqual(both, [], '同一条不能既算无证据又算分叉: ' + JSON.stringify(both));
 });
 test('注册表每条 ready 都必须显式声明 render_evidence（null 也是声明）', () => {
-  const reg = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'src', 'figure_templates.json'), 'utf8'));
+  const reg = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'tools', 'bio', 'figure_templates.json'), 'utf8'));
   const templates = Array.isArray(reg) ? reg : (reg.templates || reg.entries || []);
   const ready = templates.filter((t) => t.deps_status === 'ready' && t.verified);
   const missing = ready.filter((t) => t.render_evidence === undefined);
@@ -57,7 +57,7 @@ test('注册表每条 ready 都必须显式声明 render_evidence（null 也是�
 });
 
 test('matches_preview=false 的条数与门禁分叉桶必须一一对应（两处口径不许漂移）', () => {
-  const reg = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'src', 'figure_templates.json'), 'utf8'));
+  const reg = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'tools', 'bio', 'figure_templates.json'), 'utf8'));
   const templates = Array.isArray(reg) ? reg : (reg.templates || reg.entries || []);
   const regFalse = new Set(templates
     .filter((t) => t.deps_status === 'ready' && t.render_evidence && t.render_evidence.matches_preview === false)

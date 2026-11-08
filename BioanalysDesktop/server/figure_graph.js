@@ -8,7 +8,7 @@ import { indexMods } from './workflow_graph.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
-const REGISTRY = path.join(REPO, 'src', 'figure_templates.json');
+const REGISTRY = path.join(REPO, 'tools', 'bio', 'figure_templates.json');
 const FIGURE_ROOT = 'reference/05.可参考生信代码/可用代码预筛选/源码';
 const PROJECTS_ROOT = '/mnt/ssd/bio_data/projects';
 let cache = null;

@@ -276,7 +276,7 @@ export function normalizeDataFiles(files) {
  * 三条分析线可选步骤（前端级联勾选用，与 bin/<line>/ 已部署脚本对应）。
  *
  * 2026-10-23 起改为**从 mod 注册表派生**，不再手写清单。
- * 单一事实源是 `src/workflows.json`；此处只做「母版名」视图的兼容输出
+ * 单一事实源是 `tools/bio/workflows.json`；此处只做「母版名」视图的兼容输出
  * （旧前端与既有断言按母版名消费，故值取 mod.script 而非 mod.id）。
  * 注册表改名不会让这里漂移——它没有自己的清单。
  */
@@ -297,7 +297,7 @@ function buildLineSteps() {
  * 步骤节点功能说明字典（前端模块 C 展示用）。
  * 每个步骤含：label（功能名）、desc（功能简介）、tool（核心工具）、io（输入/输出产物）、note（条件/算力提示）。
  *
- * 2026-10-23 起改为**从 mod 注册表派生**（单一事实源 src/workflows.json），不再手写 47 条。
+ * 2026-10-23 起改为**从 mod 注册表派生**（单一事实源 tools/bio/workflows.json），不再手写 47 条。
  * label / desc / note 直接来自注册表的 name / notes / risk；
  * tool 与 io 按母版名查 SCRIPT_TOOLING——这两个字段只随母版实现变化，
  * 放注册表会让"换个工具包"也要动依赖图，故按母版名索引（母版名稳定，mod id 会演进）。

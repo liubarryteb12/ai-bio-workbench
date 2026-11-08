@@ -33,7 +33,7 @@ test('运行包装器在启动任务前执行 90C/78C 热冷却门禁', () => {
 });
 
 test('线程与内存防崩头由解释器启动钩子统一接线，母版不得回写 4 线程', () => {
-  const sourceFiles = fs.readdirSync(path.join(REPO, 'src'), { recursive: true, withFileTypes: true })
+  const sourceFiles = fs.readdirSync(path.join(REPO, 'tools', 'bio'), { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile())
     .map((entry) => path.join(entry.parentPath ?? entry.path, entry.name));
   const overrides = [];

@@ -21,7 +21,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const REPO = path.resolve(import.meta.dirname, "..");
-const REGISTRY = path.join(REPO, "src", "figure_templates.json");
+const REGISTRY = path.join(REPO, "tools", "bio", "figure_templates.json");
 const ALLOWLIST = path.join(REPO, "ops", "figure_ready_allowlist.json");
 const OUT = path.join(REPO, "ops", "figure_ready_matrix.json");
 
@@ -38,7 +38,7 @@ const problems = [];
 
 // REJ-012（Argon 第 75 轮）：producing_mod_id 必须命中 workflows.json 的真实 Mod，
 // data_contract.input_artifact 必须非空。这是 MUT-FIG-A 的常驻防线。
-const workflows = JSON.parse(fs.readFileSync(path.join(REPO, "src", "workflows.json"), "utf8"));
+const workflows = JSON.parse(fs.readFileSync(path.join(REPO, "tools", "bio", "workflows.json"), "utf8"));
 const modIds = new Set();
 for (const series of workflows.series || []) {
   for (const stage of series.stages || []) {

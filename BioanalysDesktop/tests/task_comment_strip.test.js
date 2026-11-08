@@ -22,7 +22,7 @@ import { stripShellAndCodeComments, inspectBridgeNeed } from '../server/task.js'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
-const SRC_ROOT = path.join(REPO_ROOT, 'src');
+const SRC_ROOT = path.join(REPO_ROOT, 'tools', 'bio');
 
 const RSCRIPT_CALL_RE = /(^|[\s;&|"])(?:\$RSCRIPT_BIN|\$\{RSCRIPT_BIN\}|Rscript)(?=[\s"']|$)/;
 const PYTHON_CALL_RE = /(^|[\s;&|])python3?(?=[\s"']|$)/;

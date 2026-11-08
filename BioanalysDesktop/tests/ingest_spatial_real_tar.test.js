@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const MASTER = path.join(REPO, "src/line3_spatial/scripts/ingest_spatial");
+const MASTER = path.join(REPO, "tools/bio/line3_spatial/scripts/ingest_spatial");
 const TAR = path.join(REPO, ".tmp/gse233814/GSE233814_RAW.tar");
 
 test("真实 GSE233814 tar：五样本各四类齐全且零未匹配", (t) => {

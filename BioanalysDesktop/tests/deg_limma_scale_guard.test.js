@@ -12,7 +12,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const SCRIPT = path.join(REPO, "src", "line1_bulk", "scripts", "deg_limma");
+const SCRIPT = path.join(REPO, "tools", "bio", "line1_bulk", "scripts", "deg_limma");
 const src = fs.readFileSync(SCRIPT, "utf8");
 
 test("尺度守卫使用上四分位数且阈值 50", () => {

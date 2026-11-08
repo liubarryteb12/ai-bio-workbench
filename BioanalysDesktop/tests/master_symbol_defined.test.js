@@ -24,7 +24,7 @@ const HELPER_NAMES = ["fail", "log", "save", "num", "rd", "trunc", "cat_colors",
 function masters() {
   const out = [];
   for (const line of LINES) {
-    const dir = path.join(REPO, "src", line, "scripts");
+    const dir = path.join(REPO, "tools", "bio", line, "scripts");
     if (!fs.existsSync(dir)) continue;
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       if (!e.isFile() || e.name === "README.md") continue;

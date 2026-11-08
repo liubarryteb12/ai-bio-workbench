@@ -1,5 +1,5 @@
 /**
- * src/<line>/scripts/ 与 src/workflows.json 的一致性守卫。
+ * src/<line>/scripts/ 与 tools/bio/workflows.json 的一致性守卫。
  *
  * 为什么需要：scripts/ 是母版目录，落到服务器 bin/ 后即可被 /api/tasks/submit 点名执行，
  * 而提交层只校验 step 字符集、不校验是否登记。2026-10-24 曾有 4 个 R 测试案例落在这里，
@@ -36,7 +36,7 @@ const SHARED_LIBS = new Set(['h5_rows.py', 'spatial_stats.py']);
 
 /** scripts/ 下的文件名（README.md 不部署，不是母版） */
 function scriptsOf(line) {
-  const dir = path.join(REPO, 'src', line, 'scripts');
+  const dir = path.join(REPO, 'tools', 'bio', line, 'scripts');
   return fs.readdirSync(dir).filter((name) => {
     if (name === 'README.md') return false;
     return fs.statSync(path.join(dir, name)).isFile();
@@ -46,7 +46,7 @@ function scriptsOf(line) {
 /** 注册表登记的母版名：<line>/<mod.script || mod.id> */
 function registeredScripts() {
   const registry = JSON.parse(
-    fs.readFileSync(path.join(REPO, 'src', 'workflows.json'), 'utf8'),
+    fs.readFileSync(path.join(REPO, 'tools', 'bio', 'workflows.json'), 'utf8'),
   );
   const out = new Set();
   for (const series of registry.series) {
@@ -73,7 +73,7 @@ test('scripts/ 下每个文件都必须登记进 workflows.json（或显式豁�
     unregistered,
     [],
     'scripts/ 是母版目录，未登记的件会被部署成线上可执行步骤。'
-      + '正式母版请登记进 src/workflows.json；测试案例请放 cn_debug/',
+      + '正式母版请登记进 tools/bio/workflows.json；测试案例请放 cn_debug/',
   );
 });
 
@@ -81,7 +81,7 @@ test('注册表登记的母版都必须真实存在于 scripts/', () => {
   const missing = [];
   for (const key of registered) {
     const [line, name] = key.split('/');
-    const abs = path.join(REPO, 'src', line, 'scripts', name);
+    const abs = path.join(REPO, 'tools', 'bio', line, 'scripts', name);
     if (!fs.existsSync(abs)) missing.push(key);
   }
   assert.deepEqual(missing, [], '注册表指向的母版在 scripts/ 下不存在，resolvePlan 会拿到空计划');

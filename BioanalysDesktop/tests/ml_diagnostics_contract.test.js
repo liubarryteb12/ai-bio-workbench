@@ -18,11 +18,11 @@ import { fileURLToPath } from 'node:url';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const SOURCE = fs.readFileSync(
-  path.join(REPO, 'src', 'line1_bulk', 'scripts', 'ml_diagnostics'),
+  path.join(REPO, 'tools', 'bio', 'line1_bulk', 'scripts', 'ml_diagnostics'),
   'utf8',
 );
 const HUB_SOURCE = fs.readFileSync(
-  path.join(REPO, 'src', 'line1_bulk', 'scripts', 'ml_hub_analysis'),
+  path.join(REPO, 'tools', 'bio', 'line1_bulk', 'scripts', 'ml_hub_analysis'),
   'utf8',
 );
 

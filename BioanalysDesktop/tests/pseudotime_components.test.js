@@ -9,7 +9,7 @@ import path from 'node:path';
 // 免疫分量里含 T_cell/NK_ILC 与 16 个 mitotic 细胞，于是合法 inf 被误报成异常，链在第 12 步失败。
 // 判据改为「inf 集合必须与根所在连通分量之外的细胞集合严格等价」，这是 scanpy DPT 的数学性质。
 // 本机没有 scanpy 环境、也不许连 K40，所以这里只读源码做静态断言。
-const SCRIPT = path.resolve(import.meta.dirname, '../../src/line2_scrna/scripts/pseudotime');
+const SCRIPT = path.resolve(import.meta.dirname, '../../tools/bio/line2_scrna/scripts/pseudotime');
 const SOURCE = fs.readFileSync(SCRIPT, 'utf8');
 
 const findIndex = (needle, from = 0) => {

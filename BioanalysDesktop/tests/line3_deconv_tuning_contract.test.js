@@ -16,7 +16,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const SRC = path.join(REPO, "src/line3_spatial/scripts/celltype_annotation");
+const SRC = path.join(REPO, "tools/bio/line3_spatial/scripts/celltype_annotation");
 
 function codeOnly(src) {
   return src.split(/\r?\n/).filter((l) => !l.trim().startsWith("#")).join("\n");
