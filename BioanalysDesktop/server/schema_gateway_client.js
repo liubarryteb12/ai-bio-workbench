@@ -16,7 +16,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_REPO_ROOT = path.resolve(HERE, '..', '..');
 
 /**
- * 调用 ops/schema_gateway.py 进行 Schema 强校验。
+ * 调用 schemas/schema_gateway.py 进行 Schema 强校验。
  *
  * @param {string} schemaName 注册的 Schema 名称 (project / requirement / run_task)
  * @param {object} payload 待校验的数据
@@ -25,7 +25,7 @@ const DEFAULT_REPO_ROOT = path.resolve(HERE, '..', '..');
  */
 export function validateWithSchemaGateway(schemaName, payload, options = {}) {
   const repoRoot = options.repoRoot || DEFAULT_REPO_ROOT;
-  const gatewayPy = path.join(repoRoot, 'ops', 'schema_gateway.py');
+  const gatewayPy = path.join(repoRoot, 'schemas', 'schema_gateway.py');
 
   if (!fs.existsSync(gatewayPy)) {
     return {
@@ -42,7 +42,7 @@ export function validateWithSchemaGateway(schemaName, payload, options = {}) {
 
   try {
     fs.writeFileSync(reqFile, JSON.stringify(payload ?? {}), 'utf8');
-    const args = ['ops/schema_gateway.py', '--schema', schemaName, '--in', reqFile, '--out', resFile];
+    const args = ['schemas/schema_gateway.py', '--schema', schemaName, '--in', reqFile, '--out', resFile];
     if (options.allowBypassOnError) {
       args.push('--allow-bypass-on-error');
     }

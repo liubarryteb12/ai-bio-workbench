@@ -79,7 +79,7 @@ test('MUT-P2-A 旁路防线：CI 环境下传入 --allow-bypass-on-error 必须�
 
   try {
     const proc = spawnSync('python', [
-      'ops/schema_gateway.py',
+      'schemas/schema_gateway.py',
       '--schema', 'project',
       '--in', reqFile,
       '--out', resFile,

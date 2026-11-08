@@ -25,8 +25,8 @@ hooks:
   status: "W5 与 tools 分流一起评估"
 
 schemas:
-  status: "W4 待迁入"
-  planned_from: [ops/schema_gateway.py]
+  status: "已迁入 schema_gateway.py（2026-11-08 W4）"
+  assets: [schemas/schema_gateway.py]
 
 skills:
   status: "W7 首个规约试点（工单编排）"

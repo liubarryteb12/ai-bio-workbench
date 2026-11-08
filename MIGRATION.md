@@ -54,7 +54,7 @@
 | `docs/SCOPE.md` | `SCOPE.md` | W1 已完成 |
 | `con_hf/CONTEXT.md` | `GLOSSARY.md` | W1 已完成 |
 | `src/engines/*`（空占位，已清理）、`src/bridge_guard.sh` | `core/` | W3 已完成 |
-| `ops/schema_gateway.py` + 任务契约 | `schemas/` | W4 |
+| `ops/schema_gateway.py` + 任务契约 | `schemas/` | W4 已完成 |
 | `src/line1_bulk` | `tools/bio/line1_bulk` | W3 已完成（git mv 保留历史） |
 | `src/line2_scrna` | `tools/bio/line2_scrna` | W3 已完成（git mv 保留历史） |
 | `src/line3_spatial` | `tools/bio/line3_spatial` | W3 已完成（git mv 保留历史） |
@@ -103,4 +103,5 @@
 | W1 | 已完成（1e778f9） |
 | W2 | 已完成（fe0cdcf，k40 双向同源） |
 | W3 | 已完成（fb866c7，物理迁移 + 全量对齐） |
-| W4 到 W10 | 排队 |
+| W4 | 已完成（schema_gateway 迁入 schemas/） |
+| W5 到 W10 | 排队 |

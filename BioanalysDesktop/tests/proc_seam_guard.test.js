@@ -88,7 +88,7 @@ const EXEMPT_RELPATHS = new Set([
   // 传输适配器（2026-11-08 W1 基线收编）：ADB 链路适配器，起 pwsh/scp 走 ops/adb_exec
   // 等白名单包装器，与 proc.js 的接缝语义一致（算力与文件传输默认走 ADB 通道）。
   'BioanalysDesktop/server/adb_transfer.js',
-  // Schema 网关客户端：起短命 python 子进程跑 ops/schema_gateway.py 的文件 IPC 协议
+  // Schema 网关客户端：起短命 python 子进程跑 schemas/schema_gateway.py 的文件 IPC 协议
   //（0=ALLOW、2=DENY、1=ERROR），是三明治架构的正式防线，不是绕过接缝的旁路。
   'BioanalysDesktop/server/schema_gateway_client.js',
 ]);

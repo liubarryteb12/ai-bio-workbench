@@ -15,7 +15,7 @@
 外部触发由确定性代码捕获；模型只在约束范围内匹配路由、抽取参数；工具执行前必须过
 强类型网关断言。
 
-执行门禁：`ops/schema_gateway.py`（短命文件 IPC，0=ALLOW、2=DENY、1=ERROR）、
+执行门禁：`schemas/schema_gateway.py`（短命文件 IPC，0=ALLOW、2=DENY、1=ERROR）、
 `BioanalysDesktop/server/task_fsm.js`、`ops/router_gate.mjs`。
 
 ### 原则二：控制面与数据面物理隔离
