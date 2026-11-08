@@ -5,7 +5,7 @@
  * 两处若算法不同（例如一处用全点中位），边缘点会把 pitch 抬高，
  * 图上的 500um 与代码里的 200um 就会在不同切片上分叉。
  *
- * 判据：ops/spatial_pitch_selftest.py 在合成六角晶格上必须准确还原
+ * 判据：tools/reporting/spatial_pitch_selftest.py 在合成六角晶格上必须准确还原
  * 三个已知 pitch（132/100/87.5 px），并验证完整入口对随机散点与
  * 缩放级别错配都 fail-closed。
  */
@@ -17,7 +17,7 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const PROBE = path.join(REPO, "ops", "spatial_pitch_selftest.py");
+const PROBE = path.join(REPO, "tools", "reporting", "spatial_pitch_selftest.py");
 
 test("合成六角晶格上 pitch 必须被准确还原，破碎与缩放错配必须 fail-closed", (t) => {
   if (!fs.existsSync(PROBE)) return t.skip("HOST_MISSING_LOCAL_DATA: 缺 pitch 自测脚本");

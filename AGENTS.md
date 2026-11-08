@@ -32,7 +32,7 @@
   反卷积精度提升一律走零算力路线：上游提纯输入 Marker（每个亚型严格限 Top 20 特异基因）与输出端 $<0.05$ 极低丰度硬截断。
   参考库中的 RCTD 等重型代码仅作为外部 PC 资产或客户专属交付件，严禁合并进生产流水线。
 - 中文可进注释与报告正文。文档里不用 em dash，用逗号、冒号、句号、括号。
-- **计算与文件传输默认走 ADB**：主计算入口、任务回执与新增文件传输一律经 `ops/adb_exec.ps1` 或 `BioanalysDesktop/server/adb_transfer.js`；SSH 只在显式 `BIO_COMPUTE_ADAPTER=ssh` 或 `-Transport ssh` 的特殊场景启用，禁用自动回落。
+- **计算与文件传输默认走 ADB**：主计算入口、任务回执与新增文件传输一律经 `tools/ops/adb_exec.ps1` 或 `BioanalysDesktop/server/adb_transfer.js`；SSH 只在显式 `BIO_COMPUTE_ADAPTER=ssh` 或 `-Transport ssh` 的特殊场景启用，禁用自动回落。
 - **生产图件只出单图**：组合图模板保持 draft/pending，Ready 基线见 `tools/dev/figure_ready_allowlist.json`；新增模板先过 `figure_ready_matrix` 与 `figure_code_gate`。
 - 展示任何命令、输出、捕获产物前先打码：secret 一律写 `<REDACTED>`，别打印凭证或 key。
 - **交付报告只写对读者有意义的事实**：统计量来源、口径、可追溯性。

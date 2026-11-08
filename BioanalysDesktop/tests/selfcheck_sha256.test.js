@@ -4,7 +4,7 @@
  * 为什么不连 K40：ssh 走的是 server/selfcheck.js 里默认导入的
  * childProcess.spawnSync（D-08 接缝），这里用 mock.method 垫片返回伪造的
  * sha256sum 输出，断言的是判据本身；真链路是否通由运维侧
- * ops/sync_and_verify_remote.ps1 负责。
+ * tools/ops/sync_and_verify_remote.ps1 负责。
  *
  * 覆盖：命令构造（MISSING 分支 + 哨兵）、逐行解析（含 Warning 行混入）、
  * 一致 pass / 不一致 fail / 远端缺失 warn / 不可达 unknown / 缺哨兵 unknown /
@@ -36,7 +36,7 @@ const HASH_D = 'd'.repeat(64);
 const TARGETS = [
   { repo: 'core/bridge_guard.sh', remote: '/mnt/ssd/bio_data/core/bridge_guard.sh' },
   { repo: 'core/bridge_guard.sh', remote: '/mnt/ssd/bio_data/ops/bridge_guard.sh' },
-  { repo: 'ops/check_storage_and_isolation.sh', remote: '/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh' },
+  { repo: 'tools/ops/check_storage_and_isolation.sh', remote: '/mnt/ssd/bio_data/tools/ops/check_storage_and_isolation.sh' },
   { repo: 'ops/verify_bridge_checkpoint.py', remote: '/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py' },
 ];
 
@@ -61,7 +61,7 @@ test('CORE_SYNC_FILES：守卫母版与 ops 镜像都在清单里，远端路径
   const remotes = CORE_SYNC_FILES.map((item) => item.remote);
   assert.ok(remotes.includes('/mnt/ssd/bio_data/core/bridge_guard.sh'), '缺守卫母版远端路径');
   assert.ok(remotes.includes('/mnt/ssd/bio_data/ops/bridge_guard.sh'), '缺守卫镜像远端路径');
-  assert.ok(CORE_SYNC_FILES.some((item) => item.repo === 'ops/check_storage_and_isolation.sh'));
+  assert.ok(CORE_SYNC_FILES.some((item) => item.repo === 'tools/ops/check_storage_and_isolation.sh'));
   assert.ok(CORE_SYNC_FILES.some((item) => item.repo === 'ops/verify_bridge_checkpoint.py'));
 });
 
@@ -81,14 +81,14 @@ test('parseSha256Output：逐行解析 64 位 hex + 两空格 + 路径，MISSING
   const text = [
     HASH_A + '  /mnt/ssd/bio_data/core/bridge_guard.sh',
     HASH_B + '  /mnt/ssd/bio_data/ops/bridge_guard.sh',
-    'MISSING /mnt/ssd/bio_data/ops/check_storage_and_isolation.sh',
+    'MISSING /mnt/ssd/bio_data/tools/ops/check_storage_and_isolation.sh',
     SHA256_SENTINEL,
   ].join('\n');
   const parsed = parseSha256Output(text);
   assert.equal(parsed.hashes.size, 2);
   assert.equal(parsed.hashes.get('/mnt/ssd/bio_data/core/bridge_guard.sh'), HASH_A);
   assert.equal(parsed.hashes.get('/mnt/ssd/bio_data/ops/bridge_guard.sh'), HASH_B);
-  assert.deepEqual(parsed.missing, ['/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh']);
+  assert.deepEqual(parsed.missing, ['/mnt/ssd/bio_data/tools/ops/check_storage_and_isolation.sh']);
   assert.equal(parsed.sawSentinel, true);
 });
 
@@ -132,8 +132,8 @@ test('evaluateSha256Parity：哈希不一致 → fail，reason 带两个哈希�
 
 test('evaluateSha256Parity：远端文件不存在 → warn，reason 写 MISSING', () => {
   const parsed = parsedAll(HASH_A);
-  parsed.hashes.delete('/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh');
-  parsed.missing = ['/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh'];
+  parsed.hashes.delete('/mnt/ssd/bio_data/tools/ops/check_storage_and_isolation.sh');
+  parsed.missing = ['/mnt/ssd/bio_data/tools/ops/check_storage_and_isolation.sh'];
   const light = evaluateSha256Parity({ targets: TARGETS, localHashes: localForAll(HASH_A), parsed, sshExitCode: 0 });
   assert.equal(light.status, 'warn');
   assert.match(light.detail, /MISSING/);
@@ -180,8 +180,8 @@ test('evaluateSha256Parity：同时有不一致与缺失 → fail（已测出的
   localHashes.set('ops/verify_bridge_checkpoint.py', HASH_A);
   const parsed = parsedAll(HASH_A);
   parsed.hashes.set('/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py', HASH_B);
-  parsed.hashes.delete('/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh');
-  parsed.missing = ['/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh'];
+  parsed.hashes.delete('/mnt/ssd/bio_data/tools/ops/check_storage_and_isolation.sh');
+  parsed.missing = ['/mnt/ssd/bio_data/tools/ops/check_storage_and_isolation.sh'];
   const light = evaluateSha256Parity({ targets: TARGETS, localHashes, parsed, sshExitCode: 0 });
   assert.equal(light.status, 'fail');
 });

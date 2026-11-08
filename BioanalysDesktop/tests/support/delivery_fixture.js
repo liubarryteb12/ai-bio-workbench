@@ -1,7 +1,7 @@
 /**
  * 测试交付包工装（第二十轮 Q1）：造一个结构合法的迷你 Client_Delivery 包。
  *
- * 与 ops/build_client_report.py 的产物同构：
+ * 与 tools/reporting/build_client_report.py 的产物同构：
  *   <pid>_Client_Delivery/ 01_Adapted_Code/ 02_Figures_and_Tables/
  *   03_Interpretation_Report/ + README.md + delivery_manifest.json
  *   + CHECKSUMS.sha256 + CHECKSUMS.sig + ED25519_PUBLIC_KEY.pem

@@ -176,7 +176,7 @@ def caption(fig, *parts):
 
 ```bash
 # 单脚本（用当前 cwd 的数据重渲染，默认不落盘，只判定；FAIL 退出码 1）
-python3 ops/audit_figure_layout.py --script <脚本路径> --cwd <数据目录> --runner bash
+python3 tools/reporting/audit_figure_layout.py --script <脚本路径> --cwd <数据目录> --runner bash
 # 加 --write 才会真落盘；--runner auto 有 bash 时自动走真脚本（多块脚本/环境变量都对得上）
 ```
 
@@ -257,7 +257,7 @@ SCI 期刊对图件的通用要求与本规范的对应关系。**本规范覆�
 | 每张图可在方法学部分复现（软件、参数、种子） | §一元数据登记台账 | 覆盖 |
 | **投稿前需人工核对**：目标期刊的 `author guidelines` 格式页、版权协议、原始数据提交要求 | 无 | **不覆盖，交付方负责** |
 
-**机器验收与评分**（见 §七）：`ops/audit_figure_layout.py`（几何 A–E 判定）、
+**机器验收与评分**（见 §七）：`tools/reporting/audit_figure_layout.py`（几何 A–E 判定）、
 `cn_debug/figure_score.py`（五维百分制，>=75 达标）、
 `cn_debug/figure_code_audit.py`（源码级静态扫描）。
 
@@ -397,7 +397,7 @@ canonical helper（`caption`/`wrap_label`/`fit_text_edges`/`legend_out`/`layout_
 - **网络节点标签压字**：`l2_16_dr_regulatory_network` 与 `l1_07_ppi_network` 的
   spring 布局节点标签加 `adjust_text` 自动避让（后者的 STRING API 每次重取导致布局变化，
   属**间歇性**压字风险，靠避让而非固定种子兜住）。
-- **新增机器验收**：`ops/audit_figure_layout.py`（接管 `Figure.savefig` 做 A–E 几何判定，
+- **新增机器验收**：`tools/reporting/audit_figure_layout.py`（接管 `Figure.savefig` 做 A–E 几何判定，
   容差 3px，默认不落盘）。真数据全量审计 **135 张图 fail=0**（line1 29 / line2 37 / line3 69）。
   负对照已验证：回退 `wrap_label`+`fit_text_edges` 后 `l2_scenic_02` 必复现 A 项 FAIL。
 - **踩坑回退**：tick 标签换行方案（走 `set_*ticklabels`）实测在 `l1_13_gsea_top` 的密集类目轴上
@@ -433,7 +433,7 @@ WGCNA 分组逻辑专项、统一错误台账。本轮全部落地：
 | 维度 | 分值 | 细则 |
 |---|---|---|
 | **A 格式合规性** | 30 | A1 扩展名 PNG 5 · A2 DPI==300 8 · A3 最短边>=1200px 5 · A4 文件>20KB 4 · A5 非空白(std>5) 4 · A6 边缘无裁切(edge_ink<5%) 4 |
-| **B 参数准确性** | 20 | B1 图内标注⊆轴框 6 · B2 图例在轴框外 5 · B3 图注不与轴框相交 5 · B4 标注/图例互不重叠 4（由 `ops/audit_figure_layout.py` 的 A–E 几何判定提供） |
+| **B 参数准确性** | 20 | B1 图内标注⊆轴框 6 · B2 图例在轴框外 5 · B3 图注不与轴框相交 5 · B4 标注/图例互不重叠 4（由 `tools/reporting/audit_figure_layout.py` 的 A–E 几何判定提供） |
 | **C 标注规范性** | 20 | C1 `figures.js` caption 登记命中 6 · C2 命名符合 `l<n>_[前缀_]<序号>[_分号]_语义.png` 4 · C3 图件与 `STEP_CATALOG` 声明一致 6 · C4 台账/report 登记生成口径 4 |
 | **D 视觉可读性** | 20 | D1 无低 DPI 4 · D2 无 <8pt 字号 6 · D3 图例未用轴内 `loc` 6 · D4 未用 PDF/SVG 作交付件 4 |
 | **E 逻辑正确性** | 10 | E1 分组/方向来自 `project.json` contrasts 或报告注明的派生规则 5 · E2 相关值域 [-1,1] 且方向与 case/ctrl 定义一致 5 |
@@ -454,7 +454,7 @@ B1–B4（几何项）与 D2/D3（源级字号/图例项）**不再允许默认�
 
 ```
 python3 cn_debug/figure_score.py --dir <图件目录> \
-  --audit-csv cn_debug/figure_audit_line1.csv \      # ops/audit_figure_layout.py --csv 的逐图判决（B1–B4）
+  --audit-csv cn_debug/figure_audit_line1.csv \      # tools/reporting/audit_figure_layout.py --csv 的逐图判决（B1–B4）
   --code-csv  cn_debug/code_audit.csv \              # figure_code_audit.py --csv 的源码扫描（D2/D3）
   --ledger-dir outputs/system_logs                   # 台账反查"图→出图脚本"，供 D2/D3 归因
 ```
@@ -486,7 +486,7 @@ python3 cn_debug/figure_score.py --dir outputs/PRJ_E2E_GSE277173/line1_bulk/figu
 | 工具 | 层级 | 检查什么 |
 |---|---|---|
 | `cn_debug/figure_code_audit.py` | 源码 | C1 轴内图例 / C2 禁用后端 / C3 低 DPI / C4 低字号 / C5 图件落错目录 / C6 PDF 交付 / C7 图内中文 / **C7 R `png()` 未声明 `res=`** / **C8 Python `savefig` 未声明 dpi** |
-| `ops/audit_figure_layout.py` | 渲染过程 | A 标注出框 / B 图例位置 / C 图注相交 / D 重叠 / E tick 越界（INFO） |
+| `tools/reporting/audit_figure_layout.py` | 渲染过程 | A 标注出框 / B 图例位置 / C 图注相交 / D 重叠 / E tick 越界（INFO） |
 | `cn_debug/figure_audit_scan.py` + `figure_score.py` | 交付物 | DPI / 面积 / 边缘 / 空白 / 命名 / caption 登记，汇总为百分制得分 |
 
 ---
@@ -531,7 +531,7 @@ python3 cn_debug/figure_score.py --dir outputs/PRJ_E2E_GSE277173/line1_bulk/figu
 **两份实现必须同算法**：出图母版的 `_spot_um_per_px` 与 `ops/spatial_calibration._first_shell_pitch`
 各有一份 pitch 计算。两处都只取「前 6 个邻居全部落在第一壳层（<1.2 倍中位）」的内部点再取中位，
 否则边缘 spot（最近邻跳到第二壳层，约 1.73 倍）会把 pitch 抬高，导致图上的 500 µm
-与代码里的 200 µm 在不同切片上分叉。合成晶格自测见 `ops/spatial_pitch_selftest.py`。
+与代码里的 200 µm 在不同切片上分叉。合成晶格自测见 `tools/reporting/spatial_pitch_selftest.py`。
 
 **绘制时机**：比例尺必须登记后置，在 `fit_text_edges` 等所有会改 `xlim/ylim` 的布局动作
 全部收敛之后再画，画完还要再收边一轮并确认轴限不再变化。数据坐标系下的图元，
@@ -543,7 +543,7 @@ python3 cn_debug/figure_score.py --dir outputs/PRJ_E2E_GSE277173/line1_bulk/figu
    `transData` 换算显示像素，再除以每数据单位像素数得到实际微米数，误差 >3% 直接失败。
    禁止用 `bar` 重算端点：`dxb - dxa` 恒等于 `bar` 的像素长度，那是恒等式，永远通过。
    这一级的边界：只防「画完被后续布局挤压」，**不防「一开始常量就算错」**。
-2. **成品图像素核验（防渲染链路失真）**：`ops/figure_scalebar_png_measure.py` 有两种用法。
+2. **成品图像素核验（防渲染链路失真）**：`tools/reporting/figure_scalebar_png_measure.py` 有两种用法。
    - `measure(png)`：以晶格 pitch（Visium 相邻 spot 恒为 100 µm）为绝对尺反推微米数。
      **只适用于 spot 阵列清晰的图型**（如 01_domains）；点云过密或配色复杂的图型上，
      x 投影自相关会挑到错误的峰，量出来会系统性偏大 5~15%，不能当判据用。

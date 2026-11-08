@@ -1,5 +1,5 @@
 /**
- * 工作区快照脚本的守卫（ops/09_snapshot.ps1）。
+ * 工作区快照脚本的守卫（tools/ops/09_snapshot.ps1）。
  *
  * 背景：本仓库 .git 只读，无法 commit，未提交改动没有回滚点。09_snapshot.ps1 用
  * zip 快照补上这个缺口。它踩过一个必须钉死的坑：Compress-Archive 只取 basename
@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
-const SNAPSHOT = path.join(REPO, 'ops', '09_snapshot.ps1');
+const SNAPSHOT = path.join(REPO, 'tools', 'ops', '09_snapshot.ps1');
 const GITIGNORE = path.join(REPO, '.gitignore');
 
 const snapshotText = fs.readFileSync(SNAPSHOT, 'utf8');

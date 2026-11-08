@@ -183,7 +183,7 @@ test('合法根：拒绝 .. 穿越、SSD_ROOT 之外、空串、相对多级路�
 
 test('历史兼容分支：SSD_ROOT 之外但含线标记的路径只对审计放行（与 ops/03 同口径）', () => {
   // 既有样例 cn_debug/samples/system_logs 的路径都在 SSD_ROOT 之外，
-  // 服务器侧 ops/03_check_logs_remote.sh 按 marker 判定合法；审计必须与之一致。
+  // 服务器侧 tools/ops/03_check_logs_remote.sh 按 marker 判定合法；审计必须与之一致。
   const legacy = '/data/data/com.termux/files/home/bio_data_logs_test/line2_scrna/processed/ctrl.mtx';
   const info = analyzePath(legacy);
   assert.equal(info.ok, true);

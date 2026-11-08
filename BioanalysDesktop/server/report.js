@@ -2,10 +2,10 @@
  * 客户交付报告工作台入口（架构评审 A4 / R3）。
  *
  * 补齐链路图 §3.1 的手工断点 2/3：以前要人工 ssh 上 K40 跑
- * ops/build_client_report.py、再手动把 deliverables/ 三大件拷回本地；
+ * tools/reporting/build_client_report.py、再手动把 deliverables/ 三大件拷回本地；
  * 这里把两步收敛成服务端 build + pull，前端一个按钮触发。
  *
- * 引擎（ops/build_client_report.py，另一会话域，只调用不修改）设计红线：
+ * 引擎（tools/reporting/build_client_report.py，另一会话域，只调用不修改）设计红线：
  *   不编造数字 / 不重写母版 / 交付包脱敏真实路径（{{DATA_ROOT}} 占位）。
  *   退出码 0=成功 1=参数或数据错误 2=环境错误 -  - 非 0 一律如实 reject，不吞。
  *
@@ -73,7 +73,7 @@ export function buildReportCommand(projectId) {
   const command = `cd ${SSD_ROOT}`
     + ` && BIO_ED25519_PRIVATE_KEY_PATH='${keyDir}/ed25519_private.pem'`
     + ` BIO_ED25519_PUBLIC_KEY_PATH='${keyDir}/ed25519_public.pem'`
-    + ` python3 ops/build_client_report.py --project '${remoteProjectDir}'`;
+    + ` python3 tools/reporting/build_client_report.py --project '${remoteProjectDir}'`;
   return { command, remoteProjectDir };
 }
 
@@ -438,7 +438,7 @@ export async function pullDeliverables(projectId) {
 // 交付前置门禁（docs/delivery_package_spec.md 第三节第 3/5/6 条）
 //
 // 规范里这三道闸原本属于「尚未实现的 ops/09_package_delivery.ps1」，但打包能力
-// 实际由 ops/build_client_report.py 承担、入口在 18787（server/report.js），
+// 实际由 tools/reporting/build_client_report.py 承担、入口在 18787（server/report.js），
 // 引擎本身不含水位/台账/校验和检查（已 grep 确认）。所以把三道闸补在调用侧：
 // 引擎跑之前先问远端三件事，任一不过就不许生成交付包，避免「包出来了但项目里
 // 还有失败步骤」这种最难解释的假交付。

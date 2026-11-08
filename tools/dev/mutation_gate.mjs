@@ -366,7 +366,7 @@ export const MUTATIONS = Object.freeze([
       const mod = await loadModule(file);
       const doc = mod.loadRouter(path.join(REPO, 'ROUTER.yaml'));
       const { modIds, seriesIds } = mod.loadModIds(path.join(REPO, 'tools/bio/workflows.json'));
-      const opsScripts = mod.listOpsScripts(path.join(REPO, 'ops'));
+      const opsScripts = mod.listOpsScripts(path.join(REPO, 'tools', 'dev')).concat(mod.listOpsScripts(path.join(REPO, 'tools', 'reporting')));
       const probe = JSON.parse(JSON.stringify(doc));
       probe.routes[0].allowed_scripts.push('l3_ghost_mod');
       const errs = mod.validateRouter(probe, { modIds, opsScripts, seriesIds });

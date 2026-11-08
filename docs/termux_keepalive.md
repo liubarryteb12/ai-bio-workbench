@@ -2,7 +2,7 @@
 
 > 版本：v1.1（2026-10-27）
 > 适用：红米 K40（M2012K11AC，MIUI V816 / Android 13）上的 Termux 底座
-> 关联：`ops/bio_watchdog.sh`、`~/.termux/boot/start-p_actions.sh`、`~/.termux/boot/start-sshd.sh`
+> 关联：`tools/ops/bio_watchdog.sh`、`~/.termux/boot/start-p_actions.sh`、`~/.termux/boot/start-sshd.sh`
 
 ## 一、掉线根因（2026-10-18 实测）
 
@@ -24,7 +24,7 @@ CPU 休眠后 Termux 被冻结，runit 的四个服务随之停摆，表现为�
 | 2 | MIUI 省电策略 | **无限制**（不采取任何限制措施） | 系统设置 |
 | 3 | Android 电池优化白名单 | `dumpsys deviceidle whitelist` 含 com.termux / com.termux.boot | 系统设置 |
 | 4 | 唤醒锁常驻 | `termux-wake-lock`，`Wake Locks: size=1`，标记 LONG | `bio_watchdog.sh` 每分钟重申 |
-| 5 | 服务自愈 | `bio-watchdog` 由 runit 监管，每分钟检查 4 个服务并 `sv up` | `ops/bio_watchdog.sh` |
+| 5 | 服务自愈 | `bio-watchdog` 由 runit 监管，每分钟检查 4 个服务并 `sv up` | `tools/ops/bio_watchdog.sh` |
 
 补充：`standby bucket = 10 (ACTIVE)`、`RUN_ANY_IN_BACKGROUND = allow`，均已是最好档位。
 
@@ -174,9 +174,9 @@ adb shell 'ps -eo pid,etime,args | grep "[p]root --kill" | head -1 | cut -c1-30'
 
 ### WP-1.3 实现落点
 
-- `ops/bio_limits.sh`：线程固定为 3，母版不得再覆盖。
-- `ops/layout_autoload/sitecustomize.py`：Python 启动即设置 `RLIMIT_AS=7.5GB`。
-- `ops/layout_autoload/Rprofile`：R 启动即设置 data.table 3 线程、future 2 worker 与 6GiB globals 上限。
-- `ops/run_throttled_task.sh`：启动前读取 thermal zones，温度达到 90C 时每 30 秒复测，低于 78C 才启动任务。
+- `tools/ops/bio_limits.sh`：线程固定为 3，母版不得再覆盖。
+- `tools/ops/layout_autoload/sitecustomize.py`：Python 启动即设置 `RLIMIT_AS=7.5GB`。
+- `tools/ops/layout_autoload/Rprofile`：R 启动即设置 data.table 3 线程、future 2 worker 与 6GiB globals 上限。
+- `tools/ops/run_throttled_task.sh`：启动前读取 thermal zones，温度达到 90C 时每 30 秒复测，低于 78C 才启动任务。
 - `BioanalysDesktop/server/task.js` 与 `server/run.js`：长步骤用 `setsid nohup`，状态文件每 60 秒单次轮询。
 - `server/audit.js`：任务命令中出现 `find`、`ps`、`grep -r`、`pgrep`、`pkill` 时直接拒绝。

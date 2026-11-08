@@ -48,9 +48,9 @@ ssh k40 'echo BASE_OK' && ssh k40-ubuntu 'echo CONTAINER_OK'
 
 | 文件 | 作用 |
 |---|---|
-| `ops/k40/sv/{sshd,crond,ssh-agent,ubuntu-sshd}/{run,log/run}` | 8 个 runit 服务定义，log/run 带 10MB 轮转 |
-| `ops/k40/ensure_runsvdir.sh` | 幂等点火（flock 单实例 + 快判短路 + 15 秒死人开关 + 绝不杀 sshd） |
-| `ops/k40/pi_a2a_launch.sh` | Pi A2A 启动器镜像（Termux `$HOME/bin` 落点） |
+| `tools/ops/k40/sv/{sshd,crond,ssh-agent,ubuntu-sshd}/{run,log/run}` | 8 个 runit 服务定义，log/run 带 10MB 轮转 |
+| `tools/ops/k40/ensure_runsvdir.sh` | 幂等点火（flock 单实例 + 快判短路 + 15 秒死人开关 + 绝不杀 sshd） |
+| `tools/ops/k40/pi_a2a_launch.sh` | Pi A2A 启动器镜像（Termux `$HOME/bin` 落点） |
 
 ## 四、尚未解决（交接给下一轮）
 
@@ -84,7 +84,7 @@ ssh k40 'echo BASE_OK' && ssh k40-ubuntu 'echo CONTAINER_OK'
 - 第二版判据：argv 引用本 SVDIR，且第二个 token 的基名不是 `runsvdir`。`count_supervising_runsvdir`/`count_stray_runsvdir`/`stray_pids` 三条路径统一走 `classify_runsvdir_argv`。
 
 ### 5.5 自测与变异
-- `ops/k40/ensure_runsvdir_selftest.sh`：28 条断言全绿（`SELFTEST_PASS ok=28`），含「source 后 main 是函数」「source 未执行任何点火/回收动作」「无 -P 形态也计入监督实例」「setsid/kill 落在 main() 内」「main 调用是最后一个代码行」「守卫在 main 调用之前」。
+- `tools/ops/k40/ensure_runsvdir_selftest.sh`：28 条断言全绿（`SELFTEST_PASS ok=28`），含「source 后 main 是函数」「source 未执行任何点火/回收动作」「无 -P 形态也计入监督实例」「setsid/kill 落在 main() 内」「main 调用是最后一个代码行」「守卫在 main 调用之前」。
 - 5 个变异全部变红：删 `main "$@"`、端口探活恒真、自身 pid 守卫退回三美元、只认 argv0 基名、`--reap-stray` 改词。
 - 一个假绿修正：静态断言原来用 `grep -q -- '--reap-stray'`，把 `--reap-strayX` 也算命中；改成整词 `grep -q -- "'--reap-stray'"` 后变异才红。
 

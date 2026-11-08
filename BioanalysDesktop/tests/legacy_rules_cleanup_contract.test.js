@@ -55,8 +55,8 @@ test('生产母版不再生成已退役组合图', () => {
 });
 
 test('参考验证矩阵把组合图证据标成 retired，不影响 39 基线', () => {
-  const plotMatrix = read('ops/verify_plot_matrix.py');
-  const r453 = read('ops/verify_r453_figures.py');
+  const plotMatrix = read('tools/reporting/verify_plot_matrix.py');
+  const r453 = read('tools/reporting/verify_r453_figures.py');
   assert.match(plotMatrix, /retired|RETIRED/);
   assert.match(r453, /retired|RETIRED/);
 });

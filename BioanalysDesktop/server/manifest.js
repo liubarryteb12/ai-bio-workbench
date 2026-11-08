@@ -2,7 +2,7 @@
  * 环境清单 manifest：台账 environment 字段的唯一来源
  *
  * 正本在本地 tools/bio/<line>/envs/manifest.txt，服务器侧副本由部署通道
- * （ops/06_deploy_scripts.ps1）落到 <line>/envs/，两边字节一致。
+ * （tools/ops/06_deploy_scripts.ps1）落到 <line>/envs/，两边字节一致。
  * 存在意义：环境声明"分析中途不更换"，台账要记的是声明值而不是各处写死的默认值。
  */
 

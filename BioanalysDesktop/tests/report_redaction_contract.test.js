@@ -68,7 +68,7 @@ test("已导出的报告正文不得出现机器信息与内部路径", () => {
 });
 
 test("报告渲染器不得再写入机器信息与内部路径", () => {
-  const renderer = fs.readFileSync(path.join(REPO, "ops/report_render_html.py"), "utf8");
+  const renderer = fs.readFileSync(path.join(REPO, "tools/reporting/report_render_html.py"), "utf8");
   // 只检查会被写进 HTML 的字符串字面量：整份源码里的中文注释提到这些词不算违规，
   // 但 footer 这类直接进报告的段落必须干净。
   const footer = renderer.match(/parts\.append\("<footer>[\s\S]{0,600}?<\/footer>"\)/);

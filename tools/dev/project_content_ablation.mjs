@@ -477,7 +477,7 @@ export const SCENARIOS = Object.freeze([
  * 要求引用 project.json、ledgers 与真实产物目录，且不出现两份旧报告名。
  */
 export function checkReportBuilderIndependence() {
-  const file = path.join(REPO, 'ops', 'build_client_report.py');
+  const file = path.join(REPO, 'tools', 'reporting', 'build_client_report.py');
   let src;
   try {
     src = fs.readFileSync(file, 'utf8');
@@ -618,7 +618,7 @@ function writeReport(results, reportBuilder, fatal) {
   lines.push('- 项目发现判据复刻 `listLocalProjectsWithMeta` 的目录扫描与 `project.json` 读取逻辑，不启动服务。');
   lines.push('- 来源清单判据复刻 `/api/figures/source_manifest` 的固定路径读取行为，两份文件都缺失时返回 `ok=false`。');
   lines.push('- 出图门禁用 `node tools/dev/figure_spec_gate.mjs --dir <临时项目相对路径>` 实际执行。');
-  lines.push('- 报告构建独立性用静态读取 `ops/build_client_report.py` 判定，不产生交付包。');
+  lines.push('- 报告构建独立性用静态读取 `tools/reporting/build_client_report.py` 判定，不产生交付包。');
   lines.push('');
   lines.push('## 2. 消融场景总览');
   lines.push('');
@@ -653,7 +653,7 @@ function writeReport(results, reportBuilder, fatal) {
   });
   lines.push('## 4. 报告构建独立性（全局 e）');
   lines.push('');
-  lines.push('- 静态读取 `ops/build_client_report.py`。');
+  lines.push('- 静态读取 `tools/reporting/build_client_report.py`。');
   for (const check of reportBuilder.checks || []) {
     lines.push('- ' + check.name + '：' + (check.ok ? '是' : '否'));
   }

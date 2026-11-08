@@ -53,7 +53,7 @@ export function detectHostMntPollution(gitRoot = process.env.GIT_ROOT || 'D:/Git
 }
 
 /** 项目 R 垫片绝对路径（layout_autoload 零重写外挂；母版实际执行的就是它） */
-export const RSCRIPT_PROJECT_BIN = '/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript';
+export const RSCRIPT_PROJECT_BIN = '/mnt/ssd/bio_data/tools/ops/layout_autoload/bin/Rscript';
 
 /**
  * 期望 R 版本。真源是 docs/software_versions.json 的 interpreters[name=R].version；
@@ -79,7 +79,7 @@ export const LOAD_WARN_RATIO = 1.5;
 export const STORAGE_MIN_FREE_PCT = 20;
 
 /** 隔离门禁与桥接校验脚本的远端路径 */
-export const ISOLATION_SCRIPT = '/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh';
+export const ISOLATION_SCRIPT = '/mnt/ssd/bio_data/tools/ops/check_storage_and_isolation.sh';
 export const BRIDGE_SCRIPT = '/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py';
 
 /**
@@ -308,7 +308,7 @@ export function evaluateIsolation(parsed) {
 /** 仓库根：BioanalysDesktop/server/ 上两级；用模块 URL 推导，与进程 cwd 无关 */
 export const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
-/** 远端 ssh 目标与部署根（与 ops/sync_and_verify_remote.ps1 的默认值一致） */
+/** 远端 ssh 目标与部署根（与 tools/ops/sync_and_verify_remote.ps1 的默认值一致） */
 export const SHA256_SSH_TARGET = 'k40-ubuntu';
 export const SHA256_REMOTE_ROOT = '/mnt/ssd/bio_data';
 
@@ -323,7 +323,7 @@ export const SHA256_SENTINEL = 'SHA256END|';
 export const CORE_SYNC_FILES = Object.freeze([
   Object.freeze({ repo: 'core/bridge_guard.sh', remote: '/mnt/ssd/bio_data/core/bridge_guard.sh', note: '守卫母版' }),
   Object.freeze({ repo: 'core/bridge_guard.sh', remote: '/mnt/ssd/bio_data/ops/bridge_guard.sh', note: '守卫镜像' }),
-  Object.freeze({ repo: 'ops/check_storage_and_isolation.sh', remote: '/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh', note: '跨线隔离门禁' }),
+  Object.freeze({ repo: 'tools/ops/check_storage_and_isolation.sh', remote: '/mnt/ssd/bio_data/tools/ops/check_storage_and_isolation.sh', note: '跨线隔离门禁' }),
   Object.freeze({ repo: 'ops/verify_bridge_checkpoint.py', remote: '/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py', note: '桥接四项断言' }),
 ]);
 

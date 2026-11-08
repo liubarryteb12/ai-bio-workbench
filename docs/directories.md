@@ -71,19 +71,19 @@ AI辅助生信分析流程工作台/
 | `projects/<项目>/<line>/scripts/` | 客户数据需适配时，从 `bin/<line>/` 复制母版到此改，跑通后留档；不改母版 | 代理 `mkdir -p` |
 | `projects/<项目>/deliverables/` | 客户交付包三大件（适配代码 / 图表与表格 / 解读报告） | 代理 `mkdir -p` |
 
-交付包结构与打包规则见 `docs/delivery_package_spec.md`（v1.0，**实现现状见该文「零」节**）：打包由服务器侧 `ops/build_client_report.py` 承担，工作台入口是 `POST /api/report/build`（`BioanalysDesktop/server/report.js`，含存储水位 / 进行中任务 / 失败台账三道前置门禁与 `.sha256` 旁挂）；原规划的 `ops/09_package_delivery.ps1` 已作废，不再实现。
+交付包结构与打包规则见 `docs/delivery_package_spec.md`（v1.0，**实现现状见该文「零」节**）：打包由服务器侧 `tools/reporting/build_client_report.py` 承担，工作台入口是 `POST /api/report/build`（`BioanalysDesktop/server/report.js`，含存储水位 / 进行中任务 / 失败台账三道前置门禁与 `.sha256` 旁挂）；原规划的 `ops/09_package_delivery.ps1` 已作废，不再实现。
 
 适配副本不经工作台任务引擎（它只认全局 `bin/<line>/`），而是直跑 ops 包装器：
-`bash /mnt/ssd/bio_data/ops/run_throttled_task.sh <task_id> <line> <step> <R|Python> <项目内脚本绝对路径>`。
+`bash /mnt/ssd/bio_data/tools/ops/run_throttled_task.sh <task_id> <line> <step> <R|Python> <项目内脚本绝对路径>`。
 
-本地回搬入口（`ops/07_pull_outputs.ps1`）按项目写入
+本地回搬入口（`tools/ops/07_pull_outputs.ps1`）按项目写入
 `local_projects/<项目>/data/<line>/{processed,results}` 与
 `local_projects/<项目>/figures/<line>/`；机器执行台账独立落 `outputs/system_logs/`。
 
 ## 本地项目存档与 sync 运行态
 
 `local_projects/` 是本地项目唯一根，只接轻量回传与项目台账，不替代算力面工作目录。
-每个项目由 `ops/init_project_scaffold.py` 幂等创建：
+每个项目由 `tools/ops/init_project_scaffold.py` 幂等创建：
 
 ```text
 local_projects/<项目>/
@@ -102,7 +102,7 @@ local_projects/<项目>/
 建项命令：
 
 ```powershell
-python ops/init_project_scaffold.py --root . --project <项目> --line <line> [--ticket <id>]
+python tools/ops/init_project_scaffold.py --root . --project <项目> --line <line> [--ticket <id>]
 ```
 
 `figures/<line>/` 收真实结果图，`figures/adapt/` 收项目内模板派生副本，两者不得混用。
@@ -158,7 +158,7 @@ python ops/init_project_scaffold.py --root . --project <项目> --line <line> [-
 | 编号 | 中文名 | 文件数 | 用途 |
 |---|---:|---:|---|
 | `01` | 工程规范 | 188 | mattpocock-skills 上游工程规范参考 |
-| `02` | 分析流水线构建参考与可用参考文献 | 49 | 文献 PDF，机读源 `citations.json`，索引由 `ops/gen_reference_index.py` 生成 |
+| `02` | 分析流水线构建参考与可用参考文献 | 49 | 文献 PDF，机读源 `citations.json`，索引由 `tools/ops/gen_reference_index.py` 生成 |
 | `03` | 出图规范 | 2 | `sci.md` 规范正本与单图代码模板包 |
 | `04` | 正式使用生信代码 | 0 | 预留空目录，待正式启用代码入驻 |
 | `05` | 可参考生信代码 | 3044 | `可用代码预筛选/`（可用与源码）与 `library/` 图录；在役出图证据在 `可用代码预筛选/源码/` |
@@ -180,7 +180,7 @@ python ops/init_project_scaffold.py --root . --project <项目> --line <line> [-
 - 标识符、路径用英文；面向用户的说明用中文。
 - **Linux 系统内（服务器侧）一律英文路径与文件名**，不出现中文字符：本地既有中文名的
   用户资产（如 `test_use_data/` 下的目录与 `分组情况.txt`）推到服务器前必须换成英文名，
-  映射关系集中在引用处（当前在 `ops/05_push_testdata.ps1` 的 `$RemoteNameMap`）。
+  映射关系集中在引用处（当前在 `tools/ops/05_push_testdata.ps1` 的 `$RemoteNameMap`）。
 - 注释只解释"为什么"，不写"这是什么"。
 - 注释和文档不用破折号，用逗号、冒号、句号替代。
 - 变量命名不用单字母（数学符号和循环计数除外）。

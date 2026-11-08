@@ -60,9 +60,9 @@ test("portal/index.html 的 template_16x9 选项文案使用图例右侧", () =>
     "portal 的 16:9 选项不得再出现图例底部语义");
 });
 
-test("ops/layout_helper.py 的 template_16x9 默认规则为 outside_right/vertical", () => {
-  const src = read("ops/layout_helper.py");
-  const block = blockFrom(src, '"template_16x9": {', "ops/layout_helper.py");
+test("tools/reporting/layout_helper.py 的 template_16x9 默认规则为 outside_right/vertical", () => {
+  const src = read("tools/reporting/layout_helper.py");
+  const block = blockFrom(src, '"template_16x9": {', "tools/reporting/layout_helper.py");
   assert.match(block, /"legend_position":\s*"outside_right"/);
   assert.match(block, /"legend_direction":\s*"vertical"/);
   assert.equal(/bottom_center|horizontal/.test(block), false,
@@ -75,7 +75,7 @@ test("四个真源均包含右侧纵向语义", () => {
   const project = blockFrom(read("BioanalysDesktop/server/project.js"), "template_16x9:", "BioanalysDesktop/server/project.js");
   const constants = linesWith(read("BioanalysDesktop/src/views/shared/constants.ts"), "template_16x9").join("\n");
   const portal = linesWith(read("portal/index.html"), 'value="template_16x9"').join("\n");
-  const helper = blockFrom(read("ops/layout_helper.py"), '"template_16x9": {', "ops/layout_helper.py");
+  const helper = blockFrom(read("tools/reporting/layout_helper.py"), '"template_16x9": {', "tools/reporting/layout_helper.py");
   assert.match(project, /outside_right/);
   assert.match(constants, /图例右侧/);
   assert.match(portal, /图例右侧/);

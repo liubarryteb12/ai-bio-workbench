@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..', '..');
-const SCRIPT = path.join(REPO_ROOT, 'ops', 'ledger_indexer.py');
+const SCRIPT = path.join(REPO_ROOT, 'tools', 'ops', 'ledger_indexer.py');
 const TEST_ROOT = path.join(REPO_ROOT, 'artifacts', 'local_project_workspace_tests', 'jsonl_ledger_index_tests_' + process.pid + '_' + Math.random().toString(36).slice(2, 8));
 
 function findPythonLauncher() {
@@ -66,7 +66,7 @@ function writeMachineLog(root, file, task, project) {
 }
 
 function scaffoldProject(root, projectId) {
-  const workspaceScript = path.join(REPO_ROOT, 'ops', 'local_project_workspace.py');
+  const workspaceScript = path.join(REPO_ROOT, 'tools', 'ops', 'local_project_workspace.py');
   return spawnSync(PYTHON.command, [...PYTHON.prefix, workspaceScript, '--root', root, 'scaffold', '--project-id', projectId], {
     cwd: REPO_ROOT,
     encoding: 'utf8',

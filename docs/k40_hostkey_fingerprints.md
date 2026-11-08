@@ -1,6 +1,6 @@
 # K40 host key 指纹台账
 
-落点：`ops/k40/env_lock/hostkey_fingerprints.json`（台账）、`BioanalysDesktop/server/hostkey.js`（解析与比对）。
+落点：`tools/ops/k40/env_lock/hostkey_fingerprints.json`（台账）、`BioanalysDesktop/server/hostkey.js`（解析与比对）。
 测试：`BioanalysDesktop/tests/hostkey_fingerprints.test.js`（13 条）与
 `BioanalysDesktop/tests/diagnostics_routes_contract.test.js`（链路灯两条）。
 来源：4 Argon 第十九轮 Q3 裁定。
@@ -24,7 +24,7 @@ hostkey 守卫（见 [k40_hostkey_guard.md](k40_hostkey_guard.md)）在密钥丢
 把运行态写进确定产物会让每次真机变动都污染 CI 判据，把「代码漂移」和「设备状态变化」搅成同一个红。
 
 指纹与 `r_packages.csv`、`pip_freeze.txt`、`apt_manual.txt` 同属**算力面环境锁**，落
-`ops/k40/env_lock/`，由 `ledger_gen.mjs` 的 `k40HostAssets` 以资产形式追踪（清单对得上，内容不参与 diff 校验）。
+`tools/ops/k40/env_lock/`，由 `ledger_gen.mjs` 的 `k40HostAssets` 以资产形式追踪（清单对得上，内容不参与 diff 校验）。
 
 ## 三、台账形态
 
@@ -87,7 +87,7 @@ hostkey 守卫（见 [k40_hostkey_guard.md](k40_hostkey_guard.md)）在密钥丢
    ssh k40-ubuntu "dropbearkey -y -f /etc/dropbear/dropbear_ed25519_host_key | ssh-keygen -lf -"
    ```
 
-2. 更新 `ops/k40/env_lock/hostkey_fingerprints.json` 的 `fingerprint` 与 `observed_at`。
+2. 更新 `tools/ops/k40/env_lock/hostkey_fingerprints.json` 的 `fingerprint` 与 `observed_at`。
 3. 清掉本地 `known_hosts` 里对应条目（`ssh-keygen -R '[127.0.0.1]:8022'`、`ssh-keygen -R '[127.0.0.1]:10022'`，
    按实际连接用的地址来），首次连接时按新指纹登记。
 4. 重跑链路自检，确认 `hostkeys.code === null`。

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
-const DAEMON = path.join(REPO, 'ops', 'sync_daemon.ps1');
+const DAEMON = path.join(REPO, 'tools', 'ops', 'sync_daemon.ps1');
 
 test('sync daemon keeps stub mode as the default for CI', () => {
   const text = fs.readFileSync(DAEMON, 'utf8');
@@ -31,7 +31,7 @@ test('real mode exposes the four hard workbench seams', () => {
   assert.ok(text.includes('/api/projects/create'));
   assert.ok(text.includes('/api/projects/list'));
   assert.ok(text.includes('/api/tasks/submit'));
-  assert.ok(text.includes('ops/07_pull_outputs.ps1'));
+  assert.ok(text.includes('tools/ops/07_pull_outputs.ps1'));
   assert.ok(text.includes('/api/report/build'));
   assert.ok(text.includes('/api/sync/result'));
   assert.ok(text.includes("Join-Path $RepoRoot 'local_projects'"));

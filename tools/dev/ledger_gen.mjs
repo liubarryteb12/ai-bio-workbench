@@ -202,7 +202,7 @@ export function computeSystemLedger() {
   };
 
   // ── K40 宿主面受控资产 ──
-  const k40Dir = path.join(REPO, 'ops', 'k40');
+  const k40Dir = path.join(REPO, 'tools', 'ops', 'k40');
   const trackedFiles = [];
   const walk = (dir, prefix) => {
     let entries = [];
@@ -212,7 +212,7 @@ export function computeSystemLedger() {
       if (entry.name === '__pycache__' || entry.name === 'node_modules') continue;
       const rel = prefix ? prefix + '/' + entry.name : entry.name;
       if (entry.isDirectory()) walk(path.join(dir, entry.name), rel);
-      else trackedFiles.push('ops/k40/' + rel);
+      else trackedFiles.push('tools/ops/k40/' + rel);
     }
   };
   walk(k40Dir, '');

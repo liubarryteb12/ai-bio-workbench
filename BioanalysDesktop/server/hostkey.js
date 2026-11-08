@@ -2,7 +2,7 @@
  * host key 指纹台账与比对（Argon 第十九轮 Q3 裁定）
  *
  * 为什么要有这个模块：
- *   hostkey 守卫（ops/k40/sv/<svc>/run 段3）在密钥丢失时会重新生成，等价于轮换 host key。
+ *   hostkey 守卫（tools/ops/k40/sv/<svc>/run 段3）在密钥丢失时会重新生成，等价于轮换 host key。
  *   轮换本身不报错，客户端 known_hosts 不更新则要么静默接受新身份（StrictHostKeyChecking=no），
  *   要么下次连不上（strict）。两条路都是「无提示的状态漂移」，必须显式可见。
  *
@@ -10,7 +10,7 @@
  *   那份是 ledger_gen.mjs 的纯离线确定性产物，CI 在无真机环境跑 git diff 校验。
  *   硬件运行态（指纹、mtime、进程号）进它会污染 CI 判据。
  *   指纹属算力面环境锁家族，与 r_packages.csv、pip_freeze.txt 同级，落
- *   ops/k40/env_lock/hostkey_fingerprints.json。
+ *   tools/ops/k40/env_lock/hostkey_fingerprints.json。
  *
  * 判据口径：指纹失配不等于链路不可用（连接可能照常成功），所以只产出结构化诊断码，
  * 由调用方决定是告警还是阻断；link.js 把它降级为 warn 并原样带出 code。
@@ -26,7 +26,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 /** 指纹台账路径（仓库内，随代码一起版本化） */
 export const FINGERPRINT_LEDGER_PATH = path.resolve(
-  HERE, '..', '..', 'ops', 'k40', 'env_lock', 'hostkey_fingerprints.json'
+  HERE, '..', '..', 'tools', 'ops', 'k40', 'env_lock', 'hostkey_fingerprints.json'
 );
 
 export const FINGERPRINT_SCHEMA = 'k40_hostkey_fingerprints/v1';
@@ -157,7 +157,7 @@ export function compareFingerprint(expected, observed) {
     ok: false,
     code: ERR_HOSTKEY_ROTATED,
     detail: '期望 ' + want + '，实际 ' + got +
-      '；host key 已轮换（多为 hostkey 守卫重新生成），需同步客户端 known_hosts 与 ops/k40/env_lock/hostkey_fingerprints.json',
+      '；host key 已轮换（多为 hostkey 守卫重新生成），需同步客户端 known_hosts 与 tools/ops/k40/env_lock/hostkey_fingerprints.json',
   };
 }
 

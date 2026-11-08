@@ -36,7 +36,7 @@ function masterFiles() {
   for (const line of ['line1_bulk', 'line2_scrna', 'line3_spatial']) {
     const dir = path.join(REPO, 'tools', 'bio', line, 'scripts');
     for (const name of fs.readdirSync(dir)) {
-      // README.md 不部署（ops/06_deploy_scripts.ps1 明确排除），不是步骤脚本，不受母版规范约束
+      // README.md 不部署（tools/ops/06_deploy_scripts.ps1 明确排除），不是步骤脚本，不受母版规范约束
       if (name === 'README.md') continue;
       // 共享库不是步骤母版：没有命令行入口，契约按模块对待
       if (SHARED_LIBS.has(name)) continue;
@@ -106,7 +106,7 @@ test('R 母版必须 shebang 指向 Rscript 垫片 + LF-only', () => {
     const text = fs.readFileSync(file, 'utf8');
     if (text.includes(String.fromCharCode(13))) problems.push(rel + ': 含 CR');
     if (!/^#!.*Rscript/.test(text.split('\n')[0] || '')) {
-      problems.push(rel + ': shebang 不是 Rscript 垫片（应为 ops/layout_autoload/bin/Rscript）');
+      problems.push(rel + ': shebang 不是 Rscript 垫片（应为 tools/ops/layout_autoload/bin/Rscript）');
     }
   }
   assert.deepEqual(problems, [], 'R 母版走 Rscript 垫片，见 task.js 的 RSCRIPT_CALL_RE');

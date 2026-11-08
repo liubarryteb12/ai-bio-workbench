@@ -29,8 +29,8 @@ const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 const GOLDEN = path.join(REPO, 'tests', 'fixtures', 'golden');
 const EXPECTED = path.join(GOLDEN, 'expected');
 const REMOTE_BASE = '/mnt/ssd/bio_data/system_logs/_smoke';
-const WRAPPER = '/mnt/ssd/bio_data/ops/run_throttled_task.sh';
-const RBIN = '/mnt/ssd/bio_data/ops/layout_autoload/bin';
+const WRAPPER = '/mnt/ssd/bio_data/tools/ops/run_throttled_task.sh';
+const RBIN = '/mnt/ssd/bio_data/tools/ops/layout_autoload/bin';
 
 function ssh(target, cmd, timeoutMs = 300000) {
   const r = spawnSync('ssh', ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', target, cmd],

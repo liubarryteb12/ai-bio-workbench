@@ -12,7 +12,7 @@
 - 项目发现判据复刻 `listLocalProjectsWithMeta` 的目录扫描与 `project.json` 读取逻辑，不启动服务。
 - 来源清单判据复刻 `/api/figures/source_manifest` 的固定路径读取行为，两份文件都缺失时返回 `ok=false`。
 - 出图门禁用 `node tools/dev/figure_spec_gate.mjs --dir <临时项目相对路径>` 实际执行。
-- 报告构建独立性用静态读取 `ops/build_client_report.py` 判定，不产生交付包。
+- 报告构建独立性用静态读取 `tools/reporting/build_client_report.py` 判定，不产生交付包。
 
 ## 2. 消融场景总览
 
@@ -83,7 +83,7 @@
 
 ## 4. 报告构建独立性（全局 e）
 
-- 静态读取 `ops/build_client_report.py`。
+- 静态读取 `tools/reporting/build_client_report.py`。
 - 读取 project.json：是
 - 读取台账 ledgers：是
 - 读取 results/ 产物：是

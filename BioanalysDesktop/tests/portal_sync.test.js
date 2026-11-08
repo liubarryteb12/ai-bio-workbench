@@ -306,7 +306,7 @@ test('非法 ticket 和非法终态被拒绝', async () => {
 });
 
 test('sync daemon 脚本保留环回豁免、安全解包与退避契约', () => {
-  const daemonPath = path.join(ROOT, 'ops', 'sync_daemon.ps1');
+  const daemonPath = path.join(ROOT, 'tools', 'ops', 'sync_daemon.ps1');
   const text = fs.readFileSync(daemonPath, 'utf8');
   assert.equal(text.includes('\r\n'), false, 'sync daemon 出现 CRLF');
   assert.ok(text.includes("$env:NO_PROXY = '127.0.0.1,localhost'"));
@@ -319,7 +319,7 @@ test('sync daemon 脚本保留环回豁免、安全解包与退避契约', () =>
 });
 
 test('sync verifier 对 src 与 bin 落点都做 -FailOnDrift 判定', () => {
-  const verifierPath = path.join(ROOT, 'ops', 'sync_and_verify_remote.ps1');
+  const verifierPath = path.join(ROOT, 'tools', 'ops', 'sync_and_verify_remote.ps1');
   const text = fs.readFileSync(verifierPath, 'utf8');
   assert.ok(text.includes('$deployDrift'));
   assert.ok(text.includes('$deployPairs'));

@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
-const WATCHDOG = path.join(REPO, 'ops', 'bio_watchdog.sh');
+const WATCHDOG = path.join(REPO, 'tools', 'ops', 'bio_watchdog.sh');
 const TEXT = fs.readFileSync(WATCHDOG, 'utf8');
 const NL = String.fromCharCode(10);
 const codeLines = TEXT.split(NL).filter((l) => {

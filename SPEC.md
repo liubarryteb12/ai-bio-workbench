@@ -23,7 +23,7 @@
 代码、门禁、规约在控制面（core / tools / skills / schemas / ops）；客户数据、中间态、
 交付物只在数据面（workspace、服务器 projects）。算力与传输默认走 ADB 通道。
 
-执行门禁：`ops/02_check_isolation.ps1`、`ops/test_isolation_gate.mjs`、
+执行门禁：`tools/ops/02_check_isolation.ps1`、`ops/test_isolation_gate.mjs`、
 `docs/remote_channel_policy.md` 契约测试。
 
 ### 原则三：Fail-Closed 与真源唯一

@@ -19,7 +19,7 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-const PROBE = path.join(REPO, "ops", "figure_scalebar_png_measure.py");
+const PROBE = path.join(REPO, "tools", "reporting", "figure_scalebar_png_measure.py");
 const PNG = path.join(
   REPO,
   "local_projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial/l3_mouse_01_domains_B1-D1.png",

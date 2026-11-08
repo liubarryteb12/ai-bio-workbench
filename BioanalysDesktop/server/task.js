@@ -309,7 +309,7 @@ const FIGURE_MASTER_ROOT = path.resolve(REPO_ROOT, 'reference', '05.可参考生
 /** 桥接四项断言引擎（aims §一.3 钦定；ops/ 属另一会话域，只调用不修改） */
 export const BRIDGE_ENGINE_REMOTE = '/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py';
 /** 桥接校验必须使用带 anndata 的分析 venv，避免系统 python3 缺包造成假红 */
-export const BRIDGE_PYTHON_REMOTE = '/mnt/ssd/bio_data/ops/layout_autoload/bin/python3';
+export const BRIDGE_PYTHON_REMOTE = '/mnt/ssd/bio_data/tools/ops/layout_autoload/bin/python3';
 
 /** 桥接校验 ssh 同步超时：引擎内部 RDS 分支自带 120s，h5ad 大文件读取留足余量 */
 export const BRIDGE_SSH_TIMEOUT_MS = 300000;
@@ -675,7 +675,7 @@ export function deriveAdaptedFigure({
  * 生成远端执行脚本。
  *
  * 工作目录固定在该项目该线的 processed/（项目隔离，命令不会跑到别的项目去）。
- * PATH 里注入本线的全局 bin/：步骤脚本由部署通道（ops/06_deploy_scripts.ps1）从本地
+ * PATH 里注入本线的全局 bin/：步骤脚本由部署通道（tools/ops/06_deploy_scripts.ps1）从本地
  * src/<line>/scripts/ 落到服务器 bin/<line>/ 并置可执行位，step 名即可执行文件名。
  * bin 全局一份，所有项目共用（代码本体不随项目复制）。
  * 没有这一行，服务器上找不到命令，一切 step 都是 command not found。
@@ -718,7 +718,7 @@ export function buildTaskScript(task) {
   // 选环境变量而不是命令行参数的原因：
   //   1. 母版是 Python（virtual_knockout）与 Python（spatial_knockout），读 os.environ 一处口径；
   //   2. 参数位已被 --input/--output/--seed 占用，加位置参数会破坏既有母版解析；
-  //   3. export 出来的变量是子进程继承的，ops/run_throttled_task.sh 只是 bash 子进程
+  //   3. export 出来的变量是子进程继承的，tools/ops/run_throttled_task.sh 只是 bash 子进程
   //      （内部再 nice/ionice 起解释器），不吞环境，变量能一路到母版。
   // 非敲除步骤即使传了 targetKoGene 也不注入：一张表（requiresKoGene）管到底，语义是"忽略"。
   // 缺基因就抛错而不是退回 TNF 兜底：母版兜底只用于直连 K40 手工跑（stderr 留痕），
@@ -735,7 +735,7 @@ export function buildTaskScript(task) {
   // R 端还需要一个 Rscript 垫片：母版 R 脚本统一写 `Rscript --vanilla`，
   // 而 --vanilla 会跳过 R_PROFILE_USER，模板挂载会静默失效（踩坑 #169）。
   // 垫片把 --vanilla 降级为等价组合并保留 user profile，必须排在 PATH 最前。
-  lines.push('export PATH="/mnt/ssd/bio_data/ops/layout_autoload/bin:${PATH}"');
+  lines.push('export PATH="/mnt/ssd/bio_data/tools/ops/layout_autoload/bin:${PATH}"');
   lines.push(`export PATH="${binDir(lineId)}:$PATH"`);
 
   // 出图模板注入：客户在需求单选的 plot_layout_config 必须真的生效。
@@ -745,8 +745,8 @@ export function buildTaskScript(task) {
   // 两者都只在 BIOANALYS_PROJECT_JSON 存在时介入，非出图步骤零影响。
   lines.push(`export BIOANALYS_PROJECT_JSON="${projectMetaPath(projectId)}"`);
   lines.push('export BIOANALYS_LAYOUT_LIB="/mnt/ssd/bio_data/bin"');
-  lines.push('export PYTHONPATH="/mnt/ssd/bio_data/ops/layout_autoload:${PYTHONPATH:-}"');
-  lines.push('export R_PROFILE_USER="/mnt/ssd/bio_data/ops/layout_autoload/Rprofile"');
+  lines.push('export PYTHONPATH="/mnt/ssd/bio_data/tools/ops/layout_autoload:${PYTHONPATH:-}"');
+  lines.push('export R_PROFILE_USER="/mnt/ssd/bio_data/tools/ops/layout_autoload/Rprofile"');
 
   // inputs/outputs 必须是数组；调用方传了裸字符串时归一化为空数组而不是抛 TypeError
   // （TypeError 会顺着事件回调打死整个 Node 进程，2026-10-19 实测踩到）。
@@ -798,7 +798,7 @@ export function buildTaskScript(task) {
   }
 
   if (throttled) {
-    // 走 ops/run_throttled_task.sh：nice/ionice 降权 + 存储水位与跨线门禁 + 线程封顶（aims §六.3）。
+    // 走 tools/ops/run_throttled_task.sh：nice/ionice 降权 + 存储水位与跨线门禁 + 线程封顶（aims §六.3）。
     // 用**命令串模式**（BIO_EXEC_CMD），$5 只给门禁做跨线静态扫描，传母版绝对路径。
     // 2026-10-21 之前这里把整条 rawCmd 当 $5 传，包装器随后执行 "$SCRIPT_PATH"：那是一个
     // 含空格的文件名，必然 ENOENT，所以 throttled 分支长期不可用，引擎（run.js）只能
@@ -819,7 +819,7 @@ export function buildTaskScript(task) {
     if (detached) {
       lines.push(`export BIO_WRAPPER_LEDGER_PATH="/tmp/${resolvedWrapperTaskId}_ledger.json"`);
     }
-    const wrapperCommand = `bash /mnt/ssd/bio_data/ops/run_throttled_task.sh ${resolvedWrapperTaskId} ${lineId} ${shellQuote(stepName)} self ${shellQuote(gatePath)}`;
+    const wrapperCommand = `bash /mnt/ssd/bio_data/tools/ops/run_throttled_task.sh ${resolvedWrapperTaskId} ${lineId} ${shellQuote(stepName)} self ${shellQuote(gatePath)}`;
     if (detached) {
       lines.push(
         `setsid nohup ${wrapperCommand} > ${SYSTEM_LOGS}/${resolvedWrapperTaskId}.wrapper.log 2>&1 < /dev/null &`,

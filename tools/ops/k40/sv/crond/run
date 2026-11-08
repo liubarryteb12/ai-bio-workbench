@@ -1,0 +1,15 @@
+#!/data/data/com.termux/files/usr/bin/sh
+set -eu
+exec 2>&1
+# tools/ops/k40/sv/crond/run —— K40 Termux 宿主面 runit 服务定义（仓库镜像，2026-11-01 纳管）
+# 落点：k40:$PREFIX/var/service/crond/run
+# 同步：bash tools/ops/k40/ensure_runsvdir.sh 会把本目录镜像到设备并幂等点火。
+#
+# 段1/段2：shebang + set -eu + exec 2>&1 钉在前三行。runsv 只把 ./run 的 fd1 接到
+# ./log/run 的 stdin（那里是 exec cat >> logfile），不做 exec 2>&1 的话 crond 自己的
+# 告警与崩溃栈全部丢掉，日志里只剩一片安静。
+#
+# 段3：crond 没有需要前置的条件守卫（无磁盘文件、无密钥、无依赖服务），本段留空。
+#
+# 段4：-n 让 crond 留在前台，runsv 才能监督它；-s 让日志走 stderr，由段2 并入日志。
+exec crond -n -s

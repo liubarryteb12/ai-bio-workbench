@@ -163,7 +163,7 @@ export function normalizeBiologicalPriors(priors) {
 /** 单图 SCI 排版两档（aims v3.0 模块 D；与 docs/figure_spec.md 同源）
  *
  * 2026-10-19 用户拍板：客户端只保留 4:3 / 16:9 两档，原三套模板收敛为按画幅比驱动的两档。
- * 与 ops/layout_helper.py 的 TEMPLATES 同值（两端各自持有副本，不共享代码）。
+ * 与 tools/reporting/layout_helper.py 的 TEMPLATES 同值（两端各自持有副本，不共享代码）。
  */
 export const PLOT_LAYOUT_TEMPLATES = {
   template_4x3: { aspect_ratio: '4:3', legend_position: 'outside_right', legend_direction: 'vertical', axis_style: 'classic_L', x_label_rotation: 'auto_45', show_footnote_panel: false },

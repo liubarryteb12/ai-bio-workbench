@@ -3,7 +3,7 @@
  *
  * 为什么需要：scripts/ 是母版目录，落到服务器 bin/ 后即可被 /api/tasks/submit 点名执行，
  * 而提交层只校验 step 字符集、不校验是否登记。2026-10-24 曾有 4 个 R 测试案例落在这里，
- * 会被 ops/06_deploy_scripts.ps1 原样推上服务器变成线上可执行步骤，同时 4 个按
+ * 会被 tools/ops/06_deploy_scripts.ps1 原样推上服务器变成线上可执行步骤，同时 4 个按
  * 「目录下每个文件都是母版」枚举的测试被打破（母版 58 -> 62）。
  *
  * 本文件把「scripts/ 下每个文件都必须登记」钉成机器可判的契约：
@@ -23,7 +23,7 @@ const LINES = ['line1_bulk', 'line2_scrna', 'line3_spatial'];
 /**
  * 允许留在 scripts/ 但不属于分析步骤的件。
  * 只收「确需部署、且不是客户可勾选的分析步骤」的件，逐个写明理由；不批量放行。
- * 与 ops/06_deploy_scripts.ps1 的 $deployExempt 保持同一份口径。
+ * 与 tools/ops/06_deploy_scripts.ps1 的 $deployExempt 保持同一份口径。
  */
 const DEPLOY_EXEMPT = {
   probe_env: '环境自检冒烟脚本：验证 seed 注入、PATH 注入与 manifest 在位（handoff.md 母版口径不含它）',
@@ -88,7 +88,7 @@ test('注册表登记的母版都必须真实存在于 scripts/', () => {
 });
 
 test('豁免名单只收已知的非步骤件，且与部署脚本口径一致', () => {
-  const deployPath = path.join(REPO, 'ops', '06_deploy_scripts.ps1');
+  const deployPath = path.join(REPO, 'tools', 'ops', '06_deploy_scripts.ps1');
   const deployText = fs.readFileSync(deployPath, 'utf8');
   for (const [name, reason] of Object.entries(DEPLOY_EXEMPT)) {
     assert.ok(

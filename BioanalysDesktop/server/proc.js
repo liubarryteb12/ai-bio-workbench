@@ -23,7 +23,7 @@ import { COMPUTE_SCP_TARGET, COMPUTE_SSH_PORT } from './domain.js';
 export const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
 /** ADB 通道辅助脚本（相对仓库根固定），pwsh 只作为该通道的执行器出现 */
-export const ADB_EXEC_SCRIPT = path.join(REPO_ROOT, 'ops', 'adb_exec.ps1');
+export const ADB_EXEC_SCRIPT = path.join(REPO_ROOT, 'tools', 'ops', 'adb_exec.ps1');
 
 /** 过长命令改走临时 .sh，绝不把多行内容塞进 Windows 命令行参数 */
 const ADB_INLINE_COMMAND_LIMIT = 8000;
@@ -59,7 +59,7 @@ export function killProcessTree(child) {
   }
 }
 
-/** adb 的候选位置，与 ops/00_link_check.ps1 保持一致 */
+/** adb 的候选位置，与 tools/ops/00_link_check.ps1 保持一致 */
 const ADB_CANDIDATES = [
   'C:/adb/platform-tools/adb.exe',
 ];
@@ -454,7 +454,7 @@ function adbResultText({ stdout = '', stderr = '', error = null }) {
 }
 
 /**
- * ADB 远端执行（宽松版）：经 ops/adb_exec.ps1 在 ubuntu 容器内执行。
+ * ADB 远端执行（宽松版）：经 tools/ops/adb_exec.ps1 在 ubuntu 容器内执行。
  *
  * 通道固定为 `-Transport adb -RequireAdb`：adb 不可用即报错，不回落 ssh。
  * pwsh 只作为通道执行器，因此这里直接走独立 spawnSync，不经过

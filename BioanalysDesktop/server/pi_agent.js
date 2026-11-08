@@ -13,7 +13,7 @@
  *   - 只读优先，唯一写动作是模型切换（改白名单 pin 文件 + 重启 tmux），
  *     且只接受本地白名单内的组合；
  *   - 5.2 纳管（2026-11-01）：tmux 起的是远端 $HOME/bin/pi_a2a_launch.sh，
- *     仓库镜像在 ops/k40/pi_a2a_launch.sh（Termux 宿主落点，不进容器 ops 同步面）；
+ *     仓库镜像在 tools/ops/k40/pi_a2a_launch.sh（Termux 宿主落点，不进容器 ops 同步面）；
  *     切换前用 ERR_LAUNCHER_MISSING 校验在位，缺文件 exit 3 明确报错，不再踩空。
  */
 
@@ -29,7 +29,7 @@ export const DEFAULT_MODEL = {
   model: 'glm-5.3-flash',
 };
 
-/** 与 ops/k40/pi_a2a_daemon.sh 的模型锁同源（A2A-D 锁定组合，不得扩大） */
+/** 与 tools/ops/k40/pi_a2a_daemon.sh 的模型锁同源（A2A-D 锁定组合，不得扩大） */
 export const ALLOWED_MODELS = [
   DEFAULT_MODEL,
   { provider: 'deepseek', model: 'deepseek-v4.1-flash' },
@@ -98,7 +98,7 @@ export function buildPeerTokenCommand() {
   return b64Envelope(`cat "${PI_AGENT_DIR}/.peer_token"`);
 }
 
-/** 遥测侧车（:9911）地址；与 ops/k40/pi_telemetry_sidecar.py 的 SIDE_PORT 同源。 */
+/** 遥测侧车（:9911）地址；与 tools/ops/k40/pi_telemetry_sidecar.py 的 SIDE_PORT 同源。 */
 export const TELEMETRY_URL = 'http://127.0.0.1:9911/api/telemetry/overview';
 
 /** 侧车探活：在手机侧 curl 一次，200 或 401 都说明进程在听，000 说明没人监听。 */

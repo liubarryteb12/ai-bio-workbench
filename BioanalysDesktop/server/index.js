@@ -81,7 +81,7 @@ const REPO_ROOT = path.resolve(fileURLToPath(new URL('../../', import.meta.url))
  * 工作台口令（HTTP Basic）。
  * 18787 会经 frp 暴露到公网，frp 从本机 127.0.0.1 回连，服务端无法用来源地址区分内外，
  * 所以只能整站鉴权。安全口径（D-29 Fail-Closed）：
- *   1. 环境变量给了账号口令就强制校验（正式常驻由 ops/serve_guard.ps1 注入）；
+ *   1. 环境变量给了账号口令就强制校验（正式常驻由 tools/ops/serve_guard.ps1 注入）；
  *   2. 非测试环境且未显式 BIO_ALLOW_DEV_NOAUTH=1 时，若未配置口令，自动生成随机强口令
  *      并打印到控制台（仅在显式传入 BIO_AUTH_RUNTIME_FILE 时写该临时文件，退出即删），
  *      消灭免密裸奔；Windows 的 0o600 不生效，所以默认不落盘明文口令；
@@ -123,7 +123,7 @@ if (!AUTH_ENABLED && !IS_TEST_RUNTIME && !DEV_NOAUTH) {
   AUTH_USER = 'admin';
   AUTH_PASS = randomBytes(18).toString('base64url');
   AUTH_ENABLED = true;
-  // 5.6（2026-11-01）：明文口令不再进 stderr。ops/serve_guard.ps1 用
+  // 5.6（2026-11-01）：明文口令不再进 stderr。tools/ops/serve_guard.ps1 用
   // -RedirectStandardError 持久化 stderr，口令打 stderr 等于落盘 cn_debug/workbench_err.log。
   // 改为一律写运行时口令文件（退出即焚），人读口令走 node server/print_runtime_auth.js。
   if (!process.env.BIO_AUTH_RUNTIME_FILE) {

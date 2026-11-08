@@ -75,7 +75,7 @@ export function runTask(task, handlers = {}) {
   const detached = isLongRunningStep(task.step);
   const wrapperTaskId = task.preparedWrapperTaskId || `task_${Date.now()}_${taskId.slice(0, 8)}`;
   // 远端执行与审计用同一份脚本，避免"审的是一套、跑的是另一套"
-  // throttled: true —— 工作台任务必须经 ops/run_throttled_task.sh（nice/ionice 降权 + 存储水位与
+  // throttled: true —— 工作台任务必须经 tools/ops/run_throttled_task.sh（nice/ionice 降权 + 存储水位与
   // 跨线门禁 + 线程封顶，aims §六.3）。2026-10-21 之前这里是默认 false，等于整条契约对引擎任务
   // 全部失效（D-21）；包装器缺 BIO_EXEC_CMD 支持时传命令串会 ENOENT，现已由命令串模式解决。
   // 提交层已经编译并审过的脚本优先：重编译会换一个 wrapperTaskId，等于审的和跑的不是同一份

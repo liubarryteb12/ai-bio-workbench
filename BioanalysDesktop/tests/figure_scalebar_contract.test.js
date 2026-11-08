@@ -97,7 +97,7 @@ test("add_scalebar 只登记，绘制必须后置到布局完成之后", () => {
 });
 test("比例尺与标定模块必须共用同一晶格口径（100um / 实测 pitch）", () => {
   const sf = fs.readFileSync(SF, "utf8");
-  const cal = fs.readFileSync(path.join(REPO, "ops", "spatial_calibration.py"), "utf8");
+  const cal = fs.readFileSync(path.join(REPO, "tools", "reporting", "spatial_calibration.py"), "utf8");
   // 两处一旦口径分叉，图上的 500um 与代码里的 200um 就不是同一个长度。
   // 第 73 轮起主口径统一为晶格 100um；65um 只保留为交叉校验常量。
   assert.match(sf, /SPOT_PITCH_UM\s*=\s*100\.0/, "spatial_figures 必须定义 100um 晶格常量");

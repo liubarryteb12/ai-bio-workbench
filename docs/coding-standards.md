@@ -19,7 +19,7 @@
   无盘符、无 `C:/` 路径。路径一律 `/` 分隔的 POSIX 绝对路径。
 - **路径与文件名纯英文**：Linux 系统内不出现中文字符（directories.md 命名红线，
   含"Linux 系统内一律英文路径与文件名"条）。中文只允许进注释与报告正文。
-- **可执行位**：脚本部署后必须 755（`ops/06_deploy_scripts.ps1` 已带 chmod + `test -x` 复核）。
+- **可执行位**：脚本部署后必须 755（`tools/ops/06_deploy_scripts.ps1` 已带 chmod + `test -x` 复核）。
 - **不用 em dash（—）**：注释与报告用逗号、冒号、句号、括号。
 
 ops/ 下的 PowerShell 脚本跑在本地 PC 侧，只做链路运维与部署传输入口，

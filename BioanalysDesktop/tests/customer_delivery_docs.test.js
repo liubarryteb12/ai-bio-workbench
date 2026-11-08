@@ -15,7 +15,7 @@ import path from 'node:path';
 const BIOANALYS_DIR = path.resolve(import.meta.dirname, '..');
 const REPO = path.resolve(BIOANALYS_DIR, '..');
 const RUNBOOK = path.join(REPO, 'docs', 'RUNBOOK_K40_SETUP.md');
-const PACKAGER = path.join(REPO, 'ops', 'build_client_report.py');
+const PACKAGER = path.join(REPO, 'tools', 'reporting', 'build_client_report.py');
 const CORE = path.join(REPO, 'tools', 'reporting', 'delivery_acceptance_core.mjs');
 
 test('RUNBOOK 存在且一页式（控制在 120 行内，超了就拆文档）', () => {
@@ -39,14 +39,14 @@ test('RUNBOOK 的每一处文档引用都真实存在（不许指向不存在的
 test('RUNBOOK 的四条命令入口都真实存在（脚本路径可执行）', () => {
   const text = fs.readFileSync(RUNBOOK, 'utf8');
   const scripts = [
-    'ops/00_link_check.ps1',
+    'tools/ops/00_link_check.ps1',
     'tools/dev/preflight.mjs',
-    'ops/fix_runsvdir.sh',
+    'tools/ops/fix_runsvdir.sh',
     'docs/k40_service_contract.md',
     'docs/k40_heartbeat.md',
     'docs/k40_runit_recovery.md',
     'docs/k40_hostkey_guard.md',
-    'ops/k40/env_lock/hostkey_fingerprints.json',
+    'tools/ops/k40/env_lock/hostkey_fingerprints.json',
   ];
   for (const rel of scripts) {
     assert.ok(text.includes(rel), 'RUNBOOK 缺关键入口：' + rel);

@@ -14,7 +14,7 @@
 
 ## 2. 写法
 
-`ops/k40/sv/sshd/run`
+`tools/ops/k40/sv/sshd/run`
 
 ```sh
 HOST_KEY=/data/data/com.termux/files/usr/etc/ssh/ssh_host_ed25519_key
@@ -26,7 +26,7 @@ fi
 exec sshd -D -e 2>&1
 ```
 
-`ops/k40/sv/ubuntu-sshd/run`（密钥在容器里，宿主侧只做判断，生成再进容器）
+`tools/ops/k40/sv/ubuntu-sshd/run`（密钥在容器里，宿主侧只做判断，生成再进容器）
 
 ```sh
 ROOTFS="$PREFIX/var/lib/proot-distro/containers/ubuntu/rootfs"
@@ -71,10 +71,10 @@ Termux sshd 侧**没有**做删钥演练：8022 是通往设备的唯一通道�
 
 ## 5. 自测脚本
 
-`ops/k40/hostkey_guard_selftest.sh`，在设备上跑（不碰生产密钥）：
+`tools/ops/k40/hostkey_guard_selftest.sh`，在设备上跑（不碰生产密钥）：
 
 ```sh
-sh ops/k40/hostkey_guard_selftest.sh "$PREFIX/var/service"
+sh tools/ops/k40/hostkey_guard_selftest.sh "$PREFIX/var/service"
 # 末行 SELFTEST_PASS 即全绿，exit 0；任一断言失败则 SELFTEST_FAIL，exit 1
 ```
 

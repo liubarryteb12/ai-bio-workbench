@@ -3,7 +3,7 @@
  * 打包管线末尾内联触发验收 + 未持有效回执禁止放行交付（409 ERR_DELIVERY_UNVERIFIED）。
  *
  * 单一真源：四道关的判据只写在这一个文件里。
- *   ops/delivery_acceptance.ps1 退化成人用的一行包装（保留 -SkipExtract 等开关）；
+ *   tools/ops/delivery_acceptance.ps1 退化成人用的一行包装（保留 -SkipExtract 等开关）；
  *   BioanalysDesktop/server/report.js 在打包末尾直接 import 本模块，
  *   进程单接缝门禁（proc_seam_guard）禁止 server/ 起子进程，所以解包必须是
  *   纯 Node 实现（zlib gunzip + ustar 解析），不借道 tar.exe。

@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
-const SCRIPT = path.join(REPO, 'ops', 'port_preflight.ps1');
+const SCRIPT = path.join(REPO, 'tools', 'ops', 'port_preflight.ps1');
 
 // pwsh 在多数 Windows 机器上不存在（PowerShell 7 不是系统自带），净化 PATH 下
 // spawnSync('pwsh') 直接 ENOENT。走工具链解析器：pwsh 7 优先，退回 Windows PowerShell。
@@ -68,7 +68,7 @@ test('port preflight distinguishes a Bound foreign owner from a free port', (tes
 
 test('guard refuses to kill foreign owners and launchers detect all TCP states', (testContext) => {
   if (!needShell(testContext)) return;
-  const guard = fs.readFileSync(path.join(REPO, 'ops', 'serve_guard.ps1'), 'utf8');
+  const guard = fs.readFileSync(path.join(REPO, 'tools', 'ops', 'serve_guard.ps1'), 'utf8');
   assert.match(guard, /port_preflight\.ps1/);
   assert.match(guard, /status\s+-eq\s+'foreign'/);
   assert.match(guard, /拒绝清理外部进程/);

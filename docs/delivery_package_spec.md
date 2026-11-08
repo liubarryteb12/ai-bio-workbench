@@ -3,7 +3,7 @@
 > 版本：v1.0（2026-10-14）
 > 适用对象：`ops/09_package_delivery.ps1`（PC 侧入口，ssh 驱动远端打包）
 > 上位约束：`docs/delivery_supervisor_prompt.md` v3.0 第五节、`docs/directories.md`
-> 实现状态：**打包能力已由 `ops/build_client_report.py` + 18787 入口 `server/report.js` 承担**；
+> 实现状态：**打包能力已由 `tools/reporting/build_client_report.py` + 18787 入口 `server/report.js` 承担**；
 > `ops/09_package_delivery.ps1` 不再实现（2026-10-21 裁定，见下节「零」）。
 
 > **2026-10-18 补充：本规范的部分内容已被 `aims.txt` v3.0 §7.2 取代。**
@@ -11,7 +11,7 @@
 > - 包内目录名以 aims v3.0 为准：`01_Adapted_Scripts/`（本文写作 `01_Adapted_Code/`）、
 >   `02_Figures_and_Tables/`、`03_Interpretation_Report/`。
 > - 报告从"三段式 README"升级为**七章标准结构**，并同时产出 `.md` 与单文件可交互 `.html`。
-> - 上述能力已由 `ops/build_client_report.py` 实现（服务器侧，`python3 ops/build_client_report.py
+> - 上述能力已由 `tools/reporting/build_client_report.py` 实现（服务器侧，`python3 tools/reporting/build_client_report.py
 >   --project <dir>`），本文第六节的 `09_package_delivery.ps1` 仍未实现。
 > - 本文第三节的前置门禁里，**存储水位、失败台账确认、`.sha256` 旁挂文件**三项尚未并入
 >   `build_client_report.py`；若要严格执行本规范，需在 PC 侧入口补齐这三道闸。
@@ -21,14 +21,14 @@
 
 | 能力 | 实际实现 | 位置 |
 |---|---|---|
-| 交付包（三大件 + tar.gz + delivery_manifest） | `ops/build_client_report.py`（服务器侧引擎，退出码 0/1/2） | 远端 `python3 ops/build_client_report.py --project <项目目录>` |
+| 交付包（三大件 + tar.gz + delivery_manifest） | `tools/reporting/build_client_report.py`（服务器侧引擎，退出码 0/1/2） | 远端 `python3 tools/reporting/build_client_report.py --project <项目目录>` |
 | 工作台触发 + 三大件回搬本地 | `runReportBuild` + `pullDeliverables` | `BioanalysDesktop/server/report.js`，端点 `POST /api/report/build` |
 | 前置门禁：存储水位 >= 20% | `runReportPreflight`（`df -P` 解析剩余百分比） | 同上，`PREFLIGHT_MIN_FREE_PCT = 20` |
 | 前置门禁：无进行中任务 | 同上（扫本项目台账 `status=running`） | 同上 |
 | 前置门禁：失败台账需人工确认 | 同上（`force: true` 对应本文的 `-Force`） | 同上，HTTP 412 拒绝并列出失败台账 |
 | 前置门禁：远端输出完整性 | 同上（缺 `END|` 标记判输出截断） | 同上，防 argv 静默截断老坑 |
 | `.sha256` 旁挂校验文件 | `writeSha256Sidecars`（`<文件>.sha256`，sha256sum 可直接 `-c`） | 同上，回搬成功后自动生成 |
-| 包内 `CHECKSUMS.sha256` | `write_checksums`（相对路径排序，跳过自身与 `PACKAGE_META.json`，先写清单再打 tar） | `ops/build_client_report.py`；2026-10-21 远端真机 285 文件 `sha256sum -c` 全过 |
+| 包内 `CHECKSUMS.sha256` | `write_checksums`（相对路径排序，跳过自身与 `PACKAGE_META.json`，先写清单再打 tar） | `tools/reporting/build_client_report.py`；2026-10-21 远端真机 285 文件 `sha256sum -c` 全过 |
 
 **因此**：本文第二节点名的入口 `ops/09_package_delivery.ps1` **作废**，不要照它新建脚本；
 本文第三节六条门禁里第 3/5/6 条已在 18787 调用侧实现（引擎 CLI 直跑仍不检查，属于已知边界）；
@@ -76,7 +76,7 @@ pwsh -File ops/09_package_delivery.ps1 -Project <project_id> [-Line <line_id>] [
 
 ## 三、前置门禁（任一不过即 exit 1）
 
-1. **链路**：`ssh k40-ubuntu 'echo CONTAINER_OK'` 通（不通先跑 `ops/00_link_check.ps1`）。
+1. **链路**：`ssh k40-ubuntu 'echo CONTAINER_OK'` 通（不通先跑 `tools/ops/00_link_check.ps1`）。
 2. **项目存在**：`projects/<project_id>/project.json` 可读。
 3. **存储水位**：`df -P /mnt/ssd/bio_data` 剩余 >= 20%。
 4. **产物非空**：所选线至少一条的 `figures/` 有 `.png`；三条线全空则拒绝打包。
@@ -172,7 +172,7 @@ pwsh -File ops/09_package_delivery.ps1 -Project <project_id> [-Line <line_id>] [
 
 | 项 | 关系 |
 |---|---|
-| `ops/07_pull_outputs.ps1` | 本地回搬通道，与本脚本正交：07 是"服务器到本地存档"，09 是"服务器到客户交付包" |
+| `tools/ops/07_pull_outputs.ps1` | 本地回搬通道，与本脚本正交：07 是"服务器到本地存档"，09 是"服务器到客户交付包" |
 | `run_throttled_task.sh` | 不调用。打包是 IO 轻任务，不走绑核包装器，也不产生任务台账 |
 | `system_logs/` | 只读，用于门禁判断与摘要，不写入新台账 |
 | `con_hf/` 台账 | 打包完成后由代理追加一条操作台账（做了什么 / 包路径 / 文件数 / 校验结果） |

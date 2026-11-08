@@ -19,14 +19,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const MOD = path.join(REPO, "ops", "spatial_calibration.py");
+const MOD = path.join(REPO, "tools", "reporting", "spatial_calibration.py");
 
 function read() {
   return fs.readFileSync(MOD, "utf8");
 }
 
 test("标定模块必须存在且提供 um_per_px 入口", () => {
-  assert.ok(fs.existsSync(MOD), "缺 ops/spatial_calibration.py");
+  assert.ok(fs.existsSync(MOD), "缺 tools/reporting/spatial_calibration.py");
   const src = read();
   assert.match(src, /def um_per_px\(/, "必须提供 um_per_px 函数");
 });

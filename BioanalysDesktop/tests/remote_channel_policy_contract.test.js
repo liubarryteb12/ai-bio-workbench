@@ -1,7 +1,7 @@
 /**
  * 远程通道策略契约（2026-11-06 用户要求：adb 为主，sshd 备用）。
  *
- * 只做静态校验（真机连通性由 ops/adb_exec.ps1 自己保证）：
+ * 只做静态校验（真机连通性由 tools/ops/adb_exec.ps1 自己保证）：
  *   1. 辅助脚本存在，且确实实现了 adb 与 ssh 两条通道；
  *   2. 默认通道是 adb，adb 失败即报错，ssh 只在显式选择时使用；
  *   3. 显式 ssh 特殊开关必须能自愈端口转发（adb server 重启会清空转发）。
@@ -13,10 +13,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const HELPER = path.join(REPO, "ops/adb_exec.ps1");
+const HELPER = path.join(REPO, "tools/ops/adb_exec.ps1");
 
 test("存在 adb 执行辅助脚本，且实现 adb 与 ssh 两条通道", () => {
-  assert.ok(fs.existsSync(HELPER), "必须存在 ops/adb_exec.ps1");
+  assert.ok(fs.existsSync(HELPER), "必须存在 tools/ops/adb_exec.ps1");
   const src = fs.readFileSync(HELPER, "utf8");
   assert.match(src, /run-as com\.termux/, "adb 通道必须用 run-as 进 Termux");
   assert.match(src, /proot-distro login ubuntu/, "adb 通道必须能进 ubuntu 容器");

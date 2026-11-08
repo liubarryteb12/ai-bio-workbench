@@ -1,5 +1,5 @@
 /**
- * P7 回归：单文件出版级 HTML 报告渲染器（ops/render_report_html.py）。
+ * P7 回归：单文件出版级 HTML 报告渲染器（tools/reporting/render_report_html.py）。
  *
  * 覆盖（aims v2.5 七.3「项目报告双模态交付」）：
  *   1. 正常渲染：退出码 0、产物非空、含 doctype/style/目录锚点；
@@ -20,7 +20,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
-const SCRIPT = path.join(ROOT, 'ops', 'render_report_html.py');
+const SCRIPT = path.join(ROOT, 'tools', 'reporting', 'render_report_html.py');
 const ENV = { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' };
 const FENCE = String.fromCharCode(96, 96, 96);
 

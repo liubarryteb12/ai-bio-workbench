@@ -6,9 +6,9 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
-const SSHD = path.join(REPO, 'ops', 'k40', 'sv', 'sshd', 'run');
-const UBU = path.join(REPO, 'ops', 'k40', 'sv', 'ubuntu-sshd', 'run');
-const SELFTEST = path.join(REPO, 'ops', 'k40', 'hostkey_guard_selftest.sh');
+const SSHD = path.join(REPO, 'tools', 'ops', 'k40', 'sv', 'sshd', 'run');
+const UBU = path.join(REPO, 'tools', 'ops', 'k40', 'sv', 'ubuntu-sshd', 'run');
+const SELFTEST = path.join(REPO, 'tools', 'ops', 'k40', 'hostkey_guard_selftest.sh');
 
 // ── host key 守卫的静态契约（2026-11-03，4 Argon 第十八/十九轮）──
 //
@@ -71,7 +71,7 @@ test('守卫入口唯一：只在缺 key 时触发一次，key 由同一个变�
 });
 
 test('自测脚本覆盖三条分支并带哨兵与清理', () => {
-  assert.ok(fs.existsSync(SELFTEST), 'ops/k40/hostkey_guard_selftest.sh 缺失');
+  assert.ok(fs.existsSync(SELFTEST), 'tools/ops/k40/hostkey_guard_selftest.sh 缺失');
   const text = read(SELFTEST);
   assert.ok(text.includes('SELFTEST_PASS'), '缺成功哨兵');
   assert.ok(text.includes('SELFTEST_FAIL'), '缺失败哨兵');

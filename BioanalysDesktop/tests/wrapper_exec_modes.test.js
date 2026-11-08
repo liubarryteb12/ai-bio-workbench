@@ -1,7 +1,7 @@
 /**
  * 包装器执行体形态测试（D-21：引擎必须走包装器，包装器必须能执行命令串）
  *
- * 背景（2026-10-21 发现）：ops/run_throttled_task.sh 的 $5 一直是**母版绝对路径**，
+ * 背景（2026-10-21 发现）：tools/ops/run_throttled_task.sh 的 $5 一直是**母版绝对路径**，
  * 而 server/task.js 的 throttled 分支把整条命令串（'scenic_tf --input ... --output ...'）
  * 当 $5 传进来 —— 包装器随后执行 "$SCRIPT_PATH"，那是一个含空格的"文件名"，必然 ENOENT。
  * 结果：throttled 分支长期不可用，引擎（run.js）一直用 throttled=false 绕过包装器直跑，
@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
-const WRAPPER = path.join(REPO, 'ops', 'run_throttled_task.sh');
+const WRAPPER = path.join(REPO, 'tools', 'ops', 'run_throttled_task.sh');
 
 function findBash() {
   const candidates = [process.env.BIO_BASH, 'D:\\Git\\bin\\bash.exe', 'D:\\Git\\usr\\bin\\bash.exe', 'bash']

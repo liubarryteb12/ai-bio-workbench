@@ -1,8 +1,8 @@
 # K40 runit 服务定义的四段式契约
 
-落点：`ops/k40/sv/{sshd,ubuntu-sshd,crond,ssh-agent}/run`（仓库镜像，真身在 k40 的 `$PREFIX/var/service/`）。
+落点：`tools/ops/k40/sv/{sshd,ubuntu-sshd,crond,ssh-agent}/run`（仓库镜像，真身在 k40 的 `$PREFIX/var/service/`）。
 测试：`BioanalysDesktop/tests/runit_sv_contract.test.js`、`BioanalysDesktop/tests/hostkey_guard.test.js`。
-自测：`ops/k40/hostkey_guard_selftest.sh`（在设备上跑，见第四节）。
+自测：`tools/ops/k40/hostkey_guard_selftest.sh`（在设备上跑，见第四节）。
 
 ## 一、为什么要有这条契约
 
@@ -75,7 +75,7 @@ sshd / ubuntu-sshd 守卫顺序与层代号；错误码必须用 `echo "` 打到
 
 ## 四、设备侧自测与两个假绿坑
 
-`sh ops/k40/hostkey_guard_selftest.sh $PREFIX/var/service` 在设备上跑（Windows 没有 sh，
+`sh tools/ops/k40/hostkey_guard_selftest.sh $PREFIX/var/service` 在设备上跑（Windows 没有 sh，
 不进 CI）。它把 run 脚本复制到 `mktemp -d` 里，把密钥路径换到临时目录、段4 的 exec 换成
 `echo EXEC_REACHED`，再用 PATH shim 冒充 `ssh-keygen` 与 `proot-distro`，最后断言
 21 条（两个服务 × 缺 key 生成 / 有 key 不生成 / 生成失败打层代号且 exit 1）。

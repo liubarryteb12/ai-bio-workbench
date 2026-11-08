@@ -39,7 +39,7 @@ export const SSH_OPTS = [
 ];
 export const TARGET = 'k40-ubuntu';
 export const REMOTE_ROOT = '/mnt/ssd/bio_data';
-export const WRAPPER = `${REMOTE_ROOT}/ops/run_throttled_task.sh`;
+export const WRAPPER = `${REMOTE_ROOT}/tools/ops/run_throttled_task.sh`;
 export const BIN = `${REMOTE_ROOT}/bin`;
 export const SYSTEM_LOGS = `${REMOTE_ROOT}/system_logs`;
 export const RUNNING_DIR = `${SYSTEM_LOGS}/_running`;

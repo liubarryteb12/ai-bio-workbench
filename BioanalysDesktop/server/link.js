@@ -1,7 +1,7 @@
 /**
  * 链路四段探测：设备 -> forward -> Termux sshd -> 容器 sshd
  *
- * 与 ops/00_link_check.ps1 同源同口径，这里是接口化实现。
+ * 与 tools/ops/00_link_check.ps1 同源同口径，这里是接口化实现。
  * 输出形状对齐"断在哪一段"的排查需求，不做笼统的布尔。
  */
 
@@ -86,7 +86,7 @@ export function checkTermux() {
 export function checkContainer() {
   const command = [
     'echo CONTAINER_OK',
-    '/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript --version 2>&1 | head -1',
+    '/mnt/ssd/bio_data/tools/ops/layout_autoload/bin/Rscript --version 2>&1 | head -1',
     '/usr/bin/python3 --version',
     'echo "CPUS_AVAIL=$(nproc)"',
     'echo "CPUS_TOTAL=$(grep -c ^processor /proc/cpuinfo)"',

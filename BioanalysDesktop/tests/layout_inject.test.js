@@ -47,7 +47,7 @@ test('R 端：BIOANALYS_LAYOUT_LIB 指向 bin/', () => {
 
 test('R 端：Rscript 垫片排在 PATH 最前（母版脚本用 --vanilla 会跳过 profile）', () => {
   const script = buildTaskScript(base);
-  const shimLine = script.indexOf('export PATH="/mnt/ssd/bio_data/ops/layout_autoload/bin:${PATH}"');
+  const shimLine = script.indexOf('export PATH="/mnt/ssd/bio_data/tools/ops/layout_autoload/bin:${PATH}"');
   const binLine = script.indexOf('export PATH="/mnt/ssd/bio_data/bin/line1_bulk:$PATH"');
   assert.ok(shimLine >= 0, '缺少 Rscript 垫片 PATH');
   assert.ok(binLine >= 0, '缺少本线 bin PATH');

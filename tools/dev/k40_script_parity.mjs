@@ -64,7 +64,7 @@ function remoteScripts() {
   let result;
   try {
     result = spawnSync("pwsh", [
-      "-NoProfile", "-File", path.join(REPO, "ops", "adb_exec.ps1"),
+      "-NoProfile", "-File", path.join(REPO, "tools", "ops", "adb_exec.ps1"),
       "-Level", "ubuntu", "-Transport", "adb", "-RequireAdb", "-ScriptPath", scriptPath,
     ], {
       cwd: REPO,

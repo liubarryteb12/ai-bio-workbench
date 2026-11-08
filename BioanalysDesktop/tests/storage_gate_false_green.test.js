@@ -1,7 +1,7 @@
 /**
  * 存储水位门禁的「量不出来必须算不过」回归测试。
  *
- * 真机事故（2026-11-01，K40 上线后首次真机核验）：ops/check_storage_and_isolation.sh
+ * 真机事故（2026-11-01，K40 上线后首次真机核验）：tools/ops/check_storage_and_isolation.sh
  * 只开了 `set -e`，没开 pipefail。df -P 失败时管道里最后的 tr 仍回 0，set -e 不触发，
  * USED_PERCENT 取到空串；下一行 $((100 - USED_PERCENT)) 把空串当 0 算，FREE_PERCENT=100，
  * 门禁于是打印「[OK] … 剩余空间=100%」并 exit 0。测不出来的存储水位被判成健康，
@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
-const GATE = path.join(REPO_ROOT, 'ops', 'check_storage_and_isolation.sh').replace(/\\/g, '/');
+const GATE = path.join(REPO_ROOT, 'tools', 'ops', 'check_storage_and_isolation.sh').replace(/\\/g, '/');
 
 function findBash() {
   const candidates = [process.env.BRIDGE_GUARD_BASH, 'D:\\Git\\bin\\bash.exe', 'D:\\Git\\usr\\bin\\bash.exe', 'bash']

@@ -70,7 +70,7 @@ test('resolveComputeAdapter：接受 adb/ssh，未知值 fail-closed', () => {
   }
 });
 
-test('runRemoteRaw 默认调用 adbRaw：pwsh + ops/adb_exec.ps1 + Transport adb', (t) => {
+test('runRemoteRaw 默认调用 adbRaw：pwsh + tools/ops/adb_exec.ps1 + Transport adb', (t) => {
   setAdapter(t, undefined);
   const calls = [];
   t.mock.method(childProcess, 'spawnSync', (program, args, options) => {

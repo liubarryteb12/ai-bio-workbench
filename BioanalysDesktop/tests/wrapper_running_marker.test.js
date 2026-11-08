@@ -7,7 +7,7 @@
  *
  * 约束（本测试守住）：
  * 1. 标记必须放在 system_logs/_running/ 子目录，不能混进 system_logs/*.json
- *    （ops/03_check_logs_remote.sh 按该通配逐个校验台账，混进去会被判 VIOLATION）；
+ *    （tools/ops/03_check_logs_remote.sh 按该通配逐个校验台账，混进去会被判 VIOLATION）；
  * 2. 正常结束时必须在**写完台账之后**才删标记，异常终止才留证据；
  * 3. 过期标记（>7 天）在脚本启动时清理，避免永久堆积。
  */
@@ -21,8 +21,8 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
-const WRAPPER = path.join(REPO, 'ops', 'run_throttled_task.sh');
-const CHECKER = path.join(REPO, 'ops', '03_check_logs_remote.sh');
+const WRAPPER = path.join(REPO, 'tools', 'ops', 'run_throttled_task.sh');
+const CHECKER = path.join(REPO, 'tools', 'ops', '03_check_logs_remote.sh');
 const TEST_ROOT = path.join(REPO, 'artifacts', 'wrapper_running_marker_tests_' + process.pid + '_' + Math.random().toString(36).slice(2, 8));
 // 定位 bash：Git for Windows 自带 D:\Git\bin\bash.exe，PATH 里通常没有 bash（与其它真跑测试同口径）。
 const BASH = [process.env.BIO_BASH, 'D:\\Git\\bin\\bash.exe', 'D:\\Git\\usr\\bin\\bash.exe', 'bash']

@@ -14,7 +14,7 @@ import path from 'node:path';
 
 const BIOANALYS_DIR = path.resolve(import.meta.dirname, '..');
 const REPO = path.resolve(BIOANALYS_DIR, '..');
-const PACKAGER = path.join(REPO, 'ops', 'build_client_report.py');
+const PACKAGER = path.join(REPO, 'tools', 'reporting', 'build_client_report.py');
 const CORE = path.join(REPO, 'tools', 'reporting', 'delivery_acceptance_core.mjs');
 
 test('打包器在 CHECKSUMS 之前生成指南（因此受哈希与签名保护）', () => {

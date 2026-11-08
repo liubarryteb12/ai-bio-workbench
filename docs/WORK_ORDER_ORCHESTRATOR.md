@@ -54,4 +54,4 @@ node ops/work_order_orchestrator_gate.mjs
 
 ## 与旧同步守护进程的关系
 
-`ops/sync_daemon.ps1` 保留门户收件箱轮询与结果回传能力。它没有完成回执逐项校验，任务之间只按固定等待，不能单独作为严格验收证据。新编排器以工单 JSON 为入口，把同样的服务接口收紧成可复核的 fail closed 闭环。
+`tools/ops/sync_daemon.ps1` 保留门户收件箱轮询与结果回传能力。它没有完成回执逐项校验，任务之间只按固定等待，不能单独作为严格验收证据。新编排器以工单 JSON 为入口，把同样的服务接口收紧成可复核的 fail closed 闭环。

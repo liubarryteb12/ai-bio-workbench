@@ -8,7 +8,7 @@ import { runSync } from '../server/proc.js';
 
 /**
  * 一致性测试：Node 判定（server/ledger.js）与服务器侧 bash 判定
- * （ops/03_check_logs_remote.sh）必须对同一批样例给出一致结论。
+ * （tools/ops/03_check_logs_remote.sh）必须对同一批样例给出一致结论。
  *
  * 两份实现各自独立，漂移是真实风险。这条测试就是防漂移的锚。
  * 服务器不可达时测试失败，这正是我们要的信号（不要静默跳过）。
@@ -42,7 +42,7 @@ function runWithRetry(argv, options, label) {
 
 const repoRoot = path.resolve(import.meta.dirname, '../..');
 const samplesDir = path.join(repoRoot, 'cn_debug/samples/system_logs');
-const checkerScript = path.join(repoRoot, 'ops/03_check_logs_remote.sh');
+const checkerScript = path.join(repoRoot, 'tools/ops/03_check_logs_remote.sh');
 const RUN_TAG = process.pid + '-' + Math.random().toString(36).slice(2, 8);
 const remoteDir = '/tmp/bad_ledger_consistency_' + RUN_TAG;
 const remoteScript = '/tmp/03_check_logs_remote_' + RUN_TAG + '.sh';

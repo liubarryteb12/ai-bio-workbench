@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
-const SV = path.join(REPO, 'ops', 'k40', 'sv');
+const SV = path.join(REPO, 'tools', 'ops', 'k40', 'sv');
 const SERVICES = ['sshd', 'ubuntu-sshd', 'crond', 'ssh-agent', 'pi-a2a'];
 const SHEBANG = '#!/data/data/com.termux/files/usr/bin/sh';
 

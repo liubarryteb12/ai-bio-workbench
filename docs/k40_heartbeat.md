@@ -40,7 +40,7 @@ run-as 的 cwd 是 `/data/data/com.termux`，所以脚本路径写成 `files/usr
 Windows 侧入口在 `server/heartbeat.js` 的 `readHeartbeat()`，路由是 `GET /api/k40/heartbeat`
 （可带 `?serial=` 覆盖默认序列号）。
 
-设备侧脚本是 `ops/k40/heartbeat.sh`（部署到 `$PREFIX/bin/k40_heartbeat.sh`），
+设备侧脚本是 `tools/ops/k40/heartbeat.sh`（部署到 `$PREFIX/bin/k40_heartbeat.sh`），
 默认输出一行 JSON，`--write <path>` 时原子写文件（tmp + `mv -f`）。
 
 ## 三、五条实测改判（都是设计之初没想到的）
@@ -244,7 +244,7 @@ curl http://127.0.0.1:18787/api/k40/heartbeat
 部署（改完脚本后）：
 
 ```bash
-adb push ops/k40/heartbeat.sh /data/local/tmp/k40_heartbeat.sh
+adb push tools/ops/k40/heartbeat.sh /data/local/tmp/k40_heartbeat.sh
 adb shell "run-as com.termux cp /data/local/tmp/k40_heartbeat.sh files/usr/bin/k40_heartbeat.sh"
 adb shell "run-as com.termux chmod 755 files/usr/bin/k40_heartbeat.sh"
 ```

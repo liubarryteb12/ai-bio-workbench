@@ -46,9 +46,9 @@
 
 约束不能只写在文档里，由两个脚本分管执行：
 
-1. **代码静态检查**（PC 侧，`ops/02_check_isolation.ps1`）：
+1. **代码静态检查**（PC 侧，`tools/ops/02_check_isolation.ps1`）：
    `src/<line>/` 下的脚本，路径字符串中不得出现其他两条线的目录名或 line_id。
-2. **台账检查**（服务器侧，`ops/03_check_logs_remote.sh`，PC 侧一键入口 `ops/04_check_logs.ps1`）：
+2. **台账检查**（服务器侧，`tools/ops/03_check_logs_remote.sh`，PC 侧一键入口 `tools/ops/04_check_logs.ps1`）：
    `system_logs/` 下任务台账 JSON 的 `line_id` 必须是三个合法值之一，`project_id` 必须合法
    （缺省视为 `default`，兼容迁移前的历史台账）；`io_files` 中的路径必须属于该 line_id 或
    `public_references/` 或 `system_logs/`，且路径中的项目段（`/projects/<项目>/`）必须与

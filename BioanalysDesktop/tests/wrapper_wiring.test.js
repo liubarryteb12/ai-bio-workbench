@@ -1,7 +1,7 @@
 /**
  * 引擎 → 包装器接线测试（D-21）
  *
- * 背景：ops/run_throttled_task.sh 提供的三项保障（nice/ionice 降权、存储水位与跨线门禁、
+ * 背景：tools/ops/run_throttled_task.sh 提供的三项保障（nice/ionice 降权、存储水位与跨线门禁、
  * 线程封顶）是 aims §六.3 的硬契约。但 2026-10-21 排查发现 server/run.js 调
  * buildTaskScript 时压根没传 throttled，引擎一直直跑 rawCmd，三项保障对「工作台下发
  * 的任务」全部失效；而 throttled 分支本身也是坏的（把整条命令串当 $5 脚本路径传，
@@ -121,6 +121,6 @@ test('静态：task.js 不再把 rawCmd 当 $5 传（D-21 根因不许回潮）'
 
 test('K40 上包装器与母版落点确实存在（静态路径自洽）', () => {
   const script = buildTaskScript({ ...BASE, throttled: true });
-  assert.ok(script.includes('bash /mnt/ssd/bio_data/ops/run_throttled_task.sh'), '包装器路径不对');
+  assert.ok(script.includes('bash /mnt/ssd/bio_data/tools/ops/run_throttled_task.sh'), '包装器路径不对');
   assert.ok(script.includes(binDir('line2_scrna') + '/scenic_tf'), '母版落点路径不对');
 });

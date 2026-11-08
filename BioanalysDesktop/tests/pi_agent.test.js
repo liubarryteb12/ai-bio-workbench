@@ -39,7 +39,7 @@ test('默认模型固定为 zai/glm-5.3-flash', () => {
 
 test('settings 种子脚本拒绝旧默认值复活', () => {
   const script = fs.readFileSync(
-    path.join(import.meta.dirname, '..', '..', 'ops', 'pi_seed_settings.sh'),
+    path.join(import.meta.dirname, '..', '..', 'tools', 'ops', 'pi_seed_settings.sh'),
     'utf8'
   );
   assert.doesNotMatch(script, /if not config\.get\("defaultProvider"\):/);

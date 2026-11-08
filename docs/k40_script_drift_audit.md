@@ -42,7 +42,7 @@
 
 1. **禁止直接用仓库旧版覆盖远端**：远端分叉里有生产必需的新逻辑（grouping_design），覆盖即回退。
 2. 逐个甄别后**把远端有效逻辑反向吸收进仓库**（本文件已做 2 个），再谈对齐。
-3. 全部收敛后加 **SHA256 同源门禁**（`ops/k40_script_parity.mjs`），把「仓库即生产、分叉即报警」变成机器判据。
+3. 全部收敛后加 **SHA256 同源门禁**（`tools/ops/k40_script_parity.mjs`），把「仓库即生产、分叉即报警」变成机器判据。
 
 ## 本轮已完成 / 未完成
 
@@ -80,12 +80,12 @@ python .tmp/k40_drift_audit/feature_diff.py  # 函数/产物集合差异
 
 ### 机器判据
 
-`ops/k40_script_parity.mjs`：
+`tools/ops/k40_script_parity.mjs`：
 
 ```
-node ops/k40_script_parity.mjs            # 连真机比对（需要 ssh k40-ubuntu）
-node ops/k40_script_parity.mjs --offline  # 用上次清单，不连真机
-node ops/k40_script_parity.mjs --json     # 机器可读
+node tools/ops/k40_script_parity.mjs            # 连真机比对（需要 ssh k40-ubuntu）
+node tools/ops/k40_script_parity.mjs --offline  # 用上次清单，不连真机
+node tools/ops/k40_script_parity.mjs --json     # 机器可读
 ```
 
 口径：

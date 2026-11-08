@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { LINES, projectLineDir, sanitizeProjectId } from './domain.js';
 import { runSync } from './proc.js';
 
-/** 本地项目根：仓库根 local_projects/，与 ops/07_pull_outputs.ps1 同一位置 */
+/** 本地项目根：仓库根 local_projects/，与 tools/ops/07_pull_outputs.ps1 同一位置 */
 export const LOCAL_OUTPUTS_ROOT = process.env.BIO_LOCAL_OUTPUTS
   ? path.resolve(process.env.BIO_LOCAL_OUTPUTS)
   : fileURLToPath(new URL('../../local_projects/', import.meta.url));

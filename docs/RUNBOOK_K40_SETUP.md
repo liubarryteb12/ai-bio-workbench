@@ -23,10 +23,10 @@ ls /data/data/com.termux/files/usr/var/service/
 #    期望看到 sshd/ crond/ ssh-agent/ ubuntu-sshd/ 各含 run（sshd 与 ubuntu-sshd 还有 log/run）
 
 # 2) 点火：runsvdir 必须由 app 域拉起，且只有一份
-bash ~/bin/boot_repair.sh          # 幂等：已在跑就什么都不做（见 ops/k40/ensure_runsvdir.sh）
+bash ~/bin/boot_repair.sh          # 幂等：已在跑就什么都不做（见 tools/ops/k40/ensure_runsvdir.sh）
 
 # 3) 宿主 sshd 起来后，从 PC 侧验链路四段
-pwsh -File ops/00_link_check.ps1    # 设备→forward→Termux sshd→容器 sshd，逐段报红绿
+pwsh -File tools/ops/00_link_check.ps1    # 设备→forward→Termux sshd→容器 sshd，逐段报红绿
 ```
 
 判据：`00_link_check.ps1` exit 0，且能看到「四段全通」。
@@ -46,11 +46,11 @@ node ops/../.tmp/hb_probe.mjs             # 零 SSH 心跳（不经 sshd，断�
 
 | 症状 | 先做什么 | 别做什么 |
 |---|---|---|
-| PC 连不上 8022 | `ops/00_link_check.ps1`，看哪一段红 | 直接 reboot 手机 |
+| PC 连不上 8022 | `tools/ops/00_link_check.ps1`，看哪一段红 | 直接 reboot 手机 |
 | 容器 10022 不通但 8022 通 | 容器里 `ps` 看 dropbear；Termux 侧 `sv status ubuntu-sshd` | 先 `sv down` 宿主 sshd（会一起断） |
 | 服务显示 run 但端口不监听 | 九成是 host key 缺失：看 `docs/k40_hostkey_guard.md` | 反复 `sv up`（起不来的原因不会变） |
-| host key 指纹变了 | 查 `ops/k40/env_lock/hostkey_fingerprints.json`，`ERR_HOSTKEY_ROTATED` | 直接 `ssh-keygen -R` 了事（要留证） |
-| 双 runsvdir 抢锁 / 服务全挂 | `ops/fix_runsvdir.sh`（SELinux 域那一节必读） | 在 `run-as` 域里「手动补一条进程」 |
+| host key 指纹变了 | 查 `tools/ops/k40/env_lock/hostkey_fingerprints.json`，`ERR_HOSTKEY_ROTATED` | 直接 `ssh-keygen -R` 了事（要留证） |
+| 双 runsvdir 抢锁 / 服务全挂 | `tools/ops/fix_runsvdir.sh`（SELinux 域那一节必读） | 在 `run-as` 域里「手动补一条进程」 |
 | `sv down` 后容器仍存活 | 正常：`got TERM` 只落在 proot 包装进程 | 以为服务没停而重复 down |
 
 SELinux 域是这套设备最坑的一处：`adb exec-out run-as com.termux` 起的东西落在 `runas_app` 域，

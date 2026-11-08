@@ -1,0 +1,74 @@
+#!/data/data/com.termux/files/usr/bin/sh
+set -eu
+exec 2>&1
+# tools/ops/k40/sv/pi-a2a/run —— K40 Termux 宿主面 pi agent（A2A server :9910 + 遥测侧车 :9911）监督服务
+# 落点：k40:$PREFIX/var/service/pi-a2a/{run,log/run}
+#
+# 为什么要有这个服务：pi agent 原先只能靠人手敲 tmux 起，设备一重启就没有了，
+# 工作台侧的「pi agent 检测」于是长期一片红。软件本体、模型 pin、peer token 都是齐的，
+# 缺的只是「开机自启 + 死了有人拉」这一层，runsv 正好就是这个东西。
+#
+# 四段式（tests/runit_sv_contract.test.js 逐段断言，新增服务照抄）：
+#   段1 shebang + set -eu
+#   段2 exec 2>&1  —— runsv 只把 run 的 fd1 接到 log/run 的 stdin，
+#       不做这一步，守护器的诊断全部丢进黑洞
+#   段3 幂等守卫  —— 只补缺失项，诊断走 stdout 加 [guard:pi-a2a] 前缀，
+#       失败打精确故障层代号并 exit 1，绝不静默降级
+#   段4 原位替换  —— exec 守护器前台运行，让 runsv 直接监督它
+#
+# 段3 守卫顺序就是故障发生的因果顺序：先有 Termux 前缀与 tmux，再有 settings.json，
+# 再有 provider pin，最后才是启动脚本。缺哪一层就报哪一层的代号，事故现场一条 grep 定位。
+
+PREFIX="${PREFIX:-/data/data/com.termux/files/usr}"
+HOME_DIR="${HOME:-/data/data/com.termux/files/home}"
+STATE_DIR="$PREFIX/var/lib/pi-a2a"
+DAEMON="$HOME_DIR/bin/pi_a2a_daemon.sh"
+
+for bin in tmux jq curl; do
+  if ! command -v "$bin" >/dev/null 2>&1; then
+    echo "[guard:pi-a2a] ERR_STAGE_PI_TOOLCHAIN 缺少工具 $bin，A2A server 无法自启"
+    exit 1
+  fi
+done
+
+if [ ! -f "$HOME_DIR/.pi/agent/settings.json" ]; then
+  echo "[guard:pi-a2a] ERR_STAGE_PI_CONFIG 缺 $HOME_DIR/.pi/agent/settings.json"
+  exit 1
+fi
+
+if ! jq -e '.a2a.server.enabled == true' "$HOME_DIR/.pi/agent/settings.json" >/dev/null 2>&1; then
+  echo "[guard:pi-a2a] ERR_STAGE_PI_CONFIG settings.json 的 a2a.server.enabled 不是 true"
+  exit 1
+fi
+
+if [ ! -f "$HOME_DIR/.pi/agent/.provider_name" ] || [ ! -f "$HOME_DIR/.pi/agent/.provider_model" ]; then
+  echo "[guard:pi-a2a] ERR_STAGE_PI_PROVIDER 缺 provider pin（.provider_name / .provider_model）"
+  exit 1
+fi
+
+if [ ! -f "$DAEMON" ]; then
+  echo "[guard:pi-a2a] ERR_STAGE_PI_DAEMON 缺守护器 $DAEMON"
+  exit 1
+fi
+
+# 退避：守护器在配置类错误上会立刻退出，runsv 又立刻重启，于是形成开机崩溃循环，
+# 一级一级写满闪存。这里记录上次点火时间，20 秒内的重启先睡够间隔。
+mkdir -p "$STATE_DIR"
+STAMP="$STATE_DIR/last_start"
+NOW=$(date +%s)
+if [ -f "$STAMP" ]; then
+  LAST=$(cat "$STAMP" 2>/dev/null || echo 0)
+  case "$LAST" in
+    ''|*[!0-9]*) LAST=0 ;;
+  esac
+  GAP=$((NOW - LAST))
+  if [ "$GAP" -lt 20 ]; then
+    BACKOFF=$((20 - GAP))
+    echo "[guard:pi-a2a] 距上次点火 ${GAP}s，退避 ${BACKOFF}s 后再起，避免崩溃循环"
+    sleep "$BACKOFF"
+  fi
+fi
+date +%s > "$STAMP"
+
+export PREFIX HOME="$HOME_DIR"
+exec "$PREFIX/bin/bash" "$DAEMON"

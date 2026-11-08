@@ -18,14 +18,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const MOD = path.join(REPO, "ops", "matrix_guard.py");
+const MOD = path.join(REPO, "tools", "ops", "matrix_guard.py");
 
 function read() {
   return fs.readFileSync(MOD, "utf8");
 }
 
 test("指纹模块必须存在并提供两个入口", () => {
-  assert.ok(fs.existsSync(MOD), "缺 ops/matrix_guard.py");
+  assert.ok(fs.existsSync(MOD), "缺 tools/ops/matrix_guard.py");
   const src = read();
   assert.match(src, /def fingerprint\(/, "必须提供 fingerprint");
   assert.match(src, /def assert_unchanged\(/, "必须提供 assert_unchanged");

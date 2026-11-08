@@ -1,7 +1,7 @@
 /**
  * 台账合规判定
  *
- * 规则与 docs/ledger-schema.md 一致，也与服务器侧 ops/03_check_logs_remote.sh 同口径。
+ * 规则与 docs/ledger-schema.md 一致，也与服务器侧 tools/ops/03_check_logs_remote.sh 同口径。
  * 两份实现各自独立（一个 Node 一个 bash）不是为了重复，而是因为调用面不同：
  * 03 在服务器上跑全量文件，这里在本地对已取回/已读到的台账做判定。
  * 判定规则若变更，两边都要改，并在测试里用同一批样例断言结论一致。
@@ -37,7 +37,7 @@ function normalizePath(pathLike) {
 }
 
 /**
- * 路径命中的共享区 / 台账区 / 三线标记，与 ops/03_check_logs_remote.sh 的 classify 同口径。
+ * 路径命中的共享区 / 台账区 / 三线标记，与 tools/ops/03_check_logs_remote.sh 的 classify 同口径。
  * 返回 'public' | 'logs' | <line> | null。
  */
 function markerRoot(pathLike) {

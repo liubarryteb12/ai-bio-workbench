@@ -12,7 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const SYNC = path.join(ROOT, 'ops', 'sync_and_verify_remote.ps1');
+const SYNC = path.join(ROOT, 'tools', 'ops', 'sync_and_verify_remote.ps1');
 const PROC = path.join(ROOT, 'BioanalysDesktop', 'server', 'proc.js');
 
 const syncText = fs.readFileSync(SYNC, 'utf8');

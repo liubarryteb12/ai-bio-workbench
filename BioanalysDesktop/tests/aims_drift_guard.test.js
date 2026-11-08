@@ -68,7 +68,7 @@ test('三层目录、项目自包含与适配副本契约保留', () => {
   ], 'v3.1 目录契约');
   for (const relative of [
     'docs/directories.md',
-    'ops/init_project_scaffold.py',
+    'tools/ops/init_project_scaffold.py',
     'tools/bio/figure_templates.json',
     'BioanalysDesktop/server/figure_graph.js',
   ]) {
@@ -92,8 +92,8 @@ test('工作台默认端口在 aims、服务端、前端代理、守护与 Sync 
   const read = (relative) => fs.readFileSync(path.join(ROOT, relative), 'utf8');
   assert.match(read('BioanalysDesktop/server/index.js'), /process\.env\.BAD_PORT\s*\|\|\s*18787/);
   assert.match(read('BioanalysDesktop/vite.config.js'), /127\.0\.0\.1:18787/);
-  assert.match(read('ops/sync_daemon.ps1'), /BIO_WORKBENCH_BASE[^\n]*18787/);
-  assert.match(read('ops/serve_guard.ps1'), /BAD_PORT\s*=\s*'18787'/);
+  assert.match(read('tools/ops/sync_daemon.ps1'), /BIO_WORKBENCH_BASE[^\n]*18787/);
+  assert.match(read('tools/ops/serve_guard.ps1'), /BAD_PORT\s*=\s*'18787'/);
   assert.match(read('start_workbench.bat'), /-Port 18787/);
   assert.match(read('start_all.bat'), /127\.0\.0\.1:18787/);
 });

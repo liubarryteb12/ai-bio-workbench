@@ -57,7 +57,7 @@ test("真机行为：标定 fail-closed 与指纹守卫对污染敏感", (t) => 
 });
 
 test("标定比值带必须是 [0.90, 1.10]（收紧自 [0.7,1.3]）", () => {
-  const src = fs.readFileSync(path.join(REPO, "ops/spatial_calibration.py"), "utf8");
+  const src = fs.readFileSync(path.join(REPO, "tools/reporting/spatial_calibration.py"), "utf8");
   assert.match(src, /RATIO_LOW\s*=\s*0\.90/);
   assert.match(src, /RATIO_HIGH\s*=\s*1\.10/);
 });

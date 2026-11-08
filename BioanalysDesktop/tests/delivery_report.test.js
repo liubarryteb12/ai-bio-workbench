@@ -8,7 +8,7 @@ import path from 'node:path';
 import { verifyDelivery } from '../../tools/reporting/ed25519_tools.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..', '..');
-const SCRIPT = path.join(ROOT, 'ops', 'build_client_report.py');
+const SCRIPT = path.join(ROOT, 'tools', 'reporting', 'build_client_report.py');
 const ENV = { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' };
 
 function detectPython() {

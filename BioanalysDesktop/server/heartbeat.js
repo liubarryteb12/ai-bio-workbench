@@ -6,7 +6,7 @@
  * 依赖 ssh 本身，断在 ssh 上就等于没有观测。
  *
  * 观测通道：adb exec-out run-as com.termux 直接以 app uid(10283) 执行设备侧脚本
- * ops/k40/heartbeat.sh，返回一行 JSON。整条通道不经过 sshd、不经过 TCP 端口，8022/10022
+ * tools/ops/k40/heartbeat.sh，返回一行 JSON。整条通道不经过 sshd、不经过 TCP 端口，8022/10022
  * 全挂时仍然可读（实测 Termux 包 flags 含 DEBUGGABLE，run-as 可用）。
  *
  * 为什么按需执行而不是常驻 runit 服务：

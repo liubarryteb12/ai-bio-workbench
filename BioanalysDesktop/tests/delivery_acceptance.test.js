@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
-const SCRIPT = path.join(REPO, 'ops', 'delivery_acceptance.ps1');
+const SCRIPT = path.join(REPO, 'tools', 'ops', 'delivery_acceptance.ps1');
 
 // ── 交付验收脚本的静态契约（2026-11-02，4 Argon 第十六轮 Priority 1）──
 //
@@ -346,7 +346,7 @@ test('zip-slip and traversal entries are rejected before any write', async () =>
   }
 });
 test('packager writes README before checksums (order is the contract)', () => {
-  const src = fs.readFileSync(path.join(REPO, 'ops', 'build_client_report.py'), 'utf8');
+  const src = fs.readFileSync(path.join(REPO, 'tools', 'reporting', 'build_client_report.py'), 'utf8');
   const readmeAt = src.indexOf('"README.md"');
   const cksAt = src.indexOf('checksums = write_checksums(delivery)');
   assert.ok(readmeAt > 0, '打包器必须写包根 README');

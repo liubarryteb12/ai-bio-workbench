@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..', '..');
-const SCRIPT = path.join(REPO_ROOT, 'ops', 'init_project_scaffold.py');
+const SCRIPT = path.join(REPO_ROOT, 'tools', 'ops', 'init_project_scaffold.py');
 const TEST_ROOT = path.join(REPO_ROOT, 'artifacts', 'project_scaffold_tests_' + process.pid + '_' + Math.random().toString(36).slice(2, 8));
 const LINES = ['line1_bulk', 'line2_scrna', 'line3_spatial'];
 const LEDGER_NAMES = ['actions', 'changes', 'errors', 'fixes', 'pitfalls'];

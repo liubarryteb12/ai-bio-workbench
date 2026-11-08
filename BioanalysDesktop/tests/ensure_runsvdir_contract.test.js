@@ -6,8 +6,8 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
-const ENSURE = path.join(REPO, 'ops', 'k40', 'ensure_runsvdir.sh');
-const SELFTEST = path.join(REPO, 'ops', 'k40', 'ensure_runsvdir_selftest.sh');
+const ENSURE = path.join(REPO, 'tools', 'ops', 'k40', 'ensure_runsvdir.sh');
+const SELFTEST = path.join(REPO, 'tools', 'ops', 'k40', 'ensure_runsvdir_selftest.sh');
 
 // ── ensure_runsvdir.sh 的静态契约（2026-11-03 事故后）──
 //
@@ -114,7 +114,7 @@ test('自身 pid 守卫与 --reap-stray 整词匹配', () => {
 });
 
 test('自测脚本存在且带哨兵、临时目录、mktemp 判红', () => {
-  assert.ok(fs.existsSync(SELFTEST), 'ops/k40/ensure_runsvdir_selftest.sh 缺失');
+  assert.ok(fs.existsSync(SELFTEST), 'tools/ops/k40/ensure_runsvdir_selftest.sh 缺失');
   const text = read(SELFTEST);
   assert.ok(text.includes('SELFTEST_PASS ok='), '缺带计数的成功哨兵');
   assert.ok(text.includes('SELFTEST_FAIL'), '缺失败哨兵');

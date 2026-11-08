@@ -28,7 +28,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-export const REPO_ROOT = path.resolve(HERE, '..');
+export const REPO_ROOT = path.resolve(HERE, '..', '..');
 export const DEFAULT_OUT = path.join(REPO_ROOT, 'dist', 'portable', 'BioanalysWorkbench');
 
 /** 四层划分。prefixes 是相对仓库根的路径前缀，layer 只用于清单与报告。 */

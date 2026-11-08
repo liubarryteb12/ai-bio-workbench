@@ -8,7 +8,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
 
 test('ADB 执行器默认通道不自动回落 SSH，且每次命令有唯一远端脚本名', () => {
-  const helper = fs.readFileSync(path.join(REPO, 'ops', 'adb_exec.ps1'), 'utf8');
+  const helper = fs.readFileSync(path.join(REPO, 'tools', 'ops', 'adb_exec.ps1'), 'utf8');
   assert.match(helper, /\[ValidateSet\('adb', 'ssh'\)\]\[string\]\$Transport = 'adb'/);
   assert.doesNotMatch(helper, /\$used = 'ssh'[\s\S]{0,80}回落/);
   assert.match(helper, /RemoteScriptPath/);

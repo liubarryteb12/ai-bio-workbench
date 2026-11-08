@@ -8,8 +8,8 @@ import { fileURLToPath } from 'node:url';
 // 背景见 con_hf/pitfalls_ledger.md P-20 / P-21 与 con_hf/SPEC_DECISIONS.md D-17 / D-18。
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '..', '..');
-const deployPath = path.join(repoRoot, 'ops', '06_deploy_scripts.ps1');
-const syncPath = path.join(repoRoot, 'ops', 'sync_and_verify_remote.ps1');
+const deployPath = path.join(repoRoot, 'tools', 'ops', '06_deploy_scripts.ps1');
+const syncPath = path.join(repoRoot, 'tools', 'ops', 'sync_and_verify_remote.ps1');
 
 const deployText = fs.readFileSync(deployPath, 'utf8');
 const syncText = fs.readFileSync(syncPath, 'utf8');

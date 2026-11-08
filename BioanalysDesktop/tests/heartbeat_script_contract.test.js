@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-// ── ops/k40/heartbeat.sh 设备侧脚本契约（2026-11-03）──
+// ── tools/ops/k40/heartbeat.sh 设备侧脚本契约（2026-11-03）──
 //
 // 这条脚本跑在 K40 上，Windows 侧测不了它的运行结果，但它的两条判据都踩过假红/假绿：
 //   1. runsvdir 计数只认 ' -P <SVDIR>' 子串：健康设备上 runsvdir 会改写 argv 把 -P 去掉，
@@ -11,7 +11,7 @@ import { readFile } from 'node:fs/promises';
 //      恰好掩盖「sv down 请求被 proot 吞掉、进程不走」。
 // 所以这里钉的是判据形态，不是逐行快照。
 
-const SOURCE = new URL('../../ops/k40/heartbeat.sh', import.meta.url);
+const SOURCE = new URL('../../tools/ops/k40/heartbeat.sh', import.meta.url);
 
 async function code() {
   const raw = await readFile(SOURCE, 'utf8');
