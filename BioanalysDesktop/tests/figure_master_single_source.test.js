@@ -1,6 +1,6 @@
 // T1-1 母版唯一真源：**注册在案的生产母版**按 basename 只许一份（_legacy 除外）。
 //
-// 为什么不是全仓扫描：reference/05.可参考出图代码 是资产库，里面有上百份来自公开图库的
+// 为什么不是全仓扫描：reference/05.可参考生信代码/可用代码预筛选/源码 是资产库，里面有上百份来自公开图库的
 // 同名示例脚本（install_dependencies.R、utils.R 等），那是资料本身，不是生产母版。
 // 判据必须落在**矩阵注册的 runner**上，那才是我方会真正跑的东西。
 //
@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const REF_ROOT = path.join(REPO_ROOT, 'reference', '05.可参考出图代码');
+const REF_ROOT = path.join(REPO_ROOT, 'reference', '05.可参考生信代码', '可用代码预筛选', '源码');
 const COMPAT = path.join(REF_ROOT, '_meta', 'R453_compat');
 const MATRIX = path.join(REF_ROOT, '_meta', 'script_plot_matrix.json');
 
@@ -104,14 +104,14 @@ test('已经迁入 _legacy 的母版必须有对应 compat 真源在役', () => 
   }
 });
 test('_legacy 目录必须真的被 git 跟踪（.gitignore 是白名单模式，漏加会静默丢文件）', () => {
-  // 背景：.gitignore 对 reference/05.可参考出图代码 用的是「先全忽略再逐条放行」的白名单模式。
+  // 背景：.gitignore 对 reference/05.可参考生信代码/可用代码预筛选/源码 用的是「先全忽略再逐条放行」的白名单模式。
   // 第三十三轮把三份分叉母版迁进 _legacy 时，目录本身不在白名单里，git mv 能暂存（R100 重命名），
   // 但新 clone 或 git add 会静默丢掉这三个文件。这条断言把「白名单要跟着目录结构更新」变成机器检查。
   const legacyFiles = loadLegacyFiles();
   assert.deepEqual(legacyFiles.missing, [],
     '_legacy 下必须有这三份母版: ' + JSON.stringify(legacyFiles.missing));
   if (!gitUsable()) return;
-  const listed = spawnSync('git', ['ls-files', '--', path.join('reference', '05.可参考出图代码', '_legacy')],
+  const listed = spawnSync('git', ['ls-files', '--', path.join('reference', '05.可参考生信代码', '可用代码预筛选', '源码', '_legacy')],
     { cwd: REPO_ROOT, encoding: 'utf8' });
   const trackedSet = new Set((listed.stdout || '').split('\n').filter(Boolean).map((p) => p.split('/').join('/')));
   const untracked = legacyFiles.present.filter((rel) => !trackedSet.has(rel));
@@ -122,9 +122,9 @@ test('_legacy 目录必须真的被 git 跟踪（.gitignore 是白名单模式�
 /** 三份 legacy 母版，以及仓库里实际存在的那些。 */
 function loadLegacyFiles() {
   const rel = [
-    'reference/05.可参考出图代码/_legacy/L2_组学常用图/L2_core_code.R',
-    'reference/05.可参考出图代码/_legacy/L2_组学常用图/L2_volcano_code.R',
-    'reference/05.可参考出图代码/_legacy/L3_高级组合图/L3_sankey_code.R',
+    'reference/05.可参考生信代码/可用代码预筛选/源码/_legacy/L2_组学常用图/L2_core_code.R',
+    'reference/05.可参考生信代码/可用代码预筛选/源码/_legacy/L2_组学常用图/L2_volcano_code.R',
+    'reference/05.可参考生信代码/可用代码预筛选/源码/_legacy/L3_高级组合图/L3_sankey_code.R',
   ];
   const present = rel.filter((r) => fs.existsSync(path.join(REPO_ROOT, r)));
   const missing = rel.filter((r) => !fs.existsSync(path.join(REPO_ROOT, r)));

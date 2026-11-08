@@ -5,10 +5,11 @@ import { sanitizeBridgeOutput } from '../server/remote_exec.js';
 
 // ── remote_exec.js 契约面测试（2026-11-02）──
 //
-// 这个模块是「本地零算力红线的唯一出口」，三件事值得单测：
-//   1. 目标绑定：所有执行必须打到 k40-ubuntu，不能打到宿主 Termux(k40) 或其他主机
+// 这个模块是「本地零算力红线的唯一出口」，四件事值得单测：
+//   1. 目标绑定：默认走 adbRaw，ssh 特殊开关也必须打到 k40-ubuntu，不能打到宿主 Termux(k40)
 //   2. 列目录口径：单层 ls 不递归（递归在容器里触发 P-23 abort）
 //   3. 桥接噪声过滤：只删已知 ssh 提示，其余一律保留，且两通道同文只留一份
+//   4. 通道默认：adb 是默认，ssh 只在显式 BIO_COMPUTE_ADAPTER=ssh 时启用
 //
 // 2 与 3 都能纯离线测。1 用源码静态断言钉住——真发 ssh 的测试已在
 // proc.test.js 里有一条，这里不重复消耗链路。
@@ -54,15 +55,17 @@ test('桥接输出过滤：噪声匹配是行首锚定，句中出现的同类�
   assert.equal(out.includes('note:'), true, '行首不是 Warning 的行必须保留');
 });
 
-test('目标绑定：本模块只许打 k40-ubuntu（静态断言，防误连宿主 Termux 面）', async () => {
+test('目标绑定：默认 adbRaw，ssh 特殊开关只许打 k40-ubuntu', async () => {
   const { readFile } = await import('node:fs/promises');
   const { fileURLToPath } = await import('node:url');
   const path = await import('node:path');
   const here = path.dirname(fileURLToPath(import.meta.url));
   const src = await readFile(path.join(here, '..', 'server', 'remote_exec.js'), 'utf8');
+  assert.match(src, /return adbRaw\(command/, '默认出口必须调用 adbRaw');
+  assert.match(src, /BIO_COMPUTE_ADAPTER === 'ssh'/, 'ssh 必须被显式开关拦住');
   // 所有 ssh 调用点都必须以 k40-ubuntu 为目标
   const targets = [...src.matchAll(/runSsh(?:Raw|Strict)\(\s*'([^']+)'/g)].map((m) => m[1]);
-  assert.ok(targets.length >= 2, '应至少有两处 ssh 调用点（宽松版与严格版）');
+  assert.ok(targets.length >= 1, '应保留至少一处 ssh 特殊开关调用点');
   for (const target of targets) {
     assert.equal(target, 'k40-ubuntu',
       '执行面必须打 k40-ubuntu 容器，实际出现 ' + target

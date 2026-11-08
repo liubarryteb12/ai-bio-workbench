@@ -93,3 +93,52 @@ ssh k40-ubuntu 'cd /mnt/ssd/bio_data/projects/PRJ_GSE316126_SANITY/contrasts/t2d
   BIOANALYS_SEED=20261105 bash /mnt/ssd/bio_data/bin/line1_bulk/deg_limma \
   --input expr_genes.tsv --input group_map.tsv'
 ```
+
+## 八、复跑验证（2026-11-07，第 76 轮规范审核后）
+
+### 8.1 新发现：log 尺度输入契约
+
+`deg_limma` 在规范审核轮新增了 log 尺度输入契约（表达矩阵上四分位数 > 50 即拒，
+要求 log2 尺度输入）。GSE316126 的 NanoString 原始计数（上四分位数 ~1004）直接被拒：
+
+```
+deg_limma 自校验失败: 表达矩阵疑似未经 log 变换（上四分位数 1004.00 > 50）
+```
+
+这正是第六节预判的平台适配问题落地为硬契约。复跑时先做 `log2(x+1)` 变换
+（隔离到 `contrasts/t2d_log2` 与 `contrasts/dn_log2`，保留原始 raw 输入）。
+诊断列基于零份额（`mat <= 0`），`log2(x+1)` 把零映射为 0，零份额不变，
+故 `is_single_side_silent` / `is_low_detection` 的语义尺度无关，消融结论不受变换影响。
+
+### 8.2 复跑实测（seed=20261105，两对比一致）
+
+| 指标 | T2D vs Control | T2D_DN vs Control |
+|---|---|---|
+| single_side_silent | 0 | 0 |
+| low_detection | 0 | 0 |
+| technical | 1 | 1 |
+| cohort_suspect 合计 | 1 / 782（0.128%） | 1 / 782（0.128%） |
+| sig_before_filter | 0 | 0 |
+| sig_after_filter | 0 | 0 |
+
+与第四节文档结果逐字一致，复现成立。
+
+### 8.3 DCM 基准阳性对照（直接从 deg_all.tsv 重算）
+
+`PRJ_DCM_BENCH_20261105/line1_bulk/processed/deg_all.tsv`（n=43,098）：
+
+| 标记 | 计数 | 占比 |
+|---|---|---|
+| is_single_side_silent | 746 | 1.73% |
+| is_low_detection | 17,234 | 39.99% |
+| is_technical | 9 | 0.02% |
+| cohort_suspect | 17,982 | 41.72% |
+
+### 8.4 特异性比值与结论
+
+特异性比值 = (17,982 / 43,098) / (1 / 782) = 41.72% / 0.128% ≈ **326 倍**。
+
+结论复现且加强：诊断列在干净队列上几乎不误伤（0.128%），在跨队列基准上准确抓出
+41.72% 可疑基因，两档相差约 326 倍，具备明确特异性，不是过拟合噪声。
+DCM 基准剔除 56% 显著基因是真实去伪。第六节的 NanoString `trend`/voom 适配待办
+已部分由 log 尺度契约兜底（原始计数被拒，强制 log2 变换后方可进入 limma）。

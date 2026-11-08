@@ -137,3 +137,45 @@ test("负向：已撤销但不写被替代者必须报红", (t) => {
   const { errs } = checkRouterAndScope(root);
   assert.ok(errs.some((e) => e.includes("未写明被替代者")), "必须报未写被替代者：" + errs.join("; "));
 });
+
+test("负向：REJ 缺 expires_at 必须报红", (t) => {
+  const root = makeTree();
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const p = path.join(root, "docs/SCOPE.md");
+  fs.writeFileSync(
+    p,
+    fs.readFileSync(p, "utf8").replace("| 2027-05-01 |", "| |"),
+    "utf8"
+  );
+  const { errs } = checkRouterAndScope(root);
+  assert.ok(errs.some((e) => e.includes("缺 expires_at")), "必须报缺 expires_at：" + errs.join("; "));
+});
+
+test("负向 (MUT-P0-A)：REJ 的 expires_at 超过 180 天上限必须报红", (t) => {
+  const root = makeTree();
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const p = path.join(root, "docs/SCOPE.md");
+  fs.writeFileSync(
+    p,
+    fs.readFileSync(p, "utf8").replace("| 2027-05-01 |", "| 2029-01-01 |"),
+    "utf8"
+  );
+  const { errs } = checkRouterAndScope(root);
+  assert.ok(
+    errs.some((e) => e.includes("超过 180 天上限")),
+    "必须报超过 180 天上限：" + errs.join("; ")
+  );
+});
+
+test("负向：REJ 的 expires_at 已过期必须报红", (t) => {
+  const root = makeTree();
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const p = path.join(root, "docs/SCOPE.md");
+  fs.writeFileSync(
+    p,
+    fs.readFileSync(p, "utf8").replace("| 2027-05-01 |", "| 2020-01-01 |"),
+    "utf8"
+  );
+  const { errs } = checkRouterAndScope(root);
+  assert.ok(errs.some((e) => e.includes("已过期")), "必须报已过期：" + errs.join("; "));
+});

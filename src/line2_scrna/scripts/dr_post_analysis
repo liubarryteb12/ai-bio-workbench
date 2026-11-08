@@ -91,8 +91,8 @@ import anndata as ad
 
 ad.settings.allow_write_nullable_strings = False
 plt.rcParams.update({
-    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 7, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "legend.title_fontsize": 7,
-    "axes.titlesize": 7, "axes.grid": False,
+    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 8, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 8, "xtick.labelsize": 8, "ytick.labelsize": 8, "legend.fontsize": 8, "legend.title_fontsize": 8,
+    "axes.titlesize": 9, "axes.grid": False,
     "figure.autolayout": True, "savefig.bbox": "tight",
     "image.cmap": "viridis",
 })
@@ -123,7 +123,7 @@ def caption(fig, *parts):
     if not parts:
         return
     text = "\n".join(parts)
-    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=7, linespacing=1.5)
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
 def wrap_label(text, width=18):
     """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
     import textwrap
@@ -190,30 +190,23 @@ def fit_text_edges(fig, ax, gap=6.0, rounds=5):
             ax.set_ylim(y0 - (y1 - y0) * (bottom / bh) * 1.15, y1)
 
 
-def legend_out(ax, fig, leg):
-    """图例移到坐标轴框外：竖版图（宽<高）右上角纵向单列；横版图（宽>=高）下方纵向单列。
-    条目超过 12 条按列分组，避免纵向过长压扁主图。"""
-    n = len(leg.get_texts())
+def legend_out(ax, fig, leg, slot=0):
+    """图例统一置坐标轴框外右侧、纵向排列（用户 2026-11-07 定稿）。
+    多组图例按 slot 依次向右横排（每组各自纵向单列），互不重叠。
+    所有图幅方向统一放到轴框外右侧。"""
     handles = list(leg.legend_handles)
     labels = [t.get_text() for t in leg.get_texts()]
     title = leg.get_title().get_text() or None
-    w, h = fig.get_size_inches()
     fig.set_layout_engine("none")
-    if w >= h:
-        ncol = 1 if n <= 12 else -(-n // 12)
-        rows = -(-n // ncol)
-        ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
-                  ncol=ncol, fontsize=7, frameon=False, title=title)
-        fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
-    else:
-        ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                  ncol=1, fontsize=7, frameon=False, title=title)
-        fig.subplots_adjust(right=0.74)
+    x = 1.02 + 0.30 * slot
+    ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(x, 1.0),
+              ncol=1, fontsize=8, frameon=False, title=title)
+    fig.subplots_adjust(right=max(0.60, 0.80 - 0.06 * slot))
 
 
 def layout_fix(fig):
     """落盘前统一收口（docs/figure_spec.md v2.2 §三之三）：
-    1) 单坐标轴图的图例外置：竖版置轴框外右上角、横版置轴框下方，纵向排布、不压数据；
+    1) 单坐标轴图的图例外置：一律置轴框外右侧，纵向排布、不压数据；
     2) 轴内文本右缘/顶缘/左缘/下缘越出坐标轴框时自动扩 xlim/ylim 收进框内。
     多子图（分面）图不做图例搬迁：分面各有自己的图例，统一外移会互相压扁。
     tick 标签一律不动：它本就在轴框外，savefig.bbox="tight" 会把画布扩到装下它；
@@ -224,9 +217,9 @@ def layout_fix(fig):
     if not axes:
         return
     if len(axes) == 1:
-        leg = axes[0].get_legend()
-        if leg is not None:
-            legend_out(axes[0], fig, leg)
+        legs = [l for l in (axes[0].get_legend(),) if l is not None]
+        for slot, leg in enumerate(legs):
+            legend_out(axes[0], fig, leg, slot=slot)
         fit_text_edges(fig, axes[0])
 
 
@@ -269,7 +262,7 @@ SCENIC_CSV = resolve_input("IN_SCENIC_CSV", "scenic_regulons.csv")
 DEG_TSV = resolve_input("IN_DEG_TSV", "deg_all_by_celltype.tsv")
 DEG_H5AD = resolve_input("IN_DEG_H5AD", "scrna_deg.h5ad")
 
-for f in [KO_H5AD, KO_DR_TSV, SCENIC_CSV, DEG_TSV, DEG_H5AD]:
+for f in [KO_H5AD, KO_DR_TSV, DEG_TSV, DEG_H5AD]:
     if not os.path.exists(f):
         fail("缺少输入 %s" % f)
 
@@ -355,7 +348,7 @@ plt.rcParams["figure.autolayout"] = False
 fig, ax = plt.subplots(figsize=(13, max(6, len(d) * 0.42)))
 ax.barh(y, nes, color=[UP if v > 0 else DOWN for v in nes], height=0.7)
 ax.set_yticks(y)
-ax.set_yticklabels(labels, fontsize=7)
+ax.set_yticklabels(labels, fontsize=8)
 ax.axvline(0, color="k", lw=0.6)
 ax.set_xlabel("NES (normalized enrichment score)")
 span = max(float(np.abs(nes).max()), 1e-9) * 2.4
@@ -363,36 +356,41 @@ ax.set_xlim(-span, span)
 for i, (v, q) in enumerate(zip(nes, d["FDR q-val"].to_numpy())):
     ax.text(v + (0.04 * span if v >= 0 else -0.04 * span), i,
             "NES=%.2f  FDR q=%.2g" % (v, q),
-            va="center", ha="left" if v >= 0 else "right", fontsize=7)
-# 图例外置到轴框下方（figure_spec v2.2 禁止轴内 loc="best"）
+            va="center", ha="left" if v >= 0 else "right", fontsize=8)
+# 图例外置到轴框右侧（figure_spec v2.2 禁止轴内 loc="best"）
 ax.legend(handles=[Patch(color=UP, label="activated (NES>0)"),
                    Patch(color=DOWN, label="inhibited (NES<0)")],
-          fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.10),
+          fontsize=8, loc="upper left", bbox_to_anchor=(1.02, 1.0),
           ncol=1, frameon=False)
 caption(fig, "[Virtual KO - DR Genes] line2 scrna: DR gene GSEA (KO %s) top-%d by FDR" % (ko_gene, len(d)),
         "ko_dr_genes.tsv ranked by tenifold Z (not DEG)",
         "bar = NES, label = NES + FDR q-val")
-fig.subplots_adjust(left=0.46, right=0.98, top=0.97, bottom=0.09)
+fig.subplots_adjust(left=0.46, right=0.82, top=0.97, bottom=0.09)
 fig.savefig(os.path.join("..", "figures", "l2_15_dr_gsea_top.png"))
 plt.close(fig)
 plt.rcParams["figure.autolayout"] = True
 
 # ================= 2. DR 调控网络（SCENIC regulon ∩ DR） =================
-reg = pd.read_csv(SCENIC_CSV, index_col=[0, 1], header=[0, 1])
-if ("Enrichment", "TargetGenes") not in reg.columns:
-    fail("scenic_regulons 缺 TargetGenes 列")
+net_rows = []
 sig_dr = set(dr_nonko.loc[dr_nonko["adjusted p-value"] < ALPHA, "Gene"].astype(str))
 top_dr = set(dr_nonko.sort_values("adjusted p-value").head(DR_TOP_FOR_NET)["Gene"].astype(str))
-net_rows = []
-for (tf, _), row in reg.iterrows():
-    raw = str(row[("Enrichment", "TargetGenes")])
-    # pyscenic ctx 的 TargetGenes 是 "[('GENE', np.float64(0.31)), ...]"，
-    # 含 np.float64(...) 调用节点，ast.literal_eval 无法解析，用正则提取基因名。
-    targets = re.findall(r"\('([^']+)'", raw)
-    for g in targets:
-        if g in top_dr:
-            net_rows.append({"tf": str(tf), "target": g,
-                             "target_is_significant_dr": g in sig_dr})
+
+if os.path.exists(SCENIC_CSV):
+    try:
+        reg = pd.read_csv(SCENIC_CSV, index_col=[0, 1], header=[0, 1])
+        if ("Enrichment", "TargetGenes") in reg.columns:
+            for (tf, _), row in reg.iterrows():
+                raw = str(row[("Enrichment", "TargetGenes")])
+                targets = re.findall(r"\('([^']+)'", raw)
+                for g in targets:
+                    if g in top_dr:
+                        net_rows.append({"tf": str(tf), "target": g,
+                                         "target_is_significant_dr": g in sig_dr})
+    except Exception as e:
+        log("scenic_regulons 读取跳过: %s" % e)
+else:
+    log("scenic_regulons.csv 未提供，跳过 SCENIC regulon 靶向边提取")
+
 net = pd.DataFrame(net_rows).drop_duplicates()
 net.to_csv("dr_regulatory_network.tsv", sep="\t", index=False)
 log("wrote dr_regulatory_network.tsv (%d 边, %d TF, %d DR 靶)"
@@ -430,15 +428,15 @@ if len(net):
     from adjustText import adjust_text
     adjust_text(ax.texts, ax=ax, expand=(1.4, 1.6),
                 arrowprops=dict(arrowstyle="-", color="0.75", lw=0.4))
-    # 图例外置到轴框下方（figure_spec v2.2：禁止轴内 loc）
+    # 图例外置到轴框右侧（figure_spec v2.2：禁止轴内 loc）
     ax.legend(handles=[Patch(color="#4C72B0", label="TF (SCENIC regulon)"),
                        Patch(color="#C44E52", label="DR gene (top %d by p)" % DR_TOP_FOR_NET)],
-              fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.06),
-              ncol=2, frameon=False)
+              fontsize=8, loc="upper left", bbox_to_anchor=(1.02, 1.0),
+              ncol=1, frameon=False)
     caption(fig, "[Virtual KO - DR Genes] line2 scrna: DR regulatory network (KO %s)" % ko_gene,
             "edges = SCENIC cisTarget regulon TF->target where target is DR gene",
             "nodes=%d (cap %d by degree), edges=%d" % (G.number_of_nodes(), MAX_NODES, G.number_of_edges()))
-    fig.subplots_adjust(left=0.03, right=0.97, top=0.95, bottom=0.08)
+    fig.subplots_adjust(left=0.03, right=0.82, top=0.95, bottom=0.08)
     fig.savefig(os.path.join("..", "figures", "l2_16_dr_regulatory_network.png"))
     plt.close(fig)
 
@@ -491,16 +489,16 @@ fig, ax = plt.subplots(figsize=(10, 5))
 bars = ax.bar(range(len(names)), vals,
               color=["#4C72B0", "#55A868", "#8172B3", "#DD8452", "#DD8452", "#DD8452", "#C44E52"])
 ax.set_xticks(range(len(names)))
-ax.set_xticklabels(names, rotation=30, ha="right", fontsize=7)
+ax.set_xticklabels(names, rotation=30, ha="right", fontsize=8)
 ax.set_ylabel("gene count")
 xmax = max(vals) if max(vals) > 0 else 1
 ax.set_ylim(0, xmax * 1.22)
 for i, v in enumerate(vals):
-    ax.text(i, v + xmax * 0.02, str(v), ha="center", va="bottom", fontsize=7)
+    ax.text(i, v + xmax * 0.02, str(v), ha="center", va="bottom", fontsize=8)
 caption(fig, "[Virtual KO - DR Genes] line2 scrna: DR / DEG / celltype-marker overlap (KO %s)" % ko_gene,
         "DR significant = adj p<%.2f & non-KO; DEG = step15 significant" % ALPHA,
         "marker = step6 annotation marker_sets")
-fig.subplots_adjust(left=0.09, right=0.98, top=0.96, bottom=0.22)
+fig.subplots_adjust(left=0.09, right=0.82, top=0.96, bottom=0.22)
 fig.savefig(os.path.join("..", "figures", "l2_17_dr_overlap.png"))
 plt.close(fig)
 plt.rcParams["figure.autolayout"] = True

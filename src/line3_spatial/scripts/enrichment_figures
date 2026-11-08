@@ -67,8 +67,8 @@ import numpy as np
 import pandas as pd
 
 plt.rcParams.update({
-    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 7, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "legend.title_fontsize": 7,
-    "axes.titlesize": 7, "axes.grid": False,
+    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 8, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 8, "xtick.labelsize": 8, "ytick.labelsize": 8, "legend.fontsize": 8, "legend.title_fontsize": 8,
+    "axes.titlesize": 9, "axes.grid": False,
     "figure.autolayout": True, "savefig.bbox": "tight",
     "image.cmap": "viridis",
 })
@@ -115,7 +115,7 @@ def caption(fig, *parts):
     if not parts:
         return
     text = "\n".join(parts)
-    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=7, linespacing=1.5)
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
 def wrap_label(text, width=18):
     """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
     import textwrap
@@ -182,30 +182,23 @@ def fit_text_edges(fig, ax, gap=6.0, rounds=5):
             ax.set_ylim(y0 - (y1 - y0) * (bottom / bh) * 1.15, y1)
 
 
-def legend_out(ax, fig, leg):
-    """图例移到坐标轴框外：竖版图（宽<高）右上角纵向单列；横版图（宽>=高）下方纵向单列。
-    条目超过 12 条按列分组，避免纵向过长压扁主图。"""
-    n = len(leg.get_texts())
+def legend_out(ax, fig, leg, slot=0):
+    """图例统一置坐标轴框外右侧、纵向排列（用户 2026-11-07 定稿）。
+    多组图例按 slot 依次向右横排（每组各自纵向单列），互不重叠。
+    不再按图幅横竖分支把图例放到轴框下方。"""
     handles = list(leg.legend_handles)
     labels = [t.get_text() for t in leg.get_texts()]
     title = leg.get_title().get_text() or None
-    w, h = fig.get_size_inches()
     fig.set_layout_engine("none")
-    if w >= h:
-        ncol = 1 if n <= 12 else -(-n // 12)
-        rows = -(-n // ncol)
-        ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
-                  ncol=ncol, fontsize=7, frameon=False, title=title)
-        fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
-    else:
-        ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                  ncol=1, fontsize=7, frameon=False, title=title)
-        fig.subplots_adjust(right=0.74)
+    x = 1.02 + 0.30 * slot
+    ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(x, 1.0),
+              ncol=1, fontsize=8, frameon=False, title=title)
+    fig.subplots_adjust(right=max(0.60, 0.80 - 0.06 * slot))
 
 
 def layout_fix(fig):
     """落盘前统一收口（docs/figure_spec.md v2.2 §三之三）：
-    1) 单坐标轴图的图例外置：竖版置轴框外右上角、横版置轴框下方，纵向排布、不压数据；
+    1) 单坐标轴图的图例外置：一律置轴框外右侧，纵向排布、不压数据；
     2) 轴内文本右缘/顶缘/左缘/下缘越出坐标轴框时自动扩 xlim/ylim 收进框内。
     多子图（分面）图不做图例搬迁：分面各有自己的图例，统一外移会互相压扁。
     tick 标签一律不动：它本就在轴框外，savefig.bbox="tight" 会把画布扩到装下它；
@@ -216,9 +209,9 @@ def layout_fix(fig):
     if not axes:
         return
     if len(axes) == 1:
-        leg = axes[0].get_legend()
-        if leg is not None:
-            legend_out(axes[0], fig, leg)
+        legs = [l for l in (axes[0].get_legend(),) if l is not None]
+        for slot, leg in enumerate(legs):
+            legend_out(axes[0], fig, leg, slot=slot)
         fit_text_edges(fig, axes[0])
 
 
@@ -307,17 +300,17 @@ for species in species_present:
         fig, ax = plt.subplots(figsize=(13, max(6, len(d) * 0.42)))
         ax.barh(y, score, color=[cmap[c] for c in doms], height=0.7)
         ax.set_yticks(y)
-        ax.set_yticklabels(labels, fontsize=7)
+        ax.set_yticklabels(labels, fontsize=8)
         ax.set_xlabel("-log10 adjusted p")
         xmax = max(float(score.max()), 1e-9) * 2.0
         ax.set_xlim(0, xmax)
         for i, (v, p, o) in enumerate(zip(score, d["adj"].to_numpy(), d["or"].to_numpy())):
             label = ("OR=%.2f  adj p=%.2g" % (o, p)) if np.isfinite(o) else ("adj p=%.2g" % p)
-            ax.text(v + 0.02 * xmax, i, label, va="center", ha="left", fontsize=7)
+            ax.text(v + 0.02 * xmax, i, label, va="center", ha="left", fontsize=8)
         if 1 < len(uniq) <= 20:
-            # 图例外置到轴框下方（figure_spec v2.2：禁止轴内 loc）
+            # 图例外置到轴框右侧（figure_spec v2.2：禁止轴内 loc）
             ax.legend(handles=[Patch(color=cmap[c], label=c) for c in uniq],
-                      fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.10),
+                      fontsize=8, loc="upper left", bbox_to_anchor=(1.02, 1.0),
                       ncol=min(len(uniq), 4), frameon=False, title="domain")
         cap_parts = [
             "line3 %s: spatial domain marker ORA top-%d by adjusted p" % (species, len(d)),
@@ -331,7 +324,7 @@ for species in species_present:
                 cap_parts.append("%d domains colored, labels in enrichment_ora_%s.tsv"
                                  % (len(uniq), species))
         caption(fig, *cap_parts)
-        fig.subplots_adjust(left=0.46, right=0.98, top=0.97, bottom=0.09)
+        fig.subplots_adjust(left=0.46, right=0.82, top=0.97, bottom=0.09)
         save(fig, "l3_%s_12_ora_top.png" % species)
         plt.rcParams["figure.autolayout"] = True
 
@@ -353,7 +346,7 @@ for species in species_present:
         fig, ax = plt.subplots(figsize=(13, max(6, len(d) * 0.42)))
         ax.barh(y, nes, color=colors, height=0.7)
         ax.set_yticks(y)
-        ax.set_yticklabels(labels, fontsize=7)
+        ax.set_yticklabels(labels, fontsize=8)
         ax.axvline(0, color="k", lw=0.6)
         ax.set_xlabel("NES (normalized enrichment score)")
         span = max(float(np.abs(nes).max()), 1e-9) * 2.4
@@ -361,16 +354,16 @@ for species in species_present:
         for i, (v, q) in enumerate(zip(nes, d["fdr"].to_numpy())):
             ax.text(v + (0.04 * span if v >= 0 else -0.04 * span), i,
                     "NES=%.2f  FDR q=%.2g" % (v, q),
-                    va="center", ha="left" if v >= 0 else "right", fontsize=7)
-        # 图例外置到轴框下方（figure_spec v2.2 禁止轴内 loc="best"）
+                    va="center", ha="left" if v >= 0 else "right", fontsize=8)
+        # 图例外置到轴框右侧（figure_spec v2.2 禁止轴内 loc="best"）
         ax.legend(handles=[Patch(color=UP, label="activated (NES>0)"),
                            Patch(color=DOWN, label="inhibited (NES<0)")],
-                  fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.10),
+                  fontsize=8, loc="upper left", bbox_to_anchor=(1.02, 1.0),
                   ncol=1, frameon=False)
         caption(fig, "line3 %s: spatial domain marker GSEA top-%d by FDR q-val" % (species, len(d)),
                 "enrichment_gsea_%s.tsv from step: enrichment" % species,
                 "bar = NES, label = NES + FDR q-val")
-        fig.subplots_adjust(left=0.46, right=0.98, top=0.97, bottom=0.09)
+        fig.subplots_adjust(left=0.46, right=0.82, top=0.97, bottom=0.09)
         save(fig, "l3_%s_13_gsea_top.png" % species)
         plt.rcParams["figure.autolayout"] = True
 

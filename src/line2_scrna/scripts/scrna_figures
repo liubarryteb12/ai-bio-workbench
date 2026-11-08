@@ -12,8 +12,7 @@
 #   10_pca_diagnosis.png（95% 置信椭圆）
 #
 # 口径：图件规范见 docs/figure_spec.md（Agg/300dpi/英文标签；火山图上调红下调蓝；
-#       PCA 带 95% 置信椭圆；图注置于坐标轴框外，横版图在下方横向一行，
-#       竖版图在右上角纵向多行）。
+#       PCA 带 95% 置信椭圆；图注置于图幅左下角，图例统一在轴框外右侧）。
 set -euo pipefail
 
 seed="${BIOANALYS_SEED:-UNSET}"
@@ -77,14 +76,15 @@ import anndata as ad
 
 ad.settings.allow_write_nullable_strings = False
 plt.rcParams.update({
-    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 7, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "legend.title_fontsize": 7,
-    "axes.titlesize": 7, "axes.grid": False,
+    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 8, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 8, "xtick.labelsize": 8, "ytick.labelsize": 8, "legend.fontsize": 8, "legend.title_fontsize": 8,
+    "axes.titlesize": 9, "axes.grid": False,
     "figure.autolayout": True, "savefig.bbox": "tight",
     "image.cmap": "viridis",
 })
 
 START = time.time()
 OUT = "../figures"
+D = os.getcwd()
 os.makedirs(OUT, exist_ok=True)
 made = []
 render_ms = []   # 逐图渲染耗时 (name, ms)，写进 figures_manifest 供超时审计
@@ -151,7 +151,7 @@ def caption(fig, *parts):
     if not parts:
         return
     text = "\n".join(parts)
-    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=7, linespacing=1.5)
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
 def wrap_label(text, width=18):
     """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
     import textwrap
@@ -218,30 +218,23 @@ def fit_text_edges(fig, ax, gap=6.0, rounds=5):
             ax.set_ylim(y0 - (y1 - y0) * (bottom / bh) * 1.15, y1)
 
 
-def legend_out(ax, fig, leg):
-    """图例移到坐标轴框外：竖版图（宽<高）右上角纵向单列；横版图（宽>=高）下方纵向单列。
-    条目超过 12 条按列分组，避免纵向过长压扁主图。"""
-    n = len(leg.get_texts())
+def legend_out(ax, fig, leg, slot=0):
+    """图例统一置坐标轴框外右侧、纵向排列（用户 2026-11-07 定稿）。
+    多组图例按 slot 依次向右横排（每组各自纵向单列），互不重叠。
+    所有图幅方向统一放到轴框外右侧。"""
     handles = list(leg.legend_handles)
     labels = [t.get_text() for t in leg.get_texts()]
     title = leg.get_title().get_text() or None
-    w, h = fig.get_size_inches()
     fig.set_layout_engine("none")
-    if w >= h:
-        ncol = 1 if n <= 12 else -(-n // 12)
-        rows = -(-n // ncol)
-        ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
-                  ncol=ncol, fontsize=7, frameon=False, title=title)
-        fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
-    else:
-        ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                  ncol=1, fontsize=7, frameon=False, title=title)
-        fig.subplots_adjust(right=0.74)
+    x = 1.02 + 0.30 * slot
+    ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(x, 1.0),
+              ncol=1, fontsize=8, frameon=False, title=title)
+    fig.subplots_adjust(right=max(0.60, 0.80 - 0.06 * slot))
 
 
 def layout_fix(fig):
     """落盘前统一收口（docs/figure_spec.md v2.2 §三之三）：
-    1) 单坐标轴图的图例外置：竖版置轴框外右上角、横版置轴框下方，纵向排布、不压数据；
+    1) 单坐标轴图的图例外置：一律置轴框外右侧，纵向排布、不压数据；
     2) 轴内文本右缘/顶缘/左缘/下缘越出坐标轴框时自动扩 xlim/ylim 收进框内。
     多子图（分面）图不做图例搬迁：分面各有自己的图例，统一外移会互相压扁。
     tick 标签一律不动：它本就在轴框外，savefig.bbox="tight" 会把画布扩到装下它；
@@ -252,9 +245,9 @@ def layout_fix(fig):
     if not axes:
         return
     if len(axes) == 1:
-        leg = axes[0].get_legend()
-        if leg is not None:
-            legend_out(axes[0], fig, leg)
+        legs = [l for l in (axes[0].get_legend(),) if l is not None]
+        for slot, leg in enumerate(legs):
+            legend_out(axes[0], fig, leg, slot=slot)
         fit_text_edges(fig, axes[0])
 
 
@@ -474,19 +467,21 @@ def annotate_perm_p(ax, x1, x2, p, values):
     ax.plot([x1, x1, x2, x2], [y, y + h, y + h, y], color="k", lw=0.8,
             clip_on=False)
     ax.text((x1 + x2) / 2.0, y + h, "perm p = %.4g" % p,
-            ha="center", va="bottom", fontsize=7)
+            ha="center", va="bottom", fontsize=8)
 
 
-def scatter_cat(ax, xy, labels, legend_ncol=2):
+def scatter_cat(ax, xy, labels, legend_ncol=1):
     colors, cats = cat_colors(labels)
     for c in cats:
         m = labels == c
         ax.scatter(xy[m, 0], xy[m, 1], s=3, color=colors[c], label=c, linewidths=0)
     ax.set_xlabel("UMAP1")
     ax.set_ylabel("UMAP2")
-    # 图例外置到轴框下方（figure_spec v2.2 禁止轴内 loc="best"）
-    ax.legend(markerscale=3, fontsize=7, loc="upper center",
-              bbox_to_anchor=(0.5, -0.08), ncol=legend_ncol, frameon=False)
+    # UMAP 方形比例：防主图被挤压得太扁（用户 2026-11-08 定稿）
+    ax.set_aspect("equal", adjustable="box")
+    # 图例统一置轴框外右侧、纵向单列（新规范），留足右边距
+    ax.legend(markerscale=3, fontsize=8, loc="upper left",
+              bbox_to_anchor=(1.02, 1.0), ncol=1, frameon=False)
     ax.set_xticks([])
     ax.set_yticks([])
 
@@ -564,12 +559,12 @@ if comp is not None:
         bottom += prop_s[:, ci]
     ax.set_xticks(range(len(donors_s)))
     ax.set_xticklabels(["%s\n(%s)" % (d, diag[order[i]])
-                        for i, d in enumerate(donors_s)], fontsize=7)
+                        for i, d in enumerate(donors_s)], fontsize=8)
     ax.set_ylabel("celltype proportion")
     caption(fig, "line2 scrna: celltype composition per donor",
             "from step14 scrna_composition",
             "n=%d donors, diagnosis labeled" % len(donors_s))
-    ax.legend(fontsize=7, ncol=1, loc="upper left", bbox_to_anchor=(1.02, 1.0),
+    ax.legend(fontsize=8, ncol=1, loc="upper left", bbox_to_anchor=(1.02, 1.0),
               borderaxespad=0, frameon=False)
     fig.subplots_adjust(left=0.07, right=0.76, top=0.97, bottom=0.16)
     save(fig, "l2_05_composition_stack.png")
@@ -605,132 +600,15 @@ if comp is not None:
         plt.rcParams["figure.autolayout"] = False
         ax.legend([bp["boxes"][0], bp["boxes"][1], pts],
                   ["%s (box)" % labs[0], "%s (box)" % labs[1], "individual donor"],
-                  fontsize=7, loc="upper left", bbox_to_anchor=(1.02, 1.0),
+                  fontsize=8, loc="upper left", bbox_to_anchor=(1.02, 1.0),
                   borderaxespad=0, title="diagnosis")
         fig.subplots_adjust(left=0.12, right=0.70, top=0.95, bottom=0.14)
         save(fig, "l2_06_composition_box_%s.png" % c.replace("/", "_"))
         plt.rcParams["figure.autolayout"] = True
 
-    # --- 20 composition panel（组合图，docs/figure_spec.md 组图契约 G1-G5）---
-    # 三面板全部复用上面已算好的数组（prop_s/donors_s/diag/order/perm_p/umap/obs），
-    # 不重算任何统计量、不重读文件；三张成员单图已各自落盘，本段只拼合（组合图是新增，
-    # 不是替换）。缺任一必要数据就跳过并打 log，不产出残缺图。
-    if ("celltype" in obs.columns and "X_umap" in adata.obsm
-            and "basal_keratinocyte" in celltypes):
-        PANEL_FONT_PT = 12   # G1：面板编号字号（>=10pt，大于正文 9pt）。写成常量是因为
-        # 审计 C4 的正则只取一位数字，直接写 fontsize 字面量 12 会被读成 1 而误报
-        # "字号 <8pt"（踩坑 #196 同族工具缺陷，本切片无权改 cn_debug/）。
-        panel_ct = "basal_keratinocyte"   # B 面板固定为该细胞类型（派发单规格）
-        ct_labels = obs["celltype"].astype(str).to_numpy()
-        # A 与 C 必须共用同一份色码（G2 共享图例的前提）：按并集取色，集合一致时与单图同色
-        ct_colors, ct_cats = cat_colors(sorted(set(celltypes) | set(ct_labels.tolist())))
-        if set(ct_labels.tolist()) != set(celltypes):
-            log("WARN: obs.celltype 与 uns.composition.celltypes 不一致（obs 独有 %s），"
-                "组合图按并集配色"
-                % ", ".join(sorted(set(ct_labels.tolist()) - set(celltypes))))
-
-        plt.rcParams["figure.autolayout"] = False
-        fig = plt.figure(figsize=(18.0, 15.0))
-        # 全局 figure.autolayout=True 会在绘制时重算布局、覆盖显式间距（实测），锁死网格
-        fig.set_layout_engine("none")
-        gs = fig.add_gridspec(2, 2, height_ratios=[1.0, 1.0], width_ratios=[1.0, 1.35],
-                              left=0.055, right=0.985, top=0.955, bottom=0.19,
-                              hspace=0.22, wspace=0.14)
-        axA = fig.add_subplot(gs[0, :])   # A 占满上排：堆叠条要横向量给 8 个供体标签
-        axB = fig.add_subplot(gs[1, 0])
-        axC = fig.add_subplot(gs[1, 1])
-
-        # A = l2_05_composition_stack（同一 prop_s、同一配色；图例交给共享图例，轴内不画）
-        bottom = np.zeros(len(donors_s))
-        for ci, c in enumerate(celltypes):
-            axA.bar(range(len(donors_s)), prop_s[:, ci], bottom=bottom,
-                    color=ct_colors[c], label=c, width=0.7)
-            bottom += prop_s[:, ci]
-        axA.set_xticks(range(len(donors_s)))
-        axA.set_xticklabels(["%s\n(%s)" % (d, diag[order[i]])
-                             for i, d in enumerate(donors_s)], fontsize=7)
-        axA.set_ylabel("celltype proportion")
-        axA.set_ylim(0, 1)
-
-        # B = l2_06_composition_box_basal_keratinocyte（同一 prop 列、同一 perm_p）
-        ci = celltypes.index(panel_ct)
-        data, labs = [], []
-        for g in [ctrl_group, case_group]:
-            data.append([prop[i, ci] for i in range(len(donors)) if diag[i] == g])
-            labs.append(g)
-        bp = axB.boxplot(data, tick_labels=labs, widths=0.5, patch_artist=True)
-        for patch, col in zip(bp["boxes"], [color_of(g) for g in labs]):
-            patch.set_facecolor(col)
-        for j, vals in enumerate(data):
-            axB.scatter(np.full(len(vals), j + 1), vals, s=18, color="k", zorder=3)
-        axB.set_ylabel("celltype proportion")
-        # 组间 perm_p（scrna_composition 已算好，本脚本只标注不重算）；无值静默不画
-        p_basal = perm_p.get(panel_ct)
-        if p_basal is not None:
-            annotate_perm_p(axB, 1, 2, p_basal, data)
-        # G2 分面例外：B 是单轴图，其组别图例在组合图里省略（x tick 已是组名，色义写进
-        # 图组级 caption），避免与图组下方共享图例混排；单图 l2_06 的图例保持原样不动。
-
-        # C = l2_01_umap_celltype（同一 obsm.X_umap、同一细胞类型色码；不画轴内图例）
-        for c in ct_cats:
-            m = ct_labels == c
-            if m.any():
-                axC.scatter(umap[m, 0], umap[m, 1], s=3, color=ct_colors[c],
-                            linewidths=0)
-        axC.set_xlabel("UMAP1")
-        axC.set_ylabel("UMAP2")
-        axC.set_xticks([])
-        axC.set_yticks([])
-
-        # G1 面板编号：左上角外侧、与顶边齐平、bold、12pt（英文，图内中文禁用）
-        for ax, letter in ((axA, "A"), (axB, "B"), (axC, "C")):
-            ax.set_title(letter, loc="left", fontweight="bold",
-                         fontsize=PANEL_FONT_PT)
-
-        # G2 共享图例：细胞类型色码在图组下方居中只画一次（横排、frameon=False、带语义标题）；
-        # 条目 >12 按列分组（每列 <=12 行，沿用 legend_out 规则）
-        h_leg, l_leg = axA.get_legend_handles_labels()
-        ncol_leg = 1 if len(l_leg) <= 12 else -(-len(l_leg) // 12)
-        fig.legend(h_leg, l_leg, loc="lower center", bbox_to_anchor=(0.5, 0.008),
-                   ncol=ncol_leg, fontsize=7, title="cell type", frameon=False)
-
-        n_by_group = {g: sum(1 for x in diag if x == g) for g in [ctrl_group, case_group]}
-        p_txt = ("%.4g" % p_basal) if p_basal is not None else "NA"
-        caption(fig,
-                "line2 scrna: composition panel A/B/C - A = celltype composition per "
-                "donor (stacked bar), B = %s proportion by diagnosis (box + individual "
-                "donors), C = UMAP colored by celltype" % panel_ct,
-                "inputs: scrna_deg.h5ad (obs celltype/diagnosis/donor, obsm X_umap, "
-                "uns composition) + celltype_composition.tsv + composition_report.txt",
-                "n=%d donors (%s), %d celltypes, %d cells"
-                % (len(donors_s),
-                   ", ".join("%s=%d" % (g, n_by_group[g])
-                             for g in [ctrl_group, case_group]),
-                   len(celltypes), adata.shape[0]),
-                "B bracket: perm p = %s from uns['composition']['group_tests_json'] "
-                "(diagnosis level, two-group exact permutation test on donor-level "
-                "proportions, C(n,3) exact enumeration, seed-independent); value reused "
-                "from the statistics step, not recomputed here" % p_txt,
-                "box colors follow diagnosis (%s = ctrl, %s = case); x tick labels name "
-                "the groups; A and C share the celltype color code, legend drawn once "
-                "below the panel group" % (ctrl_group, case_group),
-                "members: l2_05_composition_stack + "
-                "l2_06_composition_box_basal_keratinocyte + l2_01_umap_celltype")
-        # 落盘前收口：guard 装的是 layout_fix()，它对多子图直接返回（§三之三：多子图不搬
-        # 图例），所以这里显式对每个面板调用同一份 fit_text_edges() 做轴内文本收边
-        # （B 的 perm_p 文本靠它扩 ylim）；图例一律不搬。
-        for ax in (axA, axB, axC):
-            fit_text_edges(fig, ax)
-        log("composite l2_20_composition_panel <- A:l2_05_composition_stack "
-            "+ B:l2_06_composition_box_basal_keratinocyte + C:l2_01_umap_celltype "
-            "| n=%d donors / %d celltypes | perm_p(%s)=%s | seed=%s"
-            % (len(donors_s), len(celltypes), panel_ct, p_txt,
-               os.environ.get("BIOANALYS_SEED", "UNSET")))
-        save(fig, "l2_20_composition_panel.png")
-        plt.rcParams["figure.autolayout"] = True
-    else:
-        log("skip l2_20_composition_panel（缺 obs.celltype / obsm.X_umap / "
-            "celltypes.%s 之一）" % "basal_keratinocyte")
+    # l2_20_composition_panel 已按 figure_spec v2.3 退役。
+    # 生产母版只输出上面的逐细胞类型单图，不再拼接 A/B/C 三面板。
+    log("retired l2_20_composition_panel（figure_spec v2.3：生产默认只出单图）")
 
 # --- 7 marker top5 heatmap ---
 cm = adata.uns.get("cluster_markers")
@@ -757,9 +635,9 @@ if isinstance(cm, pd.DataFrame) and len(cm):
         fig, ax = plt.subplots(figsize=(8, max(8, len(genes) * 0.22)))
         im = ax.imshow(z, aspect="auto", cmap="RdBu_r", vmin=-2, vmax=2)
         ax.set_yticks(range(len(genes)))
-        ax.set_yticklabels(genes, fontsize=7)
+        ax.set_yticklabels(genes, fontsize=8)
         ax.set_xticks(range(len(ct_order)))
-        ax.set_xticklabels(ct_order, rotation=45, ha="right", fontsize=7)
+        ax.set_xticklabels(ct_order, rotation=45, ha="right", fontsize=8)
         caption(fig, "line2 scrna: top-5 markers per celltype",
                 "from step6 annotate_celltypes cluster_markers",
                 "mean expr, gene-zscored (row=gene, col=celltype)")
@@ -801,12 +679,12 @@ if deg is not None:
         xlo, xhi = ax.get_xlim()
         ax.text(xlo + 0.02 * (xhi - xlo), -np.log10(p_cut),
                 "%s=%g" % (cuts["p_field"], p_cut),
-                fontsize=7, va="bottom", ha="left")
+                fontsize=8, va="bottom", ha="left")
         # log2FC 标注移到轴框顶部，避开底部密集点云与 p 标注
         ytop = ax.get_ylim()[1]
-        ax.text(-l2_cut - 0.02, ytop, "log2FC=%g" % -l2_cut, fontsize=7,
+        ax.text(-l2_cut - 0.02, ytop, "log2FC=%g" % -l2_cut, fontsize=8,
                 va="top", ha="right", rotation=90)
-        ax.text(l2_cut + 0.02, ytop, "log2FC=+%g" % l2_cut, fontsize=7,
+        ax.text(l2_cut + 0.02, ytop, "log2FC=+%g" % l2_cut, fontsize=8,
                 va="top", rotation=90)
         ax.set_xlabel("log2FC (Psoriasis vs Healthy)")
         ax.set_ylabel("-log10 adj p")
@@ -815,8 +693,8 @@ if deg is not None:
                 "sig=%d (|log2FC|>%g & %s<%g)"
                 % (per[c].get("n_sig", 0), l2_cut, cuts["p_field"], p_cut),
                 "red = up, blue = down, grey = NS")
-        # 图例外置到轴框下方（figure_spec v2.2：禁止轴内 loc）
-        ax.legend(fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.10),
+        # 图例外置到轴框右侧（figure_spec v2.2：禁止轴内 loc）
+        ax.legend(fontsize=8, loc="upper left", bbox_to_anchor=(1.02, 1.0),
                   ncol=1, frameon=False)
         save(fig, "l2_08_deg_volcano_%s.png" % c.replace("/", "_"))
 
@@ -826,14 +704,14 @@ if deg is not None:
     vals = [per[c].get("n_sig", 0) for c in cts]
     ax.bar(range(len(cts)), vals, color=CTRL_COLOR)   # 单序列条形，用交付基色（非组编码）
     ax.set_xticks(range(len(cts)))
-    ax.set_xticklabels(cts, rotation=45, ha="right", fontsize=7)
+    ax.set_xticklabels(cts, rotation=45, ha="right", fontsize=8)
     ax.set_ylabel("significant DEG count")
     cuts = read_cutoffs()
     caption(fig, "line2 scrna: DEG count per celltype",
             "from step15 deg_groups",
             "|log2FC|>%g & %s<%g" % (cuts["log2fc"], cuts["p_field"], cuts["p_cut"]))
     for i, v in enumerate(vals):
-        ax.text(i, v, str(v), ha="center", va="bottom", fontsize=7)
+        ax.text(i, v, str(v), ha="center", va="bottom", fontsize=8)
     save(fig, "l2_09_deg_sig_bar.png")
 
 # --- 10 PCA by diagnosis with confidence ellipse ---
@@ -855,7 +733,7 @@ if "X_pca_harmony" in adata.obsm or "X_pca" in adata.obsm:
             "X_pca_harmony from step4 integrate_harmony",
             "dashed = 95% CI ellipse")
     # 源级外置：横版图（7.5x6）落轴框下方（规范 §三之二）
-    ax.legend(title="diagnosis", loc="upper center", bbox_to_anchor=(0.5, -0.10),
+    ax.legend(title="diagnosis", loc="upper left", bbox_to_anchor=(1.02, 1.0),
               frameon=False)
     save(fig, "l2_10_pca_diagnosis.png")
 

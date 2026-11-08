@@ -77,11 +77,18 @@ import scipy.sparse as sp
 import scanpy as sc
 import anndata as ad
 
+import scipy.sparse as sps
+
+# squidpy 是可选依赖：本脚本只用它的 spatial_neighbors（按像素坐标连最近 k 个 spot）。
+# aarch64 + Python 3.12 上装机失败（centrosome 需要 cython 编译后端，离线拿不到轮子），
+# 因此缺失时走 native_spatial_graph（cKDTree 等价实现），并在报告里标明实现来源，
+# 不假装用了 squidpy。
 try:
     import squidpy as sq
+    SQ_SOURCE = "squidpy"
 except ImportError as exc:
-    sys.stderr.write("domains_visium 依赖 squidpy，导入失败: %s\n" % exc)
-    sys.exit(1)
+    sq = None
+    SQ_SOURCE = "native_cKDTree（squidpy 在本机不可用：%s）" % str(exc)[:80]
 
 ad.settings.allow_write_nullable_strings = False
 
@@ -104,12 +111,54 @@ def _filter_kwargs(func, wanted):
     sig = inspect.signature(func).parameters
     return {k: v for k, v in wanted.items() if k in sig}
 
+def native_spatial_graph(sub, k=SQ_K):
+    """样本内建空间近邻图（纯 scipy 实现，不需要 squidpy）。
+
+    为什么自建：squidpy 在 aarch64 + Python 3.12 上装不上（centrosome 编译需要 cython 后端，
+    离线环境拿不到轮子）。但本脚本需要的只是「按像素坐标连最近 k 个 spot」这一步，
+    用 cKDTree 与 sparse 矩阵可以等价实现，且实现可见可测，不引入不可装依赖。
+    产物键名保持 obsp["spatial_connectivities"] / ["spatial_distances"]，
+    与 squidpy 约定一致，下游无需感知实现差异。
+    """
+    from scipy.spatial import cKDTree
+    coords = np.column_stack([
+        sub.obs["pxl_col_fullres"].to_numpy(dtype=float),
+        sub.obs["pxl_row_fullres"].to_numpy(dtype=float),
+    ])
+    if not np.isfinite(coords).all():
+        fail("坐标含 NaN/Inf，无法建空间图")
+    n = coords.shape[0]
+    if n < 2:
+        fail("样本 spot 数 %d < 2，无法建空间图" % n)
+    k_eff = min(k + 1, n)  # cKDTree 返回自身，减去自身那一列
+    dist, idx = cKDTree(coords).query(coords, k=k_eff)
+    dist = np.atleast_2d(dist)
+    idx = np.atleast_2d(idx)
+    rows = np.repeat(np.arange(n), k_eff - 1)
+    cols = idx[:, 1:].ravel()
+    vals = dist[:, 1:].ravel()
+    conn = sps.csr_matrix((np.ones_like(vals), (rows, cols)), shape=(n, n))
+    conn = conn.maximum(conn.T)  # 对称化：近邻关系不必互指
+    dists = sps.csr_matrix((vals, (rows, cols)), shape=(n, n))
+    dists = dists.maximum(dists.T)
+    sub.obsp["spatial_connectivities"] = conn
+    sub.obsp["spatial_distances"] = dists
+    sub.uns["spatial_neighbors"] = {
+        "conn_key": "spatial_connectivities",
+        "dist_key": "spatial_distances",
+        "params": {"coord_type": "generic", "n_neighbors": k, "method": "cKDTree_native"},
+    }
+    return "spatial_connectivities", "spatial_distances"
+
+
 def sq_spatial_graph(sub):
     """样本内建空间邻接图；返回 (conn_key, dist_key)。
 
     squidpy 各版本参数名不同（n_neighors 是上游笔误保留名；transform/delimiter
-    在部分版本不存在），按实际签名裁剪传参，缺一个就报 TypeError 全家崩。"""
-    fn = sq.gr.spatial_neighbors
+    在部分版本不存在），按实际签名裁剪传参，缺一个就报 TypeError 全家崩。
+    本机装不上 squidpy 时自动落到 native_spatial_graph，并在报告里写明实现来源。"""
+    if sq is None:
+        return native_spatial_graph(sub)
     kwargs = _filter_kwargs(fn, {"coord_type": "generic", "n_neighors": SQ_K,
                                  "n_neighbors": SQ_K, "n_rings": 1,
                                  "key_added": "spatial_neighbors"})
@@ -129,6 +178,7 @@ def sq_spatial_graph(sub):
         fail("squidpy 建图后 obsp 无连接矩阵（keys=%s）" % list(sub.obsp.keys()))
     return ckey, dkey
 
+START = time.time()
 src = os.environ["DOM_INPUT"]
 seed = int(os.environ["BIOANALYS_SEED"])
 a = ad.read_h5ad(src)
@@ -215,7 +265,8 @@ rep.append("step=domains_visium")
 rep.append("seed=%s" % seed)
 rep.append("input_qc=%s" % os.path.abspath(src))
 rep.append("resolution=%.1f（写死；三切片只需粗结构域 LV 游离壁/室间隔/纤维化区，0.6 约每样本 4~8 域，更高会切碎域降低 marker 功效）" % RESOLUTION)
-rep.append("method=每样本独立 squidpy spatial_neighbors(%d 邻) + HVG%d + PCA%d + leiden(igraph, n_iter=2)" % (SQ_K, N_HVG, N_PCS))
+rep.append("spatial_graph_source=%s" % SQ_SOURCE)
+rep.append("method=每样本独立 spatial_neighbors(%d 邻) + HVG%d + PCA%d + leiden(igraph, n_iter=2)" % (SQ_K, N_HVG, N_PCS))
 rep.append("domains_total=%d" % len(sizes))
 for s in samples:
     rep.append("sample %s: spots=%d domains=%d mean_conn_per_spot=%.1f n_pcs=%d"

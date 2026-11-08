@@ -156,7 +156,10 @@ if N_GENES > a.n_vars:
     fail("N_GENES=%d 超过基因总数 %d" % (N_GENES, a.n_vars))
 sel = np.argsort(-nnz)[:N_GENES]
 sel = np.sort(sel)
-gene_sel = np.array(a.var_names)[sel]
+if "gene_symbol" in a.var.columns:
+    gene_sel = np.array(a.var["gene_symbol"].astype(str))[sel]
+else:
+    gene_sel = np.array(a.var_names)[sel]
 sub = a[:, sel]
 Xd = np.asarray(sub.X.todense(), dtype=np.float32)
 expr = pd.DataFrame(Xd, index=sub.obs_names, columns=gene_sel)
@@ -164,7 +167,7 @@ del Xd, sub
 log("gene space: top%d by expression breadth; min breadth=%d"
     % (N_GENES, int(nnz[sel].min())))
 
-# --- 2. TF 名单（从 motif 注释 tbl 的 gene_name 列） ---
+# --- 2. TF gene list from motif annotation tbl ---
 tf_all = set()
 with open(TBL, encoding="utf-8") as fh:
     header = fh.readline().rstrip("\n").split("\t")
@@ -173,6 +176,10 @@ with open(TBL, encoding="utf-8") as fh:
         parts = line.rstrip("\n").split("\t")
         if len(parts) > gi and parts[gi].strip() not in ("", "None"):
             tf_all.add(parts[gi].strip())
+tf_names = [g for g in gene_sel if g in tf_all]
+if len(tf_names) < 10:
+    fail("gene space TF < 10 (%d)" % len(tf_names))
+log("annotated TFs in space: %d" % len(tf_names))
 tf_names = [g for g in gene_sel if g in tf_all]
 if len(tf_names) < 10:
     fail("基因空间内 TF 数 < 10（%d），无法推断 GRN" % len(tf_names))

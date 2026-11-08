@@ -134,7 +134,7 @@ export function checkRouterAndScope(repoRoot) {
 
   if (fs.existsSync(SCOPE)) {
     const text = fs.readFileSync(SCOPE, "utf8");
-    const rejIds = [...text.matchAll(/\|\s*(REJ-\d{3})\s*\|/g)].map((m) => m[1]);
+    const rejIds = [...text.matchAll(/^\s*\|\s*(REJ-\d{3})\s*\|/gm)].map((m) => m[1]);
     const enforced = [...text.matchAll(/\x60enforced_by:\s*([^\x60]+?)\s*\x60/g)].map((m) => m[1]);
 
     const dup = rejIds.filter((id, i) => rejIds.indexOf(id) !== i);
@@ -148,17 +148,38 @@ export function checkRouterAndScope(repoRoot) {
 
     const rows = text.split(/\r?\n/).filter((l) => /\|\s*REJ-\d{3}\s*\|/.test(l));
     const ALLOWED_STATUS = new Set(["生效", "搁置", "已撤销"]);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     for (const row of rows) {
       const cells = row.split("|").map((c) => c.trim());
       const id = cells[1];
       const status = cells[5] || "";
       const reviewed = cells[6] || "";
       const superseded = cells[7] || "";
+      const expiresAt = cells[8] || "";
       if (!ALLOWED_STATUS.has(status)) errs.push(id + " 的 status 非法: \"" + status + "\"（允许：生效/搁置/已撤销）");
       if (!reviewed) errs.push(id + " 缺 reviewed_by（复审依据）");
       if (status === "已撤销" && (!superseded || superseded === "无")) errs.push(id + " 已撤销但未写明被替代者");
+      if (!expiresAt) {
+        errs.push(id + " 缺 expires_at（有效期至）");
+      } else if (!/^\d{4}-\d{2}-\d{2}$/.test(expiresAt)) {
+        errs.push(id + " 的 expires_at 格式非法: \"" + expiresAt + "\"（必须为 YYYY-MM-DD）");
+      } else {
+        const expDate = new Date(expiresAt + "T00:00:00Z");
+        if (Number.isNaN(expDate.getTime())) {
+          errs.push(id + " 的 expires_at 不是合法日期: \"" + expiresAt + "\"");
+        } else {
+          const diffMs = expDate.getTime() - today.getTime();
+          const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+          if (diffDays < 0) {
+            errs.push(id + " 的 expires_at 已过期: " + expiresAt);
+          } else if (diffDays > 180) {
+            errs.push(id + " 的 expires_at 距今超过 180 天上限 (" + diffDays + " 天 > 180 天): " + expiresAt);
+          }
+        }
+      }
     }
-    notes.push("rej=" + rejIds.length + " enforced_by=" + enforced.length + " lifecycle=ok");
+    notes.push("rej=" + rejIds.length + " enforced_by=" + enforced.length + " lifecycle=ok expires_at<=180d");
   }
 
   // 黄金集并列度：ambiguous_tie 必须 0，near_tie 占比 <= 15%

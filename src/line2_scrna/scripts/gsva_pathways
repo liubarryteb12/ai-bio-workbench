@@ -180,14 +180,20 @@ if not np.all(np.isfinite(pb)):
 if pb.min() < -1e-9:
     fail("pseudobulk 含负值")
 
-out = pd.DataFrame(pb, index=norm.var_names, columns=groups)
+if "gene_symbol" in norm.var.columns:
+    sym_arr = norm.var["gene_symbol"].astype(str).to_numpy()
+    sym_unique = {}
+    for pos, s in enumerate(sym_arr):
+        if s not in sym_unique:
+            sym_unique[s] = pos
+    pb_sym = np.stack([pb[pos] for pos in sym_unique.values()], axis=0)
+    out = pd.DataFrame(pb_sym, index=list(sym_unique.keys()), columns=groups)
+else:
+    out = pd.DataFrame(pb, index=norm.var_names, columns=groups)
 out.index.name = "gene"
 out.to_csv("_gsva_pseudobulk.tsv", sep="\t")
 pd.DataFrame(meta).to_csv("_gsva_ncells.tsv", sep="\t", index=False)
 print("pseudobulk %d genes x %d celltype-sample groups" % (out.shape[0], out.shape[1]), flush=True)
-# 句柄兜底（figure_spec 第 3 节 / Argon 第 65 轮 Q3）：逐图 close(fig) 已在 save() 内执行，
-# 这里再 close("all") 兜住异常分支的残留图，防单步跑多图时峰值内存叠加。
-plt.close("all")
 PYSCRIPT
 
 # 2) 桥接四项断言守卫（task-10 / m00939 边界②）：本母版是跨语言步骤
@@ -290,8 +296,8 @@ import anndata as ad
 ad.settings.allow_write_nullable_strings = False
 NORM = os.environ.get("BIO_GSVA_NORM", "scrna_norm.h5ad")
 plt.rcParams.update({
-    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 7, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "legend.title_fontsize": 7,
-    "axes.titlesize": 7, "axes.grid": False,
+    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 8, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 8, "xtick.labelsize": 8, "ytick.labelsize": 8, "legend.fontsize": 8, "legend.title_fontsize": 8,
+    "axes.titlesize": 9, "axes.grid": False,
     "figure.autolayout": True, "savefig.bbox": "tight",
     "image.cmap": "viridis",
 })
@@ -315,7 +321,7 @@ def caption(fig, *parts):
     if not parts:
         return
     text = "\n".join(parts)
-    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=7, linespacing=1.5)
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
 def wrap_label(text, width=18):
     """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
     import textwrap
@@ -382,30 +388,23 @@ def fit_text_edges(fig, ax, gap=6.0, rounds=5):
             ax.set_ylim(y0 - (y1 - y0) * (bottom / bh) * 1.15, y1)
 
 
-def legend_out(ax, fig, leg):
-    """图例移到坐标轴框外：竖版图（宽<高）右上角纵向单列；横版图（宽>=高）下方纵向单列。
-    条目超过 12 条按列分组，避免纵向过长压扁主图。"""
-    n = len(leg.get_texts())
+def legend_out(ax, fig, leg, slot=0):
+    """图例统一置坐标轴框外右侧、纵向排列（用户 2026-11-07 定稿）。
+    多组图例按 slot 依次向右横排（每组各自纵向单列），互不重叠。
+    不再按图幅横竖分支把图例放到轴框下方。"""
     handles = list(leg.legend_handles)
     labels = [t.get_text() for t in leg.get_texts()]
     title = leg.get_title().get_text() or None
-    w, h = fig.get_size_inches()
     fig.set_layout_engine("none")
-    if w >= h:
-        ncol = 1 if n <= 12 else -(-n // 12)
-        rows = -(-n // ncol)
-        ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
-                  ncol=ncol, fontsize=7, frameon=False, title=title)
-        fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
-    else:
-        ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                  ncol=1, fontsize=7, frameon=False, title=title)
-        fig.subplots_adjust(right=0.74)
+    x = 1.02 + 0.30 * slot
+    ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(x, 1.0),
+              ncol=1, fontsize=8, frameon=False, title=title)
+    fig.subplots_adjust(right=max(0.60, 0.80 - 0.06 * slot))
 
 
 def layout_fix(fig):
     """落盘前统一收口（docs/figure_spec.md v2.2 §三之三）：
-    1) 单坐标轴图的图例外置：竖版置轴框外右上角、横版置轴框下方，纵向排布、不压数据；
+    1) 单坐标轴图的图例外置：一律置轴框外右侧，纵向排布、不压数据；
     2) 轴内文本右缘/顶缘/左缘/下缘越出坐标轴框时自动扩 xlim/ylim 收进框内。
     多子图（分面）图不做图例搬迁：分面各有自己的图例，统一外移会互相压扁。
     tick 标签一律不动：它本就在轴框外，savefig.bbox="tight" 会把画布扩到装下它；
@@ -416,9 +415,9 @@ def layout_fix(fig):
     if not axes:
         return
     if len(axes) == 1:
-        leg = axes[0].get_legend()
-        if leg is not None:
-            legend_out(axes[0], fig, leg)
+        legs = [l for l in (axes[0].get_legend(),) if l is not None]
+        for slot, leg in enumerate(legs):
+            legend_out(axes[0], fig, leg, slot=slot)
         fit_text_edges(fig, axes[0])
 
 
@@ -476,9 +475,9 @@ plt.rcParams["figure.autolayout"] = False
 fig, ax = plt.subplots(figsize=(max(8, len(celltypes) * 0.62), max(8, TOP_N * 0.30)))
 im = ax.imshow(z.to_numpy(), aspect="auto", cmap="RdBu_r", vmin=-2, vmax=2)
 ax.set_yticks(range(len(short)))
-ax.set_yticklabels(short, fontsize=7)
+ax.set_yticklabels(short, fontsize=8)
 ax.set_xticks(range(len(celltypes)))
-ax.set_xticklabels(celltypes, rotation=45, ha="right", fontsize=7)
+ax.set_xticklabels(celltypes, rotation=45, ha="right", fontsize=8)
 caption(fig, "line2 scrna: GSVA pathway activity (top-%d by variance)" % len(short),
         "gsva_scores.tsv from step: gsva_pathways",
         "row = pathway, col = celltype, z-scored per pathway",
@@ -542,6 +541,7 @@ for tmp in ["_gsva_pseudobulk.tsv", "_gsva_ncells.tsv"]:
     except OSError:
         pass
 print("gsva_pathways_done pathways=%d" % mat.shape[0], flush=True)
+plt.close("all")
 PYSCRIPT
 
 # sha256 产物台账后置补登：复用独立脚本，写法与其余步骤解耦。

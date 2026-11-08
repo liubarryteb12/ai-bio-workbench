@@ -2,8 +2,8 @@
 
 > **文档性质**：工作台最高级别项目工程与技术交付交接总卷  
 > **基线时间**：2026-11-07  
-> **Git 分支/基线**：分支 `master`，最新提交 `adb7a9b`（及随后的文档沉淀）  
-> **当前官方基线**：**19 道门禁全绿（12秒）**｜**1823 tests / 1822 pass / 0 fail / 1 skipped**（212 个测试文件）｜**代码规模 22,310 SLOC**（非空行，79 个核心源文件）｜**算力面 57 脚本逐字节同源 (`K40_SCRIPT_PARITY_OK`)**｜**空间图件 33/33 比例尺像素实测 0.00% 误差闭环**  
+> **Git 分支/基线**：分支 `master`，已全量闭环 Phase 0/1/2 与外部通用框架瘦身封板  
+> **当前官方基线**：**20 道门禁全绿**｜**1852 tests / 1851 pass / 0 fail / 1 skipped**（215 个测试文件）｜**代码规模 22,723 SLOC**（非空行，83 个核心源文件）｜**算力面 57 脚本逐字节同源 (`K40_SCRIPT_PARITY_OK`)**｜**空间图件 33/33 比例尺像素实测 0.00% 误差闭环**｜**图件注册表 92 模板 / 40 实证 ready（REJ-012 动态棘轮）**｜**出图源码字号≥8pt 合规（C1-C14 门禁）+ 门户四点双射契约**
 > **终审认证**：4 Argon（Gemini 4 Argon High）第 74 轮正式签署封板批准与框架演进路线图。  
 
 ---
@@ -125,9 +125,9 @@ python ops/figure_scalebar_png_measure.py local_projects/PRJ_STROKE_P2_SPATIAL_L
 - **非生产参考代码彻底归档**：历史积累的 3,000+ 个外部参考代码已全量移入 [`可用代码预筛选/`](../可用代码预筛选/) 独立目录，与生产目录零污染隔离；
 - **通用框架会诊裁定完成**：外部框架 `agent工作基础项目结构开发（hyl工作适用）` 已获 4 Argon 终审裁判，瘦身封板方案与三阶段吸收落地令已签发。
 
-### 2. 接手后的后续顺位工作（已获 4 Argon 第 74 轮批准）
-1. **第 1 顺位（外部通用框架封板）**：在 `D:\00.AIagent\antiworkspace\agent工作基础项目结构开发（hyl工作适用）` 执行精简瘦身（剔除 `gap_analyzer.py` 与独立 `personas/`，合并三本台账为单一结构，修补 `tasklist.py` 降级短路），保证其 `pytest` 24 项单测全绿封板；
-2. **第 2 顺位（本项目 Phase 0 + Phase 1 落地）**：在本项目工作台编写 `ops/schema_gateway.py`（文件 IPC 校验网关）、扩展 `router_gate.mjs` 支持 `expires_at <= 180天` 上限约束、在 `task_fsm.js` 中补齐 `BLOCKED_UPSTREAM_DEGRADED` 显式短路，跑通 MUT-P0-A/B 与 MUT-P1-A/B 4 条变异反证；
-3. **第 3 顺位（本项目 Phase 2 受控写）**：将 Schema 网关转正为阻断级校验，落地双语原子写与强杀回滚契约，跑通 MUT-P2-A/B 反证，完成全案终期闭环。
+### 2. 三大顺位工作执行与闭环记录（已全量竣工）
+1. **第 1 顺位（外部通用框架封板 · 已闭环）**：在 `D:\00.AIagent\antiworkspace\agent工作基础项目结构开发（hyl工作适用）` 执行精简瘦身（剔除 `gap_analyzer.py` 与独立 `personas/`，合并三本台账为单一结构 `ledger/knowledge_ledger.jsonl`，内聚原子写 `core/fsm_checkpoint.py`，修补 `tasklist.py` 降级短路与 `loop_controller.py` 进程组强杀），`pytest` 24 项单测全绿封板；
+2. **第 2 顺位（本项目 Phase 0 + Phase 1 落地 · 已闭环）**：在本项目工作台编写 `ops/schema_gateway.py`（短命文件 IPC 校验网关）、扩展 `router_gate.mjs` 支持 `expires_at <= 180天` 上限约束、在 `task_fsm.js` 中补齐 `BLOCKED_UPSTREAM_DEGRADED` 显式短路与判定纯函数，在 `proc.js` 补齐 `killProcessTree` 进程组连根强杀，跑通 MUT-P0-A/B 与 MUT-P1-A/B 4 条变异反证；
+3. **第 3 顺位（本项目 Phase 2 受控写 · 已闭环）**：将 Schema 网关转正为 Fail-Closed 阻断级准入校验（`projects.routes.js` 与 `run.js` 前置拦截），落地双语原子落盘保护（Node 侧 `atomicWriteFileSync` 与 Python 侧 `atomic_write`），跑通 MUT-P2-A/B 反证，全量 19 道门禁全绿，测试套件扩展至 1837 条全通过。
 
 请按顺序参阅各专业分册以获取代码级实现细节与详细指引。

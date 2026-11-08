@@ -2,7 +2,7 @@
 /**
  * T1-3 preview 溯源门禁（第三十三轮 4 Argon Q3 裁定）：
  *   有矩阵证据的 ready 强制 preview_sha256 === 同 runner 产物 sha；
- *   无矩阵证据的显式标 render_evidence: null 并输出清单，不阻断（避免击穿 readyCount=30）。
+ *   无矩阵证据的显式标 render_evidence: null 并输出清单，不阻断（避免击穿 ready 基线）。
  *
  * 为什么用 script_plot_matrix.json 而不是 r453_verification_report.json：
  * 实测（.tmp/probe_t13b.mjs）证明 report 的 artifacts[] 只有 file 与 runner，**没有 sha256**，
@@ -18,7 +18,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const FIG_ROOT = path.join(REPO, 'reference', '05.可参考出图代码');
+const FIG_ROOT = path.join(REPO, 'reference', '05.可参考生信代码', '可用代码预筛选', '源码');
 const MATRIX = path.join(FIG_ROOT, '_meta', 'script_plot_matrix.json');
 const REGISTRY = path.join(REPO, 'src', 'figure_templates.json');
 
@@ -53,6 +53,14 @@ export function checkPreviewProvenance() {
   const diverged = [];
   const noEvidence = [];
   const diskDrift = [];
+  // Argon 第 75 轮 MUT-FIG-C：draft 模板严禁携带预览实证字段（防半成品冒充交付预览）。
+  const draftTaint = [];
+  for (const t of templates) {
+    const isDraft = t.status === 'draft' || (t.deps_status !== 'ready' && !t.verified);
+    if (isDraft && (t.preview_sha256 || t.render_evidence)) {
+      draftTaint.push({ id: t.id, reason: 'draft 携带 preview_sha256/render_evidence 实证字段' });
+    }
+  }
 
   for (const t of ready) {
     const previewBase = path.basename(t.preview || '');
@@ -71,7 +79,7 @@ export function checkPreviewProvenance() {
     else diverged.push({ id: t.id, preview: previewBase, registry: t.preview_sha256.slice(0, 8), artifact: art.sha256.slice(0, 8), runner: art.runner });
   }
 
-  return { ready: ready.length, equal, diverged, noEvidence, diskDrift };
+  return { ready: ready.length, equal, diverged, noEvidence, diskDrift, draftTaint };
 }
 
 function main() {
@@ -93,7 +101,8 @@ function main() {
   const result = checkPreviewProvenance();
   const diskOk = result.diskDrift.length === 0;
   const provenanceOk = result.diverged.length === 0;
-  const ok = infoOnly ? diskOk : (diskOk && provenanceOk);
+  const draftOk = (result.draftTaint || []).length === 0;
+  const ok = (infoOnly ? diskOk : (diskOk && provenanceOk)) && draftOk;
 
   if (asJson) {
     console.log(JSON.stringify({ ok, ...result }, null, 2));
@@ -117,6 +126,10 @@ function main() {
   if (result.diskDrift.length > 0) {
     console.log('\n[FAIL] 以下 ready 的 preview 磁盘字节与注册表不符：');
     for (const item of result.diskDrift) console.log(`  - ${item.id}  ${item.reason}`);
+  }
+  if ((result.draftTaint || []).length > 0) {
+    console.log('\n[FAIL] 以下 draft 模板伪造实证字段（MUT-FIG-C）：');
+    for (const item of result.draftTaint) console.log(`  - ${item.id}  ${item.reason}`);
   }
 
   if (infoOnly && provenanceOk === false) {

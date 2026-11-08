@@ -375,6 +375,167 @@ export const MUTATIONS = Object.freeze([
       return { green: true, detail: '幽灵脚本被点名' };
     },
   },
+  {
+    id: 'm10_fig_ghost_mod',
+    layer: 'behavior',
+    label: 'MUT-FIG-A partition 不再校验 producing_mod_id 外键（幽灵 Mod 放行）',
+    target: 'ops/lib/figure_status_partition.mjs',
+    guardLabel: 'figure_status_partition：ready 模板 producing_mod_id 不在 workflows.json 必判 invalid',
+    edits: [{ find: '!modIds.has(t.producing_mod_id)', replace: 'false' }],
+    async guard(file) {
+      const mod = await loadModule(file);
+      const probe = [{ id: 'fig_probe', status: 'ready', producing_mod_id: 'mod_ghost_999', preview_sha256: 'a'.repeat(64), data_contract: { input_artifact: 'x.tsv' } }];
+      const { invalid } = mod.partitionByStatus(probe);
+      const hit = invalid.some((i) => i.reason === 'invalid_ready_contract');
+      if (!hit) return { green: false, detail: '幽灵 producing_mod_id 被放行，invalid=' + JSON.stringify(invalid) };
+      return { green: true, detail: '幽灵外键被判 invalid_ready_contract' };
+    },
+  },
+  {
+    id: 'm11_fig_unschedulable',
+    layer: 'behavior',
+    label: 'MUT-FIG-B figure_schedule 缺前置 Mod 不再阻断（UNSCHEDULABLE 放行）',
+    target: 'BioanalysDesktop/server/figure_schedule.js',
+    guardLabel: 'validateFigureSchedule：required_mod_ids 未被覆盖必返回 UNSCHEDULABLE_FIGURE',
+    edits: [{ find: 'if (missing.length > 0) {', replace: 'if (false) {' }],
+    async guard(file) {
+      const mod = await loadModule(file);
+      const registry = [{ id: 'fig_probe', status: 'ready', required_mod_ids: ['l3_dimred_domains', 'l3_figures_spatial'] }];
+      const res = mod.validateFigureSchedule(['l3_figures_spatial'], [{ template_id: 'fig_probe' }], registry);
+      const hit = res.violations.some((v) => v.code === 'UNSCHEDULABLE_FIGURE' && v.missing_mod_ids.includes('l3_dimred_domains'));
+      if (!hit) return { green: false, detail: '缺前置 Mod 被放行，res=' + JSON.stringify(res) };
+      return { green: true, detail: '缺前置 Mod 被判 UNSCHEDULABLE_FIGURE' };
+    },
+  },
+  {
+    id: 'm12_fig_draft_taint',
+    layer: 'infra',
+    label: 'MUT-FIG-C partition 不再拦截 draft 伪造实证（伪证放行）',
+    target: 'ops/lib/figure_status_partition.mjs',
+    guardLabel: 'figure_status_partition：draft 携带 preview_sha256/render_evidence 必判 invalid',
+    edits: [{ find: 'if (t.preview_sha256 || t.render_evidence) {', replace: 'if (false) {' }],
+    async guard(file) {
+      const mod = await loadModule(file);
+      const probe = [{ id: 'fig_draft', status: 'draft', preview_sha256: 'b'.repeat(64), render_evidence: null }];
+      const { invalid } = mod.partitionByStatus(probe);
+      const hit = invalid.some((i) => i.reason === 'draft_with_fake_evidence');
+      if (!hit) return { green: false, detail: 'draft 伪证被放行，invalid=' + JSON.stringify(invalid) };
+      return { green: true, detail: 'draft 伪证被判 draft_with_fake_evidence' };
+    },
+  },
+  {
+    id: 'm13_fig_draft_schedule',
+    layer: 'behavior',
+    label: 'MUT-FIG-C figure_schedule 不再拒绝 draft 调度（越权放行）',
+    target: 'BioanalysDesktop/server/figure_schedule.js',
+    guardLabel: 'validateFigureSchedule：draft 图件必返回 ERR_FIGURE_NOT_READY',
+    edits: [{ find: 'if (!isReady) {', replace: 'if (false) {' }],
+    async guard(file) {
+      const mod = await loadModule(file);
+      const registry = [{ id: 'fig_draft', status: 'draft' }];
+      const res = mod.validateFigureSchedule(['l1_figures_bulk'], [{ template_id: 'fig_draft' }], registry);
+      const hit = res.violations.some((v) => v.code === 'ERR_FIGURE_NOT_READY');
+      if (!hit) return { green: false, detail: 'draft 调度被放行，res=' + JSON.stringify(res) };
+      return { green: true, detail: 'draft 调度被判 ERR_FIGURE_NOT_READY' };
+    },
+  },
+  {
+    id: 'm14_figcode_font',
+    layer: 'behavior',
+    label: 'MUT-FIGCODE-A 母版字号回归 fontsize=7 必须被第 20 道门禁检出',
+    target: 'src/line1_bulk/scripts/bulk_figures',
+    guardLabel: 'figure_code_gate：母版出现 fontsize=7 时 blocking>0',
+    edits: [{ find: 'fontsize=8', replace: 'fontsize=7' }],
+    async guard(file, scope) {
+      const probe = path.join(scope, 'probe_a');
+      fs.mkdirSync(path.join(probe, 'cn_debug'), { recursive: true });
+      fs.mkdirSync(path.join(probe, 'src', 'line1_bulk', 'scripts'), { recursive: true });
+      fs.copyFileSync(path.join(REPO, 'cn_debug', 'figure_code_audit.py'), path.join(probe, 'cn_debug', 'figure_code_audit.py'));
+      fs.copyFileSync(file, path.join(probe, 'src', 'line1_bulk', 'scripts', 'bulk_figures'));
+      const gate = await loadModule(path.join(REPO, 'ops', 'figure_code_gate.mjs'));
+      const res = gate.checkFigureCode(probe);
+      return { green: res.blocking === 0, detail: 'blocking=' + res.blocking };
+    },
+  },
+  {
+    id: 'm15_figcode_exit',
+    layer: 'infra',
+    label: 'MUT-FIGCODE-B 门禁退出码诚实度（有违规仍判 ok 必红）',
+    target: 'ops/figure_code_gate.mjs',
+    guardLabel: 'figure_code_gate：含 fontsize=6 夹具时 ok 必须为 false',
+    edits: [{ find: 'const ok = errors.length === 0 && blocking === 0;', replace: 'const ok = true;' }],
+    async guard(file, scope) {
+      const probe = path.join(scope, 'probe_b');
+      fs.mkdirSync(path.join(probe, 'cn_debug'), { recursive: true });
+      fs.mkdirSync(path.join(probe, 'src', 'line1_bulk', 'scripts'), { recursive: true });
+      fs.copyFileSync(path.join(REPO, 'cn_debug', 'figure_code_audit.py'), path.join(probe, 'cn_debug', 'figure_code_audit.py'));
+      const master = '#!/usr/bin/env bash\nset -euo pipefail\npython3 - <<\'PYSCRIPT\'\nimport matplotlib\nmatplotlib.use("Agg")\nimport matplotlib.pyplot as plt\nplt.rcParams.update({"savefig.dpi": 300})\nfig = plt.figure()\nfig.text(0.01, -0.02, "x", fontsize=6)\nfig.savefig("figures/x.png", dpi=300)\nplt.close("all")\nPYSCRIPT\n';
+      fs.writeFileSync(path.join(probe, 'src', 'line1_bulk', 'scripts', 'probe_fig'), master);
+      const gate = await loadModule(file);
+      const res = gate.checkFigureCode(probe);
+      return { green: res.ok === false, detail: 'ok=' + res.ok + ' blocking=' + res.blocking };
+    },
+  },
+  {
+    id: 'm16_figcode_c13',
+    layer: 'behavior',
+    label: 'MUT-FIGCODE-C 审计器 C13（plt.close）规则失效必红',
+    target: 'cn_debug/figure_code_audit.py',
+    guardLabel: 'figure_code_gate：缺 plt.close 的探针必须被 C13 检出 blocking>0',
+    edits: [{ find: 'if has_pyplot and has_savefig and not re.search(r"plt\\.close\\(|pyplot\\.close\\(", text):', replace: 'if False:' }],
+    async guard(file, scope) {
+      const probe = path.join(scope, 'probe_c');
+      fs.mkdirSync(path.join(probe, 'cn_debug'), { recursive: true });
+      fs.mkdirSync(path.join(probe, 'src', 'line1_bulk', 'scripts'), { recursive: true });
+      fs.copyFileSync(file, path.join(probe, 'cn_debug', 'figure_code_audit.py'));
+      const master = '#!/usr/bin/env bash\nset -euo pipefail\npython3 - <<\'PYSCRIPT\'\nimport matplotlib\nmatplotlib.use("Agg")\nimport matplotlib.pyplot as plt\nplt.rcParams.update({"savefig.dpi": 300})\nfig = plt.figure()\nfig.savefig("figures/x.png", dpi=300)\nPYSCRIPT\n';
+      fs.writeFileSync(path.join(probe, 'src', 'line1_bulk', 'scripts', 'probe_fig'), master);
+      const gate = await loadModule(path.join(REPO, 'ops', 'figure_code_gate.mjs'));
+      const res = gate.checkFigureCode(probe);
+      return { green: res.blocking > 0, detail: 'blocking=' + res.blocking + ' kinds=' + JSON.stringify(res.byKind) };
+    },
+  },
+  {
+    id: 'm17_portal_catalog',
+    layer: 'behavior',
+    label: 'MUT-PORTAL-A 目录双射失效（幽灵 Mod 放行）',
+    target: 'BioanalysDesktop/server/mod_schedule.js',
+    guardLabel: 'assertCatalogParity：无母版的幽灵 Mod 必须判 orphan',
+    edits: [{ find: 'return { ok: orphans.length === 0, orphan_mods: orphans };', replace: 'return { ok: true, orphan_mods: orphans };' }],
+    async guard(file) {
+      const mod = await loadModule(file);
+      const stub = { series: [{ id: 'line1_bulk', stages: [{ order: 1, required: true, mods: [{ id: 'mod_fake_99', script: 'no_such_script' }] }] }] };
+      const res = mod.assertCatalogParity(stub, () => false);
+      return { green: res.ok === false && res.orphan_mods.includes('line1_bulk/mod_fake_99'), detail: 'ok=' + res.ok + ' orphans=' + JSON.stringify(res.orphan_mods) };
+    },
+  },
+  {
+    id: 'm18_portal_dag',
+    layer: 'behavior',
+    label: 'MUT-PORTAL-B 依赖闭包阻断失效（漏选上游放行）',
+    target: 'BioanalysDesktop/server/mod_schedule.js',
+    guardLabel: 'validateModSchedule：仅选下游漏上游必须 UNSCHEDULABLE_MOD_DAG',
+    edits: [{ find: 'if (missing.length > 0) {', replace: 'if (false) {' }],
+    async guard(file) {
+      const mod = await loadModule(file);
+      const stub = { series: [{ id: 'line1_bulk', stages: [{ order: 1, required: true, mods: [{ id: 'up' }] }, { order: 2, required: false, mods: [{ id: 'down' }] }] }] };
+      const res = mod.validateModSchedule(['down'], [], stub);
+      return { green: res.ok === false && res.code === 'UNSCHEDULABLE_MOD_DAG', detail: 'ok=' + res.ok + ' missing=' + JSON.stringify(res.missing_upstream_mods) };
+    },
+  },
+  {
+    id: 'm19_portal_parity',
+    layer: 'behavior',
+    label: 'MUT-PORTAL-C 计划恒等失效（漏跑/私加放行）',
+    target: 'BioanalysDesktop/server/mod_schedule.js',
+    guardLabel: 'assertPlanModParity：编译步骤漏跑必须判 dropped',
+    edits: [{ find: 'return { ok: dropped.length === 0 && unrequested.length === 0, dropped_steps: dropped, unrequested_steps: unrequested };', replace: 'return { ok: true, dropped_steps: dropped, unrequested_steps: unrequested };' }],
+    async guard(file) {
+      const mod = await loadModule(file);
+      const res = mod.assertPlanModParity(['a'], ['a', 'b']);
+      return { green: res.ok === false && res.dropped_steps.includes('b'), detail: 'ok=' + res.ok + ' dropped=' + JSON.stringify(res.dropped_steps) };
+    },
+  },
 ]);
 
 async function runOne(mutation) {

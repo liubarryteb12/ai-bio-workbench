@@ -5,9 +5,11 @@
 #       （归一化 log 全基因矩阵 + X_pca/X_umap + 邻居图 + layers['counts']）。
 #
 # 做法（逐样本，基因宇宙与像素坐标均跨样本不可比，README 口径）：
-#   每样本在自身 X_pca 上重算 neighbors(15,30PC) → Leiden(resolution=0.5,
-#   igraph, n_iterations=2)，域编号按样本命名空间隔离（obs['domain'] =
-#   "<sample_id>_d<n>"），避免跨样本域编号混淆。
+#   默认用 obsm['spatial'] 的像素坐标建 cKDTree 6 邻空间图，对称化后写入
+#   obsp['connectivities'] / ['distances']，用该空间邻接图跑 Leiden
+#   (resolution=0.5, igraph, n_iterations=2)。BIO_SPATIAL_GRAPH=0 时保留旧
+#   纯表达 PCA neighbors(15,30PC) 路径，作为显式对照。域编号按样本命名空间
+#   隔离（obs['domain'] = "<sample_id>_d<n>"），避免跨样本域编号混淆。
 #
 # 口径定稿依据（服务器探针实测）：
 #   resolution 0.5 vs 1.0 双跑对比：0.5 的逐样本空间连贯性
@@ -52,6 +54,15 @@ done
 BIO_BANKSY_LAMBDA="${BANKSY_LAMBDA_ARG:-0.0}"
 export BIO_BANKSY_LAMBDA
 
+# 空间邻接图开关：默认 1，按 obsm['spatial'] 建 cKDTree 6 邻图；
+# 显式给 0 才回退到旧表达 kNN（PCA neighbors）对照路径。
+SPATIAL_GRAPH="${BIO_SPATIAL_GRAPH:-1}"
+case "$SPATIAL_GRAPH" in
+  0|1) ;;
+  *) echo "BIO_SPATIAL_GRAPH 只接受 0 或 1（当前: ${SPATIAL_GRAPH}）" >&2; exit 2 ;;
+esac
+export BIO_SPATIAL_GRAPH="$SPATIAL_GRAPH"
+
 mouse_h5ad=""
 human_h5ad=""
 for path in "${INPUTS[@]:-}"; do
@@ -80,6 +91,7 @@ done
 
 echo "step_executed=spatial_domains"
 echo "bioanalys_seed=${seed}"
+echo "bio_spatial_graph=${SPATIAL_GRAPH}"
 echo "input_mouse=${mouse_h5ad}"
 echo "input_human=${human_h5ad}"
 
@@ -105,6 +117,7 @@ from collections import Counter
 import numpy as np
 import anndata as ad
 import scanpy as sc
+from scipy.sparse import csr_matrix
 from scipy.spatial import cKDTree
 
 # pandas 3 与 2 的 infer_string 默认值不同，会导致 anndata 0.13 写 obs 字符串列时
@@ -116,13 +129,7 @@ N_NEIGHBORS = 15
 N_PCS = 30
 RESOLUTION = 0.5
 SMALL_DOMAIN = 30
-
-# BANKSY 可选空间平滑（Argon 第 69 轮 Q2c）。默认 0.0 = 完全旁路。
-# 只在已算好的 PCA(30) 上做凸组合，绝不回全基因 21318 维：
-# 全基因平滑会把稀疏矩阵变稠密，多切片时在 8GB 设备上必 OOM。
-BANKSY_LAMBDA = float(os.environ.get("BIO_BANKSY_LAMBDA", "0.0"))
-if BANKSY_LAMBDA < 0.0 or BANKSY_LAMBDA >= 1.0:
-    fail("BANKSY_LAMBDA=%r 越界，必须在 [0, 1) 内" % BANKSY_LAMBDA)
+SPATIAL_K = 6
 
 
 def fail(message):
@@ -133,6 +140,52 @@ def fail(message):
 
 def log(message):
     print(message, flush=True)
+
+
+# BANKSY 可选空间平滑（Argon 第 69 轮 Q2c）。默认 0.0 = 完全旁路。
+# 只在已算好的 PCA(30) 上做凸组合，绝不回全基因 21318 维：
+# 全基因平滑会把稀疏矩阵变稠密，多切片时在 8GB 设备上必 OOM。
+BANKSY_LAMBDA = float(os.environ.get("BIO_BANKSY_LAMBDA", "0.0"))
+if BANKSY_LAMBDA < 0.0 or BANKSY_LAMBDA >= 1.0:
+    fail("BANKSY_LAMBDA=%r 越界，必须在 [0, 1) 内" % BANKSY_LAMBDA)
+
+# 空间邻接图开关：默认 1。0 时走旧表达 kNN 对照，报告里改记 graph_source。
+_graph_flag = os.environ.get("BIO_SPATIAL_GRAPH", "1").strip()
+if _graph_flag not in ("0", "1"):
+    fail("BIO_SPATIAL_GRAPH=%r 非法，只接受 0 或 1（默认 1）" % _graph_flag)
+SPATIAL_GRAPH = _graph_flag == "1"
+GRAPH_SOURCE = "spatial_cKDTree" if SPATIAL_GRAPH else "expression_knn_control"
+GRAPH_SOURCE_LINE = ("graph_source=spatial_cKDTree" if SPATIAL_GRAPH
+                     else "graph_source=expression_knn_control")
+
+
+def _spatial_knn(coords, k=SPATIAL_K):
+    """按 obsm['spatial'] 的像素坐标建样本内 kNN 图。
+
+    8GB 内存红线下的轻量路线：cKDTree 查询是 O(n log n)，结果每 spot 只有
+    2k 个非零，不构造稠密距离矩阵，不引入 squidpy 或深度学习图库。
+    连接矩阵取 1，Leiden 只读邻接关系；距离矩阵保留原始最近邻距离。
+    """
+    coords = np.asarray(coords, dtype=float)
+    if coords.ndim != 2 or coords.shape[1] != 2:
+        fail("obsm['spatial'] 必须是 n x 2 坐标，实际 shape=%s" % (coords.shape,))
+    if not np.isfinite(coords).all():
+        fail("obsm['spatial'] 含 NaN/Inf，无法建空间图")
+    n = coords.shape[0]
+    if n < 2:
+        fail("样本 spot 数 %d < 2，无法建空间图" % n)
+    k_eff = min(int(k), n - 1)
+    dist, idx = cKDTree(coords).query(coords, k=k_eff + 1)
+    dist = np.atleast_2d(dist)
+    idx = np.atleast_2d(idx)
+    rows = np.repeat(np.arange(n), k_eff)
+    cols = idx[:, 1:].ravel()
+    vals = dist[:, 1:].ravel().astype(float)
+    conn = csr_matrix((np.ones(vals.size, dtype=float), (rows, cols)), shape=(n, n))
+    dists = csr_matrix((vals, (rows, cols)), shape=(n, n))
+    conn = conn.maximum(conn.T)
+    dists = dists.maximum(dists.T)
+    return conn, dists
 
 
 def _banksy_smooth(adata, sample_mask, lam):
@@ -147,21 +200,13 @@ def _banksy_smooth(adata, sample_mask, lam):
 
     返回 (smoothed, n_isolated)。不修改 adata，不写 adata.X。
     """
-    from scipy.sparse import csr_matrix
-    from scipy.spatial import cKDTree
-
     X_pca = np.asarray(adata.obsm["X_pca"], dtype=float)[sample_mask]
     xy = np.asarray(adata.obsm["spatial"], dtype=float)[sample_mask]
     n = X_pca.shape[0]
-    k = min(6, n - 1)
-    if k < 1:
+    if n < 2:
         return X_pca.copy(), 0
-    tree = cKDTree(xy)
-    _, idx = tree.query(xy, k=k + 1)  # 第 0 列是自身
-    rows = np.repeat(np.arange(n), k)
-    cols = idx[:, 1:].ravel()
-    W = csr_matrix((np.ones(n * k), (rows, cols)), shape=(n, n))
-    W = W + W.T
+    # 只借用同一套空间 kNN 权重做特征平滑，不把 W 写成 Leiden 邻接图。
+    W, _ = _spatial_knn(xy, SPATIAL_K)
     deg = np.asarray((W > 0).sum(axis=1)).ravel()
     row_sums = np.asarray(W.sum(axis=1)).ravel()
     row_sums[row_sums == 0] = 1.0
@@ -216,10 +261,11 @@ for path in os.environ["NORM_INPUTS"].splitlines():
     counts_nnz_before = adata.layers["counts"].nnz
     pca_before = adata.obsm["X_pca"].copy()
 
-    # --- 2. 逐样本 neighbors + leiden（域编号按样本命名空间隔离）---
+    # --- 2. 逐样本建图 + leiden（域编号按样本命名空间隔离）---
     domains = np.empty(adata.shape[0], dtype=object)
     per_sample_counts = {}
     per_sample_sizes = {}
+    per_sample_graph = {}
     banksy_total_isolated = 0
     banksy_applied = BANKSY_LAMBDA > 0.0
     # 进入平滑前的原始矩阵指纹：平滑只准写 obsm，绝不准碰 adata.X。
@@ -253,10 +299,46 @@ for path in os.environ["NORM_INPUTS"].splitlines():
                     (adata.shape[0], adata.obsm["X_pca"].shape[1]),
                     np.nan, dtype=float)
             adata.obsm["X_banksy_pca"][mask] = smoothed
-        sc.pp.neighbors(sub, n_neighbors=N_NEIGHBORS, n_pcs=N_PCS,
-                        random_state=int(os.environ["BIOANALYS_SEED"]))
-        sc.tl.leiden(sub, resolution=RESOLUTION, flavor="igraph", n_iterations=2,
-                     directed=False, random_state=int(os.environ["BIOANALYS_SEED"]))
+        if SPATIAL_GRAPH:
+            conn, dist = _spatial_knn(sub.obsm["spatial"], SPATIAL_K)
+            sub.obsp["connectivities"] = conn
+            sub.obsp["distances"] = dist
+            sub.uns["neighbors"] = {
+                "connectivities_key": "connectivities",
+                "distances_key": "distances",
+                "params": {"n_neighbors": SPATIAL_K, "method": "spatial_cKDTree",
+                           "use_rep": "spatial", "ncells": int(sub.n_obs)},
+            }
+            if conn.shape != (sub.n_obs, sub.n_obs):
+                fail("样本 %s 空间图 shape 异常 %s" % (sample, (conn.shape,)))
+            if conn.nnz == 0 or dist.nnz == 0:
+                fail("样本 %s 空间图为空" % sample)
+            if (conn != conn.T).nnz != 0:
+                fail("样本 %s 空间图未对称化" % sample)
+            if float(conn.data.min()) <= 0.0:
+                fail("样本 %s 空间图含非正连接权重" % sample)
+            sc.tl.leiden(sub, adjacency=sub.obsp["connectivities"],
+                         resolution=RESOLUTION, flavor="igraph", n_iterations=2,
+                         directed=False, random_state=int(os.environ["BIOANALYS_SEED"]))
+            per_sample_graph[sample] = {
+                "source": GRAPH_SOURCE,
+                "k": SPATIAL_K,
+                "edges": int(conn.nnz // 2),
+                "mean_degree": float(np.asarray(conn.sum(axis=1)).ravel().mean()),
+            }
+        else:
+            # 显式对照：旧路径，表达 PCA kNN 建图后再 Leiden。
+            sc.pp.neighbors(sub, n_neighbors=N_NEIGHBORS, n_pcs=N_PCS,
+                            random_state=int(os.environ["BIOANALYS_SEED"]))
+            sc.tl.leiden(sub, resolution=RESOLUTION, flavor="igraph", n_iterations=2,
+                         directed=False, random_state=int(os.environ["BIOANALYS_SEED"]))
+            per_sample_graph[sample] = {
+                "source": GRAPH_SOURCE,
+                "k": N_NEIGHBORS,
+                "n_pcs": N_PCS,
+            }
+        if "connectivities" not in sub.obsp or "distances" not in sub.obsp:
+            fail("样本 %s 缺少 connectivities/distances，Leiden 无图可读" % sample)
         sample_domains = ["%s_d%s" % (sample, value) for value in sub.obs["leiden"].astype(str)]
         domains[mask] = sample_domains
         per_sample_counts[sample] = int(sub.obs["leiden"].nunique())
@@ -270,9 +352,12 @@ for path in os.environ["NORM_INPUTS"].splitlines():
         adata.uns["banksy"] = {
             "lambda": float(BANKSY_LAMBDA),
             "space": "X_pca(30) from HVG2000",
-            "knn_k": 6,
+            "knn_k": SPATIAL_K,
+            "graph_source": GRAPH_SOURCE,
             "isolated_spots": int(banksy_total_isolated),
-            "note": "平滑仅用于域聚类输入；未写入 adata.X，下游 Moran/NNLS 读原始矩阵",
+            "note": ("平滑结果写入 X_banksy_pca 供追溯；默认空间图 Leiden 只读空间邻接，BANKSY 不替代图"
+                     if SPATIAL_GRAPH else
+                     "平滑 PCA 供表达 kNN 对照聚类；未写入 adata.X，下游 Moran/NNLS 读原始矩阵"),
         }
         log("banksy lambda=%.2f isolated=%d, adata.X fingerprint unchanged"
             % (BANKSY_LAMBDA, banksy_total_isolated))
@@ -314,18 +399,26 @@ for path in os.environ["NORM_INPUTS"].splitlines():
     # --- 5. 落盘 ---
     seed = int(os.environ["BIOANALYS_SEED"])
     adata.uns["domains"] = {
-        "method": "scanpy_leiden_per_sample_on_pca",
+        "method": ("scanpy_leiden_per_sample_on_spatial_cKDTree"
+                   if SPATIAL_GRAPH else
+                   "scanpy_leiden_per_sample_on_pca_expression_knn_control"),
+        "graph_source": GRAPH_SOURCE,
         "resolution": RESOLUTION,
-        "n_neighbors": N_NEIGHBORS,
+        "n_neighbors": SPATIAL_K if SPATIAL_GRAPH else N_NEIGHBORS,
         "n_pcs": N_PCS,
+        "spatial_graph_k": SPATIAL_K if SPATIAL_GRAPH else 0,
+        "expression_neighbors_k": N_NEIGHBORS,
+        "expression_neighbors_pcs": N_PCS,
+        "banksy_lambda": float(BANKSY_LAMBDA),
         "flavor": "igraph",
         "n_iterations": 2,
         "seed": seed,
         "domains_total": len(all_sizes),
         "per_sample_counts": per_sample_counts,
+        "per_sample_graph": per_sample_graph,
         "per_sample_spatial_coherence": {k: round(v, 4) for k, v in coherences.items()},
         "small_domains_lt30": n_small,
-        "tool_note": "BayesSpace(R) 未装且 squidpy dry-run 连带降级 numpy（坑 #107 场景），走 scanpy 原生零新依赖方案",
+        "tool_note": "默认走 obsm['spatial'] 的 cKDTree 6 邻图，BIO_SPATIAL_GRAPH=0 才回退表达 kNN 对照；squidpy dry-run 会连带降级 numpy（坑 #107），保持零新依赖",
         "source_h5ad": path,
     }
     out_name = "spatial_domains_%s.h5ad" % species
@@ -342,6 +435,8 @@ for path in os.environ["NORM_INPUTS"].splitlines():
          "spatial_coherence_mean=%.4f min=%.4f" % (np.mean(list(coherences.values())),
                                                     np.min(list(coherences.values()))),
          "elapsed_seconds=%.1f" % elapsed,
+         GRAPH_SOURCE_LINE,
+         "graph_params=%s" % json.dumps(per_sample_graph, ensure_ascii=False),
          "banksy_lambda=%.2f%s" % (BANKSY_LAMBDA,
                                    "" if banksy_applied else "（0.0 = 完全旁路，未启用平滑）"),
          "banksy_isolated_spots=%d" % banksy_total_isolated,
@@ -349,11 +444,23 @@ for path in os.environ["NORM_INPUTS"].splitlines():
     ))
 
 seed = int(os.environ["BIOANALYS_SEED"])
+graph_method_text = (
+    "spatial cKDTree(k=%d) on obsm['spatial']" % SPATIAL_K
+    if SPATIAL_GRAPH else
+    "scanpy neighbors(%d,%dPC) on X_pca (expression kNN control)" % (N_NEIGHBORS, N_PCS)
+)
+graph_param_line = (
+    "spatial_graph_k=%d" % SPATIAL_K
+    if SPATIAL_GRAPH else
+    "expression_neighbors_k=%d expression_neighbors_pcs=%d" % (N_NEIGHBORS, N_PCS)
+)
 report_lines = [
     "step=spatial_domains",
     "seed=%d" % seed,
-    "method=per-sample scanpy neighbors(%d,%dPC) -> leiden(resolution=%.1f, igraph, n_iterations=2)，域编号按样本命名空间隔离"
-    % (N_NEIGHBORS, N_PCS, RESOLUTION),
+    GRAPH_SOURCE_LINE,
+    graph_param_line,
+    "method=per-sample %s -> leiden(resolution=%.1f, igraph, n_iterations=2)，域编号按样本命名空间隔离"
+    % (graph_method_text, RESOLUTION),
     "tool_route=BayesSpace(R) 未装 + squidpy dry-run 连带降级 numpy 2.5.3->2.4.6 并拖入 60+ 包（坑 #107 场景），取 scanpy 原生零新依赖方案",
     "coherence_definition=spot 的样本内像素最近邻与自身同域比例（跨样本像素坐标范围重叠，禁混算）",
     "outputs=spatial_domains_mouse.h5ad, spatial_domains_human.h5ad, domains_report.txt",

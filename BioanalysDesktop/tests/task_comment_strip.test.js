@@ -7,7 +7,7 @@
  *
  * 本测试钉住三件事：
  *   1. strip 的语义边界（整行注释 / 行尾注释 / 引号内 # / shebang / 转义 # / 词中 # / 换行）；
- *   2. 全仓 67 个母版 strip 前后计数完全一致，bilingual 恰为既有三个，不因去注释而漂移；
+ *   2. 全仓母版 strip 前后计数完全一致，bilingual 集合固定为五个，不因去注释而漂移；
  *   3. 注释里的 python3 / Rscript 不再计入，真实调用一处不少。
  *
  * 判定正则在此独立维护（与 bridge_guard_invariant.test.js 同款做法），避免测试反向依赖被测实现。
@@ -159,7 +159,7 @@ test('P3: 全仓母版 strip 前后调用计数完全一致（去注释不改变
   assert.deepEqual(drift, [], `strip 误删了真调用或漏剥注释:\n${drift.join('\n')}`);
 });
 
-test('P3: strip 后 bilingual 集合恰为既有三个母版（集合不漂移）', () => {
+test('P3: strip 后 bilingual 集合恰为既有五个母版（集合不漂移）', () => {
   const bi = masters
     .map((m) => ({ ...m, ...countsOf(stripShellAndCodeComments(fs.readFileSync(m.abs, 'utf8'))) }))
     .filter((m) => m.rCount >= 1 && m.pCount >= 1)
@@ -167,14 +167,18 @@ test('P3: strip 后 bilingual 集合恰为既有三个母版（集合不漂移�
   assert.deepEqual(bi, [
     'line1_bulk/ml_diagnostics',
     'line1_bulk/ml_hub_analysis',
+    'line2_scrna/deg_groups',
+    'line2_scrna/enrichment',
     'line2_scrna/gsva_pathways',
   ]);
 });
 
-test('P3: inspectBridgeNeed 对三个 bilingual 母版判 true，对单语言母版判 false', () => {
+test('P3: inspectBridgeNeed 对五个 bilingual 母版判 true，对单语言母版判 false', () => {
   for (const [lineId, step] of [
     ['line1_bulk', 'ml_diagnostics'],
     ['line1_bulk', 'ml_hub_analysis'],
+    ['line2_scrna', 'deg_groups'],
+    ['line2_scrna', 'enrichment'],
     ['line2_scrna', 'gsva_pathways'],
   ]) {
     const need = inspectBridgeNeed(lineId, step);

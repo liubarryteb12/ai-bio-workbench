@@ -116,6 +116,8 @@ group_colors <- if (length(group_levels) == 2) {
       length.out = length(group_levels))
 }
 theme_set(theme_bw(base_size = 7, base_family = "sans"))  # 统一字号 7pt 与无衬线字体
+# 新规范：70 个样本逐个标名会互相压叠（数据标签不许压主图）。
+# 样本名只进 tsv，不出现在图内；组区分靠颜色 + 95% 椭圆，信息完整。
 p <- ggplot(scores, aes(x = PC1, y = PC2, color = group)) +
   geom_point(size = 3) +
   stat_ellipse(aes(color = group), type = "norm") +

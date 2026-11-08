@@ -13,11 +13,13 @@
 #
 # 输入（cwd 或 --input 绝对路径）：expr_genes.tsv + group_map.tsv + ml_core_hub_genes.tsv
 #   可选：val_expr_genes.tsv + val_group_map.tsv（外部验证集，比例与训练集一致）
-# 输出（cwd）：ml_diag_model.tsv / ml_diag_metrics.tsv / ml_diag_dca.tsv /
-#   ml_diag_pergene_roc.tsv / _ml_diag_gate.txt / ml_diagnostics_report.txt
-#   ../figures/：l1_27_diag_roc.png / l1_28_diag_calibration.png / l1_29_diag_dca.png
+# 输出（cwd）：ml_diag_model.tsv / ml_diag_metrics.tsv / ml_diag_dca.tsv / ml_diag_prob.tsv /
+#   ml_diag_oof.tsv / ml_diag_pergene_roc.tsv / _ml_diag_gate.txt / ml_diagnostics_report.txt
+#   ../figures/：l1_27_diag_roc.png / l1_28_diag_calibration.png /
+#   l1_29_diag_dca.png / l1_29b_diag_probability.png
 #   （门槛达标时另加）l1_30_diag_nomogram.png
-# 口径：docs/figure_spec.md v2.2 + canonical helper；正类=字典序第一组标签（与 ml_hub_analysis 口径一致）。
+# 口径：docs/figure_spec.md v2.2 + canonical helper；正类=项目主对比 case（BIO_CASE_GROUP 可覆盖），
+#   不能按字典序取 labels[0]（2026-11-08 实测该写法把 Ctrl 当阳性，DCA 整张图反向）。
 # 参数（写死，禁散落硬编码）：LOOCV；校准分箱 4-5；DCA 阈值网格 0.01-0.99 step 0.01；
 #   组合模型 LogisticRegression(C=1.0, liblinear)；外部集标准化用训练集均值/标准差（防泄露）。
 set -euo pipefail
@@ -69,6 +71,7 @@ fi
 
 EXPR_FILE="$expr_file" GROUP_FILE="$group_file" CORE_FILE="$core_file" BIOANALYS_SEED="$seed" \
 python3 - <<'PYSCRIPT'
+import json
 import os
 import time
 
@@ -82,8 +85,8 @@ from sklearn.metrics import roc_auc_score, roc_curve
 from scipy import stats
 
 plt.rcParams.update({
-    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 7, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "legend.title_fontsize": 7,
-    "axes.titlesize": 7, "axes.grid": False,
+    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 8, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 8, "xtick.labelsize": 8, "ytick.labelsize": 8, "legend.fontsize": 8, "legend.title_fontsize": 8,
+    "axes.titlesize": 9, "axes.grid": False,
     "figure.autolayout": True, "savefig.bbox": "tight",
     "image.cmap": "viridis",
 })
@@ -115,7 +118,7 @@ def caption(fig, *parts):
     if not parts:
         return
     text = "\n".join(parts)
-    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=7, linespacing=1.5)
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
 def wrap_label(text, width=18):
     """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
     import textwrap
@@ -179,25 +182,18 @@ def fit_text_edges(fig, ax, gap=6.0, rounds=5):
             ax.set_ylim(y0 - (y1 - y0) * (bottom / bh) * 1.15, y1)
 
 
-def legend_out(ax, fig, leg):
-    """图例移到坐标轴框外：竖版图右上角纵向单列；横版图下方纵向单列。
-    条目超过 12 条按列分组，避免纵向过长压扁主图。"""
+def legend_out(ax, fig, leg, slot=0):
+    """图例移到坐标轴框外右侧、纵向单列；多组图例按 slot 横向错开。"""
     n = len(leg.get_texts())
     handles = list(leg.legend_handles)
     labels = [t.get_text() for t in leg.get_texts()]
     title = leg.get_title().get_text() or None
-    w, h = fig.get_size_inches()
     fig.set_layout_engine("none")
-    if w >= h:
-        ncol = 1 if n <= 12 else -(-n // 12)
-        rows = -(-n // ncol)
-        ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
-                  ncol=ncol, fontsize=7, frameon=False, title=title)
-        fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
-    else:
-        ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                  ncol=1, fontsize=7, frameon=False, title=title)
-        fig.subplots_adjust(right=0.74)
+    # 统一置轴框外右侧、纵向单列（用户 2026-11-07 定稿）；多组图例按 slot 右移
+    x = 1.02 + 0.30 * slot
+    ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(x, 1.0),
+              ncol=1, fontsize=8, frameon=False, title=title)
+    fig.subplots_adjust(right=max(0.60, 0.80 - 0.06 * slot))
 
 
 def layout_fix(fig):
@@ -210,9 +206,9 @@ def layout_fix(fig):
     if not axes:
         return
     if len(axes) == 1:
-        leg = axes[0].get_legend()
-        if leg is not None:
-            legend_out(axes[0], fig, leg)
+        legs = [l for l in (axes[0].get_legend(),) if l is not None]
+        for slot, leg in enumerate(legs):
+            legend_out(axes[0], fig, leg, slot=slot)
         fit_text_edges(fig, axes[0])
 
 
@@ -249,7 +245,35 @@ grp_map = dict(zip(gm["sample"].astype(str), gm["group"].astype(str)))
 labels = sorted(set(grp_map[s] for s in samples))
 if len(labels) != 2:
     raise SystemExit("分组必须恰为 2 组（实际 %d 组），终止" % len(labels))
-pos = labels[0]
+
+# 事件方向必须取项目主对比的 case，不能按字典序取 labels[0]。
+# 2026-11-08 实测：labels=['Ctrl','DCM']，旧代码把 Ctrl 当阳性，DCA 的
+# treat-all 起点变成 12/70=0.171，整张图变成“识别 Ctrl”，与临床问题相反。
+case_group = os.environ.get("BIO_CASE_GROUP", "").strip()
+ctrl_group = os.environ.get("BIO_CONTROL_GROUP", "").strip()
+project_path = os.environ.get("BIOANALYS_PROJECT_JSON", "").strip()
+if not case_group and project_path and os.path.exists(project_path):
+    try:
+        with open(project_path, encoding="utf-8") as fh:
+            project = json.load(fh)
+        contrasts = project.get("grouping_design", {}).get("contrasts", [])
+        primary = next((c for c in contrasts if c.get("isPrimary") is True),
+                       contrasts[0] if contrasts else {})
+        cand_case = str(primary.get("case", "")).strip()
+        cand_ctrl = str(primary.get("ctrl", "")).strip()
+        if cand_case in labels:
+            case_group = cand_case
+            if cand_ctrl in labels and cand_ctrl != cand_case:
+                ctrl_group = cand_ctrl
+    except (OSError, json.JSONDecodeError, TypeError):
+        pass
+if case_group not in labels:
+    counts = {g: sum(1 for s in samples if grp_map[s] == g) for g in labels}
+    case_group = max(counts, key=counts.get)
+    log("WARN: 未取得项目主对比 case，回退取样本数较多的组作阳性: %s" % case_group)
+if ctrl_group not in labels or ctrl_group == case_group:
+    ctrl_group = next(g for g in labels if g != case_group)
+pos = case_group
 y = np.array([1 if grp_map[s] == pos else 0 for s in samples], dtype=int)
 genes = [g for g in core_genes if g in expr.index]
 if len(genes) < 2:
@@ -264,7 +288,7 @@ mu, sd = X.mean(), X.std(ddof=0).replace(0.0, 1.0)
 z = (X - mu) / sd
 score = z.mean(axis=1).to_numpy()
 log("load: %d samples x %d genes, pos=%s(%d) neg=%s(%d)"
-    % (len(samples), len(genes), pos, int(y.sum()), labels[1], int((1 - y).sum())))
+    % (len(samples), len(genes), pos, int(y.sum()), ctrl_group, int((1 - y).sum())))
 
 # ---------- 2) 组合模型（LOOCV out-of-fold） ----------
 oof = np.zeros(len(samples), dtype=float)
@@ -323,6 +347,56 @@ cal_rows, cal_slope, cal_inter = calib(y, oof)
 pd.DataFrame(cal_rows).to_csv("_ml_diag_calib.tsv", sep="\t", index=False)
 
 
+def prob_summary(yv, pv, model_name):
+    """预测概率分布摘要：回答「概率是否挤在 0.1-0.25」这类校准问题。"""
+    rows = []
+    for name, mask in ((pos, yv == 1), (ctrl_group, yv == 0), ("all", np.ones_like(yv, dtype=bool))):
+        v = np.asarray(pv[mask], dtype=float)
+        if len(v) == 0:
+            continue
+        q = np.quantile(v, [0.0, 0.25, 0.5, 0.75, 1.0])
+        rows.append({
+            "model": model_name,
+            "group": name, "n": int(len(v)),
+            "min": float(q[0]), "q25": float(q[1]), "median": float(q[2]),
+            "q75": float(q[3]), "max": float(q[4]),
+            "frac_lt_0.05": float((v < 0.05).mean()),
+            "frac_0.10_0.25": float(((v >= 0.10) & (v <= 0.25)).mean()),
+            "frac_gt_0.80": float((v > 0.80).mean()),
+        })
+    return pd.DataFrame(rows)
+
+
+prob_raw = prob_summary(y, oof, "raw")
+
+
+def logit(pv):
+    pv = np.clip(np.asarray(pv, dtype=float), 1e-6, 1 - 1e-6)
+    return np.log(pv / (1 - pv))
+
+
+def crossfit_platt(yv, pv, C=1.0):
+    """交叉拟合 Platt：每个样本的校准器只用其余样本的 OOF 预测拟合。"""
+    n = len(pv)
+    out = np.zeros(n, dtype=float)
+    lp = logit(pv).reshape(-1, 1)
+    for i in range(n):
+        tr = [j for j in range(n) if j != i]
+        cal = LogisticRegression(C=C, solver="liblinear")
+        cal.fit(lp[tr], yv[tr])
+        out[i] = cal.predict_proba(lp[i].reshape(1, -1))[0, 1]
+    return out
+
+
+p_platt = crossfit_platt(y, oof, C=1.0)
+prob_platt = prob_summary(y, p_platt, "platt_cv")
+prob_tab = pd.concat([prob_raw, prob_platt], ignore_index=True)
+prob_tab.to_csv("_ml_diag_prob.tsv", sep="\t", index=False)
+oof_tab = pd.DataFrame({"sample": samples, "group": [grp_map[s] for s in samples],
+                        "p_raw": oof, "p_platt_cv": p_platt})
+oof_tab.to_csv("_ml_diag_oof.tsv", sep="\t", index=False)
+
+
 def dca_table(yv, pv):
     n = len(pv)
     pt = np.round(np.arange(0.01, 1.0, 0.01), 4)
@@ -331,15 +405,34 @@ def dca_table(yv, pv):
     for t in pt:
         tp = int(((pv >= t) & (yv == 1)).sum())
         fp = int(((pv >= t) & (yv == 0)).sum())
+        nb_model = tp / n - fp / n * t / (1 - t)
+        nb_all = base_rate - (1 - base_rate) * t / (1 - t)
         out.append({"threshold": float(t),
-                    "nb_model": tp / n - fp / n * t / (1 - t),
-                    "nb_all": base_rate - (1 - base_rate) * t / (1 - t),
-                    "nb_none": 0.0})
+                    "nb_model": nb_model,
+                    "nb_all": nb_all,
+                    "nb_none": 0.0,
+                    "delta_model_minus_all": nb_model - nb_all})
     return pd.DataFrame(out)
 
 
 dca = dca_table(y, oof)
 dca.to_csv("_ml_diag_dca.tsv", sep="\t", index=False)
+dca_win = dca[(dca["threshold"] >= 0.05) & (dca["threshold"] <= 0.20)].copy()
+dca_win_summary = {
+    "n_thresholds": int(len(dca_win)),
+    "model_above_all": int((dca_win["delta_model_minus_all"] > 1e-12).sum()),
+    "mean_delta": float(dca_win["delta_model_minus_all"].mean()) if len(dca_win) else float("nan"),
+    "min_delta": float(dca_win["delta_model_minus_all"].min()) if len(dca_win) else float("nan"),
+}
+dca_platt = dca_table(y, p_platt)
+dca_platt_win = dca_platt[(dca_platt["threshold"] >= 0.05)
+                          & (dca_platt["threshold"] <= 0.20)].copy()
+dca_platt_summary = {
+    "n_thresholds": int(len(dca_platt_win)),
+    "model_above_all": int((dca_platt_win["delta_model_minus_all"] > 1e-12).sum()),
+    "mean_delta": float(dca_platt_win["delta_model_minus_all"].mean())
+    if len(dca_platt_win) else float("nan"),
+}
 
 # ---------- 3) 单基因 ROC 保守性对比（oriented AUC = max(AUC, 1-AUC)，方向如实标注） ----------
 pg = []
@@ -349,7 +442,7 @@ for g in genes:
                               alternative="two-sided")
     pg.append({"gene": g, "auc_raw": a,
                "auc_oriented": max(a, 1.0 - a),
-               "direction": ("high in %s" % pos) if a >= 0.5 else ("high in %s" % labels[1]),
+               "direction": ("high in %s" % pos) if a >= 0.5 else ("high in %s" % ctrl_group),
                "mannwhitney_p": float(p)})
 pg = pd.DataFrame(pg).sort_values("auc_oriented", ascending=False)
 best = pg.iloc[0]
@@ -405,13 +498,13 @@ cd = pd.DataFrame(cal_rows)
 fig, ax = plt.subplots(figsize=(7, 7))
 ax.plot([0, 1], [0, 1], color="#999999", lw=1, ls="--", label="ideal")
 ax.errorbar(cd["pred_mean"], cd["obs_rate"],
-            yerr=[cd["obs_rate"] - cd["ci_low"], cd["ci_high"] - cd["obs_rate"]],
+            yerr=[np.clip(cd["obs_rate"] - cd["ci_low"], 0, None), np.clip(cd["ci_high"] - cd["obs_rate"], 0, None)],
             fmt="o", color=C_MODEL, capsize=3,
             label="LOOCV predictions (slope=%.2f, intercept=%.2f)" % (cal_slope, cal_inter))
 if ext:
     vc = pd.DataFrame(ext["cal"][0])
     ax.errorbar(vc["pred_mean"], vc["obs_rate"],
-                yerr=[vc["obs_rate"] - vc["ci_low"], vc["ci_high"] - vc["obs_rate"]],
+                yerr=[np.clip(vc["obs_rate"] - vc["ci_low"], 0, None), np.clip(vc["ci_high"] - vc["obs_rate"], 0, None)],
                 fmt="s", color="#2CA02C", capsize=3,
                 label="external (slope=%.2f, intercept=%.2f)" % (ext["cal"][1], ext["cal"][2]))
 ax.set_xlabel("predicted probability (bin mean)")
@@ -420,29 +513,79 @@ ax.set_xlim(-0.02, 1.02)
 ax.set_ylim(-0.02, 1.02)
 caption(fig, "line1 ml_diagnostics: calibration of LOOCV predictions",
         "quantile bins with Wilson 95% CI; slope=1 & intercept=0 = perfect",
-        "small n: bin counts in ml_diag_metrics.tsv")
+        "positive class = %s (n=%d); small n: bin counts in ml_diag_metrics.tsv"
+        % (pos, int(y.sum())))
 save(fig, "l1_28_diag_calibration.png")
 
-# ---------- 7) 图 l1_29 DCA ----------
-fig, ax = plt.subplots(figsize=(7, 6))
-ax.plot(dca["threshold"], dca["nb_model"], color=C_MODEL, lw=2, label="composite model")
-ax.plot(dca["threshold"], dca["nb_all"], color="#7F7F7F", lw=1, ls="--", label="treat all")
+# ---------- 7a) 图 l1_29b 预测概率分布（原始 vs 交叉拟合 Platt） ----------
+fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
+bins = np.linspace(0.0, 1.0, 21)
+for ax, pv, title in ((axes[0], oof, "Raw LOOCV"),
+                      (axes[1], p_platt, "Cross-fitted Platt")):
+    ax.hist(pv[y == 1], bins=bins, alpha=0.55, color=C_MODEL,
+            label="%s (events, n=%d)" % (pos, int(y.sum())))
+    ax.hist(pv[y == 0], bins=bins, alpha=0.55, color="#3B4992",
+            label="%s (non-events, n=%d)" % (ctrl_group, int((1 - y).sum())))
+    ax.axvspan(0.05, 0.20, color="#999999", alpha=0.18,
+               label="clinical window 5-20%")
+    ax.axvline(float(y.mean()), color="k", ls="--", lw=0.8,
+               label="prevalence %.2f" % float(y.mean()))
+    ax.set_xlabel("predicted probability P(%s)" % pos)
+    ax.set_title(title, loc="left", fontweight="bold", fontsize=9)
+axes[0].set_ylabel("sample count")
+handles, labels = axes[0].get_legend_handles_labels()
+fig.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
+           ncol=1, frameon=False)
+fig.subplots_adjust(left=0.08, right=0.82, top=0.92, bottom=0.18, wspace=0.18)
+_allp = prob_tab.loc[(prob_tab["group"] == "all") & (prob_tab["model"] == "raw")].iloc[0]
+_allp_platt = prob_tab.loc[(prob_tab["group"] == "all") & (prob_tab["model"] == "platt_cv")].iloc[0]
+caption(fig, "line1 ml_diagnostics: distribution of LOOCV predicted probabilities",
+        "raw median=%.3f IQR=%.3f-%.3f range=%.3f-%.3f; Platt median=%.3f IQR=%.3f-%.3f"
+        % (_allp["median"], _allp["q25"], _allp["q75"], _allp["min"], _allp["max"],
+           _allp_platt["median"], _allp_platt["q25"], _allp_platt["q75"]),
+        "raw fraction 0.10-0.25=%.3f, >0.80=%.3f; Platt fraction 0.10-0.25=%.3f, >0.80=%.3f"
+        % (_allp["frac_0.10_0.25"], _allp["frac_gt_0.80"],
+           _allp_platt["frac_0.10_0.25"], _allp_platt["frac_gt_0.80"]),
+        "events=%d, non-events=%d; clinical window 5-20%% shaded"
+        % (int(y.sum()), int((1 - y).sum())))
+save(fig, "l1_29b_diag_probability.png")
+
+# ---------- 7b) 图 l1_29 DCA ----------
+fig, ax = plt.subplots(figsize=(8, 6))
+ax.plot(dca["threshold"], dca["nb_all"], color="#7F7F7F", lw=3.0, ls=(0, (4, 3)),
+        alpha=0.9, label="treat all (overlapped by model)", zorder=1)
 ax.plot(dca["threshold"], dca["nb_none"], color="#000000", lw=1, label="treat none")
+ax.plot(dca["threshold"], dca["nb_model"], color=C_MODEL, lw=1.6,
+        label="raw composite model", zorder=2)
+ax.plot(dca_platt["threshold"], dca_platt["nb_model"], color="#E69F00", lw=1.4, ls="--",
+        label="Platt-calibrated (exploratory)")
 if ext:
     ax.plot(ext["dca"]["threshold"], ext["dca"]["nb_model"], color=C_MODEL,
             lw=1.5, ls="--", label="external model")
+ax.axvspan(0.05, 0.20, color="#999999", alpha=0.18, label="clinical window 5-20%")
+base_rate = float(y.mean())
 ax.set_xlabel("threshold probability")
 ax.set_ylabel("net benefit")
-ax.set_ylim(bottom=-0.05)
+ax.set_xlim(0.01, 0.60)
+ax.set_ylim(-0.05, max(0.90, base_rate + 0.10))
+ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0), ncol=1, frameon=False)
 caption(fig, "line1 ml_diagnostics: decision curve analysis (LOOCV)",
-        "net benefit = TP/n - FP/n * pt/(1-pt); thresholds 0.01-0.99",
-        "model curve above treat-all/none = clinical usefulness")
+        "positive class = %s; events=%d, non-events=%d; prevalence=%.3f"
+        % (pos, int(y.sum()), int((1 - y).sum()), base_rate),
+        "x-axis 0.01-0.60 (thresholds >0.60 omitted: only %d non-events)" % int((1 - y).sum()),
+        "5-20%% raw: %d/%d thresholds above treat-all (mean delta %+.3f); Platt: %d/%d (mean %+.3f)"
+        % (dca_win_summary["model_above_all"], dca_win_summary["n_thresholds"],
+           dca_win_summary["mean_delta"], dca_platt_summary["model_above_all"],
+           dca_platt_summary["n_thresholds"], dca_platt_summary["mean_delta"]),
+        "Platt is cross-fitted, exploratory; external validation still required")
 save(fig, "l1_29_diag_dca.png")
 
 # ---------- 8) 落盘表 + gate ----------
 pd.DataFrame(model_rows).to_csv("ml_diag_model.tsv", sep="\t", index=False)
 pg.to_csv("ml_diag_pergene_roc.tsv", sep="\t", index=False)
 dca.to_csv("ml_diag_dca.tsv", sep="\t", index=False)
+prob_tab.to_csv("ml_diag_prob.tsv", sep="\t", index=False)
+oof_tab.to_csv("ml_diag_oof.tsv", sep="\t", index=False)
 
 metric_rows = [
     {"metric": "n_samples", "internal": len(samples), "external": ext.get("n", ""), "note": "pos=%s" % pos},
@@ -457,6 +600,20 @@ metric_rows = [
      "external": round(ext["cal"][1], 4) if ext else "", "note": "ideal=1"},
     {"metric": "calibration_intercept", "internal": round(cal_inter, 4),
      "external": round(ext["cal"][2], 4) if ext else "", "note": "ideal=0"},
+    {"metric": "prob_frac_0.10_0.25", "internal": round(float(_allp["frac_0.10_0.25"]), 4),
+     "external": "", "note": "fraction of LOOCV probabilities in 0.10-0.25"},
+    {"metric": "prob_frac_0.10_0.25_platt",
+     "internal": round(float(_allp_platt["frac_0.10_0.25"]), 4),
+     "external": "", "note": "fraction after cross-fitted Platt"},
+    {"metric": "dca_5_20_model_above_all",
+     "internal": "%d/%d" % (dca_win_summary["model_above_all"], dca_win_summary["n_thresholds"]),
+     "external": "", "note": "clinical thresholds 5-20%"},
+    {"metric": "dca_5_20_mean_delta", "internal": round(dca_win_summary["mean_delta"], 4),
+     "external": "", "note": "model net benefit - treat-all"},
+    {"metric": "dca_5_20_platt_above_all",
+     "internal": "%d/%d" % (dca_platt_summary["model_above_all"],
+                            dca_platt_summary["n_thresholds"]),
+     "external": "", "note": "cross-fitted Platt, exploratory"},
 ]
 pd.DataFrame(metric_rows).to_csv("ml_diag_metrics.tsv", sep="\t", index=False)
 
@@ -490,7 +647,7 @@ lines = [
     "step=ml_diagnostics",
     "seed=%d" % SEED,
     "samples=%d (%s=%d vs %s=%d), core_genes=%d, source=%s"
-    % (len(samples), pos, int(y.sum()), labels[1], int((1 - y).sum()),
+    % (len(samples), pos, int(y.sum()), ctrl_group, int((1 - y).sum()),
        len(genes), os.environ["CORE_FILE"]),
     "",
     "[model] logistic on composite_score (mean z of core genes), LOOCV predictions",
@@ -501,18 +658,37 @@ lines = [
        float(best["mannwhitney_p"])),
     "[calibration] slope=%.4f intercept=%.4f (ideal 1/0), bins=%d"
     % (cal_slope, cal_inter, len(cal_rows)),
+    "[probability] median=%.3f IQR=%.3f-%.3f range=%.3f-%.3f; "
+    "frac 0.10-0.25=%.3f, frac <0.05=%.3f, frac >0.80=%.3f"
+    % (_allp["median"], _allp["q25"], _allp["q75"], _allp["min"], _allp["max"],
+       _allp["frac_0.10_0.25"], _allp["frac_lt_0.05"], _allp["frac_gt_0.80"]),
     "[dca] thresholds 0.01-0.99, table ml_diag_dca.tsv (%d rows)"
     % len(dca),
+    "[dca 5-20%%] raw model above treat-all at %d/%d thresholds; mean delta=%+.4f"
+    % (dca_win_summary["model_above_all"], dca_win_summary["n_thresholds"],
+       dca_win_summary["mean_delta"]),
+    "[dca 5-20%% Platt] above treat-all at %d/%d thresholds; mean delta=%+.4f "
+    "（交叉拟合，探索性，需外部验证）"
+    % (dca_platt_summary["model_above_all"], dca_platt_summary["n_thresholds"],
+       dca_platt_summary["mean_delta"]),
     "",
     "[nomogram gate] %s" % ("PASS" if gate_nomo else "SKIPPED: " + gate_reason),
     "[external] %s" % ("n=%d AUC=%.4f" % (ext["n"], ext["auc"]) if ext_ok else "none (val files absent)"),
     "",
     "[conclusion ceiling] %s" % ceiling,
+    "[clinical utility] 5-20%%: raw %d/%d, Platt %d/%d above treat-all；"
+    "全部 OOF 概率 >0.71，低阈值段等同 treat-all，未证明临床净获益"
+    % (dca_win_summary["model_above_all"], dca_win_summary["n_thresholds"],
+       dca_platt_summary["model_above_all"], dca_platt_summary["n_thresholds"]),
     "[limitations]",
     "  1. 小样本探索性：所有 AUC/校准/DCA 均为 LOOCV 内部性能，非临床性能声明。",
     "  2. 组合分数=核心基因均值 z，权重相等，未做系数加权（n 太小不稳定，如实声明）。",
     "  3. 校准分箱按 OOF 预测分位数切分，箱内样本少，CI 宽；目视为主。",
     "  4. DCA 为手写 net benefit（rmda 容器未装），与 rmda 口径一致（零依赖）。",
+    "  5. 事件数=%d、非事件数=%d；高阈值段（>0.60）因非事件过少不作推断。"
+    % (int(y.sum()), int((1 - y).sum())),
+    "  6. 校准后仍无 5-20%% 净获益，提示需要特征重筛（性别/队列相关基因）或外部队列，"
+    "不能靠改图或简单 Platt 解决。",
     "",
     "[figures] " + "; ".join(made),
     "[elapsed] %.1fs" % (time.time() - START),

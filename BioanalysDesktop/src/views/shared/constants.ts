@@ -27,7 +27,7 @@ export const VALUE_SCALE_OPTIONS = [
 // 出图画幅两档（server/project.js PLOT_LAYOUT_TEMPLATES 同源，照 portal/index.html 先例）
 export const LAYOUT_TEMPLATE_OPTIONS = [
   { id: 'template_4x3', label: '4:3（图例右侧 · 单栏插图）' },
-  { id: 'template_16x9', label: '16:9（图例底部 · 横向宽幅）' },
+  { id: 'template_16x9', label: '16:9（图例右侧 · 横向宽幅）' },
 ];
 
 // 统计阈值三档（server/project.js ANALYSIS_CUTOFFS 同值，数值改动必须两处同步）
@@ -59,8 +59,8 @@ export const DATA_TYPE_OPTIONS: Array<{ id: string; label: string; line: string 
 // 收敛前旧 id 保留兼容映射（project.js LEGACY_TEMPLATE_IDS 同源），旧项目照新档显示
 export const LAYOUT_TEMPLATE_LABEL: Record<string, string> = {
   template_4x3: '4:3 标准型（图例右侧 · 单栏插图）',
-  template_16x9: '16:9 宽幅型（图例底部 · 横向宽幅）',
+  template_16x9: '16:9 宽幅型（图例右侧 · 横向宽幅）',
   template_1_nature_side: '4:3 标准型（图例右侧 · 单栏插图）',
-  template_2_cell_wide: '16:9 宽幅型（图例底部 · 横向宽幅）',
+  template_2_cell_wide: '16:9 宽幅型（图例右侧 · 横向宽幅）',
   template_3_clinical_note: '4:3 标准型（图例右侧 · 单栏插图）',
 };

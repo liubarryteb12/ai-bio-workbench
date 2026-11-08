@@ -149,8 +149,8 @@ test('adapt manifest maps project-local copies to per-line delivery paths', () =
     template: {
       id: templateId,
       language: 'r',
-      source: 'reference/05.可参考出图代码/_meta/R453_compat/L2_core_code.R',
-      source_sha256: sha256(path.join(REPO, 'reference/05.可参考出图代码/_meta/R453_compat/L2_core_code.R')),
+      source: 'reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L2_core_code.R',
+      source_sha256: sha256(path.join(REPO, 'reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L2_core_code.R')),
       canonical_output: 'L2_volcano_verified.png',
       deps_status: 'ready',
       verified: true,

@@ -1,0 +1,49 @@
+{
+  "schema_version": "work_order/v1",
+  "workOrderId": "WO-EXAMPLE-001",
+  "projectId": "PRJ_EXAMPLE_BULK",
+  "lineId": "line1_bulk",
+  "seed": 20261013,
+  "modIds": [
+    "l1_ingest_prep",
+    "l1_qc_matrix"
+  ],
+  "figureSelections": [],
+  "uploads": [],
+  "computeAdapter": "adb",
+  "basicInfo": {
+    "name": "示例批量转录组项目",
+    "species": "Homo sapiens",
+    "domain": "cardiovascular",
+    "dataType": "microarray"
+  },
+  "dataSource": {
+    "dataType": "microarray",
+    "sampleCount": 10,
+    "tissue": "blood",
+    "datasets": [
+      {
+        "gse": "GSE000000",
+        "gpl": "GPL0000",
+        "role": "train",
+        "sampleCount": 10,
+        "tissue": "blood"
+      }
+    ]
+  },
+  "groupingDesign": {
+    "groups": [
+      { "groupName": "Control", "role": "reference" },
+      { "groupName": "Disease", "role": "disease_stage" }
+    ],
+    "contrasts": [
+      { "case": "Disease", "ctrl": "Control", "isPrimary": true }
+    ]
+  },
+  "analysisCutoffs": {
+    "profile": "standard",
+    "use_adj_p": true,
+    "log2fc_threshold": 1.0,
+    "adj_p_threshold": 0.05
+  }
+}

@@ -290,6 +290,11 @@ export function FiguresPanel({ project }: { project: string }) {
             <p className="subtle">
               目录：{state.data.dir}（{state.data.figures.length} 张，点击放大）
             </p>
+            {state.data.source && (
+              <p className="subtle">
+                来源：{state.data.source === 'local' ? '本地回搬 (local)' : '远端实时 (remote)'}
+              </p>
+            )}
             <div className="studio-fig-grid">
               {state.data.figures.map((fig) => (
                 <div key={fig.name} className="studio-fig-card" onClick={() => setZoom(fig.name)}>

@@ -17,6 +17,7 @@ import {
 import { runSync } from './proc.js';
 import { modToScriptMap, scriptToModMap } from './workflow_graph.js';
 import { buildAdaptedFigureSource } from './figure_adapters.js';
+import { atomicWriteFileSync } from './atomic_write.js';
 
 /** 主节点温度熔断阈值，与 server/selfcheck.js 的 TEMP_FAIL_C 对齐 */
 export const NODE_TEMP_FAIL_C = 95;
@@ -303,7 +304,7 @@ const SRC_SCRIPTS_ROOT = process.env.BIOANALYS_SRC_ROOT
   || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'src');
 /** 图模板派生副本读取母版时的仓库根，生产路径随安装位置解析 */
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const FIGURE_MASTER_ROOT = path.resolve(REPO_ROOT, 'reference', '05.可参考出图代码');
+const FIGURE_MASTER_ROOT = path.resolve(REPO_ROOT, 'reference', '05.可参考生信代码', '可用代码预筛选', '源码');
 
 /** 桥接四项断言引擎（aims §一.3 钦定；ops/ 属另一会话域，只调用不修改） */
 export const BRIDGE_ENGINE_REMOTE = '/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py';
@@ -638,7 +639,7 @@ export function deriveAdaptedFigure({
     };
   }
   const header = adapted.split('\n')[0];
-  fs.writeFileSync(localPath, adapted, 'utf8');
+  atomicWriteFileSync(localPath, adapted, 'utf8');
 
   const manifestFile = adaptManifestPath(root, safeProject);
   const entries = readManifest(manifestFile).filter((item) => item.template_id !== templateId);
@@ -654,7 +655,7 @@ export function deriveAdaptedFigure({
     remote_path: `/mnt/ssd/bio_data/projects/${safeProject}/${safeLine}/scripts/${adaptFileName(template)}`,
   };
   entries.push(entry);
-  fs.writeFileSync(manifestFile, `${JSON.stringify(entries, null, 2)}\n`, 'utf8');
+  atomicWriteFileSync(manifestFile, `${JSON.stringify(entries, null, 2)}\n`, 'utf8');
   return {
     ok: true,
     errors: [],

@@ -2,7 +2,7 @@
  * 缺设备 Mock 模式透出（Ticket 1，4 Argon 第二十二轮 Q5【计划做】）。
  *
  * 最小切块契约：
- *   后端 compute_mode() 只读、不抛错，'mock'/'ssh' 二选一；
+ *   后端 compute_mode() 只读、不抛错，'adb'/'ssh'/'mock' 三态；
  *   /api/selfcheck 显式返回 compute_mode 与 mock_mode；
  *   前端 App.tsx 据此渲染顶部横幅，且横幅文案必须说清「演示数据不代表真机」。
  * 不 mock 真机：这些判据全是纯函数与静态结构，天然离线可断言。
@@ -20,18 +20,20 @@ const APP = path.join(BIOANALYS_DIR, 'src', 'App.tsx');
 const CSS = path.join(BIOANALYS_DIR, 'src', 'app.css');
 const DIAG = path.join(BIOANALYS_DIR, 'server', 'routes', 'diagnostics.routes.js');
 
-test('computeMode：默认 ssh，明确 mock 才是 mock，非法值不抛错按 ssh 处理', () => {
+test('computeMode：默认 adb，显式 ssh/mock 才切换，非法值不抛错按 adb 处理', () => {
   const saved = process.env.BIO_COMPUTE_ADAPTER;
   try {
     delete process.env.BIO_COMPUTE_ADAPTER;
-    assert.equal(computeMode(), 'ssh', '未设置时默认真机');
+    assert.equal(computeMode(), 'adb', '未设置时默认 ADB 主通道');
     process.env.BIO_COMPUTE_ADAPTER = 'mock';
     assert.equal(computeMode(), 'mock');
     process.env.BIO_COMPUTE_ADAPTER = 'ssh';
     assert.equal(computeMode(), 'ssh');
+    process.env.BIO_COMPUTE_ADAPTER = 'adb';
+    assert.equal(computeMode(), 'adb');
     // 只读透出：非法值不在这里抛（真正执行时由 resolveComputeAdapter fail-closed）
     process.env.BIO_COMPUTE_ADAPTER = 'bogus';
-    assert.equal(computeMode(), 'ssh', '非法值按真机保守处理，且不抛错');
+    assert.equal(computeMode(), 'adb', '非法值按默认主通道展示，且不抛错');
   } finally {
     if (saved === undefined) delete process.env.BIO_COMPUTE_ADAPTER;
     else process.env.BIO_COMPUTE_ADAPTER = saved;
@@ -52,8 +54,10 @@ test('自检路由透出 compute_mode 与 mock_mode（两个字段同源，不�
 
 test('前端横幅：只在 mock 时渲染，且文案写明演示数据不代表真机', () => {
   const app = fs.readFileSync(APP, 'utf8');
-  assert.ok(app.includes("setComputeMode(payload.compute_mode === 'mock' ? 'mock' : 'ssh')"),
-    '必须按后端字段决定状态');
+  assert.ok(app.includes("payload.compute_mode === 'mock' || payload.compute_mode === 'ssh'"),
+    '必须按后端三态字段决定状态');
+  assert.ok(app.includes("useState<'adb' | 'ssh' | 'mock'>('adb')"),
+    '初始态必须是 ADB 主通道');
   assert.ok(app.includes("{computeMode === 'mock' && ("), '横幅必须只在 mock 时出现');
   assert.ok(app.includes('role="status"'), '横幅应是 status 角色（可被读屏念出）');
   assert.ok(app.includes('离线演示模式'), '必须点名模式');
@@ -82,9 +86,10 @@ test('模式读取失败静默降级：catch 分支不得抛错或变成新错�
   assert.equal(/setProjectError|catch \(cause\)/.test(body), false, '失败不得写进全局错误状态');
 });
 
-test('真机态默认不骚扰：compute_mode 缺失或为 ssh 时都不显示', () => {
+test('真机态默认不骚扰：compute_mode 缺失、adb 或 ssh 时都不显示', () => {
   const app = fs.readFileSync(APP, 'utf8');
-  assert.ok(app.includes("useState<'ssh' | 'mock'>('ssh')"), '初始态必须是 ssh（不惊吓用户）');
-  assert.ok(app.includes("payload.compute_mode === 'mock' ? 'mock' : 'ssh'"),
-    '只有明确 mock 才切到 mock，其余一律 ssh');
+  assert.ok(app.includes("useState<'adb' | 'ssh' | 'mock'>('adb')"), '初始态必须是 ADB 主通道');
+  assert.ok(app.includes("payload.compute_mode === 'mock' || payload.compute_mode === 'ssh'"),
+    'adb、ssh 与缺失态都不触发演示横幅');
+  assert.ok(app.includes("{computeMode === 'mock' && ("), '只有明确 mock 才显示横幅');
 });

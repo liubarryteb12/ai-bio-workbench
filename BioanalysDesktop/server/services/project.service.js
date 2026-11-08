@@ -106,16 +106,62 @@ export function getProjectMeta(projectId, { runRemote, repoRoot }) {
 }
 
 /* ─────────────── 项目列表 ─────────────── */
-export function listProjects({ listProjectsWithMeta }) {
+function normalizeProjectList(projects) {
+  return Array.isArray(projects)
+    ? projects.filter((item) => item && typeof item === 'object' && String(item.projectId || '').trim())
+    : [];
+}
+
+function mergeProjectLists(remoteProjects, localProjects) {
+  const seen = new Set();
+  const merged = [];
+  for (const item of [...normalizeProjectList(remoteProjects), ...normalizeProjectList(localProjects)]) {
+    const projectId = String(item.projectId).trim();
+    if (!projectId || seen.has(projectId)) continue;
+    seen.add(projectId);
+    merged.push(item);
+  }
+  return merged;
+}
+
+export function listProjects({
+  listProjectsWithMeta,
+  listAllProjectsWithMeta,
+  listLocalProjectsWithMeta,
+} = {}) {
+  let localProjects = [];
+  let localWarning = '';
   try {
-    const projects = listProjectsWithMeta();
-    return { status: 200, payload: { defaultProject: DEFAULT_PROJECT, projects } };
+    if (typeof listLocalProjectsWithMeta === 'function') {
+      localProjects = normalizeProjectList(listLocalProjectsWithMeta());
+    }
   } catch (cause) {
+    localWarning = `本地项目列表不可用: ${cause instanceof Error ? cause.message : String(cause)}`;
+  }
+
+  try {
+    const projects = typeof listAllProjectsWithMeta === 'function'
+      ? listAllProjectsWithMeta()
+      : mergeProjectLists(listProjectsWithMeta(), localProjects);
     return {
-      status: 500,
+      status: 200,
       payload: {
-        error: cause instanceof Error ? cause.message : String(cause),
-        hint: '读项目列表失败；链路不通时先跑 /api/link/check',
+        defaultProject: DEFAULT_PROJECT,
+        projects: normalizeProjectList(projects),
+        source: 'remote',
+        ...(localWarning ? { warning: localWarning } : {}),
+      },
+    };
+  } catch (cause) {
+    const detail = cause instanceof Error ? cause.message : String(cause);
+    return {
+      status: 200,
+      payload: {
+        defaultProject: DEFAULT_PROJECT,
+        projects: localProjects,
+        source: 'local',
+        warning: `远端项目列表不可用，已返回本地项目: ${detail}`,
+        hint: '远端链路恢复后刷新即可合并远端项目',
       },
     };
   }

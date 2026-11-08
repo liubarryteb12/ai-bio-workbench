@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
-const FIGURE_ROOT = 'reference/05.可参考出图代码';
+const FIGURE_ROOT = 'reference/05.可参考生信代码';
 const LIBRARY_ROOT = path.join(REPO, FIGURE_ROOT, 'library');
 const CATALOG_PATH = path.join(LIBRARY_ROOT, 'catalog.json');
 const VALID_STATUSES = new Set([

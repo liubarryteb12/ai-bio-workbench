@@ -6,7 +6,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 
 const REPO = path.resolve(__dirname, '..');
-const FIGURE_ROOT = 'reference/05.可参考出图代码';
+const FIGURE_ROOT = 'reference/05.可参考生信代码/可用代码预筛选/源码';
 const CSV_PATH = path.join(REPO, FIGURE_ROOT, '_meta', 'bizard_index.csv');
 const REPORT_PATH = path.join(REPO, FIGURE_ROOT, '_meta', 'r453_verification_report.json');
 const REGISTRY_PATH = path.join(REPO, 'src', 'figure_templates.json');
@@ -514,6 +514,139 @@ const TEMPLATE_MAPPINGS = {
   },
 };
 
+/**
+ * 组合图模板退役名单（figure_spec v2.3，2026-11-08）。
+ *
+ * 生产母版只出单图，这些条目即使 CSV/报告把它们标成 ready，也必须降为
+ * pending/draft：清空 source/preview/render_evidence，禁止被客户端派发。
+ */
+const RETIRED_COMPOSITE_IDS = new Set([
+  'fig_l3_multipanel',
+  'fig_l3_combinationpanel',
+  'fig_l3_sankeybubbleplot',
+]);
+
+const V2_PREVIEW_DIR = `${FIGURE_ROOT}/_v2_previews`;
+const V2_MASTER_DIR = `${FIGURE_ROOT}/_v2_masters`;
+
+// Argon 第 75 轮首批产线实证模板（L3 Top5 + L2 Top5）。
+// analysis_step 的 produces 必须覆盖 input_tables；linked_mods 为本线同语言出图 Mod。
+const V2_EXTRA_SPECS = [
+  { id: 'fig_l3_banksy_domain', name: '空间功能域切片分布图', level: 'L3', category: 'Spatial', line: 'line3_spatial', renderMod: 'l3_figures_spatial', master: 'spatial_figures.py', analysis_step: 'l3_dimred_domains', input_tables: ['spatial_domains_mouse.h5ad'], canonical: 'l3_mouse_01_domains_B1-D1.png', sample: 'local_projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial/l3_mouse_01_domains_B1-D1.png', project: 'PRJ_STROKE_P1_SPATIAL_ABCA1', scalebar: true, adapt_vars: { input_data: 'BANKSY 空间域 h5ad 路径', group_col: '空间域分组列名' } },
+  { id: 'fig_l3_nnls_deconv_pie', name: '空间Spot细胞亚型解卷积构成图', level: 'L3', category: 'Composition', line: 'line3_spatial', renderMod: 'l3_figures_spatial', master: 'spatial_figures.py', analysis_step: 'l3_branches_celltype', input_tables: ['celltype_scores_mouse.tsv'], canonical: 'l3_mouse_15_deconv_composition.png', sample: 'local_projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial/l3_mouse_15_deconv_composition.png', project: 'PRJ_STROKE_P1_SPATIAL_ABCA1', scalebar: false, adapt_vars: { input_data: 'NNLS 解卷积比例表路径', group_col: '细胞亚型列名' } },
+  { id: 'fig_l3_multigene_coloc', name: '核心靶基因空间共定位切片图', level: 'L3', category: 'Spatial', line: 'line3_spatial', renderMod: 'l3_figures_spatial', master: 'spatial_figures.py', analysis_step: 'l3_branches_localization', input_tables: ['gene_localization_mouse.tsv'], canonical: 'l3_mouse_02_target_gene_B1-D1.png', sample: 'local_projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial/l3_mouse_02_target_gene_B1-D1.png', project: 'PRJ_STROKE_P1_SPATIAL_ABCA1', scalebar: true, adapt_vars: { input_data: '靶基因空间定位 h5ad 路径', label_genes: '共定位靶基因清单' } },
+  { id: 'fig_l3_morans_i_spatial', name: '空间高变自相关基因排序图', level: 'L3', category: 'SpatialStatistics', line: 'line3_spatial', renderMod: 'l3_figures_spatial', master: 'spatial_figures.py', analysis_step: 'l3_stats_autocorr', input_tables: ['gene_autocorr_mouse.tsv'], canonical: 'l3_mouse_04_morans_top.png', sample: 'local_projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial/l3_mouse_04_morans_top.png', project: 'PRJ_STROKE_P1_SPATIAL_ABCA1', scalebar: false, adapt_vars: { input_data: "Moran's I 自相关表路径", value_col: 'morans_i 列名' } },
+  { id: 'fig_l3_niche_comm_spatial', name: '空间微环境配受体互作热点图', level: 'L3', category: 'CellCommunication', line: 'line3_spatial', renderMod: 'l3_figures_spatial', master: 'spatial_figures.py', analysis_step: 'l3_stats_communication', input_tables: ['sample_communication_mouse.tsv'], canonical: 'l3_mouse_19_communication.png', sample: 'local_projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial/l3_mouse_19_communication.png', project: 'PRJ_STROKE_P1_SPATIAL_ABCA1', scalebar: false, adapt_vars: { input_data: '空间配受体互作得分表路径', group_col: '微环境分组列名' } },
+  { id: 'fig_l2_harmony_umap_entropy', name: 'Harmony批次校正UMAP与供体熵对照图', level: 'L2', category: 'DimReduction', line: 'line2_scrna', renderMod: 'l2_figures_scrna', master: 'scrna_figures.py', analysis_step: 'l2_integrate_cluster', input_tables: ['scrna_clustered.h5ad'], canonical: 'l2_01_umap_celltype.png', sample: 'local_projects/PRJ_AIMS_V3_20261027/deliverables/PRJ_AIMS_V3_20261027_Client_Delivery/02_Figures_and_Tables/figures/line2_scrna/l2_01_umap_celltype.png', project: 'PRJ_AIMS_V3_20261027', scalebar: false, adapt_vars: { input_data: 'Harmony 聚类 h5ad 路径', group_col: '细胞类型或供体列名' } },
+  { id: 'fig_l2_liana_lr_dotplot', name: '细胞亚群配受体通讯气泡图', level: 'L2', category: 'CellCommunication', line: 'line2_scrna', renderMod: 'l2_figures_scrna', master: 'scrna_figures.py', analysis_step: 'l2_branches_cellcomm', input_tables: ['cellcomm_interactions.tsv'], canonical: 'l2_07_comm_top.png', sample: 'local_projects/PRJ_20261019_IS_lactylation/figures/line2_scrna/l2_07_comm_top.png', project: 'PRJ_20261019_IS_lactylation', scalebar: false, adapt_vars: { input_data: 'LIANA 配受体互作表路径', group_col: '细胞亚群列名' } },
+  { id: 'fig_l2_canonical_marker_dotplot', name: '细胞类型CanonicalMarker表达核验图', level: 'L2', category: 'Annotation', line: 'line2_scrna', renderMod: 'l2_figures_scrna', master: 'scrna_figures.py', analysis_step: 'l2_integrate_annotate', input_tables: ['cluster_markers.tsv'], canonical: 'l2_07_marker_top5.png', sample: 'local_projects/PRJ_AIMS_V3_20261027/deliverables/PRJ_AIMS_V3_20261027_Client_Delivery/02_Figures_and_Tables/figures/line2_scrna/l2_07_marker_top5.png', project: 'PRJ_AIMS_V3_20261027', scalebar: false, adapt_vars: { input_data: '聚类标记基因表路径', group_col: '细胞类型列名' } },
+  { id: 'fig_l2_dr_trajectory_post', name: '亚群降维后处理与调控网络图', level: 'L2', category: 'Downstream', line: 'line2_scrna', renderMod: 'l2_figures_scrna', master: 'scrna_figures.py', analysis_step: 'l2_ko_drpost', input_tables: ['dr_regulatory_network.tsv'], canonical: 'custom_fig_l2_networkplot.png', sample: 'local_projects/PRJ_AIMS_V3_20261027/deliverables/PRJ_AIMS_V3_20261027_Client_Delivery/02_Figures_and_Tables/figures/line2_scrna/custom_fig_l2_networkplot.png', project: 'PRJ_AIMS_V3_20261027', scalebar: false, adapt_vars: { input_data: '降维后调控网络表路径', group_col: '调控模块列名' } },
+  { id: 'fig_l2_celltype_deg_volcano', name: '细胞类型特异差异表达火山图', level: 'L2', category: 'DifferentialExpression', line: 'line2_scrna', renderMod: 'l2_figures_scrna', master: 'scrna_figures.py', analysis_step: 'l2_profile_deg', input_tables: ['deg_all_by_celltype.tsv'], canonical: 'l2_08_deg_volcano_mitotic.png', sample: 'local_projects/PRJ_AIMS_V3_20261027/deliverables/PRJ_AIMS_V3_20261027_Client_Delivery/02_Figures_and_Tables/figures/line2_scrna/l2_08_deg_volcano_mitotic.png', project: 'PRJ_AIMS_V3_20261027', scalebar: false, adapt_vars: { input_data: '细胞类型差异表达表路径', group_col: '比较方向分组列名', log2fc_cutoff: '差异倍数阈值', padj_cutoff: '显著性阈值' } },
+];
+
+function buildV2Extra() {
+  return V2_EXTRA_SPECS.map((spec) => {
+    const source = `${V2_MASTER_DIR}/${spec.master}`;
+    const preview = `${V2_PREVIEW_DIR}/${spec.canonical}`;
+    const sourceFile = path.join(REPO, source);
+    const previewFile = path.join(REPO, preview);
+    if (!fs.existsSync(sourceFile)) fail(`v2 母版快照缺失：${source}`);
+    if (!fs.existsSync(previewFile)) fail(`v2 预览缺失：${preview}`);
+    const previewSha = sha256(previewFile);
+    return {
+      id: spec.id,
+      name: spec.name,
+      level: spec.level,
+      category: spec.category,
+      language: 'python',
+      source,
+      source_sha256: sha256(sourceFile),
+      preview,
+      preview_sha256: previewSha,
+      verified: true,
+      deps_status: 'ready',
+      deps: [],
+      linked_mods: [spec.renderMod],
+      adapt_vars: spec.adapt_vars,
+      lines: [spec.line],
+      analysis_step: spec.analysis_step,
+      input_tables: spec.input_tables,
+      produces: [spec.canonical],
+      output_glob: `figures/${spec.line}/${spec.canonical}`,
+      canonical_output: spec.canonical,
+      sample_project_output: spec.sample,
+      render_evidence: {
+        entry_id: `v2_delivery_${spec.project}`,
+        artifact: spec.canonical,
+        sha256: previewSha,
+        matches_preview: true,
+        source_project: spec.project,
+      },
+      deprecated: false,
+      _v2_scalebar: spec.scalebar,
+    };
+  });
+}
+
+function mapAdaptSource(key) {
+  if (key === 'input_data') return 'data_contract.input_artifact';
+  if (key === 'group_col') return 'groupingDesign.byLine';
+  if (key === 'log2fc_cutoff') return 'analysisCutoffs.log2fc';
+  if (key === 'padj_cutoff') return 'analysisCutoffs.padj';
+  if (key === 'label_genes') return 'targetGenes.topHubs';
+  return 'manual';
+}
+
+function artifactFormat(name) {
+  if (!name) return null;
+  const ext = String(name).split('.').pop().toLowerCase();
+  return ['tsv', 'csv', 'h5ad', 'rds', 'json'].includes(ext) ? ext : null;
+}
+
+// Argon 第 75 轮 FigureTemplate v2 四位一体字段（叠加在 v1 字段之上，零退化）。
+function applyV2Fields(t) {
+  const isReady = t.deps_status === 'ready' && t.verified === true;
+  const tierByLevel = { L1: 'L1_qc_basic', L2: 'L2_mechanism_core', L3: 'L3_spatial_advanced' };
+  const producing = typeof t.analysis_step === 'string' && t.analysis_step ? t.analysis_step : null;
+  const required = [];
+  if (producing) required.push(producing);
+  for (const modId of t.linked_mods || []) if (!required.includes(modId)) required.push(modId);
+  const inputArtifact = (t.input_tables || [])[0] || null;
+  const scalebarRequired = t._v2_scalebar === true;
+  t.status = isReady ? 'ready' : 'draft';
+  t.academic_tier = tierByLevel[t.level] || 'L1_qc_basic';
+  t.line_id = (t.lines || [])[0] || null;
+  t.producing_mod_id = producing;
+  t.required_mod_ids = required;
+  t.data_contract = {
+    input_artifact: inputArtifact,
+    format: artifactFormat(inputArtifact),
+    required_columns: [],
+    required_obs_keys: artifactFormat(inputArtifact) === 'h5ad' ? ['cluster'] : [],
+    required_obsm_keys: [],
+  };
+  t.spec_contract = {
+    dpi: 300,
+    palette_family: 'okabe_ito_extended',
+    scalebar_contract: scalebarRequired
+      ? { required: true, pitch_um: 100.0, envelope_um: 65.0, max_err_ratio: 0.03 }
+      : { required: false },
+  };
+  t.portal_binding = {
+    default_on_mod_select: isReady,
+    unlock_prompt: '需补选前置分析步骤以解锁该图件',
+    adapt_vars_schema: Object.keys(t.adapt_vars || {}).map((key) => ({
+      key, source_field: mapAdaptSource(key), type: 'string',
+    })),
+  };
+  if (!isReady) {
+    t.preview_sha256 = null;
+    t.render_evidence = null;
+  }
+  delete t._v2_scalebar;
+  return t;
+}
+
 function buildRegistry() {
   const rows = parseCsv(fs.readFileSync(CSV_PATH, 'utf8'));
   const header = rows[0];
@@ -545,10 +678,10 @@ function buildRegistry() {
     const normalizedLevel = level.toUpperCase();
     const status = statusRaw === '待采集' ? 'pending' : statusRaw;
     const reportId = readyIdByFile.get(path.basename(locationRaw));
-    const isReady = status === 'ready';
+    const rawReady = status === 'ready';
     const isBlocked = status === 'blocked_r453';
-    const id = isReady || isBlocked
-      ? (isReady ? reportId : 'fig_kegg_pathway')
+    const id = rawReady || isBlocked
+      ? (rawReady ? reportId : 'fig_kegg_pathway')
       : `fig_${language === 'python' ? `${normalizedLevel.toLowerCase()}p` : normalizedLevel.toLowerCase()}_${snakeCase(enName)}`;
     if (seenIds.has(id)) fail(`模板 id 重复：${id}`);
     seenIds.add(id);
@@ -562,8 +695,19 @@ function buildRegistry() {
     let activeStatus = status;
     const mapping = TEMPLATE_MAPPINGS[id] || null;
     const effectiveLanguage = mapping?.language || language;
+    const retiredComposite = RETIRED_COMPOSITE_IDS.has(id);
+    const isReady = rawReady && !retiredComposite;
 
-    if (isReady) {
+    if (retiredComposite) {
+      // 退役组合图保留条目用于展示「不可用原因」，但不保留任何已验证产物指针。
+      activeStatus = 'pending';
+      source = null;
+      sourceSha256 = null;
+      preview = null;
+      previewSha256 = null;
+      verified = false;
+      blockReason = '组合图已退役，生产只出单图';
+    } else if (isReady) {
       if (!mapping) fail(`ready 行缺少真实产物映射：${id}`);
       if (!reportId) fail(`ready 行缺少 r453 报告匹配：${enName}`);
       const artifactInfo = runnerByArtifact.get(path.basename(locationRaw));
@@ -645,11 +789,16 @@ function buildRegistry() {
           matches_preview: evidence.sha256 === previewSha256,
         };
       })() : null,
-      deprecated: false,
+      deprecated: retiredComposite,
     });
   }
 
-  if (templates.length !== 82) fail(`模板数不是 82：${templates.length}`);
+  // Argon 第 75 轮：追加 10 个产线实证 ready 模板（L3 Top5 + L2 Top5），
+  // 预览来自真实交付项目 300DPI PNG，母版快照置于 reference/_v2_masters。
+  templates.push(...buildV2Extra());
+  for (const t of templates) applyV2Fields(t);
+
+  if (templates.length !== 92) fail(`模板数不是 92：${templates.length}`);
   const counts = templates.reduce((acc, item) => {
     acc[item.deps_status] = (acc[item.deps_status] || 0) + 1;
     return acc;
@@ -663,9 +812,9 @@ function buildRegistry() {
    *   - pending_mapping 必须为 0（CSV 标 ready 但映射不全 = 真缺陷）；
    *   - blocked_r453 固定 1（只有 fig_kegg_pathway 一条被裁定的阻塞）。
    */
-  const READY_BASELINE = 30;
+  const READY_BASELINE = 39;
   const statusSum = Object.values(counts).reduce((acc, n) => acc + n, 0);
-  if (statusSum !== 82) fail(`状态计数之和不是 82：${statusSum}`);
+  if (statusSum !== 92) fail(`状态计数之和不是 92：${statusSum}`);
   if ((counts.ready || 0) < READY_BASELINE) fail(`ready 从基线 ${READY_BASELINE} 倒退：${counts.ready || 0}`);
   if ((counts.pending_mapping || 0) !== 0) fail(`pending_mapping 数不是 0：${counts.pending_mapping || 0}`);
   if (counts.blocked_r453 !== 1) fail(`blocked_r453 数不是 1：${counts.blocked_r453}`);
@@ -675,6 +824,7 @@ function buildRegistry() {
     generated_from: {
       csv: `${FIGURE_ROOT}/_meta/bizard_index.csv`,
       report: `${FIGURE_ROOT}/_meta/r453_verification_report.json`,
+      v2_extra: 'ops/build_figure_templates.cjs#buildV2Extra',
     },
     templates,
   };

@@ -5,17 +5,27 @@
 
 ## 一句话定位
 
-**本地只做交互，零算力。** 所有计算命令经 ssh 到手机 Linux 服务器执行，本地不跑 R/Python。
+**本地只做交互，零算力。** 计算命令默认经 ADB 到手机 Linux 服务器执行；
+SSH 仅在显式 `BIO_COMPUTE_ADAPTER=ssh` 时作为特殊开关启用。本地不跑 R/Python。
 
 ## 硬红线（本地零算力）
 
-本地进程只允许启动三类程序，其余一律拒绝（由 [server/proc.js](file:///d:/00.AIagent/codespace/AI辅助生信分析流程工作台/BioanalysDesktop/server/proc.js) 的白名单强制）：
+本地分析程序只允许启动三类程序，其余一律拒绝（由
+[server/proc.js](file:///d:/00.AIagent/codespace/AI辅助生信分析流程工作台/BioanalysDesktop/server/proc.js)
+的白名单强制）：
 
 | 放行 | 用途 |
 |---|---|
-| `ssh` | 命令下发、探活、读文件 |
-| `scp` | 取产物回本地 |
+| `ssh` | 特殊开关通道：仅 `BIO_COMPUTE_ADAPTER=ssh` 时用于命令下发、探活、读文件 |
+| `scp` | 特殊开关通道：仅 `BIO_COMPUTE_ADAPTER=ssh` 时取产物回本地 |
 | `adb` | 设备状态、forward 重建 |
+
+ADB 主通道经 `server/proc.js` 的 `adbRaw` 调用 `ops/adb_exec.ps1`，其中会启动
+`pwsh` 作为通道执行器。`pwsh` 不在分析程序白名单里，只允许这个固定入口使用，
+不接受任意分析代码。
+
+新增文件传输入口由 `server/adb_transfer.js` 统一提供，默认走 ADB 与 sha256 回执。
+主计算命令经 `runRemote` 默认走 ADB。历史同步探针保留为显式特殊开关与测试兼容形态。
 
 禁止在本地启动 R / Rscript / Python / bash 等。这一条不只是规范，有测试兜底
 （`tests/proc.test.js` 的"零算力红线"用例），本地跑 Rscript 会直接抛错。
@@ -81,7 +91,7 @@ npm run dev        # 后端 18787 + 前端 5173 同时起
 npm test
 ```
 
-当前基线 **1823 tests / 1822 pass / 0 fail / 1 skipped**（212 个测试文件；口径由 ops/metrics_sync.mjs 实测 node --test 汇总行）｜代码规模 22310 SLOC（非空行，79 个文件）
+当前基线 **1953 tests / 1952 pass / 0 fail / 1 skipped**（228 个测试文件；口径由 ops/metrics_sync.mjs 实测 node --test 汇总行）｜代码规模 23219 SLOC（非空行，84 个文件）
 唯一 skip 是条件跳过（宿主缺 python+anndata 时 `bridge_stage` 的坏 h5ad 用例），属设计行为。
 链路断开时会是 `1077 / 1073 / 3+ / 1+`：那几条红来自 `proc.test.js` 真连、`consistency.test.js` 远端目录、`link.test.js` 四段自检，全是链路信号，见下面第 2 条。
 
@@ -94,7 +104,7 @@ npm test
    这 16/16 全绿）。PowerShell 里可以这样跑：
    `$env:TEMP=$env:TMP="$PWD\.tmp"; node --test tests/*.test.js`
 2. **链路类用例「不通就红」是设计行为，不要删也不要改成跳过**：
-   `proc.test.js` 的真连服务器验证（经 ssh 接缝拿 `CONTAINER_OK`）、
+   `proc.test.js` 的真连服务器验证（经远端子进程接缝拿 `CONTAINER_OK`）、
    `consistency.test.js` 的远端目录准备、`link.test.js` 的设备/forward/四段自检。
    K40 或 adb 不在位时它们红，属于预期信号。
 

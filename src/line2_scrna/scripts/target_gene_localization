@@ -13,7 +13,7 @@
 #   localization_report.txt
 #   ../figures/l2_13_target_gene_dotplot.png
 #
-# 目标基因池口径：敲除基因 ∪ 各 celltype 组间差异最显著的 top2 基因（数据驱动代表基因）。
+# 目标基因池口径：敲除基因 ∪ 各 celltype 组间差异最显著的 topN 基因（低检出先过滤）。
 # 表达口径：X 在步骤 4 已换成 scale z-score，不能直接用；从 layers['counts'] 重算
 #   log 归一化（normalize_total(1e4)+log1p，复现步骤 3），与步骤 15 deg_groups 同源。
 # 口径：docs/figure_spec.md（Agg/300dpi/英文标签；点大小=表达细胞占比，颜色=平均表达；
@@ -36,8 +36,23 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+in_h5ad=""
+in_deg_tsv=""
+in_ko_tsv=""
+for path in "${INPUTS[@]:-}"; do
+  [ -n "$path" ] || continue
+  case "$path" in
+    *deg*.h5ad|*annotated*.h5ad|*clustered*.h5ad) in_h5ad="$path" ;;
+    *deg_all_by_celltype*.tsv) in_deg_tsv="$path" ;;
+    *ko_dr_genes*.tsv) in_ko_tsv="$path" ;;
+  esac
+done
+
 echo "step_executed=target_gene_localization"
 echo "bioanalys_seed=${seed}"
+export IN_H5AD="$in_h5ad"
+export IN_DEG_TSV="$in_deg_tsv"
+export IN_KO_TSV="$in_ko_tsv"
 
 # 解释器 PATH 前置（生信代码专项审核）：K40 系统解释器缺科学计算包，真依赖在 bio-py venv。
 # 用 PATH 注入而非改写调用行，是为了让桥接调用的行级计数保持原样（bilingual 判定不变）。
@@ -61,17 +76,26 @@ import anndata as ad
 
 ad.settings.allow_write_nullable_strings = False
 plt.rcParams.update({
-    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 7, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "legend.title_fontsize": 7,
-    "axes.titlesize": 7, "axes.grid": False,
+    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 8, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 8, "xtick.labelsize": 8, "ytick.labelsize": 8, "legend.fontsize": 8, "legend.title_fontsize": 8,
+    "axes.titlesize": 9, "axes.grid": False,
     "figure.autolayout": True, "savefig.bbox": "tight",
     "image.cmap": "viridis",
 })
 
 START = time.time()
 SEED = int(os.environ["BIOANALYS_SEED"])
-H5AD = "scrna_deg.h5ad"
-DEG_TSV = "deg_all_by_celltype.tsv"
-KO_TSV = "ko_dr_genes.tsv"
+def pick_path(env_key, default_cands):
+    val = os.environ.get(env_key, "").strip()
+    if val and os.path.exists(val):
+        return val
+    for c in default_cands:
+        if os.path.exists(c):
+            return c
+    return default_cands[0]
+
+H5AD = pick_path("IN_H5AD", ["scrna_deg.h5ad", "scrna_annotated.h5ad", "scrna_clustered.h5ad"])
+DEG_TSV = pick_path("IN_DEG_TSV", ["deg_all_by_celltype.tsv", "results/deg_all_by_celltype.tsv"])
+KO_TSV = pick_path("IN_KO_TSV", ["ko_dr_genes.tsv", "results/ko_dr_genes.tsv"])
 OUT_TSV = "target_gene_localization.tsv"
 OUT_WIDE = "target_gene_localization_wide.tsv"
 OUT_H5AD = "scrna_localization.h5ad"
@@ -97,7 +121,7 @@ def caption(fig, *parts):
     if not parts:
         return
     text = "\n".join(parts)
-    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=7, linespacing=1.5)
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
 def wrap_label(text, width=18):
     """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
     import textwrap
@@ -164,30 +188,23 @@ def fit_text_edges(fig, ax, gap=6.0, rounds=5):
             ax.set_ylim(y0 - (y1 - y0) * (bottom / bh) * 1.15, y1)
 
 
-def legend_out(ax, fig, leg):
-    """图例移到坐标轴框外：竖版图（宽<高）右上角纵向单列；横版图（宽>=高）下方纵向单列。
-    条目超过 12 条按列分组，避免纵向过长压扁主图。"""
-    n = len(leg.get_texts())
+def legend_out(ax, fig, leg, slot=0):
+    """图例统一置坐标轴框外右侧、纵向排列（用户 2026-11-07 定稿）。
+    多组图例按 slot 依次向右横排（每组各自纵向单列），互不重叠。
+    所有图幅方向统一放到轴框外右侧。"""
     handles = list(leg.legend_handles)
     labels = [t.get_text() for t in leg.get_texts()]
     title = leg.get_title().get_text() or None
-    w, h = fig.get_size_inches()
     fig.set_layout_engine("none")
-    if w >= h:
-        ncol = 1 if n <= 12 else -(-n // 12)
-        rows = -(-n // ncol)
-        ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
-                  ncol=ncol, fontsize=7, frameon=False, title=title)
-        fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
-    else:
-        ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                  ncol=1, fontsize=7, frameon=False, title=title)
-        fig.subplots_adjust(right=0.74)
+    x = 1.02 + 0.30 * slot
+    ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(x, 1.0),
+              ncol=1, fontsize=8, frameon=False, title=title)
+    fig.subplots_adjust(right=max(0.60, 0.80 - 0.06 * slot))
 
 
 def layout_fix(fig):
     """落盘前统一收口（docs/figure_spec.md v2.2 §三之三）：
-    1) 单坐标轴图的图例外置：竖版置轴框外右上角、横版置轴框下方，纵向排布、不压数据；
+    1) 单坐标轴图的图例外置：一律置轴框外右侧，纵向排布、不压数据；
     2) 轴内文本右缘/顶缘/左缘/下缘越出坐标轴框时自动扩 xlim/ylim 收进框内。
     多子图（分面）图不做图例搬迁：分面各有自己的图例，统一外移会互相压扁。
     tick 标签一律不动：它本就在轴框外，savefig.bbox="tight" 会把画布扩到装下它；
@@ -198,9 +215,9 @@ def layout_fix(fig):
     if not axes:
         return
     if len(axes) == 1:
-        leg = axes[0].get_legend()
-        if leg is not None:
-            legend_out(axes[0], fig, leg)
+        legs = [l for l in (axes[0].get_legend(),) if l is not None]
+        for slot, leg in enumerate(legs):
+            legend_out(axes[0], fig, leg, slot=slot)
         fit_text_edges(fig, axes[0])
 
 
@@ -244,22 +261,124 @@ for col in ["celltype", "rank", "gene_symbol"]:
 if "is_knockout_gene" not in ko.columns:
     fail("ko_dr_genes 缺 is_knockout_gene 列")
 
-# --- 目标基因池：敲除基因 ∪ 各 celltype 组间差异 top2 ---
+# --- 目标基因池：敲除基因 ∪ 各 celltype 组间差异 topN ---
+# 关键：差异表里 rank 最前的基因经常是低检出/跨细胞类型可疑基因，它们在 h5ad
+# 建库时已被过滤，直接取 topN 会只剩敲除基因一行。先剔除这类行，再同时用
+# ensembl_id 与 gene_symbol 映射到 var_names，保证有足够可解释的行。
 ko_genes = sorted(set(ko.loc[ko["is_knockout_gene"].astype(bool), "Gene"].astype(str)))
-top2 = (deg[deg["rank"] <= TOP_PER_CT]
-        .sort_values(["celltype", "rank"])["gene_symbol"].astype(str).tolist())
-pool = list(dict.fromkeys(ko_genes + top2))     # 去重保序
-pool = [g for g in pool if g in set(adata.var_names)]
-if not pool:
-    fail("目标基因池为空（敲除基因与 top marker 都未映射到 var_names）")
-log("target genes=%d (ko=%s, top%d per celltype)" % (len(pool), ko_genes, TOP_PER_CT))
+informative_mask = pd.Series(True, index=deg.index)
+for bad_col in ("low_detection", "pan_celltype_suspect"):
+    if bad_col in deg.columns:
+        bad = deg[bad_col].astype(str).str.strip().str.lower()
+        informative_mask &= ~bad.isin(["true", "1", "yes"])
+if "significant" in deg.columns:
+    sig = deg["significant"].astype(str).str.strip().str.lower()
+    if sig.isin(["true", "1", "yes"]).any():
+        informative_mask &= sig.isin(["true", "1", "yes"])
+
+var_names = adata.var_names.astype(str)
+var_names_set = set(var_names)
+
+def norm_ensembl(value):
+    text = "" if pd.isna(value) else str(value).strip()
+    return text.split(".", 1)[0] if text.startswith("ENSG") else text
+
+ens_to_var = {}
+for vname in var_names:
+    ens_to_var.setdefault(norm_ensembl(vname), vname)
+if "ensembl_id" in adata.var.columns:
+    for vname, ens in zip(var_names, adata.var["ensembl_id"].astype(str)):
+        ens_to_var.setdefault(norm_ensembl(ens), vname)
+
+sym_to_var = {}
+if "gene_symbol" in adata.var.columns:
+    for vname, sym in zip(var_names, adata.var["gene_symbol"].astype(str)):
+        sym = sym.strip()
+        if sym and sym.lower() not in ("nan", "none"):
+            sym_to_var.setdefault(sym, vname)
+
+target_records = []
+def add_target(symbol, ensembl=None, source=""):
+    symbol = "" if pd.isna(symbol) else str(symbol).strip()
+    ensembl = "" if pd.isna(ensembl) else str(ensembl).strip()
+    if symbol or ensembl:
+        target_records.append({"symbol": symbol, "ensembl": ensembl, "source": source})
+
+def resolve_var(rec):
+    sym, ens = rec["symbol"], rec["ensembl"]
+    for candidate in (sym, norm_ensembl(ens)):
+        if candidate and candidate in var_names_set:
+            return candidate
+    if sym and sym in sym_to_var:
+        return sym_to_var[sym]
+    if ens:
+        mapped = ens_to_var.get(norm_ensembl(ens))
+        if mapped:
+            return mapped
+    return None
+
+for g in ko_genes:
+    add_target(g, None, "knockout")
+
+# h5ad 只保存高变基因，差异表 top1 往往不在这批基因里。沿 rank 向下扫描，
+# 取每个细胞类型最早命中已测基因的 TOP_PER_CT 个；优先 informative 行，
+# 不够时再放开低检出标记，保证图有足够行可读且不伪装成未测基因。
+selected_counts = {}
+selected_vars = set()
+all_celltypes = set(deg["celltype"].astype(str))
+scan_df = deg.sort_values(["celltype", "rank"])
+for allow_flagged in (False, True):
+    if allow_flagged and any(selected_counts.get(c, 0) < TOP_PER_CT for c in all_celltypes):
+        log("WARN mapped informative DEG rows below TOP_PER_CT for some celltypes; "
+            "allow flagged rows as fallback")
+    for idx, row in scan_df.iterrows():
+        ct = str(row["celltype"])
+        if selected_counts.get(ct, 0) >= TOP_PER_CT:
+            continue
+        if not allow_flagged and not bool(informative_mask.loc[idx]):
+            continue
+        rec = {
+            "symbol": "" if pd.isna(row.get("gene_symbol")) else str(row.get("gene_symbol")).strip(),
+            "ensembl": "" if pd.isna(row.get("ensembl_id")) else str(row.get("ensembl_id")).strip(),
+            "source": "deg_top",
+        }
+        vname = resolve_var(rec)
+        if not vname or vname in selected_vars:
+            continue
+        selected_vars.add(vname)
+        selected_counts[ct] = selected_counts.get(ct, 0) + 1
+        target_records.append(rec)
+        if all(selected_counts.get(c, 0) >= TOP_PER_CT for c in all_celltypes):
+            break
+    if all(selected_counts.get(c, 0) >= TOP_PER_CT for c in all_celltypes):
+        break
+log("selected DEG targets per celltype: %s"
+    % ", ".join("%s=%d" % (c, selected_counts.get(c, 0)) for c in sorted(all_celltypes)))
+
+pool_vars = []
+pool_symbols = []
+seen_vars = set()
+for rec in target_records:
+    vname = resolve_var(rec)
+    if not vname or vname in seen_vars:
+        continue
+    seen_vars.add(vname)
+    pool_vars.append(vname)
+    pool_symbols.append(rec["symbol"] or vname)
+
+if not pool_vars:
+    fail("目标基因池为空（敲除基因与 top marker 都未映射到 var_names 或 var['gene_symbol']）")
+log("target genes=%d (ko=%s, top%d per celltype, mapped=%d)"
+    % (len(pool_vars), ko_genes, TOP_PER_CT, len(selected_vars)))
 
 # --- 表达口径：从 counts 重算 log 归一化（复现步骤 3，同步骤 15 deg_groups） ---
 work = ad.AnnData(X=adata.layers["counts"].copy(),
                   obs=adata.obs.copy(), var=adata.var.copy())
 sc.pp.normalize_total(work, target_sum=1e4)
 sc.pp.log1p(work)
-sub = work[:, pool]
+sub = work[:, pool_vars].copy()
+sub.var_names = pool_symbols
+pool = pool_symbols
 X = sub.X
 X = np.asarray(X.todense()) if hasattr(X, "todense") else np.asarray(X)
 if not np.all(np.isfinite(X)):
@@ -309,8 +428,8 @@ wide = long_df.pivot(index="gene", columns="celltype", values="mean_expr_lognorm
 wide.to_csv(OUT_WIDE, sep="\t")
 
 # --- 贴回：首目标基因（敲除基因优先，否则池首）的逐细胞表达 ---
-lead_gene = ko_genes[0] if ko_genes and ko_genes[0] in pool else pool[0]
-lead_idx = pool.index(lead_gene)
+lead_idx = next((i for i, g in enumerate(pool) if g in ko_genes), 0)
+lead_gene = pool[lead_idx]
 adata.obs["target_gene_expr"] = X[:, lead_idx].astype(np.float32)
 adata.uns["localization"] = {
     "method": "celltype_mean_and_pct_from_counts_lognorm",
@@ -339,9 +458,9 @@ fig, ax = plt.subplots(figsize=(max(11, len(celltypes) * 0.72), max(7, len(pool)
 sc_plot = ax.scatter(xs, ys, s=[30 + 320 * v for v in sizes], c=colors,
                      cmap="viridis", edgecolors="k", linewidths=0.4)
 ax.set_xticks(range(len(celltypes)))
-ax.set_xticklabels(celltypes, rotation=45, ha="right", fontsize=7)
+ax.set_xticklabels(celltypes, rotation=45, ha="right", fontsize=8)
 ax.set_yticks(range(len(gene_order)))
-ax.set_yticklabels(gene_order, fontsize=7)
+ax.set_yticklabels(gene_order, fontsize=8)
 ax.set_xlim(-0.6, len(celltypes) - 0.4)
 ax.set_ylim(-0.6, len(gene_order) - 0.4)
 ax.set_ylabel("target gene")
@@ -351,9 +470,10 @@ for frac in [0.25, 0.5, 0.75, 1.0]:
     ax.scatter([], [], s=30 + 320 * frac, facecolors="none", edgecolors="0.4",
                label="%d%%" % int(frac * 100))
 ax.legend(title="% expressing", loc="upper left", bbox_to_anchor=(1.14, 1.0),
-          borderaxespad=0, fontsize=7, labelspacing=1.1, frameon=False)
+          borderaxespad=0, fontsize=8, labelspacing=1.1, frameon=False)
 caption(fig, "line2 scrna: target gene expression localization",
-        "ko gene + top%d DEG per celltype" % TOP_PER_CT,
+        "ko gene + top%d measured DEG per celltype" % TOP_PER_CT,
+        "low-detection rows excluded when alternatives exist; flagged rows only as fallback",
         "dot size = %% expressing, colour = mean expr",
         "n=%d cells, %d celltypes" % (adata.n_obs, len(celltypes)))
 fig.subplots_adjust(left=0.20, right=0.80, top=0.97, bottom=0.24)

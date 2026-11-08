@@ -3,12 +3,12 @@
  *
  * 只采纳三项纯增益项，红线不动：
  *   1. 字体统一 Arial / Helvetica（无衬线）；
- *   2. 字号阶梯：轴标题与图例标题 7pt，刻度与图内标注 6-7pt；
+ *   2. 字号下限：图内字号 >= 8pt（figure_spec.md v2.2 §三 / Argon 第 76 轮 C4 清零）；
  *   3. 离散分类色板改 Okabe-Ito 八色（超出后平滑扩充）。
  *
  * 红线（用户明确要求保留，任何改动都不得触碰）：
  *   - savefig.bbox = "tight" 必须保留（左下角图注与右侧图例依赖它扩边）；
- *   - 多图拼接（如 16_domain_panel）必须保留。
+ *   - 单图原则：生产母版只出一张图一个论点，不输出多面板组合图。
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -57,30 +57,30 @@ test("每份图件母版都必须声明 Arial 或 Helvetica", () => {
   assert.deepEqual(bad, [], "以下母版未声明 Arial/Helvetica：" + bad.join(", "));
 });
 
-test("字号字面量不得超过 7pt（轴标题/图例标题 7，刻度与标注 6-7）", () => {
+test("字号字面量不得低于 8pt（figure_spec v2.2 下限）", () => {
   const bad = [];
   for (const m of figureMasters()) {
     const c = codeOnly(m.src);
     for (const mm of c.matchAll(/fontsize\s*=\s*([\d.]+)/g)) {
       const v = Number(mm[1]);
-      if (v > 7) bad.push(m.rel + " fontsize=" + v);
+      if (v < 8) bad.push(m.rel + " fontsize=" + v);
     }
   }
-  assert.deepEqual(bad, [], "以下位置字号超过 7pt：" + bad.join("; "));
+  assert.deepEqual(bad, [], "以下位置字号低于 8pt：" + bad.join("; "));
 });
 
-test("rcParams 里的字号键也不得超过 7pt", () => {
-  // 首版只查 fontsize= 字面量，改 rcParams 的 "font.size": 9 不会被发现（MUT-B 曾存活）。
+test("rcParams 里的字号键也不得低于 8pt", () => {
+  // 全局基准收口：rcParams 的 font.size 等键同样受 8pt 下限约束（Argon 第 76 轮 C4_RCPARAMS_FONT）。
   const bad = [];
   for (const m of figureMasters()) {
     if (m.isR) continue;
     const c = codeOnly(m.src);
     const re = /"(font\.size|axes\.titlesize|axes\.labelsize|legend\.fontsize|legend\.title_fontsize|xtick\.labelsize|ytick\.labelsize)"\s*:\s*([\d.]+)/g;
     for (const mm of c.matchAll(re)) {
-      if (Number(mm[2]) > 7) bad.push(m.rel + " " + mm[1] + "=" + mm[2]);
+      if (Number(mm[2]) < 8) bad.push(m.rel + " " + mm[1] + "=" + mm[2]);
     }
   }
-  assert.deepEqual(bad, [], "rcParams 字号超过 7pt：" + bad.join("; "));
+  assert.deepEqual(bad, [], "rcParams 字号低于 8pt：" + bad.join("; "));
 });
 
 test("离散分类色板必须使用 Okabe-Ito 八色", () => {
@@ -123,7 +123,19 @@ test("红线：savefig.bbox 必须是 tight（图注与图例靠它扩边）", (
   assert.deepEqual(bad, [], "以下 Python 母版丢失了 savefig.bbox=tight：" + bad.join(", "));
 });
 
-test("红线：多图拼接母版必须保留（16_domain_panel 不得被拆）", () => {
-  const sf = fs.readFileSync(path.join(REPO, "src/line3_spatial/scripts/spatial_figures"), "utf8");
-  assert.match(sf, /16_domain_panel/, "16_domain_panel 必须仍在产出");
+test("红线：单图原则，生产母版不得输出组合图", () => {
+  const bulk = fs.readFileSync(path.join(REPO, "src/line1_bulk/scripts/bulk_figures"), "utf8");
+  const spatial = fs.readFileSync(path.join(REPO, "src/line3_spatial/scripts/spatial_figures"), "utf8");
+  assert.doesNotMatch(bulk, /l1_32_deg_overview\.png/, "l1_32_deg_overview 组合图必须退役");
+  assert.doesNotMatch(spatial, /16_domain_panel\.png/, "16_domain_panel 组合图必须退役");
+
+  const registry = JSON.parse(fs.readFileSync(path.join(REPO, "src/figure_templates.json"), "utf8"));
+  const compositeReady = registry.templates
+    .filter((t) => t.deps_status === "ready")
+    .filter((t) => /multipanel|combinationpanel|sankeybubbleplot|composite|组合图|多面板/.test(t.id + " " + t.name));
+  assert.deepEqual(
+    compositeReady.map((t) => t.id),
+    [],
+    "组合模板不得进入 ready：" + compositeReady.map((t) => t.id).join(", "),
+  );
 });

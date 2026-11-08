@@ -208,8 +208,13 @@ export async function handleDiagnosticsRoutes(req, res, url, {
         path: entry.path,
         ...auditLedgerEntry(entry.data),
       }));
+      const receipts = entries.map((entry) => ({
+        file: entry.file,
+        path: entry.path,
+        ...entry.data,
+      }));
       const summary = summarizeLedger(entries.map((entry) => entry.data));
-      json(res, 200, { blocked: false, dir: requested, summary, entries: audited });
+      json(res, 200, { blocked: false, dir: requested, summary, entries: audited, receipts });
       return true;
     } catch (cause) {
       json(res, 500, {

@@ -63,14 +63,15 @@ test("01_domains 图注锚在图幅左下角（轴框外），右栏只留图例
     "右栏不得再放图注文字，应改 fig.text 左下");
 });
 
-test("caption 统一左下角；legend_out 仍按横竖分支", () => {
+test("caption 统一左下角；legend_out 统一轴框外右侧", () => {
   const src = read();
   const cap = src.slice(src.indexOf("def caption("), src.indexOf("def caption(") + 900);
   assert.match(cap, /fig\.text\(0\.01,\s*-0\.02/, "caption 锚点必须为左下 (0.01, -0.02)");
   assert.equal(/if w >= h:/.test(cap), false, "caption 不得再按横竖分支");
   const lg = src.slice(src.indexOf("def legend_out("), src.indexOf("def legend_out(") + 900);
-  assert.match(lg, /if w >= h:/, "legend_out 仍须按 w>=h 分横竖");
-  assert.match(lg, /bbox_to_anchor=\(1\.02,\s*1\.0\)/, "竖版图例锚点必须为 (1.02, 1.0)");
+  assert.equal(/if w >= h:/.test(lg), false, "legend_out 不得再按横竖分支");
+  assert.match(lg, /bbox_to_anchor=\(x,\s*1\.0\)/, "图例锚点必须为轴框右侧 (x, 1.0)");
+  assert.match(lg, /ncol=1/, "图例条目必须纵向单列");
 });
 
 test("layout_fix 对单轴图仍接管图例外置", () => {

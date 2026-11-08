@@ -52,6 +52,18 @@ export const GATES = Object.freeze([
   // Q1（第 41 轮，抄 nf-core/modules）：项目层禁止出现与母版同名的完整脚本副本，
   // 有 scripts/ 的项目必须逐条登记 scripts_manifest.json。拔除漂移病根。
   { id: 'project_script', label: '项目层脚本边界（禁母版副本）', exec: 'node', args: ['ops/project_script_gate.mjs'], cwd: '.', slow: false },
+  // 项目内容消融：在 .tmp 临时副本上删除旧报告、legacy 图件、组图、旧来源配置
+  // 与旧 SSH runner，证明客户端项目发现、图件清单、来源清单接口与出图门禁仍自洽。
+  // 它只验证项目内容，不重跑生信分析，放在项目脚本边界之后、受控桥接之前。
+  { id: 'project_content_ablation', label: '项目内容消融（旧报告/旧图/来源配置）', exec: 'node', args: ['ops/project_content_ablation_gate.mjs'], cwd: '.', slow: false },
+  // 结构化工单编排器：用确定性合成工单验证建项、上传、DAG、完成回执、报告验收与
+  // 汇总回执的单入口闭环。全程 mock HTTP，不连接设备，不触发分析计算。
+  { id: 'work_order_orchestrator', label: '结构化工单编排闭环', exec: 'node', args: ['ops/work_order_orchestrator_gate.mjs'], cwd: '.', slow: false },
+  // 54 模块功能级消融与相邻兼容性矩阵：确定性静态核对，不重跑分析，不连接设备。
+  { id: 'module_ablation_matrix', label: '54 模块消融与兼容性矩阵', exec: 'node', args: ['ops/module_ablation_matrix_gate.mjs'], cwd: '.', slow: false },
+  // 受控桥接事实源：默认仍禁止跨线读取，只允许 workflows.json 声明的
+  // public_references/celltype_signatures/<project_id>/ 冻结签名表。
+  { id: 'isolated_bridge', label: '受控桥接事实源', exec: 'node', args: ['ops/isolated_bridge_gate.mjs'], cwd: '.', slow: false },
   // 第 18 道：声明式路由与边界台账一致性（Argon 第 66 轮 Q2b/Q3a 裁定的落地）。
   // 校验两件此前只靠人眼的事：ops/router.yaml 引用的每个 Mod ID 与 ops 脚本真实存在；
   // docs/SCOPE.md 每条 REJ 的 enforced_by 指向真门禁。填一个不存在的路径必须红。
@@ -65,7 +77,7 @@ export const GATES = Object.freeze([
   // 第 8 道前置：30 条 Ready 模板的实证矩阵（第 41 轮）。
   // 白名单只证明「ID 被封板」，不证明源码与预览还和登记时一致。这道门禁对每条 ready
   // 做真实的 sha256 比对：文件被悄悄改动、预览被重渲染覆盖，都会当场红。
-  { id: 'ready_matrix', label: 'Ready 模板实证矩阵（30 条 sha 核验）', exec: 'node', args: ['ops/figure_ready_matrix.mjs'], cwd: '.', slow: false },
+  { id: 'ready_matrix', label: 'Ready 模板实证矩阵（39 条 sha 核验）', exec: 'node', args: ['ops/figure_ready_matrix.mjs'], cwd: '.', slow: false },
   // 生信代码专项审核产物：出图溯源诚实性。注册表登记了参考库 source，但出图脚本
   // 从未引用库 —— 本门禁要求每份出图脚本显式声明 DERIVED/INSPIRED/INDEPENDENT，
   // 并抓「声称派生却不引用库」的假溯源。
@@ -77,11 +89,14 @@ export const GATES = Object.freeze([
   // 生信代码专项审核第 4 项：出图规范合规。直接读真实 PNG 的 pHYs 块判 300 DPI，
   // 不靠人眼。产线项目强制，历史项目（figure_spec v2.2 升级前的 150dpi 旧图）只报告。
   { id: 'figure_spec', label: '出图规范合规（300 DPI）', exec: 'node', args: ['ops/figure_spec_gate.mjs'], cwd: '.', slow: false },
+  // 第 20 道（Argon 第 76 轮）：出图源码规范门禁，与 Gate 14 产物侧 DPI 校验职责正交。
+  // 查源码 C1-C14（字号/后端/配色/plt.close/Agg 顺序），blocking>0 即红，Fail-Closed。
+  { id: 'figure_code', label: '出图源码规范（C1-C14 字号/后端/配色）', exec: 'node', args: ['ops/figure_code_gate.mjs'], cwd: '.', slow: false },
   { id: 'audit_summary', label: '交付审计流可解析', exec: 'node', args: ['ops/audit_summary.mjs'], cwd: '.', slow: false },
   // 第 8 道：变异门禁（T2-6）。它证明的不是「代码对不对」，而是「门禁会不会红」：
   // 对 7 条关键防线各注入一次真实破坏，任一条没让对应判据变红即整道失败。
   // 变异只在 .tmp/mutation_gate/ 的临时副本上做，不碰工作树（并发安全）。
-  { id: 'mutation_gate', label: '变异门禁（7 条防线反证）', exec: 'node', args: ['ops/mutation_gate.mjs'], cwd: '.', slow: false },
+  { id: 'mutation_gate', label: '变异门禁（19 条防线反证）', exec: 'node', args: ['ops/mutation_gate.mjs'], cwd: '.', slow: false },
   // Argon 第 42 轮锁定：Q3 状态机与 Q2 路由表各需 3 条 MUT 反证。
   // 既有 mutation_gate 的 7 条全在 Q4/T3 域，覆盖不到这两块，故单列。
   // K40 脚本同源（第 73 轮回归抓到的真实漂移：17 处不同源，而 18 道门禁全绿）。

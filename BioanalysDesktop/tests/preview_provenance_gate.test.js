@@ -3,7 +3,7 @@
 // 判据三条：
 //   1) 门禁必须把 ready 分成三桶：相等 / 分叉 / 无矩阵证据，且三桶之和等于 ready 数；
 //   2) 分叉的必须让门禁退出码非 0（当前实测 9 条分叉，所以现在是红的）；
-//   3) 无证据的只进 INFO 清单，不许阻断（否则会击穿 readyCount=30 铁律）。
+//   3) 无证据的只进 INFO 清单，不许阻断（否则会击穿 ready 基线）。
 //
 // 这条红测现在应当红：实测 EQ=3 / NEQ=9 / 无证据=18。
 import test from 'node:test';
@@ -18,7 +18,7 @@ test('门禁把 ready 分三桶且三桶之和等于 ready 数', () => {
   const r = checkPreviewProvenance();
   assert.equal(r.equal.length + r.diverged.length + r.noEvidence.length, r.ready,
     `三桶之和 ${r.equal.length}+${r.diverged.length}+${r.noEvidence.length} 不等于 ready ${r.ready}`);
-  assert.equal(r.ready, 30, `ready 必须是 30，实际 ${r.ready}`);
+  assert.equal(r.ready, 39, `ready 必须是 39，实际 ${r.ready}`);
 });
 
 test('分叉条目必须被单列出来并能定位到 runner（不许只报个数）', () => {

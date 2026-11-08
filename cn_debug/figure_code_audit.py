@@ -13,6 +13,7 @@
   C5 落地目录违规：图件写进 processed/ 或 results/ 而不是 figures/
   C6 输出 PDF/SVG：savefig/ggsave 落 .pdf / .svg
   C7 轴内标题：set_title/labs(title=...)/main= 出现中文
+  C15 图例位置：loc=upper/lower center 或 bbox y<0（图例必须在轴框外右侧）
 
 说明：C7 采用启发式检测（取样本内的 CJK 字符）；图内必须有英文标签是硬规则。
 """
@@ -84,6 +85,10 @@ def check_file(path):
             if float(fm.group(1)) < 8:
                 issues.append(("C4_TINY_FONT", path, i, stripped))
                 break
+        for tf in re.finditer(r"\btitle_fontsize\s*=\s*([0-9]+(?:\.[0-9]+)?)", stripped):
+            if float(tf.group(1)) < 8:
+                issues.append(("C4_TINY_FONT", path, i, stripped))
+                break
         for ce in re.finditer(r"\bcex(?:\.text|\.axis|\.main|\.lab)?\s*=\s*([0-9](?:\.[0-9]+)?)", stripped):
             # R 的 cex 是相对倍数（1.0 = 12pt），< 0.7 约等于 < 8.4pt
             if float(ce.group(1)) < 0.7:
@@ -114,11 +119,80 @@ def check_file(path):
                 if loc in AXIS_INNER_LOC:
                     issues.append(("C1_LEGEND_INSIDE", path, i, stripped))
 
+        # C15 图例不得放轴框下方或居中（用户 2026-11-07 定稿：所有图例一律右侧）。
+        # 覆盖两类历史漏网：loc=upper center/lower center，以及 bbox y 坐标为负的下方图例。
+        if "legend(" in stripped and not stripped.startswith("#"):
+            window = stripped
+            depth = window.count("(") - window.count(")")
+            j = i
+            while depth > 0 and j < len(lines) and (j - i) < 12:
+                window += " " + lines[j]
+                depth = window.count("(") - window.count(")")
+                j += 1
+            lm = re.search(r"loc\s*=\s*['\"]([^'\"]+)['\"]", window)
+            loc = lm.group(1).lower() if lm else ""
+            by = re.search(r"bbox_to_anchor\s*=\s*\(\s*[^,()]+,\s*(-?[0-9.]+)", window)
+            if loc in ("upper center", "lower center") or (by and float(by.group(1)) < 0):
+                issues.append(("C15_LEGEND_BOTTOM", path, i, stripped))
+
         # C5 图件写错目录（py 侧显式写 results//processed/）
         if re.search(r"(results|processed)/[^'\"]*\.(png|pdf|svg)", stripped) and re.search(
                 r"savefig|save\(|\.png|\.pdf|\.svg", stripped):
             if not re.search(r"figures/", stripped):
                 issues.append(("C5_WRONG_DIR", path, i, stripped))
+
+        # C4 扩展：rcParams 全部字号键低于 8pt（全局基准收口，Argon 第 76 轮）。
+        _rc_font_keys = r"(font\.size|axes\.titlesize|axes\.labelsize|xtick\.labelsize|ytick\.labelsize|legend\.fontsize|legend\.title_fontsize)"
+        for rc in re.finditer(r"['\"]" + _rc_font_keys + r"['\"]\s*:\s*([0-9]+(?:\.[0-9]+)?)", stripped):
+            if float(rc.group(2)) < 8:
+                issues.append(("C4_RCPARAMS_FONT", path, i, stripped))
+                break
+
+        # C12 二分类标准色（Control/WT=#3B4992，Treat/Disease=#EE0000）。
+        # 零误报口径：仅当显式把 hex 色值绑定到 control/treat/wt/disease/case 命名标识符，
+        # 且色值不是标准码时报违规；使用 seaborn 调色板名（非 hex）的不触发。
+        cm = re.search(r"(control|treat|wt|disease|case)\w*\s*[:=]\s*['\"](#[0-9a-fA-F]{6})['\"]", stripped, re.IGNORECASE)
+        if cm:
+            role = cm.group(1).lower()
+            color = cm.group(2).upper()
+            standard = {"control": "#3B4992", "wt": "#3B4992", "treat": "#EE0000", "disease": "#EE0000", "case": "#EE0000"}
+            expected = standard.get(role)
+            if expected and color != expected:
+                issues.append(("C12_BINARY_COLOR", path, i, stripped))
+
+        # C9 图注左下角（校准集，report-only）：fig.text 的 y 坐标应 < 0（轴框外下方）。
+        ft = re.search(r"fig\.text\(\s*([0-9.\-]+)\s*,\s*([0-9.\-]+)", stripped)
+        if ft:
+            try:
+                if float(ft.group(2)) >= 0:
+                    issues.append(("C9_CAPTION_POS", path, i, stripped))
+            except ValueError:
+                pass
+
+        # C10 图例外置（校准集，report-only）：legend 调用未带 bbox_to_anchor 提示可能轴内。
+        if ("legend(" in stripped and not stripped.startswith("#")
+                and "bbox_to_anchor" not in stripped and "loc=" not in stripped):
+            issues.append(("C10_LEGEND_LAYOUT", path, i, stripped))
+
+    # ---- 文件级检查（循环结束后）----
+    has_pyplot = ("import matplotlib.pyplot" in text) or ("from matplotlib" in text and "pyplot" in text)
+    has_savefig = "savefig(" in text or "fig.savefig" in text
+
+    # C13 末尾 plt.close("all")（硬阻断）：导入 pyplot 且出图但无任何 plt.close 调用。
+    if has_pyplot and has_savefig and not re.search(r"plt\.close\(|pyplot\.close\(", text):
+        issues.append(("C13_NO_CLOSE", path, 0, "missing plt.close('all') after figures"))
+
+    # C14 Agg 后端先于 pyplot 导入（硬阻断）：use('Agg') 出现在 import pyplot 之后。
+    if has_pyplot:
+        use_match = re.search(r"matplotlib\.use\(\s*['\"]Agg['\"]\s*\)", text)
+        pyplot_idx = text.find("import matplotlib.pyplot")
+        if use_match and pyplot_idx >= 0 and use_match.start() > pyplot_idx:
+            issues.append(("C14_BACKEND_ORDER", path, 0, "matplotlib.use('Agg') must precede import pyplot"))
+
+    # C11 Virtual KO 标题角标（校准集，report-only）：KO 相关脚本标题应带 [Virtual KO ...] 角标。
+    if re.search(r"virtual_knockout|ko_dr|Virtual KO", text, re.IGNORECASE) and has_savefig:
+        if not re.search(r"\[Virtual KO", text):
+            issues.append(("C11_KO_CAPTION", path, 0, "Virtual KO figure caption lacks [Virtual KO ...] tag"))
 
     # R 脚本（非 py 的 shell 内嵌或 Rprofile 不在本工具范围，但 grep 得动）
     # C1 的 R 等价（ggsave 不算；matplotlib 无）→ 跳过
@@ -160,20 +234,33 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default="src")
     ap.add_argument("--csv", default="")
+    ap.add_argument("--report-only", action="store_true",
+                    help="校准模式：打印全部违规但退出码恒 0（用于 C9-C11 误报校准）")
     args = ap.parse_args(argv)
 
     issues = audit_tree(args.root)
+    # Argon 第 76 轮：硬阻断集（total_blocking>0 即 Exit 1）与校准集（report-only）分离。
+    blocking_kinds = {
+        "C1_LEGEND_INSIDE", "C2_BAD_BACKEND", "C3_LOW_DPI", "C4_TINY_FONT",
+        "C4_TINY_CEX", "C4_RCPARAMS_FONT", "C5_WRONG_DIR", "C6_PDF_OUT",
+        "C8_NO_RES", "C9_NO_DPI", "C12_BINARY_COLOR", "C13_NO_CLOSE", "C14_BACKEND_ORDER",
+        "C15_LEGEND_BOTTOM",
+    }
+    report_kinds = {"C9_CAPTION_POS", "C10_LEGEND_LAYOUT", "C11_KO_CAPTION"}
+    blocking = [row for row in issues if row[0] in blocking_kinds]
+    report = [row for row in issues if row[0] in report_kinds]
     by_kind = {}
     for kind, path, lineno, snippet in issues:
         by_kind.setdefault(kind, []).append((path, lineno, snippet))
 
-    if not issues:
-        print("code_audit: no issue found")
+    if not blocking and not report:
+        print("code_audit: no issue found (blocking=0 report=0)")
         return 0
 
     for kind in sorted(by_kind):
         rows = by_kind[kind]
-        print("%-20s %d 处" % (kind, len(rows)))
+        tag = "BLOCK" if kind in blocking_kinds else ("REPORT" if kind in report_kinds else "OTHER")
+        print("%-20s [%s] %d 处" % (kind, tag, len(rows)))
         for path, lineno, snippet in rows[:40]:
             print("  %s:%d  %s" % (path, lineno, snippet[:120]))
         if len(rows) > 40:
@@ -185,8 +272,10 @@ def main(argv=None):
             w.writerow(["kind", "file", "line", "snippet"])
             for row in issues:
                 w.writerow(row)
-    print("code_audit: total=%d" % len(issues))
-    return 1
+    print("code_audit: total=%d blocking=%d report=%d" % (len(issues), len(blocking), len(report)))
+    if args.report_only:
+        return 0
+    return 1 if blocking else 0
 
 
 if __name__ == "__main__":

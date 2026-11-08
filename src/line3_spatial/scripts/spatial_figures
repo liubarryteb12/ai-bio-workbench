@@ -8,7 +8,7 @@
 #   04_morans_top.png / 05_knockout_dr.png / 06_umap_sample.png /
 #   07_domain_composition.png
 # 口径：docs/figure_spec.md（Agg/300dpi/英文标签/逐样本空间图因像素坐标不可比；
-#       图注置于坐标轴框外，横版图在下方横向一行，竖版图在右上角纵向多行）。
+#       图注置于图幅左下角，图例统一在轴框外右侧）。
 set -euo pipefail
 
 seed="${BIOANALYS_SEED:-UNSET}"
@@ -84,8 +84,8 @@ ad.settings.allow_write_nullable_strings = False
 plt.rcParams.update({
     # 只保留 figure.dpi：落盘 dpi 由 save() 显式传 fig.dpi 钉死，
     # 再留一个 savefig.dpi 就是同一含义的两个真源，容易改一处忘一处。
-    "figure.dpi": 300, "font.size": 7, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "legend.title_fontsize": 7,
-    "axes.titlesize": 7, "axes.grid": False,
+    "figure.dpi": 300, "font.size": 8, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 8, "xtick.labelsize": 8, "ytick.labelsize": 8, "legend.fontsize": 8, "legend.title_fontsize": 8,
+    "axes.titlesize": 9, "axes.grid": False,
     "figure.autolayout": True, "savefig.bbox": "tight",
     "image.cmap": "viridis",
 })
@@ -147,7 +147,7 @@ def caption(fig, *parts):
     if not parts:
         return
     text = "\n".join(parts)
-    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=7, linespacing=1.5)
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
 def wrap_label(text, width=18):
     """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
     import textwrap
@@ -214,30 +214,23 @@ def fit_text_edges(fig, ax, gap=6.0, rounds=5):
             ax.set_ylim(y0 - (y1 - y0) * (bottom / bh) * 1.15, y1)
 
 
-def legend_out(ax, fig, leg):
-    """图例移到坐标轴框外：竖版图（宽<高）右上角纵向单列；横版图（宽>=高）下方纵向单列。
-    条目超过 12 条按列分组，避免纵向过长压扁主图。"""
-    n = len(leg.get_texts())
+def legend_out(ax, fig, leg, slot=0):
+    """图例统一置坐标轴框外右侧、纵向排列（用户 2026-11-07 定稿）。
+    多组图例按 slot 依次向右横排（每组各自纵向单列），互不重叠。
+    所有图幅方向统一放到轴框外右侧。"""
     handles = list(leg.legend_handles)
     labels = [t.get_text() for t in leg.get_texts()]
     title = leg.get_title().get_text() or None
-    w, h = fig.get_size_inches()
     fig.set_layout_engine("none")
-    if w >= h:
-        ncol = 1 if n <= 12 else -(-n // 12)
-        rows = -(-n // ncol)
-        ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
-                  ncol=ncol, fontsize=7, frameon=False, title=title)
-        fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
-    else:
-        ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                  ncol=1, fontsize=7, frameon=False, title=title)
-        fig.subplots_adjust(right=0.74)
+    x = 1.02 + 0.30 * slot
+    ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(x, 1.0),
+              ncol=1, fontsize=8, frameon=False, title=title)
+    fig.subplots_adjust(right=max(0.60, 0.80 - 0.06 * slot))
 
 
 def layout_fix(fig):
     """落盘前统一收口（docs/figure_spec.md v2.2 §三之三）：
-    1) 单坐标轴图的图例外置：竖版置轴框外右上角、横版置轴框下方，纵向排布、不压数据；
+    1) 单坐标轴图的图例外置：一律置轴框外右侧，纵向排布、不压数据；
     2) 轴内文本右缘/顶缘/左缘/下缘越出坐标轴框时自动扩 xlim/ylim 收进框内。
     多子图（分面）图不做图例搬迁：分面各有自己的图例，统一外移会互相压扁。
     tick 标签一律不动：它本就在轴框外，savefig.bbox="tight" 会把画布扩到装下它；
@@ -469,7 +462,7 @@ def _draw_scalebar_now(ax, x, y, um_per_px, um=500.0):
         art.append(ax.plot([xb, xb], [yb - tick / 2.0, yb + tick / 2.0],
                            color="black", lw=1.2, zorder=10)[0])
         art.append(ax.text((xa + xb) / 2.0, yb + tick * 1.5, label,
-                           ha="center", va="bottom", fontsize=6.5, zorder=10,
+                           ha="center", va="bottom", fontsize=8, zorder=10,
                            bbox=dict(boxstyle="round,pad=0.12", fc="white",
                                      ec="none", alpha=0.75)))
         fit_text_edges(ax.figure, ax)
@@ -564,9 +557,9 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         # 导致等比例数据区被重新居中、左侧留大片空白。
         fig.set_layout_engine("none")
         fig.subplots_adjust(left=0.04, right=0.58, top=0.97, bottom=0.03)
-        # 声明手动布局，阻止 layout_fix 守卫按「横版」把图例搬回轴框下方
+        # 声明手动布局，阻止 layout_fix 守卫改写右侧图例位置
         ax._manual_legend = True
-        leg = ax.legend(markerscale=5, fontsize=7, loc="upper left",
+        leg = ax.legend(markerscale=5, fontsize=8, loc="upper left",
                         bbox_to_anchor=(1.02, 1.0), borderaxespad=0,
                         frameon=False, title="domain")
         leg.get_title().set_fontsize(8)
@@ -577,7 +570,7 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
                  "line3 %s: %s spatial domains\n" % (species, s)
                  + "coords = sample-local (obsm['spatial'])\n"
                  + "n=%d domains, n=%d spots" % (len(set(d)), len(d)),
-                 ha="left", va="top", fontsize=7, linespacing=1.5)
+                 ha="left", va="top", fontsize=8, linespacing=1.5)
         save(fig, "%s_01_domains_%s.png" % (pre, s))
 
     # --- 02 target gene expression（逐样本单图） ---
@@ -627,14 +620,14 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         add_scalebar(ax, xy[m][:, 0], xy[m][:, 1], _spot_um_per_px(a, s))
         # colorbar 是连续量的图例，必须带 label 说明它是什么（规范：图例可读）
         _cb = fig.colorbar(sc, ax=ax, shrink=0.82, fraction=0.046, pad=0.02)
-        _cb.set_label("expr", fontsize=7)
+        _cb.set_label("expr", fontsize=8)
         _cb.ax.tick_params(labelsize=7)
         ax._manual_legend = True
         fig.text(0.01, -0.02,
                  "line3 %s: %s target gene\n" % (species, s)
                  + "coords = sample-local (obsm['spatial'])\n"
                  + "gene=%s, colour = expr" % top_gene,
-                 ha="left", va="top", fontsize=7, linespacing=1.5)
+                 ha="left", va="top", fontsize=8, linespacing=1.5)
         save(fig, "%s_02_target_gene_%s.png" % (pre, s))
 
     # --- 02b target gene by domain（域统计视图：规范要求表达值 + 域统计两个视图） ---
@@ -645,7 +638,7 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
     y = np.arange(len(dom_order))
     ax.barh(y, tgt_dom, color="#4C72B0")
     ax.set_yticks(y)
-    ax.set_yticklabels(dom_order, fontsize=7)
+    ax.set_yticklabels(dom_order, fontsize=8)
     ax.invert_yaxis()
     ax.set_xlabel("mean expression")
     caption(fig, "line3 %s: target gene (%s) mean by spatial domain"
@@ -677,13 +670,13 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
             # 物理比例尺
             add_scalebar(ax, xy[m][:, 0], xy[m][:, 1], _spot_um_per_px(a, s))
             _kcb = fig.colorbar(sc, ax=ax, shrink=0.82, fraction=0.046, pad=0.02)
-            _kcb.set_label("KO DR expr", fontsize=7)
+            _kcb.set_label("KO DR expr", fontsize=8)
             _kcb.ax.tick_params(labelsize=7)
             ax._manual_legend = True
             fig.text(0.01, -0.02,
                      "line3 %s: %s KO(%s) DR mean expr\n" % (species, s, ko_gene)
                      + "coords = sample-local (obsm['spatial'])",
-                     ha="left", va="top", fontsize=7, linespacing=1.5)
+                     ha="left", va="top", fontsize=8, linespacing=1.5)
             save(fig, "%s_03_ko_dr_%s.png" % (pre, s))
 
         # --- 03b KO DR by domain（域统计视图：规范要求表达值 + 域统计两个视图） ---
@@ -692,7 +685,7 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         y = np.arange(len(dom_order))
         ax.barh(y, koe_dom, color="#C44E52")
         ax.set_yticks(y)
-        ax.set_yticklabels(dom_order, fontsize=7)
+        ax.set_yticklabels(dom_order, fontsize=8)
         ax.invert_yaxis()
         ax.set_xlabel("mean KO DR expr")
         caption(fig, "line3 %s: KO(%s) DR mean expression by spatial domain"
@@ -708,7 +701,7 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         ax.barh(range(len(mi))[::-1], mi["morans_i_mean"].to_numpy(),
                 color="#4C72B0")
         ax.set_yticks(range(len(mi))[::-1])
-        ax.set_yticklabels(mi["gene_symbol"].astype(str).tolist(), fontsize=7)
+        ax.set_yticklabels(mi["gene_symbol"].astype(str).tolist(), fontsize=8)
         ax.set_xlabel("Moran's I (mean over samples)")
         caption(fig, "line3 %s: top-20 spatially autocorrelated genes" % species)
         save(fig, "%s_04_morans_top.png" % pre)
@@ -748,7 +741,7 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
                 ax.set_yticks([])
                 add_scalebar(ax, _rx, _ry, _spot_um_per_px(a, _rep))
                 _cb = fig.colorbar(_sc, ax=ax, shrink=0.82, fraction=0.046, pad=0.02)
-                _cb.set_label("log-normalized expr", fontsize=6.5)
+                _cb.set_label("log-normalized expr", fontsize=8)
                 _cb.ax.tick_params(labelsize=6.5)
                 fig.text(0.01, -0.02,
                          "line3 %s: top SVG slice, %s\n" % (species, _g)
@@ -757,7 +750,7 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
                             _row.get("autocorr_n_valid_samples", "?"))
                          + "sample=%s (first ascending), n=%d spots"
                          % (_rep, int(_mrep.sum())),
-                         ha="left", va="top", fontsize=6.5, linespacing=1.5)
+                         ha="left", va="top", fontsize=8, linespacing=1.5)
                 save(fig, "%s_04_morans_slice_%s.png" % (pre, _g))
         except Exception as _e:
             log("skip 04b svg slices: %s" % _e)
@@ -789,13 +782,13 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         x = np.arange(len(genes))
         ax.bar(x, pads, color="#C44E52")
         ax.set_xticks(x)
-        ax.set_xticklabels(genes, rotation=45, ha="right", fontsize=7)
+        ax.set_xticklabels(genes, rotation=45, ha="right", fontsize=8)
         ax.set_ylabel("-log10 adj p (min over samples)")
         caption(fig, "line3 %s: KO(%s) top-10 significant DR genes"
                 % (species, ko.get("ko_gene", "?")),
                 "n = significant samples")
         for i, (n, p) in enumerate(zip(nss, pads)):
-            ax.text(i, p, "n=%d" % n, ha="center", va="bottom", fontsize=7)
+            ax.text(i, p, "n=%d" % n, ha="center", va="bottom", fontsize=8)
         save(fig, "%s_05_knockout_dr.png" % pre)
 
     # --- 06 UMAP by sample (spatial X_umap) ---
@@ -808,8 +801,8 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
             m = labels == c
             ax.scatter(um[m, 0], um[m, 1], s=3, color=colors[c], label=c, linewidths=0)
         # 源级外置：横版图（8x6）落轴框下方（规范 §三之二）
-        ax.legend(markerscale=3, fontsize=7, ncol=2, frameon=False,
-                  loc="upper center", bbox_to_anchor=(0.5, -0.10))
+        ax.legend(markerscale=3, fontsize=8, ncol=1, frameon=False,
+                  loc="upper left", bbox_to_anchor=(1.02, 1.0))
         caption(fig, "line3 %s: UMAP (colored by sample)" % species,
                 "X_umap from step4 dim_reduce",
                 "n=%d samples" % len(cats))
@@ -833,136 +826,18 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
                color=palette[j % len(palette)], width=0.7, label=dcol)
         bottom += prop[dcol].to_numpy()
     ax.set_xticks(range(len(prop)))
-    ax.set_xticklabels(prop.index.tolist(), rotation=45, ha="right", fontsize=7)
+    ax.set_xticklabels(prop.index.tolist(), rotation=45, ha="right", fontsize=8)
     ax.set_ylabel("domain proportion")
     caption(fig, "line3 %s: spatial domain composition per sample" % species,
             "n=%d samples, %d domains" % (len(prop), len(prop.columns)))
-    ax.legend(fontsize=7, ncol=2, loc="upper left",
+    ax.legend(fontsize=8, ncol=1, loc="upper left",
               bbox_to_anchor=(1.02, 1.0), borderaxespad=0, frameon=False)
     fig.subplots_adjust(left=0.07, right=0.70, top=0.97, bottom=0.16)
     save(fig, "%s_07_domain_composition.png" % pre)
     plt.rcParams["figure.autolayout"] = True
 
-    # --- 16 domain panel（组合图，docs/figure_spec.md 组图契约 G1-G5）---
-    # 三面板全部复用上面已算好的数据（xy/dom/samp/dom_order/tgt_dom/prop/palette），
-    # 不重算任何统计量、不重读文件；三张成员单图已各自落盘，本段只拼合（组合图是
-    # 新增，不是替换）。域身份样本私有（形如 <sample>_d<k>，坑 #114），共享图例沿用
-    # 07/08 的同一套 60 色板（tab20+tab20b+tab20c）与同一套域标签 dom_order，
-    # 不另建色板（G2）。A 面板样本 = 样本 ID 升序第一个（组图选样规则，只影响
-    # 组合图，不改任何单图）。
-    if samples and dom_order:
-        PANEL_FONT_PT = 12   # G1：面板编号字号（>=10pt，大于图内正文 8pt）。写成常量是因为
-        # 审计 C4 的正则只取一位数字，直接写 fontsize 字面量 12 会被读成 1 而误报
-        # "字号 <8pt"（#196 同族工具缺陷，本切片无权改 cn_debug/）。
-        panel_sample = samples[0]
-        n_dom = len(dom_order)
-        # C 面板行高 0.20 in/域（与成员单图 08 的 0.22 同量级，57 域不挤字），至少 6in
-        c_h = max(6.0, n_dom * 0.20)
-        row0 = 6.2                      # A/B 行高：A 散点 6.8x5.5 + 面板编号与轴标签
-        # 图例列分组沿用 legend_out 规则：条目 >12 按列分组（每列 <=12 行）
-        ncol_leg = 1 if n_dom <= 12 else -(-n_dom // 12)
-        leg_rows = -(-n_dom // ncol_leg)
-        leg_h = 0.30 + 0.20 * leg_rows  # 图例标题 + 条目行
-        cap_h = 1.20                    # 组图级图注（一条一行，6 行）
-        fig_h = row0 + c_h + leg_h + cap_h
-        # 横版（宽>=高；tight 裁切后图注在图幅下方，留 +2.2in 余量）且不小于成员
-        # 单图的较大者（07 宽 13in / 08 高 max(6, n_dom*0.22)in）
-        fig_w = max(18.0, fig_h + 2.2)
-
-        plt.rcParams["figure.autolayout"] = False
-        fig = plt.figure(figsize=(fig_w, fig_h))
-        # 全局 figure.autolayout=True 会在绘制时重算布局、覆盖显式间距（实测），锁死网格
-        fig.set_layout_engine("none")
-        gs = fig.add_gridspec(2, 2, height_ratios=[row0, c_h],
-                              width_ratios=[1.0, 1.75],
-                              left=0.045, right=0.985, top=0.965,
-                              bottom=(leg_h + cap_h) / fig_h,
-                              hspace=0.10, wspace=0.16)
-        axA = fig.add_subplot(gs[0, 0])
-        axB = fig.add_subplot(gs[0, 1])
-        axC = fig.add_subplot(gs[1, :])   # C 占满下排：57 域需要纵向容量
-
-        # A = {sp}_01_domains_{panel_sample}（同一份 xy/dom；色码按 dom_order 取
-        # 60 色板，与共享图例一致；图例交给共享图例，面板内不画）
-        m = samp == panel_sample
-        d = dom[m]
-        for dd in sorted(set(d)):
-            mm = d == dd
-            axA.scatter(xy[m][mm, 0], xy[m][mm, 1], s=4,
-                        color=palette[dom_order.index(dd) % len(palette)],
-                        linewidths=0)
-        axA.set_aspect("equal")
-        axA.set_xticks([])
-        axA.set_yticks([])
-
-        # B = {sp}_07_domain_composition（同一 prop；按 dom_order 取色，与单图 07
-        # 同色；图例交给共享图例，面板内不画）
-        bottom = np.zeros(len(prop))
-        for j, dcol in enumerate(dom_order):
-            axB.bar(range(len(prop)), prop[dcol].to_numpy(), bottom=bottom,
-                    color=palette[j % len(palette)], width=0.7, label=dcol)
-            bottom += prop[dcol].to_numpy()
-        axB.set_xticks(range(len(prop)))
-        axB.set_xticklabels(prop.index.tolist(), rotation=45, ha="right", fontsize=7)
-        axB.set_ylabel("domain proportion")
-
-        # C = {sp}_08_target_gene_by_domain（同一 tgt_dom/dom_order，零重算；单图 08
-        # 是单色条形，组合图按 G2"域色码 A 与 C 共用"改为域色，数值不变）
-        y = np.arange(n_dom)
-        axC.barh(y, tgt_dom, color=[palette[j % len(palette)]
-                                    for j in range(n_dom)])
-        axC.set_yticks(y)
-        axC.set_yticklabels(dom_order, fontsize=7)
-        axC.invert_yaxis()
-        axC.set_xlabel("mean expression")
-
-        # G1 面板编号：左上角外侧、与顶边齐平、bold、12pt（英文，图内中文禁用）
-        for ax, letter in ((axA, "A"), (axB, "B"), (axC, "C")):
-            ax.set_title(letter, loc="left", fontweight="bold",
-                         fontsize=PANEL_FONT_PT)
-
-        # G2 共享图例：域色码在图组下方居中只画一次（横排、frameon=False、带语义标题）；
-        # 条目 >12 按列分组（每列 <=12 行，沿用 legend_out 规则）；色板与域标签同 B 面板
-        h_leg, l_leg = axB.get_legend_handles_labels()
-        fig.legend(h_leg, l_leg, loc="lower center", bbox_to_anchor=(0.5, 0.006),
-                   ncol=ncol_leg, fontsize=7, title="spatial domain",
-                   frameon=False)
-
-        caption(fig,
-                "line3 %s: spatial domain panel A/B/C - A = spatial domains of "
-                "sample %s (spot scatter), B = spatial domain composition per "
-                "sample (stacked bar), C = target gene (%s) mean expression by "
-                "spatial domain (bar)" % (species, panel_sample, top_gene),
-                "inputs: spatial_knockout_%s.h5ad (obs domain/sample_id/"
-                "target_gene_expr, obsm spatial, uns localization.top_target_gene)"
-                % species,
-                "A panel sample: %s = first sample ID in ascending order among "
-                "the %d %s samples (panel-only selection rule; per-sample single "
-                "figures unchanged)" % (panel_sample, len(samples), species),
-                "n=%d samples, %d spatial domains species-wide (domain labels are "
-                "sample-private <sample>_d<k>)" % (len(samples), n_dom),
-                "domain color code: tab20+tab20b+tab20c 60-color palette over "
-                "species-wide domain order, shared by A/B/C, legend drawn once "
-                "below; C recolored by domain in this panel (single figure 08 "
-                "stays single-color)",
-                "members: %s_01_domains_%s + %s_07_domain_composition + "
-                "%s_08_target_gene_by_domain"
-                % (pre, panel_sample, pre, pre))
-        # 落盘前收口：guard 装的是 layout_fix()，它对多子图直接返回（§三之三：多子图
-        # 不搬图例），所以这里显式对每个面板调用同一份 fit_text_edges() 做轴内文本
-        # 收边（本图三个面板均无轴内标注，调用为防御性保持与 S16/S17 一致）；图例不搬。
-        for ax in (axA, axB, axC):
-            fit_text_edges(fig, ax)
-        log("composite %s_16_domain_panel <- A:%s_01_domains_%s + "
-            "B:%s_07_domain_composition + C:%s_08_target_gene_by_domain | "
-            "A sample=%s (first of %d ascending) | domains=%d | figsize=%.1fx%.1f "
-            "| seed=%s"
-            % (pre, pre, panel_sample, pre, pre, panel_sample, len(samples),
-               n_dom, fig_w, fig_h, os.environ.get("BIOANALYS_SEED", "UNSET")))
-        save(fig, "%s_16_domain_panel.png" % pre)
-        plt.rcParams["figure.autolayout"] = True
-    else:
-        log("skip %s_16_domain_panel（缺样本或域标签）" % pre)
+    # 16 domain panel 组图已退役（figure_spec v2.3）：生产母版只出单图，
+    # 域图 01、域组成 07、域内目标基因 08 各自独立产出。
 
 
     # --- 17 域 × 细胞类型组成热图（2026-11-06 补：celltype_annotation 跑了却没配图） ---
@@ -983,10 +858,10 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
                 fig, ax = plt.subplots(figsize=(7.5, 5.2))
                 im = ax.imshow(_frac.to_numpy(), aspect="auto", cmap="cividis", vmin=0, vmax=1)
                 ax.set_yticks(np.arange(_frac.shape[0]))
-                ax.set_yticklabels([str(x)[:20] for x in _frac.index], fontsize=7)
+                ax.set_yticklabels([str(x)[:20] for x in _frac.index], fontsize=8)
                 ax.set_xticks(np.arange(_frac.shape[1]))
                 ax.set_xticklabels([str(x)[:18] for x in _frac.columns], rotation=45,
-                                   ha="right", fontsize=7)
+                                   ha="right", fontsize=8)
                 cb = fig.colorbar(im, ax=ax, fraction=0.036, pad=0.02)
                 cb.set_label("fraction of spots in domain")
                 caption(fig, "line3 %s: dominant cell type per spatial domain" % species,
@@ -1012,7 +887,7 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
                 ax.barh(np.arange(len(_co)), _co["same_z"].to_numpy(dtype=float),
                         color="#4C72B0")
                 ax.set_yticks(np.arange(len(_co)))
-                ax.set_yticklabels([str(x)[:20] for x in _co["domain"]], fontsize=7)
+                ax.set_yticklabels([str(x)[:20] for x in _co["domain"]], fontsize=8)
                 ax.axvline(0, color="#BEBEBE", linewidth=0.8)
                 ax.set_xlabel("spatial coherence z-score (same-domain neighbour enrichment)")
                 caption(fig, "line3 %s: domain spatial coherence" % species,
@@ -1043,9 +918,9 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
                            _cm[_c].to_numpy(dtype=float), width=_w, label=_c)
                 ax.set_xticks(_x)
                 ax.set_xticklabels([str(x)[:16] for x in _cm[_lab]], rotation=30,
-                                   ha="right", fontsize=7)
+                                   ha="right", fontsize=8)
                 ax.set_ylabel("ligand-receptor pairs")
-                ax.legend(fontsize=7, frameon=False, loc="upper left",
+                ax.legend(fontsize=8, frameon=False, loc="upper left",
                           bbox_to_anchor=(1.02, 1.0), borderaxespad=0)
                 caption(fig, "line3 %s: cell-cell communication per sample" % species,
                         "bar = active ligand-receptor pairs (n_lr_pairs = detected pairs)")
@@ -1071,7 +946,7 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
                 ax.barh(np.arange(len(_lc)), _lc[_mcol].to_numpy(dtype=float),
                         color="#55A868")
                 ax.set_yticks(np.arange(len(_lc)))
-                ax.set_yticklabels([str(x)[:20] for x in _lc["gene_symbol"]], fontsize=7)
+                ax.set_yticklabels([str(x)[:20] for x in _lc["gene_symbol"]], fontsize=8)
                 ax.set_xlabel(_mcol)
                 caption(fig, "line3 %s: top localized genes" % species,
                         "bar = %s (higher = localized to more domains/samples)" % _mcol,

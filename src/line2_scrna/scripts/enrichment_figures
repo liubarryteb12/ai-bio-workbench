@@ -65,8 +65,8 @@ import numpy as np
 import pandas as pd
 
 plt.rcParams.update({
-    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 7, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "legend.title_fontsize": 7,
-    "axes.titlesize": 7, "axes.grid": False,
+    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 8, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 8, "xtick.labelsize": 8, "ytick.labelsize": 8, "legend.fontsize": 8, "legend.title_fontsize": 8,
+    "axes.titlesize": 9, "axes.grid": False,
     "figure.autolayout": True, "savefig.bbox": "tight",
     "image.cmap": "viridis",
 })
@@ -106,7 +106,7 @@ def caption(fig, *parts):
     if not parts:
         return
     text = "\n".join(parts)
-    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=7, linespacing=1.5)
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
 def wrap_label(text, width=18):
     """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
     import textwrap
@@ -130,6 +130,19 @@ def wrap_label(text, width=18):
     for line in lines:
         out.extend(textwrap.wrap(line, width=width) or [line])
     return "\n".join(out)
+
+
+def short_library(name):
+    """把 Enrichr 库名压成短标识，保证同一 label 里保留库来源，避免截断后重名。"""
+    value = str(name or "unknown")
+    aliases = {
+        "GO_Biological_Process_2023": "GO-BP",
+        "GO_Molecular_Function_2023": "GO-MF",
+        "GO_Cellular_Component_2023": "GO-CC",
+        "Reactome_Pathways_2024": "Reactome",
+        "KEGG_2021_Human": "KEGG",
+    }
+    return aliases.get(value, value)
 
 
 def fit_text_edges(fig, ax, gap=6.0, rounds=5):
@@ -173,30 +186,23 @@ def fit_text_edges(fig, ax, gap=6.0, rounds=5):
             ax.set_ylim(y0 - (y1 - y0) * (bottom / bh) * 1.15, y1)
 
 
-def legend_out(ax, fig, leg):
-    """图例移到坐标轴框外：竖版图（宽<高）右上角纵向单列；横版图（宽>=高）下方纵向单列。
-    条目超过 12 条按列分组，避免纵向过长压扁主图。"""
-    n = len(leg.get_texts())
+def legend_out(ax, fig, leg, slot=0):
+    """图例统一置坐标轴框外右侧、纵向排列（用户 2026-11-07 定稿）。
+    多组图例按 slot 依次向右横排（每组各自纵向单列），互不重叠。
+    不再按图幅横竖分支把图例放到轴框下方。"""
     handles = list(leg.legend_handles)
     labels = [t.get_text() for t in leg.get_texts()]
     title = leg.get_title().get_text() or None
-    w, h = fig.get_size_inches()
     fig.set_layout_engine("none")
-    if w >= h:
-        ncol = 1 if n <= 12 else -(-n // 12)
-        rows = -(-n // ncol)
-        ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
-                  ncol=ncol, fontsize=7, frameon=False, title=title)
-        fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
-    else:
-        ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                  ncol=1, fontsize=7, frameon=False, title=title)
-        fig.subplots_adjust(right=0.74)
+    x = 1.02 + 0.30 * slot
+    ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(x, 1.0),
+              ncol=1, fontsize=8, frameon=False, title=title)
+    fig.subplots_adjust(right=max(0.60, 0.80 - 0.06 * slot))
 
 
 def layout_fix(fig):
     """落盘前统一收口（docs/figure_spec.md v2.2 §三之三）：
-    1) 单坐标轴图的图例外置：竖版置轴框外右上角、横版置轴框下方，纵向排布、不压数据；
+    1) 单坐标轴图的图例外置：一律置轴框外右侧，纵向排布、不压数据；
     2) 轴内文本右缘/顶缘/左缘/下缘越出坐标轴框时自动扩 xlim/ylim 收进框内。
     多子图（分面）图不做图例搬迁：分面各有自己的图例，统一外移会互相压扁。
     tick 标签一律不动：它本就在轴框外，savefig.bbox="tight" 会把画布扩到装下它；
@@ -207,9 +213,9 @@ def layout_fix(fig):
     if not axes:
         return
     if len(axes) == 1:
-        leg = axes[0].get_legend()
-        if leg is not None:
-            legend_out(axes[0], fig, leg)
+        legs = [l for l in (axes[0].get_legend(),) if l is not None]
+        for slot, leg in enumerate(legs):
+            legend_out(axes[0], fig, leg, slot=slot)
         fit_text_edges(fig, axes[0])
 
 
@@ -285,22 +291,22 @@ if ora is not None and len(ora) and {"celltype", "Term", "Adjusted P-value"} <= 
     fig, ax = plt.subplots(figsize=(13, max(6, len(d) * 0.42)))
     ax.barh(y, score, color=[cmap[c] for c in cts], height=0.7)
     ax.set_yticks(y)
-    ax.set_yticklabels(labels, fontsize=7)
+    ax.set_yticklabels(labels, fontsize=8)
     ax.set_xlabel("-log10 adjusted p")
     xmax = max(float(score.max()), 1e-9) * 2.0
     ax.set_xlim(0, xmax)
     for i, (v, p, o) in enumerate(zip(score, d["adj"].to_numpy(), d["or"].to_numpy())):
         label = ("OR=%.2f  adj p=%.2g" % (o, p)) if np.isfinite(o) else ("adj p=%.2g" % p)
-        ax.text(v + 0.02 * xmax, i, label, va="center", ha="left", fontsize=7)
+        ax.text(v + 0.02 * xmax, i, label, va="center", ha="left", fontsize=8)
     if len(uniq) > 1:
-        # 图例外置到轴框下方（figure_spec v2.2：禁止轴内 loc）
+        # 图例外置到轴框右侧（figure_spec v2.2：禁止轴内 loc）
         ax.legend(handles=[Patch(color=cmap[c], label=c) for c in uniq],
-                  fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.10),
+                  fontsize=8, loc="upper left", bbox_to_anchor=(1.02, 1.0),
                   ncol=min(len(uniq), 4), frameon=False, title="celltype")
     caption(fig, "line2 scrna: ORA top-%d by adjusted p" % len(d),
             "enrichment_ora.tsv from step17 enrichment",
             "bar = -log10 adj p, label = odds ratio + adj p")
-    fig.subplots_adjust(left=0.46, right=0.98, top=0.97, bottom=0.09)
+    fig.subplots_adjust(left=0.46, right=0.82, top=0.97, bottom=0.09)
     save(fig, "l2_11_ora_top.png")
     plt.rcParams["figure.autolayout"] = True
 
@@ -316,13 +322,14 @@ if gse is not None and len(gse) and {"celltype", "Term", "NES", "FDR q-val"} <= 
     y = np.arange(len(d))
     nes = d["NES"].to_numpy()
     colors = [UP if v > 0 else DOWN for v in nes]
-    labels = ["%s | %s" % (c, trunc(t, 46))
-              for c, t in zip(d["celltype"].astype(str), d["Term"])]
+    libs = d["library"].astype(str) if "library" in d.columns else pd.Series(["unknown"] * len(d))
+    labels = [wrap_label("%s | %s | %s" % (c, short_library(lib), term), width=58)
+              for c, lib, term in zip(d["celltype"].astype(str), libs, d["Term"])]
     plt.rcParams["figure.autolayout"] = False
-    fig, ax = plt.subplots(figsize=(13, max(6, len(d) * 0.42)))
+    fig, ax = plt.subplots(figsize=(13, max(7, len(d) * 0.55)))
     ax.barh(y, nes, color=colors, height=0.7)
     ax.set_yticks(y)
-    ax.set_yticklabels(labels, fontsize=7)
+    ax.set_yticklabels(labels, fontsize=8)
     ax.axvline(0, color="k", lw=0.6)
     ax.set_xlabel("NES (normalized enrichment score)")
     span = max(float(np.abs(nes).max()), 1e-9) * 2.4
@@ -330,16 +337,16 @@ if gse is not None and len(gse) and {"celltype", "Term", "NES", "FDR q-val"} <= 
     for i, (v, q) in enumerate(zip(nes, d["fdr"].to_numpy())):
         ax.text(v + (0.04 * span if v >= 0 else -0.04 * span), i,
                 "NES=%.2f  FDR q=%.2g" % (v, q),
-                va="center", ha="left" if v >= 0 else "right", fontsize=7)
-    # 图例外置到轴框下方（figure_spec v2.2 禁止轴内 loc="best"）
+                va="center", ha="left" if v >= 0 else "right", fontsize=8)
+    # 图例外置到轴框右侧（figure_spec v2.2 禁止轴内 loc="best"）
     ax.legend(handles=[Patch(color=UP, label="activated (NES>0)"),
                        Patch(color=DOWN, label="inhibited (NES<0)")],
-              fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.10),
+              fontsize=8, loc="upper left", bbox_to_anchor=(1.02, 1.0),
               ncol=1, frameon=False)
     caption(fig, "line2 scrna: GSEA top-%d by FDR q-val" % len(d),
             "enrichment_gsea.tsv from step17 enrichment",
             "bar = NES, label = NES + FDR q-val")
-    fig.subplots_adjust(left=0.46, right=0.98, top=0.97, bottom=0.09)
+    fig.subplots_adjust(left=0.54, right=0.82, top=0.97, bottom=0.10)
     save(fig, "l2_12_gsea_top.png")
     plt.rcParams["figure.autolayout"] = True
 

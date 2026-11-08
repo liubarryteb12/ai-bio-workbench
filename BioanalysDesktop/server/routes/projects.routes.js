@@ -13,6 +13,8 @@ import { collectJsonBody, runJsonRoute, JSON_BODY_LIMIT } from '../http_body.js'
 // 其余 8 个（含建项/图件/执行计划等重逻辑）在后续提交里逐步迁移。
 import { dispatchRoutes } from '../route_dispatcher.js';
 import * as projectService from '../services/project.service.js';
+import { listLocalProjectsWithMeta } from '../query_views.js';
+import { validateWithSchemaGateway } from '../schema_gateway_client.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -54,7 +56,10 @@ export async function handleProjectRoutes(req, res, url, deps) {
       method: 'GET',
       path: '/api/projects/list',
       handler: async ({ json: reply }) => {
-        const r = projectService.listProjects({ listProjectsWithMeta });
+        const r = projectService.listProjects({
+          listProjectsWithMeta,
+          listLocalProjectsWithMeta: () => listLocalProjectsWithMeta({ repoRoot: REPO_ROOT }),
+        });
         reply(res, r.status, r.payload);
       },
     },
@@ -98,6 +103,21 @@ export async function handleProjectRoutes(req, res, url, deps) {
       const body = await collectJsonBody(req, res, json, { maxBytes: JSON_BODY_LIMIT });
       if (body === null) return;
       try {
+        const projectId = body.projectId || body.project_id;
+        const pipeline = body.pipeline || (lineFromPipeline ? lineFromPipeline(body.dataType) : undefined);
+        if (projectId) {
+          const gw = validateWithSchemaGateway('project', {
+            project_id: projectId,
+            project_name: body.projectName || body.project_name || projectId,
+            pipeline: pipeline || undefined,
+          }, { repoRoot: REPO_ROOT });
+          if (!gw.allowed) {
+            return json(res, 400, {
+              error: `Schema 校验拒绝: ${gw.errors.map((e) => `${e.path}: ${e.message}`).join('; ')}`,
+              gateway_errors: gw.errors,
+            });
+          }
+        }
         const result = await projectService.createProject({ body }, {
           deployDataFiles, lineFromPipeline, runRemote, uploadPreparedFigureScripts,
         });

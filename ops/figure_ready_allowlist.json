@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "sealed_at": "2026-11-03",
-  "sealed_by": "4 Argon 第十五轮 readyCount=30 封板裁定，第二十轮 Q3 要求落为精确集合恒等（本文件）",
+  "sealed_at": "2026-11-08",
+  "sealed_by": "4 Argon 第 75 轮 REJ-012 动态实证棘轮：readyCount 基线 39（组合图退役后从 40 降至 39），新增 ready 须 producing_mod_id 命中 workflows.json + 300DPI 真机预览 SHA 吻合",
   "purpose": "人工受控闸门：src/figure_templates.json 中 deps_status=ready 的 ID 全集必须与本文件 ids 数组精确相等。新增 ready 需要两步：k40 真机验证证据进 registry，且显式修改本文件（git diff 即审批记录）。机器生成区（docs/generated/）不得覆写本文件，否则闸门失去人工审批意义。",
   "ids": [
     "fig_l1_boxplot",
@@ -16,7 +16,12 @@
     "fig_l1_upsetplot",
     "fig_l1_vennplot",
     "fig_l1_violin",
+    "fig_l2_canonical_marker_dotplot",
+    "fig_l2_celltype_deg_volcano",
+    "fig_l2_dr_trajectory_post",
+    "fig_l2_harmony_umap_entropy",
     "fig_l2_heatmap",
+    "fig_l2_liana_lr_dotplot",
     "fig_l2_networkplot",
     "fig_l2_pca",
     "fig_l2_umap",
@@ -31,8 +36,13 @@
     "fig_l2p_umap",
     "fig_l2p_violin",
     "fig_l2p_volcano",
+    "fig_l3_banksy_domain",
     "fig_l3_chorddiagram",
-    "fig_l3_multipanel",
+    "fig_l3_morans_i_spatial",
+    "fig_l3_multigene_coloc",
+    "fig_l3_niche_comm_spatial",
+    "fig_l3_nnls_deconv_pie",
     "fig_l3_sankey"
-  ]
+  ],
+  "ready_baseline": 39
 }

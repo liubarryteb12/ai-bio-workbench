@@ -5,7 +5,7 @@
 再交给 `fig.savefig(...)`。两档画幅的差异全部收敛在这里：
 
     template_4x3     4:3 竖版（图例右侧竖排，默认）
-    template_16x9    16:9 横版（图例底部横排，带脚注栏）
+    template_16x9    16:9 横版（图例右侧竖排，带脚注栏）
 
 2026-10-19 用户拍板：客户端只保留 4:3 / 16:9 两档，原三套模板
 （nature_side / cell_wide / clinical_note）收敛为按画幅比驱动的两档；
@@ -44,8 +44,8 @@ TEMPLATES = {
     },
     "template_16x9": {
         "aspect_ratio": "16:9",
-        "legend_position": "bottom_center",
-        "legend_direction": "horizontal",
+        "legend_position": "outside_right",
+        "legend_direction": "vertical",
         "axis_style": "boxed",
         "x_label_rotation": "auto_45",
         "show_footnote_panel": True,
@@ -181,7 +181,8 @@ def _place_legend(ax, fig, rules, legend):
     position = rules.get("legend_position")
 
     if position == "bottom_center":
-        # 横向多列平铺：彻底释放左右空间；列数按条目数折中，3~5 列
+        # 兼容旧配置：2026-11-07 前落盘的 16:9 模板图例在底部横排。
+        # 新配置一律走下方 outside_right 分支，全部图幅方向图例外置右侧纵向。
         ncol = max(3, min(5, int(math.ceil(n_items / 4.0)) or 3))
         _set_legend_ncols(legend, ncol)
         legend.set_bbox_to_anchor((0.5, -0.18), transform=fig.transFigure)
@@ -241,7 +242,7 @@ def _apply_axis_style(ax, rules):
 
 
 def _move_title(fig, ax, rules):
-    """标题落位：4:3 顶部左对齐加粗，16:9 顶部居中。
+    """标题落位：16:9 顶部居中，4:3 顶部左对齐加粗。
 
     标题从 ax 搬到 fig 层：轴标题会占绘图区高度，且与"图注在轴框外"的规则冲突。
     """
@@ -249,7 +250,7 @@ def _move_title(fig, ax, rules):
     if not title:
         return
     ax.set_title("")
-    if rules.get("legend_position") == "bottom_center":
+    if rules.get("aspect_ratio") == "16:9":
         fig.text(0.5, 1.01, title, ha="center", va="bottom",
                  fontsize=10, fontweight="bold")
     else:

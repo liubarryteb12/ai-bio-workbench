@@ -59,7 +59,8 @@ test('谱系类型只做「整类全不可达」判定，部分细胞落到别�
 test('数值与随机口径未被顺手改动', () => {
   assert.ok(SOURCE.includes('N_DCS = 15'));
   assert.ok(SOURCE.includes('N_DPT_DCS = 10'));
-  assert.ok(SOURCE.includes('ROOT_CELLTYPE = "progenitor_keratinocyte"'));
+  assert.ok(SOURCE.includes('ROOT_CELLTYPE = os.environ.get("BIO_PSEUDO_ROOT", "progenitor_keratinocyte")'),
+    '根细胞类型必须可由 BIO_PSEUDO_ROOT 覆盖');
   assert.ok(SOURCE.includes('ROOT_DPT_TOL = 1e-6'));
   assert.ok(SOURCE.includes('MAX_DPT_TOL = 1e-4'));
   assert.ok(SOURCE.includes('sc.tl.dpt(adata, n_dcs=N_DPT_DCS, n_branchings=0, min_group_size=0.01)'));

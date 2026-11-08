@@ -53,14 +53,15 @@ import numpy as np
 import pandas as pd
 
 plt.rcParams.update({
-    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 7, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "legend.title_fontsize": 7,
-    "axes.titlesize": 7, "axes.grid": False,
+    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 8, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 8, "xtick.labelsize": 8, "ytick.labelsize": 8, "legend.fontsize": 8, "legend.title_fontsize": 8,
+    "axes.titlesize": 9, "axes.grid": False,
     "figure.autolayout": True, "savefig.bbox": "tight",
     "image.cmap": "viridis",
 })
 
 START = time.time()
 OUT = "../figures"
+D = os.getcwd()
 os.makedirs(OUT, exist_ok=True)
 made = []
 render_ms = []   # 逐图渲染耗时 (name, ms)，写进 figures_manifest 供超时审计
@@ -87,7 +88,7 @@ def caption(fig, *parts):
     if not parts:
         return
     text = "\n".join(parts)
-    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=7, linespacing=1.5)
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
 def wrap_label(text, width=18):
     """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
     import textwrap
@@ -152,29 +153,22 @@ def fit_text_edges(fig, ax, gap=6.0, rounds=5):
         if bottom > gap:
             ax.set_ylim(y0 - (y1 - y0) * (bottom / bh) * 1.15, y1)
 
-def legend_out(ax, fig, leg):
-    """图例移到坐标轴框外：竖版图（宽<高）右上角纵向单列；横版图（宽>=高）下方纵向单列。
-    条目超过 12 条按列分组，避免纵向过长压扁主图。"""
-    n = len(leg.get_texts())
+def legend_out(ax, fig, leg, slot=0):
+    """图例统一置坐标轴框外右侧、纵向排列（用户 2026-11-07 定稿）。
+    多组图例按 slot 依次向右横排（每组各自纵向单列），互不重叠。
+    不再按图幅横竖分支把图例放到轴框下方。"""
     handles = list(leg.legend_handles)
     labels = [t.get_text() for t in leg.get_texts()]
     title = leg.get_title().get_text() or None
-    w, h = fig.get_size_inches()
     fig.set_layout_engine("none")
-    if w >= h:
-        ncol = 1 if n <= 12 else -(-n // 12)
-        rows = -(-n // ncol)
-        ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
-                  ncol=ncol, fontsize=7, frameon=False, title=title)
-        fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
-    else:
-        ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                  ncol=1, fontsize=7, frameon=False, title=title)
-        fig.subplots_adjust(right=0.74)
+    x = 1.02 + 0.30 * slot
+    ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(x, 1.0),
+              ncol=1, fontsize=8, frameon=False, title=title)
+    fig.subplots_adjust(right=max(0.60, 0.80 - 0.06 * slot))
 
 def layout_fix(fig):
     """落盘前统一收口（docs/figure_spec.md v2.2 §三之三）：
-    1) 单坐标轴图的图例外置：竖版置轴框外右上角、横版置轴框下方，纵向排布、不压数据；
+    1) 单坐标轴图的图例外置：一律置轴框外右侧，纵向排布、不压数据；
     2) 轴内文本右缘/顶缘/左缘/下缘越出坐标轴框时自动扩 xlim/ylim 收进框内。
     多子图（分面）图不做图例搬迁：分面各有自己的图例，统一外移会互相压扁。
     tick 标签一律不动：它本就在轴框外，savefig.bbox="tight" 会把画布扩到装下它；
@@ -185,9 +179,9 @@ def layout_fix(fig):
     if not axes:
         return
     if len(axes) == 1:
-        leg = axes[0].get_legend()
-        if leg is not None:
-            legend_out(axes[0], fig, leg)
+        legs = [l for l in (axes[0].get_legend(),) if l is not None]
+        for slot, leg in enumerate(legs):
+            legend_out(axes[0], fig, leg, slot=slot)
         fit_text_edges(fig, axes[0])
 
 # 输入数据溯源（Argon 第 65 轮 B4）：只记产物清单时，「这张图由哪份数据渲染」不可证。
@@ -286,9 +280,9 @@ z = (mat - mat.mean(axis=0)) / (mat.std(axis=0) + 1e-12)
 fig, ax = plt.subplots(figsize=(13, 10))
 im = ax.imshow(z.T.to_numpy(), aspect="auto", cmap="RdBu_r", vmin=-2, vmax=2)
 ax.set_yticks(range(len(top30)))
-ax.set_yticklabels(top30, fontsize=7)
+ax.set_yticklabels(top30, fontsize=8)
 ax.set_xticks(range(byct.shape[0]))
-ax.set_xticklabels(byct.index.tolist(), rotation=45, ha="right", fontsize=7)
+ax.set_xticklabels(byct.index.tolist(), rotation=45, ha="right", fontsize=8)
 caption(fig, "line2 SCENIC: top-30 regulons (by specificity) x celltype activity",
         "row = regulon, col = celltype, z-scored per regulon")
 fig.colorbar(im, ax=ax, shrink=0.6, label="z")
@@ -300,11 +294,11 @@ fig, ax = plt.subplots(figsize=(9, 7))
 y = np.arange(len(top20))
 ax.barh(y, top20["specificity_z"].to_numpy(), color="#4C72B0")
 ax.set_yticks(y)
-ax.set_yticklabels(top20["regulon"].tolist(), fontsize=7)
+ax.set_yticklabels(top20["regulon"].tolist(), fontsize=8)
 ax.set_xlabel("specificity z (top celltype vs mean)")
 for i, (_, r) in enumerate(top20.iterrows()):
     ax.text(r["specificity_z"] + 0.03, i, wrap_label(r["top_celltype"]),
-            va="center", fontsize=7)
+            va="center", fontsize=8)
 caption(fig, "line2 SCENIC: top-20 regulons by celltype specificity",
         "label = celltype with highest AUCell activity")
 save(fig, "l2_scenic_02_top_regulons.png")

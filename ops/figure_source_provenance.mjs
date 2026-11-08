@@ -107,7 +107,7 @@ export const PROVENANCE_KINDS = Object.freeze(["DERIVED", "INSPIRED", "INDEPENDE
 
 /** 参考库路径特征：出现即说明脚本真的读了库。 */
 export const REFERENCE_PATH_MARKERS = Object.freeze([
-  "05.可参考出图代码", "reference/05", "R453_compat", "figure_library",
+  "05.可参考出图代码", "05.可参考生信代码", "可用代码预筛选", "reference/05", "R453_compat", "figure_library",
 ]);
 
 /**

@@ -54,9 +54,14 @@ export async function applyFigures({ body }, deps) {
     lineId,
     selectedModIds: [],
     selections,
+    projectMeta: meta,
+    analysisModIds: [
+      ...(Array.isArray(meta.pipeline_dag) ? meta.pipeline_dag : []),
+      ...(Array.isArray(requested.pipelineDag) ? requested.pipelineDag : []),
+    ].map((node) => (typeof node === 'string' ? node : node?.mod_id || node?.id)).filter(Boolean),
   });
   if (!prepared.ok) {
-    return { status: 422, payload: { ok: false, errors: prepared.errors } };
+    return { status: 422, payload: { ok: false, errors: prepared.errors, schedule_violations: prepared.schedule_violations || [] } };
   }
 
   const mergedTasks = mergeFigureProjectTasks(meta.figure_tasks || [], prepared.tasks);

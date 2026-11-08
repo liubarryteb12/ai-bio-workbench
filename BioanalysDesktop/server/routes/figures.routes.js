@@ -304,6 +304,51 @@ export async function handleFiguresRoutes(req, res, url, {
     return true;
   }
 
+  if (url.pathname === '/api/figures/source_manifest') {
+    const projectId = resolveProjectParam(url);
+    if (!projectId) {
+      json(res, 400, { error: 'project 参数非法（只允许字母数字 . _ -）' });
+      return true;
+    }
+    const lineId = url.searchParams.get('line') || '';
+    if (!LINES.includes(lineId)) {
+      json(res, 400, { error: `line 参数非法，只允许 ${LINES.join(' / ')}` });
+      return true;
+    }
+
+    // 只读固定的本地项目图件目录，project 与 line 都已通过白名单校验。
+    const localRoot = path.resolve(REPO_ROOT, 'local_projects');
+    const figureDir = path.resolve(localRoot, projectId, 'figures', lineId);
+    if (!figureDir.startsWith(localRoot + path.sep)) {
+      json(res, 400, { error: '图件来源路径越界' });
+      return true;
+    }
+    const readSourceFile = (name) => {
+      const file = path.resolve(figureDir, name);
+      if (!file.startsWith(figureDir + path.sep)) return null;
+      try {
+        return fs.readFileSync(file, 'utf8');
+      } catch {
+        return null;
+      }
+    };
+    const manifest = readSourceFile('FIGURE_SOURCE_MANIFEST.tsv');
+    const readme = readSourceFile('README_FIGURE_SOURCES.md');
+    if (manifest === null && readme === null) {
+      json(res, 200, {
+        ok: false,
+        projectId,
+        lineId,
+        manifest: null,
+        readme: null,
+        reason: '本地图件来源清单不存在（FIGURE_SOURCE_MANIFEST.tsv / README_FIGURE_SOURCES.md）',
+      });
+      return true;
+    }
+    json(res, 200, { ok: true, projectId, lineId, manifest, readme });
+    return true;
+  }
+
   // M4：按 mod 分组的产物预览。
   // 与 /api/figures/list 的区别：那个把 figures/ 全量倒出，这个按客户勾选的 mod 分组，
   // 没勾选的 mod 不出现（客户不该看到没买的分析），且能说清"该 mod 没跑"而非"文件丢失"。

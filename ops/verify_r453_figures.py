@@ -28,6 +28,8 @@ RUNNERS = [
     {"id": "r_l3_sankey", "lang": "r", "script": "_meta/R453_compat/L3_sankey_code.R"},
     {
         "id": "r_l3_multipanel",
+        "retired": True,
+        "retired_reason": "figure_spec v2.3：生产默认只出单图，组合图证据不进入 Ready 基线",
         "lang": "r",
         "script": "L3_高级组合图/L3_multipanel_code.R",
         "copy": [("L3_高级组合图/input_data.csv", "input_data.csv")],

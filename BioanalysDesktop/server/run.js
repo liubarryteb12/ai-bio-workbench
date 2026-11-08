@@ -19,6 +19,7 @@ import { probeRemoteState, reconcileTask } from './reconcile.js';
 // Q3：失败分类学唯一真源。finishTask 不再自己发明「非零即失败」的裸判定，
 // 而是把退出码交给 FSM 得到带原因码的结果（LOCK_CONFLICT / OOM_GUARD / STEP_CONTRACT_FAIL ...）。
 import { classifyTaskOutcome, TASK_STATES } from './task_fsm.js';
+import { validateWithSchemaGateway } from './schema_gateway_client.js';
 
 const DETACHED_POLL_INTERVAL_MS = Math.max(
   60000,
@@ -90,6 +91,25 @@ export function runTask(task, handlers = {}) {
     handlers.onStderr?.(`[audit] ${audit.reason}\n`);
     handlers.onExit?.(-1);
     return { id: null, kill: () => {} };
+  }
+
+  // Phase 0/1/2 契约：前置 Schema 网关校验
+  const gatewayCheck = validateWithSchemaGateway('run_task', {
+    lineId: task.lineId,
+    step: task.step,
+    projectId: task.projectId,
+    inputs: Array.isArray(task.inputs) ? task.inputs : [],
+    outputs: Array.isArray(task.outputs) ? task.outputs : [],
+    seed: task.seed,
+  });
+
+  const isShadowMode = process.env.BIO_GATEWAY_SHADOW_MODE !== '0';
+  if (!gatewayCheck.allowed) {
+    if (!isShadowMode) {
+      handlers.onStderr?.(`[schema_gateway:DENY] ${gatewayCheck.errors.map((e) => `${e.path}: ${e.message}`).join('; ')}\n`);
+      handlers.onExit?.(-1);
+      return { id: null, kill: () => {} };
+    }
   }
 
   // 只保留 stderr 尾部用于 error_log；全量日志由调用方自己收集，不在这里存两份

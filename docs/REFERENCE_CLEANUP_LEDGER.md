@@ -78,3 +78,87 @@ node .tmp/probe_ref_dup.mjs
 
 - `reference/09.待整理/` 的 234 MB 是否清出，需用户单独裁定（它不与主仓重复，删了不可逆）。
 - `FigureYa_CodeMap` 的 2105 文件是否保留全量，需按「实际被引用到的图型」二次甄别后再定。
+
+---
+
+## 五、2026-11-07 批：新编号体系收尾（盘点、去重、引用同步）
+
+> 触发：用户要求「结合项目现状，整理 reference 文件夹下的内容」。
+> 背景：参考区已被重组为新编号体系（01 工程规范、02 文献、03 出图规范、04 正式使用生信代码(预留空位)、
+> 05 可参考生信代码、06 测试用原始数据、07 Visium 布局、09 待整理），但收尾未完成：
+> 旧 `05.可参考出图代码` 的 72 个 git 跟踪文件在新位置被 gitignore 吞掉、
+> 注册表 / 门禁 / portal / 测试仍指旧路径、`项目分组表.tsv` 与 `docs/directories.md` 编号表过期。
+> 本批原则不变：内容只读、结构可整理、动作可逆、每笔留痕。
+
+### 5.1 盘点（动作前）
+
+- 全量逐文件快照：`reference/09.待整理/inventory_20261107.tsv`，5514 行（路径、字节数、时间）。
+- 新建导航正本 `reference/README.md`，重写 `reference/项目分组表.tsv` 与
+  `docs/directories.md` 的编号表，三处同步。
+
+### 5.2 去重：FigureYa_CodeMap 整树重复副本
+
+- 取证：`05.可参考生信代码/可用代码预筛选/源码/FigureYa_CodeMap`（A）与
+  `源码/05.可参考出图代码/FigureYa_CodeMap`（B）各 2061 文件，
+  逐文件 sha256 比对：hash-mismatch=0、B-only=0、A-only=0，判纯重复。
+- 处置：保留 A（与 L1/L2/L3 同层的扁平位置），B 连同包装目录整体
+  `Move-Item` 至 `reference/09.待整理/05.可参考生信代码/可用代码预筛选/源码/05.可参考出图代码/`，
+  保留原始相对路径。移入件逐文件哈希清单：`reference/09.待整理/dup_figureya_20261107_manifest.tsv`（2061 行）。
+- 复核：源位置不存在，目标 2061 文件齐。
+- 另确认 `03.出图规范/sci.md` 与 `可用/出图规范/sci.md` 同哈希，后者属自包含可用包的随包副本，
+  被索引表就地引用，判有意副本保留，03 区为规范正本。
+
+### 5.3 引用同步（旧前缀 → 新前缀）
+
+映射：`reference/05.可参考出图代码/library` → `reference/05.可参考生信代码/library`；
+其余 `reference/05.可参考出图代码` → `reference/05.可参考生信代码/可用代码预筛选/源码`。
+
+改动 21 个活跃文件：
+`src/figure_templates.json`、`portal/serve.mjs`、
+`BioanalysDesktop/server/{figure_catalog,figure_graph,task}.js`、
+`BioanalysDesktop/tests/{aims_drift_guard,figure_adapters,figure_catalog,figure_master_single_source,figure_templates_parity,wp33_figure_adapt}.test.js`、
+`ops/{build_figure_catalog.py,build_figure_templates.cjs,dist_parity_gate.mjs,figure_catalog_r_adapter.py,figure_preview_provenance.mjs,figure_ready_matrix.json,figure_source_provenance.mjs,verify_figure_catalog.py,verify_plot_matrix.py}`、
+`.gitignore`。
+
+- `figure_source_provenance.mjs` 的 marker 列表增补新路径 token，旧 token 保留：
+  生产母版头部 PROVENANCE 注释属历史出处描述，保留不改（避免破坏部署字节一致性）。
+  `figure_provenance.test.js` 的夹具模拟旧注释，合法保留。
+- `.gitignore` 白名单整体迁到新路径并补目录放行链；顺带修正四行历史损坏的放行条目
+  （`input_data.csvL3_multipanel_code.R` 等，缺斜杠导致 L3 multipanel/sankey 四件从未被白名单覆盖）；
+  新增放行 `reference/README.md`、`reference/项目分组表.tsv`、`07.Visium_v1_载玻片布局/`。
+  `git check-ignore` 逐点验证：白名单 10 例全部符合预期（证据文件放行、导入现场数据与隔离区仍忽略）。
+- git 索引：`git add -A -- reference` 后识别 72 个 R（重命名）+ 14 个 A（新增），
+  跟踪数 72 → 86。**未提交**，提交由用户裁定。
+
+### 5.4 验证（全绿）
+
+| 检查 | 结果 |
+|---|---|
+| `node ops/figure_preview_provenance.mjs` | exit 0，ready 40，矩阵证据相等 12 / 分叉 0 / 漂移 0 |
+| `node ops/figure_source_provenance.mjs` | exit 0，22 个产图母版溯源声明诚实 |
+| 7 个受影响测试文件（node --test） | 59 tests，58 pass / 0 fail / 1 skip（缺导入现场数据的合法跳过） |
+| 4 个 portal 契约测试文件 | 31 tests 全过 |
+| 间接相关兜底（figure_ready_matrix / preview_provenance_gate / figure_graph_contract） | 27 tests 全过 |
+| 4 个改动 Python 工具 `py_compile` | exit 0 |
+
+### 5.5 遗留（待用户裁定）
+
+1. 原 `04.RedmiK40_liunx_container`（64 文件）在本仓无迁移留痕，盘点时已不存在，去向待确认。
+2. `04.正式使用生信代码/` 为预留空目录，入驻内容待用户定义。
+3. `dist/portable/` 内旧路径引用属构建产物，下次重建自然消除，本轮未动。
+4. `ingest_spatial` 母版注释与历史交付报告中的 `reference/06.Visium_v1_载玻片布局` 为历史描述，
+   现行为 `07.Visium_v1_载玻片布局`，注释保留不改（部署字节一致性优先）。
+5. `09.待整理/` 现 2204 文件 243.7 MB（含本批移入的 2061 件），清出仍需单独授权。
+
+### 5.6 06 区测试用原始数据盘点更新（2026-11-07）
+
+- 现状校准：`reference/06.测试用原始数据/` 在役为 4 套核心测试集（总计 22 个文件，1,834.5 MB）：
+  - `L1_Bulk_RNAseq_GSE245825`（5 文件 / 45.52 MB）
+  - `L1_Microarray_GSE42955`（6 文件 / 143.44 MB）
+  - `L2_scRNA_snRNAseq_GSE185100`（5 文件 / 830.22 MB）
+  - `L3_Spatial_Visium_GSE218759`（5 文件 / 815.32 MB）
+  - `README.md`（1 文件 / 6.9 KB）
+- 历史消融数据集 `GSE316126`（NanoString 782 基因，用于验证队列效应诊断列假阳性率 0.13%）实验已完成，处理矩阵与结果已持久化收口于 `local_projects/PRJ_GSE316126_SANITY/` 与 `docs/ABLATION_COHORT_DIAGNOSTICS.md`，不再占用在役测试区空间。
+- 同步更新：
+  - `reference/06.测试用原始数据/README.md` 升至 v2.0，修正矩阵与文件清单，增补消融实验去向与 GSE233814 交付线数据集说明。
+  - `reference/README.md`、`reference/项目分组表.tsv`、`docs/directories.md` 同步修正为 22 文件 / 4 套数据集。

@@ -11,6 +11,7 @@ import assert from "node:assert/strict";
 import {
   TASK_STATES, TERMINAL_STATES, FAILURE_REASONS, TRANSITIONS,
   canTransition, isTerminal, classifyTaskOutcome, toLedgerStatus,
+  resolveDownstreamOnUpstreamStatus,
 } from "../server/task_fsm.js";
 
 test("枚举冻结：TASK_STATES / FAILURE_REASONS / TRANSITIONS 都不可改", () => {
@@ -107,4 +108,36 @@ test("纯函数：同一输入总是同一结果，且不碰任何 I/O", () => {
   const b = classifyTaskOutcome({ exitCode: 0, hasReceipt: false });
   assert.deepEqual(a, b);
   assert.equal(Object.isFrozen(a), false, "返回值本身不必冻结，但枚举必须冻结");
+});
+
+test("MUT-P1-A：上游为 DEGRADED 且下游未声明 accept_degraded -> 必须短路为 BLOCKED_UPSTREAM_DEGRADED", () => {
+  const res = resolveDownstreamOnUpstreamStatus({
+    upstreamState: TASK_STATES.DEGRADED,
+    acceptDegraded: false,
+  });
+  assert.equal(res.allowed, false);
+  assert.equal(res.nextState, TASK_STATES.BLOCKED_UPSTREAM_DEGRADED);
+  assert.ok(res.reason.includes("accept_degraded"));
+
+  const defaultCall = resolveDownstreamOnUpstreamStatus({
+    upstreamState: TASK_STATES.DEGRADED,
+  });
+  assert.equal(defaultCall.allowed, false);
+  assert.equal(defaultCall.nextState, TASK_STATES.BLOCKED_UPSTREAM_DEGRADED);
+});
+
+test("上游为 DEGRADED 且下游显式声明 accept_degraded: true -> 放行", () => {
+  const res = resolveDownstreamOnUpstreamStatus({
+    upstreamState: TASK_STATES.DEGRADED,
+    acceptDegraded: true,
+  });
+  assert.equal(res.allowed, true);
+  assert.equal(res.nextState, undefined);
+});
+
+test("上游非 DEGRADED 状态 -> 正常放行", () => {
+  for (const st of [TASK_STATES.SUCCEEDED, TASK_STATES.RUNNING, TASK_STATES.QUEUED]) {
+    const res = resolveDownstreamOnUpstreamStatus({ upstreamState: st });
+    assert.equal(res.allowed, true);
+  }
 });

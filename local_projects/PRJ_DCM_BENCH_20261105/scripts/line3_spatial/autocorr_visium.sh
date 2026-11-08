@@ -74,16 +74,26 @@ import pandas as pd
 import scanpy as sc
 import anndata as ad
 
-try:
-    import squidpy as sq
-except ImportError as exc:
-    sys.stderr.write("autocorr_visium 依赖 squidpy，导入失败: %s\n" % exc)
-    sys.exit(1)
+import scipy.sparse as sps
+from scipy.spatial import cKDTree
+
+# squidpy 是可选依赖。aarch64 + Python 3.12 装机失败（centrosome 需 cython 编译后端），
+# 缺失时用 native_moran / native_geary（权重矩阵二次型，与 squidpy 同定义），
+# 报告里写明实现来源，不假装用了 squidpy。
+# 空间统计一律用本文件的 native 实现，不调 squidpy 的 morans_i/gearys_c：
+#   squidpy 1.8.3 已移除这两个函数（只剩 neighbors 系列），装了也用不了；
+#   而且自实现可以分块算，内存可控（整矩阵稠密化在 12,560 spot x 16,765 基因上是 1.68GB，
+#   实测直接把手机打爆）。
+SQ_SOURCE = "native_sparse_W（自实现 Moran/Geary，分块；squidpy 1.8.3 已移除这两个统计函数）"
+sq = None
 
 ad.settings.allow_write_nullable_strings = False
 
 # --- 写死参数（回写报告）---
 MIN_SAMPLES_WITH_SIGNAL = 2   # 少于 2 个样本有信号的基因跳过
+# 空间近邻数：与 squidpy 的默认一致（6 个近邻），显式写死以便两条实现路径同参可比。
+# 之前完全依赖 squidpy 默认值，原生实现落地时才发现这个常量根本没定义。
+SQ_K = 6
 # --- squidpy 版本适配：按安装版函数签名探测参数（上游改名/删参频繁，硬传全套会 TypeError）---
 import inspect
 
@@ -91,8 +101,78 @@ def _filter_kwargs(func, wanted):
     sig = inspect.signature(func).parameters
     return {k: v for k, v in wanted.items() if k in sig}
 
+def native_graph(sub, k=SQ_K):
+    """按像素坐标连最近 k 个 spot（对称化），返回 obsp 键名。"""
+    coords = np.column_stack([sub.obs["pxl_col_fullres"].to_numpy(dtype=float),
+                              sub.obs["pxl_row_fullres"].to_numpy(dtype=float)])
+    n = coords.shape[0]
+    k_eff = min(k + 1, n)
+    dist, idx = cKDTree(coords).query(coords, k=k_eff)
+    dist = np.atleast_2d(dist)
+    idx = np.atleast_2d(idx)
+    rows = np.repeat(np.arange(n), k_eff - 1)
+    cols = idx[:, 1:].ravel()
+    vals = dist[:, 1:].ravel()
+    conn = sps.csr_matrix((np.ones_like(vals), (rows, cols)), shape=(n, n))
+    conn = conn.maximum(conn.T)
+    sub.obsp["spatial_connectivities"] = conn
+    return "spatial_connectivities"
+
+
+GENE_CHUNK = 1000  # 分块基因数：n_spot x 1000 x 8B 约 100MB，避免整矩阵稠密化
+
+
+def _chunked_stats(sub, ckey):
+    """一次遍历按基因块同时算 Moran's I 与 Geary's C。
+
+    为什么分块：整矩阵稠密化在 12,560 spot x 16,765 基因上是 1.68GB float64，
+    直接把手机打爆（实测 ArrayMemoryError: 1.57 GiB）。分块后峰值与块宽成正比。
+
+    两个统计量的定义（与 squidpy 一致）：
+      Moran: I = (n/W) * (x' W x) / (x' x)
+      Geary: C = ((n-1)/(2W)) * sum_ij w_ij (x_i-x_j)^2 / sum_i (x_i-mean)^2
+    Geary 的分子用恒等式展开，避免构造「边 x 基因」的大矩阵：
+      sum_ij w_ij (x_i-x_j)^2 = sum_i d_i x_i^2 - 2 x' W x + sum_j e_j x_j^2，
+      其中 d_i 为行和、e_j 为列和（对称 W 时相等）。
+    """
+    W = sub.obsp[ckey].astype(np.float64).tocsr()
+    n = W.shape[0]
+    w_sum = float(W.sum())
+    d_row = np.asarray(W.sum(axis=1)).ravel()
+    d_col = np.asarray(W.sum(axis=0)).ravel()
+    X = sub.X.tocsc() if sps.issparse(sub.X) else sps.csc_matrix(np.asarray(sub.X))
+    n_genes = X.shape[1]
+    means = np.asarray(X.mean(axis=0)).ravel()
+    I = np.full(n_genes, np.nan, dtype=np.float64)
+    C = np.full(n_genes, np.nan, dtype=np.float64)
+    for lo in range(0, n_genes, GENE_CHUNK):
+        hi = min(lo + GENE_CHUNK, n_genes)
+        Xc = np.asarray(X[:, lo:hi].todense(), dtype=np.float64)
+        Xc -= means[lo:hi]
+        denom = (Xc * Xc).sum(axis=0)
+        WX = W @ Xc
+        num_moran = (WX * Xc).sum(axis=0)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            I[lo:hi] = (n / w_sum) * num_moran / denom
+            sq_term = (d_row[:, None] * (Xc * Xc)).sum(axis=0) - 2.0 * num_moran \
+                      + (d_col[:, None] * (Xc * Xc)).sum(axis=0)
+            C[lo:hi] = ((n - 1) / (2.0 * w_sum)) * sq_term / denom
+    names = sub.var_names.astype(str)
+    return dict(zip(names, I)), dict(zip(names, C))
+
+
+def native_moran(sub, ckey):
+    return _chunked_stats(sub, ckey)[0]
+
+
+def native_geary(sub, ckey):
+    return _chunked_stats(sub, ckey)[1]
+
+
 def sq_build_graph(sub):
     """建空间邻接图；返回 (conn_key, dist_key)。参数名按实际签名裁剪。"""
+    if sq is None:
+        return native_graph(sub), None
     fn = sq.gr.spatial_neighbors
     kwargs = _filter_kwargs(fn, {"coord_type": "generic", "n_neighors": SQ_K, "n_neighbors": SQ_K,
                                  "n_rings": 1, "key_added": "spatial_neighbors"})
@@ -141,6 +221,7 @@ def fail(message):
 def log(message):
     print(message, flush=True)
 
+START = time.time()
 src = os.environ["AUTO_INPUT"]
 seed = int(os.environ["BIOANALYS_SEED"])
 a = ad.read_h5ad(src)
@@ -174,12 +255,16 @@ for s in samples:
     I = np.full(sub.n_vars, np.nan)
     P = np.full(sub.n_vars, np.nan)
     C = np.full(sub.n_vars, np.nan)
-    mi, _icol = sq_statistic(sq.gr.morans_i, sub2, ckey)
-    try:
-        gc, _ccol = sq_statistic(sq.gr.gearys_c, sub2, ckey)
-    except Exception as exc:
-        log("WARN gearys_c 不可用（%s），C 记 NaN" % exc)
-        gc = {}
+    if sq is None:
+        mi = native_moran(sub2, ckey)
+        gc = native_geary(sub2, ckey)
+    else:
+        mi, _icol = sq_statistic(sq.gr.morans_i, sub2, ckey)
+        try:
+            gc, _ccol = sq_statistic(sq.gr.gearys_c, sub2, ckey)
+        except Exception as exc:
+            log("WARN gearys_c 不可用（%s），C 记 NaN" % exc)
+            gc = {}
     sig_names = sub2.var_names.tolist()
     idx_map = {g: i for i, g in enumerate(sub.var_names.tolist())}
     store = {}
@@ -226,7 +311,8 @@ a.var["gearys_c_min"] = c_min
 a.var["gearys_c_max"] = c_max
 a.var["autocorr_n_valid_samples"] = valid_mask.astype(np.int8)
 a.uns["autocorr"] = json.dumps({
-    "method": "squidpy morans_i/gearys_c per-sample then merge (mean/min/max)",
+    "method": "morans_i/gearys_c per-sample then merge (mean/min/max)",
+    "spatial_stat_source": SQ_SOURCE,
     "min_samples_with_signal": MIN_SAMPLES_WITH_SIGNAL,
     "skipped_genes": skipped_genes,
     "p_note": "moran_p 恒 NaN：squidpy 默认不返回解析 p；用排名+跨样本 min 做保守判断，不伪造显著性",

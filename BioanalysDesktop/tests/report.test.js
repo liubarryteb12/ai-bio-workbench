@@ -29,6 +29,9 @@ import { buildMiniDeliveryPackage, sha256Hex } from './support/delivery_fixture.
 // 环境变量必须在 import 服务端模块之前设好（report.js / index.js 在模块加载时读）
 const LOCAL_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 's27-report-root-'));
 process.env.BIO_LOCAL_DELIVERABLES = LOCAL_ROOT;
+// 交付构建与回搬仍是 ssh/scp 特殊路径，尚未迁移 ADB。
+// 本文件显式打开 ssh 特殊开关，让垫片只拦截 ssh/scp，不触发真实 ADB 通道。
+process.env.BIO_COMPUTE_ADAPTER = 'ssh';
 
 // 08 号书第 6 项之后，带 tar 的交付包必须带可验签的 CHECKSUMS，否则一律拒绝补旁挂哈希。
 // 端点测试的假 scp 因此要能造出「真签名」的包：这里放一对临时测试密钥，

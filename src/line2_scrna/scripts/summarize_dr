@@ -181,13 +181,24 @@ counts = ko.layers["counts"]
 celltype = ko.obs["celltype"].astype(str).to_numpy()
 known_types = sorted({t for t in celltype if t != UNKNOWN_CLASS})
 var_index = pd.Index(ko.var_names.astype(str))
+sym_to_loc = {}
+if "gene_symbol" in ko.var.columns:
+    sym_series = ko.var["gene_symbol"].astype(str).to_numpy()
+    for idx_pos, s in enumerate(sym_series):
+        if s not in sym_to_loc:
+            sym_to_loc[s] = idx_pos
 
 top_types = []
 top_props = []
 for gene in sig["Gene"]:
-    if gene not in var_index:
-        fail("显著 DR 基因 %s 不在 h5ad var_names 内" % gene)
-    col = counts[:, var_index.get_loc(gene)]
+    loc = None
+    if gene in var_index:
+        loc = var_index.get_loc(gene)
+    elif gene in sym_to_loc:
+        loc = sym_to_loc[gene]
+    else:
+        fail("显著 DR 基因 %s 既不在 h5ad var_names 也不在 var['gene_symbol'] 内" % gene)
+    col = counts[:, loc]
     expressed = np.asarray(col.todense()).ravel() > 0
     best_type, best_prop = "", 0.0
     for celltype_name in known_types:

@@ -608,7 +608,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
           <label for="f-layout">画幅</label>
           <select id="f-layout" name="plotLayoutTemplate" aria-describedby="h-layout">
             <option value="template_4x3" selected>4:3（图例右侧 · 单栏插图）</option>
-            <option value="template_16x9">16:9（图例底部 · 横向宽幅）</option>
+            <option value="template_16x9">16:9（图例右侧 · 横向宽幅）</option>
           </select>
           <div class="hint" id="h-layout">选中的画幅会随需求单提交，出图时统一套用。</div>
         </div>
@@ -1447,6 +1447,46 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     return item.deps_status === 'ready' && item.verified && !item.deprecated && item.preview_state === 'ok';
   }
 
+  // Argon 第 75 轮 Q4：图件三态分区（readyNow / unlockable / locked）与反向拓扑补齐。
+  function figureRequiredMods(item) {
+    if (Array.isArray(item.required_mod_ids) && item.required_mod_ids.length) return item.required_mod_ids;
+    if (item.producing_mod_id) return [item.producing_mod_id];
+    return item.analysis_step ? [item.analysis_step] : [];
+  }
+
+  function figureMissingMods(item) {
+    var picked = {};
+    selectedWorkflowMods().forEach(function (mod) { picked[mod.id] = true; });
+    return figureRequiredMods(item).filter(function (id) { return !picked[id]; });
+  }
+
+  function figureScheduleState(item) {
+    if (!templateAvailable(item)) return 'locked';
+    return figureMissingMods(item).length ? 'unlockable' : 'readyNow';
+  }
+
+  function showFigureBackfillBanner(text) {
+    var wrap = $('figure-template-list');
+    if (!wrap || !wrap.parentNode) return;
+    var banner = $('figure-backfill-banner');
+    if (!banner) {
+      banner = el('div', { id: 'figure-backfill-banner', class: 'workflow-status', role: 'status' });
+      wrap.parentNode.insertBefore(banner, wrap);
+    }
+    banner.textContent = text;
+    banner.style.display = '';
+  }
+
+  function backfillFigureMods(missingMods) {
+    if (!missingMods.length) return;
+    missingMods.forEach(function (id) { state.selected[id] = true; });
+    var line = currentSeriesId();
+    renderSteps(line);
+    renderWorkflowSummary();
+    renderSummary();
+    showFigureBackfillBanner('已自动补齐前置分析步骤：' + missingMods.join('、'));
+  }
+
   function figureTemplateProblem() {
     for (const id of Object.keys(selectedFigureTemplates)) {
       const template = figureTemplateRegistry.find((item) => item.id === id);
@@ -1493,12 +1533,15 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
 
   function makeFigureCard(item) {
     const available = templateAvailable(item);
+    const scheduleState = figureScheduleState(item);
+    const missingMods = available ? figureMissingMods(item) : [];
     const card = el('article', {
       class: 'figure-card' + (available ? '' : ' is-unavailable'),
       'data-testid': 'figure-template-card',
       'data-template-id': item.id,
       'data-level': item.level,
       'data-deps-status': item.deps_status,
+      'data-schedule-state': scheduleState,
       'data-preview-mode': 'fixture'
     });
     if (item.preview_state === 'ok' && item.preview_url) {
@@ -1550,6 +1593,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       if (checkbox.checked) {
         selectedFigureTemplates[item.id] = { adapt_vars: {} };
         renderAdaptVars(item, adaptBox);
+        if (missingMods.length) backfillFigureMods(missingMods);
       } else {
         delete selectedFigureTemplates[item.id];
         adaptBox.innerHTML = '';
@@ -1563,7 +1607,19 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       class: available ? 'ready' : 'warn',
       text: available ? 'deps ready' : `deps ${item.deps_status} · 依赖未就绪`
     }));
+    if (available) {
+      meta.appendChild(el('span', {
+        class: scheduleState === 'readyNow' ? 'ready' : 'warn',
+        text: scheduleState === 'readyNow' ? '步骤就绪' : `需补选 ${missingMods.length} 步`
+      }));
+    }
     body.appendChild(title); body.appendChild(meta);
+    if (scheduleState === 'unlockable') {
+      body.appendChild(el('div', {
+        class: 'figure-map',
+        text: `勾选将自动补齐前置步骤：${missingMods.join('、')}`
+      }));
+    }
     if (available && item.analysis_step) {
       const outputLabel = (item.produces || []).join(', ');
       body.appendChild(el('div', {
@@ -1600,7 +1656,10 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     ));
     const readyItems = usable.filter(templateAvailable);
     updateFigureFilterControls(readyItems.length, usable.length);
-    const visibleItems = figureTemplateFilter === 'all' ? usable : readyItems;
+    // Argon 第 75 轮 Q4：主区只展示就绪/可解锁图件（readyNow + unlockable），
+    // draft  locked 图件移入折叠灰态区，禁勾选。
+    const visibleItems = readyItems;
+    const draftItems = usable.filter((item) => !templateAvailable(item));
     ['L1', 'L2', 'L3'].forEach(function (level) {
       const items = visibleItems.filter((item) => item.level === level)
         .sort((a, b) => String(a.category).localeCompare(String(b.category)) || String(a.name).localeCompare(String(b.name)));
@@ -1628,6 +1687,14 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       });
       wrap.appendChild(section);
     });
+    if (figureTemplateFilter === 'all' && draftItems.length) {
+      const details = el('details', { class: 'figure-level figure-draft-zone', 'data-testid': 'figure-draft-zone' });
+      details.appendChild(el('summary', { text: `规划中图型（${draftItems.length} 个 · 依赖未就绪，暂不可选）` }));
+      const draftGrid = el('div', { class: 'figure-grid' });
+      draftItems.forEach((item) => draftGrid.appendChild(makeFigureCard(item)));
+      details.appendChild(draftGrid);
+      wrap.appendChild(details);
+    }
     updateFigureTemplateSummary();
   }
 

@@ -18,7 +18,7 @@
  *   node ops/k40_script_parity.mjs --offline       # 不连真机，只校验本地清单文件
  *   node ops/k40_script_parity.mjs --json          # 机器可读输出
  */
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -52,18 +52,38 @@ function localScripts(line) {
 }
 
 function remoteScripts() {
-  // 一次 ssh 拿全部三线的 sha256，避免逐文件往返（手机链路每次握手都很贵）
+  // 经 ADB 一次拿全部三线的 sha256，避免逐文件往返，也不会因 sshd 掉线误判为同源失败。
   // 分隔标记必须打在文件列表**之前**：放在之后会让文件名归属整体偏到上一线，
   // 结果看起来像「line1 里全是单细胞脚本、line3 一个都没有」。第一版就是栽在这里。
   const cmd = LINES.map((l) =>
     `echo "@@${l}@@"; cd ${REMOTE_ROOT}/${l} 2>/dev/null && for f in *; do [ -f "$f" ] && sha256sum "$f"; done`
   ).join("; ");
-  const raw = execFileSync("ssh", ["-o", "BatchMode=yes", "-o", "ConnectTimeout=15", "k40-ubuntu", cmd], {
-    encoding: "utf8", timeout: 120000,
-  });
-  const out = {};
+  const scriptPath = path.join(REPO, ".tmp", `k40-parity-${process.pid}.sh`);
+  fs.mkdirSync(path.dirname(scriptPath), { recursive: true });
+  fs.writeFileSync(scriptPath, `#!/usr/bin/env bash\nset -euo pipefail\n${cmd}\n`, "utf8");
+  let result;
+  try {
+    result = spawnSync("pwsh", [
+      "-NoProfile", "-File", path.join(REPO, "ops", "adb_exec.ps1"),
+      "-Level", "ubuntu", "-Transport", "adb", "-RequireAdb", "-ScriptPath", scriptPath,
+    ], {
+      cwd: REPO,
+      encoding: "utf8",
+      timeout: 120000,
+      windowsHide: true,
+    });
+  } finally {
+    try { fs.rmSync(scriptPath, { force: true }); } catch { /* 清理失败不影响判据 */ }
+  }
+  if (result.error || result.status !== 0) {
+    throw new Error(String(result.error?.message || result.stderr || `adb 退出码 ${result.status}`).trim().slice(0, 160));
+  }
+  const raw = String(result.stdout || "");
+  const forbidden = /Warning: Permanently added|Permission denied|Connection refused/.test(raw);
+  if (forbidden) throw new Error(raw.trim().slice(0, 160));
   let current = null;
-  for (const line of raw.split("\n")) {
+  const out = {};
+  for (const line of raw.split(/\r?\n/)) {
     const mark = line.match(/^@@(.+)@@$/);
     if (mark) { current = mark[1]; out[current] = {}; continue; }
     if (!current) continue;
@@ -71,6 +91,33 @@ function remoteScripts() {
     if (m) out[current][m[2]] = m[1];
   }
   return out;
+}
+
+function legacyRemoteScripts() {
+  const cmd = LINES.map((l) =>
+    `echo "@@${l}@@"; cd ${REMOTE_ROOT}/${l} 2>/dev/null && for f in *; do [ -f "$f" ] && sha256sum "$f"; done`
+  ).join("; ");
+  const result = spawnSync("ssh", ["-o", "BatchMode=yes", "-o", "ConnectTimeout=15", "k40-ubuntu", cmd], {
+    encoding: "utf8", timeout: 120000, windowsHide: true,
+  });
+  if (result.error || result.status !== 0) {
+    throw new Error(String(result.error?.message || result.stderr || `ssh 退出码 ${result.status}`).trim().slice(0, 160));
+  }
+  const raw = String(result.stdout || "");
+  const out = {};
+  let current = null;
+  for (const line of raw.split(/\r?\n/)) {
+    const mark = line.match(/^@@(.+)@@$/);
+    if (mark) { current = mark[1]; out[current] = {}; continue; }
+    if (!current) continue;
+    const m = line.match(/^([0-9a-f]{64})\s+(.+)$/);
+    if (m) out[current][m[2]] = m[1];
+  }
+  return out;
+}
+
+function remoteScriptsForChannel() {
+  return process.env.BIO_COMPUTE_ADAPTER === "ssh" ? legacyRemoteScripts() : remoteScripts();
 }
 
 function main() {
@@ -88,7 +135,7 @@ function main() {
     remote = JSON.parse(fs.readFileSync(MANIFEST, "utf8")).remote || {};
   } else {
     try {
-      remote = remoteScripts();
+      remote = remoteScriptsForChannel();
     } catch (exc) {
       // 连不上真机属于「本轮没查」，必须显式说出来，不能混进绿灯
       console.log("[SKIP] k40-script-parity : 无法连接 k40-ubuntu（" + String(exc.message || exc).slice(0, 120) + "）");

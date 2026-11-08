@@ -1,8 +1,9 @@
 {
   "schema_version": 1,
   "generated_from": {
-    "csv": "reference/05.可参考出图代码/_meta/bizard_index.csv",
-    "report": "reference/05.可参考出图代码/_meta/r453_verification_report.json"
+    "csv": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/bizard_index.csv",
+    "report": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/r453_verification_report.json",
+    "v2_extra": "ops/build_figure_templates.cjs#buildV2Extra"
   },
   "templates": [
     {
@@ -48,7 +49,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L1_qc_basic",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_dendrogram",
@@ -84,7 +122,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L1_qc_basic",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_donut",
@@ -116,7 +191,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L1_qc_basic",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_groupedbar",
@@ -124,9 +236,9 @@
       "level": "L1",
       "category": "Composition",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R",
       "source_sha256": "da21074542cef95ffa7c033a5b6bb291b49384f034b2ef9eb79e3322d98213e8",
-      "preview": "reference/05.可参考出图代码/L1_基础统计图/L1_groupedbar_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L1_基础统计图/L1_groupedbar_verified.png",
       "preview_sha256": "60e0f943829c192ff4a89dc85635e5f761a1e769f5473940cd00dbcb68de752f",
       "verified": true,
       "deps_status": "ready",
@@ -168,7 +280,55 @@
         "sha256": "60e0f943829c192ff4a89dc85635e5f761a1e769f5473940cd00dbcb68de752f",
         "matches_preview": true
       },
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L1_qc_basic",
+      "line_id": "line1_bulk",
+      "producing_mod_id": "l1_enrich_bulk",
+      "required_mod_ids": [
+        "l1_enrich_bulk",
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": "enrichment_gsea_go.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "x_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_partpiechart",
@@ -203,7 +363,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L1_qc_basic",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_piechart",
@@ -235,7 +432,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L1_qc_basic",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_radialstackedbar",
@@ -271,7 +505,59 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L1_qc_basic",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          },
+          {
+            "key": "x_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "error_col",
+            "source_field": "manual",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_treemap",
@@ -306,7 +592,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L1_qc_basic",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_waffle",
@@ -340,7 +663,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L1_qc_basic",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_biplot",
@@ -375,7 +735,54 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L1_qc_basic",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "x_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "y_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "label_genes",
+            "source_field": "targetGenes.topHubs",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_bubble",
@@ -383,9 +790,9 @@
       "level": "L1",
       "category": "Correlation",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_p0_gallery_code.R",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R",
       "source_sha256": "c1ef9f6e9232ab0b220f3b61e26c6d7545a0f5fa833d23fdd7278ea42ccef2b6",
-      "preview": "reference/05.可参考出图代码/_meta/R453_compat/L1_bubble_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_bubble_verified.png",
       "preview_sha256": "b6cc8574543a217d2ad4283dca32707532c5341e2ace48d78d43737daddb8103",
       "verified": true,
       "deps_status": "ready",
@@ -419,7 +826,55 @@
       "canonical_output": "L1_bubble_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_bubble.png",
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L1_qc_basic",
+      "line_id": "line1_bulk",
+      "producing_mod_id": "l1_de_limma",
+      "required_mod_ids": [
+        "l1_de_limma",
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": "deg_all.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "x_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "y_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "label_genes",
+            "source_field": "targetGenes.topHubs",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2_bubbleheatmap",
@@ -454,7 +909,54 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "x_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "y_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "label_genes",
+            "source_field": "targetGenes.topHubs",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2_complexheatmap",
@@ -494,7 +996,59 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "row_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "column_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_connectedscatter",
@@ -502,9 +1056,9 @@
       "level": "L1",
       "category": "Correlation",
       "language": "python",
-      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_cellcomm_autocorr_code.py",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_cellcomm_autocorr_code.py",
       "source_sha256": "656ef26ff1000ab4688d8c7223b097619dec2fe40ec1c72903c3ecd4e49d9097",
-      "preview": "reference/05.可参考出图代码/L3_高级组合图/L3_spatial_autocorr_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L3_高级组合图/L3_spatial_autocorr_verified.png",
       "preview_sha256": "b0278fdfe1031307ffa0f030f35437ee8691a46f0d0fa0aef5d2ac264eb1d1fd",
       "verified": true,
       "deps_status": "ready",
@@ -535,7 +1089,55 @@
       "canonical_output": "L3_spatial_autocorr_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/custom_fig_l1_connectedscatter.png",
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L1_qc_basic",
+      "line_id": "line3_spatial",
+      "producing_mod_id": "l3_stats_autocorr",
+      "required_mod_ids": [
+        "l3_stats_autocorr",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": "gene_autocorr_human.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "x_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "y_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "label_genes",
+            "source_field": "targetGenes.topHubs",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_correlogram",
@@ -543,9 +1145,9 @@
       "level": "L1",
       "category": "Correlation",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_p0_gallery_code.R",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R",
       "source_sha256": "c1ef9f6e9232ab0b220f3b61e26c6d7545a0f5fa833d23fdd7278ea42ccef2b6",
-      "preview": "reference/05.可参考出图代码/_meta/R453_compat/L1_correlogram_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_correlogram_verified.png",
       "preview_sha256": "31b89c9f6c839356800c48064e043966ca4e90e11e96a0f38793f8c8564a2ed0",
       "verified": true,
       "deps_status": "ready",
@@ -576,7 +1178,45 @@
       "canonical_output": "L1_correlogram_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_correlogram.png",
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L1_qc_basic",
+      "line_id": "line1_bulk",
+      "producing_mod_id": "l1_ingest_prep",
+      "required_mod_ids": [
+        "l1_ingest_prep",
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": "expr_genes.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_density2d",
@@ -615,7 +1255,49 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L1_qc_basic",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2_heatmap",
@@ -623,9 +1305,9 @@
       "level": "L2",
       "category": "Correlation",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L2_more_code.R",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L2_more_code.R",
       "source_sha256": "0b5342dd0cac39eb87615aa1220d44c09c440b8801e93af288d9ab778f0c6c1d",
-      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2_heatmap_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2_heatmap_verified.png",
       "preview_sha256": "1e33aa5bff1d816da49df1f70cd9b54b1a81c33bffff466a114616451bec8ecc",
       "verified": true,
       "deps_status": "ready",
@@ -679,7 +1361,60 @@
         "sha256": "1e33aa5bff1d816da49df1f70cd9b54b1a81c33bffff466a114616451bec8ecc",
         "matches_preview": true
       },
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": "line1_bulk",
+      "producing_mod_id": "l1_ingest_prep",
+      "required_mod_ids": [
+        "l1_ingest_prep",
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": "expr_genes.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "row_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "column_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2_pca",
@@ -687,9 +1422,9 @@
       "level": "L2",
       "category": "Correlation",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L2_more_code.R",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L2_more_code.R",
       "source_sha256": "0b5342dd0cac39eb87615aa1220d44c09c440b8801e93af288d9ab778f0c6c1d",
-      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2_pca_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2_pca_verified.png",
       "preview_sha256": "a0b7d1081801088cc21c9134615d6e1bae30d5885dc0701c5f7da40e2511e549",
       "verified": true,
       "deps_status": "ready",
@@ -726,7 +1461,45 @@
         "sha256": "a0b7d1081801088cc21c9134615d6e1bae30d5885dc0701c5f7da40e2511e549",
         "matches_preview": true
       },
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": "line1_bulk",
+      "producing_mod_id": "l1_qc_pca",
+      "required_mod_ids": [
+        "l1_qc_pca",
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": "pca_scores.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_scatter",
@@ -734,9 +1507,9 @@
       "level": "L1",
       "category": "Correlation",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R",
       "source_sha256": "da21074542cef95ffa7c033a5b6bb291b49384f034b2ef9eb79e3322d98213e8",
-      "preview": "reference/05.可参考出图代码/L1_基础统计图/L1_scatter_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L1_基础统计图/L1_scatter_verified.png",
       "preview_sha256": "e8c0d1d7513e2408bac9421dbbf68b00526a3f9b91c1662dc9f37c3fea74ce06",
       "verified": true,
       "deps_status": "ready",
@@ -777,7 +1550,55 @@
         "sha256": "e8c0d1d7513e2408bac9421dbbf68b00526a3f9b91c1662dc9f37c3fea74ce06",
         "matches_preview": true
       },
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L1_qc_basic",
+      "line_id": "line1_bulk",
+      "producing_mod_id": "l1_ml_hub",
+      "required_mod_ids": [
+        "l1_ml_hub",
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": "ml_core_hub_genes.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "x_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "y_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "label_genes",
+            "source_field": "targetGenes.topHubs",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_ternaryplot",
@@ -810,7 +1631,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L1_qc_basic",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2_umap",
@@ -818,9 +1676,9 @@
       "level": "L2",
       "category": "Correlation",
       "language": "python",
-      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_umap_code.py",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_umap_code.py",
       "source_sha256": "34b79c4febb105c93cd31d80b6d6ebdde4fc7870ad3f8a15e16ad098d8c2ee7d",
-      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_umap_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_umap_verified.png",
       "preview_sha256": "cfc9b53c09d1393464831dd9c4d248e04e34bd85208a3125db1fd43c8d04a7d2",
       "verified": true,
       "deps_status": "ready",
@@ -855,7 +1713,47 @@
       "canonical_output": "umap_L2p_umap_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2_umap.png",
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": "line2_scrna",
+      "producing_mod_id": "l2_integrate_cluster",
+      "required_mod_ids": [
+        "l2_integrate_cluster",
+        "l2_figures_scrna"
+      ],
+      "data_contract": {
+        "input_artifact": "scrna_clustered.h5ad",
+        "format": "h5ad",
+        "required_columns": [],
+        "required_obs_keys": [
+          "cluster"
+        ],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_areachart",
@@ -892,7 +1790,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L1_qc_basic",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_linechart",
@@ -928,7 +1863,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L1_qc_basic",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_stackedarea",
@@ -966,7 +1938,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L1_qc_basic",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_streamgraph",
@@ -1002,7 +2011,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L1_qc_basic",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_timeseries",
@@ -1036,7 +2082,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L1_qc_basic",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_boxplot",
@@ -1044,9 +2127,9 @@
       "level": "L1",
       "category": "Distribution",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_boxplot_code.R",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_boxplot_code.R",
       "source_sha256": "dfc6a22b7585849c1c4d11bec312d654b9af63bf20dd2e42876c28834f8b0b0d",
-      "preview": "reference/05.可参考出图代码/L1_基础统计图/L1_boxplot_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L1_基础统计图/L1_boxplot_verified.png",
       "preview_sha256": "ce3d2cb08118011f727b4c901fe4921d81129433a9e0507e43edad5b22bf8a82",
       "verified": true,
       "deps_status": "ready",
@@ -1087,7 +2170,45 @@
         "sha256": "ce3d2cb08118011f727b4c901fe4921d81129433a9e0507e43edad5b22bf8a82",
         "matches_preview": true
       },
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L1_qc_basic",
+      "line_id": "line1_bulk",
+      "producing_mod_id": "l1_de_limma",
+      "required_mod_ids": [
+        "l1_de_limma",
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": "deg_all.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_breakplot",
@@ -1124,7 +2245,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L1_qc_basic",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_density",
@@ -1132,9 +2290,9 @@
       "level": "L1",
       "category": "Distribution",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R",
       "source_sha256": "da21074542cef95ffa7c033a5b6bb291b49384f034b2ef9eb79e3322d98213e8",
-      "preview": "reference/05.可参考出图代码/L1_基础统计图/L1_density_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L1_基础统计图/L1_density_verified.png",
       "preview_sha256": "075f329e6a74cdfcc63ae1f16499bc5b43acd12c8aa9ad84c68165c6886782c8",
       "verified": true,
       "deps_status": "ready",
@@ -1176,7 +2334,40 @@
         "sha256": "075f329e6a74cdfcc63ae1f16499bc5b43acd12c8aa9ad84c68165c6886782c8",
         "matches_preview": true
       },
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L1_qc_basic",
+      "line_id": "line1_bulk",
+      "producing_mod_id": "l1_ingest_prep",
+      "required_mod_ids": [
+        "l1_ingest_prep",
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": "expr_genes.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_histogram",
@@ -1184,9 +2375,9 @@
       "level": "L1",
       "category": "Distribution",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R",
       "source_sha256": "da21074542cef95ffa7c033a5b6bb291b49384f034b2ef9eb79e3322d98213e8",
-      "preview": "reference/05.可参考出图代码/L1_基础统计图/L1_histogram_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L1_基础统计图/L1_histogram_verified.png",
       "preview_sha256": "edd894c9d5e5c3c2e8544ff4f3f0a444290781ac80e32c7f56450e649a2bac04",
       "verified": true,
       "deps_status": "ready",
@@ -1225,7 +2416,40 @@
         "sha256": "edd894c9d5e5c3c2e8544ff4f3f0a444290781ac80e32c7f56450e649a2bac04",
         "matches_preview": true
       },
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L1_qc_basic",
+      "line_id": "line1_bulk",
+      "producing_mod_id": "l1_ingest_prep",
+      "required_mod_ids": [
+        "l1_ingest_prep",
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": "expr_genes.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_radialcolumnchart",
@@ -1263,7 +2487,59 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L1_qc_basic",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          },
+          {
+            "key": "x_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "error_col",
+            "source_field": "manual",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_raincloudplot",
@@ -1297,7 +2573,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L1_qc_basic",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_ridgeline",
@@ -1305,9 +2618,9 @@
       "level": "L1",
       "category": "Distribution",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_p0_gallery_code.R",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R",
       "source_sha256": "c1ef9f6e9232ab0b220f3b61e26c6d7545a0f5fa833d23fdd7278ea42ccef2b6",
-      "preview": "reference/05.可参考出图代码/_meta/R453_compat/L1_ridgeline_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_ridgeline_verified.png",
       "preview_sha256": "1027955bc1d6b4496b45dbe281bf6a12cd414ae714b371d407978d567ae51eba",
       "verified": true,
       "deps_status": "ready",
@@ -1339,7 +2652,45 @@
       "canonical_output": "L1_ridgeline_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_ridgeline.png",
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L1_qc_basic",
+      "line_id": "line1_bulk",
+      "producing_mod_id": "l1_enrich_bulk",
+      "required_mod_ids": [
+        "l1_enrich_bulk",
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": "enrichment_gsea_go.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_violin",
@@ -1347,9 +2698,9 @@
       "level": "L1",
       "category": "Distribution",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_violin_code.R",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_violin_code.R",
       "source_sha256": "9470bc63b49396ee5fc0fe0725063254849047e37e2482799db7ba54979e259a",
-      "preview": "reference/05.可参考出图代码/L1_基础统计图/L1_violin_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L1_基础统计图/L1_violin_verified.png",
       "preview_sha256": "d76f7b185a8b587c09af407a14d7c761381b04758e55286165e368a0fd2c04ea",
       "verified": true,
       "deps_status": "ready",
@@ -1391,7 +2742,45 @@
         "sha256": "d76f7b185a8b587c09af407a14d7c761381b04758e55286165e368a0fd2c04ea",
         "matches_preview": true
       },
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L1_qc_basic",
+      "line_id": "line1_bulk",
+      "producing_mod_id": "l1_de_limma",
+      "required_mod_ids": [
+        "l1_de_limma",
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": "deg_all.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_barplot",
@@ -1435,7 +2824,59 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L1_qc_basic",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          },
+          {
+            "key": "x_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "error_col",
+            "source_field": "manual",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_circularbarplot",
@@ -1470,7 +2911,59 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L1_qc_basic",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          },
+          {
+            "key": "x_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "error_col",
+            "source_field": "manual",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_upsetplot",
@@ -1478,9 +2971,9 @@
       "level": "L1",
       "category": "Ranking",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_p0_gallery_code.R",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R",
       "source_sha256": "c1ef9f6e9232ab0b220f3b61e26c6d7545a0f5fa833d23fdd7278ea42ccef2b6",
-      "preview": "reference/05.可参考出图代码/_meta/R453_compat/L1_upset_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_upset_verified.png",
       "preview_sha256": "f59bf2a34409224b14db24d9e8ce8e93b975d10855815ddffbef4c3e917c31a7",
       "verified": true,
       "deps_status": "ready",
@@ -1509,7 +3002,45 @@
       "canonical_output": "L1_upset_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_upsetplot.png",
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L1_qc_basic",
+      "line_id": "line1_bulk",
+      "producing_mod_id": "l1_de_limma",
+      "required_mod_ids": [
+        "l1_de_limma",
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": "deg_all.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l1_vennplot",
@@ -1517,9 +3048,9 @@
       "level": "L1",
       "category": "Ranking",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L1_p0_gallery_code.R",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R",
       "source_sha256": "c1ef9f6e9232ab0b220f3b61e26c6d7545a0f5fa833d23fdd7278ea42ccef2b6",
-      "preview": "reference/05.可参考出图代码/_meta/R453_compat/L1_venn_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_venn_verified.png",
       "preview_sha256": "0b7df8fd012e21e7d6ecaf0b51fe08e1301d1ae7603e35e55453272d5a3778b0",
       "verified": true,
       "deps_status": "ready",
@@ -1549,7 +3080,45 @@
       "canonical_output": "L1_venn_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_vennplot.png",
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L1_qc_basic",
+      "line_id": "line1_bulk",
+      "producing_mod_id": "l1_de_limma",
+      "required_mod_ids": [
+        "l1_de_limma",
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": "deg_all.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l3_combinationpanel",
@@ -1568,6 +3137,7 @@
         "ggbeeswarm",
         "patchwork"
       ],
+      "block_reason": "组合图已退役，生产只出单图",
       "linked_mods": [
         "l1_figures_bulk"
       ],
@@ -1585,7 +3155,54 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": true,
+      "status": "draft",
+      "academic_tier": "L3_spatial_advanced",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "panel_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2_kaplanmeierplot",
@@ -1615,7 +3232,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2_lollipopplot",
@@ -1650,7 +3304,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2_metaforestplot",
@@ -1688,7 +3379,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2_mosaicplot",
@@ -1726,7 +3454,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2_nomogram",
@@ -1761,7 +3526,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2_regressiontable",
@@ -1796,7 +3598,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2_cellchatcircleplot",
@@ -1830,7 +3669,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2_chromosomeplot",
@@ -1860,7 +3736,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2_genestructureplot",
@@ -1894,7 +3807,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_kegg_pathway",
@@ -1928,7 +3878,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_enrich_figures"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2_manhattanplot",
@@ -1962,7 +3949,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2_multivolcanoplot",
@@ -1998,7 +4022,59 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          },
+          {
+            "key": "label_genes",
+            "source_field": "targetGenes.topHubs",
+            "type": "string"
+          },
+          {
+            "key": "log2fc_cutoff",
+            "source_field": "analysisCutoffs.log2fc",
+            "type": "string"
+          },
+          {
+            "key": "padj_cutoff",
+            "source_field": "analysisCutoffs.padj",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2_mutationoncoplot",
@@ -2032,7 +4108,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2_networkplot",
@@ -2040,9 +4153,9 @@
       "level": "L2",
       "category": "Omics",
       "language": "python",
-      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_enrich_ko_code.py",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_enrich_ko_code.py",
       "source_sha256": "6112e679203775cbbdc748883716fb687f4e0e25b55c6e1771d221adffbc7ad7",
-      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_konetwork_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_konetwork_verified.png",
       "preview_sha256": "8cc635808ff926fa9b2b7cadafa48a93aed6fc85bfe8d13f42514b738dc67294",
       "verified": true,
       "deps_status": "ready",
@@ -2073,7 +4186,45 @@
       "canonical_output": "L2p_konetwork_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2_networkplot.png",
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": "line2_scrna",
+      "producing_mod_id": "l2_ko_drpost",
+      "required_mod_ids": [
+        "l2_ko_drpost",
+        "l2_figures_scrna"
+      ],
+      "data_contract": {
+        "input_artifact": "dr_regulatory_network.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l3_sankeybubbleplot",
@@ -2088,6 +4239,7 @@
       "verified": false,
       "deps_status": "pending",
       "deps": [],
+      "block_reason": "组合图已退役，生产只出单图",
       "linked_mods": [
         "l1_figures_bulk"
       ],
@@ -2105,7 +4257,54 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": true,
+      "status": "draft",
+      "academic_tier": "L3_spatial_advanced",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "x_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "y_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "label_genes",
+            "source_field": "targetGenes.topHubs",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2_textenrichmentbarplot",
@@ -2138,7 +4337,59 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          },
+          {
+            "key": "x_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "error_col",
+            "source_field": "manual",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2_volcano",
@@ -2146,9 +4397,9 @@
       "level": "L2",
       "category": "Omics",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L2_core_code.R",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L2_core_code.R",
       "source_sha256": "a8ae5c81ea4e66546c40cd3d4f22609bb96dfe37febd0f21fd2b684daff04ad0",
-      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2_volcano_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2_volcano_verified.png",
       "preview_sha256": "444d3cedda268b185556f998020178d1c3b46c0bfd8714531c617f64c5ff1e63",
       "verified": true,
       "deps_status": "ready",
@@ -2186,7 +4437,60 @@
         "sha256": "444d3cedda268b185556f998020178d1c3b46c0bfd8714531c617f64c5ff1e63",
         "matches_preview": true
       },
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": "line1_bulk",
+      "producing_mod_id": "l1_de_limma",
+      "required_mod_ids": [
+        "l1_de_limma",
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": "deg_all.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          },
+          {
+            "key": "label_genes",
+            "source_field": "targetGenes.topHubs",
+            "type": "string"
+          },
+          {
+            "key": "log2fc_cutoff",
+            "source_field": "analysisCutoffs.log2fc",
+            "type": "string"
+          },
+          {
+            "key": "padj_cutoff",
+            "source_field": "analysisCutoffs.padj",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2_ivolcanoplot",
@@ -2224,7 +4528,59 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          },
+          {
+            "key": "label_genes",
+            "source_field": "targetGenes.topHubs",
+            "type": "string"
+          },
+          {
+            "key": "log2fc_cutoff",
+            "source_field": "analysisCutoffs.log2fc",
+            "type": "string"
+          },
+          {
+            "key": "padj_cutoff",
+            "source_field": "analysisCutoffs.padj",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2p_barplot",
@@ -2232,9 +4588,9 @@
       "level": "L2",
       "category": "Python",
       "language": "python",
-      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_stats_code.py",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_stats_code.py",
       "source_sha256": "14fdabea4a6f896d4c168f080d50d2800bbe7dca20903ea3318a0579d15f71a5",
-      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_bar_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_bar_verified.png",
       "preview_sha256": "0ef1c020ff22a6b0b337ba71110186dcd546f156d7a331ddb7a54f6ad4a2bfd3",
       "verified": true,
       "deps_status": "ready",
@@ -2269,7 +4625,61 @@
       "canonical_output": "L2p_bar_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_barplot.png",
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": "line2_scrna",
+      "producing_mod_id": "l2_profile_composition",
+      "required_mod_ids": [
+        "l2_profile_composition",
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": "celltype_composition.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          },
+          {
+            "key": "x_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "error_col",
+            "source_field": "manual",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2p_boxplot",
@@ -2277,9 +4687,9 @@
       "level": "L2",
       "category": "Python",
       "language": "python",
-      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_stats_code.py",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_stats_code.py",
       "source_sha256": "14fdabea4a6f896d4c168f080d50d2800bbe7dca20903ea3318a0579d15f71a5",
-      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_box_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_box_verified.png",
       "preview_sha256": "12610d317a28018cccf1257e47d7ad7908ead0d3ecfe5976c0dd52d18d790e70",
       "verified": true,
       "deps_status": "ready",
@@ -2312,7 +4722,51 @@
       "canonical_output": "L2p_box_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_boxplot.png",
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": "line2_scrna",
+      "producing_mod_id": "l2_qc_cells",
+      "required_mod_ids": [
+        "l2_qc_cells",
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": "qc_cell_metrics.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2p_complexheatmap",
@@ -2351,7 +4805,60 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "row_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "column_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2p_confusionmatrixplot",
@@ -2387,7 +4894,45 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2p_enrichmentplot",
@@ -2395,9 +4940,9 @@
       "level": "L2",
       "category": "Python",
       "language": "python",
-      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_enrich_ko_code.py",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_enrich_ko_code.py",
       "source_sha256": "6112e679203775cbbdc748883716fb687f4e0e25b55c6e1771d221adffbc7ad7",
-      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_enrichment_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_enrichment_verified.png",
       "preview_sha256": "f61359c27354710a50613a811904b7c3a9f8baddb86b79e591b086eb3e56e7b9",
       "verified": true,
       "deps_status": "ready",
@@ -2429,7 +4974,46 @@
       "canonical_output": "L2p_enrichment_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_enrichmentplot.png",
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": "line2_scrna",
+      "producing_mod_id": "l2_branches_enrich",
+      "required_mod_ids": [
+        "l2_branches_enrich",
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": "enrichment_ora.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l3p_facetgridplot",
@@ -2465,7 +5049,45 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L3_spatial_advanced",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2p_gseaplot",
@@ -2473,9 +5095,9 @@
       "level": "L2",
       "category": "Python",
       "language": "python",
-      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_enrich_ko_code.py",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_enrich_ko_code.py",
       "source_sha256": "6112e679203775cbbdc748883716fb687f4e0e25b55c6e1771d221adffbc7ad7",
-      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_gsea_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_gsea_verified.png",
       "preview_sha256": "e492e7f80235297e1782146ac6cf2a272c703cf4e023c07d7e23001d0034e32e",
       "verified": true,
       "deps_status": "ready",
@@ -2507,7 +5129,46 @@
       "canonical_output": "L2p_gsea_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_gseaplot.png",
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": "line2_scrna",
+      "producing_mod_id": "l2_branches_enrich",
+      "required_mod_ids": [
+        "l2_branches_enrich",
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": "enrichment_gsea.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2p_heatmap",
@@ -2515,9 +5176,9 @@
       "level": "L2",
       "category": "Python",
       "language": "python",
-      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_stats_code.py",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_stats_code.py",
       "source_sha256": "14fdabea4a6f896d4c168f080d50d2800bbe7dca20903ea3318a0579d15f71a5",
-      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_heatmap_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_heatmap_verified.png",
       "preview_sha256": "7c686a8f3d69036d2ff427ca0c6c9d2d2df3e85a19836045005494e2d6dc5d7d",
       "verified": true,
       "deps_status": "ready",
@@ -2553,7 +5214,61 @@
       "canonical_output": "L2p_heatmap_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_heatmap.png",
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": "line2_scrna",
+      "producing_mod_id": "l2_branches_gsva",
+      "required_mod_ids": [
+        "l2_branches_gsva",
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": "gsva_scores.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "row_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "column_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l3_multipanel",
@@ -2561,16 +5276,17 @@
       "level": "L3",
       "category": "R",
       "language": "r",
-      "source": "reference/05.可参考出图代码/L3_高级组合图/L3_multipanel_code.R",
-      "source_sha256": "2d57dfd823386971dfdd423af101da48a4c3db6d100729e428e4190e080213c1",
-      "preview": "reference/05.可参考出图代码/L3_高级组合图/L3_multipanel_verified.png",
-      "preview_sha256": "54dd575fdfb8938ce4d4d53f904bce8bae292dc93e42604ee901f67c42b651d0",
-      "verified": true,
-      "deps_status": "ready",
+      "source": null,
+      "source_sha256": null,
+      "preview": null,
+      "preview_sha256": null,
+      "verified": false,
+      "deps_status": "pending",
       "deps": [
         "ggplot2",
         "patchwork"
       ],
+      "block_reason": "组合图已退役，生产只出单图",
       "linked_mods": [
         "l1_figures_bulk"
       ],
@@ -2591,14 +5307,52 @@
       ],
       "output_glob": "figures/line1_bulk/custom_fig_l3_multipanel.png",
       "canonical_output": "L3_multipanel_verified.png",
-      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l3_multipanel.png",
-      "render_evidence": {
-        "entry_id": "l3_multipanel",
-        "artifact": "L3_multipanel_verified.png",
-        "sha256": "54dd575fdfb8938ce4d4d53f904bce8bae292dc93e42604ee901f67c42b651d0",
-        "matches_preview": true
+      "sample_project_output": null,
+      "render_evidence": null,
+      "deprecated": true,
+      "status": "draft",
+      "academic_tier": "L3_spatial_advanced",
+      "line_id": "line1_bulk",
+      "producing_mod_id": "l1_ml_external",
+      "required_mod_ids": [
+        "l1_ml_external",
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": "external_validation_preds.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
       },
-      "deprecated": false
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2p_pcaplot",
@@ -2635,7 +5389,45 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l3p_publicationstyle",
@@ -2672,7 +5464,45 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L3_spatial_advanced",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2p_rocprplot",
@@ -2709,7 +5539,45 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l3p_sankeydiagram",
@@ -2746,7 +5614,55 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L3_spatial_advanced",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "axis_cols",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "flow_col",
+            "source_field": "manual",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2p_scatterplot",
@@ -2754,9 +5670,9 @@
       "level": "L2",
       "category": "Python",
       "language": "python",
-      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_stats_code.py",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_stats_code.py",
       "source_sha256": "14fdabea4a6f896d4c168f080d50d2800bbe7dca20903ea3318a0579d15f71a5",
-      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_scatter_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_scatter_verified.png",
       "preview_sha256": "c32d839b503517b7ab0a3435939e59b08d102de39bed9d650fb13c41431265e7",
       "verified": true,
       "deps_status": "ready",
@@ -2791,7 +5707,56 @@
       "canonical_output": "L2p_scatter_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_scatterplot.png",
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": "line2_scrna",
+      "producing_mod_id": "l2_integrate_annotate",
+      "required_mod_ids": [
+        "l2_integrate_annotate",
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": "cluster_markers.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "x_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "y_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "label_genes",
+            "source_field": "targetGenes.topHubs",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2p_dotplot",
@@ -2799,9 +5764,9 @@
       "level": "L2",
       "category": "Python",
       "language": "python",
-      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_more_code.py",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_more_code.py",
       "source_sha256": "858a56565aaf8e5b31bfd7ebc7239efc6c2530fc38a422bdd1718ad9a8074ff5",
-      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_dotplot_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_dotplot_verified.png",
       "preview_sha256": "4b7bc5da8b8e60d1e4be5687a7366feafb01a6c140ccb1abf717b015ae10321d",
       "verified": true,
       "deps_status": "ready",
@@ -2834,7 +5799,46 @@
       "canonical_output": "figures/dotplot__L2p_dotplot_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/l2_13_target_gene_dotplot.png",
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": "line2_scrna",
+      "producing_mod_id": "l2_ko_localization",
+      "required_mod_ids": [
+        "l2_ko_localization",
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": "target_gene_localization.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2p_scrnastackedviolin",
@@ -2872,7 +5876,50 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2p_umap",
@@ -2880,9 +5927,9 @@
       "level": "L2",
       "category": "Python",
       "language": "python",
-      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_umap_code.py",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_umap_code.py",
       "source_sha256": "34b79c4febb105c93cd31d80b6d6ebdde4fc7870ad3f8a15e16ad098d8c2ee7d",
-      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_umap_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_umap_verified.png",
       "preview_sha256": "cfc9b53c09d1393464831dd9c4d248e04e34bd85208a3125db1fd43c8d04a7d2",
       "verified": true,
       "deps_status": "ready",
@@ -2916,7 +5963,48 @@
       "canonical_output": "umap_L2p_umap_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/l3_human_06_umap_sample.png",
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": "line3_spatial",
+      "producing_mod_id": "l3_dimred_reduce",
+      "required_mod_ids": [
+        "l3_dimred_reduce",
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": "spatial_dimred_human.h5ad",
+        "format": "h5ad",
+        "required_columns": [],
+        "required_obs_keys": [
+          "cluster"
+        ],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2p_survivalplot",
@@ -2953,7 +6041,45 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2p_upsetplot",
@@ -2988,7 +6114,45 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2p_vennplot",
@@ -3022,7 +6186,45 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2p_violin",
@@ -3030,9 +6232,9 @@
       "level": "L2",
       "category": "Python",
       "language": "python",
-      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_more_code.py",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_more_code.py",
       "source_sha256": "858a56565aaf8e5b31bfd7ebc7239efc6c2530fc38a422bdd1718ad9a8074ff5",
-      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_violin_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_violin_verified.png",
       "preview_sha256": "e1ac52c2f3c89ed0a985f479cce3a300716d6cd5c9bee0e0488cfad44544a427",
       "verified": true,
       "deps_status": "ready",
@@ -3065,7 +6267,51 @@
       "canonical_output": "figures/violin_L2p_violin_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_violin.png",
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": "line2_scrna",
+      "producing_mod_id": "l2_profile_composition",
+      "required_mod_ids": [
+        "l2_profile_composition",
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": "celltype_composition.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l2p_volcano",
@@ -3073,9 +6319,9 @@
       "level": "L2",
       "category": "Python",
       "language": "python",
-      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_more_code.py",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_more_code.py",
       "source_sha256": "858a56565aaf8e5b31bfd7ebc7239efc6c2530fc38a422bdd1718ad9a8074ff5",
-      "preview": "reference/05.可参考出图代码/L2_组学常用图/L2p_volcano_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_volcano_verified.png",
       "preview_sha256": "c1221d0e1add02a999c8ce00f39aec4c9c57baf28e00b5ca3bd6b91688858dd4",
       "verified": true,
       "deps_status": "ready",
@@ -3114,7 +6360,61 @@
         "sha256": "c1221d0e1add02a999c8ce00f39aec4c9c57baf28e00b5ca3bd6b91688858dd4",
         "matches_preview": true
       },
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": "line2_scrna",
+      "producing_mod_id": "l2_profile_deg",
+      "required_mod_ids": [
+        "l2_profile_deg",
+        "l2_figures_scrna",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": "deg_all_by_celltype.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          },
+          {
+            "key": "label_genes",
+            "source_field": "targetGenes.topHubs",
+            "type": "string"
+          },
+          {
+            "key": "log2fc_cutoff",
+            "source_field": "analysisCutoffs.log2fc",
+            "type": "string"
+          },
+          {
+            "key": "padj_cutoff",
+            "source_field": "analysisCutoffs.padj",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l3_chorddiagram",
@@ -3122,9 +6422,9 @@
       "level": "L3",
       "category": "Proportion",
       "language": "python",
-      "source": "reference/05.可参考出图代码/L2_组学常用图/L2p_cellcomm_autocorr_code.py",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_cellcomm_autocorr_code.py",
       "source_sha256": "656ef26ff1000ab4688d8c7223b097619dec2fe40ec1c72903c3ecd4e49d9097",
-      "preview": "reference/05.可参考出图代码/L3_高级组合图/L3_cellcomm_chord_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L3_高级组合图/L3_cellcomm_chord_verified.png",
       "preview_sha256": "2bda0e401b5e9b923b8e4d1ea0424f7edbfa2cd9649d9936650a3cd25c2cd125",
       "verified": true,
       "deps_status": "ready",
@@ -3161,7 +6461,45 @@
       "canonical_output": "L3_cellcomm_chord_verified.png",
       "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l3_cellcomm_chord.png",
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L3_spatial_advanced",
+      "line_id": "line2_scrna",
+      "producing_mod_id": "l2_branches_cellcomm",
+      "required_mod_ids": [
+        "l2_branches_cellcomm",
+        "l2_figures_scrna"
+      ],
+      "data_contract": {
+        "input_artifact": "cellcomm_interactions.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l3_network",
@@ -3196,7 +6534,44 @@
       "canonical_output": null,
       "sample_project_output": null,
       "render_evidence": null,
-      "deprecated": false
+      "deprecated": false,
+      "status": "draft",
+      "academic_tier": "L3_spatial_advanced",
+      "line_id": null,
+      "producing_mod_id": null,
+      "required_mod_ids": [
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": null,
+        "format": null,
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": false,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
     },
     {
       "id": "fig_l3_sankey",
@@ -3204,9 +6579,9 @@
       "level": "L3",
       "category": "Proportion",
       "language": "r",
-      "source": "reference/05.可参考出图代码/_meta/R453_compat/L3_sankey_code.R",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L3_sankey_code.R",
       "source_sha256": "9f80d4b63e70411b5733e4c38b5c4e4c5226b6e17a682745b76e6924ff766b40",
-      "preview": "reference/05.可参考出图代码/L3_高级组合图/L3_sankey_verified.png",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/L3_高级组合图/L3_sankey_verified.png",
       "preview_sha256": "cf3b81baa6926d765db965dc14d5a818efefc762b852663bcd62eff9c41a8f79",
       "verified": true,
       "deps_status": "ready",
@@ -3246,7 +6621,867 @@
         "sha256": "cf3b81baa6926d765db965dc14d5a818efefc762b852663bcd62eff9c41a8f79",
         "matches_preview": true
       },
-      "deprecated": false
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L3_spatial_advanced",
+      "line_id": "line1_bulk",
+      "producing_mod_id": "l1_de_wgcna",
+      "required_mod_ids": [
+        "l1_de_wgcna",
+        "l1_figures_bulk"
+      ],
+      "data_contract": {
+        "input_artifact": "wgcna_modules.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "module_col",
+            "source_field": "manual",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "fig_l3_banksy_domain",
+      "name": "空间功能域切片分布图",
+      "level": "L3",
+      "category": "Spatial",
+      "language": "python",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/spatial_figures.py",
+      "source_sha256": "1db29430780826d7dc8f869adc367640428076fad12d2892d5ddf7a5a782023f",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l3_mouse_01_domains_B1-D1.png",
+      "preview_sha256": "2b19399fbecd11e972b738f66695457557d76ad667b761c035835e2e9beb4466",
+      "verified": true,
+      "deps_status": "ready",
+      "deps": [],
+      "linked_mods": [
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "BANKSY 空间域 h5ad 路径",
+        "group_col": "空间域分组列名"
+      },
+      "lines": [
+        "line3_spatial"
+      ],
+      "analysis_step": "l3_dimred_domains",
+      "input_tables": [
+        "spatial_domains_mouse.h5ad"
+      ],
+      "produces": [
+        "l3_mouse_01_domains_B1-D1.png"
+      ],
+      "output_glob": "figures/line3_spatial/l3_mouse_01_domains_B1-D1.png",
+      "canonical_output": "l3_mouse_01_domains_B1-D1.png",
+      "sample_project_output": "local_projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial/l3_mouse_01_domains_B1-D1.png",
+      "render_evidence": {
+        "entry_id": "v2_delivery_PRJ_STROKE_P1_SPATIAL_ABCA1",
+        "artifact": "l3_mouse_01_domains_B1-D1.png",
+        "sha256": "2b19399fbecd11e972b738f66695457557d76ad667b761c035835e2e9beb4466",
+        "matches_preview": true,
+        "source_project": "PRJ_STROKE_P1_SPATIAL_ABCA1"
+      },
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L3_spatial_advanced",
+      "line_id": "line3_spatial",
+      "producing_mod_id": "l3_dimred_domains",
+      "required_mod_ids": [
+        "l3_dimred_domains",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": "spatial_domains_mouse.h5ad",
+        "format": "h5ad",
+        "required_columns": [],
+        "required_obs_keys": [
+          "cluster"
+        ],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": true,
+          "pitch_um": 100,
+          "envelope_um": 65,
+          "max_err_ratio": 0.03
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "fig_l3_nnls_deconv_pie",
+      "name": "空间Spot细胞亚型解卷积构成图",
+      "level": "L3",
+      "category": "Composition",
+      "language": "python",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/spatial_figures.py",
+      "source_sha256": "1db29430780826d7dc8f869adc367640428076fad12d2892d5ddf7a5a782023f",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l3_mouse_15_deconv_composition.png",
+      "preview_sha256": "28a34e173c1881e7bf964577439c34f58d3002780e4cb07c1df791589ec15567",
+      "verified": true,
+      "deps_status": "ready",
+      "deps": [],
+      "linked_mods": [
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "NNLS 解卷积比例表路径",
+        "group_col": "细胞亚型列名"
+      },
+      "lines": [
+        "line3_spatial"
+      ],
+      "analysis_step": "l3_branches_celltype",
+      "input_tables": [
+        "celltype_scores_mouse.tsv"
+      ],
+      "produces": [
+        "l3_mouse_15_deconv_composition.png"
+      ],
+      "output_glob": "figures/line3_spatial/l3_mouse_15_deconv_composition.png",
+      "canonical_output": "l3_mouse_15_deconv_composition.png",
+      "sample_project_output": "local_projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial/l3_mouse_15_deconv_composition.png",
+      "render_evidence": {
+        "entry_id": "v2_delivery_PRJ_STROKE_P1_SPATIAL_ABCA1",
+        "artifact": "l3_mouse_15_deconv_composition.png",
+        "sha256": "28a34e173c1881e7bf964577439c34f58d3002780e4cb07c1df791589ec15567",
+        "matches_preview": true,
+        "source_project": "PRJ_STROKE_P1_SPATIAL_ABCA1"
+      },
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L3_spatial_advanced",
+      "line_id": "line3_spatial",
+      "producing_mod_id": "l3_branches_celltype",
+      "required_mod_ids": [
+        "l3_branches_celltype",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": "celltype_scores_mouse.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "fig_l3_multigene_coloc",
+      "name": "核心靶基因空间共定位切片图",
+      "level": "L3",
+      "category": "Spatial",
+      "language": "python",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/spatial_figures.py",
+      "source_sha256": "1db29430780826d7dc8f869adc367640428076fad12d2892d5ddf7a5a782023f",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l3_mouse_02_target_gene_B1-D1.png",
+      "preview_sha256": "ef39f066c2b7d04938cb46447b8dcdaf2acbcc3a911c932e3a149a5b80537a72",
+      "verified": true,
+      "deps_status": "ready",
+      "deps": [],
+      "linked_mods": [
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "靶基因空间定位 h5ad 路径",
+        "label_genes": "共定位靶基因清单"
+      },
+      "lines": [
+        "line3_spatial"
+      ],
+      "analysis_step": "l3_branches_localization",
+      "input_tables": [
+        "gene_localization_mouse.tsv"
+      ],
+      "produces": [
+        "l3_mouse_02_target_gene_B1-D1.png"
+      ],
+      "output_glob": "figures/line3_spatial/l3_mouse_02_target_gene_B1-D1.png",
+      "canonical_output": "l3_mouse_02_target_gene_B1-D1.png",
+      "sample_project_output": "local_projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial/l3_mouse_02_target_gene_B1-D1.png",
+      "render_evidence": {
+        "entry_id": "v2_delivery_PRJ_STROKE_P1_SPATIAL_ABCA1",
+        "artifact": "l3_mouse_02_target_gene_B1-D1.png",
+        "sha256": "ef39f066c2b7d04938cb46447b8dcdaf2acbcc3a911c932e3a149a5b80537a72",
+        "matches_preview": true,
+        "source_project": "PRJ_STROKE_P1_SPATIAL_ABCA1"
+      },
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L3_spatial_advanced",
+      "line_id": "line3_spatial",
+      "producing_mod_id": "l3_branches_localization",
+      "required_mod_ids": [
+        "l3_branches_localization",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": "gene_localization_mouse.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": true,
+          "pitch_um": 100,
+          "envelope_um": 65,
+          "max_err_ratio": 0.03
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "label_genes",
+            "source_field": "targetGenes.topHubs",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "fig_l3_morans_i_spatial",
+      "name": "空间高变自相关基因排序图",
+      "level": "L3",
+      "category": "SpatialStatistics",
+      "language": "python",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/spatial_figures.py",
+      "source_sha256": "1db29430780826d7dc8f869adc367640428076fad12d2892d5ddf7a5a782023f",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l3_mouse_04_morans_top.png",
+      "preview_sha256": "fe70b32709c21b19d3112932a288409bd242649bd9e32ab53339a91b998486a0",
+      "verified": true,
+      "deps_status": "ready",
+      "deps": [],
+      "linked_mods": [
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "Moran's I 自相关表路径",
+        "value_col": "morans_i 列名"
+      },
+      "lines": [
+        "line3_spatial"
+      ],
+      "analysis_step": "l3_stats_autocorr",
+      "input_tables": [
+        "gene_autocorr_mouse.tsv"
+      ],
+      "produces": [
+        "l3_mouse_04_morans_top.png"
+      ],
+      "output_glob": "figures/line3_spatial/l3_mouse_04_morans_top.png",
+      "canonical_output": "l3_mouse_04_morans_top.png",
+      "sample_project_output": "local_projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial/l3_mouse_04_morans_top.png",
+      "render_evidence": {
+        "entry_id": "v2_delivery_PRJ_STROKE_P1_SPATIAL_ABCA1",
+        "artifact": "l3_mouse_04_morans_top.png",
+        "sha256": "fe70b32709c21b19d3112932a288409bd242649bd9e32ab53339a91b998486a0",
+        "matches_preview": true,
+        "source_project": "PRJ_STROKE_P1_SPATIAL_ABCA1"
+      },
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L3_spatial_advanced",
+      "line_id": "line3_spatial",
+      "producing_mod_id": "l3_stats_autocorr",
+      "required_mod_ids": [
+        "l3_stats_autocorr",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": "gene_autocorr_mouse.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "fig_l3_niche_comm_spatial",
+      "name": "空间微环境配受体互作热点图",
+      "level": "L3",
+      "category": "CellCommunication",
+      "language": "python",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/spatial_figures.py",
+      "source_sha256": "1db29430780826d7dc8f869adc367640428076fad12d2892d5ddf7a5a782023f",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l3_mouse_19_communication.png",
+      "preview_sha256": "1ee2ac3c61f46c2ec75d8e833a21f553feae947ef73eafa642d444a7608f8584",
+      "verified": true,
+      "deps_status": "ready",
+      "deps": [],
+      "linked_mods": [
+        "l3_figures_spatial"
+      ],
+      "adapt_vars": {
+        "input_data": "空间配受体互作得分表路径",
+        "group_col": "微环境分组列名"
+      },
+      "lines": [
+        "line3_spatial"
+      ],
+      "analysis_step": "l3_stats_communication",
+      "input_tables": [
+        "sample_communication_mouse.tsv"
+      ],
+      "produces": [
+        "l3_mouse_19_communication.png"
+      ],
+      "output_glob": "figures/line3_spatial/l3_mouse_19_communication.png",
+      "canonical_output": "l3_mouse_19_communication.png",
+      "sample_project_output": "local_projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures/line3_spatial/l3_mouse_19_communication.png",
+      "render_evidence": {
+        "entry_id": "v2_delivery_PRJ_STROKE_P1_SPATIAL_ABCA1",
+        "artifact": "l3_mouse_19_communication.png",
+        "sha256": "1ee2ac3c61f46c2ec75d8e833a21f553feae947ef73eafa642d444a7608f8584",
+        "matches_preview": true,
+        "source_project": "PRJ_STROKE_P1_SPATIAL_ABCA1"
+      },
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L3_spatial_advanced",
+      "line_id": "line3_spatial",
+      "producing_mod_id": "l3_stats_communication",
+      "required_mod_ids": [
+        "l3_stats_communication",
+        "l3_figures_spatial"
+      ],
+      "data_contract": {
+        "input_artifact": "sample_communication_mouse.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "fig_l2_harmony_umap_entropy",
+      "name": "Harmony批次校正UMAP与供体熵对照图",
+      "level": "L2",
+      "category": "DimReduction",
+      "language": "python",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/scrna_figures.py",
+      "source_sha256": "147538fc5bc2651dc6bebd1bdc68fad6ac06c400ccc4909d0d0652371c7eef7d",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l2_01_umap_celltype.png",
+      "preview_sha256": "130de3abdce0ac9db45c8b6fcd8f053e0bb3a7dc1e372cc1f26ca0fb61afe5a3",
+      "verified": true,
+      "deps_status": "ready",
+      "deps": [],
+      "linked_mods": [
+        "l2_figures_scrna"
+      ],
+      "adapt_vars": {
+        "input_data": "Harmony 聚类 h5ad 路径",
+        "group_col": "细胞类型或供体列名"
+      },
+      "lines": [
+        "line2_scrna"
+      ],
+      "analysis_step": "l2_integrate_cluster",
+      "input_tables": [
+        "scrna_clustered.h5ad"
+      ],
+      "produces": [
+        "l2_01_umap_celltype.png"
+      ],
+      "output_glob": "figures/line2_scrna/l2_01_umap_celltype.png",
+      "canonical_output": "l2_01_umap_celltype.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/deliverables/PRJ_AIMS_V3_20261027_Client_Delivery/02_Figures_and_Tables/figures/line2_scrna/l2_01_umap_celltype.png",
+      "render_evidence": {
+        "entry_id": "v2_delivery_PRJ_AIMS_V3_20261027",
+        "artifact": "l2_01_umap_celltype.png",
+        "sha256": "130de3abdce0ac9db45c8b6fcd8f053e0bb3a7dc1e372cc1f26ca0fb61afe5a3",
+        "matches_preview": true,
+        "source_project": "PRJ_AIMS_V3_20261027"
+      },
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": "line2_scrna",
+      "producing_mod_id": "l2_integrate_cluster",
+      "required_mod_ids": [
+        "l2_integrate_cluster",
+        "l2_figures_scrna"
+      ],
+      "data_contract": {
+        "input_artifact": "scrna_clustered.h5ad",
+        "format": "h5ad",
+        "required_columns": [],
+        "required_obs_keys": [
+          "cluster"
+        ],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "fig_l2_liana_lr_dotplot",
+      "name": "细胞亚群配受体通讯气泡图",
+      "level": "L2",
+      "category": "CellCommunication",
+      "language": "python",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/scrna_figures.py",
+      "source_sha256": "147538fc5bc2651dc6bebd1bdc68fad6ac06c400ccc4909d0d0652371c7eef7d",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l2_07_comm_top.png",
+      "preview_sha256": "37825edf5edf0c6ca76f851bace5e49f6c789f8d6dde3cb6d6771740b5c6fd15",
+      "verified": true,
+      "deps_status": "ready",
+      "deps": [],
+      "linked_mods": [
+        "l2_figures_scrna"
+      ],
+      "adapt_vars": {
+        "input_data": "LIANA 配受体互作表路径",
+        "group_col": "细胞亚群列名"
+      },
+      "lines": [
+        "line2_scrna"
+      ],
+      "analysis_step": "l2_branches_cellcomm",
+      "input_tables": [
+        "cellcomm_interactions.tsv"
+      ],
+      "produces": [
+        "l2_07_comm_top.png"
+      ],
+      "output_glob": "figures/line2_scrna/l2_07_comm_top.png",
+      "canonical_output": "l2_07_comm_top.png",
+      "sample_project_output": "local_projects/PRJ_20261019_IS_lactylation/figures/line2_scrna/l2_07_comm_top.png",
+      "render_evidence": {
+        "entry_id": "v2_delivery_PRJ_20261019_IS_lactylation",
+        "artifact": "l2_07_comm_top.png",
+        "sha256": "37825edf5edf0c6ca76f851bace5e49f6c789f8d6dde3cb6d6771740b5c6fd15",
+        "matches_preview": true,
+        "source_project": "PRJ_20261019_IS_lactylation"
+      },
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": "line2_scrna",
+      "producing_mod_id": "l2_branches_cellcomm",
+      "required_mod_ids": [
+        "l2_branches_cellcomm",
+        "l2_figures_scrna"
+      ],
+      "data_contract": {
+        "input_artifact": "cellcomm_interactions.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "fig_l2_canonical_marker_dotplot",
+      "name": "细胞类型CanonicalMarker表达核验图",
+      "level": "L2",
+      "category": "Annotation",
+      "language": "python",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/scrna_figures.py",
+      "source_sha256": "147538fc5bc2651dc6bebd1bdc68fad6ac06c400ccc4909d0d0652371c7eef7d",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l2_07_marker_top5.png",
+      "preview_sha256": "3955949c2b773bae91d6465379bb08d64d6c25bca89961acec528deef9607c24",
+      "verified": true,
+      "deps_status": "ready",
+      "deps": [],
+      "linked_mods": [
+        "l2_figures_scrna"
+      ],
+      "adapt_vars": {
+        "input_data": "聚类标记基因表路径",
+        "group_col": "细胞类型列名"
+      },
+      "lines": [
+        "line2_scrna"
+      ],
+      "analysis_step": "l2_integrate_annotate",
+      "input_tables": [
+        "cluster_markers.tsv"
+      ],
+      "produces": [
+        "l2_07_marker_top5.png"
+      ],
+      "output_glob": "figures/line2_scrna/l2_07_marker_top5.png",
+      "canonical_output": "l2_07_marker_top5.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/deliverables/PRJ_AIMS_V3_20261027_Client_Delivery/02_Figures_and_Tables/figures/line2_scrna/l2_07_marker_top5.png",
+      "render_evidence": {
+        "entry_id": "v2_delivery_PRJ_AIMS_V3_20261027",
+        "artifact": "l2_07_marker_top5.png",
+        "sha256": "3955949c2b773bae91d6465379bb08d64d6c25bca89961acec528deef9607c24",
+        "matches_preview": true,
+        "source_project": "PRJ_AIMS_V3_20261027"
+      },
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": "line2_scrna",
+      "producing_mod_id": "l2_integrate_annotate",
+      "required_mod_ids": [
+        "l2_integrate_annotate",
+        "l2_figures_scrna"
+      ],
+      "data_contract": {
+        "input_artifact": "cluster_markers.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "fig_l2_dr_trajectory_post",
+      "name": "亚群降维后处理与调控网络图",
+      "level": "L2",
+      "category": "Downstream",
+      "language": "python",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/scrna_figures.py",
+      "source_sha256": "147538fc5bc2651dc6bebd1bdc68fad6ac06c400ccc4909d0d0652371c7eef7d",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/custom_fig_l2_networkplot.png",
+      "preview_sha256": "edd50e07d5e34f57df50f7859254cba6b6965e055c7ef53c9fd990ed68b9c73d",
+      "verified": true,
+      "deps_status": "ready",
+      "deps": [],
+      "linked_mods": [
+        "l2_figures_scrna"
+      ],
+      "adapt_vars": {
+        "input_data": "降维后调控网络表路径",
+        "group_col": "调控模块列名"
+      },
+      "lines": [
+        "line2_scrna"
+      ],
+      "analysis_step": "l2_ko_drpost",
+      "input_tables": [
+        "dr_regulatory_network.tsv"
+      ],
+      "produces": [
+        "custom_fig_l2_networkplot.png"
+      ],
+      "output_glob": "figures/line2_scrna/custom_fig_l2_networkplot.png",
+      "canonical_output": "custom_fig_l2_networkplot.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/deliverables/PRJ_AIMS_V3_20261027_Client_Delivery/02_Figures_and_Tables/figures/line2_scrna/custom_fig_l2_networkplot.png",
+      "render_evidence": {
+        "entry_id": "v2_delivery_PRJ_AIMS_V3_20261027",
+        "artifact": "custom_fig_l2_networkplot.png",
+        "sha256": "edd50e07d5e34f57df50f7859254cba6b6965e055c7ef53c9fd990ed68b9c73d",
+        "matches_preview": true,
+        "source_project": "PRJ_AIMS_V3_20261027"
+      },
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": "line2_scrna",
+      "producing_mod_id": "l2_ko_drpost",
+      "required_mod_ids": [
+        "l2_ko_drpost",
+        "l2_figures_scrna"
+      ],
+      "data_contract": {
+        "input_artifact": "dr_regulatory_network.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          }
+        ]
+      }
+    },
+    {
+      "id": "fig_l2_celltype_deg_volcano",
+      "name": "细胞类型特异差异表达火山图",
+      "level": "L2",
+      "category": "DifferentialExpression",
+      "language": "python",
+      "source": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/scrna_figures.py",
+      "source_sha256": "147538fc5bc2651dc6bebd1bdc68fad6ac06c400ccc4909d0d0652371c7eef7d",
+      "preview": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l2_08_deg_volcano_mitotic.png",
+      "preview_sha256": "7b5bda0f358264ea964feca68d5bacfdb8a7280a96baa1e26cdd143d87fac892",
+      "verified": true,
+      "deps_status": "ready",
+      "deps": [],
+      "linked_mods": [
+        "l2_figures_scrna"
+      ],
+      "adapt_vars": {
+        "input_data": "细胞类型差异表达表路径",
+        "group_col": "比较方向分组列名",
+        "log2fc_cutoff": "差异倍数阈值",
+        "padj_cutoff": "显著性阈值"
+      },
+      "lines": [
+        "line2_scrna"
+      ],
+      "analysis_step": "l2_profile_deg",
+      "input_tables": [
+        "deg_all_by_celltype.tsv"
+      ],
+      "produces": [
+        "l2_08_deg_volcano_mitotic.png"
+      ],
+      "output_glob": "figures/line2_scrna/l2_08_deg_volcano_mitotic.png",
+      "canonical_output": "l2_08_deg_volcano_mitotic.png",
+      "sample_project_output": "local_projects/PRJ_AIMS_V3_20261027/deliverables/PRJ_AIMS_V3_20261027_Client_Delivery/02_Figures_and_Tables/figures/line2_scrna/l2_08_deg_volcano_mitotic.png",
+      "render_evidence": {
+        "entry_id": "v2_delivery_PRJ_AIMS_V3_20261027",
+        "artifact": "l2_08_deg_volcano_mitotic.png",
+        "sha256": "7b5bda0f358264ea964feca68d5bacfdb8a7280a96baa1e26cdd143d87fac892",
+        "matches_preview": true,
+        "source_project": "PRJ_AIMS_V3_20261027"
+      },
+      "deprecated": false,
+      "status": "ready",
+      "academic_tier": "L2_mechanism_core",
+      "line_id": "line2_scrna",
+      "producing_mod_id": "l2_profile_deg",
+      "required_mod_ids": [
+        "l2_profile_deg",
+        "l2_figures_scrna"
+      ],
+      "data_contract": {
+        "input_artifact": "deg_all_by_celltype.tsv",
+        "format": "tsv",
+        "required_columns": [],
+        "required_obs_keys": [],
+        "required_obsm_keys": []
+      },
+      "spec_contract": {
+        "dpi": 300,
+        "palette_family": "okabe_ito_extended",
+        "scalebar_contract": {
+          "required": false
+        }
+      },
+      "portal_binding": {
+        "default_on_mod_select": true,
+        "unlock_prompt": "需补选前置分析步骤以解锁该图件",
+        "adapt_vars_schema": [
+          {
+            "key": "input_data",
+            "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
+          },
+          {
+            "key": "log2fc_cutoff",
+            "source_field": "analysisCutoffs.log2fc",
+            "type": "string"
+          },
+          {
+            "key": "padj_cutoff",
+            "source_field": "analysisCutoffs.padj",
+            "type": "string"
+          }
+        ]
+      }
     }
   ]
 }

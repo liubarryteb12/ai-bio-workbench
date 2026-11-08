@@ -14,7 +14,8 @@
 #   CellPhoneDB/CellTalkDB/ConnectomeDB2020 等汇总），groupby=celltype，
 #   expr_prop=0.1 / min_cells=5 / de_method=t-test / aggregate=rra（liana 默认），
 #   n_perms=1000 + seed=BIOANALYS_SEED（原型实测 top20 在 100 与 1000 perms
-#   下完全一致，取默认 1000）。
+#   下完全一致，取默认 1000）。内存受限设备可用 BIO_LIANA_NPERMS 等环境变量
+#   覆盖（见下方参数读取），避免 11GB 手机上 1000 perms 必 OOM。
 #   两个 rank 分工：specificity_rank 衡量"这对 LR 相对其他组是否特异"，
 #   magnitude_rank 衡量表达强度；B2M-CD1A/VIM-CD44 这类管家 pair 会霸占
 #   magnitude 榜但 specificity 低，报告按 specificity 排序并注明该现象。
@@ -96,9 +97,10 @@ import liana as li
 ad.settings.allow_write_nullable_strings = False
 
 START = time.time()
-N_PERMS = 1000
-EXPR_PROP = 0.1
-MIN_CELLS = 5
+N_PERMS = int(os.environ.get("BIO_LIANA_NPERMS", "1000"))
+EXPR_PROP = float(os.environ.get("BIO_LIANA_EXPR_PROP", "0.1"))
+MIN_CELLS = int(os.environ.get("BIO_LIANA_MIN_CELLS", "5"))
+MAX_CELLS_PER_CT = int(os.environ.get("BIO_LIANA_MAX_CELLS_PER_CT", "0"))
 COVERAGE_MIN = 0.5
 HVG_GENE_LIMIT = 2000
 TOP_N = 20
@@ -152,6 +154,23 @@ celltype_counts = adata.obs["celltype"].value_counts()
 celltypes = sorted(celltype_counts.index)
 log("celltypes=%d cells=%d" % (len(celltypes), n_cells))
 log("celltype_counts=%s" % celltype_counts.to_dict())
+
+# 内存受限设备的细胞数上限：每 celltype 随机抽 MAX_CELLS_PER_CT 个细胞
+#（seed 固定，可复现）。0 = 不抽（默认，保持全量口径）。
+if MAX_CELLS_PER_CT > 0:
+    rng = np.random.default_rng(seed_int)
+    keep_idx = []
+    for ct in celltypes:
+        idx = np.where(adata.obs["celltype"].to_numpy() == ct)[0]
+        if len(idx) > MAX_CELLS_PER_CT:
+            idx = rng.choice(idx, size=MAX_CELLS_PER_CT, replace=False)
+        keep_idx.extend(idx.tolist())
+    keep_idx = np.sort(np.array(keep_idx, dtype=int))
+    adata = adata[keep_idx, :].copy()
+    n_cells = adata.shape[0]
+    celltype_counts = adata.obs["celltype"].value_counts()
+    celltypes = sorted(celltype_counts.index)
+    log("subsampled to max %d cells/celltype -> cells=%d" % (MAX_CELLS_PER_CT, n_cells))
 
 # --- 3. LR 资源覆盖率（喂错矩阵的第一道防线）---
 resource = li.resource.select_resource("consensus")

@@ -18,7 +18,7 @@ SENSITIVE_ENV_RE = re.compile(
 SAFE_ID_RE = re.compile(r"^[a-z0-9_]+$")
 SAFE_BASENAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
-FORMAL_MATRIX_DEFAULT = Path("reference/05.可参考出图代码/_meta/script_plot_matrix.json")
+FORMAL_MATRIX_DEFAULT = Path("reference/05.可参考生信代码/可用代码预筛选/源码/_meta/script_plot_matrix.json")
 MIN_PNG_DPI = 299.0
 
 
@@ -206,6 +206,8 @@ ENTRY_SPECS = [
     },
     {
         "id": "l3_multipanel",
+        "retired": True,
+        "retired_reason": "figure_spec v2.3：生产默认只出单图，组合图证据不进入 Ready 基线",
         "source": "L3_\u9ad8\u7ea7\u7ec4\u5408\u56fe/L3_multipanel_code.R",
         "lang": "r",
         "role": "primary",
@@ -841,7 +843,7 @@ def main(argv=None):
     if args.strict:
         try:
             workspace_root = ensure_within(args.workspace_root, args.workspace_root)
-            reference_root = args.reference_root or (workspace_root / "reference" / "05.可参考出图代码")
+            reference_root = args.reference_root or (workspace_root / "reference" / "05.可参考生信代码" / "可用代码预筛选" / "源码")
             reference_root = ensure_within(reference_root, workspace_root)
             matrix_path = args.matrix or (reference_root / "_meta" / "script_plot_matrix.json")
             payload = validate_formal_matrix(matrix_path, reference_root)

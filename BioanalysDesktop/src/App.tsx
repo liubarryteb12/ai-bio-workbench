@@ -40,9 +40,9 @@ export function App() {
   const [project, setProject] = useState<string>('default');
   const [projects, setProjects] = useState<ProjectEntry[]>([]);
   const [projectError, setProjectError] = useState<string | null>(null);
-  // 计算面模式（Ticket 1）：'mock' = 离线演示（没有真机也算力），'ssh' = 真机。
-  // 只用于顶部提示，不阻塞任何交互；拿不到按 ssh 处理（不惊吓用户）。
-  const [computeMode, setComputeMode] = useState<'ssh' | 'mock'>('ssh');
+  // 计算面模式：'adb' 主通道，'ssh' 特殊开关，'mock' 离线演示。
+  // 只用于顶部提示，不阻塞任何交互；拿不到按 ADB 主通道处理。
+  const [computeMode, setComputeMode] = useState<'adb' | 'ssh' | 'mock'>('adb');
   // ErrorBoundary 重试计数：递增即让失败视图换 key 重新挂载
   const [retryTick, setRetryTick] = useState(0);
   const projectInit = useRef(false);
@@ -103,7 +103,11 @@ export function App() {
         if (!response.ok) return;
         const payload = (await response.json()) as { compute_mode?: string };
         if (!alive) return;
-        setComputeMode(payload.compute_mode === 'mock' ? 'mock' : 'ssh');
+        setComputeMode(
+          payload.compute_mode === 'mock' || payload.compute_mode === 'ssh'
+            ? payload.compute_mode
+            : 'adb',
+        );
       } catch {
         // 静默：模式读取失败不该变成新的错误来源
       }

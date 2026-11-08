@@ -98,6 +98,7 @@ ad.settings.allow_write_nullable_strings = False
 
 START = time.time()
 NNLS_CHUNK = 1024  # spot 分块稠密化上限（内存防线）
+MIN_MATCHED_GENES = 50  # 跨物种匹配熔断线（Argon Q5：低于此数直接 ERR_CROSS_SPECIES_LOW_OVERLAP）
 
 def fail(message):
     sys.stderr.write("deconv_visium 自校验失败: %s\n" % message)
@@ -167,10 +168,17 @@ for idx in range(a.n_vars):
 gi = np.asarray(gi_list, dtype=int)
 sj = np.asarray(sj_list, dtype=int)
 n_matched = int(gi.size)
-if n_matched < 50:
-    fail("签名与矩阵 symbol 匹配基因数 %d < 50（物种映射或 symbol 口径不对，NNLS 无意义）" % n_matched)
-match_rate = n_matched / a.n_vars
-log("map_mode=%s matched=%d/%d rate=%.3f" % (map_mode, n_matched, a.n_vars, match_rate))
+# 跨物种匹配的三个记录数与显式错误码（Argon 第三十七轮 Q5 修正版）：
+# 人 HGNC 全大写（ATM/RPL7），小鼠 MGI 首字母大写（Atm/Rpl7），所以匹配一律走 .upper()；
+# 分母必须是**签名基因数**（n_ref_markers），不是矩阵基因数，否则匹配率被基质基因摊薄失真。
+n_ref_markers = int(sig.shape[0])
+match_ratio = (n_matched / n_ref_markers) if n_ref_markers else 0.0
+if n_matched < MIN_MATCHED_GENES:
+    fail("ERR_CROSS_SPECIES_LOW_OVERLAP: 签名与矩阵的大写同名匹配基因数 %d < %d"
+         "（n_ref_markers=%d，map_mode=%s；物种映射或 symbol 口径不对，NNLS 无意义）"
+         % (n_matched, MIN_MATCHED_GENES, n_ref_markers, map_mode))
+log("map_mode=%s n_ref_markers=%d n_case_insensitive_matched=%d match_ratio=%.4f"
+    % (map_mode, n_ref_markers, n_matched, match_ratio))
 
 # --- NNLS（分块稠密化）---
 S_mat = sig[celltypes].to_numpy(dtype=float)[sj, :]   # matched x celltypes
@@ -209,7 +217,8 @@ a.uns["deconv"] = json.dumps({
     "method": "scipy.optimize.nnls per spot on matched symbols（log 域近似线性混合）",
     "signature": os.path.abspath(sig_path), "signature_cells": celltypes,
     "map_mode": map_mode, "matched_genes": n_matched, "total_genes": int(a.n_vars),
-    "match_rate": round(match_rate, 4), "unmatched_genes": int(a.n_vars - n_matched),
+    "n_ref_markers": n_ref_markers, "n_case_insensitive_matched": n_matched,
+    "match_ratio": round(match_ratio, 4), "unmatched_ref_markers": int(n_ref_markers - n_matched),
     "failed_rows": int(failed_rows), "seed": seed,
 }, ensure_ascii=False)
 out_h5ad = os.path.join("processed", "deconv_mouse.h5ad")
@@ -234,8 +243,8 @@ rep.append("input_h5ad=%s" % os.path.abspath(src))
 rep.append("signature=%s" % os.path.abspath(sig_path))
 rep.append("celltypes=%s" % ",".join(celltypes))
 rep.append("map_mode=%s" % map_mode)
-rep.append("matched_genes=%d/%d rate=%.1f%% unmatched=%d（未匹配如实报告，不假装正式 ortholog）"
-           % (n_matched, a.n_vars, 100 * match_rate, a.n_vars - n_matched))
+rep.append("matched_genes=%d/%d rate=%.1f%% unmatched_ref_markers=%d（分母是签名基因数，未匹配如实报告，不假装正式 ortholog）"
+           % (n_matched, n_ref_markers, 100 * match_ratio, n_ref_markers - n_matched))
 rep.append("nnls solved=%d/%d zero_or_failed=%d" % (solved, a.n_obs, failed_rows))
 for s in list(a.uns["samples"]):
     sub = prop[prop["sample_id"] == s]

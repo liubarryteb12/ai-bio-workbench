@@ -1,13 +1,13 @@
 <#
 .SYNOPSIS
-  在手机上执行命令：优先 adb，adb 不可用时回落 ssh。
+  在手机上执行命令：默认 adb，adb 不可用即报错；ssh 只作显式特殊开关。
 
 .DESCRIPTION
   为什么优先 adb（2026-11-06 决定）：
     adb 由系统 adbd 提供，Termux 进程被杀后依然可用；
     sshd 跑在 Termux 内部，Termux 一死连接就断（本机实测过 5 次，
     每次都只能靠 adb shell am start 重启 Termux 才能恢复）。
-  因此 adb 作为主通道，sshd 保留为备用。
+  因此 adb 作为主通道，sshd 只在显式 -Transport ssh 时启用，默认不回落。
 
   权限边界（实测）：
     adb shell 身份是 uid=2000(shell)，读不到 /data/data/com.termux；
@@ -23,6 +23,15 @@
 
 .PARAMETER ScriptPath
   本地 .sh 文件，内容通过 stdin 送入设备，避免引号转义问题。
+
+.PARAMETER RemoteScriptPath
+  容器内临时脚本落点。缺省按进程号与随机数生成唯一路径，避免并发执行互相覆盖。
+
+.PARAMETER PushLocalPath
+  本地文件路径。内容经 base64 送入容器，写到 -PushRemotePath。
+
+.PARAMETER PushRemotePath
+  -PushLocalPath 在容器内的目标路径。必须给绝对路径。
 
 .PARAMETER TimeoutSec
   adb 调用超时秒数，默认 1800。
@@ -40,14 +49,19 @@ param(
   [ValidateSet('termux', 'ubuntu')][string]$Level = 'ubuntu',
   [string]$Command,
   [string]$ScriptPath,
+  [string]$RemoteScriptPath,
+  [string]$PushLocalPath,
+  [string]$PushRemotePath,
   [int]$TimeoutSec = 1800,
-  [ValidateSet('auto', 'adb', 'ssh')][string]$Transport = 'auto',
+  # adb 是默认且唯一的主通道；ssh 需要显式选择，只用于验证备用链路。
+  [ValidateSet('adb', 'ssh')][string]$Transport = 'adb',
   # 给远端进程设地址空间上限（MB）。0 表示不限制。
   # 为什么需要：本机 Termux 的 phantom killer 已关、电池白名单已加、wake lock 已持、
   # oom_score_adj 已是 -1000，保护措施全开仍被杀 5 次 —— 真正的原因是自身峰值内存
   # 把系统逼进 LMK 区间。加 ulimit -v 后，超限只让该进程拿到 MemoryError 并退出，
   # 进程组存活（实测）。
   [int]$MemLimitMB = 0,
+  # 保留该开关用于显式声明「adb 必须可用」。默认 adb 本身已经是失败即报错。
   [switch]$RequireAdb
 )
 
@@ -55,7 +69,11 @@ $ErrorActionPreference = 'Stop'
 $ADB = 'C:\adb\platform-tools\adb.exe'
 $PREFIX = '/data/data/com.termux/files/usr'
 $ROOTFS = $PREFIX + '/var/lib/proot-distro/containers/ubuntu/rootfs'
-$REMOTE_SCRIPT = '/tmp/dsh_adb_cmd.sh'
+$REMOTE_SCRIPT = if ($RemoteScriptPath) {
+  $RemoteScriptPath
+} else {
+  '/tmp/dsh_adb_cmd_' + $PID + '_' + (Get-Random -Minimum 100000 -Maximum 999999) + '.sh'
+}
 $REMOTE_SCRIPT_HOST = $ROOTFS + $REMOTE_SCRIPT
 $NL = [char]10
 
@@ -67,6 +85,23 @@ export TMPDIR=$PREFIX/tmp
 '@
 
 function Get-Payload {
+  if ($PushLocalPath) {
+    if (-not $PushRemotePath) { throw '提供 -PushLocalPath 时必须同时提供 -PushRemotePath' }
+    if ($PushRemotePath -notmatch '^/[A-Za-z0-9._/-]+$') { throw "PushRemotePath 非法: $PushRemotePath" }
+    if (-not (Test-Path -LiteralPath $PushLocalPath)) { throw "本地文件不存在: $PushLocalPath" }
+    $bytes = [IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $PushLocalPath))
+    $encoded = [Convert]::ToBase64String($bytes)
+    $parent = Split-Path -Parent $PushRemotePath
+    $lines = @('mkdir -p ' + $parent, ': > ' + $PushRemotePath)
+    for ($offset = 0; $offset -lt $encoded.Length; $offset += 1024) {
+      $chunk = $encoded.Substring($offset, [Math]::Min(1024, $encoded.Length - $offset))
+      $lines += ('printf %s ' + [char]39 + $chunk + [char]39 + ' >> ' + $PushRemotePath + '.b64')
+    }
+    $lines += 'base64 -d ' + $PushRemotePath + '.b64 > ' + $PushRemotePath
+    $lines += 'rm -f ' + $PushRemotePath + '.b64'
+    $lines += 'sha256sum ' + $PushRemotePath
+    return ($lines -join $NL) + $NL
+  }
   if ($ScriptPath) {
     if (-not (Test-Path -LiteralPath $ScriptPath)) { throw "脚本不存在: $ScriptPath" }
     return (Get-Content -LiteralPath $ScriptPath -Raw)
@@ -132,20 +167,13 @@ $used = $Transport
 $result = $null
 
 if ($Transport -eq 'ssh') {
-  # 显式走备用通道（也用于验证 sshd 本身是否健康）
+  # 显式特殊开关：只用于验证 sshd 本身是否健康，不是默认路径
   $result = Invoke-ViaSsh $payload
 } else {
-  try {
-    $probe = & $ADB get-state 2>&1
-    if (($probe -join '').Trim() -ne 'device') { throw "adb 状态异常: $probe" }
-    $result = Invoke-ViaAdb $payload
-    $used = 'adb'
-  } catch {
-    if ($Transport -eq 'adb' -or $RequireAdb) { throw "adb 通道不可用: $_" }
-    $used = 'ssh'
-    Write-Warning "adb 不可用，回落 ssh：$_"
-    $result = Invoke-ViaSsh $payload
-  }
+  $probe = & $ADB get-state 2>&1
+  if (($probe -join '').Trim() -ne 'device') { throw "adb 通道不可用: $probe" }
+  $result = Invoke-ViaAdb $payload
+  $used = 'adb'
 }
 
 $result.Output | ForEach-Object { Write-Output $_ }

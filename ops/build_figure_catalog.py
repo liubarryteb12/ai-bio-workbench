@@ -595,12 +595,12 @@ def main(argv=None):
     parser.add_argument(
         "--package-root",
         type=Path,
-        default=Path("reference/05.可参考出图代码/图码对应库_交付包"),
+        default=Path("reference/05.可参考生信代码/可用代码预筛选/源码/图码对应库_交付包"),
     )
     parser.add_argument(
         "--output-root",
         type=Path,
-        default=Path("reference/05.可参考出图代码/library"),
+        default=Path("reference/05.可参考生信代码/library"),
     )
     parser.add_argument("--seed", type=int, default=20261013)
     args = parser.parse_args(argv)

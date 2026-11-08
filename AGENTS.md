@@ -12,7 +12,10 @@
 | 开始一项功能、改架构、写 spec 或票 | [docs/mattpocock-workflow-spec.md](docs/mattpocock-workflow-spec.md) |
 | 写或改 skill、`AGENTS.md`、任何 agent 会读的文档 | [docs/mattpocock-writing-spec.md](docs/mattpocock-writing-spec.md) |
 | 跑 K40 / 部署 / 台账相关 | [docs/isolation.md](docs/isolation.md) 起手，再看 `ops/` 与具体线文档 |
-| 远程执行 / 设备连不上 | [docs/remote_channel_policy.md](docs/remote_channel_policy.md)（adb 为主通道，sshd 备用） |
+| 远程执行 / 设备连不上 | [docs/remote_channel_policy.md](docs/remote_channel_policy.md)（ADB 主通道，SSH 仅显式特殊开关） |
+| 出图或改图件模板 | [docs/figure_spec.md](docs/figure_spec.md)（v2.3：只出单图，300 DPI，图例外置右侧，图注左下） |
+| 自动执行客户项目（发工单出回执） | [docs/WORK_ORDER_ORCHESTRATOR.md](docs/WORK_ORDER_ORCHESTRATOR.md)（工单 schema、fail closed 判据、回执落点） |
+| 增删生信分析模块或改 `src/workflows.json` | 先跑 `node ops/module_ablation_matrix_gate.mjs`，判据见 [docs/MODULE_ABLATION_MATRIX.md](docs/MODULE_ABLATION_MATRIX.md) |
 | 做课题设计、选题准入判定、筛数据 | [docs/topic_sieve_spec.md](docs/topic_sieve_spec.md)（规则正本：L0 到 L4 与 T1 到 T9） |
 | 派「按方向调研数据」的活 | [docs/topic_survey_sop.md](docs/topic_survey_sop.md)（模式 A 执行规程） |
 
@@ -28,6 +31,8 @@
   反卷积精度提升一律走零算力路线：上游提纯输入 Marker（每个亚型严格限 Top 20 特异基因）与输出端 $<0.05$ 极低丰度硬截断。
   参考库中的 RCTD 等重型代码仅作为外部 PC 资产或客户专属交付件，严禁合并进生产流水线。
 - 中文可进注释与报告正文。文档里不用 em dash，用逗号、冒号、句号、括号。
+- **计算与文件传输默认走 ADB**：主计算入口、任务回执与新增文件传输一律经 `ops/adb_exec.ps1` 或 `BioanalysDesktop/server/adb_transfer.js`；SSH 只在显式 `BIO_COMPUTE_ADAPTER=ssh` 或 `-Transport ssh` 的特殊场景启用，禁用自动回落。
+- **生产图件只出单图**：组合图模板保持 draft/pending，Ready 基线见 `ops/figure_ready_allowlist.json`；新增模板先过 `figure_ready_matrix` 与 `figure_code_gate`。
 - 展示任何命令、输出、捕获产物前先打码：secret 一律写 `<REDACTED>`，别打印凭证或 key。
 - **交付报告只写对读者有意义的事实**：统计量来源、口径、可追溯性。
   机器名、主机名与绝对路径、运行环境（容器/终端/架构）、内部脚本目录、

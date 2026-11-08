@@ -90,23 +90,32 @@ function measureCode() {
  * 解析不到汇总行时退回静态计数并显式标注，不静默吞掉。
  */
 function measureTests() {
+  const testDir = path.join(REPO, 'BioanalysDesktop', 'tests');
   const fileCount = (() => {
     try {
-      return fs.readdirSync(path.join(REPO, 'BioanalysDesktop', 'tests'))
+      return fs.readdirSync(testDir)
         .filter((f) => f.endsWith('.test.js')).length;
     } catch { return 0; }
+  })();
+  const testFiles = (() => {
+    try {
+      return fs.readdirSync(testDir)
+        .filter((file) => file.endsWith('.test.js'))
+        .sort()
+        .map((file) => path.join('tests', file));
+    } catch { return []; }
   })();
 
   // 串行执行：默认并发是 CPU 核数，而 tests/index.test.js 等子进程用例会在同一时间抢同一批端口，
   // 2026-11-04 实测并行口径连跑 4 次有 2 次随机红（health 10s 超时 + index 整片 400 断言），
   // 官方 npm test 用 --test-concurrency=1 同机六次零红。门禁口径必须与官方入口一致，
   // 否则「换条命令就随机红」会被当成业务回归。
-  const spawned = spawnSync('node', ['--test', '--test-concurrency=1', '--test-reporter=tap', 'tests/*.test.js'], {
+  const spawned = spawnSync('node', ['--test', '--test-concurrency=1', '--test-reporter=tap', ...testFiles], {
     cwd: path.join(REPO, 'BioanalysDesktop'),
     encoding: 'utf8',
     timeout: 600000,
     maxBuffer: 64 * 1024 * 1024,
-    shell: true,
+    shell: false,
     env: { ...process.env, TEMP: path.join(REPO, '.tmp'), TMP: path.join(REPO, '.tmp') },
   });
 

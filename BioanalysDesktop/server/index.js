@@ -4,7 +4,8 @@
  * 职责边界（本地零算力红线）：
  *   本地只做三件事：跑 ssh / scp / adb、读写本软件自身配置、给前端提供接口。
  *   除此之外的程序一律不启动（见 server/proc.js 白名单）。
- *   所有计算命令都经 ssh 到 k40-ubuntu 执行。
+ *   计算命令默认经 ADB 到 k40-ubuntu 执行；SSH 仅在 BIO_COMPUTE_ADAPTER=ssh
+ *   的特殊开关下启用。
  */
 
 import http from 'node:http';

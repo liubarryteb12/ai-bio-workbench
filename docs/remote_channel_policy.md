@@ -1,8 +1,8 @@
-# 远程通道策略：adb 为主，sshd 备用（2026-11-06）
+# 远程通道策略：ADB 主通道，SSH 仅显式特殊开关（2026-11-08 更新）
 
 ## 结论
 
-日常执行一律走 **adb**；sshd 只作备用。理由不是偏好，是可用性实测：
+日常执行一律走 **adb**；sshd 只作显式特殊开关，默认失败即报错，不回落。理由不是偏好，是可用性实测：
 
 | 通道 | 依赖 | 设备侧故障时 |
 |---|---|---|
@@ -16,6 +16,20 @@ sshd 全程不可用。
 就在写这份文档时又复现一次：`adb kill-server` 之后端口转发清空，
 `ssh` 报 `Connection refused`，而 adb 通道照常工作。
 
+## 产品服务端默认通道
+
+产品服务端（`BioanalysDesktop/server/remote_exec.js`）的
+`runRemote` / `runRemoteRaw` / `runRemoteStrict` 默认全部走 ADB：
+
+- `BIO_COMPUTE_ADAPTER` 未设置：ADB；
+- `BIO_COMPUTE_ADAPTER=adb`：ADB，adb 不可用直接报错，不回落 SSH；
+- `BIO_COMPUTE_ADAPTER=ssh`：仅作为特殊开关，显式切到 SSH；
+- `BIO_COMPUTE_ADAPTER=mock`：测试或离线演示，仍受 `BIO_ALLOW_MOCK_COMPUTE=1` 门禁约束；
+- 其它值：执行时 fail-closed，不静默改走任何通道。
+
+`ops/adb_exec.ps1` 自身也默认 `-Transport adb`。只有显式传
+`-Transport ssh` 才会启用 SSH，用于验证备用链路本身是否健康。
+
 ## 怎么用
 
 ```powershell
@@ -28,11 +42,12 @@ pwsh -File ops/adb_exec.ps1 -Level termux -Command 'id -un'
 # 跑本地脚本（内容经 stdin 送入，避开引号转义）
 pwsh -File ops/adb_exec.ps1 -Level ubuntu -ScriptPath .tmp/step.sh
 
-# 强制走备用通道（也用于验证 sshd 是否健康）
+# 显式走特殊通道（也用于验证 sshd 是否健康）
 pwsh -File ops/adb_exec.ps1 -Level ubuntu -Transport ssh -Command 'hostname'
 ```
 
-`-Transport` 取值：`auto`（默认，adb 失败回落 ssh）、`adb`（失败即报错）、`ssh`（强制备用）。
+`-Transport` 取值：`adb`（默认，失败即报错）、`ssh`（显式特殊开关）。
+默认不包含 `auto` 回落路径，避免链路抖动时静默切到不稳定的 sshd。
 
 退出码透传远端命令的退出码，可直接用于判据。
 
@@ -48,7 +63,7 @@ pwsh -File ops/adb_exec.ps1 -Level ubuntu -Transport ssh -Command 'hostname'
 1. **here-string 末尾不含换行**：`@'...'@` 拼下一行命令会粘成一句，
    实测报 `export: --: not a valid identifier`。拼接时必须显式补 `[char]10`。
 2. **端口转发会丢**：`adb kill-server` / 设备重连后转发清空，
-   ssh 备用通道需按需重建。`adb_exec.ps1` 的 `Repair-Forwards` 已自动处理。
+   SSH 显式特殊开关通道需按需重建。`adb_exec.ps1` 的 `Repair-Forwards` 已自动处理。
 
 ## 文件传输的限制
 
@@ -110,8 +125,23 @@ pwsh -File ops/adb_exec.ps1 -Level ubuntu -MemLimitMB 2000 -ScriptPath .tmp/step
 - **整组回收**：Android 在极端压力下按进程组回收，单个进程的保护措施挡不住；
 - 因此**根本解法是把重内存作业放到内存充足的机器上**，本机只做轻量步骤与结果核对。
 
-## 尚未迁移的部分
+## 服务端统一分流
 
-`ops/06_deploy_scripts.ps1` 目前仍用 ssh/scp 做脚本同步。
-要完全脱离 ssh，需要把它改成「stdin 写入 + chmod + sha256 校验」，
-校验口径可沿用现有的字节校验逻辑。这是后续项，未在本轮实施。
+产品服务端把 ADB 分流通一收敛到 `BioanalysDesktop/server/proc.js`：
+
+- `runRemote` / `runRemoteRaw` / `runRemoteStrict` 默认直接调用 `adbRaw`。
+- 新增文件传输入口统一使用 `BioanalysDesktop/server/adb_transfer.js` 的 `pushFile` / `pullFile`，
+  默认走 ADB，并用 sha256 回执核验。新增的业务路径不得直接拼 scp 命令。
+- 既有同步、异步与流式 ssh / scp argv 保留为显式 SSH 特殊开关与测试兼容形态，
+  避免在真实报告与探针链路上改变已验证的流式行为。
+- `BIO_COMPUTE_ADAPTER=mock` 继续只用于测试或离线演示，并在进程接缝前短路。
+- `BIO_COMPUTE_ADAPTER=ssh` 是特殊开关。只有显式设置时，既有 ssh / scp argv 才按原样执行，
+  用于验证备用链路或处理获批的临时故障。
+- 文件传输用唯一临时脚本名、base64 字节载荷与 sha256 回执校验，避免并发覆盖同一远端脚本。
+- 未知适配器在真正执行时 fail closed，不自动回落到任何通道。
+- 迁移顺序以“主计算入口、任务回执、新增文件传输”为先，历史同步探针保持只读兼容，
+  后续按单独工单逐条迁移，不在总门禁里做一次性 argv 改写。
+
+`ops/adb_exec.ps1` 仍是唯一 ADB 执行器。部署类 PowerShell 脚本如 `ops/06_deploy_scripts.ps1`
+属于运维入口，统一通过 `ops/adb_exec.ps1 -Transport adb` 或显式 `-Transport ssh` 选择通道，
+不在产品服务端内部另起一条默认链路。

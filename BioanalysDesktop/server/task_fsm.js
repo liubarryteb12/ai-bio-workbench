@@ -22,11 +22,14 @@ export const TASK_STATES = Object.freeze({
   SUCCEEDED: "succeeded",
   FAILED: "failed",
   INTERRUPTED: "interrupted",
+  DEGRADED: "degraded",
+  BLOCKED_UPSTREAM_DEGRADED: "blocked_upstream_degraded",
 });
 
 /** 终态：一旦进入不允许再退回 running（MUT-Q3-C 要防的就是这个）。 */
 export const TERMINAL_STATES = Object.freeze([
   TASK_STATES.SUCCEEDED, TASK_STATES.FAILED, TASK_STATES.INTERRUPTED,
+  TASK_STATES.DEGRADED, TASK_STATES.BLOCKED_UPSTREAM_DEGRADED,
 ]);
 
 /**
@@ -53,14 +56,16 @@ export const FAILURE_REASONS = Object.freeze({
  * 矩阵之外一律 false —— 新增状态却忘了登记会被 canTransition 当场挡住。
  */
 export const TRANSITIONS = Object.freeze({
-  [TASK_STATES.QUEUED]: Object.freeze([TASK_STATES.RUNNING, TASK_STATES.FAILED, TASK_STATES.INTERRUPTED]),
+  [TASK_STATES.QUEUED]: Object.freeze([TASK_STATES.RUNNING, TASK_STATES.FAILED, TASK_STATES.INTERRUPTED, TASK_STATES.BLOCKED_UPSTREAM_DEGRADED]),
   [TASK_STATES.RUNNING]: Object.freeze([TASK_STATES.RECONCILING, TASK_STATES.SUCCEEDED,
-    TASK_STATES.FAILED, TASK_STATES.INTERRUPTED]),
+    TASK_STATES.FAILED, TASK_STATES.INTERRUPTED, TASK_STATES.DEGRADED]),
   [TASK_STATES.RECONCILING]: Object.freeze([TASK_STATES.SUCCEEDED, TASK_STATES.FAILED,
-    TASK_STATES.INTERRUPTED, TASK_STATES.RUNNING]),
+    TASK_STATES.INTERRUPTED, TASK_STATES.RUNNING, TASK_STATES.DEGRADED]),
   [TASK_STATES.SUCCEEDED]: Object.freeze([]),
   [TASK_STATES.FAILED]: Object.freeze([]),
   [TASK_STATES.INTERRUPTED]: Object.freeze([]),
+  [TASK_STATES.DEGRADED]: Object.freeze([]),
+  [TASK_STATES.BLOCKED_UPSTREAM_DEGRADED]: Object.freeze([]),
 });
 
 /** 状态转移校验。终态严禁逆向退回 running/queued。 */
@@ -129,8 +134,36 @@ export function toLedgerStatus(outcome) {
   if (outcome.state === TASK_STATES.SUCCEEDED) {
     return { status: "completed", checkpoint_status: "passed" };
   }
+  if (outcome.state === TASK_STATES.DEGRADED) {
+    return { status: "degraded", checkpoint_status: "degraded" };
+  }
+  if (outcome.state === TASK_STATES.BLOCKED_UPSTREAM_DEGRADED) {
+    return { status: "failed", checkpoint_status: "blocked_upstream_degraded" };
+  }
   if (outcome.state === TASK_STATES.FAILED) {
     return { status: "failed", checkpoint_status: "failed" };
   }
   return { status: "failed", checkpoint_status: "skipped" };
+}
+
+/**
+ * 判定下游对上游降级状态的准入与短路契约（4 Argon 第 74 轮 Q3/Phase 1）。
+ * 当上游处于 DEGRADED 且下游未声明 accept_degraded: true 时，
+ * 调度器严禁将下游留在 PENDING 死等，必须立即流转为终态 BLOCKED_UPSTREAM_DEGRADED 并短路退出。
+ *
+ * @param {{upstreamState: string, acceptDegraded?: boolean}} input
+ * @returns {{allowed: boolean, nextState?: string, reason?: string}}
+ */
+export function resolveDownstreamOnUpstreamStatus({ upstreamState, acceptDegraded = false }) {
+  if (upstreamState === TASK_STATES.DEGRADED) {
+    if (acceptDegraded === true) {
+      return { allowed: true };
+    }
+    return {
+      allowed: false,
+      nextState: TASK_STATES.BLOCKED_UPSTREAM_DEGRADED,
+      reason: "上游任务处于降级状态 (DEGRADED)，且下游未声明 accept_degraded: true",
+    };
+  }
+  return { allowed: true };
 }

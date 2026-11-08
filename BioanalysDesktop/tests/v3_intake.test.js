@@ -120,8 +120,8 @@ test('两档模板的图例/画幅/脚注配置符合 2026-10-19 拍板的映射
   assert.equal(t4x3.aspect_ratio, '4:3');
   assert.equal(t4x3.x_label_rotation, 'auto_45');
   assert.equal(t4x3.show_footnote_panel, false);
-  assert.equal(t16x9.legend_position, 'bottom_center');
-  assert.equal(t16x9.legend_direction, 'horizontal');
+  assert.equal(t16x9.legend_position, 'outside_right');
+  assert.equal(t16x9.legend_direction, 'vertical');
   assert.equal(t16x9.axis_style, 'boxed');
   assert.equal(t16x9.aspect_ratio, '16:9');
   assert.equal(t16x9.x_label_rotation, 'auto_45');
@@ -303,7 +303,8 @@ test('buildProjectMeta：四个 intake 块全部落进 project.json', () => {
   assert.equal(meta.analysis_cutoffs.log2fc_threshold, 0.5);
   // 旧 id 落进 project.json 时归一成新 id（规则逐字段相同）
   assert.equal(meta.plot_layout_config.template_id, 'template_16x9');
-  assert.equal(meta.plot_layout_config.theme_rules.legend_position, 'bottom_center');
+  assert.equal(meta.plot_layout_config.theme_rules.legend_position, 'outside_right');
+  assert.equal(meta.plot_layout_config.theme_rules.legend_direction, 'vertical');
   assert.equal(meta.experimental_design.is_paired, true);
   assert.deepEqual(meta.experimental_design.pair_map, { GSM1: 'D1', GSM2: 'D1' });
 });

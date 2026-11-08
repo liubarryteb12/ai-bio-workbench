@@ -103,7 +103,7 @@ test('v3.1 关键产物与门禁文件已落盘', () => {
     'con_hf/SPEC_DECISIONS.md',
     'con_hf/ledger/actions.jsonl',
     'con_hf/ledger/changes.jsonl',
-    'reference/05.可参考出图代码/_meta/script_plot_matrix.json',
+    'reference/05.可参考生信代码/可用代码预筛选/源码/_meta/script_plot_matrix.json',
     'local_projects/PRJ_AIMS_V3_20261027/handoff.md',
   ]) {
     assert.ok(fs.existsSync(path.join(ROOT, relative)), '关键产物不存在：' + relative);

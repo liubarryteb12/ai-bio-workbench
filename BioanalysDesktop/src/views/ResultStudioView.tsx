@@ -9,8 +9,23 @@ import { FigureAdaptCard } from './FigureGalleryView';
 import { SUBDIRS, LAYOUT_TEMPLATE_LABEL } from './shared/constants';
 import { readApiState } from './shared/helpers';
 import type {
-  FigureEntry, FiguresResponse, FilesResponse, ProjectMetaBrief, TreeNode,
+  FigureEntry, FigureSourceManifestResponse, FiguresResponse, FilesResponse, ProjectMetaBrief, TreeNode,
 } from './shared/types';
+
+const FIGURE_SOURCE_LABEL: Record<'local' | 'remote', string> = {
+  local: '本地回搬 (local)',
+  remote: '远端实时 (remote)',
+};
+
+function summarizeReadme(text: string | null): string {
+  const firstParagraph = String(text || '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => line && !line.startsWith('#'));
+  if (!firstParagraph) return '';
+  return firstParagraph.length > 160 ? `${firstParagraph.slice(0, 160)}...` : firstParagraph;
+}
+
 // ============================================================
 // 视图4：结果预览 Studio（Result Preview Studio）
 // ============================================================
@@ -29,6 +44,8 @@ export function ResultPreviewStudio({ project }: { project: string }) {
   const [metaError, setMetaError] = useState('');
   // T3-8：图件列表整体失败/全空时给明确错误态与空态，不要只剩一片空白
   const [loadError, setLoadError] = useState('');
+  // L3 图件来源清单是增强信息，只在接口返回 ok 时展示
+  const [sourceManifest, setSourceManifest] = useState<FigureSourceManifestResponse | null>(null);
 
   const loadProjectMeta = useCallback(async () => {
     setMetaError('');
@@ -57,6 +74,24 @@ export function ResultPreviewStudio({ project }: { project: string }) {
   useEffect(() => {
     void loadProjectMeta();
   }, [loadProjectMeta]);
+
+  useEffect(() => {
+    let alive = true;
+    setSourceManifest(null);
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/figures/source_manifest?project=${encodeURIComponent(project)}&line=line3_spatial`
+        );
+        if (!res.ok) return;
+        const payload = (await res.json()) as FigureSourceManifestResponse;
+        if (alive && payload.ok) setSourceManifest(payload);
+      } catch {
+        // 来源清单是可选增强，读取失败不阻断图廊
+      }
+    })();
+    return () => { alive = false; };
+  }, [project]);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -181,6 +216,10 @@ export function ResultPreviewStudio({ project }: { project: string }) {
     ? figuresByLine[selectedFig.line]?.find((f) => f.name === selectedFig.name)
     : null;
   const interpretation = selectedFigEntry ? getInterpretation(selectedFigEntry) : null;
+  const sourceManifestRows = sourceManifest?.ok && sourceManifest.manifest
+    ? Math.max(0, sourceManifest.manifest.split(/\r?\n/).filter((row) => row.trim()).length - 1)
+    : 0;
+  const sourceReadmeSummary = sourceManifest?.ok ? summarizeReadme(sourceManifest.readme) : '';
 
   return (
     <div className="view-container" style={{ padding: 16 }}>
@@ -208,6 +247,45 @@ export function ResultPreviewStudio({ project }: { project: string }) {
             当前有分析线在读远端实时图件（本地尚无回搬副本）。点「回搬图件到本地」把图存到
             outputs/&lt;项目&gt;/&lt;线&gt;/figures/，之后离线也能看。
           </p>
+        )}
+        {Object.keys(figuresSource).length > 0 && (
+          <div className="studio-meta-strip">
+            <span className="studio-meta-item">图件来源：</span>
+            {LINES.map((line) => {
+              const source = figuresSource[line];
+              if (!source) return null;
+              return (
+                <span key={line} className="studio-meta-item">
+                  {LINE_LABELS[line as keyof typeof LINE_LABELS]}：{FIGURE_SOURCE_LABEL[source]}
+                </span>
+              );
+            })}
+          </div>
+        )}
+        {sourceManifest?.ok && (
+          <div className="block-box" style={{ marginTop: 10 }}>
+            <strong>L3 图件来源</strong>
+            <p className="subtle">
+              已读取来源清单（{sourceManifestRows} 条记录）。
+              {sourceReadmeSummary ? ` ${sourceReadmeSummary}` : ''}
+            </p>
+            {sourceManifest.readme && (
+              <details>
+                <summary>查看 README 原文</summary>
+                <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, margin: '8px 0 0' }}>
+                  {sourceManifest.readme}
+                </pre>
+              </details>
+            )}
+            {sourceManifest.manifest && (
+              <details style={{ marginTop: 6 }}>
+                <summary>查看来源清单 TSV</summary>
+                <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, margin: '8px 0 0' }}>
+                  {sourceManifest.manifest}
+                </pre>
+              </details>
+            )}
+          </div>
         )}
         {projectMeta && (
           <div className="studio-meta-strip">

@@ -23,9 +23,11 @@ test('门禁清单：齐全，顺序越便宜越靠前，只有最后一道是 s
   // router（第 18 道，Argon 第 66 轮 Q2b/Q3a）：声明式路由与边界台账的静态一致性。
   // 排在 project_script 之后：两者都是「边界类」静态检查，脚本边界先证「项目里没有母版副本」，
   // 路由再证「路由表引用的 Mod 与门禁都真实存在」。毫秒级，不拖慢快检。
+  // project_content_ablation 紧随 project_script：先证项目层脚本边界，
+  // 再证删除旧报告/旧图/来源配置后项目内容仍自洽，最后证受控桥接事实源。
   assert.deepEqual(GATES.map((g) => g.id), [
-    'preflight', 'static_gate', 'test_isolation', 'dist_parity', 'skip_static', 'project_script', 'router', 'ledger',
-    'figure_registry', 'preview_provenance', 'ready_matrix', 'figure_provenance', 'python_interpreter', 'figure_spec', 'audit_summary', 'mutation_gate', 'k40_parity', 'q3q2_mutation', 'metrics',
+    'preflight', 'static_gate', 'test_isolation', 'dist_parity', 'skip_static', 'project_script', 'project_content_ablation', 'work_order_orchestrator', 'module_ablation_matrix', 'isolated_bridge', 'router', 'ledger',
+    'figure_registry', 'preview_provenance', 'ready_matrix', 'figure_provenance', 'python_interpreter', 'figure_spec', 'figure_code', 'audit_summary', 'mutation_gate', 'k40_parity', 'q3q2_mutation', 'metrics',
   ]);
   // k40_parity 必须带 skipExitCodes：设备离线时以退出码 2 表达「本轮未校验」，
   // 主链把它转成带标签的 SKIP。少了这个字段，离线机器会被它整条拖红。

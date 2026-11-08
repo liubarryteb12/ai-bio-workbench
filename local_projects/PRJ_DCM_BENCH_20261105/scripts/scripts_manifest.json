@@ -159,6 +159,13 @@
       "note": "本项目适配层，不是母版副本；同名检查由 ops/project_script_gate.mjs 守卫"
     },
     {
+      "file": "line3_spatial/align_project_figures.py",
+      "role": "data_adapter",
+      "purpose": "从项目 47 域与 Line 2 签名解卷积对象重渲染 L3 图件",
+      "mother_script": null,
+      "note": "本项目图件对齐层；读取 deconv_mouse.h5ad / localization_mouse.h5ad，不读母版自签名图"
+    },
+    {
       "file": "line3_spatial/deconv_visium.sh",
       "role": "thin_wrapper",
       "purpose": "NNLS 解卷积（跨物种大写同名匹配）",

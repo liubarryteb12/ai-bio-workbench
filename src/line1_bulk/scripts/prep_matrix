@@ -126,6 +126,14 @@ fail <- function(message) {
   quit(status = 1)
 }
 
+safe_fread <- function(path, ...) {
+  if (grepl("\\.gz$", path, ignore.case = TRUE)) {
+    fread(cmd = paste("gzip -dc", shQuote(path)), ...)
+  } else {
+    fread(path, ...)
+  }
+}
+
 # --- 0. grouping.txt 解析（两模式共用） ---
 # 兼容两种结构：
 #   A. 每行一个样本：GSM<TAB>group
@@ -171,7 +179,7 @@ group_source <- if (identical(prep_mode, "counts_rnaseq")) "grouping_file" else 
 if (identical(prep_mode, "counts_rnaseq")) {
   # ============================ B. Bulk RNA-seq counts 路径 ============================
   # --- B1. counts 矩阵：首列基因 ID，样本列认 GSM 编号，其余列当注释列 ---
-  counts_table <- fread(count_file, nThread = 1)
+  counts_table <- safe_fread(count_file, nThread = 1)
   if (ncol(counts_table) < 2) {
     fail(sprintf("counts 矩阵至少要有 1 列基因 ID + 1 列样本，实际 %d 列（分隔符没认对？）", ncol(counts_table)))
   }
@@ -230,7 +238,8 @@ if (identical(prep_mode, "counts_rnaseq")) {
       fail(sprintf("counts 以 Ensembl ID 为键（%.0f%% 行匹配 ^ENSG），需同时提供 GPL 注释做 ID->symbol 映射；或改用 symbol 为键的 counts 表",
                    100 * ensembl_frac))
     }
-    gpl_table <- fread(gpl_file, sep = "\t", select = c("ID", "gene_assignment"), nThread = 1)
+    gpl_table <- safe_fread(gpl_file, sep = "\t", select = c("ID", "gene_assignment"), nThread = 1)
+    gpl_table[, ID := as.character(ID)]
     if (!all(c("ID", "gene_assignment") %in% names(gpl_table))) {
       fail(sprintf("GPL 缺少 ID/gene_assignment 列，实际列: %s", paste(names(gpl_table), collapse = ",")))
     }
@@ -307,6 +316,7 @@ if (identical(prep_mode, "counts_rnaseq")) {
   table_body <- sm_lines[(table_begin + 2):(table_end - 1)]
   expr <- fread(text = paste(c(paste(col_names, collapse = "\t"), table_body), collapse = "\n"),
                 sep = "\t")
+  expr[, ID_REF := as.character(ID_REF)]
   gsm_cols <- setdiff(col_names, "ID_REF")
 
   # 样本标题与 tissue 特征（分组派生自此，不依赖外部文件）
@@ -346,7 +356,8 @@ if (identical(prep_mode, "counts_rnaseq")) {
   }
 
   # --- 2. GPL 注释：探针 -> gene symbol ---
-  gpl_table <- fread(gpl_file, sep = "\t", select = c("ID", "gene_assignment"), nThread = 1)
+  gpl_table <- safe_fread(gpl_file, sep = "\t", select = c("ID", "gene_assignment"), nThread = 1)
+  gpl_table[, ID_REF := as.character(ID)]
   if (!all(c("ID", "gene_assignment") %in% names(gpl_table))) {
     fail(sprintf("GPL 缺少 ID/gene_assignment 列，实际列: %s", paste(names(gpl_table), collapse = ",")))
   }
@@ -367,9 +378,9 @@ if (identical(prep_mode, "counts_rnaseq")) {
   gpl_table[, gene_entries := vapply(gene_assignment, count_gene_entries, integer(1), USE.NAMES = FALSE)]
 
   # --- 3. 合并 + 同基因多探针取均值 ---
-  merged <- merge(as.data.table(expr), gpl_table[, .(ID_REF = ID, gene)], by = "ID_REF")
+  merged <- merge(as.data.table(expr), gpl_table[, .(ID_REF, gene)], by = "ID_REF")
   probes_used <- nrow(merged)
-  merged <- merged[!is.na(gene)]
+  merged <- merged[!is.na(gene) & nzchar(gene)]
   probes_annotated <- nrow(merged)
   numeric_cols <- gsm_cols
   gene_expr <- merged[, lapply(.SD, mean), by = gene, .SDcols = numeric_cols]

@@ -24,8 +24,8 @@ Category	Item_ID	Item_Name	Specification	Verification_Command	Primary_File	Curre
 质量门禁	GATE-16	G16 变异门禁 (7 防线反证)	对 7 条关键防线注入真实破坏反证必红	node ops/mutation_gate.mjs	ops/mutation_gate.mjs	已闭环	escaped 严格等于 0，无恒绿假断言
 质量门禁	GATE-17	G17 K40 脚本逐字节同源	校验仓库与 K40 远端 57 母版字节一致	node ops/k40_script_parity.mjs	ops/k40_script_parity.mjs	已闭环	双向集合恒等 + 57 脚本逐字节一致
 质量门禁	GATE-18	G18 Q3/Q2 变异反证 (6 条)	状态机与路由最长命中词 6 条变异反证	node ops/q3q2_mutation_gate.mjs	ops/q3q2_mutation_gate.mjs	已闭环	escaped 严格等于 0
-质量门禁	GATE-19	G19 全量测试与基线一致	全量 1823 测试 + README 实测基线一致	node ops/metrics_sync.mjs --check	BioanalysDesktop/README.md	已闭环	1823 tests 全绿，基线字符完全吻合
-测试体系	TEST-01	全量测试用例套件	212 个测试文件涵盖单元/集成/契约	npm test	BioanalysDesktop/tests/	已闭环	1823 tests / 1822 pass / 0 fail / 1 skipped
+质量门禁	GATE-19	G19 全量测试与基线一致	全量 1852 测试 + README 实测基线一致	node ops/metrics_sync.mjs --check	BioanalysDesktop/README.md	已闭环	1852 tests 全绿，基线字符完全吻合
+测试体系	TEST-01	全量测试用例套件	215 个测试文件涵盖单元/集成/契约	npm test	BioanalysDesktop/tests/	已闭环	1852 tests / 1851 pass / 0 fail / 1 skipped
 测试体系	TEST-02	路由黄金集准确率	27 条真实复杂业务场景意图精准映射	node --test tests/router_eval.test.js	BioanalysDesktop/tests/eval/golden_routing.json	已闭环	27/27 匹配准确率 100.0%
 生信流水线	PIPE-01	Line 1 Bulk 常规挖掘	15 个分析母版，涵盖 limma/WGCNA/ML	pwsh -File ops/06_deploy_scripts.ps1 -Line line1_bulk	src/line1_bulk/scripts/	已闭环	11 个编排 Mod 步骤全链通畅
 生信流水线	PIPE-02	Line 2 scRNA 单细胞转录组	22 个分析母版，涵盖 Harmony/CellChat/KO	pwsh -File ops/06_deploy_scripts.ps1 -Line line2_scrna	src/line2_scrna/scripts/	已闭环	21 个编排 Mod 步骤全链通畅
@@ -40,6 +40,8 @@ Category	Item_ID	Item_Name	Specification	Verification_Command	Primary_File	Curre
 交付资产	PRJ-03	交付报告商业机密级脱敏	严禁出现机器名/内网IP/容器/路径信息	node --test tests/report_redaction_contract.test.js	BioanalysDesktop/tests/report_redaction_contract.test.js	已闭环	3/3 契约测试全绿，脱敏合规率 100%
 参考归档	REF-01	非生产参考代码独立隔离	3,000+ 历史参考代码移入可用代码预筛选	Test-Path '可用代码预筛选/功能-出图对应索引表.md'	可用代码预筛选/	已闭环	生产目录零污染，配套 51KB 结构化索引
 框架演进	ROAD-01	外部通用框架三审联动	元宝调研 + DeepSeek审计 + 4 Argon终裁	cat .tmp/argon74_final.txt	.tmp/argon74_final.txt	已终裁	Q1~Q7 裁决完成，签发精简封板与路线图
-框架演进	ROAD-02	Phase 0 只读影子与台账	schema_gateway.py + expires_at <= 180天	node ops/router_gate.mjs	ops/schema_gateway.py	待排期	验收标准：MUT-P0-A/B 两条变异反证必红
-框架演进	ROAD-03	Phase 1 旁路编排与强杀	accept_degraded 显式短路 + 进程组强杀	node --test tests/task_fsm.test.js	BioanalysDesktop/server/task_fsm.js	待排期	验收标准：MUT-P1-A/B 两条变异反证必红
-框架演进	ROAD-04	Phase 2 受控写与原子回滚	Fail-Closed 网关拦截 + 中途强杀原子写保护	node ops/run_all_gates.mjs	BioanalysDesktop/server/run.js	待排期	验收标准：MUT-P2-A/B 两条变异反证必红
+框架演进	ROAD-02	Phase 0 只读影子与台账	schema_gateway.py + expires_at <= 180天	node ops/router_gate.mjs	ops/schema_gateway.py	已闭环	MUT-P0-A/B 两条变异反证全绿通过
+框架演进	ROAD-03	Phase 1 旁路编排与强杀	accept_degraded 显式短路 + 进程组强杀	node --test tests/task_fsm.test.js	BioanalysDesktop/server/task_fsm.js	已闭环	MUT-P1-A/B 两条变异反证全绿通过
+框架演进	ROAD-04	Phase 2 受控写与原子回滚	Fail-Closed 网关拦截 + 中途强杀原子写保护	node ops/run_all_gates.mjs	BioanalysDesktop/server/run.js	已闭环	MUT-P2-A/B 两条变异反证全绿通过
+框架演进	ROAD-05	第75轮出图四位一体映射	FigureTemplate v2 + 40实证ready + 422编译阻断 + 门户三态	node ops/run_all_gates.mjs	src/figure_templates.json	已闭环	MUT-FIG-A/B/C 反证全绿，19道门禁全通
+框架演进	ROAD-06	第76轮出图规范审核整改	18母版字号≥8pt + C1-C14源码门禁 + 门户四点双射	node ops/run_all_gates.mjs	ops/figure_code_gate.mjs	已闭环	MUT-FIGCODE/PORTAL-A/B/C 反证全绿，20道门禁全通，K40重渲染Δ≤5%

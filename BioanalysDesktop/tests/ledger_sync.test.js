@@ -53,9 +53,9 @@ test('54 个 Mod 的母版引用零断链', () => {
     'workflows.json 存在指向不存在母版脚本的断链');
 });
 
-test('82 个图件模板的就绪数与封板白名单恒等（第二十轮 Q3）', () => {
+test('92 个图件模板的就绪数与封板白名单恒等（第二十轮 Q3 / 第 75 轮 REJ-012）', () => {
   const fresh = computeSystemLedger();
-  assert.equal(fresh.figureTemplates.total, 82, 'figure_templates.json 应登记 82 个模板');
+  assert.equal(fresh.figureTemplates.total, 92, 'figure_templates.json 应登记 92 个模板');
   // 旧口径 readyCount >= 16 与 figure_templates_parity.test.js 同步作废：
   // 下限断言放行第 31 个偷翻 ready，也放行 30 退化到 16。台账侧改为锚定
   // ops/figure_ready_allowlist.json 条数（ID 集合恒等由 parity 测试把关，

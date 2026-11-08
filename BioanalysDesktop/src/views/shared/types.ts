@@ -30,7 +30,12 @@ export type ProjectMeta = {
   basic_info?: { name?: string; description?: string; disease?: string };
 };
 export type ProjectEntry = { projectId: string; meta: ProjectMeta | null };
-export type ProjectsResponse = { defaultProject: string; projects: ProjectEntry[] };
+export type ProjectsResponse = {
+  defaultProject: string;
+  projects: ProjectEntry[];
+  source?: 'remote' | 'local';
+  warning?: string;
+};
 
 // 黑名单校验结果
 export type BlacklistResult = { hit: boolean; matches: string[]; hint?: string };
@@ -224,6 +229,24 @@ export type FiguresResponse =
   | { blocked: true; lineId: string; reason: string; hint: string; figures: [] }
   | { blocked: false; lineId: string; dir: string; source?: 'local' | 'remote'; figures: FigureEntry[] }
   | { error: string };
+
+export type FigureSourceManifestResponse =
+  | {
+    ok: true;
+    projectId: string;
+    lineId: string;
+    manifest: string | null;
+    readme: string | null;
+  }
+  | {
+    ok: false;
+    projectId?: string;
+    lineId?: string;
+    manifest: null;
+    readme: null;
+    reason: string;
+    error?: string;
+  };
 
 export type FigureTemplateItem = {
   id: string;

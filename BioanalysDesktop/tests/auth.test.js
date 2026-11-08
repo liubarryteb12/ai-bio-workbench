@@ -50,7 +50,15 @@ function basic(user, pass) {
 
 before(async () => {
   child = spawn(process.execPath, ['server/index.js'], {
-    env: { ...process.env, BAD_PORT: String(PORT), BAD_AUTH_USER: USER, BAD_AUTH_PASS: PASS },
+    env: {
+      ...process.env,
+      BAD_PORT: String(PORT),
+      BAD_AUTH_USER: USER,
+      BAD_AUTH_PASS: PASS,
+      // 鉴权回归不验证远端通道：用 mock 隔离，避免默认 ADB 探测拖慢用例。
+      BIO_COMPUTE_ADAPTER: 'mock',
+      BIO_ALLOW_MOCK_COMPUTE: '1',
+    },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let stderrText = '';
@@ -145,6 +153,9 @@ test('Fail-Closed：无凭证配置时自动生成随机凭证并强制 401/200'
       BAD_PORT: String(port2),
       BIO_TEST_FORCE_FAIL_CLOSED: '1',
       BIO_AUTH_RUNTIME_FILE: runtimeFile,
+      // Fail-Closed 用例同样只验证鉴权，远端通道走 mock。
+      BIO_COMPUTE_ADAPTER: 'mock',
+      BIO_ALLOW_MOCK_COMPUTE: '1',
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });

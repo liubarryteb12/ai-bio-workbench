@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
 import { DEFAULT_PROJECT, sanitizeProjectId } from './domain.js';
 import { assertFiguresPath, parseFigureList, decorateFigures } from './figures.js';
 import { readLocalFigures } from './pull.js';
@@ -29,6 +32,64 @@ export function listProjectsWithMeta() {
     }
     return { projectId: id, meta };
   });
+}
+
+function readProjectMetaFile(file) {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 列出仓库根 local_projects/ 下的本地项目。
+ *
+ * 只扫一层目录。目录名必须通过 sanitizeProjectId，符号链接与非目录条目一律跳过。
+ * project.json 缺失或损坏时 meta=null，不把一个真实存在的目录藏掉。
+ */
+export function listLocalProjectsWithMeta({ repoRoot } = {}) {
+  if (!repoRoot) return [];
+  const projectsRoot = path.resolve(String(repoRoot), 'local_projects');
+  let entries;
+  try {
+    entries = fs.readdirSync(projectsRoot, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+
+  const projects = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
+    const projectId = sanitizeProjectId(entry.name);
+    if (!projectId) continue;
+    const projectDir = path.resolve(projectsRoot, projectId);
+    if (!projectDir.startsWith(projectsRoot + path.sep)) continue;
+    projects.push({
+      projectId,
+      meta: readProjectMetaFile(path.join(projectDir, 'project.json')),
+    });
+  }
+  projects.sort((a, b) => a.projectId.localeCompare(b.projectId));
+  return projects;
+}
+
+/**
+ * 合并远端与本地项目列表。按 projectId 去重，远端优先保留 meta，
+ * 本地只补充远端没有的项目。
+ */
+export function listAllProjectsWithMeta({ repoRoot } = {}) {
+  const remoteProjects = listProjectsWithMeta();
+  const localProjects = listLocalProjectsWithMeta({ repoRoot });
+  const seen = new Set();
+  const projects = [];
+  for (const item of [...remoteProjects, ...localProjects]) {
+    const projectId = String(item?.projectId || '').trim();
+    if (!projectId || seen.has(projectId)) continue;
+    seen.add(projectId);
+    projects.push(item);
+  }
+  return projects;
 }
 
 /**

@@ -11,7 +11,7 @@
 #   04_topvar_heatmap.png / 05_qc.png / 06_ma.png
 # 口径：docs/figure_spec.md（Agg/300dpi/英文标签；PCA 带 95% 置信椭圆；
 #       火山/MA 上调红、下调蓝、非显著灰，带图例；
-#       图注置于坐标轴框外：横版图在下方横向一行，竖版图在右上角纵向多行）。
+#       图注置于图幅左下角，图例统一在坐标轴框外右侧纵向排列。
 set -euo pipefail
 
 seed="${BIOANALYS_SEED:-UNSET}"
@@ -70,8 +70,8 @@ import numpy as np
 import pandas as pd
 
 plt.rcParams.update({
-    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 7, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "legend.title_fontsize": 7,
-    "axes.titlesize": 7, "axes.grid": False,
+    "figure.dpi": 300, "savefig.dpi": 300, "font.size": 8, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 8, "xtick.labelsize": 8, "ytick.labelsize": 8, "legend.fontsize": 8, "legend.title_fontsize": 8,
+    "axes.titlesize": 9, "axes.grid": False,
     "figure.autolayout": True, "savefig.bbox": "tight",
     "image.cmap": "viridis",
 })
@@ -149,7 +149,7 @@ def caption(fig, *parts):
     if not parts:
         return
     text = "\n".join(parts)
-    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=7, linespacing=1.5)
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
 def wrap_label(text, width=18):
     """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
     import textwrap
@@ -216,30 +216,23 @@ def fit_text_edges(fig, ax, gap=6.0, rounds=5):
             ax.set_ylim(y0 - (y1 - y0) * (bottom / bh) * 1.15, y1)
 
 
-def legend_out(ax, fig, leg):
-    """图例移到坐标轴框外：竖版图（宽<高）右上角纵向单列；横版图（宽>=高）下方纵向单列。
-    条目超过 12 条按列分组，避免纵向过长压扁主图。"""
-    n = len(leg.get_texts())
+def legend_out(ax, fig, leg, slot=0):
+    """图例统一置坐标轴框外右侧、纵向排列（用户 2026-11-07 定稿）。
+    多组图例按 slot 依次向右横排（每组各自纵向单列），互不重叠。
+    不再按图幅横竖分支把图例放到轴框下方。"""
     handles = list(leg.legend_handles)
     labels = [t.get_text() for t in leg.get_texts()]
     title = leg.get_title().get_text() or None
-    w, h = fig.get_size_inches()
     fig.set_layout_engine("none")
-    if w >= h:
-        ncol = 1 if n <= 12 else -(-n // 12)
-        rows = -(-n // ncol)
-        ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
-                  ncol=ncol, fontsize=7, frameon=False, title=title)
-        fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
-    else:
-        ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                  ncol=1, fontsize=7, frameon=False, title=title)
-        fig.subplots_adjust(right=0.74)
+    x = 1.02 + 0.30 * slot
+    ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(x, 1.0),
+              ncol=1, fontsize=8, frameon=False, title=title)
+    fig.subplots_adjust(right=max(0.60, 0.80 - 0.06 * slot))
 
 
 def layout_fix(fig):
     """落盘前统一收口（docs/figure_spec.md v2.2 §三之三）：
-    1) 单坐标轴图的图例外置：竖版置轴框外右上角、横版置轴框下方，纵向排布、不压数据；
+    1) 单坐标轴图的图例外置：一律置轴框外右侧、纵向排布、不压数据；
     2) 轴内文本右缘/顶缘/左缘/下缘越出坐标轴框时自动扩 xlim/ylim 收进框内。
     多子图（分面）图不做图例搬迁：分面各有自己的图例，统一外移会互相压扁。
     tick 标签一律不动：它本就在轴框外，savefig.bbox="tight" 会把画布扩到装下它；
@@ -250,9 +243,9 @@ def layout_fix(fig):
     if not axes:
         return
     if len(axes) == 1:
-        leg = axes[0].get_legend()
-        if leg is not None:
-            legend_out(axes[0], fig, leg)
+        legs = [l for l in (axes[0].get_legend(),) if l is not None]
+        for slot, leg in enumerate(legs):
+            legend_out(axes[0], fig, leg, slot=slot)
         fit_text_edges(fig, axes[0])
 
 
@@ -425,12 +418,16 @@ if expr is not None:
     M = expr.to_numpy(dtype=float)
     C = np.corrcoef(M.T)
     samples = expr.columns.tolist()
+    # 大样本热图：全标会互相压叠（70 样本 x 8pt 必然撞字），抽样间隔按
+    # ceil(n / 25) 计，保证轴上最多约 25 个标签，字不再互相压（新规范 §轴标签）。
+    _step = max(1, (len(samples) + 24) // 25)
+    _tick_idx = list(range(0, len(samples), _step))
     fig, ax = plt.subplots(figsize=(10, 9))
     im = ax.imshow(C, cmap="viridis", vmin=0.9, vmax=1.0)
-    ax.set_xticks(range(len(samples)))
-    ax.set_xticklabels(samples, rotation=90, fontsize=7)
-    ax.set_yticks(range(len(samples)))
-    ax.set_yticklabels(samples, fontsize=7)
+    ax.set_xticks(_tick_idx)
+    ax.set_xticklabels([samples[i] for i in _tick_idx], rotation=90, fontsize=8)
+    ax.set_yticks(_tick_idx)
+    ax.set_yticklabels([samples[i] for i in _tick_idx], fontsize=8)
     caption(fig, "line1: sample-sample correlation",
             "expr_genes.tsv from step2 prep_matrix",
             "expr, n=%d samples" % len(samples))
@@ -443,12 +440,14 @@ if expr is not None:
     sub = M[top]
     z = (sub - sub.mean(axis=1, keepdims=True)) / (sub.std(axis=1, keepdims=True) + 1e-9)
     genes = expr.index.to_numpy()[top]
+    _step_h = max(1, (len(samples) + 24) // 25)
+    _tick_idx_h = list(range(0, len(samples), _step_h))
     fig, ax = plt.subplots(figsize=(11, 14))
     im = ax.imshow(z, aspect="auto", cmap="RdBu_r", vmin=-2, vmax=2)
-    ax.set_xticks(range(len(samples)))
-    ax.set_xticklabels(samples, rotation=90, fontsize=7)
+    ax.set_xticks(_tick_idx_h)
+    ax.set_xticklabels([samples[i] for i in _tick_idx_h], rotation=90, fontsize=8)
     ax.set_yticks(range(len(genes)))
-    ax.set_yticklabels(genes, fontsize=7)
+    ax.set_yticklabels(genes, fontsize=8)
     caption(fig, "line1: top-50 most variable genes",
             "expr_genes.tsv from step2 prep_matrix", "row z-scored")
     fig.colorbar(im, ax=ax, shrink=0.7, label="z")
@@ -457,28 +456,24 @@ if expr is not None:
 # --- 02 PCA with confidence ellipse ---
 pca = rd("pca_scores.tsv")
 if pca is not None:
-    from adjustText import adjust_text
     fig, ax = plt.subplots(figsize=(10, 8))
-    texts = []
     for g in sorted(pca["group"].astype(str).unique()):
         m = pca["group"].astype(str) == g
         col = color_of(g)
         ax.scatter(pca.loc[m, "PC1"], pca.loc[m, "PC2"], s=60, color=col,
                    label=g, edgecolors="k", linewidths=0.4, zorder=3)
         conf_ellipse(ax, pca.loc[m, "PC1"], pca.loc[m, "PC2"], col, n_std=2.0)
-        for _, r in pca[m].iterrows():
-            texts.append(ax.text(r["PC1"], r["PC2"], str(r["sample"]), fontsize=7))
-    # 样本点密集时标签会互相重叠，用 adjustText 自动避让（规范：图内文字必须清晰可读）
-    adjust_text(texts, ax=ax, expand=(1.2, 1.5),
-                arrowprops=dict(arrowstyle="-", color="0.6", lw=0.5))
+    # 70 个样本逐个标名在密集区无法避免重叠；样本名保留在 pca_scores.tsv，
+    # 图上只用颜色与 95% 椭圆表达分组，避免图内文字压点。
     ax.set_xlabel("PC1")
     ax.set_ylabel("PC2")
     caption(fig, "line1: PCA",
             "pca_scores.tsv from step3 pca_matrix",
-            "n=%d samples" % len(pca), "dashed = 95% CI ellipse")
+            "n=%d samples; sample labels omitted for legibility" % len(pca),
+            "dashed = 95% CI ellipse")
     # 图例源级即置轴框外（规范 §三之二：源级不得写轴内 loc），
     # 横版图落轴框下方；layout_fix 的 legend_out() 仍会在落盘前按同一规则复核。
-    ax.legend(title="group", loc="upper center", bbox_to_anchor=(0.5, -0.10),
+    ax.legend(title="group", loc="upper left", bbox_to_anchor=(1.02, 1.0),
               frameon=False)
     ax.axhline(0, color="gray", lw=0.4)
     ax.axvline(0, color="gray", lw=0.4)
@@ -537,20 +532,24 @@ if deg is not None:
         # 口径不同标注不能混用：用 adj.P 判显著写 adj p，用名义 p 判显著写 p
         thr_label = "%s=%g" % (P_LABEL, P_CUT)
         xlo, xhi = ax.get_xlim()
-        ax.text(xlo + 0.02 * (xhi - xlo), -np.log10(P_CUT), thr_label,
-                fontsize=7, va="bottom", ha="left")
-        # log2FC 标注移到轴框顶部，避开底部密集点云与 p 标注
-        ytop = ax.get_ylim()[1]
-        ax.text(-L2_CUT - 0.02, ytop, "log2FC=-%g" % L2_CUT, fontsize=7,
-                va="top", ha="right", rotation=90)
-        ax.text(L2_CUT + 0.02, ytop, "log2FC=+%g" % L2_CUT, fontsize=7,
-                va="top", rotation=90)
+        ylo, yhi = ax.get_ylim()
+        # 白底 bbox：标注落点即使有点云也不互相压字（新规范：图内标签不得与主图重叠）
+        _box = dict(facecolor="white", edgecolor="none", alpha=0.85, pad=1.2)
+        ax.text(xlo + 0.015 * (xhi - xlo), -np.log10(P_CUT), thr_label,
+                fontsize=8, va="bottom", ha="left", bbox=_box)
+        # log2FC 标注平放于轴框顶部空白区，白底、贴各自虚线外侧
+        ax.text(-L2_CUT - 0.01 * (xhi - xlo), ylo + 0.97 * (yhi - ylo),
+                "log2FC=-%g" % L2_CUT, fontsize=8, va="top", ha="right",
+                color="#333333", bbox=_box)
+        ax.text(L2_CUT + 0.01 * (xhi - xlo), ylo + 0.97 * (yhi - ylo),
+                "log2FC=+%g" % L2_CUT, fontsize=8, va="top", ha="left",
+                color="#333333", bbox=_box)
         ax.set_xlabel(log2fc_label)
         ax.set_ylabel(ylab)
         caption(fig, "line1: DEG volcano", tag, "n=%d genes" % len(deg),
                 "red = up, blue = down, grey = NS")
-        # 图例外置到轴框下方（figure_spec v2.2：禁止轴内 loc）
-        ax.legend(fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.10),
+        # 图例外置到轴框右侧（figure_spec v2.2：禁止轴内 loc）
+        ax.legend(fontsize=8, loc="upper left", bbox_to_anchor=(1.02, 1.0),
                   ncol=1, frameon=False)
         save(fig, "l1_03_volcano_%s.png" % suffix)
 
@@ -571,16 +570,16 @@ if deg is not None:
         ax.axhline(L2_CUT, color="k", lw=0.5, ls="--")
         # 阈值线在图内注明（规范：MA 图须标注 log2FC 阈值）
         xr = ax.get_xlim()[1]
-        ax.text(xr, L2_CUT, " log2FC=+%g" % L2_CUT, fontsize=7, va="bottom",
+        ax.text(xr, L2_CUT, " log2FC=+%g" % L2_CUT, fontsize=8, va="bottom",
                 ha="right")
-        ax.text(xr, -L2_CUT, " log2FC=-%g" % L2_CUT, fontsize=7, va="top",
+        ax.text(xr, -L2_CUT, " log2FC=-%g" % L2_CUT, fontsize=8, va="top",
                 ha="right")
         ax.set_xlabel("AveExpr (mean normalized expression)")
         ax.set_ylabel(log2fc_label)
         caption(fig, "line1: MA plot", tag,
                 "red = up, blue = down, grey = NS")
-        # 图例外置到轴框下方（figure_spec v2.2：禁止轴内 loc）
-        ax.legend(fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.10),
+        # 图例外置到轴框右侧（figure_spec v2.2：禁止轴内 loc）
+        ax.legend(fontsize=8, loc="upper left", bbox_to_anchor=(1.02, 1.0),
                   ncol=1, frameon=False)
         save(fig, "l1_06_ma_%s.png" % suffix)
 
@@ -600,10 +599,10 @@ if qc is not None:
         ys = [qc["genes_detected"].iloc[i] for i in xs]
         ax.bar(xs, ys, color=col, label=g)
     ax.set_xticks(range(len(samples)))
-    ax.set_xticklabels(samples, rotation=90, fontsize=7)
+    ax.set_xticklabels(samples, rotation=90, fontsize=8)
     ax.set_ylabel("genes detected")
     caption(fig, "line1: genes detected per sample")
-    ax.legend(fontsize=7, title="group", loc="upper left",
+    ax.legend(fontsize=8, title="group", loc="upper left",
               bbox_to_anchor=(1.02, 1.0), borderaxespad=0)
     fig.subplots_adjust(left=0.08, right=0.88, top=0.97, bottom=0.16)
     save(fig, "l1_05a_genes_detected.png")
@@ -616,155 +615,17 @@ if qc is not None:
         ax.bar(xs, ys, color=col, label=g)
     ax.axhline(0.9, color="r", lw=0.8, ls="--")
     ax.set_xticks(range(len(samples)))
-    ax.set_xticklabels(samples, rotation=90, fontsize=7)
+    ax.set_xticklabels(samples, rotation=90, fontsize=8)
     ax.set_ylabel("median within-group cor")
     caption(fig, "line1: within-group correlation", "red dashed = 0.9")
-    ax.legend(fontsize=7, title="group", loc="upper left",
+    ax.legend(fontsize=8, title="group", loc="upper left",
               bbox_to_anchor=(1.02, 1.0), borderaxespad=0)
     fig.subplots_adjust(left=0.08, right=0.88, top=0.97, bottom=0.16)
     save(fig, "l1_05b_within_group_cor.png")
     plt.rcParams["figure.autolayout"] = True
 
-# --- 32 DEG overview：四联组合图（Step 5 组图契约 G1–G5，2026-10-19）---
-# 为什么排在四张单图之后：组合图只复用上面已经算好的数据（火山/MA 的 l2/padj/ave、
-# PCA 的 pca_scores、热图的 z/genes/samples），不重算任何统计量；四张单图的绘图代码
-# 一行未动，所以 l1_02/l1_03/l1_04/l1_06 的产物字节不受影响（组合图是新增，不是替换）。
-PANEL_FONT_PT = 12   # G1：面板编号字号 >=10pt（图内正文 9pt）
-if (expr is not None and pca is not None and deg is not None and ave is not None
-        and "z" in globals()):
-    # 组合图 A/B 面板跟主图同一口径（客户锁定的判据），不另立 FDR 默认值
-    neglog_primary = neglog_adj if USE_ADJ else neglog_nom
-    up_f, dn_f, ns_f = classify(padj if USE_ADJ else pv)
-
-    def panel_letter(ax, letter):
-        """G1 面板编号：面板左上角外侧、与面板顶边齐平、bold、字号 12pt（> 正文 9pt）。
-
-        用 set_title(loc="left") 而不是 ax.text：ax.text 落在轴框外会被几何审计的 A 项
-        判成"轴内标注越出坐标轴框"（ops/audit_figure_layout.py 只遍历 ax.texts），
-        而 title 是轴标题、不属轴内标注；它也不承载图注语义（图注仍由图组级 caption 承载）。
-        字号走常量而不写字面量：cn_debug/figure_code_audit.py 的 C4 正则只取一位数字，
-        两位数的字号会被截成首位（12 读成 1）而误报"小于 8pt"；本切片无权改工具，
-        故按同一语义写成常量，实际字号仍是 12pt bold，不变。
-        """
-        ax.set_title(letter, loc="left", fontsize=PANEL_FONT_PT,
-                     fontweight="bold", pad=6)
-
-    # figsize 只放大不缩小（#193）：不小于成员单图的最大宽/最大高（l1_04 的 11x14）
-    fig = plt.figure(figsize=(17, 16))
-    # 全局 figure.autolayout=True 会让布局引擎重算并覆盖显式间距，组合图必须自己定死
-    fig.set_layout_engine("none")
-    # 下排（B/D）加高：D 是 50 行基因名，行高不足时 8pt 标签会互相压字
-    gs = fig.add_gridspec(2, 2, height_ratios=[1.0, 1.5],
-                          left=0.055, right=0.955, top=0.945, bottom=0.145,
-                          wspace=0.24, hspace=0.30)
-
-    # A = 火山图（主口径；与 l1_03_volcano 同数据、同阈值、同标注位置规则）
-    axA = fig.add_subplot(gs[0, 0])
-    axA.scatter(l2[ns_f], neglog_primary[ns_f], s=6, color=NS, linewidths=0, label="NS")
-    axA.scatter(l2[dn_f], neglog_primary[dn_f], s=10, color=DOWN, linewidths=0,
-                label="Down: %d" % int(dn_f.sum()))
-    axA.scatter(l2[up_f], neglog_primary[up_f], s=10, color=UP, linewidths=0,
-                label="Up: %d" % int(up_f.sum()))
-    axA.axhline(-np.log10(P_CUT), color="k", lw=0.6, ls="--")
-    axA.axvline(-L2_CUT, color="k", lw=0.6, ls="--")
-    axA.axvline(L2_CUT, color="k", lw=0.6, ls="--")
-    xlo, xhi = axA.get_xlim()
-    axA.text(xlo + 0.02 * (xhi - xlo), -np.log10(P_CUT), "%s=%g" % (P_LABEL, P_CUT),
-             fontsize=7, va="bottom", ha="left")
-    ytop = axA.get_ylim()[1]
-    axA.text(-L2_CUT - 0.02, ytop, "log2FC=-%g" % L2_CUT, fontsize=7, va="top",
-             ha="right", rotation=90)
-    axA.text(L2_CUT + 0.02, ytop, "log2FC=+%g" % L2_CUT, fontsize=7, va="top",
-             rotation=90)
-    axA.set_xlabel(log2fc_label)
-    axA.set_ylabel("-log10 %s" % P_LABEL)
-    panel_letter(axA, "A")
-    # G2：up/down/NS 是同一组色码语义，全图组只画一次（B 面板不重复），
-    # 位置按横版规则置轴框下方；源级不写轴内 loc（§三之二）。
-    axA.legend(fontsize=7, loc="upper center", bbox_to_anchor=(0.5, -0.09),
-               ncol=3, frameon=False)
-
-    # B = MA 图（FDR 口径；无图例，色码由 A 承载，符合 G2 的"同一色码只出现一次"）
-    axB = fig.add_subplot(gs[1, 0])
-    axB.scatter(ave[ns_f], l2[ns_f], s=6, color=NS, linewidths=0)
-    axB.scatter(ave[dn_f], l2[dn_f], s=10, color=DOWN, linewidths=0)
-    axB.scatter(ave[up_f], l2[up_f], s=10, color=UP, linewidths=0)
-    axB.axhline(0, color="k", lw=0.6)
-    axB.axhline(-L2_CUT, color="k", lw=0.5, ls="--")
-    axB.axhline(L2_CUT, color="k", lw=0.5, ls="--")
-    xr = axB.get_xlim()[1]
-    axB.text(xr, L2_CUT, " log2FC=+%g" % L2_CUT, fontsize=7, va="bottom", ha="right")
-    axB.text(xr, -L2_CUT, " log2FC=-%g" % L2_CUT, fontsize=7, va="top", ha="right")
-    axB.set_xlabel("AveExpr (mean normalized expression)")
-    axB.set_ylabel(log2fc_label)
-    panel_letter(axB, "B")
-
-    # C = PCA 散点（带 95% 置信椭圆与样本标签；图例不画在面板里，交给图组共享图例）
-    axC = fig.add_subplot(gs[0, 1])
-    pca_texts = []
-    for g in sorted(pca["group"].astype(str).unique()):
-        m = pca["group"].astype(str) == g
-        col = color_of(g)
-        axC.scatter(pca.loc[m, "PC1"], pca.loc[m, "PC2"], s=60, color=col,
-                    label=g, edgecolors="k", linewidths=0.4, zorder=3)
-        conf_ellipse(axC, pca.loc[m, "PC1"], pca.loc[m, "PC2"], col, n_std=2.0)
-        for _, r in pca[m].iterrows():
-            pca_texts.append(axC.text(r["PC1"], r["PC2"], str(r["sample"]),
-                                      fontsize=7))
-    adjust_text(pca_texts, ax=axC, expand=(1.2, 1.5),
-                arrowprops=dict(arrowstyle="-", color="0.6", lw=0.5))
-    axC.axhline(0, color="gray", lw=0.4)
-    axC.axvline(0, color="gray", lw=0.4)
-    axC.set_xlabel("PC1")
-    axC.set_ylabel("PC2")
-    panel_letter(axC, "C")
-
-    # D = top 方差基因热图（与 l1_04_topvar_heatmap 同矩阵：行 z-score、vmin/vmax=±2）
-    axD = fig.add_subplot(gs[1, 1])
-    im = axD.imshow(z, aspect="auto", cmap="RdBu_r", vmin=-2, vmax=2)
-    axD.set_xticks(range(len(samples)))
-    axD.set_xticklabels(samples, rotation=90, fontsize=7)
-    axD.set_yticks(range(len(genes)))
-    axD.set_yticklabels(genes, fontsize=7)
-    panel_letter(axD, "D")
-    fig.colorbar(im, ax=axD, fraction=0.046, pad=0.02, label="z")
-
-    # G2 共享图例：case/ctrl 色码只在图组下方居中画一次（横排、frameon=False、带语义标题）
-    leg_handles, leg_labels = axC.get_legend_handles_labels()
-    if leg_handles:
-        fig.legend(leg_handles, leg_labels, loc="lower center",
-                   bbox_to_anchor=(0.5, 0.004),
-                   ncol=max(1, min(len(leg_labels), 4)), fontsize=7,
-                   frameon=False, title="group")
-
-    # 组合图是多子图：layout_fix()/legend_out() 只接管单轴图（§三之三 / 派发单要求），
-    # 这里显式调用脚本内同一份 fit_text_edges 收口每个面板的轴内文本
-    # （A/B 的阈值标注、C 的样本标签），图例一律不搬（G2 的共享图例已在图组下方）。
-    for ax in (axA, axB, axC):
-        fit_text_edges(fig, ax)
-
-    caption(fig,
-            "line1: DEG overview (composite of panels A-D)",
-            "A = DEG volcano (from l1_03_volcano_%s)" % primary_suffix,
-            "B = MA plot (from l1_06_ma_%s)" % primary_suffix,
-            "C = PCA, PC1 vs PC2, dashed = 95% CI ellipse (from l1_02_pca)",
-            "D = top-50 most variable genes, row z-score (from l1_04_topvar_heatmap)",
-            "inputs: deg_all.tsv (deg_limma) / pca_scores.tsv (pca_matrix) / "
-            "expr_genes.tsv (prep_matrix) / group_map.tsv",
-            "thresholds: %s<%g and |log2FC|>%g" % (P_LABEL, P_CUT, L2_CUT),
-            "n=%d samples, %d genes tested, %d up / %d down"
-            % (len(samples), len(deg), int(up_f.sum()), int(dn_f.sum())))
-    save(fig, "l1_32_deg_overview.png")
-    # G3 可追溯：组合图由哪几张单图组成、生成口径，写进运行日志（台账可查）
-    # seed 从环境读：bash 段的 seed 变量不进 Python 作用域（踩过：NameError）
-    log("composite l1_32_deg_overview <- A:l1_03_volcano_%s + B:l1_06_ma_%s "
-        "+ C:l1_02_pca + D:l1_04_topvar_heatmap | %s<%g, |log2FC|>%g | "
-        "n=%d samples | seed=%s"
-        % (primary_suffix, primary_suffix, P_LABEL, P_CUT, L2_CUT,
-           len(samples), os.environ.get("BIOANALYS_SEED", "UNSET")))
-else:
-    log("skip l1_32_deg_overview: 缺 expr_genes.tsv / pca_scores.tsv / "
-        "deg_all.tsv(AveExpr) 之一，无法拼四联图")
+# 32 组图已退役（figure_spec v2.3）：生产母版只出单图，不再生成
+# l1_32_deg_overview。火山、MA、PCA、topvar 四张单图各自独立产出。
 
 log("figures_done count=%d out=%s elapsed=%.1fs"
     % (len(made), OUT, time.time() - START))

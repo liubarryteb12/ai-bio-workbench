@@ -1,20 +1,30 @@
 /**
  * 远端执行层：本地零算力红线的唯一出口。
  *
- * 所有计算都经 ssh 到 k40-ubuntu 执行，本模块只负责把命令送过去、
- * 按宽松/严格两种口径取回结果，并把 ssh 自身的 noise 从引擎输出里滤掉。
+ * 默认经 ADB 到 k40-ubuntu 执行；只有显式 BIO_COMPUTE_ADAPTER=ssh 才走 ssh。
+ * 本模块只负责把命令送过去、按宽松/严格两种口径取回结果，并把 ssh 通道
+ * 自身可能混入的 noise 从引擎输出里滤掉。
  */
 
 import { projectLineDir } from './domain.js';
-import { runSshRaw, runSshStrict } from './proc.js';
+import { adbRaw, runSshRaw } from './proc.js';
+
+/** ssh 是特殊开关，不是默认通道。未设置或设为 adb 时一律走 ADB。 */
+function usesSshAdapter() {
+  return process.env.BIO_COMPUTE_ADAPTER === 'ssh';
+}
+
 export function runRemoteRaw(command) {
-  return runSshRaw('k40-ubuntu', command, { timeoutMs: 40000 });
+  if (usesSshAdapter()) {
+    return runSshRaw('k40-ubuntu', command, { timeoutMs: 40000 });
+  }
+  return adbRaw(command, { timeoutMs: 40000 });
 }
 
 /**
  * 列远端该线 processed/ 下的文件名（不含路径）。
  * 只取一层、不递归：M4 的产物核对只需要文件名集合，递归会在容器里触发 P-23。
- * ssh 失败时返回空集合 -  - 预览端点不该因为链路抖动就 500，缺产物会显示成 missing。
+ * 通道失败时返回空集合，预览端点不该因为链路抖动就 500，缺产物会显示成 missing。
  */
 export function listRemoteProcessed(projectId, lineId) {
   const dir = `${projectLineDir(projectId, lineId)}/processed`;
@@ -28,18 +38,21 @@ export function runRemote(command) {
 }
 
 /**
- * 严格版：ssh 退出码非 0 或输出为空一律抛错，供五维自检使用。
+ * 严格版：通道退出码非 0 或输出为空一律抛错，供五维自检使用。
  *
- * 存在的理由（踩坑台账 P-15）：宽松版丢弃退出码，链路断时 ssh 返回 255 且
+ * 存在的理由（踩坑台账 P-15）：宽松版丢弃退出码，链路断时通道返回非 0 且
  * stdout 为空，第 1 维会把空串判成"原生 ext4"、第 2 维会把空串算成 100% free，
  * 自检出现假绿灯 -  - 而自检是提交门禁，假绿灯比红灯危险得多。
  */
 export function runRemoteStrict(command) {
-  return runSshStrict('k40-ubuntu', command, { timeoutMs: 40000 });
+  const { code, text } = runRemoteRaw(command);
+  if (code !== 0) throw new Error(`远端命令退出码 ${code}`);
+  if (!text) throw new Error('远端命令无输出');
+  return text;
 }
 
 /**
- * 桥接输出的 ssh noise 过滤：只留引擎原文。
+ * 桥接输出的通道 noise 过滤：只留引擎原文。
  *
  * 真链实测（K40 高负载、known_hosts 首次写入时）stderr 会混进 ssh 客户端自身
  * 的提示行（`Warning: Permanently added ... to the list of known hosts`），

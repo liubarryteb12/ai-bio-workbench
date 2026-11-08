@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * figure_ready_matrix.mjs —— 30 条 Ready 模板的实证矩阵（Argon 第 41 轮清单）。
+ * figure_ready_matrix.mjs —— Ready 模板的实证矩阵（当前基线 39 条）。
  *
  * 为什么需要它：白名单只证明「这 30 个 ID 被封板了」，不证明它们的源码与预览图
  * 还和登记时的哈希一致。文件被悄悄改动、预览被重新渲染覆盖，白名单全都看不出来。
  * 这里对每条 ready 模板做真实的 sha256 比对，产出可审计的矩阵。
  *
  * 判据（任一不满足即 exit 1）：
- *   1. ready 集合与 ops/figure_ready_allowlist.json 恒等（30 条，不多不少）；
+ *   1. ready 集合与 ops/figure_ready_allowlist.json 恒等（条数由白名单决定）；
  *   2. 每条 ready 的 source / preview 文件真实存在；
  *   3. 两者的实测 sha256 与注册表登记值逐字节相同；
  *   4. verified 必须为真（未真机验证的不能算 ready）。
@@ -36,6 +36,20 @@ const allowlist = JSON.parse(fs.readFileSync(ALLOWLIST, "utf8"));
 const ready = registry.templates.filter((t) => t.deps_status === "ready");
 const problems = [];
 
+// REJ-012（Argon 第 75 轮）：producing_mod_id 必须命中 workflows.json 的真实 Mod，
+// data_contract.input_artifact 必须非空。这是 MUT-FIG-A 的常驻防线。
+const workflows = JSON.parse(fs.readFileSync(path.join(REPO, "src", "workflows.json"), "utf8"));
+const modIds = new Set();
+for (const series of workflows.series || []) {
+  for (const stage of series.stages || []) {
+    for (const mod of stage.mods || []) modIds.add(mod.id);
+  }
+}
+const READY_BASELINE = allowlist.ready_baseline || 39;
+if (ready.length < READY_BASELINE) {
+  problems.push(`ready 数 ${ready.length} 低于 REJ-012 棘轮基线 ${READY_BASELINE}（只升不降）`);
+}
+
 // 1. 集合恒等
 const readyIds = ready.map((t) => t.id).sort();
 const allowIds = [...allowlist.ids].sort();
@@ -50,6 +64,12 @@ const rows = [];
 for (const t of ready) {
   const row = { id: t.id, level: t.level, language: t.language, verified: Boolean(t.verified) };
   if (!t.verified) problems.push(t.id + ": verified=false，未真机验证不能算 ready");
+  if (!t.producing_mod_id || !modIds.has(t.producing_mod_id)) {
+    problems.push(t.id + ": producing_mod_id 缺失或不在 workflows.json（幽灵外键）: " + t.producing_mod_id);
+  }
+  if (!t.data_contract || !t.data_contract.input_artifact) {
+    problems.push(t.id + ": data_contract.input_artifact 为空（数据契约缺失）");
+  }
   for (const [kind, rel, want] of [["source", t.source, t.source_sha256], ["preview", t.preview, t.preview_sha256]]) {
     const abs = path.isAbsolute(rel) ? rel : path.join(REPO, rel);
     if (!fs.existsSync(abs)) {
@@ -98,4 +118,4 @@ if (problems.length > 0) {
   console.log("FIGURE_READY_MATRIX_FAIL " + problems.length + " 处不满足");
   process.exit(1);
 }
-console.log("FIGURE_READY_MATRIX_OK 30 条 Ready 证据链完整（源码+预览哈希逐字节一致，全部真机验证）");
+console.log("FIGURE_READY_MATRIX_OK " + rows.length + " 条 Ready 证据链完整（源码+预览哈希逐字节一致，producing_mod_id 外键闭合，全部真机验证）");

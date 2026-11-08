@@ -2,18 +2,62 @@
  * 进程执行接缝：本地子进程的唯一出口
  *
  * 存在这一层是为了让测试可以换掉真实执行；也为"本地零算力"红线
- * 提供一个天然的审计点（本地只允许 ssh / scp / adb）。
+ * 提供一个天然的审计点。分析程序白名单仍然只有 ssh / scp / adb；
+ * ADB 通道需要 pwsh 作为通道执行器，但它只经 adbRaw 独立入口启动，
+ * 不进入 ALLOWED_LOCAL_PROGRAMS，也不允许用来执行分析代码。
  */
 
 // 必须走默认导入 + 属性调用：具名导入在链接期就固化了绑定，
 // 测试用 mock.method(childProcess, 'spawn'|'spawnSync'|'execFile') 拦不住（2026-10-21 实测：
 // P4 切片因此真跑了 scp/ssh，往 K40 raw_data 写了两个探针文件）。
 import childProcess from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { COMPUTE_SCP_TARGET, COMPUTE_SSH_PORT } from './domain.js';
 
-/** 本地允许执行的程序白名单：除此之外一律拒绝 */
+/**
+ * 仓库根：adbRaw 的辅助脚本与 CWD 都以它为锚，避免依赖进程启动目录。
+ * BioanalysDesktop/server/proc.js 上两级即仓库根。
+ */
+export const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
+
+/** ADB 通道辅助脚本（相对仓库根固定），pwsh 只作为该通道的执行器出现 */
+export const ADB_EXEC_SCRIPT = path.join(REPO_ROOT, 'ops', 'adb_exec.ps1');
+
+/** 过长命令改走临时 .sh，绝不把多行内容塞进 Windows 命令行参数 */
+const ADB_INLINE_COMMAND_LIMIT = 8000;
+
+/** 本地允许执行的程序白名单：除此之外一律拒绝。pwsh 不在此列。 */
 export const ALLOWED_LOCAL_PROGRAMS = ['ssh', 'scp', 'adb'];
+
+/**
+ * 进程组连根强杀（4 Argon 第 74 轮 Q2 终审裁定）。
+ * 单纯调用 child.kill() 只能杀掉顶层包装器，派生的子进程会沦为孤儿进程继续消耗系统资源。
+ * 在 Windows 平台调用 taskkill /F /T /PID 强杀整棵进程树；
+ * 在 POSIX 平台对负 PGID (-child.pid) 发送 SIGKILL。
+ *
+ * @param {import('node:child_process').ChildProcess} child
+ */
+export function killProcessTree(child) {
+  if (!child || !child.pid) return;
+  if (process.platform === 'win32') {
+    try {
+      childProcess.spawnSync('taskkill', ['/F', '/T', '/PID', String(child.pid)], {
+        windowsHide: true,
+        stdio: 'ignore',
+      });
+    } catch {
+      try { child.kill('SIGKILL'); } catch {}
+    }
+  } else {
+    try {
+      process.kill(-child.pid, 'SIGKILL');
+    } catch {
+      try { child.kill('SIGKILL'); } catch {}
+    }
+  }
+}
 
 /** adb 的候选位置，与 ops/00_link_check.ps1 保持一致 */
 const ADB_CANDIDATES = [
@@ -65,23 +109,30 @@ export function childEnv(overrides = {}) {
 }
 
 /**
- * 计算面适配器：默认 ssh。未知值 fail-closed，mock 只允许在测试环境
- * 或显式 BIO_ALLOW_MOCK_COMPUTE=1 时生效，防止生产进程静默走假算力。
+ * 计算面适配器：默认 adb；ssh 只在显式 BIO_COMPUTE_ADAPTER=ssh 时启用；
+ * mock 只允许在测试环境或显式 BIO_ALLOW_MOCK_COMPUTE=1 时生效，防止生产进程
+ * 静默走假算力。未知值仍由 resolveComputeAdapter 在执行时 fail-closed。
  */
+
 /**
- * 当前计算面模式（Ticket 1，4 Argon 第二十二轮 Q5）：'ssh' 真机 / 'mock' 离线演示。
+ * 当前计算面模式：'adb' 主通道 / 'ssh' 特殊开关 / 'mock' 离线演示。
  * 只读、不抛错：调用方（自检路由、前端横幅）要的是「现在是什么模式」，
  * 而不是「配置是否合法」——非法配置由 resolveComputeAdapter 在真正执行时 fail-closed。
  */
 export function computeMode() {
-  const adapter = process.env.BIO_COMPUTE_ADAPTER || 'ssh';
-  return adapter === 'mock' ? 'mock' : 'ssh';
+  const adapter = process.env.BIO_COMPUTE_ADAPTER || 'adb';
+  if (adapter === 'ssh' || adapter === 'mock') return adapter;
+  return 'adb';
 }
 
-function resolveComputeAdapter() {
-  const adapter = process.env.BIO_COMPUTE_ADAPTER || 'ssh';
-  if (adapter !== 'ssh' && adapter !== 'mock') {
-    throw new Error(`BIO_COMPUTE_ADAPTER 仅接受 ssh / mock，当前为 ${adapter}`);
+/**
+ * 解析并校验计算面适配器。未知值 fail-closed，不静默回落任何通道。
+ * @returns {'adb'|'ssh'|'mock'}
+ */
+export function resolveComputeAdapter() {
+  const adapter = process.env.BIO_COMPUTE_ADAPTER || 'adb';
+  if (adapter !== 'adb' && adapter !== 'ssh' && adapter !== 'mock') {
+    throw new Error(`BIO_COMPUTE_ADAPTER 仅接受 adb / ssh / mock，当前为 ${adapter}`);
   }
   if (adapter === 'mock'
     && process.env.NODE_TEST_CONTEXT === undefined
@@ -94,7 +145,7 @@ function resolveComputeAdapter() {
 /**
  * mock 覆盖远端传输类程序 ssh 与 scp：两者都是"把活儿交给 K40"的动作，
  * 假算力面必须同时罩住，否则 report.js 的 scp 拉包在 mock 下仍会真连远端。
- * adb 是本地链路工具，不归计算面适配器管。
+ * adb 的远端执行走 adbRaw，mock 短路在那一层单独处理。
  */
 function resolveMockRemote(program) {
   return resolveComputeAdapter() === 'mock'
@@ -133,6 +184,88 @@ function mockRemoteResult() {
     stderr: process.env.BIO_COMPUTE_MOCK_STDERR ?? '',
     error: null,
   };
+}
+
+function uniqueRemoteScript(prefix) {
+  return `/tmp/${prefix}_${process.pid}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.sh`;
+}
+
+function commandFromSshArgv(argv) {
+  const marker = argv.findIndex((item) => /k40-ubuntu|k40/.test(String(item)));
+  return marker >= 0 ? String(argv[marker + 1] || '') : '';
+}
+
+function scpDirection(argv) {
+  const values = [];
+  for (let index = 1; index < argv.length; index += 1) {
+    const item = String(argv[index]);
+    if (item === '-o' || item === '-P') { index += 1; continue; }
+    if (item.startsWith('-')) continue;
+    values.push(item);
+  }
+  const remoteIndex = values.findIndex((item) => String(item).includes(':'));
+  if (remoteIndex < 0) return null;
+  const remote = String(values[remoteIndex]).split(':').slice(1).join(':');
+  const local = values.find((item, index) => index !== remoteIndex && !String(item).includes(':'));
+  return remoteIndex === 0
+    ? { direction: 'pull', remote, local }
+    : { direction: 'push', remote, local };
+}
+
+function adbRunner(args, options = {}) {
+  const result = childProcess.spawnSync('pwsh', [
+    '-NoProfile', '-File', ADB_EXEC_SCRIPT,
+    '-Level', 'ubuntu', '-Transport', 'adb', '-RequireAdb',
+    '-RemoteScriptPath', uniqueRemoteScript('dsh_adb_bridge'),
+    ...args,
+  ], {
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+    timeout: options.timeoutMs ?? 900000,
+    windowsHide: true,
+    env: childEnv(options.env),
+    ...(options.input === undefined ? {} : { input: options.input }),
+  });
+  return {
+    code: result.status ?? -1,
+    stdout: result.stdout ?? '',
+    stderr: result.stderr ?? '',
+    error: result.error ? String(result.error.message || result.error) : null,
+  };
+}
+
+function rewriteRemoteArgv(argv, options = {}) {
+  if (resolveComputeAdapter() !== 'adb') return null;
+  const base = programBaseName(argv[0] || '');
+  if (base === 'ssh') {
+    const command = commandFromSshArgv(argv);
+    if (!command) return null;
+    return () => adbRunner(['-Command', command], options);
+  }
+  if (base === 'scp') {
+    const spec = scpDirection(argv);
+    if (!spec) return null;
+    if (spec.direction === 'push') {
+      return () => adbRunner([
+        '-PushLocalPath', spec.local,
+        '-PushRemotePath', spec.remote,
+      ], options);
+    }
+    const raw = adbRunner([
+      '-Command', `sha256sum ${spec.remote} | cut -d' ' -f1; printf '\\n__B64__\\n'; base64 -w0 ${spec.remote}`,
+    ], options);
+    return () => {
+      const marker = raw.stdout.lastIndexOf('__B64__');
+      const hash = (raw.stdout.match(/[0-9a-f]{64}/) || [])[0] || '';
+      const encoded = marker >= 0 ? raw.stdout.slice(marker + '__B64__'.length).replace(/\s+/g, '') : '';
+      if (raw.code !== 0 || !hash || !encoded) return { ...raw, code: 1 };
+      const buffer = Buffer.from(encoded, 'base64');
+      mkdirSync(path.dirname(path.resolve(spec.local)), { recursive: true });
+      writeFileSync(spec.local, buffer);
+      return { ...raw, stdout: hash };
+    };
+  }
+  return null;
 }
 
 /**
@@ -224,7 +357,7 @@ export function runAsync(argv, options = {}) {
     pending = setTimeout(() => {
       // 超时口径对齐 spawnSync：kill(SIGTERM) 之后 code 记 -1 并在 error 里留原文，
       // 让台账能区分「超时被杀」与「远端退出码非 0」。
-      try { child.kill(); } catch { /* 已经退出则忽略 */ }
+      try { killProcessTree(child); } catch { /* 已经退出则忽略 */ }
       finish({ code: -1, stdout, stderr, error: `超时 ${timeoutMs}ms 未结束，已中止子进程（${programBaseName(argv[0] || '')}）` });
     }, timeoutMs);
     // 与 runExecFile 的 maxBuffer 同口径：超出后停止累积，不把主进程拖成 OOM。
@@ -236,7 +369,7 @@ export function runAsync(argv, options = {}) {
       if (target === 'stdout') stdout += text; else stderr += text;
       if (stdout.length + stderr.length > maxBuffer) {
         overflow = true;
-        try { child.kill(); } catch { /* 已退出则忽略 */ }
+        try { killProcessTree(child); } catch { /* 已退出则忽略 */ }
         finish({ code: -1, stdout, stderr, error: `输出超过 ${maxBuffer} 字节，已中止子进程` });
       }
     };
@@ -313,6 +446,75 @@ export function runSshStrict(target, command, options = {}) {
 }
 
 /**
+ * 把 ADB 子进程结果收敛成与 runSshRaw 相同的 {code, text}。
+ * 保留 stdout、stderr 与启动失败原文，不做 known_hosts 之类的内容过滤。
+ */
+function adbResultText({ stdout = '', stderr = '', error = null }) {
+  return [stdout, stderr, error].filter(Boolean).join('\n').trim();
+}
+
+/**
+ * ADB 远端执行（宽松版）：经 ops/adb_exec.ps1 在 ubuntu 容器内执行。
+ *
+ * 通道固定为 `-Transport adb -RequireAdb`：adb 不可用即报错，不回落 ssh。
+ * pwsh 只作为通道执行器，因此这里直接走独立 spawnSync，不经过
+ * assertAllowedProgram，也不把 pwsh 加进分析程序白名单。
+ *
+ * 引号策略：短命令用 `-Command`，由 spawnSync 的 argv 数组原样传给 PowerShell，
+ * 不经过本地 shell；多行或超长命令先落 .tmp 下的临时 .sh，再用 `-ScriptPath`
+ * 传入，绝不把多行内容塞进 Windows 命令行参数。
+ *
+ * mock 模式仍在进程接缝前短路，与 runSshRaw 口径一致。
+ *
+ * @param {string} command 远端 shell 命令
+ * @param {{timeoutMs?: number, env?: Record<string,string>}} [options]
+ * @returns {{code: number, text: string}}
+ */
+export function adbRaw(command, options = {}) {
+  if (resolveComputeAdapter() === 'mock') {
+    const result = mockRemoteResult();
+    return { code: result.code, text: adbResultText(result) };
+  }
+  const text = String(command ?? '');
+  if (!text) throw new Error('adbRaw 需要非空远端命令');
+
+  const args = [
+    '-NoProfile', '-File', ADB_EXEC_SCRIPT,
+    '-Level', 'ubuntu', '-Transport', 'adb', '-RequireAdb',
+    '-RemoteScriptPath', `/tmp/dsh_adb_cmd_${process.pid}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.sh`,
+  ];
+  let tempDir = null;
+  try {
+    if (text.includes('\n') || text.includes('\r') || text.length > ADB_INLINE_COMMAND_LIMIT) {
+      mkdirSync(path.join(REPO_ROOT, '.tmp'), { recursive: true });
+      tempDir = mkdtempSync(path.join(REPO_ROOT, '.tmp', 'adb-'));
+      const scriptPath = path.join(tempDir, 'command.sh');
+      writeFileSync(scriptPath, text, 'utf8');
+      args.push('-ScriptPath', scriptPath);
+    } else {
+      args.push('-Command', text);
+    }
+    const result = childProcess.spawnSync('pwsh', args, {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+      timeout: options.timeoutMs ?? 40000,
+      windowsHide: true,
+      env: childEnv(options.env),
+    });
+    return {
+      code: result.status ?? -1,
+      text: adbResultText({
+        stdout: result.stdout ?? '',
+        stderr: result.stderr ?? '',
+        error: result.error ? String(result.error.message || result.error) : null,
+      }),
+    };
+  } finally {
+    if (tempDir) rmSync(tempDir, { recursive: true, force: true });
+  }
+}
+
+/**
  * execFile 版远端执行（一次性收集 + 超时兜底），同样过白名单与 mock 短路。
  *
  * 存在的理由（5.1）：run.js 原来直接 childProcess.execFile('ssh', ...) 发 detached
@@ -366,7 +568,7 @@ export function runExecStream(argv, handlers = {}) {
   // ssh 早退（连接失败）时 stdin 写入会 EPIPE：exit 回调负责按退出码收敛，
   // 这里只兜住 error 事件本身，不让它变成 unhandled 'error' 打死进程
   child.stdin?.on?.('error', () => {});
-  return { kill: () => child.kill(), stdin: child.stdin };
+  return { kill: () => killProcessTree(child), stdin: child.stdin };
 }
 
 /**
@@ -397,5 +599,5 @@ export function runStream(argv, handlers = {}) {
   child.stderr.on('data', (chunk) => handlers.onStderr?.(chunk.toString()));
   child.on('exit', (code) => handlers.onExit?.(code));
   child.on('error', (error) => handlers.onError?.(error));
-  return { kill: () => child.kill() };
+  return { kill: () => killProcessTree(child) };
 }

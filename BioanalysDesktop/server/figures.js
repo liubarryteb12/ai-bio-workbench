@@ -102,8 +102,8 @@ const FIGURE_CAPTIONS = [
   { match: 'l1_29_wgcna_module_trait', text: 'WGCNA 模块-性状相关热图：行=模块，列=分组，数值=相关系数' },
   { match: 'l1_30_wgcna_sample_tree', text: 'WGCNA 样本聚类树：叶标签=样本，色条=分组（红 LS / 蓝 NLS），用于离群样本检查' },
   { match: 'l1_31_wgcna_mm_gs', text: 'WGCNA 模块内 hub 筛选：x=|kME|，y=|GS|，红虚线=阈值（kME 0.8 / GS 0.2）' },
-  // line1 组图（Step 5 组图契约 G3：新号段从 32 起，语义 overview/panel/summary）
-  { match: 'l1_32_deg_overview', text: 'DEG 总览四联组合图：A=火山图(FDR) / B=MA图(FDR) / C=PCA散点(95%置信椭圆) / D=top50 变异基因热图，下方共享 group 图例' },
+  // 历史组合图说明已退役，生产默认只出单图。保留旧文件 caption 匹配只服务历史项目读档。
+  { match: 'l1_32_deg_overview', text: '历史四联组合图说明，figure_spec v2.3 起不再作为生产出图契约' },
   // line2 scrna
   { match: 'umap_celltype', text: 'UMAP 按细胞类型着色：13 类细胞的簇分离' },
   { match: 'umap_diagnosis', text: 'UMAP 按诊断着色：Healthy vs Psoriasis 分布' },
@@ -147,11 +147,9 @@ const FIGURE_CAPTIONS = [
   { match: 'l3_mouse_01_region_score_boxplot', text: 'spot 级乳酸化得分按区域箱线：core vs unassigned，带个体点+n，KW 统计标注（p=1.0e-16）' },
   { match: 'l3_mouse_02_regions_umap', text: 'spot UMAP 按区域着色：core=3 个缺血核心样簇（1715 spots，100% MCAO），unassigned=其余 11 簇' },
   { match: 'l3_mouse_03_target_genes_heatmap', text: '11 个重点目标基因×转录谱簇表达热图（小鼠符号，行 z-score；DNMT1 为两份清单交集）' },
-  // line2 组图（Step 5 组图契约 G3：新号段从 20 起，语义 overview/panel/summary）
-  { match: 'l2_20_composition_panel', text: '细胞组成三联组合图：A=每供体细胞类型占比堆叠条 / B=basal_keratinocyte 组成箱线（Healthy vs Psoriasis，括号=供体级置换 perm p） / C=细胞类型 UMAP，下方共享 cell type 图例' },
-  // line3 组图（Step 5 组图契约 G3：line3 现到 15，组合图从 16 起、逐物种各一张；
-  // match 用物种不变子串，同时覆盖 l3_mouse_16_domain_panel 与 l3_human_16_domain_panel）
-  { match: '16_domain_panel', text: '空间域三联组合图（每物种一张）：A=代表样本空间域散点 / B=每样本域占比堆叠条 / C=目标基因域均值条形，下方共享 spatial domain 图例（60 色板，条目 >12 按列分组）' },
+  // 历史组合图说明已退役，生产默认只出单图。
+  { match: 'l2_20_composition_panel', text: '历史细胞组成三联组合图说明，figure_spec v2.3 起不再作为生产出图契约' },
+  { match: '16_domain_panel', text: '历史空间域三联组合图说明，figure_spec v2.3 起不再作为生产出图契约' },
   // line3 spatial（具体模式在前：*_by_domain 先于同名基础图，domain_composition 先于 domains）
   { match: 'l3_mouse_10_dr_gsea_top', text: '小鼠 DR 基因 GSEA top20（KEGG/WikiPathways 小鼠库）：条形=NES，标注 NES + FDR q' },
   { match: 'l3_human_10_dr_gsea_top', text: '人源 DR 基因 GSEA top20（KEGG/GO BP/Reactome 人库）：条形=NES，标注 NES + FDR q' },

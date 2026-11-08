@@ -21,6 +21,7 @@
       "fig_l2p_complexheatmap",
       "fig_l2p_confusionmatrixplot",
       "fig_l3p_facetgridplot",
+      "fig_l3_multipanel",
       "fig_l2p_pcaplot",
       "fig_l3p_publicationstyle",
       "fig_l2p_rocprplot",
@@ -31,7 +32,7 @@
       "fig_l2p_vennplot",
       "fig_l3_network"
     ],
-    "actionablePendingCount": 29,
+    "actionablePendingCount": 30,
     "blockedUpstream": [
       "fig_kegg_pathway"
     ],
@@ -61,7 +62,7 @@
       "fig_l2_ivolcanoplot"
     ],
     "frozenOutOfScopeCount": 22,
-    "pendingCount": 52,
+    "pendingCount": 53,
     "pendingDetails": [
       {
         "depsPending": true,
@@ -366,6 +367,13 @@
       },
       {
         "depsPending": true,
+        "id": "fig_l3_multipanel",
+        "missingAdapter": false,
+        "missingSample": true,
+        "unboundStep": false
+      },
+      {
+        "depsPending": true,
         "id": "fig_l2p_pcaplot",
         "missingAdapter": false,
         "missingSample": true,
@@ -428,8 +436,8 @@
         "unboundStep": false
       }
     ],
-    "readyCount": 30,
-    "total": 82
+    "readyCount": 39,
+    "total": 92
   },
   "k40HostAssets": {
     "trackedFiles": [

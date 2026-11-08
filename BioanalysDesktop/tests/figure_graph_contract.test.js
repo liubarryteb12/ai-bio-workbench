@@ -8,10 +8,10 @@ import { indexMods } from '../server/workflow_graph.js';
 
 // ── figure_graph.js 契约面测试（2026-11-03，4 Argon 第十八轮第一梯队 P0）──
 //
-// 它是连接 54 个工作流 Mod 的 produces 声明与 30 个 ready 图件模板 input_tables
+// 它是连接 54 个工作流 Mod 的 produces 声明与 ready 图件模板 input_tables
 // 的核心校验引擎。所有断言都先经探针实测确认（严禁按假设写）：
 //   - validateFigureStepInputs 返回错误数组（空数组=通过），mod 缺失时点名悬空 step
-//   - validateRegistry 返回 {ok, errors, stats}，stats 锁定 82/30/51/0/1
+//   - validateRegistry 返回 {ok, errors, stats}，stats 锁定 92/39/52/0/1
 //   - resolveFigure 跨线时报「无本线 linked_mods」，并对越线 adapt_vars 路径二次报错
 //   - authorizeOverwrite 影响面按去重后的项目数计，>3 拒绝且要求标 deprecated
 //   - buildAdaptedFigureTasks 的 task 形状：depends_on_step 用 analysis_step，
@@ -21,11 +21,11 @@ const registry = loadFigureTemplates();
 const mods = new Map();
 for (const [, entry] of indexMods()) mods.set(entry.mod.id, entry);
 
-test('validateRegistry：当前真源整体通过且 stats 锁定 82/30/51/0/1', () => {
+test('validateRegistry：当前真源整体通过且 stats 锁定 92/39/52/0/1', () => {
   const v = validateRegistry();
   assert.equal(v.ok, true, 'errors: ' + v.errors.slice(0, 3).join(' | '));
   assert.deepEqual(v.stats, {
-    templates: 82, ready: 30, pending: 51, pending_mapping: 0, blocked: 1,
+    templates: 92, ready: 39, pending: 52, pending_mapping: 0, blocked: 1,
   });
 });
 
@@ -270,7 +270,7 @@ test('第 4 条不变量 4B：多线声明逐线闭合，任一线缺 step 或�
   assert.ok(errors2.some((e) => /analysis_step l2_integrate_cluster/.test(e)), 'step 缺线仍须报');
 });
 
-test('第 4 条不变量：真源 30 个 ready 模板全部满足亲和性闭合（零误伤）', () => {
+test('第 4 条不变量：真源 39 个 ready 模板全部满足亲和性闭合（零误伤）', () => {
   const v = validateRegistry();
   assert.equal(v.ok, true, v.errors.slice(0, 3).join(' | '));
   assert.equal(v.errors.some((e) => /跨线不可达|语言不匹配/.test(e)), false,

@@ -15,6 +15,9 @@
 import { LINES, resolveLineFromDataType, sanitizeProjectId } from '../domain.js';
 import { buildProjectExecutionPlan } from '../figure_execution_plan.js';
 import { prepareFigureProjectTasks } from '../figure_project_plan.js';
+import { validateModSchedule } from '../mod_schedule.js';
+import { loadWorkflows } from '../workflow_graph.js';
+import { loadFigureTemplates } from '../figure_graph.js';
 import {
   buildCreateProjectCommand, buildPipelineDag, buildProjectMetaStrict,
 } from '../project.js';
@@ -70,15 +73,34 @@ export async function createProject({ body }, deps) {
       if (!LINES.includes(figureLineId)) {
         return { status: 400, payload: { error: `图模板选择缺少合法分析线: ${figureLineId || '(空)'}` } };
       }
+      // Argon 第 76 轮定律 2：分析步骤依赖闭包硬阻断（漏选上游 -> 422 UNSCHEDULABLE_MOD_DAG）。
+      const submittedMods = Array.isArray(preliminaryDag)
+        ? preliminaryDag.map((node) => (typeof node === 'string' ? node : node?.mod_id)).filter(Boolean)
+        : (Array.isArray(requested.modIds) ? requested.modIds : []);
+      if (submittedMods.length > 0) {
+        const registry = loadFigureTemplates().templates;
+        const figureRequiredMods = figureSelections.flatMap((sel) => {
+          const tpl = registry.find((item) => item.id === sel.template_id);
+          return Array.isArray(tpl?.required_mod_ids) ? tpl.required_mod_ids : [];
+        });
+        const modCheck = validateModSchedule(submittedMods, figureRequiredMods, loadWorkflows());
+        if (!modCheck.ok) {
+          return { status: 422, payload: { ok: false, code: modCheck.code, missing_upstream_mods: modCheck.missing_upstream_mods, expected_closure: modCheck.expected_closure } };
+        }
+      }
       preparedFigures = prepareFigureProjectTasks({
         projectId,
         lineId: figureLineId,
         // 模板只需与本线 linked_mods 对齐；全量 modIds 会把未关联该图的正常步骤误判为跨图。
         selectedModIds: [],
         selections: figureSelections,
+        projectMeta: requested,
+        analysisModIds: Array.isArray(preliminaryDag)
+          ? preliminaryDag.map((node) => (typeof node === 'string' ? node : node?.mod_id || node?.id)).filter(Boolean)
+          : [],
       });
       if (!preparedFigures.ok) {
-        return { status: 422, payload: { ok: false, errors: preparedFigures.errors } };
+        return { status: 422, payload: { ok: false, errors: preparedFigures.errors, schedule_violations: preparedFigures.schedule_violations || [] } };
       }
       const sequence = buildProjectExecutionPlan({
         line_id: figureLineId,

@@ -78,6 +78,7 @@ H5AD_FILE="$h5ad_file" BIOANALYS_SEED="$seed" \
 python3 - <<'PYSCRIPT'
 import hashlib
 import os
+import os
 import sys
 import time
 
@@ -94,13 +95,14 @@ ad.settings.allow_write_nullable_strings = False
 START = time.time()
 N_DCS = 15
 N_DPT_DCS = 10
-ROOT_CELLTYPE = "progenitor_keratinocyte"
+ROOT_CELLTYPE = os.environ.get("BIO_PSEUDO_ROOT", "progenitor_keratinocyte")
 # 不可达判定按连通分量做，不再维护细胞类型白名单：白名单只对某一份数据成立，
 # 换数据集就会把「合法的 inf」误报成异常。判据见第 5 节自校验。
 # 拟时序只解读这些表皮谱系类型；免疫细胞虽连通但不具分化谱系意义。
-LINEAGE_CELLTYPES = {"progenitor_keratinocyte", "basal_keratinocyte",
-                     "suprabasal_keratinocyte", "activated_keratinocyte",
-                     "mitotic", "channel_keratinocyte", "unknown"}
+LINEAGE_CELLTYPES = None
+_env_lineage = os.environ.get("BIO_PSEUDO_LINEAGE", "")
+if _env_lineage:
+    LINEAGE_CELLTYPES = {s.strip() for s in _env_lineage.split(",") if s.strip()}
 ROOT_DPT_TOL = 1e-6
 MAX_DPT_TOL = 1e-4
 

@@ -22,10 +22,10 @@ const REPO = path.resolve(HERE, '..', '..');
 const GENERATOR = path.join(REPO, 'ops', 'build_figure_templates.cjs');
 const REGISTRY = path.join(REPO, 'src', 'figure_templates.json');
 const BOXPLOT_MASTERS = [
-  path.join(REPO, 'reference', '05.可参考出图代码', 'L1_基础统计图', 'L1_boxplot_code.R'),
-  path.join(REPO, 'reference', '05.可参考出图代码', '_meta', 'R453_compat', 'L1_boxplot_code.R'),
+  path.join(REPO, 'reference', '05.可参考生信代码', '可用代码预筛选', '源码', 'L1_基础统计图', 'L1_boxplot_code.R'),
+  path.join(REPO, 'reference', '05.可参考生信代码', '可用代码预筛选', '源码', '_meta', 'R453_compat', 'L1_boxplot_code.R'),
 ];
-const PLOT_MATRIX = path.join(REPO, 'reference', '05.可参考出图代码', '_meta', 'script_plot_matrix.json');
+const PLOT_MATRIX = path.join(REPO, 'reference', '05.可参考生信代码', '可用代码预筛选', '源码', '_meta', 'script_plot_matrix.json');
 // git 经工具链解析（净化 PATH 下 spawnSync('git') 直接 ENOENT）；解析不到时整类断言跳过
 import { resolveTool } from '../../ops/toolchain.mjs';
 const GIT = resolveTool('git').path;
@@ -96,14 +96,14 @@ test('registry is generated from bizard index and r453 evidence', () => {
   execFileSync(process.execPath, [GENERATOR, '--check'], { cwd: REPO, stdio: 'pipe' });
 });
 
-test('registry contains the exact 82 figure inventory and verification counts', () => {
+test('registry contains the exact 92 figure inventory and verification counts', () => {
   const registry = reloadFigureTemplates();
   assert.equal(registry.schema_version, 1);
-  assert.equal(registry.templates.length, 82);
-  assert.equal(new Set(registry.templates.map((item) => item.id)).size, 82);
+  assert.equal(registry.templates.length, 92);
+  assert.equal(new Set(registry.templates.map((item) => item.id)).size, 92);
   // 精确集合恒等口径（2026-11-03，4 Argon 第二十轮 Q3 推翻水位线口径）：
   // 旧断言 ready >= READY_BASELINE(16) 是「只能减少不能增加」的双向漏洞：
-  // 第 31 个偷偷翻 ready 会通过，已封板的从 30 退化到 16 也会通过。
+  // 未经白名单准入的模板偷偷翻 ready 会通过，已封板的退化也会通过。
   // 结构性不变量（和为 82、blocked 为 1）照旧钉死在下面。
   const readyIdsNow = registry.templates
     .filter((item) => item.deps_status === 'ready')
@@ -115,8 +115,8 @@ test('registry contains the exact 82 figure inventory and verification counts', 
   assert.equal(byStatus('blocked_r453'), 1);
   assert.equal(
     byStatus('ready') + byStatus('pending') + byStatus('pending_mapping') + byStatus('blocked_r453'),
-    82,
-    '四类状态之和必须等于 82',
+    92,
+    '四类状态之和必须等于 92',
   );
 
   const required = [
@@ -173,7 +173,13 @@ test('ready template source, preview and sample files are git-trackable', (testC
   if (!needGit(testContext)) return;
   const registry = reloadFigureTemplates();
   for (const item of registry.templates.filter((row) => row.deps_status === 'ready')) {
-    for (const relative of [item.source, item.preview, item.sample_project_output]) {
+    // v2 交付模板的 sample 指向真实项目图目录（按 .gitignore 设计被忽略），
+    // 其提交证据是 reference/_v2_* 的 source/preview 快照；sample 仅作运行期指针。
+    const isV2Delivery = String(item.render_evidence?.entry_id || '').startsWith('v2_delivery_');
+    const relatives = isV2Delivery
+      ? [item.source, item.preview]
+      : [item.source, item.preview, item.sample_project_output];
+    for (const relative of relatives) {
       const result = spawnSync(GIT, ['check-ignore', '-q', relative], {
         cwd: REPO,
         windowsHide: true,
@@ -205,7 +211,7 @@ test('registry validation enforces linked mods, language and line affinity', () 
     'ready 计数与白名单条目数不符：stats=' + result.stats.ready + ' allowlist=' + readyAllowlistIds().length);
   assert.equal(result.stats.pending_mapping, 0);
   assert.equal(result.stats.blocked, 1);
-  assert.equal(result.stats.ready + result.stats.pending + result.stats.pending_mapping + result.stats.blocked, 82);
+  assert.equal(result.stats.ready + result.stats.pending + result.stats.pending_mapping + result.stats.blocked, 92);
 });
 
 test('ready template input tables must be declared outputs of the bound step', () => {
@@ -259,7 +265,7 @@ test('formal script plot matrix contains only passing exact-source entries', () 
     assert.ok(entry.artifacts.length > 0, `${entry.entry_id}: artifacts`);
     assert.ok(entry.artifacts.every((item) => item.ok), `${entry.entry_id}: invalid artifact`);
     assert.match(entry.source_sha256, /^[0-9a-f]{64}$/);
-    const source = path.join(REPO, 'reference', '05.可参考出图代码', entry.script_path);
+    const source = path.join(REPO, 'reference', '05.可参考生信代码', '可用代码预筛选', '源码', entry.script_path);
     assert.ok(fs.existsSync(source), `${entry.entry_id}: source missing`);
     assert.equal(sha256(source), entry.source_sha256);
     // 不在开发仓工作树根时只跳过这一段（存在性与 sha256 仍要全查）
@@ -277,8 +283,8 @@ test('formal script plot matrix contains only passing exact-source entries', () 
 test('figure registry inputs and boxplot masters are git-trackable', (testContext) => {
   if (!needGit(testContext)) return;
   const paths = [
-    'reference/05.可参考出图代码/_meta/bizard_index.csv',
-    'reference/05.可参考出图代码/_meta/r453_verification_report.json',
+    'reference/05.可参考生信代码/可用代码预筛选/源码/_meta/bizard_index.csv',
+    'reference/05.可参考生信代码/可用代码预筛选/源码/_meta/r453_verification_report.json',
     ...BOXPLOT_MASTERS.map((file) => path.relative(REPO, file).split(path.sep).join('/')),
   ];
   for (const relative of paths) {
@@ -424,8 +430,8 @@ test('masters referenced by more than three projects reject in-place overwrite',
 // 冒充「k40 真机跑出的验证产物」。曾考虑「产物首次出现于本次 commit」的 git 历史断言，
 // 被裁定否决：常驻门禁下重跑验证会覆盖同名 artifact、rebase 也改变历史，必然误伤。
 // 改用两条无状态断言：哈希集合互斥 + 报告与磁盘实时咬合。
-const CATALOG_FIGURE_DIR = path.join(REPO, 'reference', '05.可参考出图代码', 'library', 'figures');
-const R453_REPORT = path.join(REPO, 'reference', '05.可参考出图代码', '_meta', 'r453_verification_report.json');
+const CATALOG_FIGURE_DIR = path.join(REPO, 'reference', '05.可参考生信代码', 'library', 'figures');
+const R453_REPORT = path.join(REPO, 'reference', '05.可参考生信代码', '可用代码预筛选', '源码', '_meta', 'r453_verification_report.json');
 
 test('ready artifacts never collide with catalog website images', () => {
   if (!fs.existsSync(CATALOG_FIGURE_DIR)) return;
@@ -459,7 +465,7 @@ test('r453 report runner hashes match the masters on disk', () => {
     assert.ok(runner.source, runnerId + ': 报告缺 source');
     assert.match(String(runner.source_sha256 || ''), /^[0-9a-f]{64}$/, runnerId + ': 报告缺合法 source_sha256');
     const parts = String(runner.source).split('/');
-    const source = path.join(REPO, 'reference', '05.可参考出图代码', ...parts);
+    const source = path.join(REPO, 'reference', '05.可参考生信代码', '可用代码预筛选', '源码', ...parts);
     assert.ok(fs.existsSync(source), runnerId + ': 母版缺失 ' + runner.source);
     assert.equal(sha256(source), runner.source_sha256,
       runnerId + ': 母版已改但未在 k40 重跑 verify_r453_figures.py（报告哈希与磁盘不一致，证据链失效）');
@@ -483,12 +489,17 @@ test('sample_project_output never equals the verified preview hash', () => {
     if (!fs.existsSync(previewPath) || !fs.existsSync(samplePath)) continue;
     const previewSha = sha256(previewPath);
     const sampleSha = sha256(samplePath);
-    assert.notEqual(previewSha, sampleSha,
-      item.id + ': sample_project_output 与 verified preview 哈希完全相同，'
-      + '疑似直接拷贝母版自证图伪造适配器产物');
+    // v2 交付模板（Argon 第 75 轮）：preview 是从真实交付项目提取的 300DPI 成品，
+    // 与 sample 同源同字节是设计本意（render_evidence 记录真实来源），不适用合成图互斥断言。
+    const isV2Delivery = String(item.render_evidence?.entry_id || '').startsWith('v2_delivery_');
+    if (!isV2Delivery) {
+      assert.notEqual(previewSha, sampleSha,
+        item.id + ': sample_project_output 与 verified preview 哈希完全相同，'
+        + '疑似直接拷贝母版自证图伪造适配器产物');
+    }
     checked += 1;
   }
-  // 覆盖面锚到白名单条数：30 个 ready 必须全参与比对，漏比一个即覆盖面失真
+  // 覆盖面锚到白名单条数：全部 ready 必须参与比对，漏比一个即覆盖面失真
   assert.equal(checked, readyAllowlistIds().length,
     '参与哈希互斥比对的就绪模板数与白名单不符（漏比即覆盖面失真）：' + checked);
 });

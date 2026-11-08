@@ -5,16 +5,15 @@
 # 硬约束（aims）：验证集只做冻结评估，不重新筛基因、不重新调参；验证集内部可
 # 去批次，但禁止把训练集与验证集合并校正后再评估。
 #
-# 现实约束（如实记录）：line1 raw_data 只有一套 bulk 数据集（GSE277173，16 样本），
-# 无第二个独立 GEO 数据集。因此本步骤做**分层留出法（stratified hold-out）**
-# 作为"冻结评估"的内部近似：
-#   - 特征（key_genes）与模型超参在训练集上确定后**冻结**；
-#   - 测试集只做 predict，不看测试集结果调任何东西；
-#   - 报告明确标注 validation_type=internal_holdout_approximation（非独立外部数据集），
-#     真正的外部 GEO 验证待补充外部数据后另跑。
+# 两种验证模式：
+#   1) internal_holdout_approximation：cwd 没有独立验证集时，保持原有的分层留出法，
+#      特征（key_genes）与模型超参在训练集上确定后冻结，测试集只做 predict。
+#   2) external_cohort_frozen：cwd 或 --input 提供 external_frozen_model.tsv，且 cwd
+#      有 val_expr_genes.tsv + val_group_map.tsv 时，直接读取 ml_model 的冻结参数，
+#      在独立验证矩阵上只 predict，不重训、不重新筛基因、不调参。
 #
-# 自校验内建：输入存在、样本数 >= 12、训练/测试都含两类、冻结特征非空、
-# 测试集评估只用冻结模型（不重训）。
+# 自校验内建：输入存在、样本数满足对应模式下限、评估集含两类、冻结特征非空、
+# 评估只用冻结模型（不重训）。
 set -euo pipefail
 
 seed="${BIOANALYS_SEED:-UNSET}"
@@ -34,21 +33,55 @@ while [ $# -gt 0 ]; do
 done
 
 expr_file=""; group_file=""; key_file=""
+val_expr_file=""; val_group_file=""; frozen_file=""
 for path in "${INPUTS[@]:-}"; do
   [ -n "$path" ] || continue
   case "$path" in
+    *external_frozen_model*.tsv) frozen_file="$path" ;;
+    *val_expr_genes*.tsv) val_expr_file="$path" ;;
+    *val_group_map*.tsv) val_group_file="$path" ;;
     *expr_genes*.tsv) expr_file="$path" ;;
     *group_map*.tsv) group_file="$path" ;;
     *key_genes*.tsv) key_file="$path" ;;
     *) echo "无法识别的输入: $path" >&2; exit 2 ;;
   esac
 done
-[ -n "$expr_file" ] && [ -f "$expr_file" ] || { echo "缺 expr_genes.tsv" >&2; exit 2; }
-[ -n "$group_file" ] && [ -f "$group_file" ] || { echo "缺 group_map.tsv" >&2; exit 2; }
-[ -n "$key_file" ] && [ -f "$key_file" ] || { echo "缺 key_genes.tsv（步骤 9 产物）" >&2; exit 2; }
+
+if [ -n "$frozen_file" ] && [ ! -f "$frozen_file" ]; then
+  echo "外部冻结模型文件不存在: $frozen_file" >&2
+  exit 2
+fi
+if [ -n "$val_expr_file" ] && [ ! -f "$val_expr_file" ]; then
+  echo "独立验证表达矩阵不存在: $val_expr_file" >&2
+  exit 2
+fi
+if [ -n "$val_group_file" ] && [ ! -f "$val_group_file" ]; then
+  echo "独立验证分组表不存在: $val_group_file" >&2
+  exit 2
+fi
+
+[ -n "$frozen_file" ] || frozen_file="external_frozen_model.tsv"
+[ -n "$val_expr_file" ] || val_expr_file="val_expr_genes.tsv"
+[ -n "$val_group_file" ] || val_group_file="val_group_map.tsv"
+
+validation_mode="internal_holdout_approximation"
+if [ -f "$frozen_file" ] && [ -f "$val_expr_file" ] && [ -f "$val_group_file" ]; then
+  validation_mode="external_cohort_frozen"
+fi
+
+if [ "$validation_mode" = "external_cohort_frozen" ]; then
+  [ -f "$frozen_file" ] || { echo "缺 external_frozen_model.tsv（ml_model 产物）" >&2; exit 2; }
+  [ -f "$val_expr_file" ] || { echo "缺 val_expr_genes.tsv" >&2; exit 2; }
+  [ -f "$val_group_file" ] || { echo "缺 val_group_map.tsv" >&2; exit 2; }
+else
+  [ -n "$expr_file" ] && [ -f "$expr_file" ] || { echo "缺 expr_genes.tsv" >&2; exit 2; }
+  [ -n "$group_file" ] && [ -f "$group_file" ] || { echo "缺 group_map.tsv" >&2; exit 2; }
+  [ -n "$key_file" ] && [ -f "$key_file" ] || { echo "缺 key_genes.tsv（步骤 9 产物）" >&2; exit 2; }
+fi
 
 echo "step_executed=external_validation"
 echo "bioanalys_seed=${seed}"
+echo "validation_mode=${validation_mode}"
 
 # 解释器 PATH 前置（生信代码专项审核）：K40 系统解释器缺科学计算包，真依赖在 bio-py venv。
 # 用 PATH 注入而非改写调用行，是为了让桥接调用的行级计数保持原样（bilingual 判定不变）。
@@ -57,7 +90,9 @@ if [ -x "$BIO_PY_BIN/python3" ]; then
   export PATH="$BIO_PY_BIN:$PATH"
 fi
 
-EXPR_FILE="$expr_file" GROUP_FILE="$group_file" KEY_FILE="$key_file" BIOANALYS_SEED="$seed" \
+VALIDATION_MODE="$validation_mode" EXPR_FILE="${expr_file:-}" GROUP_FILE="${group_file:-}" \
+KEY_FILE="${key_file:-}" FROZEN_FILE="${frozen_file:-}" VAL_EXPR_FILE="${val_expr_file:-}" \
+VAL_GROUP_FILE="${val_group_file:-}" BIOANALYS_SEED="$seed" \
 python3 - <<'PYSCRIPT'
 import os
 import sys
@@ -75,8 +110,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.metrics import roc_auc_score, accuracy_score, roc_curve, confusion_matrix
 
-plt.rcParams.update({"figure.dpi": 300, "savefig.dpi": 300, "font.size": 7, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 7, "xtick.labelsize": 6.5, "ytick.labelsize": 6.5, "legend.fontsize": 6.5, "legend.title_fontsize": 7,
-                     "axes.titlesize": 7, "axes.grid": False,
+plt.rcParams.update({"figure.dpi": 300, "savefig.dpi": 300, "font.size": 8, "font.family": "sans-serif", "font.sans-serif": ["Arial", "Helvetica", "Liberation Sans", "DejaVu Sans"], "axes.labelsize": 8, "xtick.labelsize": 8, "ytick.labelsize": 8, "legend.fontsize": 8, "legend.title_fontsize": 8,
+                     "axes.titlesize": 9, "axes.grid": False,
                      "figure.autolayout": True, "savefig.bbox": "tight",
                      "image.cmap": "viridis"})
 
@@ -89,7 +124,7 @@ def caption(fig, *parts):
     if not parts:
         return
     text = "\n".join(parts)
-    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=7, linespacing=1.5)
+    fig.text(0.01, -0.02, text, ha="left", va="top", fontsize=8, linespacing=1.5)
 def wrap_label(text, width=18):
     """长标签换行：超宽标签优先按 _ 边界折行，仍超宽再按字符折行，防溢出图框。"""
     import textwrap
@@ -156,30 +191,23 @@ def fit_text_edges(fig, ax, gap=6.0, rounds=5):
             ax.set_ylim(y0 - (y1 - y0) * (bottom / bh) * 1.15, y1)
 
 
-def legend_out(ax, fig, leg):
-    """图例移到坐标轴框外：竖版图（宽<高）右上角纵向单列；横版图（宽>=高）下方纵向单列。
-    条目超过 12 条按列分组，避免纵向过长压扁主图。"""
-    n = len(leg.get_texts())
+def legend_out(ax, fig, leg, slot=0):
+    """图例统一置坐标轴框外右侧、纵向排列（用户 2026-11-07 定稿）。
+    多组图例按 slot 依次向右横排（每组各自纵向单列），互不重叠。
+    不再按图幅横竖分支把图例放到轴框下方。"""
     handles = list(leg.legend_handles)
     labels = [t.get_text() for t in leg.get_texts()]
     title = leg.get_title().get_text() or None
-    w, h = fig.get_size_inches()
     fig.set_layout_engine("none")
-    if w >= h:
-        ncol = 1 if n <= 12 else -(-n // 12)
-        rows = -(-n // ncol)
-        ax.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, -0.10),
-                  ncol=ncol, fontsize=7, frameon=False, title=title)
-        fig.subplots_adjust(bottom=min(0.58, 0.16 + 0.045 * rows))
-    else:
-        ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(1.02, 1.0),
-                  ncol=1, fontsize=7, frameon=False, title=title)
-        fig.subplots_adjust(right=0.74)
+    x = 1.02 + 0.30 * slot
+    ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(x, 1.0),
+              ncol=1, fontsize=8, frameon=False, title=title)
+    fig.subplots_adjust(right=max(0.60, 0.80 - 0.06 * slot))
 
 
 def layout_fix(fig):
     """落盘前统一收口（docs/figure_spec.md v2.2 §三之三）：
-    1) 单坐标轴图的图例外置：竖版置轴框外右上角、横版置轴框下方，纵向排布、不压数据；
+    1) 单坐标轴图的图例外置：一律置轴框外右侧，纵向排布、不压数据；
     2) 轴内文本右缘/顶缘/左缘/下缘越出坐标轴框时自动扩 xlim/ylim 收进框内。
     多子图（分面）图不做图例搬迁：分面各有自己的图例，统一外移会互相压扁。
     tick 标签一律不动：它本就在轴框外，savefig.bbox="tight" 会把画布扩到装下它；
@@ -190,9 +218,9 @@ def layout_fix(fig):
     if not axes:
         return
     if len(axes) == 1:
-        leg = axes[0].get_legend()
-        if leg is not None:
-            legend_out(axes[0], fig, leg)
+        legs = [l for l in (axes[0].get_legend(),) if l is not None]
+        for slot, leg in enumerate(legs):
+            legend_out(axes[0], fig, leg, slot=slot)
         fit_text_edges(fig, axes[0])
 
 
@@ -306,88 +334,246 @@ def parse_frozen_model(path):
         })
     return metadata, pd.DataFrame(parameters)
 
-expr = pd.read_csv(os.environ["EXPR_FILE"], sep="\t", index_col=0)
-gm = pd.read_csv(os.environ["GROUP_FILE"], sep="\t")
+MODE = os.environ.get("VALIDATION_MODE", "internal_holdout_approximation")
+if MODE not in ("internal_holdout_approximation", "external_cohort_frozen"):
+    fail("未知验证模式: %s" % MODE)
+
+if MODE == "external_cohort_frozen":
+    frozen_path = os.environ["FROZEN_FILE"]
+    metadata, parameters = parse_frozen_model(frozen_path)
+    expr_path = os.environ["VAL_EXPR_FILE"]
+    group_path = os.environ["VAL_GROUP_FILE"]
+    preferred_case = metadata["case_group"]
+    preferred_ctrl = metadata["control_group"]
+    min_samples = 4
+else:
+    metadata = {}
+    parameters = pd.DataFrame()
+    frozen_path = ""
+    expr_path = os.environ["EXPR_FILE"]
+    group_path = os.environ["GROUP_FILE"]
+    preferred_case = ""
+    preferred_ctrl = ""
+    min_samples = 10
+
+expr = pd.read_csv(expr_path, sep="\t", index_col=0)
+gm = pd.read_csv(group_path, sep="\t")
 samples = [s for s in gm["sample"].astype(str) if s in expr.columns]
-if len(samples) < 12:
-    fail("样本 %d < 12（留出法需足够样本）" % len(samples))
-y = np.array([1 if g == "LS" else 0 for g in
-              gm.set_index("sample").loc[samples, "group"].astype(str)])
+if len(samples) < min_samples:
+    fail("样本 %d < %d（验证需足够样本）" % (len(samples), min_samples))
 
-kt = pd.read_csv(os.environ["KEY_FILE"], sep="\t")
-features = [g for g in kt["gene"].astype(str) if g in expr.index]
-if len(features) < 3:
-    fail("冻结特征 < 3（key_genes 产物）")
-log("samples=%d frozen_features=%d" % (len(samples), len(features)))
+groups_series = gm.set_index("sample").loc[samples, "group"].astype(str)
+group_levels = sorted(groups_series.unique().tolist())
 
-X = np.nan_to_num(expr.loc[features, samples].T.to_numpy(dtype=float))
 
-# 分层留出：测试集 1/3，固定 seed，训练集定模型后冻结
-sss = StratifiedShuffleSplit(n_splits=1, test_size=1 / 3.0, random_state=SEED)
-tr_idx, te_idx = next(sss.split(X, y))
-if len(set(y[tr_idx])) < 2 or len(set(y[te_idx])) < 2:
-    # 16 样本 1/3≈5 个测试，可能抽到单类，退化为固定前 5 个测试
-    log("分层抽样测试集单类，退化处理：测试集取分层前 5 个")
-    te_idx = np.array([i for i, v in enumerate(y) if v == 1][:3] +
-                      [i for i, v in enumerate(y) if v == 0][:2])
-    tr_idx = np.array([i for i in range(len(y)) if i not in set(te_idx.tolist())])
-if len(set(y[te_idx])) < 2:
-    fail("测试集只有一类，无法评估 AUC")
+def project_contrast():
+    """从项目元数据取主对比；只用于验证队列的标签映射，不参与模型拟合。"""
+    pj_path = os.environ.get("BIOANALYS_PROJECT_JSON", "")
+    if not pj_path or not os.path.exists(pj_path):
+        return "", ""
+    try:
+        with open(pj_path, encoding="utf-8") as fh:
+            pj = json.load(fh)
+    except Exception:
+        return "", ""
+    design = pj.get("grouping_design", pj.get("analysis_design", {}))
+    contrasts = design.get("contrasts", [])
+    primary = next((c for c in contrasts if c.get("isPrimary")), contrasts[0] if contrasts else {})
+    return str(primary.get("case") or ""), str(primary.get("ctrl") or "")
 
-# 冻结：训练集上 fit scaler + 模型
-scaler = StandardScaler().fit(X[tr_idx])
-clf = LogisticRegression(C=1.0, max_iter=2000, random_state=SEED).fit(
-    scaler.transform(X[tr_idx]), y[tr_idx])
-# 冻结评估：测试集只 predict，不重训
-proba = clf.predict_proba(scaler.transform(X[te_idx]))[:, 1]
-pred = (proba >= 0.5).astype(int)
-auc = float(roc_auc_score(y[te_idx], proba))
-acc = float(accuracy_score(y[te_idx], pred))
-cm = confusion_matrix(y[te_idx], pred, labels=[0, 1])
-log("holdout: n_train=%d n_test=%d AUC=%.3f Acc=%.3f" % (len(tr_idx), len(te_idx), auc, acc))
-if not (0.0 <= auc <= 1.0):
-    fail("AUC 越界")
+
+# 解析 case_group 与 ctrl_group：冻结模型标签优先，其次项目主对比，最后按常见标签回退。
+case_group = ""
+ctrl_group = ""
+if preferred_case in group_levels:
+    case_group = preferred_case
+if preferred_ctrl in group_levels and preferred_ctrl != case_group:
+    ctrl_group = preferred_ctrl
+pj_case, pj_ctrl = project_contrast()
+if not case_group and pj_case in group_levels:
+    case_group = pj_case
+if not ctrl_group and pj_ctrl in group_levels and pj_ctrl != case_group:
+    ctrl_group = pj_ctrl
+
+if not case_group:
+    for cand in ("DCM", "LS", "Tumor", "Disease", "Case", "Stroke"):
+        if cand in group_levels:
+            case_group = cand
+            break
+if not case_group:
+    case_group = group_levels[-1]
+
+if not ctrl_group or ctrl_group == case_group:
+    for cand in ("Control", "Ctrl", "Normal", "NonDiseased", "NLS"):
+        if cand in group_levels and cand != case_group:
+            ctrl_group = cand
+            break
+if not ctrl_group or ctrl_group == case_group:
+    ctrl_group = next((g for g in group_levels if g != case_group), group_levels[0])
+
+# 若存在多余组（如 GSE42955 中的 ICM），收拢到两组主对比。
+eval_samples = [s for s in samples if groups_series.loc[s] in (case_group, ctrl_group)]
+if MODE == "external_cohort_frozen":
+    if len(eval_samples) < min_samples:
+        fail("独立验证集在 %s/%s 两组的样本 %d < %d" % (
+            case_group, ctrl_group, len(eval_samples), min_samples))
+    samples = eval_samples
+    groups_series = groups_series.loc[samples]
+elif len(eval_samples) >= 8:
+    samples = eval_samples
+    groups_series = groups_series.loc[samples]
+
+y = np.array([1 if g == case_group else 0 for g in groups_series])
+if len(set(y)) < 2:
+    fail("有效评估样本必须包含 case 与 control 两组，当前只有一类")
+
+if MODE == "external_cohort_frozen":
+    # 独立验证只消费冻结参数：特征顺序、标准化统计量、系数与截距全部来自冻结表。
+    features = parameters["gene"].astype(str).tolist()
+    if len(features) < 1:
+        fail("冻结模型特征为空")
+    means = parameters["scaler_mean"].to_numpy(dtype=float)
+    scales = parameters["scaler_scale"].to_numpy(dtype=float)
+    coefs = parameters["coef"].to_numpy(dtype=float)
+    columns = []
+    imputed_features = 0
+    for gene, mean in zip(features, means):
+        if gene in expr.index:
+            values = expr.loc[gene, samples].to_numpy(dtype=float)
+            finite = np.isfinite(values)
+            if not finite.all():
+                values = np.where(finite, values, mean)
+            columns.append(values)
+        else:
+            columns.append(np.full(len(samples), mean, dtype=float))
+            imputed_features += 1
+    X_raw = np.column_stack(columns)
+    X_scaled = (X_raw - means) / scales
+    logit = X_scaled.dot(coefs) + float(metadata["intercept"])
+    proba = 1.0 / (1.0 + np.exp(-np.clip(logit, -50.0, 50.0)))
+    threshold = float(metadata["decision_threshold"])
+    pred = (proba >= threshold).astype(int)
+    auc = float(roc_auc_score(y, proba))
+    acc = float(accuracy_score(y, pred))
+    cm = confusion_matrix(y, pred, labels=[0, 1])
+    eval_idx = np.arange(len(samples))
+    log("external frozen: n_val=%d features=%d imputed=%d AUC=%.3f Acc=%.3f" % (
+        len(samples), len(features), imputed_features, auc, acc))
+    if not (0.0 <= auc <= 1.0):
+        fail("AUC 越界")
+    validation_type = "external_cohort_frozen"
+    plot_label = "frozen external model (AUC=%.3f)" % auc
+    caption_line = "line1: external frozen-model ROC"
+    caption_count = "n_val=%d" % len(samples)
+    metric_line = "external_auc=%.3f external_acc=%.3f" % (auc, acc)
+    frozen_name = os.path.basename(frozen_path)
+    report_lines = [
+        "validation_type=%s" % validation_type,
+        "frozen_model=%s" % frozen_name,
+        "frozen_model_source=ml_model 产出 %s" % frozen_name,
+        "train_dataset=%s train_platform=%s" % (
+            metadata["train_dataset"], metadata["train_platform"]),
+        "train_samples=%s" % metadata["train_samples"],
+        "frozen_features=%d" % len(features),
+        "n_validation=%d" % len(samples),
+        "validation_case=%s:%d validation_control=%s:%d" % (
+            case_group, int(y.sum()), ctrl_group, int((1 - y).sum())),
+        "missing_value_strategy=%s imputed_features=%d" % (
+            metadata["missing_value_strategy"], imputed_features),
+        "decision_threshold=%s" % metadata["decision_threshold"],
+        "note=独立验证集只使用 ml_model 冻结参数做 predict，不重训、不重新筛基因、不调参",
+        metric_line,
+        "confusion_matrix(labels=0,1)=%s" % cm.tolist(),
+        "limitation_note=外部队列样本数 %d，AUC 置信区间随样本量收窄；仅按冻结口径评估" % len(samples),
+    ]
+else:
+    kt = pd.read_csv(os.environ["KEY_FILE"], sep="\t")
+    features = [g for g in kt["gene"].astype(str) if g in expr.index]
+    if len(features) < 1:
+        fail("冻结特征为空（key_genes 产物在表达矩阵中无交集）")
+    log("samples=%d frozen_features=%d (case=%s:%d ctrl=%s:%d)" % (
+        len(samples), len(features), case_group, int(y.sum()), ctrl_group, int((1 - y).sum())))
+
+    X = np.nan_to_num(expr.loc[features, samples].T.to_numpy(dtype=float))
+
+    # 分层留出：测试集 1/3，固定 seed，训练集定模型后冻结
+    sss = StratifiedShuffleSplit(n_splits=1, test_size=1 / 3.0, random_state=SEED)
+    tr_idx, te_idx = next(sss.split(X, y))
+    if len(set(y[tr_idx])) < 2 or len(set(y[te_idx])) < 2:
+        # 16 样本 1/3 约 5 个测试，可能抽到单类，退化为固定前 5 个测试
+        log("分层抽样测试集单类，退化处理：测试集取分层前 5 个")
+        te_idx = np.array([i for i, v in enumerate(y) if v == 1][:3] +
+                          [i for i, v in enumerate(y) if v == 0][:2])
+        tr_idx = np.array([i for i in range(len(y)) if i not in set(te_idx.tolist())])
+    if len(set(y[te_idx])) < 2:
+        fail("测试集只有一类，无法评估 AUC")
+
+    # 冻结：训练集上 fit scaler + 模型
+    scaler = StandardScaler().fit(X[tr_idx])
+    clf = LogisticRegression(C=1.0, max_iter=2000, random_state=SEED).fit(
+        scaler.transform(X[tr_idx]), y[tr_idx])
+    # 冻结评估：测试集只 predict，不重训
+    proba = clf.predict_proba(scaler.transform(X[te_idx]))[:, 1]
+    pred = (proba >= 0.5).astype(int)
+    auc = float(roc_auc_score(y[te_idx], proba))
+    acc = float(accuracy_score(y[te_idx], pred))
+    cm = confusion_matrix(y[te_idx], pred, labels=[0, 1])
+    coefs = clf.coef_[0]
+    eval_idx = te_idx
+    log("holdout: n_train=%d n_test=%d AUC=%.3f Acc=%.3f" % (
+        len(tr_idx), len(te_idx), auc, acc))
+    if not (0.0 <= auc <= 1.0):
+        fail("AUC 越界")
+    validation_type = "internal_holdout_approximation"
+    plot_label = "frozen model (AUC=%.3f)" % auc
+    caption_line = "line1: frozen hold-out ROC"
+    caption_count = "n_test=%d" % len(te_idx)
+    metric_line = "holdout_auc=%.3f holdout_acc=%.3f" % (auc, acc)
+    report_lines = [
+        "validation_type=%s" % validation_type,
+        "note=line1 raw_data 只有一套 bulk 数据集（GSE277173），无第二个独立 GEO 数据集；",
+        "      本步骤用分层留出法做冻结评估（特征与超参在训练集确定后冻结，测试集只 predict）；",
+        "      这是内部近似，非独立外部验证；真正外部 GEO 验证待补充外部数据后另跑",
+        "n_train=%d n_test=%d frozen_features=%d" % (len(tr_idx), len(te_idx), len(features)),
+        "frozen_model=logreg(L2,C=1)，测试集不重训、不重新筛基因",
+        metric_line,
+        "confusion_matrix(labels=0,1)=%s" % cm.tolist(),
+        "limitation_note=样本极小（测试集 %d），AUC 置信区间极宽；仅作流程示范与方向参考" % len(te_idx),
+    ]
 
 # ROC 单图
 fig, ax = plt.subplots(figsize=(6.5, 6))
-fpr, tpr, _ = roc_curve(y[te_idx], proba)
-ax.plot(fpr, tpr, color="#C44E52", label="frozen model (AUC=%.3f)" % auc)
+fpr, tpr, _ = roc_curve(y[eval_idx], proba)
+ax.plot(fpr, tpr, color="#C44E52", label=plot_label)
 ax.plot([0, 1], [0, 1], "k--", lw=0.8)
 ax.set_xlabel("False positive rate")
 ax.set_ylabel("True positive rate")
-caption(fig, "line1: frozen hold-out ROC", "n_test=%d" % len(te_idx))
-# 源级外置：横版图落轴框下方（规范 §三之二，不再依赖 guard 纠正）
-ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.10), frameon=False)
+caption(fig, caption_line, caption_count)
+# 源级外置：图例置轴框外右侧（规范 §三之二，不再依赖 guard 纠正）
+ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0), frameon=False)
 fig.savefig("../figures/l1_12_external_roc.png")
 plt.close(fig)
 log("wrote ../figures/l1_12_external_roc.png")
 
-# 逐测试样本预测表
+# 逐评估样本预测表
 rows = []
-for k, i in enumerate(te_idx):
+for k, i in enumerate(eval_idx):
+    p_val = round(float(proba[k]), 4)
     rows.append({"sample": samples[i], "true": int(y[i]), "pred": int(pred[k]),
-                 "prob_LS": round(float(proba[k]), 4)})
+                 "prob_LS": p_val, ("prob_" + case_group): p_val})
 pd.DataFrame(rows).to_csv("external_validation_preds.tsv", sep="\t", index=False)
 
 # 方向一致性：冻结特征在训练集上的系数方向
-coef = clf.coef_[0]
 dir_rows = [{"gene": g, "frozen_coef": round(float(c), 4),
-             "direction": "up_in_LS" if c > 0 else "down_in_LS"}
-            for g, c in zip(features, coef)]
+             "direction": ("up_in_" + case_group) if c > 0 else ("down_in_" + case_group),
+             "direction_LS": "up_in_LS" if c > 0 else "down_in_LS"}
+            for g, c in zip(features, coefs)]
 pd.DataFrame(dir_rows).to_csv("external_frozen_coefs.tsv", sep="\t", index=False)
 
 lines = [
     "step=external_validation",
     "seed=%d" % SEED,
-    "validation_type=internal_holdout_approximation",
-    "note=line1 raw_data 只有一套 bulk 数据集（GSE277173），无第二个独立 GEO 数据集；",
-    "      本步骤用分层留出法做冻结评估（特征与超参在训练集确定后冻结，测试集只 predict）；",
-    "      这是内部近似，非独立外部验证；真正外部 GEO 验证待补充外部数据后另跑",
-    "n_train=%d n_test=%d frozen_features=%d" % (len(tr_idx), len(te_idx), len(features)),
-    "frozen_model=logreg(L2,C=1)，测试集不重训、不重新筛基因",
-    "holdout_auc=%.3f holdout_acc=%.3f" % (auc, acc),
-    "confusion_matrix(labels=0,1)=%s" % cm.tolist(),
-    "limitation_note=样本极小（测试集 %d），AUC 置信区间极宽；仅作流程示范与方向参考" % len(te_idx),
+] + report_lines + [
     "outputs=external_validation_preds.tsv, external_frozen_coefs.tsv, ../figures/l1_12_external_roc.png, external_validation_report.txt",
     "elapsed_seconds=%.1f" % (time.time() - START),
 ]

@@ -6,7 +6,7 @@
   "notes": [
     "mod 注册表：客户端、服务台、runner 三方共读的唯一事实源（SSOT）。",
     "依赖用产物名表达，不用绝对路径——路径由运行方按项目拼接。",
-    "series 之间硬隔离（aims 铁律二）：不同系列不可穿插、不可跨系列取产物。",
+    "series 之间默认硬隔离（aims 铁律二）：不同系列不可穿插、不可跨系列取产物；唯一例外是 constraints.allowed_cross_series_bridges 声明的冻结签名桥。",
     "stage 内 optional=true 的 mod 可自由勾选；跨 stage 只允许按 order 递增的标准序。",
     "est_minutes / peak_mem_mb 为 K40 实测值，用于组合前的成本预估与拦截。"
   ],
@@ -18,7 +18,31 @@
       "l2_ko_virtual",
       "l3_ko_spatial"
     ],
-    "forbidden_cross_series": true
+    "forbidden_cross_series": true,
+    "allowed_cross_series_bridges": [
+      {
+        "id": "l2_to_l3_celltype_signature",
+        "from": "line2_scrna",
+        "to": "line3_spatial",
+        "scope": "same_project",
+        "producers": [
+          "l2_export_celltype_signature"
+        ],
+        "consumers": [
+          "l3_branches_celltype"
+        ],
+        "path": "public_references/celltype_signatures/<project_id>/signatures.tsv",
+        "manifest": "public_references/celltype_signatures/<project_id>/bridge_manifest.json",
+        "requires": [
+          "sha256",
+          "species_mapping",
+          "seed",
+          "project_id",
+          "value_domain",
+          "gene_symbol_namespace"
+        ]
+      }
+    ]
   },
   "series": [
     {
@@ -282,8 +306,8 @@
             },
             {
               "id": "l1_ml_diag",
-              "name": "SHAP 与聚类验证",
-              "desc": "补充模型校准、决策曲线和单基因 ROC 对比，检查分类结果稳健性",
+              "name": "诊断校准与决策曲线",
+              "desc": "补充模型校准、DCA 决策曲线、预测概率分布和单基因 ROC 对比，检查分类结果稳健性",
               "tool": "sklearn, scipy",
               "language": "Python",
               "requires": [
@@ -302,9 +326,9 @@
             {
               "id": "l1_ml_external",
               "name": "外部集冻结验证",
-              "desc": "在独立验证集上评估训练所得分类器的判别性能，并输出预测结果",
-              "tool": "pROC",
-              "language": "R",
+              "desc": "用冻结模型评估内部留出近似；有独立 GEO 队列时再执行真正的外部验证",
+              "tool": "sklearn",
+              "language": "Python",
               "requires": [
                 "expr_genes.tsv",
                 "group_map.tsv",
@@ -316,7 +340,7 @@
               ],
               "est_minutes": 6,
               "peak_mem_mb": 1800,
-              "notes": "铁律：只加载训练集冻结系数预测，严禁重训或泄漏。",
+              "notes": "铁律：只加载训练集冻结系数预测，严禁重训、泄漏或重新筛基因。无独立验证集时走 internal_holdout_approximation；cwd 或 --input 提供 external_frozen_model.tsv，且 cwd 有 val_expr_genes.tsv + val_group_map.tsv 时走 external_cohort_frozen，只 predict。external_frozen_model.tsv 与 val_* 为可选输入，不作所有项目硬性必需。",
               "script": "external_validation"
             },
             {

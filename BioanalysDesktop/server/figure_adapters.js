@@ -17,7 +17,6 @@ const SUPPORTED_TEMPLATE_IDS = new Set([
   'fig_l1_histogram',
   'fig_l1_violin',
   'fig_l2_umap',
-  'fig_l3_multipanel',
   'fig_l2p_violin',
   'fig_l3_sankey',
   'fig_l2p_scatterplot',
@@ -454,41 +453,6 @@ plot <- ggplot(deg, aes(x = direction, y = value, fill = direction)) +
 ggsave(output_file, plot, width = 89, height = 60, units = "mm", dpi = 300,
        device = png, type = "cairo", bg = "white")
 cat("ADAPT_REAL_INPUT_OK violin rows=", nrow(deg), "\n", sep = "")
-`,
-  fig_l3_multipanel: `# Real-data external-validation multi-panel overlay
-suppressPackageStartupMessages({library(ggplot2); library(patchwork)})
-pred <- read.delim(input_data, check.names = FALSE)
-required <- c("true", "pred", "prob_LS")
-if (!all(required %in% names(pred))) stop(paste("multipanel input columns missing:", paste(required, collapse = " / ")))
-pred$true <- factor(pred$true)
-pred$pred <- factor(pred$pred)
-pred$prob_LS <- as.numeric(pred$prob_LS)
-pred$truth_num <- as.numeric(as.character(pred$true))
-pred <- pred[is.finite(pred$prob_LS), , drop = FALSE]
-panel_a <- ggplot(pred, aes(x = true, y = prob_LS, fill = true)) +
-  geom_boxplot(width = 0.55, outlier.size = 0.4) +
-  labs(title = "A Risk by truth", x = "truth", y = "risk") +
-  theme_classic(base_size = 7) + theme(legend.position = "none")
-panel_b <- ggplot(pred, aes(x = true, y = pred)) +
-  geom_jitter(width = 0.2, height = 0.12, size = 0.8, alpha = 0.7) +
-  labs(title = "B Prediction", x = "truth", y = "pred") +
-  theme_classic(base_size = 7)
-pred$risk_bin <- cut(pred$prob_LS, breaks = seq(0, 1, by = 0.2), include.lowest = TRUE)
-cal <- aggregate(cbind(prob_LS, truth_num) ~ risk_bin, data = pred, FUN = mean)
-panel_c <- ggplot(cal, aes(x = prob_LS, y = truth_num)) +
-  geom_abline(linetype = "dashed", linewidth = 0.3, colour = "grey55") +
-  geom_point(size = 1.2, colour = "#0072B2") +
-  labs(title = "C Calibration", x = "mean risk", y = "observed") +
-  theme_classic(base_size = 7)
-pred$rank <- rank(-pred$prob_LS, ties.method = "first")
-panel_d <- ggplot(pred, aes(x = rank, y = prob_LS, colour = true)) +
-  geom_point(size = 0.9, alpha = 0.8) +
-  labs(title = "D Ranked risk", x = "sample rank", y = "risk") +
-  theme_classic(base_size = 7) + theme(legend.position = "top")
-figure <- (panel_a | panel_b) / (panel_c | panel_d)
-ggsave(output_file, figure, width = 183, height = 120, units = "mm", dpi = 300,
-       device = png, type = "cairo", bg = "white")
-cat("ADAPT_REAL_INPUT_OK multipanel rows=", nrow(pred), "\n", sep = "")
 `,
   fig_l3_sankey: `
 # Real-data WGCNA module flow overlay (ggalluvial alluvial: module -> module size tertile, ribbon width = real gene count)

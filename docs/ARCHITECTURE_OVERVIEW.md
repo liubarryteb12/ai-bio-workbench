@@ -28,7 +28,7 @@ src/line2_scrna/    29 文件   单细胞线（Python 为主）
 src/line3_spatial/  26 文件   空间转录组线（Python + R）
 src/engines/        3 个引擎  a2a-rpc / artifact-sync / security-audit
 src/workflows.json           步骤注册表（54 个已登记 mod）
-src/figure_templates.json    82 条出图模板（30 条 ready 封板）
+src/figure_templates.json    92 条出图模板（39 条 Ready 单图）
 src/bridge_guard.sh          跨语言桥接守卫
 ```
 
@@ -45,7 +45,7 @@ server/           48 文件   Node HTTP 服务（无框架，手写路由）
   task.js                 算力节点选择、健康探测、故障转移
   reconcile.js            任务状态对账（remote probe -> 状态机）
   ledger.js               路径判定（analyzePath / classifyPath / isPathUnderLegalRoot）
-  proc.js / ssh.js        子进程接缝（唯一允许起进程的地方）
+  proc.js                 子进程接缝（默认 ADB，SSH 仅特殊开关）
   figure_*.js             出图适配、目录、执行计划、分类
 src/              19 文件   前端 React（views / components / shared）
 tests/            161 文件  node:test 契约测试
@@ -82,7 +82,7 @@ dist/             3 文件    构建产物
    │ 1. buildTaskScript(task)      拼出远端要执行的命令
    │ 2. auditCommand(cmd)          审计：拒绝可疑命令
    │ 3. 套 wrapper                  ops/run_throttled_task.sh <task_id> <line> <step> ...
-   │ 4. runSsh(cmd)                 经 ssh 下发到 K40
+   │ 4. remoteRunner(cmd)          默认经 ADB 下发，显式 ssh 开关时经 SSH
    ▼
 [K40 容器 /mnt/ssd/bio_data]
    │ run_throttled_task.sh：nice -n10 / ionice / 幂等锁 / 内存闸门 / 退出码 0-4
@@ -119,7 +119,7 @@ dist/             3 文件    构建产物
 | 10 | 状态对账 | `reconcile.classifyRemoteState` | 进程 + 产物 + 标记 | succeeded/failed/interrupted |
 | 11 | 交付验收 | `report.js` 四关 + 回执 | tar sha256 + 验收记录 | 409 ERR_DELIVERY_UNVERIFIED |
 
-**判定顺序的核心设计**：越便宜、越能早失败的判定越靠前。门禁串联器 `ops/run_all_gates.mjs` 用的是同一条原则（12 道从 0.1 秒到 150 秒递增）。
+**判定顺序的核心设计**：越便宜、越能早失败的判定越靠前。门禁串联器 `ops/run_all_gates.mjs` 用的是同一条原则，清单本身是唯一真源。
 
 ## 四、存储结构
 
@@ -148,11 +148,11 @@ dist/             3 文件    构建产物
 | 真源 | 路径 | 管什么 |
 |---|---|---|
 | 步骤注册表 | `src/workflows.json` | 54 个 mod 的 id/script/输入输出 |
-| 图件模板 | `src/figure_templates.json` | 82 条模板，30 条 ready |
-| Ready 白名单 | `ops/figure_ready_allowlist.json` | 封板的 30 个 ID |
-| Ready 实证矩阵 | `ops/figure_ready_matrix.json` | 30 条的 sha256 核验结果 |
+| 图件模板 | `src/figure_templates.json` | 92 条模板，39 条 Ready 单图 |
+| Ready 白名单 | `ops/figure_ready_allowlist.json` | 封板的 39 个 ID |
+| Ready 实证矩阵 | `ops/figure_ready_matrix.json` | 39 条的 sha256 核验结果 |
 | 项目 manifest | `local_projects/<id>/project.json` | 分组设计、阈值、pipeline_dag |
-| 门禁清单 | `ops/run_all_gates.mjs` | 12 道门禁的顺序与参数 |
+| 门禁清单 | `ops/run_all_gates.mjs` | 门禁顺序与参数的唯一真源 |
 
 ## 五、当前架构的已知问题（客观陈述，供优化时参考）
 
