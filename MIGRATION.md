@@ -53,12 +53,12 @@
 | `ops/router.yaml` | `ROUTER.yaml` | W1 已完成 |
 | `docs/SCOPE.md` | `SCOPE.md` | W1 已完成 |
 | `con_hf/CONTEXT.md` | `GLOSSARY.md` | W1 已完成 |
-| `src/engines/*`、`src/bridge_guard.sh` | `core/` | W3 |
+| `src/engines/*`（空占位，已清理）、`src/bridge_guard.sh` | `core/` | W3 已完成 |
 | `ops/schema_gateway.py` + 任务契约 | `schemas/` | W4 |
-| `src/line1_bulk` | `tools/bio/line1_bulk` | W2 |
-| `src/line2_scrna` | `tools/bio/line2_scrna` | W2 |
-| `src/line3_spatial` | `tools/bio/line3_spatial` | W2 |
-| `src/workflows.json`、`src/figure_templates.json` | `tools/bio/` | W2 |
+| `src/line1_bulk` | `tools/bio/line1_bulk` | W3 已完成（git mv 保留历史） |
+| `src/line2_scrna` | `tools/bio/line2_scrna` | W3 已完成（git mv 保留历史） |
+| `src/line3_spatial` | `tools/bio/line3_spatial` | W3 已完成（git mv 保留历史） |
+| `src/workflows.json`、`src/figure_templates.json` | `tools/bio/` | W3 已完成（git mv 保留历史） |
 | `ops/*.mjs` 门禁与库 | `tools/dev/` | W5 |
 | `ops` 出图与报告脚本 | `tools/reporting/` | W5 |
 | `ops` PowerShell 运维入口 | `tools/ops/` | W5 |
@@ -78,7 +78,7 @@
 |---|---|---|
 | W1 | 治理文件上移 + 骨架目录落地 | `router_gate` 绿；router 契约测试绿；残留引用为零 |
 | W2 | 三线与注册表迁 `tools/bio/` | 全量测试绿；`k40_script_parity` 绿；`workflows.json` 路径全解析 |
-| W3 | 引擎与桥接守卫迁 `core/` | 全量测试绿；bridge 契约绿 |
+| W3 | 引擎与桥接守卫迁 `core/`，三线母版物理迁 `tools/bio/` | 全量测试 1953 对齐基线；24 门禁全绿；k40 parity 绿 |
 | W4 | 契约网关迁 `schemas/` | `schema_gateway` 契约绿；短命 IPC 三态退出码不变 |
 | W5 | `ops/` 分流 `tools/{dev,reporting,ops}/` | `run_all_gates --skip-tests` 24/24 绿；`enforced_by` 白名单同步更新 |
 | W6 | 门户应用落位评估 | 出评估记录；两种落位方案的回归全绿者胜出 |
@@ -100,5 +100,7 @@
 
 | 波 | 状态 |
 |---|---|
-| W1 | 2026-11-08 执行中 |
-| W2 到 W10 | 排队 |
+| W1 | 已完成（1e778f9） |
+| W2 | 已完成（fe0cdcf，k40 双向同源） |
+| W3 | 已完成（fb866c7，物理迁移 + 全量对齐） |
+| W4 到 W10 | 排队 |

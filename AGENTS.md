@@ -16,7 +16,7 @@
 | 远程执行 / 设备连不上 | [docs/remote_channel_policy.md](docs/remote_channel_policy.md)（ADB 主通道，SSH 仅显式特殊开关） |
 | 出图或改图件模板 | [docs/figure_spec.md](docs/figure_spec.md)（v2.3：只出单图，300 DPI，图例外置右侧，图注左下） |
 | 自动执行客户项目（发工单出回执） | [docs/WORK_ORDER_ORCHESTRATOR.md](docs/WORK_ORDER_ORCHESTRATOR.md)（工单 schema、fail closed 判据、回执落点） |
-| 增删生信分析模块或改 `src/workflows.json` | 先跑 `node ops/module_ablation_matrix_gate.mjs`，判据见 [docs/MODULE_ABLATION_MATRIX.md](docs/MODULE_ABLATION_MATRIX.md) |
+| 增删生信分析模块或改 `tools/bio/workflows.json` | 先跑 `node ops/module_ablation_matrix_gate.mjs`，判据见 [docs/MODULE_ABLATION_MATRIX.md](docs/MODULE_ABLATION_MATRIX.md) |
 | 做课题设计、选题准入判定、筛数据 | [docs/topic_sieve_spec.md](docs/topic_sieve_spec.md)（规则正本：L0 到 L4 与 T1 到 T9） |
 | 派「按方向调研数据」的活 | [docs/topic_survey_sop.md](docs/topic_survey_sop.md)（模式 A 执行规程） |
 

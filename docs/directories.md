@@ -30,14 +30,16 @@ AI辅助生信分析流程工作台/
 │   └── sync/                # inbox、outbox、daemon.log
 ├── docs/                    # 工程规范与架构文档
 │   ├── directories.md       # 本文件
-│   ├── coding-standards.md  # 分析代码规范（Linux 运行面，src/ 动工前必读）
+│   ├── coding-standards.md  # 分析代码规范（Linux 运行面，tools/bio/ 动工前必读）
 │   ├── isolation.md         # 三线隔离约束与校验
 │   └── ledger-schema.md     # 任务台账 JSON schema
 ├── ops/                     # 链路运维脚本（PC 侧 PowerShell 入口 + 手机/容器侧执行体）
-└── src/                     # 三条线分析代码
+└── tools/bio/               # 三条线分析母版与注册表（W3 已迁入，git 历史保留）
     ├── line1_bulk/
     ├── line2_scrna/
-    └── line3_spatial/
+    ├── line3_spatial/
+    ├── workflows.json
+    └── figure_templates.json
 ```
 
 ## 服务器侧目录

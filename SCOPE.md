@@ -9,7 +9,7 @@
 ## 一、范围内（In-Scope）
 
 1. 三条隔离分析线的端到端流水线：`line1_bulk`（GEO 常规挖掘）、`line2_scrna`（单细胞）、
-   `line3_spatial`（空间转录组），母版在 `src/<line>/scripts/`，步骤由 `src/workflows.json` 定义。
+   `line3_spatial`（空间转录组），母版在 `tools/bio/<line>/scripts/`，步骤由 `tools/bio/workflows.json` 定义。
 2. 受约束运行面上的真机执行与核验：受限内存设备上的部署、运行、产物回传与逐字节校验。
 3. 图件合规：300 DPI、图例外置、图注置轴框外左下角、分类色板 Okabe-Ito、空间图内嵌比例尺。
 4. 交付物与报告：脱敏后的综合报告、交付签名与四关验收。

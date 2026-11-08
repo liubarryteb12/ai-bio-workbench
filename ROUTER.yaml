@@ -5,7 +5,7 @@
 # BioanalysDesktop/tests/router_eval.test.js 用黄金集评测匹配准确率。
 #
 # 硬约束（router_gate 强制）：
-#   1. allowed_scripts 的每一项必须是 src/workflows.json 里真实存在的 Mod ID，
+#   1. allowed_scripts 的每一项必须是 tools/bio/workflows.json 里真实存在的 Mod ID，
 #      或者是 ops/ 下真实存在的脚本文件名；引用不存在即 FAIL。
 #   2. target_line_or_gate 必须是真实存在的线 ID 或 ops 脚本。
 #   3. id 全局唯一。
