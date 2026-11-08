@@ -1,6 +1,6 @@
 # 全局导航中枢（INDEX.yaml）
 version: "1.0.0"
-updated: "2026-11-08"
+updated: "2026-11-09"
 structure_contract: MIGRATION.md
 
 governance:
@@ -34,17 +34,17 @@ skills:
 
 tools:
   bio:
-    status: "W2 待迁入"
-    planned_from: [src/line1_bulk, src/line2_scrna, src/line3_spatial]
+    status: "W3 已迁入（三线母版与注册表）"
   dev:
     status: "W5a 已迁入（门禁与库 + work_order）"
   reporting:
     status: "W5a 已迁入（交付链四件）"
   ops:
-    status: "W5 待迁入"
-    planned_from: [ops/*.ps1, ops/*.sh]
-  portal:
-    status: "W6 评估（BioanalysDesktop 落位）"
+    status: "W5b 已迁入（运维入口与算力面脚本）"
+
+workbench:
+  status: "W6 已裁定原地保留（BioanalysDesktop/）"
+  rationale: MIGRATION.md W6 评估结论
 
 workspace:
   status: "W8 待迁入"

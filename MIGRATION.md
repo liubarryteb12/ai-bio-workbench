@@ -1,6 +1,6 @@
 # 整体重构迁移契约（MIGRATION.md）
 
-> 版本：1.0 | 2026-11-08
+> 版本：1.1 | 2026-11-09
 > 性质：本仓库向 `reference/08.参考工作目录结构`（Ops-Agent-Platform v1.0.6）整体重构的唯一执行契约。
 > 谁读：所有参与重构的 Agent 与人。执行顺序、映射、验收、回滚都以本文为准。
 
@@ -10,6 +10,7 @@
 |---|---|---|
 | 2026-11-07 | 采纳三阶段渐进吸收，严守零新增顶层目录（Argon 第 74 轮 Q7，置信度 100%） | 交接清单/07 |
 | 2026-11-08 | 用户终审推翻上条：整体重构为参考结构，后续开发计划以该结构为纲 | 用户在重构评估线程明确裁定 |
+| 2026-11-09 | W6 门户落位裁定：`BioanalysDesktop/` 原地保留，`tools/portal/` 槽位撤销 | W6 评估事实见本文第七节 W6 小节 |
 
 上表第二条为当前生效裁定。零新增顶层目录约束自此解除，已吸收的机制资产（schema 网关、
 降级状态机、原子写、门禁）原样保留，只做物理落位调整。
@@ -36,12 +37,12 @@
 - `hooks/`：切面钩子资产（安全、审计）。
 - `schemas/`：强类型契约网关。
 - `skills/`：SOP 规约资产（stable 分级 + in-progress）。
-- `tools/`：业务与运维工具（bio / dev / reporting / ops / portal / examples）。
+- `tools/`：业务与运维工具（bio / dev / reporting / ops / examples）。
 - `workspace/`：数据与制品工作区（项目产物、收发件箱）。
 - `ledger/`：统一知识台账（五类 JSONL）。
 - `references/`：只读参考资产库（原 `reference/`）。
 - `docs/`：工程规范与架构文档（保留，属工程规范层）。
-- `BioanalysDesktop/`：门户应用（W6 起评估是否迁入 `tools/portal/`）。
+- `BioanalysDesktop/`：门户应用（W6 裁定原地保留；`tools/` 不再规划 portal 槽位）。
 
 `docs/` 保留理由：参考结构的 `references/` 是只读资产，工程规范是活文档，两者语义不同。
 活的规范留在 `docs/`，只读标杆进 `references/`。
@@ -66,7 +67,7 @@
 | `con_hf/ledger/` | `ledger/` | W8 |
 | `local_projects/` | `workspace/projects/` | W8 |
 | `reference/` | `references/` | W9 |
-| `BioanalysDesktop/` | 原地保留或 `tools/portal/` | W6 评估 |
+| `BioanalysDesktop/` | 原地保留 | W6 已裁定 |
 | `con_hf/` 其余（handoff、sync、runs、SPEC-*） | `workspace/handoff/`、`ledger/sync/`、`docs/runs/` | W8 |
 | `docs/` | 保留原地 | 不迁 |
 
@@ -82,7 +83,7 @@
 | W4 | 契约网关迁 `schemas/` | `schema_gateway` 契约绿；短命 IPC 三态退出码不变 |
 | W5a | `ops/*.mjs` 门禁与库迁 `tools/{dev,reporting}/` | `run_all_gates --skip-tests` 24/24 绿；1953 tests 对齐基线；`enforced_by` 白名单已换 tools/dev |
 | W5b | 报告与运维脚本迁 `tools/{reporting,ops}/` | 全量测试绿；K40 同步契约同步更新 |
-| W6 | 门户应用落位评估 | 出评估记录；两种落位方案的回归全绿者胜出 |
+| W6 | 门户应用落位评估 | 出评估记录；裁定为原地保留，回归保持基线全绿 |
 | W7 | SOP 转 `skills/` 规约资产 | 首个 skill（工单编排）YAML 解析绿；exit_criteria 与门禁一一对应 |
 | W8 | 台账与数据面迁 `ledger/`、`workspace/` | ledger 契约绿；服务器侧路径同步方案落地 |
 | W9 | `reference/` 改名 `references/` | 索引双向匹配；gitignore 白名单同步 |
@@ -105,4 +106,20 @@
 | W2 | 已完成（fe0cdcf，k40 双向同源） |
 | W3 | 已完成（fb866c7，物理迁移 + 全量对齐） |
 | W4 | 已完成（schema_gateway 迁入 schemas/） |
-| W5b 到 W10 | 排队 |
+| W5b | 已完成（21cfa5e + 9a1a0af + e17bb9b） |
+| W6 | 已裁定（评估与契约收口） |
+| W7 到 W10 | 排队 |
+
+### W6 评估结论
+
+裁定：`BioanalysDesktop/` 原地保留，`tools/portal/` 槽位撤销。核心事实：
+
+1. 门户是独立运行面：自有 `package.json`、Vite 构建产物、228 个契约测试；
+   `start_workbench.bat` 与便携包 `start-workbench.cmd` 都按应用根锚定。
+2. 门禁与治理已把它登记为受控应用区：`clean_workspace` 神圣名单、
+   `proc_seam_guard` 扫描面、`dist_parity_gate` 关键资产、`metrics_sync` 统计面
+   与 `router_gate` 黄金集入口都引用该路径。
+3. 迁入 `tools/portal/` 只带来目录名收益，代价是 40 个测试文件、8 个服务模块、
+   13 个门禁与两个启动器同时重写，还会打断便携包同源基线。
+4. 参考结构没有强制 `tools/portal/` 槽位；其 `tools/` 是领域无关容器。
+   本项目把门户视为应用根，与参考 `run_order_easy.py` 的一键入口同级，保留原地语义更准确。
