@@ -306,8 +306,8 @@ export const MUTATIONS = Object.freeze([
     target: 'ops/static_gate.mjs',
     guardLabel: 'T2-5 断言 1/3：portal/ 语法错文件必须被扫到并报红',
     edits: [{
-      find: "const SCAN_DIRS = ['ops', 'src', 'shared', 'bin', 'BioanalysDesktop/server', 'BioanalysDesktop/tests', 'BioanalysDesktop/src', 'portal', 'docs'];",
-      replace: "const SCAN_DIRS = ['ops', 'src', 'shared', 'bin', 'BioanalysDesktop/server'];",
+      find: "const SCAN_DIRS = ['ops', 'tools', 'shared', 'bin', 'BioanalysDesktop/server', 'BioanalysDesktop/tests', 'BioanalysDesktop/src', 'portal', 'docs'];",
+      replace: "const SCAN_DIRS = ['ops', 'tools', 'shared', 'bin', 'BioanalysDesktop/server'];",
     }],
     async guard(file, scope) {
       const probe = buildStaticProbe(scope || path.dirname(file), file);

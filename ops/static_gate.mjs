@@ -36,7 +36,8 @@ const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 /** 扫描面：这些目录下的文件参与门禁（与 .gitignore 口径一致） */
 // T2-5：扫描面必须覆盖真正产出业务代码的四块（tests/src 是前端与其契约测试，
 // portal 是门户，docs 里有可执行的 .sh 片段），否则语法回归只覆盖到一半仓库。
-const SCAN_DIRS = ['ops', 'src', 'shared', 'bin', 'BioanalysDesktop/server', 'BioanalysDesktop/tests', 'BioanalysDesktop/src', 'portal', 'docs'];
+// 2026-11-08 W3：三线母版迁 tools/bio/，src/ 清空，扫描面换 tools/bio。
+const SCAN_DIRS = ['ops', 'tools', 'shared', 'bin', 'BioanalysDesktop/server', 'BioanalysDesktop/tests', 'BioanalysDesktop/src', 'portal', 'docs'];
 const SKIP_DIR_NAMES = new Set(['node_modules', 'dist', 'encoding_backup', '_archive', 'artifacts', 'test-results', '.tmp', '__pycache__']);
 
 function walk(dir, out = []) {
