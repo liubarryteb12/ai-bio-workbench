@@ -18,7 +18,7 @@ SENSITIVE_ENV_RE = re.compile(
 SAFE_ID_RE = re.compile(r"^[a-z0-9_]+$")
 SAFE_BASENAME_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
-FORMAL_MATRIX_DEFAULT = Path("reference/05.可参考生信代码/可用代码预筛选/源码/_meta/script_plot_matrix.json")
+FORMAL_MATRIX_DEFAULT = Path("references/05.可参考生信代码/可用代码预筛选/源码/_meta/script_plot_matrix.json")
 MIN_PNG_DPI = 299.0
 
 
@@ -843,7 +843,7 @@ def main(argv=None):
     if args.strict:
         try:
             workspace_root = ensure_within(args.workspace_root, args.workspace_root)
-            reference_root = args.reference_root or (workspace_root / "reference" / "05.可参考生信代码" / "可用代码预筛选" / "源码")
+            reference_root = args.reference_root or (workspace_root / "references" / "05.可参考生信代码" / "可用代码预筛选" / "源码")
             reference_root = ensure_within(reference_root, workspace_root)
             matrix_path = args.matrix or (reference_root / "_meta" / "script_plot_matrix.json")
             payload = validate_formal_matrix(matrix_path, reference_root)

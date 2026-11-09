@@ -23,7 +23,7 @@ const REPO_ROOT = path.resolve(HERE, '..', '..');
  * 而不是把「数据缺失」报成「代码错误」。
  */
 function materializedPresent() {
-  const probe = path.join(REPO_ROOT, 'reference', '05.可参考生信代码', 'library', 'figures');
+  const probe = path.join(REPO_ROOT, 'references', '05.可参考生信代码', 'library', 'figures');
   try { return fs.existsSync(probe) && fs.readdirSync(probe).length > 0; } catch { return false; }
 }
 const REPO = path.resolve(HERE, '..', '..');

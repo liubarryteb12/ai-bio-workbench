@@ -22,10 +22,10 @@ const REPO = path.resolve(HERE, '..', '..');
 const GENERATOR = path.join(REPO, 'tools', 'dev', 'build_figure_templates.cjs');
 const REGISTRY = path.join(REPO, 'tools', 'bio', 'figure_templates.json');
 const BOXPLOT_MASTERS = [
-  path.join(REPO, 'reference', '05.可参考生信代码', '可用代码预筛选', '源码', 'L1_基础统计图', 'L1_boxplot_code.R'),
-  path.join(REPO, 'reference', '05.可参考生信代码', '可用代码预筛选', '源码', '_meta', 'R453_compat', 'L1_boxplot_code.R'),
+  path.join(REPO, 'references', '05.可参考生信代码', '可用代码预筛选', '源码', 'L1_基础统计图', 'L1_boxplot_code.R'),
+  path.join(REPO, 'references', '05.可参考生信代码', '可用代码预筛选', '源码', '_meta', 'R453_compat', 'L1_boxplot_code.R'),
 ];
-const PLOT_MATRIX = path.join(REPO, 'reference', '05.可参考生信代码', '可用代码预筛选', '源码', '_meta', 'script_plot_matrix.json');
+const PLOT_MATRIX = path.join(REPO, 'references', '05.可参考生信代码', '可用代码预筛选', '源码', '_meta', 'script_plot_matrix.json');
 // git 经工具链解析（净化 PATH 下 spawnSync('git') 直接 ENOENT）；解析不到时整类断言跳过
 import { resolveTool } from '../../tools/dev/toolchain.mjs';
 const GIT = resolveTool('git').path;
@@ -174,7 +174,7 @@ test('ready template source, preview and sample files are git-trackable', (testC
   const registry = reloadFigureTemplates();
   for (const item of registry.templates.filter((row) => row.deps_status === 'ready')) {
     // v2 交付模板的 sample 指向真实项目图目录（按 .gitignore 设计被忽略），
-    // 其提交证据是 reference/_v2_* 的 source/preview 快照；sample 仅作运行期指针。
+    // 其提交证据是 references/_v2_* 的 source/preview 快照；sample 仅作运行期指针。
     const isV2Delivery = String(item.render_evidence?.entry_id || '').startsWith('v2_delivery_');
     const relatives = isV2Delivery
       ? [item.source, item.preview]
@@ -265,7 +265,7 @@ test('formal script plot matrix contains only passing exact-source entries', () 
     assert.ok(entry.artifacts.length > 0, `${entry.entry_id}: artifacts`);
     assert.ok(entry.artifacts.every((item) => item.ok), `${entry.entry_id}: invalid artifact`);
     assert.match(entry.source_sha256, /^[0-9a-f]{64}$/);
-    const source = path.join(REPO, 'reference', '05.可参考生信代码', '可用代码预筛选', '源码', entry.script_path);
+    const source = path.join(REPO, 'references', '05.可参考生信代码', '可用代码预筛选', '源码', entry.script_path);
     assert.ok(fs.existsSync(source), `${entry.entry_id}: source missing`);
     assert.equal(sha256(source), entry.source_sha256);
     // 不在开发仓工作树根时只跳过这一段（存在性与 sha256 仍要全查）
@@ -283,8 +283,8 @@ test('formal script plot matrix contains only passing exact-source entries', () 
 test('figure registry inputs and boxplot masters are git-trackable', (testContext) => {
   if (!needGit(testContext)) return;
   const paths = [
-    'reference/05.可参考生信代码/可用代码预筛选/源码/_meta/bizard_index.csv',
-    'reference/05.可参考生信代码/可用代码预筛选/源码/_meta/r453_verification_report.json',
+    'references/05.可参考生信代码/可用代码预筛选/源码/_meta/bizard_index.csv',
+    'references/05.可参考生信代码/可用代码预筛选/源码/_meta/r453_verification_report.json',
     ...BOXPLOT_MASTERS.map((file) => path.relative(REPO, file).split(path.sep).join('/')),
   ];
   for (const relative of paths) {
@@ -347,7 +347,7 @@ test('figure resolution accepts a same-line linked mod and complete adapt vars',
   assert.equal(request.ok, true, request.errors.join('\n'));
   assert.equal(request.template.id, 'fig_l2_volcano');
   assert.deepEqual(request.selected_mods, ['l1_figures_bulk']);
-  assert.match(request.master_path, /figure_templates|L2_core_code\.R|reference/);
+  assert.match(request.master_path, /figure_templates|L2_core_code\.R|references/);
 });
 
 test('figure resolution rejects missing adapt vars and non-linked mods', () => {
@@ -430,8 +430,8 @@ test('masters referenced by more than three projects reject in-place overwrite',
 // 冒充「k40 真机跑出的验证产物」。曾考虑「产物首次出现于本次 commit」的 git 历史断言，
 // 被裁定否决：常驻门禁下重跑验证会覆盖同名 artifact、rebase 也改变历史，必然误伤。
 // 改用两条无状态断言：哈希集合互斥 + 报告与磁盘实时咬合。
-const CATALOG_FIGURE_DIR = path.join(REPO, 'reference', '05.可参考生信代码', 'library', 'figures');
-const R453_REPORT = path.join(REPO, 'reference', '05.可参考生信代码', '可用代码预筛选', '源码', '_meta', 'r453_verification_report.json');
+const CATALOG_FIGURE_DIR = path.join(REPO, 'references', '05.可参考生信代码', 'library', 'figures');
+const R453_REPORT = path.join(REPO, 'references', '05.可参考生信代码', '可用代码预筛选', '源码', '_meta', 'r453_verification_report.json');
 
 test('ready artifacts never collide with catalog website images', () => {
   if (!fs.existsSync(CATALOG_FIGURE_DIR)) return;
@@ -465,7 +465,7 @@ test('r453 report runner hashes match the masters on disk', () => {
     assert.ok(runner.source, runnerId + ': 报告缺 source');
     assert.match(String(runner.source_sha256 || ''), /^[0-9a-f]{64}$/, runnerId + ': 报告缺合法 source_sha256');
     const parts = String(runner.source).split('/');
-    const source = path.join(REPO, 'reference', '05.可参考生信代码', '可用代码预筛选', '源码', ...parts);
+    const source = path.join(REPO, 'references', '05.可参考生信代码', '可用代码预筛选', '源码', ...parts);
     assert.ok(fs.existsSync(source), runnerId + ': 母版缺失 ' + runner.source);
     assert.equal(sha256(source), runner.source_sha256,
       runnerId + ': 母版已改但未在 k40 重跑 verify_r453_figures.py（报告哈希与磁盘不一致，证据链失效）');

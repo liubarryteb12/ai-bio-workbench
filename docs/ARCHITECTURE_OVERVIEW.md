@@ -8,7 +8,7 @@
 ### 1.1 根目录 27 个条目
 
 ```
-参考与研究            reference/        只读出图规范与代码库（772 条 catalog）
+参考与研究            references/        只读出图规范与代码库（772 条 catalog）
 分析母版              tools/bio/        三线脚本与注册表
 工作台（服务端+前端）  BioanalysDesktop/ 整个 Web 应用
 控制面工具            tools/dev/ tools/reporting/ tools/ops/

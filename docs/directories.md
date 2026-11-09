@@ -36,7 +36,7 @@ AI辅助生信分析流程工作台/
 │   └── sync/                # inbox、outbox、daemon.log
 ├── outputs/
 │   └── system_logs/         # 仅存回搬的机器执行台账，与 JSONL 台账独立
-├── reference/               # 参考资料唯一存放地，内容只读，结构可整理（约定见下）
+├── references/               # 参考资料唯一存放地，内容只读，结构可整理（约定见下）
 ├── docs/                    # 工程规范与架构文档
 │   ├── directories.md       # 本文件
 │   ├── coding-standards.md  # 分析代码规范（Linux 运行面，tools/bio/ 动工前必读）
@@ -161,9 +161,9 @@ python tools/ops/init_project_scaffold.py --root . --project <项目> --line <li
 
 参考资料是唯一例外：它按内容只读，按结构可整理。
 
-## reference/ 的读写规则
+## references/ 的读写规则
 
-`reference/` 是参考资料唯一存放地，分两层对待：
+`references/` 是参考资料唯一存放地，分两层对待：
 
 内容层只读：已入库的参考文件（实测经验、规范摘录、可用文献、出图代码）正文不改写、
 不删除。要改先复制到工作副本，改完作为新文件入库，原文件留痕。
@@ -171,15 +171,15 @@ python tools/ops/init_project_scaffold.py --root . --project <项目> --line <li
 结构层可整理：目录归类、可用性判定、把无用件移到待整理区，这类动作合法，
 是维护动作不是破坏。整理前先出盘点清单，整理后留台账。
 
-待整理区固定为 `reference/09.待整理/`，存放判定为无用或暂不可用的文件。
+待整理区固定为 `references/09.待整理/`，存放判定为无用或暂不可用的文件。
 移入时保留原始相对路径，便于回溯。待整理区内的文件不参与分析，不引用，定期清。
 
 命名沿用参考区既有风格：`NN.中文主题名`。新增顶类目时编号顺延，不重排已有编号。
 
-### reference/ 子目录编号与用途
+### references/ 子目录编号与用途
 
-盘点快照与导航见 `reference/README.md`（2026-11-07 盘点，逐文件明细在
-`reference/09.待整理/inventory_20261107.tsv`）。
+盘点快照与导航见 `references/README.md`（2026-11-07 盘点，逐文件明细在
+`references/09.待整理/inventory_20261107.tsv`）。
 
 | 编号 | 中文名 | 文件数 | 用途 |
 |---|---:|---:|---|
@@ -199,7 +199,7 @@ python tools/ops/init_project_scaffold.py --root . --project <项目> --line <li
 
 新增顶类目编号顺延，不重排已有编号。
 
-项目分组及对应目录维护在 `reference/项目分组表.tsv`。
+项目分组及对应目录维护在 `references/项目分组表.tsv`。
 
 ## 命名与写法红线
 

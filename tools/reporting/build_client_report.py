@@ -672,7 +672,7 @@ def load_reference_citations():
     here = os.path.dirname(os.path.abspath(__file__))
     return load_manifest(REFERENCE_CITATIONS_ENV, [
         os.path.join(here, "reference_citations.json"),
-        os.path.join(here, "..", "reference", "生信分析可用参考文献", "citations.json"),
+        os.path.join(here, "..", "references", "生信分析可用参考文献", "citations.json"),
         os.path.join(DATA_ROOT, "reference_citations.json"),
     ], "文献索引 citations.json")
 
@@ -1283,7 +1283,7 @@ def chapter2(ctx):
         if cite_rows:
             blocks.append(("table", (["包 / 方法", "用于分析线", "文献", "作者", "出处 · 年份", "DOI"],
                                      cite_rows)))
-            blocks.append(("p", "引用取自文献索引 `%s`（人读视图 `reference/生信分析可用参考文献/INDEX.md`）。"
+            blocks.append(("p", "引用取自文献索引 `%s`（人读视图 `references/生信分析可用参考文献/INDEX.md`）。"
                                 "只列本项目实际跑过的线用到的软件；未使用的文献不列入，"
                                 "避免「文献很多」被读成「已引用」。"
                            % desensitize(cite_manifest["path"], ctx["project_dir"])))

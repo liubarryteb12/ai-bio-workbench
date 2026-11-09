@@ -1,7 +1,7 @@
 # Matt Pocock 工程规范（写给 agent 的文档）
 
 > version 1 | 2026-10-23
-> 提取自 `reference/01.工程规范/mattpocock-skills/skills/productivity/writing-for-agents`
+> 提取自 `references/01.工程规范/mattpocock-skills/skills/productivity/writing-for-agents`
 > 及其 SKILL-MECHANICS.md。
 > 上游命题：agent 每一轮走的是同一个**过程**，所以同一份文档的杠杆是让这个过程可预测，
 > 而不是让输出逐字节一致。包装因载体而异（skill / `AGENTS.md` / 指针指的文档），写作不变。

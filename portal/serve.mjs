@@ -129,7 +129,7 @@ const SYNC_CACHE = path.join(INBOX, '.sync_cache');
 const TRIGGER_COOLDOWN_MS = 60_000;
 const SYNC_RESULT_MAX_BODY = Number(process.env.PORTAL_SYNC_RESULT_MAX_BYTES || 32 * 1024 * 1024);
 const TRIGGER_LIMITS = new Map();
-const FIGURE_ROOT_PREFIX = 'reference/05.可参考生信代码/可用代码预筛选/源码';
+const FIGURE_ROOT_PREFIX = 'references/05.可参考生信代码/可用代码预筛选/源码';
 
 /** 文件名安全化：保留中英文、数字、下划线、连字符 */
 function safeName(text) {

@@ -229,7 +229,7 @@ const CASES = {
     truth: { extension: '.h5ad', language: 'python' },
   },
   fig_l3_chorddiagram: {
-    source: 'reference/05.可参考生信代码/可用代码预筛选/源码/L3_高级组合图/L3_cellcomm_chord_code.R',
+    source: 'references/05.可参考生信代码/可用代码预筛选/源码/L3_高级组合图/L3_cellcomm_chord_code.R',
     language: 'r',
     lineId: 'line2_scrna',
     inputPath: 'data/line2_scrna/processed/cellcomm_interactions.tsv',
@@ -238,7 +238,7 @@ const CASES = {
     marker: 'chord',
   },
   fig_l1_connectedscatter: {
-    source: 'reference/05.可参考生信代码/可用代码预筛选/源码/L3_高级组合图/L3_spatial_autocorr_code.R',
+    source: 'references/05.可参考生信代码/可用代码预筛选/源码/L3_高级组合图/L3_spatial_autocorr_code.R',
     language: 'r',
     lineId: 'line3_spatial',
     inputPath: 'data/line3_spatial/processed/gene_autocorr_human.tsv',
@@ -247,7 +247,7 @@ const CASES = {
     marker: 'autocorr',
   },
   fig_l1_correlogram: {
-    source: 'reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R',
+    source: 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R',
     language: 'r',
     lineId: 'line1_bulk',
     inputPath: 'data/line1_bulk/processed/expr_genes.tsv',
@@ -256,7 +256,7 @@ const CASES = {
     marker: 'correlogram',
   },
   fig_l1_bubble: {
-    source: 'reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R',
+    source: 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R',
     language: 'r',
     lineId: 'line1_bulk',
     inputPath: 'data/line1_bulk/processed/deg_all.tsv',
@@ -265,7 +265,7 @@ const CASES = {
     marker: 'bubble',
   },
   fig_l2p_gseaplot: {
-    source: 'reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_enrich_ko_code.py',
+    source: 'references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_enrich_ko_code.py',
     language: 'python',
     lineId: 'line2_scrna',
     inputPath: 'data/line2_scrna/processed/enrichment_gsea.tsv',
@@ -274,7 +274,7 @@ const CASES = {
     marker: 'gsea',
   },
   fig_l2p_enrichmentplot: {
-    source: 'reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_enrich_ko_code.py',
+    source: 'references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_enrich_ko_code.py',
     language: 'python',
     lineId: 'line2_scrna',
     inputPath: 'data/line2_scrna/processed/enrichment_ora.tsv',
@@ -283,7 +283,7 @@ const CASES = {
     marker: 'ora',
   },
   fig_l2_networkplot: {
-    source: 'reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_enrich_ko_code.py',
+    source: 'references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_enrich_ko_code.py',
     language: 'python',
     lineId: 'line2_scrna',
     inputPath: 'data/line2_scrna/processed/dr_regulatory_network.tsv',
@@ -292,7 +292,7 @@ const CASES = {
     marker: 'network',
   },
   fig_l1_ridgeline: {
-    source: 'reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R',
+    source: 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R',
     language: 'r',
     lineId: 'line1_bulk',
     inputPath: 'data/line1_bulk/processed/enrichment_gsea_go.tsv',
@@ -301,7 +301,7 @@ const CASES = {
     marker: 'ridgeline',
   },
   fig_l1_upsetplot: {
-    source: 'reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R',
+    source: 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R',
     language: 'r',
     lineId: 'line1_bulk',
     inputPath: 'data/line1_bulk/processed/deg_all.tsv',
@@ -310,7 +310,7 @@ const CASES = {
     marker: 'upset',
   },
   fig_l1_vennplot: {
-    source: 'reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R',
+    source: 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R',
     language: 'r',
     lineId: 'line1_bulk',
     inputPath: 'data/line1_bulk/processed/deg_all.tsv',
@@ -548,7 +548,7 @@ test('artifact paths fail closed before entering generated code', () => {
 
 const CANDIDATE_ADAPTERS = {
   fig_l1_groupedbar: {
-    source: 'reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R',
+    source: 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R',
     language: 'r',
     lineId: 'line1_bulk',
     inputPath: 'data/line1_bulk/processed/enrichment_gsea_go.tsv',
@@ -562,7 +562,7 @@ const CANDIDATE_ADAPTERS = {
     marker: 'groupedbar',
   },
   fig_l1_scatter: {
-    source: 'reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R',
+    source: 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R',
     language: 'r',
     lineId: 'line1_bulk',
     inputPath: 'data/line1_bulk/processed/ml_core_hub_genes.tsv',
@@ -576,7 +576,7 @@ const CANDIDATE_ADAPTERS = {
     marker: 'scatter',
   },
   fig_l1_boxplot: {
-    source: 'reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_boxplot_code.R',
+    source: 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_boxplot_code.R',
     language: 'r',
     lineId: 'line1_bulk',
     inputPath: 'data/line1_bulk/processed/deg_all.tsv',
@@ -588,7 +588,7 @@ const CANDIDATE_ADAPTERS = {
     marker: 'boxplot',
   },
   fig_l1_density: {
-    source: 'reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R',
+    source: 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R',
     language: 'r',
     lineId: 'line1_bulk',
     inputPath: 'data/line1_bulk/processed/expr_genes.tsv',
@@ -597,7 +597,7 @@ const CANDIDATE_ADAPTERS = {
     marker: 'density',
   },
   fig_l1_histogram: {
-    source: 'reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R',
+    source: 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R',
     language: 'r',
     lineId: 'line1_bulk',
     inputPath: 'data/line1_bulk/processed/expr_genes.tsv',
@@ -606,7 +606,7 @@ const CANDIDATE_ADAPTERS = {
     marker: 'histogram',
   },
   fig_l1_violin: {
-    source: 'reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_violin_code.R',
+    source: 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_violin_code.R',
     language: 'r',
     lineId: 'line1_bulk',
     inputPath: 'data/line1_bulk/processed/deg_all.tsv',
@@ -618,7 +618,7 @@ const CANDIDATE_ADAPTERS = {
     marker: 'violin',
   },
   fig_l2_umap: {
-    source: 'reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_umap_code.py',
+    source: 'references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_umap_code.py',
     language: 'python',
     lineId: 'line2_scrna',
     inputPath: 'data/line2_scrna/processed/scrna_clustered.h5ad',
@@ -630,7 +630,7 @@ const CANDIDATE_ADAPTERS = {
     marker: 'umap',
   },
   fig_l2p_violin: {
-    source: 'reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_violin_code.py',
+    source: 'references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_violin_code.py',
     language: 'python',
     lineId: 'line2_scrna',
     inputPath: 'data/line2_scrna/processed/celltype_composition.tsv',
@@ -643,7 +643,7 @@ const CANDIDATE_ADAPTERS = {
     marker: 'violin',
   },
   fig_l3_sankey: {
-    source: 'reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L3_sankey_code.R',
+    source: 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L3_sankey_code.R',
     language: 'r',
     lineId: 'line1_bulk',
     inputPath: 'data/line1_bulk/processed/wgcna_modules.tsv',

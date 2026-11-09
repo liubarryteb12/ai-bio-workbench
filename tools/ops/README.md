@@ -29,7 +29,7 @@
 | `layout_autoload/bin/Rscript` | 服务器 `tools/ops/layout_autoload/bin/` | `Rscript` 垫片：母版统一用 `--vanilla`（会跳过 `R_PROFILE_USER`），垫片把它降级为等价组合并保留 user profile。任务脚本把本目录排在 PATH 最前 | 2026-10-18 真实 `pca_matrix` 验证：无垫片时 6×5 in 原尺寸，加垫片后模板生效 |
 | `../bin/layout_helper.R` | 服务器 `bin/` | 同上（R/ggplot2）：`apply_sci_plot_layout_r(p, spec, footnote_text, badge_text)` + `layout_save_r()` | 2026-10-18 在 k40-ubuntu 实跑 24 条断言全过，三模板均落盘；已部署 `/mnt/ssd/bio_data/bin/` |
 | `build_client_report.py` | 服务器 `tools/reporting/` | 客户交付包七章解读报告引擎：扫描项目产物 → 生成 `Analysis_Report.md` + 单文件交互 `Analysis_Report.html` → 归集 `01_Adapted_Scripts` / `02_Figures_and_Tables` / `03_Interpretation_Report` → 打 `<id>_Client_Delivery.tar.gz`。`--dry-run` 预览、`--no-tar` 只出三大件、`--self-test` 自检。第二章新增「软件与版本登记 / 随机种子 / 方法学引用」三段，数据读 `software_versions.json` + `reference_citations.json`（缺失时正文明确写"版本清单缺失"，不静默） | 2026-10-19 S11 后自检 30 条全过；`PRJ_E2E_GSE277173` 实跑 exit 0，版本表含 WGCNA 1.74 / limma 3.58.1，引用 2 条（WGCNA + Bioconductor），limma 明写"本目录无原始论文" |
-| `gen_reference_index.py` | 本地仓库 | 从 `reference/生信分析可用参考文献/citations.json` 生成人读索引 `INDEX.md`，并逐个校验 PDF 路径真实存在（`--check` 只校验不写盘）。改文献信息改 JSON 后重跑，避免索引与报告引用两套说法 | 2026-10-19 生成 18 个 PDF 全覆盖索引，`--check` PASS |
+| `gen_reference_index.py` | 本地仓库 | 从 `references/生信分析可用参考文献/citations.json` 生成人读索引 `INDEX.md`，并逐个校验 PDF 路径真实存在（`--check` 只校验不写盘）。改文献信息改 JSON 后重跑，避免索引与报告引用两套说法 | 2026-10-19 生成 18 个 PDF 全覆盖索引，`--check` PASS |
 | `run_throttled_task.sh` | 服务器 | 统一降权执行包装器 + 自动台账 JSON（aims §六.3）。默认不绑核仅 nice/ionice 降权（2026-10-20 契约变更，实测 EAS 动态调度更快），`BIO_PIN_CPUS=4,5,6` 可恢复静态绑核 | 长任务守护主通道；**台账只有 `project_id`/`random_seed` 两字段的历史缺口待补** |
 | `verify_bridge_checkpoint.py` | 服务器 | 跨语言转换四项断言（基因名完整性 / 矩阵行列方向与稀疏性 / 细胞 Barcode 顺序 / 降维与空间坐标保留） | **当前 58 个分析脚本 0 次调用它（aims §一.3 铁律空转）**，18787 提交层统一接线在整改队列 |
 | `check_storage_and_isolation.sh` | 服务器 | 存储水位门禁（<20% 阻断）+ FUSE 红线 + 跨线路径静态扫描（aims §六.2 四门禁） | 隔离红线的服务器侧执行者 |
@@ -59,7 +59,7 @@
 | 清单 | 仓库正本 | 服务器部署位置 | 说明 |
 |---|---|---|---|
 | 软件版本 | `docs/software_versions.json` | `tools/ops/software_versions.json` | 版本号由 `cn_debug/2026-10-19_s11_collect_versions.py` 在算力容器内实采，不许手抄；每条带 `source` 实测命令与 `lines`（该包被哪条线用） |
-| 文献索引 | `reference/生信分析可用参考文献/citations.json` | `tools/ops/reference_citations.json` | 报告方法学引用只读这一份；`INDEX.md` 是它的人读视图 |
+| 文献索引 | `references/生信分析可用参考文献/citations.json` | `tools/ops/reference_citations.json` | 报告方法学引用只读这一份；`INDEX.md` 是它的人读视图 |
 
 部署方式与 `build_client_report.py` 相同（scp 直送服务器部署面）。两份清单都缺失时报告照常生成，
 只在正文写明缺什么——报告引擎不允许因为缺清单就静默少写一段。

@@ -28,7 +28,7 @@ L2 = "line2_scrna"
 L3 = "line3_spatial"
 
 # 名称 -> (role, lines, citation_key or None, note or None)
-# citation_key 指向 reference/生信分析可用参考文献/citations.json 的 entries[].key
+# citation_key 指向 references/生信分析可用参考文献/citations.json 的 entries[].key
 PACKAGE_META = {
     # ---- R ----
     "WGCNA": ("加权共表达网络构建、动态剪切树划分模块、模块-性状关联（wgcna_modules）",

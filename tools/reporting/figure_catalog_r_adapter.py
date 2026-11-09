@@ -656,7 +656,7 @@ def main(argv=None):
     parser.add_argument(
         "--catalog",
         type=Path,
-        default=Path("reference/05.可参考生信代码/library/catalog.json"),
+        default=Path("references/05.可参考生信代码/library/catalog.json"),
     )
     parser.add_argument(
         "--output",

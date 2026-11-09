@@ -1,7 +1,7 @@
 # Matt Pocock 工程规范（Codex 工作流版）
 
 > version 1 | 2026-10-23
-> 提取自 `reference/01.工程规范/mattpocock-skills`（Matt Pocock 的 agent skills 仓库）。
+> 提取自 `references/01.工程规范/mattpocock-skills`（Matt Pocock 的 agent skills 仓库）。
 > 本文件是可执行口径，不是仓库说明：原仓库各 `SKILL.md` 保留完整步骤，这里只留判定、门槛与不变量。
 > 配套 [mattpocock-writing-spec.md](mattpocock-writing-spec.md)（写 agent 文档的规范）；
 > 与 [coding-standards.md](coding-standards.md) 分工：那份管代码怎么写，本文件管活怎么干。

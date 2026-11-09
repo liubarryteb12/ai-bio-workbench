@@ -29,14 +29,14 @@ test("parseProvenance 只认三种合法声明", () => {
 
 test("referencesLibrary 剔除声明行，避免判据被自己污染", () => {
   const declOnly = [
-    "# PROVENANCE: INDEPENDENT  未派生自 reference/05.可参考出图代码 的源码",
+    "# PROVENANCE: INDEPENDENT  未派生自 references/05.可参考出图代码 的源码",
     "x <- 1",
   ].join(NL);
   assert.equal(referencesLibrary(declOnly), false, "声明行提到库路径不算真引用");
 
   const realRef = [
     "# PROVENANCE: DERIVED",
-    "source(" + QT + "reference/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R" + QT + ")",
+    "source(" + QT + "references/05.可参考出图代码/_meta/R453_compat/L1_rest_code.R" + QT + ")",
   ].join(NL);
   assert.equal(referencesLibrary(realRef), true, "真实引用必须被识别");
 });

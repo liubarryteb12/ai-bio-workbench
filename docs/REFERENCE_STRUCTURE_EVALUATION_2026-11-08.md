@@ -1,7 +1,7 @@
-# 参考工作目录结构评估（reference/08）
+# 参考工作目录结构评估（references/08）
 
 > 评估日期：2026-11-08
-> 评估对象：`reference/08.参考工作目录结构`（快照 v1.0.6-clean-release，46 文件）
+> 评估对象：`references/08.参考工作目录结构`（快照 v1.0.6-clean-release，46 文件）
 > 评估背景：L1-L3 流水线功能对话已收尾，官方全量测试 1953 tests / 1952 pass / 0 fail / 1 skipped，
 > `run_all_gates --skip-tests` 24/24 全绿，便携包已重建。该基线是本次评估与后续任何结构改动的前提。
 > 决策状态：2026-11-08 用户终审裁定整体重构为参考结构，W1 到 W5b 已按 MIGRATION.md 落地。
@@ -43,7 +43,7 @@ execution_and_defense（Pydantic schemas + 白名单工具）、runtime_controls
 | 知识台账 ledger | `ledger/` 五类 JSONL + 项目级 ledger | 已有，粒度更细 |
 | REJ 已否决设计台账 | `SCOPE.md` 12 条 REJ，`enforced_by` 由门禁校验 | 本项目更强（含有效期与撤销链） |
 | hooks 安全/审计钩子 | 25 道门禁 + audit.js + 变异反证 mutation_gate | 本项目更强（含变异反证纪律） |
-| references 参考资产库 | `reference/` 编号目录 + inventory + gen_reference_index | 已有，规模更大 |
+| references 参考资产库 | `references/` 编号目录 + inventory + gen_reference_index | 已有，规模更大 |
 | skills/stable 规约资产（skill.yaml + prompt.md） | 无独立 skills 层，SOP 散在 docs/*.md | **缺口，值得吸收** |
 | 一键接单入口 run_order_easy.py | BioanalysDesktop 门户 + 工单编排器 + 交付打包 | 已有且更完整 |
 | GLOSSARY 术语表 | `GLOSSARY.md`（唯一权威，2026-11-08 由 con_hf/CONTEXT.md 迁入） | 已有，避免重复建真源 |
@@ -66,7 +66,7 @@ execution_and_defense（Pydantic schemas + 白名单工具）、runtime_controls
 ---|---|---|---|
 | A1 技能规约层 | 挑一个成熟 SOP（建议工单编排器）试点转成 `skill.yaml` + `prompt.md` 机器可读规约，含 allowed_tools、exit_criteria、verify_commands | `skills/stable/ops/work_order/`（新目录，不动现有代码） | 规约文件通过 YAML 解析；exit_criteria 与现有门禁一一对应 |
 | A2 概念映射表 | 把第三节映射表并入 `docs/ARCHITECTURE_OVERVIEW.md` 末尾，标注各机制的等价实现位置 | `docs/ARCHITECTURE_OVERVIEW.md` | 表内路径全部真实存在 |
-| A3 术语别名登记 | 把「三明治架构、三态数据面、技能规约」作为别名登记进领域术语表，注明来源为 reference/08 | `GLOSSARY.md` | 术语表新增条目含定义与出处 |
+| A3 术语别名登记 | 把「三明治架构、三态数据面、技能规约」作为别名登记进领域术语表，注明来源为 references/08 | `GLOSSARY.md` | 术语表新增条目含定义与出处 |
 | A4 迁移六步 SOP 吸收 | 把参考 MIGRATION 的「脚手架、搬迁、Schema、E11/E12 验收、注册路由、扫描合规」六步融合进现有工作流规范 | `docs/mattpocock-workflow-spec.md` | 工作流规范出现六步骨架且引用本项目真实工具 |
 
 不建议做的：根目录按 core/hooks/schemas/tools/workspace 重排；`src/` 三线拆进 `tools/`；

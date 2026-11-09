@@ -29,7 +29,7 @@ test("prep_matrix 探针注释过滤掉 NA 与空字符串 symbol", () => {
 });
 
 test("真实 GSE42955 与 GPL6244 契约存在性核验", (t) => {
-  const gseDir = path.join(REPO, "reference", "06.测试用原始数据", "L1_Microarray_GSE42955");
+  const gseDir = path.join(REPO, "references", "06.测试用原始数据", "L1_Microarray_GSE42955");
   if (!fs.existsSync(gseDir)) {
     t.skip("HOST_MISSING_LOCAL_DATA: L1_Microarray_GSE42955 不在位");
     return;

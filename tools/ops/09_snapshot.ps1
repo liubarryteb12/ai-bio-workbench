@@ -12,7 +12,7 @@
     BioanalysDesktop/{server,src,tests,public} 顶层散文件（AGENTS.md、.bat、.gitattributes 等）
 
   排除（三类，逐类写明理由）：
-    1. 数据大块：outputs/ test_use_data/ project_data/ reference/ cache/。
+    1. 数据大块：outputs/ test_use_data/ project_data/ references/ cache/。
        .gitignore 本就把它们排除在版本控制外，本地另有副本，重新拉取比打包便宜几个数量级。
     2. 依赖与构建产物：node_modules/ dist/ .venv/ __pycache__。可重新生成。
     3. 运行残留：.tmp/ .uploads/ *.log。会变，且不是源码本体。

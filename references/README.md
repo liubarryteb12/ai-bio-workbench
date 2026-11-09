@@ -1,7 +1,7 @@
-# reference 参考区总览
+# references 参考区总览
 
 > version 1.0 | 2026-11-07
-> 读写规则正本见 `docs/directories.md` 的「reference/ 的读写规则」：内容层只读，结构层可整理，
+> 读写规则正本见 `docs/directories.md` 的「references/ 的读写规则」：内容层只读，结构层可整理，
 > 整理前出盘点、整理后留台账，无用件移入 `09.待整理/` 并保留原始相对路径。
 > 本文件只做导航与盘点快照，不复述各子区自身 README 的正文。
 

@@ -60,7 +60,7 @@
       "acceptance": "R base and selected Bioconductor packages pass a sample job",
       "evidence": "/opt/R/4.5.3/bin/Rscript reports R 4.5.3 (2026-03-11). The managed Rscript shim reports /opt/R/4.5.3-site-library as .libPaths()[1]. All 22 required packages pass requireNamespace, L2 bridge checks pass 6/6, and the L3 matrix is 16 ready plus 1 explicitly blocked_r453 KEGG pathway figure.",
       "remote_output": "/mnt/ssd/bio_data/validation/r453_figures_20261027",
-      "verification_report": "reference/05.可参考出图代码/_meta/r453_verification_report.json",
+      "verification_report": "references/05.可参考出图代码/_meta/r453_verification_report.json",
       "exception": null
     },
     {
@@ -156,13 +156,13 @@
       "item": "offline_stringdb",
       "status": "complete",
       "detail": "STRING v12.0 human and mouse min700 tables are read-only and readable by R igraph.",
-      "report": "reference/05.可参考出图代码/_meta/r453_public_references_report.json"
+      "report": "references/05.可参考出图代码/_meta/r453_public_references_report.json"
     },
     {
       "item": "line1_benchmark",
       "status": "complete",
       "detail": "GSE16561 and GSE58294 train/validation matrices are read-only, hash-verified and contain 13,528 common genes.",
-      "report": "reference/05.可参考出图代码/_meta/r453_public_references_report.json"
+      "report": "references/05.可参考出图代码/_meta/r453_public_references_report.json"
     },
     {
       "item": "jsonl_ledgers_and_workspace/projects",

@@ -91,7 +91,7 @@ test('derived adapt copy carries a verifiable master header and adapt values', (
 
   const text = fs.readFileSync(result.local_path, 'utf8');
   assert.equal(text.includes('\r\n'), false, 'derived copy must use LF');
-  assert.match(text, /^# Master-Source: reference\/05\..*\| Master-SHA256: [0-9a-f]{64}$/m);
+  assert.match(text, /^# Master-Source: references\/05\..*\| Master-SHA256: [0-9a-f]{64}$/m);
   const header = text.match(/^# Master-Source: (.*) \| Master-SHA256: ([0-9a-f]{64})$/m);
   assert.equal(header[1], template.source);
   assert.equal(header[2], template.source_sha256);
@@ -149,8 +149,8 @@ test('adapt manifest maps project-local copies to per-line delivery paths', () =
     template: {
       id: templateId,
       language: 'r',
-      source: 'reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L2_core_code.R',
-      source_sha256: sha256(path.join(REPO, 'reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L2_core_code.R')),
+      source: 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L2_core_code.R',
+      source_sha256: sha256(path.join(REPO, 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L2_core_code.R')),
       canonical_output: 'L2_volcano_verified.png',
       deps_status: 'ready',
       verified: true,
@@ -200,7 +200,7 @@ test('adapt manifest rejects corrupted paths and foreign lines', () => {
   assert.equal(readAdaptManifest(localRoot, projectId).length, 3);
 });
 
-test('derived adapt copy rejects a master outside reference/05.', () => {
+test('derived adapt copy rejects a master outside references/05.', () => {
   const localRoot = makeLocalRoot('foreign-master-');
   const result = deriveAdaptedFigure({
     root: localRoot,
@@ -226,7 +226,7 @@ test('derived adapt copy rejects a master outside reference/05.', () => {
     },
   });
   assert.equal(result.ok, false);
-  assert.match(result.errors.join('; '), /reference\/05/);
+  assert.match(result.errors.join('; '), /references\/05/);
 });
 
 test('18787 工作台模板、预览与真实派生接线协同通过', async (t) => {

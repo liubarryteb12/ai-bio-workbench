@@ -3,7 +3,7 @@
  * figure_source_provenance.mjs —— 出图代码与参考库的溯源诚实性门禁（生信代码专项审核）。
  *
  * 审核发现的核心问题：注册表 tools/bio/figure_templates.json 里 30 条 ready 模板都登记了
- * source 指向 reference/05.可参考出图代码，但真实出图脚本一处都没引用参考库。
+ * source 指向 references/05.可参考出图代码，但真实出图脚本一处都没引用参考库。
  * 也就是说「溯源」目前只是元数据关系，不是代码的派生关系。
  *
  * 本门禁不强行要求「必须派生」（那是产品决定），而是要求**诚实**：
@@ -107,7 +107,7 @@ export const PROVENANCE_KINDS = Object.freeze(["DERIVED", "INSPIRED", "INDEPENDE
 
 /** 参考库路径特征：出现即说明脚本真的读了库。 */
 export const REFERENCE_PATH_MARKERS = Object.freeze([
-  "05.可参考出图代码", "05.可参考生信代码", "可用代码预筛选", "reference/05", "R453_compat", "figure_library",
+  "05.可参考出图代码", "05.可参考生信代码", "可用代码预筛选", "references/05", "R453_compat", "figure_library",
 ]);
 
 /**
@@ -125,7 +125,7 @@ export function parseProvenance(text) {
  * 该脚本是否真的引用了参考库路径。
  *
  * 关键：必须先剔除 PROVENANCE 声明行本身。声明里必然会写
- * "reference/05.可参考出图代码" 来解释关系，若不剔除，判据会被自己污染 ——
+ * "references/05.可参考出图代码" 来解释关系，若不剔除，判据会被自己污染 ——
  * 一个如实声明 INDEPENDENT 的脚本反而会被判成"引用了库"。
  */
 export function referencesLibrary(text) {

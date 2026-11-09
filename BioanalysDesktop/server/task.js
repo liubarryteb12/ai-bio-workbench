@@ -304,7 +304,7 @@ const SRC_SCRIPTS_ROOT = process.env.BIOANALYS_SRC_ROOT
   || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'tools', 'bio');
 /** 图模板派生副本读取母版时的仓库根，生产路径随安装位置解析 */
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const FIGURE_MASTER_ROOT = path.resolve(REPO_ROOT, 'reference', '05.可参考生信代码', '可用代码预筛选', '源码');
+const FIGURE_MASTER_ROOT = path.resolve(REPO_ROOT, 'references', '05.可参考生信代码', '可用代码预筛选', '源码');
 
 /** 桥接四项断言引擎（aims §一.3 钦定；ops/ 属另一会话域，只调用不修改） */
 export const BRIDGE_ENGINE_REMOTE = '/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py';
@@ -604,7 +604,7 @@ export function deriveAdaptedFigure({
   const masterRelative = path.relative(FIGURE_MASTER_ROOT, master);
   if (!masterRelative || masterRelative === '..' || masterRelative.startsWith(`..${path.sep}`)
     || path.isAbsolute(masterRelative)) {
-    errors.push('模板 source 不在仓库 reference/05. 内');
+    errors.push('模板 source 不在仓库 references/05. 内');
     return { ok: false, errors, template, local_path: null };
   }
   if (!fs.existsSync(master)) {

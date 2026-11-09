@@ -60,7 +60,7 @@ test('落盘后必须自校验条目数与 SHA256', () => {
 test('排除口径与 .gitignore 对齐（数据大块不进快照）', () => {
   const ignore = fs.readFileSync(GITIGNORE, 'utf8');
   // 这些目录在 .gitignore 里被排除，快照若收了就是把本就不进版本控制的东西打包
-  for (const name of ['node_modules', 'outputs', 'test_use_data', 'project_data', 'reference']) {
+  for (const name of ['node_modules', 'outputs', 'test_use_data', 'project_data', 'references']) {
     assert.ok(
       ignore.includes(name),
       `.gitignore 应排除 ${name}，否则快照与版本控制口径分叉`,

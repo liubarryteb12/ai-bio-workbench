@@ -20,9 +20,9 @@
       "language": "r",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L1_基础统计图/L1_groupedbar_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L1_基础统计图/L1_groupedbar_verified.png"
     },
     {
       "id": "fig_l1_bubble",
@@ -30,9 +30,9 @@
       "language": "r",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_bubble_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_bubble_verified.png"
     },
     {
       "id": "fig_l1_connectedscatter",
@@ -40,9 +40,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_cellcomm_autocorr_code.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_cellcomm_autocorr_code.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L3_高级组合图/L3_spatial_autocorr_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L3_高级组合图/L3_spatial_autocorr_verified.png"
     },
     {
       "id": "fig_l1_correlogram",
@@ -50,9 +50,9 @@
       "language": "r",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_correlogram_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_correlogram_verified.png"
     },
     {
       "id": "fig_l2_heatmap",
@@ -60,9 +60,9 @@
       "language": "r",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L2_more_code.R",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L2_more_code.R",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2_heatmap_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2_heatmap_verified.png"
     },
     {
       "id": "fig_l2_pca",
@@ -70,9 +70,9 @@
       "language": "r",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L2_more_code.R",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L2_more_code.R",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2_pca_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2_pca_verified.png"
     },
     {
       "id": "fig_l1_scatter",
@@ -80,9 +80,9 @@
       "language": "r",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L1_基础统计图/L1_scatter_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L1_基础统计图/L1_scatter_verified.png"
     },
     {
       "id": "fig_l2_umap",
@@ -90,9 +90,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_umap_code.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_umap_code.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_umap_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_umap_verified.png"
     },
     {
       "id": "fig_l1_boxplot",
@@ -100,9 +100,9 @@
       "language": "r",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_boxplot_code.R",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_boxplot_code.R",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L1_基础统计图/L1_boxplot_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L1_基础统计图/L1_boxplot_verified.png"
     },
     {
       "id": "fig_l1_density",
@@ -110,9 +110,9 @@
       "language": "r",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L1_基础统计图/L1_density_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L1_基础统计图/L1_density_verified.png"
     },
     {
       "id": "fig_l1_histogram",
@@ -120,9 +120,9 @@
       "language": "r",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L1_基础统计图/L1_histogram_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L1_基础统计图/L1_histogram_verified.png"
     },
     {
       "id": "fig_l1_ridgeline",
@@ -130,9 +130,9 @@
       "language": "r",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_ridgeline_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_ridgeline_verified.png"
     },
     {
       "id": "fig_l1_violin",
@@ -140,9 +140,9 @@
       "language": "r",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_violin_code.R",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_violin_code.R",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L1_基础统计图/L1_violin_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L1_基础统计图/L1_violin_verified.png"
     },
     {
       "id": "fig_l1_upsetplot",
@@ -150,9 +150,9 @@
       "language": "r",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_upset_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_upset_verified.png"
     },
     {
       "id": "fig_l1_vennplot",
@@ -160,9 +160,9 @@
       "language": "r",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_venn_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_venn_verified.png"
     },
     {
       "id": "fig_l2_networkplot",
@@ -170,9 +170,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_enrich_ko_code.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_enrich_ko_code.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_konetwork_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_konetwork_verified.png"
     },
     {
       "id": "fig_l2_volcano",
@@ -180,9 +180,9 @@
       "language": "r",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L2_core_code.R",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L2_core_code.R",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2_volcano_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2_volcano_verified.png"
     },
     {
       "id": "fig_l2p_barplot",
@@ -190,9 +190,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_stats_code.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_stats_code.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_bar_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_bar_verified.png"
     },
     {
       "id": "fig_l2p_boxplot",
@@ -200,9 +200,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_stats_code.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_stats_code.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_box_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_box_verified.png"
     },
     {
       "id": "fig_l2p_enrichmentplot",
@@ -210,9 +210,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_enrich_ko_code.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_enrich_ko_code.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_enrichment_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_enrichment_verified.png"
     },
     {
       "id": "fig_l2p_gseaplot",
@@ -220,9 +220,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_enrich_ko_code.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_enrich_ko_code.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_gsea_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_gsea_verified.png"
     },
     {
       "id": "fig_l2p_heatmap",
@@ -230,9 +230,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_stats_code.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_stats_code.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_heatmap_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_heatmap_verified.png"
     },
     {
       "id": "fig_l2p_scatterplot",
@@ -240,9 +240,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_stats_code.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_stats_code.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_scatter_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_scatter_verified.png"
     },
     {
       "id": "fig_l2p_dotplot",
@@ -250,9 +250,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_more_code.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_more_code.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_dotplot_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_dotplot_verified.png"
     },
     {
       "id": "fig_l2p_umap",
@@ -260,9 +260,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_umap_code.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_umap_code.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_umap_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_umap_verified.png"
     },
     {
       "id": "fig_l2p_violin",
@@ -270,9 +270,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_more_code.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_more_code.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_violin_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_violin_verified.png"
     },
     {
       "id": "fig_l2p_volcano",
@@ -280,9 +280,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_more_code.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_more_code.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_volcano_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_volcano_verified.png"
     },
     {
       "id": "fig_l3_chorddiagram",
@@ -290,9 +290,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_cellcomm_autocorr_code.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_cellcomm_autocorr_code.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L3_高级组合图/L3_cellcomm_chord_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L3_高级组合图/L3_cellcomm_chord_verified.png"
     },
     {
       "id": "fig_l3_sankey",
@@ -300,9 +300,9 @@
       "language": "r",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L3_sankey_code.R",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L3_sankey_code.R",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/L3_高级组合图/L3_sankey_verified.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/L3_高级组合图/L3_sankey_verified.png"
     },
     {
       "id": "fig_l3_banksy_domain",
@@ -310,9 +310,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/spatial_figures.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/spatial_figures.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l3_mouse_01_domains_B1-D1.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l3_mouse_01_domains_B1-D1.png"
     },
     {
       "id": "fig_l3_nnls_deconv_pie",
@@ -320,9 +320,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/spatial_figures.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/spatial_figures.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l3_mouse_15_deconv_composition.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l3_mouse_15_deconv_composition.png"
     },
     {
       "id": "fig_l3_multigene_coloc",
@@ -330,9 +330,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/spatial_figures.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/spatial_figures.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l3_mouse_02_target_gene_B1-D1.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l3_mouse_02_target_gene_B1-D1.png"
     },
     {
       "id": "fig_l3_morans_i_spatial",
@@ -340,9 +340,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/spatial_figures.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/spatial_figures.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l3_mouse_04_morans_top.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l3_mouse_04_morans_top.png"
     },
     {
       "id": "fig_l3_niche_comm_spatial",
@@ -350,9 +350,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/spatial_figures.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/spatial_figures.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l3_mouse_19_communication.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l3_mouse_19_communication.png"
     },
     {
       "id": "fig_l2_harmony_umap_entropy",
@@ -360,9 +360,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/scrna_figures.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/scrna_figures.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l2_01_umap_celltype.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l2_01_umap_celltype.png"
     },
     {
       "id": "fig_l2_liana_lr_dotplot",
@@ -370,9 +370,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/scrna_figures.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/scrna_figures.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l2_07_comm_top.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l2_07_comm_top.png"
     },
     {
       "id": "fig_l2_canonical_marker_dotplot",
@@ -380,9 +380,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/scrna_figures.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/scrna_figures.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l2_07_marker_top5.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l2_07_marker_top5.png"
     },
     {
       "id": "fig_l2_dr_trajectory_post",
@@ -390,9 +390,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/scrna_figures.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/scrna_figures.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/custom_fig_l2_networkplot.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/custom_fig_l2_networkplot.png"
     },
     {
       "id": "fig_l2_celltype_deg_volcano",
@@ -400,9 +400,9 @@
       "language": "python",
       "verified": true,
       "source_sha_match": true,
-      "source_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/scrna_figures.py",
+      "source_path": "references/05.可参考生信代码/可用代码预筛选/源码/_v2_masters/scrna_figures.py",
       "preview_sha_match": true,
-      "preview_path": "reference/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l2_08_deg_volcano_mitotic.png"
+      "preview_path": "references/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l2_08_deg_volcano_mitotic.png"
     }
   ]
 }

@@ -56,7 +56,7 @@ ledger:
   assets: [ledger/actions.jsonl, ledger/sync]
 
 references:
-  status: "W9 改名自 reference/"
+  status: "W9 已完成（reference/ 改名 references/，白名单同步）"
 
 engineering_docs:
   path: docs

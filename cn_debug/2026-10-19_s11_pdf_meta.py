@@ -1,6 +1,6 @@
 """S11 文献元数据探针：用 pdftotext 抽每个 PDF 第 1 页文本前若干行。
 
-用途：为 `reference/生信分析可用参考文献/INDEX.md` 取真实标题/作者/年份，
+用途：为 `references/生信分析可用参考文献/INDEX.md` 取真实标题/作者/年份，
       不凭文件名臆造。抽不到就如实打印 "未获取"。
 
 用法：python cn_debug/2026-10-19_s11_pdf_meta.py [子目录名...]

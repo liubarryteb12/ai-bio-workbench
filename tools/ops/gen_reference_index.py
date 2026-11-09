@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""生成 `reference/生信分析可用参考文献/INDEX.md`（文献索引的机读源是 citations.json）。
+"""生成 `references/生信分析可用参考文献/INDEX.md`（文献索引的机读源是 citations.json）。
 
 为什么要生成而不是手写：交付报告里的方法学引用直接读 `citations.json`，
 INDEX.md 只是同一份数据的人读视图。手写两份必然漂移——某天改了 DOI，
@@ -18,7 +18,7 @@ import os
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-REF_DIR = os.path.join(ROOT, "reference", "生信分析可用参考文献")
+REF_DIR = os.path.join(ROOT, "references", "生信分析可用参考文献")
 CITATIONS = os.path.join(REF_DIR, "citations.json")
 INDEX_MD = os.path.join(REF_DIR, "INDEX.md")
 

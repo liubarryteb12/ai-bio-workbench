@@ -1,7 +1,7 @@
 # 整体重构迁移契约（MIGRATION.md）
 
 > 版本：1.1 | 2026-11-09
-> 性质：本仓库向 `reference/08.参考工作目录结构`（Ops-Agent-Platform v1.0.6）整体重构的唯一执行契约。
+> 性质：本仓库向 `references/08.参考工作目录结构`（Ops-Agent-Platform v1.0.6）整体重构的唯一执行契约。
 > 谁读：所有参与重构的 Agent 与人。执行顺序、映射、验收、回滚都以本文为准。
 
 ## 一、决策记录
@@ -66,7 +66,7 @@
 | `ops/work_order_orchestrator.mjs` | `skills/stable/ops/` 绑定的工具 | W7 |
 | `con_hf/ledger/` | `ledger/` | W8 已完成 |
 | `local_projects/` | `workspace/projects/` | W8 已完成 |
-| `reference/` | `references/` | W9 |
+| `reference/` | `references/` | W9 已完成 |
 | `BioanalysDesktop/` | 原地保留 | W6 已裁定 |
 | `con_hf/handoff.md`、`con_hf/SPEC*.md`、`con_hf/dispatch/`、`con_hf/topic_survey/`、根级计划与汇报快照 | `workspace/handoff/` | W8 已完成 |
 | `con_hf/ops_ledger.md`、`con_hf/pitfalls_ledger.md`、`con_hf/踩坑台账.md`、图件台账 | `ledger/` | W8 已完成 |
@@ -113,7 +113,8 @@
 | W6 | 已裁定（评估与契约收口） |
 | W7 | 已完成（工单 skill + skills 契约门禁，门禁数 24 增至 25） |
 | W8 | 已完成（数据面与台账迁入 workspace/ 与 ledger/） |
-| W9 到 W10 | 排队 |
+| W9 | 已完成（reference/ 改名 references/，白名单同步） |
+| W10 | 排队 |
 
 ### W8 评估结论
 

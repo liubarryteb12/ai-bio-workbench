@@ -75,7 +75,7 @@ test('临时项目交付包包含适配代码、对账报告、公钥与二进�
 
   const masterSha = 'a'.repeat(64);
   fs.writeFileSync(path.join(projectDir, 'line1_bulk', 'figures', 'adapt', 'adapt_fig_l2_volcano.R'), [
-    `# Master-Source: reference/05.figures/fig_l2_volcano.R | Master-SHA256: ${masterSha}`,
+    `# Master-Source: references/05.figures/fig_l2_volcano.R | Master-SHA256: ${masterSha}`,
     '# Adapted-Project: PRJ_REAL_TAR',
     "adapt_vars <- list(input_data = 'data/line1_bulk/results/de.tsv')",
   ].join('\n') + '\n', 'utf8');
@@ -127,7 +127,7 @@ test('临时项目交付包包含适配代码、对账报告、公钥与二进�
   );
 
   const report = fs.readFileSync(path.join(adaptedCode, '_report.txt'), 'utf8');
-  assert.match(report, /Master-Source: reference\/05\.figures\/fig_l2_volcano\.R/);
+  assert.match(report, /Master-Source: references\/05\.figures\/fig_l2_volcano\.R/);
   assert.match(report, new RegExp(`Master-SHA256: ${masterSha}`));
   assert.match(report, /Delivered-SHA256: [0-9a-f]{64}/);
 
@@ -166,7 +166,7 @@ test('workspace/projects 新目录布局会把 data 与 figures 纳入交付包'
   fs.writeFileSync(path.join(projectDir, 'figures', 'line1_bulk', 'real.png'),
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00, 0x01]));
   fs.writeFileSync(path.join(projectDir, 'figures', 'adapt', 'adapted.R'),
-    '# Master-Source: reference/mock.R | Master-SHA256: ' + 'b'.repeat(64) + '\n', 'utf8');
+    '# Master-Source: references/mock.R | Master-SHA256: ' + 'b'.repeat(64) + '\n', 'utf8');
   fs.writeFileSync(path.join(projectDir, 'figures', 'adapt', 'manifest.json'),
     '{"adapted":true}\n', 'utf8');
 

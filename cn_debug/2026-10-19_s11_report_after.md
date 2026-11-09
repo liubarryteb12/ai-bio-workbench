@@ -96,7 +96,7 @@
 | WGCNA | line1_bulk | WGCNA: an R package for weighted correlation network analysis | Langfelder P, Horvath S | BMC Bioinformatics 9:559 · 2008 | 10.1186/1471-2105-9-559 |
 | （平台）Bioconductor | line1_bulk | Bioconductor: open software development for computational biology and bioinformatics | Gentleman RC, Carey VJ, Bates DM, Bolstad B, Dettling M, Dudoit S, Ellis B, Gautier L, Ge Y, Gentry J, Hornik K, Hothorn T, Huber W, Iacus S, Irizarry R, Leisch F, Li C, Maechler M, Rossini AJ, Sawitzki G, Smith C, Smyth G, Tierney L, Yang JYH 等（PDF 首页作者列表在此处截断，其后作者未获取） | Genome Biology 5(10):R80 · 2004 | 10.1186/gb-2004-5-10-r80 |
 
-引用取自文献索引 `{{DATA_ROOT}}/ops/reference_citations.json`（人读视图 `reference/生信分析可用参考文献/INDEX.md`）。只列本项目实际跑过的线用到的软件；未使用的文献不列入，避免「文献很多」被读成「已引用」。
+引用取自文献索引 `{{DATA_ROOT}}/ops/reference_citations.json`（人读视图 `references/生信分析可用参考文献/INDEX.md`）。只列本项目实际跑过的线用到的软件；未使用的文献不列入，避免「文献很多」被读成「已引用」。
 
 **以下软件在用、但本目录无其原始论文，故未引用**（不拿同类方法的论文顶替）：limma（本目录 04 类 18 个 PDF 中无 limma 原始论文；`工具包_*_2014__Moderated_estimation_of_fold_change_and_dispersion...` 经首页文字层确认是 DESeq2（Love/Huber/Anders），不是 limma。故 limma 只有版本号、无本地文献可引）。
 

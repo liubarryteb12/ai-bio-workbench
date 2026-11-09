@@ -6,7 +6,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 
 const REPO = path.resolve(__dirname, '..', '..');
-const FIGURE_ROOT = 'reference/05.可参考生信代码/可用代码预筛选/源码';
+const FIGURE_ROOT = 'references/05.可参考生信代码/可用代码预筛选/源码';
 const CSV_PATH = path.join(REPO, FIGURE_ROOT, '_meta', 'bizard_index.csv');
 const REPORT_PATH = path.join(REPO, FIGURE_ROOT, '_meta', 'r453_verification_report.json');
 const REGISTRY_PATH = path.join(REPO, 'tools', 'bio', 'figure_templates.json');
@@ -794,7 +794,7 @@ function buildRegistry() {
   }
 
   // Argon 第 75 轮：追加 10 个产线实证 ready 模板（L3 Top5 + L2 Top5），
-  // 预览来自真实交付项目 300DPI PNG，母版快照置于 reference/_v2_masters。
+  // 预览来自真实交付项目 300DPI PNG，母版快照置于 references/_v2_masters。
   templates.push(...buildV2Extra());
   for (const t of templates) applyV2Fields(t);
 

@@ -10,7 +10,7 @@
  *   5. 所属分类 README 已登记该技能；
  *   6. work_order 的 exit_criteria 与编排器门禁的检查项双射。
  *
- * YAML 解析采用内置严格子集解析器，只接受 reference/08 的 skill 格式：
+ * YAML 解析采用内置严格子集解析器，只接受 references/08 的 skill 格式：
  * 顶层标量、缩进列表、引号字符串与行尾注释。本机存在 PyYAML 时再做一次交叉解析，
  * 两个引擎结果必须一致。PyYAML 缺失只降级为单引擎，不伪装成已验证。
  */

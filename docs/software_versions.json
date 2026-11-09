@@ -4,7 +4,7 @@
   "scope": "本项目三条分析线实际在用的解释器与包（版本号由远端容器实采，不抄文档）",
   "probe": {
     "script": "2026-10-25 remote read-only R and Python version probe",
-    "raw_output": "reference/09.待整理/ledger-rscript-path-unification.md",
+    "raw_output": "references/09.待整理/ledger-rscript-path-unification.md",
     "host": "localhost",
     "probe_python": "3.12.3",
     "channel": "ssh k40-ubuntu",

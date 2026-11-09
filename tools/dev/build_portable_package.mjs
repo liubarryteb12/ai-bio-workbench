@@ -6,7 +6,7 @@
  * 换一台干净机器就散架。这里把四层内容打成一个自足目录：
  *
  *   L1 软件核心    BioanalysDesktop/ core/ schemas/ skills/ tools/ portal/ shared/ bin/ configs/ tests/ aims/ docs/
- *   L2 真源与台账  reference/ ledger/ workspace/handoff/ cn_debug/ workspace/projects/ deliverables/
+ *   L2 真源与台账  references/ ledger/ workspace/handoff/ cn_debug/ workspace/projects/ deliverables/
  *   L3 便携运行时  vendor/tools/ -> runtime/（node + MSYS ssh/scp/tar/sha256sum/openssl/bash）
  *   L4 运行时产物  .tmp/ outputs/ project_data/ node_modules/ .npmcache/ 一律不进包
  *
@@ -34,7 +34,7 @@ export const DEFAULT_OUT = path.join(REPO_ROOT, 'dist', 'portable', 'BioanalysWo
 /** 四层划分。prefixes 是相对仓库根的路径前缀，layer 只用于清单与报告。 */
 export const LAYERS = Object.freeze([
   { layer: 'L1-core', label: '软件核心', prefixes: ['BioanalysDesktop/', 'core/', 'schemas/', 'skills/', 'tools/', 'portal/', 'shared/', 'bin/', 'configs/', 'tests/', 'aims/', 'docs/', '.github/', 'AGENTS.md', '.gitattributes', '.gitignore', 'start_all.bat', 'start_portal.bat', 'start_workbench.bat'] },
-  { layer: 'L2-truth', label: '真源与台账', prefixes: ['reference/', 'ledger/', 'workspace/handoff/', 'cn_debug/', 'workspace/projects/', 'deliverables/'] },
+  { layer: 'L2-truth', label: '真源与台账', prefixes: ['references/', 'ledger/', 'workspace/handoff/', 'cn_debug/', 'workspace/projects/', 'deliverables/'] },
 ]);
 
 /** L4：一律不进包的路径前缀（未跟踪产物、依赖缓存、构建中间件）。 */
