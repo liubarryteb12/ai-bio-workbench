@@ -87,8 +87,8 @@ function checkEnforcedPath(repoRoot, rel) {
     return errs;
   }
   const posix = relative.replace(/\\/g, "/");
-  if (!/^(ops\/(?!tests|k40\/env_lock)|tools\/(dev|reporting|ops)\/|BioanalysDesktop\/tests\/)/.test(posix)) {
-    errs.push("SCOPE.md enforced_by 不在受控目录（tools/dev/、tools/reporting/、tools/ops/、ops/ 或 BioanalysDesktop/tests/）: " + rel);
+  if (!/^(tools\/(dev|reporting|ops)\/|BioanalysDesktop\/tests\/)/.test(posix)) {
+    errs.push("SCOPE.md enforced_by 不在受控目录（tools/dev/、tools/reporting/、tools/ops/ 或 BioanalysDesktop/tests/）: " + rel);
   }
   if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) {
     errs.push("SCOPE.md enforced_by 不是真实文件: " + rel);

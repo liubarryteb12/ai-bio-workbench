@@ -64,8 +64,13 @@ export function tmpQuota({ root = DEFAULT_ROOT, quota = TMP_QUOTA_FILES } = {}) 
  */
 export const SACRED_PATTERNS = Object.freeze([
   'deliverables/acceptance_audit.jsonl',
-  'ops/',
-  'src/',
+  'core/',
+  'schemas/',
+  'skills/',
+  'tools/',
+  'ledger/',
+  'references/',
+  'workspace/handoff/',
   'server/',
   'docs/',
   '.git/',

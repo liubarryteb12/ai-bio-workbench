@@ -10,7 +10,7 @@
  *   L3 便携运行时  vendor/tools/ -> runtime/（node + MSYS ssh/scp/tar/sha256sum/openssl/bash）
  *   L4 运行时产物  .tmp/ outputs/ project_data/ node_modules/ .npmcache/ 一律不进包
  *
- * 判据不是「复制成功」，而是「净化 PATH 下 gate:all 七道全绿」：
+ * 判据不是「复制成功」，而是「净化 PATH 下 gate:all 25 道全绿」：
  * --verify 会把 PATH 缩到只有 runtime/ 与系统目录再跑一遍门禁。
  *
  * 纯 node:fs + 一次 git ls-files（打包机有 git，目标机不需要）。
@@ -127,9 +127,9 @@ function launcherBody(command) {
 
 function writeLaunchers(outDir) {
   const files = {
-    'gate.cmd': launcherBody('"%~dp0runtime/node.exe" "%~dp0ops/run_all_gates.mjs" %*'),
+    'gate.cmd': launcherBody('"%~dp0runtime/node.exe" "%~dp0tools/dev/run_all_gates.mjs" %*'),
     'delivery.cmd': launcherBody('"%~dp0runtime/node.exe" "%~dp0tools/reporting/delivery_acceptance_core.mjs" %*'),
-    'toolchain.cmd': launcherBody('"%~dp0runtime/node.exe" "%~dp0ops/toolchain.mjs" %*'),
+    'toolchain.cmd': launcherBody('"%~dp0runtime/node.exe" "%~dp0tools/dev/toolchain.mjs" %*'),
     'start-workbench.cmd': launcherBody('"%~dp0runtime/node.exe" "%~dp0BioanalysDesktop/server/index.js" %*'),
     'test.cmd': launcherBody('"%~dp0runtime/node.exe" --test --test-concurrency=1 "%~dp0BioanalysDesktop/tests/*.test.js" %*'),
   };
@@ -147,13 +147,13 @@ function writeReadme(outDir, stats) {
     '',
     '## 先做这一步',
     '',
-    '运行 gate.cmd（加 --skip-tests 可快检）。看到 GATE_ALL_OK 七道全绿即表示这台机器上一切就绪。',
+    '运行 gate.cmd（加 --skip-tests 可快检）。看到 GATE_ALL_OK 25 道全绿即表示这台机器上一切就绪。',
     '',
     '## 五个入口',
     '',
     '| 命令 | 作用 |',
     '| --- | --- |',
-    '| gate.cmd | 七道总门禁（依赖预检、静态语言、跳过原因、台账、图件注册表、审计流、全量测试） |',
+    '| gate.cmd | 25 道总门禁（按 GATES 清单顺序执行） |',
     '| delivery.cmd <tar.gz> | 交付包四关验收（侧车哈希、解包结构、签名、清单闭合），全绿才写回执 |',
     '| toolchain.cmd | 打印每个工具解析到了哪个路径 |',
     '| test.cmd | 只跑全量测试（约 140 秒，排查用） |',

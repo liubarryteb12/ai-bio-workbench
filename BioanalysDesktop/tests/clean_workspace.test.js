@@ -54,7 +54,8 @@ test('黑名单：命中即抛 ERR_SACRED_PATH_PROTECTED，覆盖裁定点名的
   const backslash = String.fromCharCode(92);
   const expectedPatterns = [
     'deliverables/acceptance_audit.jsonl',
-    'ops/', 'src/', 'server/', 'docs/', '.git/',
+    'core/', 'schemas/', 'skills/', 'tools/', 'ledger/', 'references/', 'workspace/handoff/',
+    'server/', 'docs/', '.git/',
     'backup/k40_cold',
     'd:' + backslash + 'backup' + backslash + 'k40_cold',
     // T2-1：桌面端整棵子树是受控区，其 .tmp 又是清理白名单成员（见 scanTargets ①），
@@ -64,8 +65,13 @@ test('黑名单：命中即抛 ERR_SACRED_PATH_PROTECTED，覆盖裁定点名的
   assert.deepEqual([...SACRED_PATTERNS].sort(), expectedPatterns.sort());
   const bad = [
     'D:\\proj\\deliverables\\acceptance_audit.jsonl',
-    '/repo/ops/tool.mjs',
-    '/repo/src/main.js',
+    '/repo/tools/dev/tool.mjs',
+    '/repo/core/bridge_guard.sh',
+    '/repo/schemas/schema_gateway.py',
+    '/repo/skills/stable/ops/work_order/skill.yaml',
+    '/repo/ledger/actions.jsonl',
+    '/repo/references/README.md',
+    '/repo/workspace/handoff/handoff.md',
     '/repo/server/report.js',
     '/repo/docs/a.md',
     '/repo/.git/config',

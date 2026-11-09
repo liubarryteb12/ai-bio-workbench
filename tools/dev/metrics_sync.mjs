@@ -148,11 +148,11 @@ function currentBaselineLine() {
 function renderBaseline(metrics) {
   const t = metrics.tests;
   if (!t.measured) {
-    return '当前基线 **未实测**（node --test 汇总行缺失，请先跑通测试；ops/metrics_sync.mjs）';
+    return '当前基线 **未实测**（node --test 汇总行缺失，请先跑通测试；tools/dev/metrics_sync.mjs）';
   }
   return '当前基线 **' + t.cases + ' tests / ' + t.pass + ' pass / ' + t.fail
     + ' fail / ' + t.skipped + ' skipped**（' + t.files
-    + ' 个测试文件；口径由 ops/metrics_sync.mjs 实测 node --test 汇总行）｜代码规模 '
+    + ' 个测试文件；口径由 tools/dev/metrics_sync.mjs 实测 node --test 汇总行）｜代码规模 '
     + metrics.code.sloc + ' SLOC（非空行，' + metrics.code.files + ' 个文件）';
 }
 

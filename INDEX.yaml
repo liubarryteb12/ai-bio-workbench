@@ -22,7 +22,7 @@ core:
   assets: [core/bridge_guard.sh]
 
 hooks:
-  status: "W5 与 tools 分流一起评估"
+  status: "占位已建，首个钩子资产待入驻"
 
 schemas:
   status: "已迁入 schema_gateway.py（2026-11-08 W4）"

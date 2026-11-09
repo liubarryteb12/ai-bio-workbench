@@ -11,7 +11,7 @@
  *
  * 解析层级（靠前者优先，全部可查）：
  *   1. 环境变量 BIO_TOOL_<NAME>        显式指定，最高优先（CI / 临时调试）
- *   2. 本地覆盖表 ops/toolchain.json   每台机器自己的路径（gitignored，不入库）
+ *   2. 本地覆盖表 tools/dev/toolchain.json   每台机器自己的路径（gitignored，不入库）
  *   3. 自动探测候选                    常见安装位置（Node/nvm、Git for Windows、Android SDK）
  *   4. 系统 PATH                       最后兜底
  *
@@ -325,8 +325,8 @@ export function main(argv = process.argv.slice(2), io = { log: console.log, erro
   }
   if (!chain.ok) {
     io.error('TOOLCHAIN_FAILED 缺必需项：' + chain.missingRequired.join(', '));
-    io.error('  修法：设 BIO_TOOL_<NAME> 环境变量，或在 ops/toolchain.json 写本地路径');
-    io.error('  模板见 ops/toolchain.example.json');
+    io.error('  修法：设 BIO_TOOL_<NAME> 环境变量，或在 tools/dev/toolchain.json 写本地路径');
+    io.error('  模板见 tools/dev/toolchain.example.json');
     return 1;
   }
   const identity = resolveSshIdentity();

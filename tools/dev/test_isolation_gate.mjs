@@ -157,7 +157,7 @@ export function judgeSource(text) {
 }
 
 export function checkTestIsolation() {
-  const listed = cp.execSync('git ls-files BioanalysDesktop/tests/*.test.js ops/*.mjs tools/dev/*.mjs tools/dev/lib/*.mjs tools/reporting/*.mjs', { cwd: REPO, encoding: 'utf8' });
+  const listed = cp.execSync('git ls-files BioanalysDesktop/tests/*.test.js tools/dev/*.mjs tools/dev/lib/*.mjs tools/reporting/*.mjs', { cwd: REPO, encoding: 'utf8' });
   const files = listed.split(/\r?\n/).filter(Boolean);
   const violations = [];
   const staleExemptions = [];

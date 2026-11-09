@@ -34,7 +34,7 @@ tools/bio/figure_templates.json    92 条出图模板（39 条 Ready 单图）
 core/bridge_guard.sh               跨语言桥接守卫
 ```
 
-**目录即契约**：`src/<line>/scripts/` 下除 README.md 与两个共享库外，每个文件都必须是可提交的步骤母版，
+**目录即契约**：`tools/bio/<line>/scripts/` 下除 README.md 与两个共享库外，每个文件都必须是可提交的步骤母版，
 且必须登记进 `workflows.json`。这条由测试钉死（scripts_registry_parity）。
 
 ### 1.3 `BioanalysDesktop/` Web 应用层
@@ -83,7 +83,7 @@ dist/             3 文件    构建产物
 [server/run.js]  runTask()
    │ 1. buildTaskScript(task)      拼出远端要执行的命令
    │ 2. auditCommand(cmd)          审计：拒绝可疑命令
-   │ 3. 套 wrapper                  ops/run_throttled_task.sh <task_id> <line> <step> ...
+   │ 3. 套 wrapper                  tools/ops/run_throttled_task.sh <task_id> <line> <step> ...
    │ 4. remoteRunner(cmd)          默认经 ADB 下发，显式 ssh 开关时经 SSH
    ▼
 [K40 容器 /mnt/ssd/bio_data]
@@ -121,7 +121,7 @@ dist/             3 文件    构建产物
 | 10 | 状态对账 | `reconcile.classifyRemoteState` | 进程 + 产物 + 标记 | succeeded/failed/interrupted |
 | 11 | 交付验收 | `report.js` 四关 + 回执 | tar sha256 + 验收记录 | 409 ERR_DELIVERY_UNVERIFIED |
 
-**判定顺序的核心设计**：越便宜、越能早失败的判定越靠前。门禁串联器 `ops/run_all_gates.mjs` 用的是同一条原则，清单本身是唯一真源。
+**判定顺序的核心设计**：越便宜、越能早失败的判定越靠前。门禁串联器 `tools/dev/run_all_gates.mjs` 用的是同一条原则，清单本身是唯一真源。
 
 ## 四、存储结构
 
@@ -149,12 +149,12 @@ dist/             3 文件    构建产物
 
 | 真源 | 路径 | 管什么 |
 |---|---|---|
-| 步骤注册表 | `src/workflows.json` | 54 个 mod 的 id/script/输入输出 |
-| 图件模板 | `src/figure_templates.json` | 92 条模板，39 条 Ready 单图 |
-| Ready 白名单 | `ops/figure_ready_allowlist.json` | 封板的 39 个 ID |
-| Ready 实证矩阵 | `ops/figure_ready_matrix.json` | 39 条的 sha256 核验结果 |
+| 步骤注册表 | `tools/bio/workflows.json` | 54 个 mod 的 id/script/输入输出 |
+| 图件模板 | `tools/bio/figure_templates.json` | 92 条模板，39 条 Ready 单图 |
+| Ready 白名单 | `tools/dev/figure_ready_allowlist.json` | 封板的 39 个 ID |
+| Ready 实证矩阵 | `tools/dev/figure_ready_matrix.json` | 39 条的 sha256 核验结果 |
 | 项目 manifest | `workspace/projects/<id>/project.json` | 分组设计、阈值、pipeline_dag |
-| 门禁清单 | `ops/run_all_gates.mjs` | 门禁顺序与参数的唯一真源 |
+| 门禁清单 | `tools/dev/run_all_gates.mjs` | 门禁顺序与参数的唯一真源 |
 
 ## 五、当前架构的已知问题（客观陈述，供优化时参考）
 

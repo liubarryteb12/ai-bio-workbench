@@ -114,7 +114,18 @@
 | W7 | 已完成（工单 skill + skills 契约门禁，门禁数 24 增至 25） |
 | W8 | 已完成（数据面与台账迁入 workspace/ 与 ledger/） |
 | W9 | 已完成（reference/ 改名 references/，白名单同步） |
-| W10 | 排队 |
+| W10 | 已完成（1953 tests / 1952 pass / 0 fail / 1 skipped；25 门禁全绿；便携包 1891 文件重建） |
+
+### W10 总收口结论
+
+最终结构与验收口径：
+
+1. 治理文件在根目录，控制面在 `core/`、`schemas/`、`skills/`、`tools/`，数据面在
+   `workspace/projects/`，台账在 `ledger/`，只读参考在 `references/`，运行证据在 `docs/runs/`。
+2. 官方全量测试与基线一致：1953 tests / 1952 pass / 0 fail / 1 skipped。
+3. `node tools/dev/run_all_gates.mjs --skip-tests` 25 道全绿；`metrics_sync --check` 基线一致。
+4. 便携包重建完成，`MANIFEST.sha256` 覆盖 1891 个文件，`dist_parity` 关键资产零分叉。
+5. 设备侧项目根、台账根与 QA 事故脚本保持固定布局，仓库改名不推导设备路径。
 
 ### W8 评估结论
 

@@ -824,7 +824,7 @@ function buildRegistry() {
     generated_from: {
       csv: `${FIGURE_ROOT}/_meta/bizard_index.csv`,
       report: `${FIGURE_ROOT}/_meta/r453_verification_report.json`,
-      v2_extra: 'ops/build_figure_templates.cjs#buildV2Extra',
+      v2_extra: 'tools/dev/build_figure_templates.cjs#buildV2Extra',
     },
     templates,
   };

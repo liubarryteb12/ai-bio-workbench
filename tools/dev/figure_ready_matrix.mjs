@@ -7,14 +7,14 @@
  * 这里对每条 ready 模板做真实的 sha256 比对，产出可审计的矩阵。
  *
  * 判据（任一不满足即 exit 1）：
- *   1. ready 集合与 ops/figure_ready_allowlist.json 恒等（条数由白名单决定）；
+ *   1. ready 集合与 tools/dev/figure_ready_allowlist.json 恒等（条数由白名单决定）；
  *   2. 每条 ready 的 source / preview 文件真实存在；
  *   3. 两者的实测 sha256 与注册表登记值逐字节相同；
  *   4. verified 必须为真（未真机验证的不能算 ready）。
  *
  * 用法：
  *   node tools/dev/figure_ready_matrix.mjs            # 校验，不写文件
- *   node tools/dev/figure_ready_matrix.mjs --write     # 校验并写 ops/figure_ready_matrix.json
+ *   node tools/dev/figure_ready_matrix.mjs --write     # 校验并写 tools/dev/figure_ready_matrix.json
  */
 import crypto from "node:crypto";
 import fs from "node:fs";

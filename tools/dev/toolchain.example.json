@@ -1,5 +1,5 @@
 {
-  "//": "复制为 ops/toolchain.json（gitignored）可把工具钉到本机路径；留空即按探测顺序 vendor>env>local>candidate>PATH 自动解析",
+  "//": "复制为 tools/dev/toolchain.json（gitignored）可把工具钉到本机路径；留空即按探测顺序 vendor>env>local>candidate>PATH 自动解析",
   "node": [
     "D:/node-v2.4/node.exe"
   ],
