@@ -18,7 +18,9 @@
     合并进远端 system_logs/sync_manifest.json（保留最近 50 次）。
 
 .PARAMETER Files
-    仓库根相对路径列表。默认同步 core/bridge_guard.sh 与 ops/ 下的 .sh/.py/.R。
+    仓库根相对路径列表。默认同步 core/bridge_guard.sh、tools/ops/ 与
+    tools/reporting/ 下的 .sh/.py/.R/.mjs。tools/ops/ 在远端落到 ops/，
+    其余目录保持仓库相对路径不变。
 
 .PARAMETER All
     连同 tools/bio/<line>/scripts/ 下的全部分析母版一起同步。
@@ -32,7 +34,7 @@
 .EXAMPLE
     pwsh -File tools/ops/sync_and_verify_remote.ps1 -DryRun
     pwsh -File tools/ops/sync_and_verify_remote.ps1
-    pwsh -File tools/ops/sync_and_verify_remote.ps1 -Files tools/reporting/verify_bridge_checkpoint.py,core/bridge_guard.sh
+    pwsh -Command "& ./tools/ops/sync_and_verify_remote.ps1 -Files @('tools/reporting/verify_bridge_checkpoint.py','core/bridge_guard.sh')"
 
 .NOTES
     退出码：0 全部一致 / 1 有文件不一致或传输失败 / 2 参数或前置条件错误。
@@ -50,14 +52,36 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $NL = [string][char]10
-$RepoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+# $MyInvocation.MyCommand.Path 在 -File 相对路径调用时是相对路径，向上两级会落到
+# tools/ 而不是仓库根。$PSScriptRoot 始终是绝对路径，用它推导仓库根。
+$RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Set-Location $RepoRoot
+
+# 仓库相对路径 -> 远端相对路径。重构后仓库把运维脚本放进 tools/ops/，
+# 但 K40 运行时仍按 ops/<name> 调用（见 selfcheck.js 的 ISOLATION_SCRIPT 与
+# RSCRIPT_PROJECT_BIN），所以这里只把 tools/ops/ 拍平，其余目录保持原样。
+function Get-RemoteRel {
+    param([string]$RelPath)
+    # 桥接校验脚本的运行时路径固定在 ops/（task.js 与三线 checkpoint 都这么调），
+    # 不能跟随仓库的 tools/reporting/ 新目录，否则自检和实际执行会各看一份。
+    if ($RelPath -eq 'tools/reporting/verify_bridge_checkpoint.py') { return 'ops/verify_bridge_checkpoint.py' }
+    if ($RelPath -like 'tools/ops/*') { return ('ops/' + $RelPath.Substring('tools/ops/'.Length)) }
+    return $RelPath
+}
+
+function Get-RemoteAbs {
+    param([string]$RelPath)
+    return ($RemoteRoot + '/' + (Get-RemoteRel $RelPath)).Replace([char]92, [char]47)
+}
 
 function Get-DefaultFiles {
     $list = New-Object System.Collections.Generic.List[string]
     $list.Add('core/bridge_guard.sh')
-    foreach ($f in (Get-ChildItem -Path 'ops' -File | Sort-Object Name)) {
-        if ($f.Extension -in @('.sh', '.py', '.R', '.mjs')) { $list.Add(('ops/' + $f.Name)) }
+    foreach ($f in (Get-ChildItem -Path 'tools/ops' -File | Sort-Object Name)) {
+        if ($f.Extension -in @('.sh', '.py', '.R', '.mjs')) { $list.Add(('tools/ops/' + $f.Name)) }
+    }
+    foreach ($f in (Get-ChildItem -Path 'tools/reporting' -File | Sort-Object Name)) {
+        if ($f.Extension -in @('.sh', '.py', '.R', '.mjs')) { $list.Add(('tools/reporting/' + $f.Name)) }
     }
     if ($All) {
         foreach ($line in (Get-ChildItem -Path 'tools/bio' -Directory)) {
@@ -157,7 +181,7 @@ for ($offset = 0; $offset -lt $Files.Count; $offset += $preflightBatchSize) {
     $end = [Math]::Min($offset + $preflightBatchSize - 1, $Files.Count - 1)
     $batch = @($Files[$offset..$end])
     $preCmd = (($batch | ForEach-Object {
-        $abs = ($RemoteRoot + '/' + $_).Replace([char]92, [char]47)
+        $abs = Get-RemoteAbs $_
         "if [ -f '" + $abs + "' ]; then sha256sum '" + $abs + "'; else echo 'MISSING " + $abs + "'; fi"
     }) -join '; ')
     $batchResult = Invoke-Remote -Command $preCmd
@@ -180,8 +204,9 @@ if ($pre.Code -eq 0) {
     $parsed = Read-RemoteHashes -Text $pre.Output
     $absent = @($parsed.Absent)
     foreach ($rel in $Files) {
-        if ($absent -contains $rel) { continue }
-        if ($parsed.Map.ContainsKey($rel) -and $parsed.Map[$rel] -ne $local[$rel]) { $drift += $rel }
+        $remoteRel = Get-RemoteRel $rel
+        if ($absent -contains $remoteRel) { continue }
+        if ($parsed.Map.ContainsKey($remoteRel) -and $parsed.Map[$remoteRel] -ne $local[$rel]) { $drift += $rel }
     }
     Write-Host ('[PRE ] 远端现状：{0} 个缺失（首次同步）、{1} 个与本地不一致（漂移）' -f $absent.Count, $drift.Count)
     if ($drift.Count -gt 0) {
@@ -203,14 +228,18 @@ if ($pre.Code -eq 0) {
 if ($DryRun) {
     Write-Host '[DRY ] -DryRun：不传输、不写台账、不碰远端'
     foreach ($rel in $Files) {
-        $mark = if (-not $remoteKnown) { 'UNKNOWN' } elseif ($drift -contains $rel) { 'DRIFT' } elseif ($absent -contains $rel) { 'NEW  ' } else { 'SAME ' }
+        $mark = if (-not $remoteKnown) { 'UNKNOWN' } elseif ($drift -contains $rel) { 'DRIFT' } elseif ($absent -contains (Get-RemoteRel $rel)) { 'NEW  ' } else { 'SAME ' }
         Write-Host ('       {0} {1}  {2}' -f $mark, $local[$rel].Substring(0, 16), $rel)
     }
     exit 0
 }
 
 # 第 4 步：建远端目录并传输
-$remoteDirs = $Files | ForEach-Object { $RemoteRoot + '/' + (Split-Path $_ -Parent).Replace([char]92, [char]47) } | Sort-Object -Unique
+$remoteDirs = $Files | ForEach-Object {
+    $remoteRel = Get-RemoteRel $_
+    $parent = Split-Path $remoteRel -Parent
+    if ([string]::IsNullOrEmpty($parent)) { $RemoteRoot } else { $RemoteRoot + '/' + $parent.Replace([char]92, [char]47) }
+} | Sort-Object -Unique
 $mkdirCmd = ($remoteDirs | ForEach-Object { "mkdir -p '$_'" }) -join ' && '
 $r = Invoke-Remote -Command $mkdirCmd
 if ($r.Code -ne 0) {
@@ -220,7 +249,7 @@ if ($r.Code -ne 0) {
 
 $scpFailed = @()
 foreach ($rel in $Files) {
-    $dest = ($RemoteRoot + '/' + $rel).Replace([char]92, [char]47)
+    $dest = Get-RemoteAbs $rel
     & scp -q (Join-Path $RepoRoot $rel) ('{0}:{1}' -f $SshTarget, $dest) 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) { $scpFailed += $rel }
 }
@@ -231,8 +260,8 @@ if ($scpFailed.Count -gt 0) {
 
 # scp 不带 -p，落盘权限退化为 0644：母版是按名字直接调用 ops 脚本的（不带 bash 前缀），
 # 少了执行位就会 Permission denied。所以传完立刻按后缀归一化权限。
-$chmodSh = (($Files | Where-Object { $_ -like '*.sh' } | ForEach-Object { 'chmod 755 ' + "'" + ($RemoteRoot + '/' + $_).Replace([char]92, [char]47) + "'" }) -join ' && ')
-$chmodOther = (($Files | Where-Object { $_ -notlike '*.sh' } | ForEach-Object { 'chmod 644 ' + "'" + ($RemoteRoot + '/' + $_).Replace([char]92, [char]47) + "'" }) -join ' && ')
+$chmodSh = (($Files | Where-Object { $_ -like '*.sh' } | ForEach-Object { 'chmod 755 ' + "'" + (Get-RemoteAbs $_) + "'" }) -join ' && ')
+$chmodOther = (($Files | Where-Object { $_ -notlike '*.sh' } | ForEach-Object { 'chmod 644 ' + "'" + (Get-RemoteAbs $_) + "'" }) -join ' && ')
 $chmodCmd = @($chmodSh, $chmodOther) | Where-Object { $_ -ne '' } | Join-String -Separator ' && '
 $r = Invoke-Remote -Command $chmodCmd
 if ($r.Code -ne 0) {
@@ -245,7 +274,7 @@ Write-Host '[ OK ] 传输完成（权限已归一化：.sh 755 / 其余 644）'
 # 必须用 printf 把路径喂给 xargs：直接把引号路径串管道给 xargs 会让 shell 去
 # **执行**这些脚本（2026-10-21 真跑踩到，bridge_guard.sh 报 Permission denied、
 # run_throttled_task.sh 被无参执行），这是本脚本最危险的一处坑，改前务必保留 printf。
-$sumCmd = "printf '%s" + [char]92 + "n' " + (($Files | ForEach-Object { "'" + ($RemoteRoot + '/' + $_).Replace([char]92, [char]47) + "'" }) -join ' ') + ' | xargs sha256sum'
+$sumCmd = "printf '%s" + [char]92 + "n' " + (($Files | ForEach-Object { "'" + (Get-RemoteAbs $_) + "'" }) -join ' ') + ' | xargs sha256sum'
 $r = Invoke-Remote -Command $sumCmd
 if ($r.Code -ne 0) {
     Write-Host ('[FAIL] 远端 sha256sum 失败（退出码 {0}）：{1}' -f $r.Code, $r.Output) -ForegroundColor Red
@@ -257,7 +286,7 @@ $mismatch = @()
 $matched = 0
 foreach ($rel in $Files) {
     $want = $local[$rel]
-    $got = $after[$rel]
+    $got = $after[(Get-RemoteRel $rel)]
     if ($null -eq $got) { $mismatch += ('{0}（远端无回读）' -f $rel); continue }
     if ($got -eq $want) { $matched++ } else { $mismatch += ('{0}（本地 {1} != 远端 {2}）' -f $rel, $want.Substring(0, 12), $got.Substring(0, 12)) }
 }
@@ -352,7 +381,7 @@ Write-Host ('== 对账结果：{0}/{1} 一致，状态 {2}' -f $matched, $Files.
 # 远端机器可读清单（system_logs/sync_manifest.json，保留最近 50 次）
 $entries = @()
 foreach ($rel in $Files) {
-    $entries += [pscustomobject]@{ path = $rel; sha256 = $local[$rel]; verified = ($after[$rel] -eq $local[$rel]) }
+    $entries += [pscustomobject]@{ path = $rel; remote_path = (Get-RemoteRel $rel); sha256 = $local[$rel]; verified = ($after[(Get-RemoteRel $rel)] -eq $local[$rel]) }
 }
 $manifest = [pscustomobject]@{
     synced_at = $stamp

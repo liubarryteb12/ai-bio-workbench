@@ -80,7 +80,7 @@ export const STORAGE_MIN_FREE_PCT = 20;
 
 /** 隔离门禁与桥接校验脚本的远端路径 */
 export const ISOLATION_SCRIPT = '/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh';
-export const BRIDGE_SCRIPT = '/mnt/ssd/bio_data/tools/reporting/verify_bridge_checkpoint.py';
+export const BRIDGE_SCRIPT = '/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py';
 
 /**
  * 第 3 维命令：SoC 算力 / 温度 / 7.5GB 内存水位，一次 ssh 取全。
@@ -324,7 +324,7 @@ export const CORE_SYNC_FILES = Object.freeze([
   Object.freeze({ repo: 'core/bridge_guard.sh', remote: '/mnt/ssd/bio_data/core/bridge_guard.sh', note: '守卫母版' }),
   Object.freeze({ repo: 'core/bridge_guard.sh', remote: '/mnt/ssd/bio_data/ops/bridge_guard.sh', note: '守卫镜像' }),
   Object.freeze({ repo: 'tools/ops/check_storage_and_isolation.sh', remote: '/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh', note: '跨线隔离门禁' }),
-  Object.freeze({ repo: 'tools/reporting/verify_bridge_checkpoint.py', remote: '/mnt/ssd/bio_data/tools/reporting/verify_bridge_checkpoint.py', note: '桥接四项断言' }),
+  Object.freeze({ repo: 'tools/reporting/verify_bridge_checkpoint.py', remote: '/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py', note: '桥接四项断言' }),
 ]);
 
 /** 四档状态（D-07 口径，禁止新造状态名） */

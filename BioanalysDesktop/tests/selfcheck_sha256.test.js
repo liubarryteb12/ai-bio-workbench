@@ -37,7 +37,7 @@ const TARGETS = [
   { repo: 'core/bridge_guard.sh', remote: '/mnt/ssd/bio_data/core/bridge_guard.sh' },
   { repo: 'core/bridge_guard.sh', remote: '/mnt/ssd/bio_data/ops/bridge_guard.sh' },
   { repo: 'tools/ops/check_storage_and_isolation.sh', remote: '/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh' },
-  { repo: 'tools/reporting/verify_bridge_checkpoint.py', remote: '/mnt/ssd/bio_data/tools/reporting/verify_bridge_checkpoint.py' },
+  { repo: 'tools/reporting/verify_bridge_checkpoint.py', remote: '/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py' },
 ];
 
 /** 四个远端路径全部回读为给定哈希 */
@@ -121,7 +121,7 @@ test('evaluateSha256Parity：哈希不一致 → fail，reason 带两个哈希�
   const localHashes = localForAll(HASH_A);
   localHashes.set('tools/reporting/verify_bridge_checkpoint.py', HASH_A);
   const parsed = parsedAll(HASH_A);
-  parsed.hashes.set('/mnt/ssd/bio_data/tools/reporting/verify_bridge_checkpoint.py', HASH_B);
+  parsed.hashes.set('/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py', HASH_B);
   const light = evaluateSha256Parity({ targets: TARGETS, localHashes, parsed, sshExitCode: 0 });
   assert.equal(light.status, 'fail');
   assert.match(light.detail, /不一致/);
@@ -179,7 +179,7 @@ test('evaluateSha256Parity：同时有不一致与缺失 → fail（已测出的
   const localHashes = localForAll(HASH_A);
   localHashes.set('tools/reporting/verify_bridge_checkpoint.py', HASH_A);
   const parsed = parsedAll(HASH_A);
-  parsed.hashes.set('/mnt/ssd/bio_data/tools/reporting/verify_bridge_checkpoint.py', HASH_B);
+  parsed.hashes.set('/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py', HASH_B);
   parsed.hashes.delete('/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh');
   parsed.missing = ['/mnt/ssd/bio_data/ops/check_storage_and_isolation.sh'];
   const light = evaluateSha256Parity({ targets: TARGETS, localHashes, parsed, sshExitCode: 0 });

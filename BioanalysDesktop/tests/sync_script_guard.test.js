@@ -78,6 +78,42 @@ test('同步脚本保留 LF 校验与远端预检两个前置步骤', () => {
   assert.ok(syncText.includes('[PRE ]'), '缺远端预检输出（先比后传才能发现漂移）');
 });
 
+test('重构后默认同步面跟随 tools/ops 与 tools/reporting，不再读取已退场的 ops/', () => {
+  assert.ok(syncText.includes("Get-ChildItem -Path 'tools/ops'"), '默认同步面没跟上 tools/ops');
+  assert.ok(syncText.includes("Get-ChildItem -Path 'tools/reporting'"), '默认同步面没跟上 tools/reporting');
+  assert.equal(syncText.includes("Get-ChildItem -Path 'ops'"), false, '仍在读取已退场的 ops/');
+});
+
+test('tools/ops 在远端拍平到 ops/，其余目录保持仓库相对路径', () => {
+  assert.ok(syncText.includes('function Get-RemoteRel'), '缺仓库到远端路径映射函数');
+  assert.ok(
+    syncText.includes("if ($RelPath -like 'tools/ops/*') { return ('ops/' + $RelPath.Substring('tools/ops/'.Length)) }"),
+    'tools/ops 没有拍平到远端 ops/',
+  );
+  assert.ok(syncText.includes('function Get-RemoteAbs'), '缺远端绝对路径构造');
+  assert.ok(syncText.includes('$remoteRel = Get-RemoteRel $rel'), '预检没走路径映射');
+  assert.ok(syncText.includes('$got = $after[(Get-RemoteRel $rel)]'), '对账没走路径映射');
+});
+
+test('桥接校验脚本保持远端 ops/ 运行时路径', () => {
+  assert.ok(
+    syncText.includes("if ($RelPath -eq 'tools/reporting/verify_bridge_checkpoint.py') { return 'ops/verify_bridge_checkpoint.py' }"),
+    '桥接校验脚本没有映射回远端 ops/',
+  );
+});
+
+test('同步脚本用 $PSScriptRoot 推导仓库根，-File 相对路径调用不会落到 tools/', () => {
+  assert.ok(
+    syncText.includes('$RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)'),
+    '仓库根必须用 $PSScriptRoot 推导',
+  );
+  assert.equal(
+    syncText.includes('Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)'),
+    false,
+    '仍在用相对路径的 $MyInvocation.MyCommand.Path 推导仓库根',
+  );
+});
+
 test('同步脚本把每次同步追加进 ledger/ops_ledger.md', () => {
   assert.ok(syncText.includes('ledger/ops_ledger.md'), '缺台账落点');
   assert.ok(
