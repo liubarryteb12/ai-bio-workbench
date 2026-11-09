@@ -195,11 +195,18 @@ input[aria-invalid="true"], textarea[aria-invalid="true"], select[aria-invalid="
 .result-figure-zone { margin-top: 16px; padding: 14px; border-radius: 8px; border: 1.5px solid var(--border); background: var(--surface-2); }
 .result-figure-zone.builtin { border-color: var(--brand); background: var(--brand-soft); }
 .result-figure-zone.real { border-color: var(--border-strong); background: var(--surface-2); }
+.result-figure-zone.qc { border-color: #93c5fd; background: #eff6ff; }
 .result-figure-zone h3 { font-size: 13.5px; margin: 0 0 6px; }
 .result-figure-zone p { margin: 0; color: var(--text-muted); font-size: 12.5px; }
 .result-figure-list { list-style: none; padding: 0; margin: 10px 0 0; }
 .result-figure-list li { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; margin-bottom: 7px; }
 .result-figure-list img { width: 92px; aspect-ratio: 16 / 10; object-fit: contain; background: #fff; border: 1px solid var(--border); border-radius: 6px; flex-shrink: 0; }
+.figure-line-note { margin: 4px 0 10px; padding: 8px 10px; border-radius: 6px; background: var(--brand-soft); color: var(--brand); font-size: 12.5px; line-height: 1.5; }
+.native-qc-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; margin-top: 10px; }
+.native-qc-item { border: 1px solid var(--border); border-radius: 6px; padding: 9px 10px; background: var(--surface); font-size: 12.5px; line-height: 1.5; }
+.native-qc-item strong { display: block; font-size: 13px; margin-bottom: 3px; }
+.native-qc-item span { color: var(--text-muted); overflow-wrap: anywhere; }
+.native-qc-thumb { width: 100%; aspect-ratio: 16 / 10; object-fit: contain; background: #fff; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 7px; display: block; }
 .stage-notes { margin: -2px 0 10px; color: var(--text-muted); font-size: 12px; }
 .workflow-status { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 12px 0 0; padding: 11px 13px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text-muted); font-size: 13px; }
 .workflow-status.error { border-color: #fecaca; background: var(--danger-soft); color: #991b1b; }
@@ -580,9 +587,14 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
         <div class="step-list" id="step-list"></div>
         <div class="workflow-summary" id="workflow-summary" data-testid="workflow-summary" aria-live="polite"></div>
       </div>
+      <div class="card" id="native-qc-card" style="display:none;">
+        <div class="card-title">质检图（标准步骤自动产出）</div>
+        <div class="card-sub">PCA、样本间相关性、表达均质性与基因检出数由质控步骤自动生成，不需要在图级模板中勾选。</div>
+        <div id="native-qc-list" class="native-qc-list"></div>
+      </div>
       <div class="card figure-selector" id="figure-template-card">
         <div class="card-title">图级模板选择器</div>
-        <div class="card-sub">按 L1 / L2 / L3 分类浏览可复用图型；依赖未就绪的模板置灰。可只选标准步骤，不选图级模板。</div>
+        <div class="card-sub">主区只显示绑定到当前分析线的可用图型；Tier 1 / 2 / 3 是图型复杂度，不是分析线。可只选标准步骤，不选图级模板。</div>
         <div class="workflow-status">
           <span>需要查找更多单图来源时，可先浏览项目候选图库。</span>
           <a class="btn btn-ghost btn-sm" href="./figure-catalog" target="_blank" rel="noopener">浏览候选图库</a>
@@ -691,8 +703,13 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
         <div class="out-box" id="result-json"></div>
         <section class="result-figure-zone builtin" id="result-builtin-zone" data-testid="result-builtin-zone" aria-labelledby="builtin-zone-title" style="display:none;">
           <h3 id="builtin-zone-title">内置示例预览</h3>
-          <p>这些是模板注册表中的 _verified 参考图，不是本项目真实数据产物。</p>
+          <p>这些是模板注册表中的标准 Fixture 参考图，仅用于确认图型风格，不是本项目真实数据产物。</p>
           <ul class="result-figure-list" id="result-builtin-list"></ul>
+        </section>
+        <section class="result-figure-zone qc" id="result-qc-zone" data-testid="result-qc-zone" aria-labelledby="qc-zone-title" style="display:none;">
+          <h3 id="qc-zone-title">项目质检图（自动产出）</h3>
+          <p>PCA、样本间相关性、表达均质性与基因检出数，随 QC 步骤自动产出，不需要在图级模板中勾选。</p>
+          <ul class="result-figure-list" id="result-qc-list"></ul>
         </section>
         <section class="result-figure-zone real" id="result-real-zone" data-testid="result-real-zone" aria-labelledby="real-zone-title" style="display:none;">
           <h3 id="real-zone-title">项目真实图</h3>
@@ -811,6 +828,16 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
   var figureTemplateLoadPromise = null;
   var selectedFigureTemplates = {};
   var figureTemplateFilter = 'ready';
+  var FIGURE_LEVEL_LABELS = { L1: '基础统计图', L2: '组学常用图', L3: '高级组合图' };
+  var NATIVE_QC_FIGURES = {
+    line1_bulk: [
+      { name: 'PCA 分组验证', step: 'l1_qc_pca', files: ['l1_02_pca_step3.png', 'l1_02_pca.png'] },
+      { name: '样本间相关性', step: 'l1_figures_bulk', files: ['l1_01_correlation.png'] },
+      { name: '表达均质性热图', step: 'l1_figures_bulk', files: ['l1_04_topvar_heatmap.png'] },
+      { name: '基因检出数', step: 'l1_figures_bulk', files: ['l1_05a_genes_detected.png'] },
+      { name: '组内相关性', step: 'l1_figures_bulk', files: ['l1_05b_within_group_cor.png'] }
+    ]
+  };
 
   // 状态
   // ============================================================
@@ -1560,13 +1587,13 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
         });
         const projectButton = el('button', {
           type: 'button',
-          text: '真实项目产出示例',
+          text: '真实项目实例（最近一次运行）',
           'aria-pressed': 'false'
         });
         const setPreviewMode = function (mode) {
           const project = mode === 'project';
           image.src = project ? item.project_preview_url : item.preview_url;
-          image.alt = item.name + (project ? ' 真实项目产出示例' : ' 标准 Fixture 预览');
+          image.alt = item.name + (project ? ' 真实项目实例（最近一次运行）' : ' 标准 Fixture 预览');
           card.setAttribute('data-preview-mode', project ? 'project' : 'fixture');
           fixtureButton.setAttribute('aria-pressed', project ? 'false' : 'true');
           projectButton.setAttribute('aria-pressed', project ? 'true' : 'false');
@@ -1641,39 +1668,63 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     return card;
   }
 
+  function renderNativeQcPlan(lineId) {
+    var wrap = $('native-qc-list');
+    var card = $('native-qc-card');
+    if (!wrap || !card) return;
+    var items = NATIVE_QC_FIGURES[lineId] || [];
+    card.style.display = items.length ? '' : 'none';
+    wrap.innerHTML = '';
+    items.forEach(function (item) {
+      const box = el('div', { class: 'native-qc-item' });
+      const thumb = el('img', {
+        class: 'native-qc-thumb',
+        src: `/api/native-qc/preview?line=${encodeURIComponent(lineId)}&name=${encodeURIComponent(item.files[0])}`,
+        alt: item.name + ' 真实质检图示例',
+        loading: 'lazy'
+      });
+      thumb.addEventListener('error', function () { thumb.style.display = 'none'; });
+      box.appendChild(thumb);
+      box.appendChild(el('strong', { text: item.name }));
+      box.appendChild(el('span', { text: `步骤：${item.step} · 文件：${item.files.join(' / ')}` }));
+      wrap.appendChild(box);
+    });
+  }
+
   function renderFigureSelector(lineId) {
     const wrap = $('figure-template-list');
     if (!wrap) return;
     wrap.innerHTML = '';
     if (!lineId) { updateFigureTemplateSummary(); return; }
-    const lineMods = [];
     const series = workflowSeries(lineId);
+    const lineMods = [];
     (series ? series.stages : []).forEach((stage) => (stage.mods || []).forEach((mod) => lineMods.push(mod.id)));
-    const usable = figureTemplateRegistry.filter((item) => (
-      Array.isArray(item.lines) && item.lines.length
-        ? item.lines.includes(lineId)
-        : (item.linked_mods || []).some((id) => lineMods.includes(id))
+    const lineItems = figureTemplateRegistry.filter((item) => (
+      Array.isArray(item.lines) && item.lines.includes(lineId)
     ));
-    const readyItems = usable.filter(templateAvailable);
-    updateFigureFilterControls(readyItems.length, usable.length);
+    const unboundItems = figureTemplateRegistry.filter((item) => (
+      (!Array.isArray(item.lines) || !item.lines.length)
+      && (item.linked_mods || []).some((id) => lineMods.includes(id))
+    ));
+    const readyItems = lineItems.filter(templateAvailable);
+    updateFigureFilterControls(readyItems.length, lineItems.length + unboundItems.length);
+    wrap.appendChild(el('div', {
+      class: 'figure-line-note',
+      text: `当前分析线：${series ? series.name : lineId}（${lineId}）。Tier 1 / 2 / 3 是图型复杂度，不是分析线。`
+    }));
     // Argon 第 75 轮 Q4：主区只展示就绪/可解锁图件（readyNow + unlockable），
     // draft  locked 图件移入折叠灰态区，禁勾选。
     const visibleItems = readyItems;
-    const draftItems = usable.filter((item) => !templateAvailable(item));
+    const draftItems = lineItems.filter((item) => !templateAvailable(item));
     ['L1', 'L2', 'L3'].forEach(function (level) {
       const items = visibleItems.filter((item) => item.level === level)
         .sort((a, b) => String(a.category).localeCompare(String(b.category)) || String(a.name).localeCompare(String(b.name)));
+      if (!items.length) return;
       const section = el('section', { class: 'figure-level', 'data-testid': `figure-level-${level}` });
       const countLabel = figureTemplateFilter === 'ready' ? `${items.length} 个可用` : String(items.length);
-      section.appendChild(el('h3', { text: `${level} 图型（${countLabel}）` }));
-      if (!items.length) {
-        section.appendChild(el('div', {
-          class: 'figure-preview-empty',
-          text: figureTemplateFilter === 'ready' ? '本层级暂无可用预览' : '本线暂无该层级模板'
-        }));
-        wrap.appendChild(section);
-        return;
-      }
+      section.appendChild(el('h3', {
+        text: `${FIGURE_LEVEL_LABELS[level]}（Tier ${level.slice(1)}，${countLabel}）`
+      }));
       let category = '';
       let grid = null;
       items.forEach(function (item) {
@@ -1689,9 +1740,19 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     });
     if (figureTemplateFilter === 'all' && draftItems.length) {
       const details = el('details', { class: 'figure-level figure-draft-zone', 'data-testid': 'figure-draft-zone' });
-      details.appendChild(el('summary', { text: `规划中图型（${draftItems.length} 个 · 依赖未就绪，暂不可选）` }));
+      details.appendChild(el('summary', { text: `本线规划中图型（${draftItems.length} 个 · 依赖未就绪，暂不可选）` }));
       const draftGrid = el('div', { class: 'figure-grid' });
       draftItems.forEach((item) => draftGrid.appendChild(makeFigureCard(item)));
+      details.appendChild(draftGrid);
+      wrap.appendChild(details);
+    }
+    if (figureTemplateFilter === 'all' && unboundItems.length) {
+      const details = el('details', { class: 'figure-level figure-draft-zone', 'data-testid': 'figure-unbound-zone' });
+      details.appendChild(el('summary', {
+        text: `未绑定分析线的规划中图型（${unboundItems.length} 个 · 未就绪，暂不可选）`
+      }));
+      const draftGrid = el('div', { class: 'figure-grid' });
+      unboundItems.forEach((item) => draftGrid.appendChild(makeFigureCard(item)));
       details.appendChild(draftGrid);
       wrap.appendChild(details);
     }
@@ -1709,6 +1770,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     var card = $('step-card'), list = $('step-list');
     var series = workflowSeries(line);
     if (!line || !series || !Array.isArray(series.stages)) { card.style.display = 'none'; return; }
+    renderNativeQcPlan(line);
     card.style.display = '';
     $('step-card-title').textContent = '分析步骤（共 ' + seriesModCount(series) + ' 个）';
     list.innerHTML = '';
@@ -2930,11 +2992,14 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
 
   function renderResultFigureZones(json, ticket) {
     const builtinZone = $('result-builtin-zone'), builtinList = $('result-builtin-list');
+    const qcZone = $('result-qc-zone'), qcList = $('result-qc-list');
     const realZone = $('result-real-zone'), realList = $('result-real-list');
-    if (!builtinZone || !builtinList || !realZone || !realList) return;
+    if (!builtinZone || !builtinList || !qcZone || !qcList || !realZone || !realList) return;
     builtinZone.style.display = 'block';
+    qcZone.style.display = 'block';
     realZone.style.display = 'block';
     builtinList.innerHTML = '';
+    qcList.innerHTML = '';
     realList.innerHTML = '';
     let manifest = {};
     try { manifest = JSON.parse(json || '{}'); } catch { manifest = {}; }
@@ -2956,6 +3021,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       builtinList.appendChild(li);
     });
     if (!ticket) {
+      qcList.appendChild(el('li', { text: '尚未提交，暂无项目质检图。' }));
       realList.appendChild(el('li', { text: '尚未提交，暂无同步回传结果图。' }));
       return;
     }
@@ -2965,10 +3031,28 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
         if (!result.ok) throw new Error((result.body && result.body.error) || ('HTTP ' + result.status));
         const files = result.body && Array.isArray(result.body.files) ? result.body.files : [];
         if (!files.length) {
+          qcList.appendChild(el('li', { text: '尚未回传项目质检图。' }));
           realList.appendChild(el('li', { text: '尚未回传项目真实图。' }));
           return;
         }
-        files.forEach(function (file) {
+        const qcPattern = /(^|\/)(l1_01_correlation|l1_02_pca|l1_02_pca_step3|l1_04_topvar_heatmap|l1_05a_genes_detected|l1_05b_within_group_cor)\.png$/;
+        const pathText = function (file) { return String(file.path || '').replace(/\\/g, '/'); };
+        const qcFiles = files.filter(function (file) { return qcPattern.test(pathText(file)); });
+        const otherFiles = files.filter(function (file) { return !qcPattern.test(pathText(file)); });
+        if (!qcFiles.length) qcList.appendChild(el('li', { text: '尚未回传质检图。' }));
+        qcFiles.forEach(function (file) {
+          const li = el('li');
+          if (file.path) {
+            li.appendChild(el('img', {
+              src: `/api/sync/results/file?ticket=${encodeURIComponent(ticket)}&path=${encodeURIComponent(file.path)}`,
+              alt: file.path, loading: 'lazy'
+            }));
+          }
+          li.appendChild(el('span', { text: file.path || '（无路径）' }));
+          qcList.appendChild(li);
+        });
+        if (!otherFiles.length) realList.appendChild(el('li', { text: '尚未回传其他项目图。' }));
+        otherFiles.forEach(function (file) {
           const li = el('li');
           if (file.path) {
             li.appendChild(el('img', {
@@ -2981,6 +3065,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
         });
       })
       .catch(function () {
+        qcList.appendChild(el('li', { text: '同步结果读取失败。' }));
         realList.appendChild(el('li', { text: '同步结果读取失败。' }));
       });
   }

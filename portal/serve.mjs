@@ -741,6 +741,76 @@ function figureTemplatesPayload() {
   return { templates };
 }
 
+/**
+ * 质检图真实示例：从 workspace/projects 里挑最近一个包含目标文件的目录。
+ * 只服务 L1 当前定义的五个质检图，路径与文件名都走白名单，避免把任意项目文件
+ * 暴露成静态资源。没有真实项目时回 404，由前端隐藏缩略图。
+ */
+const NATIVE_QC_EXAMPLE_FILES = Object.freeze({
+  line1_bulk: new Set([
+    'l1_01_correlation.png',
+    'l1_02_pca.png',
+    'l1_02_pca_step3.png',
+    'l1_04_topvar_heatmap.png',
+    'l1_05a_genes_detected.png',
+    'l1_05b_within_group_cor.png',
+  ]),
+});
+
+/**
+ * 在所有本地项目里找同名真实产物，取目录 mtime 最新的那份。
+ * 用途：模板的“真实项目实例”优先展示最近一次实际运行，而不是固定样例。
+ * 只接受调用方给出的 lineId / basename，且最终路径必须落在 workspace/projects 下。
+ */
+function findLatestProjectFigure(lineId, name) {
+  const projectsRoot = path.resolve(REPO_ROOT, 'workspace', 'projects');
+  if (!/^[A-Za-z0-9._-]+$/.test(lineId) || !/^[A-Za-z0-9._-]+\.(png|jpg|jpeg|svg|webp)$/i.test(name)) {
+    return null;
+  }
+  try {
+    const candidates = fs.readdirSync(projectsRoot, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && /^[A-Za-z0-9._-]+$/.test(entry.name))
+      .map((entry) => {
+        const dir = path.join(projectsRoot, entry.name);
+        const file = path.join(dir, 'figures', lineId, name);
+        let mtime = 0;
+        try { mtime = fs.statSync(file).mtimeMs; } catch { /* 文件不在这个项目 */ }
+        return mtime > 0 ? { file, mtime } : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.mtime - a.mtime);
+    return candidates[0] ? path.resolve(candidates[0].file) : null;
+  } catch {
+    return null;
+  }
+}
+
+function handleNativeQcPreview(req, res, url) {
+  const lineId = String(url.searchParams.get('line') || '');
+  const name = String(url.searchParams.get('name') || '');
+  const allowed = NATIVE_QC_EXAMPLE_FILES[lineId];
+  if (!allowed || !allowed.has(name)) {
+    return sendJson(res, 400, { ok: false, error: '质检图参数非法' });
+  }
+  const best = findLatestProjectFigure(lineId, name);
+  if (!best) return sendJson(res, 404, { ok: false, error: '暂无真实质检图示例' });
+  const projectsRoot = path.resolve(REPO_ROOT, 'workspace', 'projects');
+  const target = best;
+  if (!target.startsWith(projectsRoot + path.sep)) {
+    return sendJson(res, 400, { ok: false, error: '质检图路径越界' });
+  }
+  let bytes;
+  try { bytes = fs.readFileSync(target); }
+  catch { return sendJson(res, 404, { ok: false, error: '质检图文件不可读' }); }
+  res.writeHead(200, {
+    'Content-Type': 'image/png',
+    'Content-Length': String(bytes.length),
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+  });
+  return res.end(bytes);
+}
+
 function handleFigureTemplatePreview(req, res, url) {
   const id = url.searchParams.get('id') || '';
   let template;
@@ -806,7 +876,9 @@ function handleFigureProjectPreview(req, res, url) {
     return sendJson(res, 400, { ok: false, error: '真实项目产出示例路径非法' });
   }
   const root = path.resolve(REPO_ROOT);
-  const target = path.resolve(root, relative);
+  const lineId = Array.isArray(template.lines) && template.lines.length ? String(template.lines[0]) : '';
+  const latest = lineId ? findLatestProjectFigure(lineId, path.basename(relative)) : null;
+  const target = latest || path.resolve(root, relative);
   if (!target.startsWith(root + path.sep)) {
     return sendJson(res, 400, { ok: false, error: '真实项目产出示例路径越界' });
   }
@@ -822,6 +894,7 @@ function handleFigureProjectPreview(req, res, url) {
     'Content-Length': String(bytes.length),
     'Cache-Control': 'no-store',
     'X-Content-Type-Options': 'nosniff',
+    'X-Figure-Example-Source': latest ? 'latest-project' : 'registry-sample',
   });
   return res.end(bytes);
 }
@@ -1640,6 +1713,10 @@ const server = http.createServer((req, res) => {
 
   if (url.pathname === '/api/figure-templates/preview' && req.method === 'GET') {
     return handleFigureTemplatePreview(req, res, url);
+  }
+
+  if (url.pathname === '/api/native-qc/preview' && req.method === 'GET') {
+    return handleNativeQcPreview(req, res, url);
   }
 
   if (url.pathname === '/api/figure-templates/project-preview' && req.method === 'GET') {

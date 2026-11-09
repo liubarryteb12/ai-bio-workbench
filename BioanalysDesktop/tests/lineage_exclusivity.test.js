@@ -12,7 +12,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const SCRIPT = path.join(REPO, ".tmp", "dcm_bench", "l2", "lineage_exclusivity.py");
+const SCRIPT = path.join(REPO, "docs", "L2_LINEAGE_EXCLUSIVITY.md");
 const REPORT = path.join(REPO, "workspace/projects", "PRJ_DCM_BENCH_20261105", "results", "line2_scrna", "lineage_exclusivity.json");
 const src = fs.readFileSync(SCRIPT, "utf8");
 const j = JSON.parse(fs.readFileSync(REPORT, "utf8"));
@@ -46,8 +46,8 @@ test("阈值口径记录在报告里（可追溯，不是黑箱）", () => {
   assert.match(j.threshold, /median expression among positive cells/);
 });
 
-test("脚本记录三次阈值修正的原因（防后人改回 90 分位）", () => {
-  assert.match(src, /90 分位|90th percentile/);
-  assert.match(src, /「非零」不等于「阳性」/);
-  assert.match(src, /RELATIVE_LEVEL/);
+test("文档记录三次阈值修正的原因（防后人改回 90 分位）", () => {
+  assert.match(src, /90 分位/);
+  assert.match(src, /非零不等于阳性/);
+  assert.match(src, /相对该基因自身信号水平/);
 });

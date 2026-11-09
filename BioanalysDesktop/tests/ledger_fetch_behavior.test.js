@@ -20,7 +20,10 @@ function line(name, obj) {
 
 // 用 loader 把 runRemote 换成返回固定批量输出的桩
 const fixtures = { batch: "" };
-register(pathToFileURL(path.join(REPO, ".tmp", "ledger_mock_loader.mjs")), pathToFileURL(REPO));
+register(
+  pathToFileURL(path.join(REPO, "BioanalysDesktop", "tests", "fixtures", "ledger_mock_loader.mjs")),
+  pathToFileURL(REPO),
+);
 
 test("一次 runRemote 解析出 3 个台账文件，且文件名/内容都还原", async () => {
   fixtures.batch = [

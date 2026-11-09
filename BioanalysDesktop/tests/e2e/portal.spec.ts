@@ -242,7 +242,7 @@ test('virtual knockout exposes target_ko_gene and blocks progression until it is
   await expect(panel(page, 5)).toBeVisible();
 });
 
-test('figure selector groups cards by L1, L2 and L3 with language and preview labels', async ({ page }) => {
+test('figure selector groups cards by figure tiers with language and preview labels', async ({ page }) => {
   await advanceToStep4(page, 'line1_bulk');
   await waitForFigureRegistry(page);
   for (const level of ['L1', 'L2', 'L3']) {
@@ -252,8 +252,8 @@ test('figure selector groups cards by L1, L2 and L3 with language and preview la
   const response = await page.request.get('/api/figure-templates');
   expect(response.status()).toBe(200);
   const body = await response.json();
-  expect(body.templates).toHaveLength(82);
-  expect(body.templates.filter((item: { deps_status: string }) => item.deps_status === 'ready')).toHaveLength(16);
+  expect(body.templates).toHaveLength(92);
+  expect(body.templates.filter((item: { deps_status: string }) => item.deps_status === 'ready')).toHaveLength(39);
 
   const readyCard = page.locator('[data-template-id="fig_l2_pca"]');
   await expect(readyCard).toContainText('R');
@@ -267,14 +267,23 @@ test('figure selector groups cards by L1, L2 and L3 with language and preview la
 test('every ready figure card switches between fixture and real project previews', async ({ page }) => {
   const readyByLine = [
     ['line1_bulk', [
-      'fig_l1_boxplot', 'fig_l1_density', 'fig_l1_groupedbar', 'fig_l1_histogram',
-      'fig_l1_scatter', 'fig_l1_violin', 'fig_l2_heatmap', 'fig_l2_pca',
-      'fig_l2_volcano', 'fig_l3_multipanel', 'fig_l3_sankey',
+      'fig_l1_groupedbar', 'fig_l1_bubble', 'fig_l1_correlogram', 'fig_l1_scatter',
+      'fig_l1_boxplot', 'fig_l1_density', 'fig_l1_histogram', 'fig_l1_ridgeline',
+      'fig_l1_violin', 'fig_l1_upsetplot', 'fig_l1_vennplot', 'fig_l2_heatmap',
+      'fig_l2_pca', 'fig_l2_volcano', 'fig_l3_sankey',
     ]],
     ['line2_scrna', [
-      'fig_l2_umap', 'fig_l2p_dotplot', 'fig_l2p_violin', 'fig_l2p_volcano',
+      'fig_l2_umap', 'fig_l2_networkplot', 'fig_l2p_barplot', 'fig_l2p_boxplot',
+      'fig_l2p_enrichmentplot', 'fig_l2p_gseaplot', 'fig_l2p_heatmap', 'fig_l2p_scatterplot',
+      'fig_l2p_dotplot', 'fig_l2p_violin', 'fig_l2p_volcano', 'fig_l3_chorddiagram',
+      'fig_l2_harmony_umap_entropy', 'fig_l2_liana_lr_dotplot', 'fig_l2_canonical_marker_dotplot',
+      'fig_l2_dr_trajectory_post', 'fig_l2_celltype_deg_volcano',
     ]],
-    ['line3_spatial', ['fig_l2p_umap']],
+    ['line3_spatial', [
+      'fig_l1_connectedscatter', 'fig_l2p_umap', 'fig_l3_banksy_domain',
+      'fig_l3_nnls_deconv_pie', 'fig_l3_multigene_coloc', 'fig_l3_morans_i_spatial',
+      'fig_l3_niche_comm_spatial',
+    ]],
   ] as const;
 
   for (const [lineId, templateIds] of readyByLine) {
@@ -286,7 +295,7 @@ test('every ready figure card switches between fixture and real project previews
       const card = page.locator(`[data-template-id="${templateId}"]`);
       const image = card.locator('img.figure-preview');
       const fixtureButton = card.getByRole('button', { name: '标准 Fixture 预览' });
-      const projectButton = card.getByRole('button', { name: '真实项目产出示例' });
+      const projectButton = card.getByRole('button', { name: '真实项目实例（最近一次运行）' });
 
       await expect(fixtureButton).toHaveAttribute('aria-pressed', 'true');
       await expect(projectButton).toHaveAttribute('aria-pressed', 'false');

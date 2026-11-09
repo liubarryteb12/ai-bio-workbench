@@ -12,15 +12,17 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const SCRIPT = path.join(REPO, ".tmp", "dcm_bench", "l2", "annot_verify.py");
 const REPORT = path.join(REPO, "workspace/projects", "PRJ_DCM_BENCH_20261105", "results", "line2_scrna", "annot_verify_report.json");
 
-test("源码含 Wilson 置信区间实现与功效警示", () => {
-  const src = fs.readFileSync(SCRIPT, "utf8");
-  assert.match(src, /def wilson_interval/, "缺 Wilson 区间函数");
-  assert.match(src, /statistical_power/, "缺功效标注");
-  assert.match(src, /insufficient\(n<200\)/, "缺小样本阈值");
-  assert.match(src, /membrane_marker_note/, "缺膜蛋白核内检出说明");
+test("报告与文档记录 Wilson 置信区间与功效警示", () => {
+  const doc = fs.readFileSync(path.join(REPO, "docs", "L2_ANNOTATION_STATUS.md"), "utf8");
+  const report = JSON.parse(fs.readFileSync(REPORT, "utf8"));
+  assert.match(doc, /Wilson interval/, "文档缺 Wilson 区间说明");
+  assert.match(doc, /功效|power/, "文档缺统计功效说明");
+  assert.ok(Array.isArray(report.marker_power_notes), "报告缺 marker_power_notes");
+  assert.ok(report.marker_power_notes.some((n) => n.statistical_power === "insufficient(n<200)"),
+    "报告缺小样本功效标记");
+  assert.ok(report.membrane_marker_note, "报告缺膜蛋白核内检出说明");
 });
 
 test("报告含 9 个细胞类型的置信区间", () => {
