@@ -572,6 +572,17 @@ select:focus {
   white-space: nowrap;
 }
 
+.card-purpose {
+  display: -webkit-box;
+  min-height: 34px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .card-footer {
   justify-content: space-between;
   padding-top: 2px;
@@ -813,6 +824,8 @@ select:focus {
   background: var(--amber-soft);
   color: #854d0e;
   font-size: 12.5px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 .detail-facts {

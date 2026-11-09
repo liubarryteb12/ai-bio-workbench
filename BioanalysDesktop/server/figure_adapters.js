@@ -3,7 +3,7 @@ import path from 'node:path';
 const LINES = ['line1_bulk', 'line2_scrna', 'line3_spatial'];
 const REMOTE_PROJECTS_ROOT = '/mnt/ssd/bio_data/projects';
 
-const SUPPORTED_TEMPLATE_IDS = new Set([
+export const SUPPORTED_TEMPLATE_IDS = new Set([
   'fig_l2_pca',
   'fig_l2_heatmap',
   'fig_l2_volcano',
@@ -33,6 +33,16 @@ const SUPPORTED_TEMPLATE_IDS = new Set([
   'fig_l1_bubble',
   'fig_l3_chorddiagram',
   'fig_l1_connectedscatter',
+  'fig_l3_banksy_domain',
+  'fig_l3_nnls_deconv_pie',
+  'fig_l3_multigene_coloc',
+  'fig_l3_morans_i_spatial',
+  'fig_l3_niche_comm_spatial',
+  'fig_l2_harmony_umap_entropy',
+  'fig_l2_liana_lr_dotplot',
+  'fig_l2_canonical_marker_dotplot',
+  'fig_l2_dr_trajectory_post',
+  'fig_l2_celltype_deg_volcano',
 ]);
 
 function normalizeRelativePath(value, fieldName) {
@@ -1280,6 +1290,240 @@ print(f"ADAPT_REAL_INPUT_OK autocorr genes={len(auto)} shown={len(top500)}")
 
 PYTHON_OVERLAYS.fig_l2_umap = PYTHON_OVERLAYS.fig_l2p_umap;
 
+export const V2_DELIVERY_TEMPLATE_IDS = new Set([
+  'fig_l3_banksy_domain',
+  'fig_l3_nnls_deconv_pie',
+  'fig_l3_multigene_coloc',
+  'fig_l3_morans_i_spatial',
+  'fig_l3_niche_comm_spatial',
+  'fig_l2_harmony_umap_entropy',
+  'fig_l2_liana_lr_dotplot',
+  'fig_l2_canonical_marker_dotplot',
+  'fig_l2_dr_trajectory_post',
+  'fig_l2_celltype_deg_volcano',
+]);
+
+const V2_HELPERS = `
+def _read_table(path):
+    return pd.read_csv(path, sep="\\t", low_memory=False)
+
+
+def _pick_column(frame, candidates, label):
+    for name in candidates:
+        if name in frame.columns:
+            return name
+    raise ValueError("missing " + label + " column, got: " + ",".join(map(str, frame.columns)))
+
+
+def _save(fig, lines):
+    fig.text(0.01, -0.02, "\\n".join(str(line) for line in lines),
+             ha="left", va="top", fontsize=8, linespacing=1.5)
+    fig.savefig(output_file, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+`;
+
+const V2_OVERLAYS = {
+  fig_l2_harmony_umap_entropy: `
+import anndata as ad
+adata = ad.read_h5ad(input_data)
+xy = np.asarray(adata.obsm["X_umap"])
+obs = adata.obs
+group_name = ADAPT_VARS.get("group_col") or "celltype"
+if group_name not in obs.columns:
+    group_name = "leiden" if "leiden" in obs.columns else obs.columns[0]
+labels = obs[group_name].astype(str).to_numpy()
+fig, ax = plt.subplots(figsize=(6.0, 4.8))
+unique_labels = pd.unique(labels)
+if len(unique_labels) > 30:
+    values = pd.to_numeric(obs[group_name], errors="coerce").to_numpy()
+    scatter = ax.scatter(xy[:, 0], xy[:, 1], c=values, s=1.0, linewidths=0, cmap="viridis")
+    fig.colorbar(scatter, ax=ax, label=group_name)
+else:
+    for label in unique_labels:
+        mask = labels == label
+        ax.scatter(xy[mask, 0], xy[mask, 1], s=1.0, linewidths=0, label=label)
+    ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0), frameon=False, ncol=1)
+ax.set_xlabel("UMAP1")
+ax.set_ylabel("UMAP2")
+ax.set_title("Harmony UMAP")
+_save(fig, ["line2: Harmony batch-corrected UMAP", "color: " + group_name, "n cells=" + str(len(labels))])
+print("ADAPT_REAL_INPUT_OK harmony_umap cells=" + str(len(labels)))
+`,
+  fig_l2_canonical_marker_dotplot: `
+df = _read_table(input_data)
+cluster_col = _pick_column(df, ["cluster", "celltype", "group"], "cluster")
+gene_col = _pick_column(df, ["gene", "gene_symbol", "symbol"], "gene")
+score_col = _pick_column(df, ["avg_log2FC", "log2FC", "logFC", "score"], "score")
+pct_col = next((name for name in ["pct.1", "pct_expressing", "pct"] if name in df.columns), None)
+top = df.sort_values(score_col, ascending=False).groupby(cluster_col).head(5)
+fig, ax = plt.subplots(figsize=(9.0, 4.8))
+point_size = top[pct_col].astype(float).clip(0, 1) * 80 + 5 if pct_col else 20
+ax.scatter(top[cluster_col].astype(str), top[gene_col].astype(str),
+           s=point_size,
+           c=top[score_col].astype(float), cmap="RdBu_r")
+ax.tick_params(axis="x", rotation=45)
+ax.set_xlabel("cluster")
+ax.set_ylabel("marker gene")
+ax.set_title("Canonical marker expression")
+fig.colorbar(ax.collections[0], ax=ax, label="mean expression score")
+_save(fig, ["line2: canonical marker check", "top 5 markers per cluster", "size = expressing fraction"])
+print("ADAPT_REAL_INPUT_OK canonical_markers rows=" + str(len(top)))
+`,
+  fig_l2_liana_lr_dotplot: `
+df = _read_table(input_data)
+source_col = _pick_column(df, ["source", "ligand_cell", "from"], "source")
+target_col = _pick_column(df, ["target", "receptor_cell", "to"], "target")
+score_col = _pick_column(df, ["lrscore", "scaled_weight", "score", "magnitude"], "score")
+df["_pair"] = df[source_col].astype(str) + " -> " + df[target_col].astype(str)
+top = df.sort_values(score_col, ascending=False).head(20).iloc[::-1]
+fig, ax = plt.subplots(figsize=(7.2, 5.0))
+ax.barh(top["_pair"], top[score_col].astype(float))
+ax.set_xlabel("communication score")
+ax.set_title("Top ligand-receptor interactions")
+_save(fig, ["line2: LIANA ligand-receptor interactions", "top 20 by score", "n interactions=" + str(len(df))])
+print("ADAPT_REAL_INPUT_OK liana_top=" + str(len(top)))
+`,
+  fig_l2_dr_trajectory_post: `
+df = _read_table(input_data)
+source_col = _pick_column(df, ["tf", "source", "from"], "source")
+target_col = _pick_column(df, ["target", "to"], "target")
+weight_col = next((name for name in ["weight", "score", "importance"] if name in df.columns), None)
+edges = df.sort_values(weight_col, ascending=False).head(40) if weight_col else df.head(40)
+graph = nx.from_pandas_edgelist(edges, source=source_col, target=target_col, edge_attr=weight_col)
+pos = nx.spring_layout(graph, seed=seed, k=0.6)
+fig, ax = plt.subplots(figsize=(7.0, 5.2))
+nx.draw_networkx(graph, pos=pos, ax=ax, node_size=120, font_size=6, width=0.8)
+ax.set_axis_off()
+_save(fig, ["line2: downstream regulatory network", "top 40 edges", "nodes=" + str(graph.number_of_nodes())])
+print("ADAPT_REAL_INPUT_OK network_edges=" + str(graph.number_of_edges()))
+`,
+  fig_l2_celltype_deg_volcano: `
+df = _read_table(input_data)
+cell_col = _pick_column(df, ["celltype", "cluster", "group"], "celltype")
+gene_col = _pick_column(df, ["gene", "gene_symbol", "symbol"], "gene")
+fc_col = _pick_column(df, ["log2fc", "log2FC", "logFC"], "log2FC")
+p_col = _pick_column(df, ["pvals_adj", "adj.P.Val", "p_val_adj", "padj"], "adjusted P")
+cells = [str(value) for value in pd.unique(df[cell_col].astype(str))]
+requested_cell = str(ADAPT_VARS.get("group_col") or "")
+cell = requested_cell if requested_cell in cells else cells[0]
+sub = df[df[cell_col].astype(str) == str(cell)].copy()
+sub["_y"] = -np.log10(np.clip(sub[p_col].astype(float), 1e-300, 1))
+sig = (sub[fc_col].astype(float).abs() > 1) & (sub[p_col].astype(float) < 0.05)
+fig, ax = plt.subplots(figsize=(5.2, 4.4))
+ax.scatter(sub.loc[~sig, fc_col], sub.loc[~sig, "_y"], s=4, c="#BEBEBE", linewidths=0, label="NS")
+ax.scatter(sub.loc[sig, fc_col], sub.loc[sig, "_y"], s=5, c="#EE0000", linewidths=0, label="significant")
+ax.axvline(-1, color="#666666", lw=0.6, ls="--")
+ax.axvline(1, color="#666666", lw=0.6, ls="--")
+ax.set_xlabel("log2 fold change")
+ax.set_ylabel("-log10 adjusted P")
+ax.set_title("Cell-type differential expression")
+ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0), frameon=False)
+_save(fig, ["line2: cell-type DEG volcano", "cell type=" + str(cell), "n=" + str(len(sub))])
+print("ADAPT_REAL_INPUT_OK celltype_deg rows=" + str(len(sub)))
+`,
+  fig_l3_banksy_domain: `
+import anndata as ad
+adata = ad.read_h5ad(input_data)
+xy = np.asarray(adata.obsm["spatial"])
+group_name = ADAPT_VARS.get("group_col") or "domain"
+if group_name not in adata.obs.columns:
+    group_name = "BANKSY_domain" if "BANKSY_domain" in adata.obs.columns else adata.obs.columns[0]
+labels = adata.obs[group_name].astype(str).to_numpy()
+fig, ax = plt.subplots(figsize=(6.0, 5.0))
+unique_labels = pd.unique(labels)
+if len(unique_labels) > 30:
+    values = pd.to_numeric(adata.obs[group_name], errors="coerce").to_numpy()
+    scatter = ax.scatter(xy[:, 0], xy[:, 1], c=values, s=2.0, linewidths=0, cmap="viridis")
+    fig.colorbar(scatter, ax=ax, label=group_name)
+else:
+    for label in unique_labels:
+        mask = labels == label
+        ax.scatter(xy[mask, 0], xy[mask, 1], s=2.0, linewidths=0, label=label)
+    ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1.0), frameon=False, ncol=1)
+ax.set_xlabel("spatial x")
+ax.set_ylabel("spatial y")
+ax.set_title("Spatial domains")
+_save(fig, ["line3: spatial functional domains", "color: " + group_name, "n spots=" + str(len(labels))])
+print("ADAPT_REAL_INPUT_OK banksy_domains spots=" + str(len(labels)))
+`,
+  fig_l3_nnls_deconv_pie: `
+df = _read_table(input_data)
+cell_col = _pick_column(df, ["celltype", "cell_type", "type"], "celltype")
+value_col = next((name for name in ["mean_fraction", "median_fraction", "score", "proportion", "weight"] if name in df.columns), None)
+if value_col:
+    values = df.groupby(cell_col)[value_col].mean().sort_values(ascending=False)
+else:
+    values = df[cell_col].value_counts().head(10)
+fig, ax = plt.subplots(figsize=(6.0, 4.4))
+ax.barh(values.index[::-1].astype(str), values.values[::-1])
+ax.set_xlabel("mean proportion")
+ax.set_title("Spot cell-type composition")
+_save(fig, ["line3: NNLS cell-type composition", "top " + str(len(values)) + " cell types"])
+print("ADAPT_REAL_INPUT_OK nnls_celltypes=" + str(len(values)))
+`,
+  fig_l3_multigene_coloc: `
+requested = ADAPT_VARS.get("label_genes") or []
+if isinstance(requested, str):
+    requested = [requested]
+if str(input_data).endswith(".h5ad"):
+    import anndata as ad
+    adata = ad.read_h5ad(input_data)
+    xy = np.asarray(adata.obsm["spatial"])
+    gene = requested[0] if requested else adata.var_names[0]
+    values = np.asarray(adata[:, gene].X.todense()).reshape(-1)
+    fig, ax = plt.subplots(figsize=(6.0, 5.0))
+    scatter = ax.scatter(xy[:, 0], xy[:, 1], c=values, s=3.0, cmap="viridis", linewidths=0)
+    ax.set_xlabel("spatial x")
+    ax.set_ylabel("spatial y")
+    ax.set_title("Target gene spatial localization")
+    fig.colorbar(scatter, ax=ax, label="expression")
+    _save(fig, ["line3: target gene spatial localization", "gene=" + str(gene), "n spots=" + str(len(values))])
+else:
+    df = _read_table(input_data)
+    gene_col = _pick_column(df, ["gene_symbol", "gene", "symbol"], "gene")
+    mean_col = next((name for name in ["mean_expr", "mean_expression", "score"] if name in df.columns), None)
+    if mean_col is None:
+        mean_col = df.select_dtypes(include="number").columns[-1]
+    selected = requested if requested else df[gene_col].astype(str).head(12).tolist()
+    sub = df[df[gene_col].astype(str).isin(selected)].sort_values(mean_col, ascending=True)
+    fig, ax = plt.subplots(figsize=(6.4, 4.8))
+    ax.barh(sub[gene_col].astype(str), sub[mean_col].astype(float))
+    ax.set_xlabel("mean expression")
+    ax.set_title("Target gene spatial localization")
+    _save(fig, ["line3: target gene spatial localization", "genes=" + str(len(sub)), "source: localization table"])
+    gene = ",".join(sub[gene_col].astype(str).tolist())
+print("ADAPT_REAL_INPUT_OK localization gene=" + str(gene))
+`,
+  fig_l3_morans_i_spatial: `
+df = _read_table(input_data)
+gene_col = _pick_column(df, ["gene", "gene_symbol", "symbol"], "gene")
+value_col = _pick_column(df, ["moran_I", "morans_i", "morans_i_mean", "I"], "Moran I")
+top = df.sort_values(value_col, ascending=False).head(20).iloc[::-1]
+fig, ax = plt.subplots(figsize=(6.4, 4.8))
+ax.barh(top[gene_col].astype(str), top[value_col].astype(float))
+ax.set_xlabel("Moran's I")
+ax.set_title("Spatial autocorrelation")
+_save(fig, ["line3: spatially variable genes", "ranked by Moran's I", "top 20 genes"])
+print("ADAPT_REAL_INPUT_OK morans genes=" + str(len(top)))
+`,
+  fig_l3_niche_comm_spatial: `
+df = _read_table(input_data)
+label_col = _pick_column(df, ["interaction", "pathway", "term", "source"], "interaction")
+value_col = _pick_column(df, ["score", "lrscore", "mean", "magnitude", "scaled_weight"], "score")
+top = df.sort_values(value_col, ascending=False).head(20).iloc[::-1]
+fig, ax = plt.subplots(figsize=(7.0, 4.8))
+ax.barh(top[label_col].astype(str), top[value_col].astype(float))
+ax.set_xlabel("communication score")
+ax.set_title("Spatial niche communication")
+_save(fig, ["line3: spatial niche communication", "top 20 interactions", "n interactions=" + str(len(df))])
+print("ADAPT_REAL_INPUT_OK niche_comm=" + str(len(top)))
+`,
+};
+
+for (const [templateId, overlay] of Object.entries(V2_OVERLAYS)) {
+  PYTHON_OVERLAYS[templateId] = V2_HELPERS + overlay;
+}
+
 export function buildAdaptedFigureSource({
   template,
   masterSource,
@@ -1324,6 +1568,11 @@ export function buildAdaptedFigureSource({
   const realRunExit = template.language === 'r'
     ? 'quit(status = 0)'
     : 'raise SystemExit(0)';
+  const isV2Delivery = V2_DELIVERY_TEMPLATE_IDS.has(template.id)
+    || String(template.render_evidence?.entry_id || '').startsWith('v2_delivery_');
+  const masterTail = isV2Delivery
+    ? '# Retained master source for byte-level audit; v2 master is a wrapper script and is not embedded here.'
+    : masterSource.replace(/\r\n/g, '\n');
   return [
     ...commentLines,
     renderAdaptDeclaration(template, adaptVars),
@@ -1331,6 +1580,6 @@ export function buildAdaptedFigureSource({
     overlay,
     realRunExit,
     '# Retained master source for byte-level audit; unreachable after successful real-data render.',
-    masterSource.replace(/\r\n/g, '\n'),
+    masterTail,
   ].join('\n').replace(/\r\n/g, '\n');
 }

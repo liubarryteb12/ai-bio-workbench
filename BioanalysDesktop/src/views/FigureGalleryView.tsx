@@ -65,7 +65,8 @@ export function FigureAdaptCard({ project }: { project: string }) {
 
   const selected = templates.find((item) => item.id === templateId);
   const lineTemplates = templates.filter((item) => (
-    item.linked_mods.some((mod) => mod.startsWith(TEMPLATE_LINE_PREFIX[line]))
+    (item.lines || []).includes(line)
+    || item.linked_mods.some((mod) => mod.startsWith(TEMPLATE_LINE_PREFIX[line]))
   ));
   const hasRequiredVars = selected && Object.keys(adaptVars).length > 0
     ? Object.values(adaptVars).every((value) => value.trim() !== '')
@@ -155,8 +156,8 @@ export function FigureAdaptCard({ project }: { project: string }) {
             <option value="">选择图模板</option>
             {lineTemplates.map((item) => (
               <option key={item.id} value={item.id} disabled={item.deps_status !== 'ready'}>
-                {item.name}
-                {item.deps_status !== 'ready' ? `（${item.deps_status}${item.block_reason ? `: ${item.block_reason}` : ''}）` : ''}
+                {item.name}（{item.english_name || item.id}）
+                {item.deps_status !== 'ready' ? `（${item.status_label || item.deps_status}${item.block_reason ? `: ${item.block_reason}` : ''}）` : ''}
               </option>
             ))}
           </select>
@@ -167,12 +168,18 @@ export function FigureAdaptCard({ project }: { project: string }) {
         <div className="studio-fig-grid" style={{ gridTemplateColumns: 'auto 1fr', marginBottom: 12 }}>
           <img
             src={`/api/figures/templates/preview?id=${encodeURIComponent(selected.id)}`}
-            alt={selected.name}
+            alt={`${selected.name} 最新测试项目实例`}
             loading="lazy"
             style={{ maxHeight: 160, objectFit: 'contain', borderRadius: 6 }}
           />
           <div>
-            <p className="subtle">{selected.category} · {selected.language} · {selected.level}</p>
+            <p className="subtle">{selected.english_name} · {selected.category_label || selected.category} · {selected.language_label || selected.language} · {selected.level_label || selected.level}</p>
+            {selected.purpose && <p className="subtle">{selected.purpose}</p>}
+            {selected.introduction && <p className="subtle">{selected.introduction}</p>}
+            {selected.input_artifact && <p className="subtle">输入：{selected.input_artifact}，产出：{(selected.produces || []).join('、') || '尚未登记'}</p>}
+            <p className="subtle">分析线：{(selected.line_labels || []).join('、') || '未绑定'}，对应步骤：{selected.analysis_step || '未绑定'}，状态：{selected.status_label || selected.deps_status}</p>
+            <p className="subtle">依赖：{(selected.dependencies || []).slice(0, 10).join('、') || '未登记'}</p>
+            {selected.example_source && <p className="subtle">实例来源：{selected.example_source} 最新测试数据</p>}
             {selected.source_sha256 && <p className="subtle">母版校验码：{selected.source_sha256.slice(0, 16)}</p>}
           </div>
         </div>

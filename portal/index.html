@@ -180,6 +180,9 @@ input[aria-invalid="true"], textarea[aria-invalid="true"], select[aria-invalid="
 .figure-preview-switch button[aria-pressed="true"] { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); font-weight: 700; }
 .figure-preview-empty { height: 130px; display: grid; place-items: center; background: var(--surface); color: var(--text-faint); font-size: 12.5px; }
 .figure-map { margin-top: 7px; color: var(--text-muted); font-size: 11.5px; line-height: 1.45; overflow-wrap: anywhere; }
+.figure-intro { margin-top: 8px; color: var(--text-muted); font-size: 11.5px; line-height: 1.5; }
+.figure-intro summary { cursor: pointer; color: var(--brand); font-weight: 600; }
+.figure-intro p { margin: 5px 0; overflow-wrap: anywhere; }
 .figure-body { padding: 10px 12px 12px; }
 .figure-title { display: flex; gap: 8px; align-items: flex-start; }
 .figure-title input { margin-top: 3px; width: 17px; height: 17px; accent-color: var(--brand); flex-shrink: 0; }
@@ -836,6 +839,14 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       { name: '表达均质性热图', step: 'l1_figures_bulk', files: ['l1_04_topvar_heatmap.png'] },
       { name: '基因检出数', step: 'l1_figures_bulk', files: ['l1_05a_genes_detected.png'] },
       { name: '组内相关性', step: 'l1_figures_bulk', files: ['l1_05b_within_group_cor.png'] }
+    ],
+    line2_scrna: [
+      { name: '细胞基因检出数分布', step: 'l2_qc_cells', files: ['L2_qc_nfeature_by_sample.png'] },
+      { name: '线粒体比例分布', step: 'l2_qc_cells', files: ['L2_qc_mito_by_sample.png'] }
+    ],
+    line3_spatial: [
+      { name: 'Spot 基因检出数分布', step: 'l3_qc_spots', files: ['L3_qc_genes_by_spot.png'] },
+      { name: 'Spot 测序深度分布', step: 'l3_qc_spots', files: ['L3_qc_counts_by_spot.png'] }
     ]
   };
 
@@ -1582,7 +1593,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       if (item.project_preview_url) {
         const fixtureButton = el('button', {
           type: 'button',
-          text: '标准 Fixture 预览',
+          text: '最新测试数据（标准示例）',
           'aria-pressed': 'true'
         });
         const projectButton = el('button', {
@@ -1593,7 +1604,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
         const setPreviewMode = function (mode) {
           const project = mode === 'project';
           image.src = project ? item.project_preview_url : item.preview_url;
-          image.alt = item.name + (project ? ' 真实项目实例（最近一次运行）' : ' 标准 Fixture 预览');
+          image.alt = item.name + (project ? ' 真实项目实例（最近一次运行）' : ' 最新测试数据（标准示例）');
           card.setAttribute('data-preview-mode', project ? 'project' : 'fixture');
           fixtureButton.setAttribute('aria-pressed', project ? 'false' : 'true');
           projectButton.setAttribute('aria-pressed', project ? 'true' : 'false');
@@ -1629,7 +1640,8 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     });
     const title = el('div', { class: 'figure-title' }, [checkbox, el('span', { text: item.name })]);
     const meta = el('div', { class: 'figure-meta' });
-    meta.appendChild(el('span', { text: item.language === 'r' ? 'R' : 'Python' }));
+    meta.appendChild(el('span', { text: item.english_name || item.name }));
+    meta.appendChild(el('span', { text: item.language_label || (item.language === 'r' ? 'R' : 'Python') }));
     meta.appendChild(el('span', {
       class: available ? 'ready' : 'warn',
       text: available ? 'deps ready' : `deps ${item.deps_status} · 依赖未就绪`
@@ -1641,6 +1653,18 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       }));
     }
     body.appendChild(title); body.appendChild(meta);
+    if (item.purpose) {
+      body.appendChild(el('div', { class: 'figure-map', text: item.purpose }));
+    }
+    if (item.introduction) {
+      body.appendChild(el('details', { class: 'figure-intro' }, [
+        el('summary', { text: '图型介绍与基本信息' }),
+        el('p', { text: item.introduction }),
+        el('p', { text: `英文名：${item.english_name || '未记录'} · Tier ${item.tier || item.level.slice(1)} · ${item.category_label || item.category} · ${item.status_label || item.deps_status}` }),
+        el('p', { text: `输入：${(item.input_tables || []).join('、') || item.input_artifact || '尚未绑定'} · 产出：${(item.produces || []).join('、') || '尚未登记'}` }),
+        el('p', { text: `依赖：${(item.dependencies || item.deps || []).slice(0, 10).join('、') || '未登记'} · 分析线：${(item.line_labels || []).join('、') || '未绑定'}` }),
+      ]));
+    }
     if (scheduleState === 'unlockable') {
       body.appendChild(el('div', {
         class: 'figure-map',
@@ -1706,8 +1730,11 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       (!Array.isArray(item.lines) || !item.lines.length)
       && (item.linked_mods || []).some((id) => lineMods.includes(id))
     ));
+    const otherLineItems = figureTemplateRegistry.filter((item) => (
+      Array.isArray(item.lines) && item.lines.length > 0 && !item.lines.includes(lineId)
+    ));
     const readyItems = lineItems.filter(templateAvailable);
-    updateFigureFilterControls(readyItems.length, lineItems.length + unboundItems.length);
+    updateFigureFilterControls(readyItems.length, figureTemplateRegistry.length);
     wrap.appendChild(el('div', {
       class: 'figure-line-note',
       text: `当前分析线：${series ? series.name : lineId}（${lineId}）。Tier 1 / 2 / 3 是图型复杂度，不是分析线。`
@@ -1754,6 +1781,16 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       const draftGrid = el('div', { class: 'figure-grid' });
       unboundItems.forEach((item) => draftGrid.appendChild(makeFigureCard(item)));
       details.appendChild(draftGrid);
+      wrap.appendChild(details);
+    }
+    if (figureTemplateFilter === 'all' && otherLineItems.length) {
+      const details = el('details', { class: 'figure-level figure-draft-zone', 'data-testid': 'figure-other-line-zone' });
+      details.appendChild(el('summary', {
+        text: `其他分析线图型目录（${otherLineItems.length} 个 · 仅供查阅，本线不可选）`
+      }));
+      const catalogGrid = el('div', { class: 'figure-grid' });
+      otherLineItems.forEach((item) => catalogGrid.appendChild(makeFigureCard(item)));
+      details.appendChild(catalogGrid);
       wrap.appendChild(details);
     }
     updateFigureTemplateSummary();
@@ -3035,7 +3072,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
           realList.appendChild(el('li', { text: '尚未回传项目真实图。' }));
           return;
         }
-        const qcPattern = /(^|\/)(l1_01_correlation|l1_02_pca|l1_02_pca_step3|l1_04_topvar_heatmap|l1_05a_genes_detected|l1_05b_within_group_cor)\.png$/;
+        const qcPattern = /(^|\/)(l1_01_correlation|l1_02_pca|l1_02_pca_step3|l1_04_topvar_heatmap|l1_05a_genes_detected|l1_05b_within_group_cor|l2_qc_nfeature_by_sample|l2_qc_mito_by_sample|l3_qc_genes_by_spot|l3_qc_counts_by_spot)\.png$/;
         const pathText = function (file) { return String(file.path || '').replace(/\\/g, '/'); };
         const qcFiles = files.filter(function (file) { return qcPattern.test(pathText(file)); });
         const otherFiles = files.filter(function (file) { return !qcPattern.test(pathText(file)); });

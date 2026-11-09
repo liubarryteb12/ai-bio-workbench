@@ -18,9 +18,8 @@ import { loadWorkflows } from '../workflow_graph.js';
 import {
   buildAdaptedFigureTasks, loadFigureTemplates, resolveFigure, validateRegistry as validateFigureRegistry,
 } from '../figure_graph.js';
-import {
-  resolveCatalogFigure, searchFigureCatalog, validateFigureCatalog,
-} from '../figure_catalog.js';
+import { resolveProjectExample, validateProjectExamples } from '../figure_examples.js';
+import { loadTemplateCatalog, validateTemplateCatalog } from '../figure_template_catalog.js';
 import { deriveAdaptedFigure } from '../task.js';
 import { readAdaptManifest, checkRemoteProjectDir } from '../report.js';
 import { collectJsonBody, runJsonRoute, JSON_BODY_LIMIT } from '../http_body.js';
@@ -32,25 +31,53 @@ export async function handleFiguresRoutes(req, res, url, {
   if (url.pathname === '/api/figures/templates') {
     const registry = loadFigureTemplates();
     const check = validateFigureRegistry();
+    const exampleErrors = validateProjectExamples();
+    const catalogValidation = validateTemplateCatalog();
+    const catalog = loadTemplateCatalog();
     const lineId = url.searchParams.get('line') || LINES[0];
-    const templates = registry.templates.map((item) => ({
+    const templates = catalog.map((item) => ({
       id: item.id,
       name: item.name,
+      english_name: item.english_name,
       level: item.level,
+      level_label: item.level_label,
       category: item.category,
+      category_label: item.category_label,
       language: item.language,
-      deps_status: item.deps_status,
+      language_label: item.language_label,
+      deps_status: item.status,
+      status_label: item.status_label,
       verified: item.verified,
       preview: item.preview,
-      source_sha256: item.source_sha256,
+      preview_state: item.preview_state,
+      project_preview: item.latest_example?.path || null,
+      example_source: item.example_source,
+      source_sha256: item.source ? item.source_sha256 || null : null,
       linked_mods: item.linked_mods,
       adapt_vars: item.adapt_vars,
       block_reason: item.block_reason || '',
+      purpose: item.purpose,
+      introduction: item.introduction,
+      dependencies: item.dependencies,
+      input_tables: item.input_tables,
+      input_artifact: item.input_artifact,
+      produces: item.produces,
+      lines: item.lines,
+      line_labels: item.line_labels,
+      analysis_step: item.analysis_step,
+      producing_mod_id: item.producing_mod_id,
+      required_mod_ids: item.required_mod_ids,
+      preview_available: item.preview_available,
     }));
     json(res, 200, {
       ok: check.ok,
       registry_ok: check.ok,
       registry_errors: check.errors,
+      example_ok: exampleErrors.length === 0,
+      example_errors: exampleErrors,
+      catalog_ok: catalogValidation.ok,
+      catalog_errors: catalogValidation.errors,
+      catalog_total: catalog.length,
       stats: check.stats,
       lineId,
       templates,
@@ -62,11 +89,12 @@ export async function handleFiguresRoutes(req, res, url, {
     const templateId = url.searchParams.get('id') || '';
     const registry = loadFigureTemplates();
     const item = registry.templates.find((candidate) => candidate.id === templateId);
-    if (!item || item.deps_status !== 'ready' || !item.preview) {
+    const example = resolveProjectExample(templateId, 'project') || resolveProjectExample(templateId, 'fixture');
+    if (!item || item.deps_status !== 'ready' || !example) {
       json(res, 404, { error: `模板预览不可用: ${templateId}` });
       return true;
     }
-    const file = path.resolve(REPO_ROOT, item.preview);
+    const file = path.resolve(REPO_ROOT, example.path);
     if (!file.startsWith(REPO_ROOT + path.sep)) {
       json(res, 400, { error: '模板预览路径越界' });
       return true;
@@ -89,37 +117,53 @@ export async function handleFiguresRoutes(req, res, url, {
   }
 
   if (url.pathname === '/api/figures/catalog') {
-    const check = validateFigureCatalog();
-    const entries = searchFigureCatalog({
-      query: url.searchParams.get('q') || '',
-      language: url.searchParams.get('language') || '',
-      status: url.searchParams.get('status') || '',
-      limit: url.searchParams.get('limit') || 50,
-    }).map((item) => ({
-      catalog_id: item.catalog_id,
-      page_id: item.page_id,
-      title: item.title,
-      lang: item.lang,
-      chart_type: item.chart_type,
-      family: item.family,
-      bio_level: item.bio_level,
-      bio_tags: item.bio_tags,
-      score: item.score,
+    const check = validateTemplateCatalog();
+    const query = String(url.searchParams.get('q') || '').trim().toLowerCase();
+    const language = String(url.searchParams.get('language') || '').trim().toLowerCase();
+    const status = String(url.searchParams.get('status') || '').trim().toLowerCase();
+    const limit = Math.max(1, Math.min(1000, Number(url.searchParams.get('limit') || 92)));
+    const all = loadTemplateCatalog().map((item) => ({
+      catalog_id: item.id,
+      title: item.name,
+      english_name: item.english_name,
+      chart_type: item.category_label,
+      family: item.category,
+      lang: item.language_label,
+      bio_level: item.level_label,
       status: item.status,
-      deps: item.deps,
-      page_url: item.page_url,
-      preview_path: item.preview_path,
-      code_path: item.code_path,
-      width: item.width,
-      height: item.height,
-      pilot: item.pilot,
-      suggested_template_id: item.suggested_template_id,
+      status_label: item.status_label,
+      pilot: item.status === 'ready',
+      score: item.status === 'ready' ? 100 : item.status === 'pending' ? 60 : 20,
+      width: item.latest_example?.width || null,
+      height: item.latest_example?.height || null,
+      code_path: item.source || '',
+      deps: (item.dependencies || []).join('|'),
+      bio_tags: [item.level_label, item.category_label, item.status_label, item.purpose].join('|'),
+      page_url: '',
+      preview_path: item.preview_available ? item.preview_source : null,
+      preview_url: item.preview_url,
+      purpose: item.purpose,
+      introduction: item.introduction,
+      suggested_template_id: item.id,
+      lines: item.line_labels,
+      analysis_step: item.analysis_step,
+      input_tables: item.input_tables,
+      produces: item.produces,
     }));
+    const entries = all.filter((entry) => {
+      if (language && entry.lang.toLowerCase() !== language) return false;
+      if (status && entry.status !== status) return false;
+      if (!query) return true;
+      return [entry.title, entry.english_name, entry.chart_type, entry.purpose, entry.introduction, entry.bio_tags]
+        .some((value) => String(value || '').toLowerCase().includes(query));
+    }).slice(0, limit);
+    const stats = {};
+    for (const entry of all) stats[entry.status] = (stats[entry.status] || 0) + 1;
     json(res, 200, {
       ok: check.ok,
       catalog_ok: check.ok,
       catalog_errors: check.errors,
-      stats: check.stats,
+      stats,
       entries,
     });
     return true;
@@ -127,21 +171,24 @@ export async function handleFiguresRoutes(req, res, url, {
 
   if (url.pathname === '/api/figures/catalog/preview') {
     const catalogId = url.searchParams.get('id') || '';
-    const resolved = resolveCatalogFigure(catalogId);
-    if (!resolved.ok || !resolved.preview_abs) {
-      json(res, 404, {
-        error: `候选图预览不可用: ${catalogId}`,
-        errors: resolved.errors,
-      });
+    const entry = loadTemplateCatalog().find((item) => item.id === catalogId);
+    if (!entry || !entry.preview_available || !entry.preview_source) {
+      json(res, 404, { error: `候选图预览不可用: ${catalogId}` });
       return true;
     }
-    const stat = fs.statSync(resolved.preview_abs);
+    const file = path.resolve(REPO_ROOT, entry.preview_source);
+    if (!file.startsWith(REPO_ROOT + path.sep) || !fs.statSync(file).isFile()) {
+      json(res, 404, { error: `候选图预览不可用: ${catalogId}` });
+      return true;
+    }
+    const stat = fs.statSync(file);
     res.writeHead(200, {
       'Content-Type': 'image/png',
       'Content-Length': stat.size,
       'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
     });
-    fs.createReadStream(resolved.preview_abs).pipe(res);
+    fs.createReadStream(file).pipe(res);
     return true;
   }
 

@@ -36,9 +36,8 @@ import {
 } from '../shared/data_formats.mjs';
 import { BLACKLIST_PATTERNS, validateProjectFields } from '../BioanalysDesktop/server/tumor_blacklist.js';
 import { resolveFigure } from '../BioanalysDesktop/server/figure_graph.js';
-import {
-  resolveCatalogFigure, searchFigureCatalog, validateFigureCatalog,
-} from '../BioanalysDesktop/server/figure_catalog.js';
+import { validateProjectExamples, resolveProjectExample } from '../BioanalysDesktop/server/figure_examples.js';
+import { loadTemplateCatalog, loadTemplateCatalogById, validateTemplateCatalog } from '../BioanalysDesktop/server/figure_template_catalog.js';
 // 第二十九轮 ⑥：需求单结构的唯一真源。门户与服务端建项共用同一份规则，
 // 这样客户在这里提交通过的东西，工作台那边一定认；反过来这边拦下的，工作台也不会收到半成品。
 import { validateRequirement } from '../shared/requirement_schema.mjs';
@@ -704,8 +703,15 @@ function figurePreviewState(item) {
 function figureTemplatesPayload() {
   const registryPath = path.resolve(REPO_ROOT, 'tools', 'bio', 'figure_templates.json');
   const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+  const exampleErrors = validateProjectExamples();
+  if (exampleErrors.length > 0) throw new Error('图实例清单失同步: ' + exampleErrors[0]);
+  const catalogValidation = validateTemplateCatalog();
+  if (!catalogValidation.ok) throw new Error('全量模板目录失同步: ' + catalogValidation.errors[0]);
+  const profiles = loadTemplateCatalogById();
   const templates = (Array.isArray(registry.templates) ? registry.templates : []).map((item) => {
     const state = figurePreviewState(item);
+    const latestExample = resolveProjectExample(item.id, 'project');
+    const profile = profiles.get(item.id) || {};
     return {
       id: item.id,
       name: item.name,
@@ -717,10 +723,11 @@ function figureTemplatesPayload() {
       block_reason: item.block_reason || (item.deps_status === 'ready' ? '' : '依赖未完成验证'),
       verified: Boolean(item.verified),
       preview_state: state,
-      preview_url: state === 'ok' ? `/api/figure-templates/preview?id=${encodeURIComponent(item.id)}` : '',
-      project_preview_url: state === 'ok' && item.sample_project_output
+      preview_url: state === 'ok' && latestExample ? `/api/figure-templates/preview?id=${encodeURIComponent(item.id)}` : '',
+      project_preview_url: state === 'ok' && latestExample
         ? `/api/figure-templates/project-preview?id=${encodeURIComponent(item.id)}`
         : '',
+      preview_source: latestExample ? latestExample.path : item.preview,
       lines: Array.isArray(item.lines) ? item.lines : [],
       analysis_step: item.analysis_step || null,
       input_tables: Array.isArray(item.input_tables) ? item.input_tables : [],
@@ -736,9 +743,31 @@ function figureTemplatesPayload() {
       required_mod_ids: Array.isArray(item.required_mod_ids) ? item.required_mod_ids : [],
       academic_tier: item.academic_tier || null,
       portal_binding: item.portal_binding || null,
+      english_name: profile.english_name || null,
+      tier: profile.tier || null,
+      level_label: profile.level_label || null,
+      category_label: profile.category_label || null,
+      language_label: profile.language_label || null,
+      status_label: profile.status_label || null,
+      purpose: profile.purpose || '',
+      introduction: profile.introduction || '',
+      dependencies: Array.isArray(profile.dependencies) ? profile.dependencies : [],
+      input_artifact: profile.input_artifact || null,
+      input_format: profile.input_format || null,
+      line_labels: Array.isArray(profile.line_labels) ? profile.line_labels : [],
+      library_status: profile.library_status || null,
+      source_location: profile.source_location || null,
     };
   });
-  return { templates };
+  return {
+    templates,
+    catalog: {
+      total: catalogValidation.total,
+      profiles: profiles.size,
+      ok: catalogValidation.ok,
+      source: 'tools/bio/figure_template_profiles.json',
+    },
+  };
 }
 
 /**
@@ -754,6 +783,14 @@ const NATIVE_QC_EXAMPLE_FILES = Object.freeze({
     'l1_04_topvar_heatmap.png',
     'l1_05a_genes_detected.png',
     'l1_05b_within_group_cor.png',
+  ]),
+  line2_scrna: new Set([
+    'L2_qc_nfeature_by_sample.png',
+    'L2_qc_mito_by_sample.png',
+  ]),
+  line3_spatial: new Set([
+    'L3_qc_genes_by_spot.png',
+    'L3_qc_counts_by_spot.png',
   ]),
 });
 
@@ -785,6 +822,35 @@ function findLatestProjectFigure(lineId, name) {
   }
 }
 
+function findLatestProjectImage(name) {
+  const projectsRoot = path.resolve(REPO_ROOT, 'workspace', 'projects');
+  if (!/^[A-Za-z0-9._-]+\.(png|jpg|jpeg|svg|webp)$/i.test(name)) return null;
+  const candidates = [];
+  let projects = [];
+  try {
+    projects = fs.readdirSync(projectsRoot, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && /^[A-Za-z0-9._-]+$/.test(entry.name))
+      .map((entry) => entry.name);
+  } catch {
+    return null;
+  }
+  for (const project of projects) {
+    for (const lineId of Object.keys(NATIVE_QC_EXAMPLE_FILES)) {
+      const candidate = path.join(projectsRoot, project, 'report', 'figures', name);
+      const lineCandidate = path.join(projectsRoot, project, 'figures', lineId, name);
+      for (const file of [candidate, lineCandidate]) {
+        try {
+          if (fs.statSync(file).isFile()) {
+            candidates.push({ file: path.resolve(file), mtime: fs.statSync(file).mtimeMs });
+          }
+        } catch { /* 文件不在该落点 */ }
+      }
+    }
+  }
+  candidates.sort((a, b) => b.mtime - a.mtime);
+  return candidates[0] ? candidates[0].file : null;
+}
+
 function handleNativeQcPreview(req, res, url) {
   const lineId = String(url.searchParams.get('line') || '');
   const name = String(url.searchParams.get('name') || '');
@@ -792,7 +858,7 @@ function handleNativeQcPreview(req, res, url) {
   if (!allowed || !allowed.has(name)) {
     return sendJson(res, 400, { ok: false, error: '质检图参数非法' });
   }
-  const best = findLatestProjectFigure(lineId, name);
+  const best = findLatestProjectImage(name);
   if (!best) return sendJson(res, 404, { ok: false, error: '暂无真实质检图示例' });
   const projectsRoot = path.resolve(REPO_ROOT, 'workspace', 'projects');
   const target = best;
@@ -831,7 +897,9 @@ function handleFigureTemplatePreview(req, res, url) {
   if (state !== 'ok') {
     return sendJson(res, 404, { ok: false, error: '预览图缺失' });
   }
-  const target = path.resolve(REPO_ROOT, template.preview);
+  const example = resolveProjectExample(id, 'project') || resolveProjectExample(id, 'fixture');
+  if (!example) return sendJson(res, 404, { ok: false, error: '图实例清单缺最新测试数据图' });
+  const target = path.resolve(REPO_ROOT, example.path);
   if (!target.startsWith(path.resolve(REPO_ROOT) + path.sep)) {
     return sendJson(res, 400, { ok: false, error: '预览图路径越界' });
   }
@@ -845,6 +913,7 @@ function handleFigureTemplatePreview(req, res, url) {
     'Content-Length': String(bytes.length),
     'Cache-Control': 'no-store',
     'X-Content-Type-Options': 'nosniff',
+    'X-Figure-Example-Source': 'latest-dcm-project',
   });
   return res.end(bytes);
 }
@@ -862,23 +931,12 @@ function handleFigureProjectPreview(req, res, url) {
   if (!template || template.deps_status !== 'ready' || !template.verified || !template.sample_project_output) {
     return sendJson(res, 404, { ok: false, error: '真实项目产出示例不可用' });
   }
-  const relative = String(template.sample_project_output);
+  const example = resolveProjectExample(id, 'project');
+  if (!example) return sendJson(res, 404, { ok: false, error: '最新测试项目图实例不可用' });
+  const relative = example.path;
   const ext = path.extname(relative).toLowerCase();
-  const imageTypes = {
-    '.png': 'image/png',
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.svg': 'image/svg+xml',
-    '.webp': 'image/webp',
-  };
-  if (!imageTypes[ext] || relative.includes('\\') || relative.startsWith('/')
-    || /^[A-Za-z]:/.test(relative) || relative.split('/').includes('..')) {
-    return sendJson(res, 400, { ok: false, error: '真实项目产出示例路径非法' });
-  }
   const root = path.resolve(REPO_ROOT);
-  const lineId = Array.isArray(template.lines) && template.lines.length ? String(template.lines[0]) : '';
-  const latest = lineId ? findLatestProjectFigure(lineId, path.basename(relative)) : null;
-  const target = latest || path.resolve(root, relative);
+  const target = path.resolve(root, relative);
   if (!target.startsWith(root + path.sep)) {
     return sendJson(res, 400, { ok: false, error: '真实项目产出示例路径越界' });
   }
@@ -889,12 +947,20 @@ function handleFigureProjectPreview(req, res, url) {
   } catch {
     return sendJson(res, 404, { ok: false, error: '真实项目产出示例缺失' });
   }
+  const imageTypes = {
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.svg': 'image/svg+xml',
+    '.webp': 'image/webp',
+  };
   res.writeHead(200, {
     'Content-Type': imageTypes[ext],
     'Content-Length': String(bytes.length),
     'Cache-Control': 'no-store',
     'X-Content-Type-Options': 'nosniff',
-    'X-Figure-Example-Source': latest ? 'latest-project' : 'registry-sample',
+    'X-Figure-Example-Source': 'latest-dcm-project',
+    'X-Figure-Example-Sha256': example.sha256,
   });
   return res.end(bytes);
 }
@@ -1724,39 +1790,75 @@ const server = http.createServer((req, res) => {
   }
 
   if (url.pathname === '/api/figures/catalog' && req.method === 'GET') {
-    const check = validateFigureCatalog();
-    const entries = searchFigureCatalog({
-      query: url.searchParams.get('q') || '',
-      language: url.searchParams.get('language') || '',
-      status: url.searchParams.get('status') || '',
-      limit: url.searchParams.get('limit') || 50,
-    });
+    const check = validateTemplateCatalog();
+    const query = String(url.searchParams.get('q') || '').trim().toLowerCase();
+    const language = String(url.searchParams.get('language') || '').trim().toLowerCase();
+    const status = String(url.searchParams.get('status') || '').trim().toLowerCase();
+    const limit = Math.max(1, Math.min(1000, Number(url.searchParams.get('limit') || 92)));
+    const all = loadTemplateCatalog().map((item) => ({
+      catalog_id: item.id,
+      title: item.name,
+      english_name: item.english_name,
+      chart_type: item.category_label,
+      family: item.category,
+      lang: item.language_label,
+      bio_level: item.level_label,
+      status: item.status,
+      status_label: item.status_label,
+      pilot: item.status === 'ready',
+      score: item.status === 'ready' ? 100 : item.status === 'pending' ? 60 : 20,
+      width: item.latest_example?.width || null,
+      height: item.latest_example?.height || null,
+      code_path: item.source || '',
+      deps: (item.dependencies || []).join('|'),
+      bio_tags: [item.level_label, item.category_label, item.status_label, item.purpose].join('|'),
+      page_url: '',
+      preview_path: item.preview_available ? item.preview_source : null,
+      preview_url: item.preview_url,
+      purpose: item.purpose,
+      introduction: item.introduction,
+      suggested_template_id: item.id,
+      lines: item.line_labels,
+      analysis_step: item.analysis_step,
+      input_tables: item.input_tables,
+      produces: item.produces,
+    }));
+    const entries = all.filter((entry) => {
+      if (language && entry.lang.toLowerCase() !== language) return false;
+      if (status && entry.status !== status) return false;
+      if (!query) return true;
+      return [entry.title, entry.english_name, entry.chart_type, entry.purpose, entry.introduction, entry.bio_tags]
+        .some((value) => String(value || '').toLowerCase().includes(query));
+    }).slice(0, limit);
+    const stats = {};
+    for (const entry of all) stats[entry.status] = (stats[entry.status] || 0) + 1;
     return sendJson(res, 200, {
       ok: check.ok,
       catalog_ok: check.ok,
       catalog_errors: check.errors,
-      stats: check.stats,
+      stats,
       entries,
     });
   }
 
   if (url.pathname === '/api/figures/catalog/preview' && req.method === 'GET') {
     const catalogId = url.searchParams.get('id') || '';
-    const resolved = resolveCatalogFigure(catalogId);
-    if (!resolved.ok || !resolved.preview_abs) {
-      return sendJson(res, 404, {
-        ok: false,
-        error: `候选图预览不可用: ${catalogId}`,
-        errors: resolved.errors,
-      });
+    const entry = loadTemplateCatalog().find((item) => item.id === catalogId);
+    if (!entry || !entry.preview_available || !entry.preview_source) {
+      return sendJson(res, 404, { ok: false, error: `候选图预览不可用: ${catalogId}` });
     }
-    const stat = fs.statSync(resolved.preview_abs);
+    const file = path.resolve(REPO_ROOT, entry.preview_source);
+    if (!file.startsWith(REPO_ROOT + path.sep) || !fs.statSync(file).isFile()) {
+      return sendJson(res, 404, { ok: false, error: `候选图预览不可用: ${catalogId}` });
+    }
+    const stat = fs.statSync(file);
     res.writeHead(200, {
       'Content-Type': 'image/png',
       'Content-Length': stat.size,
       'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
     });
-    fs.createReadStream(resolved.preview_abs).pipe(res);
+    fs.createReadStream(file).pipe(res);
     return;
   }
 

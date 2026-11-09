@@ -4,61 +4,17 @@
   var API_CATALOG = '/api/figures/catalog';
   var API_PREVIEW = '/api/figures/catalog/preview';
   var LIMIT = 1000;
-  var ALL_STATUSES = [
-    'k40_verified',
-    'materialized',
-    'blocked_dependency',
-    'blocked_network',
-    'blocked_code',
-    'blocked_image',
-    'blocked_timeout',
-    'split_materialized',
-    'split_code_ready',
-    'generic_candidate',
-    'code_ready',
-    'needs_split',
-    'image_missing',
-    'local_image_missing',
-    'code_missing'
-  ];
-  var PREVIEWABLE_STATUSES = new Set([
-    'k40_verified', 'materialized', 'code_ready',
-    'blocked_dependency', 'blocked_network', 'blocked_code',
-    'blocked_image', 'blocked_timeout', 'split_materialized'
-  ]);
+  var ALL_STATUSES = ['ready', 'pending', 'blocked_r453'];
+  var PREVIEWABLE_STATUSES = new Set(['ready']);
   var STATUS_LABELS = {
-    k40_verified: '已验证',
-    materialized: '已物化',
-    blocked_dependency: '缺依赖',
-    blocked_network: '外网失败',
-    blocked_code: '代码失败',
-    blocked_image: '图片失败',
-    blocked_timeout: '执行超时',
-    split_materialized: '已拆分',
-    split_code_ready: '拆分代码就绪',
-    generic_candidate: '通用候选',
-    code_ready: '代码就绪',
-    needs_split: '待拆分',
-    image_missing: '缺图',
-    local_image_missing: '缺本地图',
-    code_missing: '缺代码'
+    ready: '已验证可用',
+    pending: '规划中',
+    blocked_r453: '兼容阻塞'
   };
   var STATUS_CLASSES = {
-    k40_verified: 'verified',
-    materialized: 'materialized',
-    blocked_dependency: 'blocked',
-    blocked_network: 'blocked',
-    blocked_code: 'blocked',
-    blocked_image: 'blocked',
-    blocked_timeout: 'blocked',
-    split_materialized: 'ready',
-    split_code_ready: 'split',
-    generic_candidate: 'missing',
-    code_ready: 'ready',
-    needs_split: 'split',
-    image_missing: 'missing',
-    local_image_missing: 'missing',
-    code_missing: 'missing'
+    ready: 'verified',
+    pending: 'split',
+    blocked_r453: 'blocked'
   };
   var ICONS = {
     image: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9.5" r="1.5"></circle><path d="m21 15-4.5-4.5L9 18"></path></svg>'
@@ -102,7 +58,7 @@
   }
 
   function hasPreview(entry) {
-    return Boolean(entry && entry.preview_path && PREVIEWABLE_STATUSES.has(entry.status));
+    return Boolean(entry && (entry.preview_path || entry.preview_url) && PREVIEWABLE_STATUSES.has(entry.status));
   }
 
   function previewUrl(catalogId) {
@@ -155,7 +111,7 @@
 
   function appendPreviewImage(parent, entry, lazy) {
     var image = document.createElement('img');
-    image.src = previewUrl(entry.catalog_id);
+    image.src = entry.preview_url || previewUrl(entry.catalog_id);
     image.alt = '候选图：' + (entry.title || entry.catalog_id);
     image.decoding = 'async';
     if (lazy) image.loading = 'lazy';
@@ -291,8 +247,10 @@
 
     var meta = createElement('span', 'card-meta');
     meta.appendChild(createElement('span', 'lang-pill', entry.lang || '未标注'));
-    meta.appendChild(createElement('span', 'card-type', entry.chart_type || '未标注'));
+    meta.appendChild(createElement('span', 'card-type', entry.english_name || entry.chart_type || '未标注'));
     body.appendChild(meta);
+
+    body.appendChild(createElement('span', 'card-purpose', entry.purpose || '暂无用途说明'));
 
     var footer = createElement('span', 'card-footer');
     footer.appendChild(createElement('span', 'bio-level', entry.bio_level || '未标注'));
@@ -332,10 +290,15 @@
   function setDetailFacts(entry) {
     var facts = [
       ['目录 ID', entry.catalog_id || '未记录'],
+      ['英文名', entry.english_name || '未记录'],
       ['语言', entry.lang || '未记录'],
-      ['图型', entry.chart_type || '未标注'],
-      ['族', entry.family || '未标注'],
-      ['生信强度', entry.bio_level || '未标注'],
+      ['图型分类', entry.chart_type || '未标注'],
+      ['图型层级', entry.bio_level || '未标注'],
+      ['状态', entry.status_label || statusLabel(entry.status)],
+      ['分析线', (entry.lines || []).join('、') || '未绑定'],
+      ['分析步骤', entry.analysis_step || '未绑定'],
+      ['输入表', (entry.input_tables || []).join('、') || '未登记'],
+      ['登记产物', (entry.produces || []).join('、') || '未登记'],
       ['评分', formatScore(entry.score)],
       ['尺寸', formatDimensions(entry)],
       ['代码路径', entry.code_path || '尚未物化']
@@ -382,29 +345,13 @@
   function setDetailSource(entry) {
     var link = $('detail-page-link');
     var host = $('detail-source-host');
-    var url = safePageUrl(entry.page_url);
-    if (!url) {
-      link.href = '#';
-      link.removeAttribute('target');
-      link.setAttribute('tabindex', '-1');
-      link.setAttribute('aria-disabled', 'true');
-      link.textContent = '来源页未记录';
-      host.textContent = '';
-      return;
-    }
-    link.href = url;
-    link.setAttribute('target', '_blank');
-    link.setAttribute('rel', 'noreferrer');
-    link.removeAttribute('tabindex');
-    link.removeAttribute('aria-disabled');
+    link.href = '#';
+    link.removeAttribute('target');
+    link.setAttribute('tabindex', '-1');
+    link.setAttribute('aria-disabled', 'true');
     link.replaceChildren();
-    link.appendChild(createElement('span', '', '打开来源页'));
-    link.insertAdjacentHTML('beforeend', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"></path><path d="m20 4-9 9"></path><path d="M20 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h5"></path></svg>');
-    try {
-      host.textContent = new URL(url).hostname;
-    } catch (error) {
-      host.textContent = url;
-    }
+    link.appendChild(createElement('span', '', '图型目录为项目内真源'));
+    host.textContent = entry.suggested_template_id ? '模板 ID：' + entry.suggested_template_id : '模板 ID 未记录';
   }
 
   function renderDetail(entry) {
@@ -431,12 +378,10 @@
     setDetailBadges(entry);
 
     var note = $('detail-note');
+    note.textContent = entry.introduction || entry.purpose || '暂无图型介绍。';
+    note.hidden = false;
     if (!hasPreview(entry)) {
-      note.textContent = '当前状态为「' + statusLabel(entry.status) + '」，单图预览和可执行代码路径尚未完成物化。';
-      note.hidden = false;
-    } else {
-      note.hidden = true;
-      note.textContent = '';
+      note.textContent += ' 当前状态为「' + statusLabel(entry.status) + '」，单图预览待补齐。';
     }
 
     setDetailFacts(entry);
