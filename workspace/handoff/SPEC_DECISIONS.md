@@ -383,3 +383,13 @@
 - **受影响条款**：G7 端口门禁、8080 门户单向 Sync、Final Gate 网络判据、启动与守护入口。
 - **同步修改文件清单**：`BioanalysDesktop/server/index.js`、`BioanalysDesktop/vite.config.js`、`start_workbench.bat`、`start_all.bat`、`ops/serve_guard.ps1`、`ops/sync_daemon.ps1`、`ops/README.md`、`docs/user_portal_deploy.md`、当前 aims 四卷、端口一致性测试。
 - **验证测试名**：工作台端口默认值跨文件一致性；`127.0.0.1:18787` 仅环回监听；`/api/selfcheck` 五维全绿；8080 `/health` 200；端口预检识别 18787 owner 为项目 Node。
+
+### D-30 AI 管理员编排采用后端 API、全局单权威租约与回执 actor 留痕
+
+- **日期**：2026-11-11
+- **问题背景与冲突点**：用户要求 AI 辅助自动编排，人工也可在可视化界面精细操作。旧产品化规格把无人审核自动执行列为非目标，且界面与 AI 同时操作会争抢审核与队列状态。
+- **备选方案对比**：① 浏览器 DOM 自动化：形态像人工，但依赖界面结构且难以审计；② AI 直接调后端 API 并共享管理员权限：稳定可测，但需要单写者与身份留痕；③ 维持人工独占：冲突最小，但无法满足自动推进。
+- **最终拍板结论**：采用 ②。AI 使用独立凭证取得 `ai_assist` 管理员主体，所有状态变更受全局单权威租约约束，人工可强制接管；工单 meta 与 `receipt/v1` 记录 `created_by`、`approved_by`、`last_updated_by` 与 `actor_trace`。首期强制范围是工单创建、从包创建和审核入队，任务与报告入口在后续票扩展。
+- **受影响条款**：`PRODUCTIZATION_SPEC` 第七节第 4 条、作业 API 与 `receipt/v1` 契约、工作台界面。
+- **同步修改文件清单**：`docs/AI_ORCHESTRATION_SPEC.md`、`docs/AI_ORCHESTRATION_TICKETS.md`、`docs/PRODUCTIZATION_SPEC.md`、`AGENTS.md`、`BioanalysDesktop/tests/ai_orchestration_spec_contract.test.js`。
+- **验证测试名**：`ai_orchestration_spec_contract.test.js`；后续 `authority_service.test.js`、`authority_api_contract.test.js`、`ai_orchestrator_contract.test.js`、`ai_orchestration_e2e.test.js`。

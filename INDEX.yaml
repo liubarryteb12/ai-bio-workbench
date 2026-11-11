@@ -1,7 +1,13 @@
 # 全局导航中枢（INDEX.yaml）
 version: "1.0.0"
-updated: "2026-11-09"
+updated: "2026-11-11"
 structure_contract: MIGRATION.md
+
+goals:
+  active: docs/GOAL_2026-11-11.md
+  previous: docs/GOAL_2026-11-06.md
+  scope: 采买优先、单权威租约、受控队列
+  rule: 开工先读 active；与 SPEC.md、SCOPE.md、workflows.json 冲突时以那些真源为准
 
 governance:
   constitution: SPEC.md

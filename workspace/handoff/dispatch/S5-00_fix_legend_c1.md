@@ -33,8 +33,7 @@
 1. 链路自检：adb forward 两条；`ssh k40-ubuntu 'echo OK'`。
 2. 建基线（远端）：`processed/` 与 `figures/` 全量 md5 → /tmp/s50_before.md5 与 /tmp/s50_before_fig.md5。
 3. 逐文件修这 10 处：把图例调用改成**显式轴框外**，与本脚本 `legend_out()` 的定位规则一致：
-   - 横版图（宽≥高）：`bbox_to_anchor=(0.5, -0.10)`，`loc="upper center"`
-   - 竖版图（宽<高）：`bbox_to_anchor=(1.02, 1.0)`，`loc="upper left"`
+   - 所有图幅方向：`bbox_to_anchor=(1.02, 1.0)`，`loc="upper left"`
    - `frameon=False`（去边框）；保留原有 title/handles/labels/fontsize/ncol 等参数
    - 判据：改完 `python cn_debug/figure_code_audit.py --root src` 必须 **0 条 C1**
 4. 部署受影响线：`pwsh -NoProfile -File ops/06_deploy_scripts.ps1 -Line <line> -Force`（line1 必部，

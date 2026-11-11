@@ -37,7 +37,7 @@
 | REJ-009 | 只证明「修好能让门禁红」，不证明「改坏能让门禁红」 | 没有变异反证就无法区分真防线与恒绿的空断言 | `enforced_by: tools/dev/mutation_gate.mjs` | 生效 | T2-6 第 8 道门禁 | 无 | 2027-05-01 |
 | REJ-010 | 两个测试或门禁进程共用同一份共享资源 | 并发互删导致的假红假绿反复出现 | `enforced_by: tools/dev/test_isolation_gate.mjs` | 生效 | Argon 第 34 轮 | 无 | 2027-05-01 |
 | REJ-011 | 在标准 Visium 切片的空间邻接图上施加 200 µm 物理距离硬截断 | 剔除率 0.01~0.11%（随邻接图构造与标定口径变化：k=6 邻接 72582 条有向邻边，修正标定后剔除 80 条；原始报告的 15966→15962 为另一构造），孤立点 0、Moran I 最大变化 0.0002，属零收益改动；却引入有向 kNN 剪枝不对称与孤立点被 (1-λ) 收缩的风险。Squidpy 对 Visium grid 模式亦明确忽略 radius。标定口径敏感性：200 µm 对应像素阈值从 268 px（65/d_px）变为 264 px（100/晶格），不改变 No-Op 结论 | `enforced_by: tools/reporting/spatial_calibration.py` | 生效 | Argon 第 69 轮 Q1 | 无 | 2027-05-01 |
-| REJ-012 | 突破 Ready 模板实证棘轮（当前基线 39）或引入无实证、幽灵 Mod、组合图图件 | Ready 单图模板必须满足 producing_mod_id 存在于 workflows.json、具备 300 DPI 渲染产物与 SHA-256 吻合，基线只升不降；组合图与 Draft 模板严禁进入 Ready | `enforced_by: tools/dev/figure_ready_matrix.mjs` | 生效 | 2026-11-08 单图退役复核 | 无 | 2027-05-01 |
+| REJ-012 | 突破 Ready 模板实证棘轮（当前基线 27）或引入无实证、幽灵 Mod、组合图图件 | Ready 单图模板必须满足 producing_mod_id 存在于 workflows.json、具备 300 DPI 渲染产物与 SHA-256 吻合，基线只升不降；组合图与 Draft 模板严禁进入 Ready | `enforced_by: tools/dev/figure_ready_matrix.mjs` | 生效 | 2026-11-08 单图退役复核 | 无 | 2027-05-01 |
 
 ## 四、维护约定
 

@@ -4,7 +4,7 @@ Category	Item_ID	Item_Name	Specification	Verification_Command	Primary_File	Curre
 架构拓扑	ARCH-03	微内核依赖注入	后端路由采用 routeCtx 依赖注入微内核	node --test tests/projects_routes.test.js	BioanalysDesktop/server/index.js	已闭环	子路由之间零横向直接引用依赖
 架构拓扑	ARCH-04	跨端共享契约注入	数据格式与需求规则由 shared/ 动态注入	node --test tests/contract.test.js	shared/requirement_schema.mjs	已闭环	Portal 与 Admin 规则 100% 同源无漂移
 运行环境	ENV-01	K40 物理手机硬件规格	骁龙870 / 8GB RAM / Android 13 SDK 33	pwsh -File ops/00_link_check.ps1	configs/k40/device_profile.json	已闭环	四段链路自检与硬件探针全绿
-运行环境	ENV-02	ADB 端口映射三通道	转发 10022(容器)/8022(宿主)/9910(Pi)	adb forward --list	docs/remote_channel_policy.md	已闭环	本地回环 127.0.0.1 端口直通手机
+运行环境	ENV-02	ADB 端口映射两通道	转发 10022(容器)/8022(宿主)	adb forward --list	docs/remote_channel_policy.md	已闭环	本地回环 127.0.0.1 端口直通手机
 运行环境	ENV-03	K40 容器科学计算环境	Python 3.10 (/root/venvs/bio-py) + R 4.5.3	ssh k40-ubuntu '/root/venvs/bio-py/bin/python3 -V'	docs/software_versions.json	已闭环	包含 Scanpy 1.12.4 与 Squidpy 1.8.3
 质量门禁	GATE-01	G01 宿主机依赖预检	Node >= 22 / Git 依赖在位	node ops/preflight.mjs	ops/preflight.mjs	已闭环	退出码为 0，环境项全满足
 质量门禁	GATE-02	G02 静态语言门禁	四语种语法静态审查 (PS1/Shell/Python/R)	node ops/static_gate.mjs	ops/static_gate.mjs	已闭环	无语法错误，无非白名单 CRLF

@@ -30,7 +30,7 @@ tools/bio/line1_bulk/     21 文件   bulk RNA-seq 线（R 为主）
 tools/bio/line2_scrna/    29 文件   单细胞线（Python 为主）
 tools/bio/line3_spatial/  26 文件   空间转录组线（Python + R）
 tools/bio/workflows.json           步骤注册表（54 个已登记 mod）
-tools/bio/figure_templates.json    92 条出图模板（39 条 Ready 单图）
+tools/bio/figure_templates.json    92 条出图模板（27 条 Ready 单图）
 core/bridge_guard.sh               跨语言桥接守卫
 ```
 
@@ -47,7 +47,7 @@ server/           48 文件   Node HTTP 服务（无框架，手写路由）
   task.js                 算力节点选择、健康探测、故障转移
   reconcile.js            任务状态对账（remote probe -> 状态机）
   ledger.js               路径判定（analyzePath / classifyPath / isPathUnderLegalRoot）
-  proc.js                 子进程接缝（默认 ADB，SSH 仅特殊开关）
+ proc.js                 子进程接缝（ADB 单通道）
   figure_*.js             出图适配、目录、执行计划、分类
 src/              19 文件   前端 React（views / components / shared）
 tests/            161 文件  node:test 契约测试
@@ -84,7 +84,7 @@ dist/             3 文件    构建产物
    │ 1. buildTaskScript(task)      拼出远端要执行的命令
    │ 2. auditCommand(cmd)          审计：拒绝可疑命令
    │ 3. 套 wrapper                  tools/ops/run_throttled_task.sh <task_id> <line> <step> ...
-   │ 4. remoteRunner(cmd)          默认经 ADB 下发，显式 ssh 开关时经 SSH
+│ 4. remoteRunner(cmd)          ADB 单通道下发，SSH 已封存
    ▼
 [K40 容器 /mnt/ssd/bio_data]
    │ run_throttled_task.sh：nice -n10 / ionice / 幂等锁 / 内存闸门 / 退出码 0-4
@@ -150,9 +150,9 @@ dist/             3 文件    构建产物
 | 真源 | 路径 | 管什么 |
 |---|---|---|
 | 步骤注册表 | `tools/bio/workflows.json` | 54 个 mod 的 id/script/输入输出 |
-| 图件模板 | `tools/bio/figure_templates.json` | 92 条模板，39 条 Ready 单图 |
-| Ready 白名单 | `tools/dev/figure_ready_allowlist.json` | 封板的 39 个 ID |
-| Ready 实证矩阵 | `tools/dev/figure_ready_matrix.json` | 39 条的 sha256 核验结果 |
+| 图件模板 | `tools/bio/figure_templates.json` | 92 条模板，27 条 Ready 单图 |
+| Ready 白名单 | `tools/dev/figure_ready_allowlist.json` | 封板的 27 个 ID |
+| Ready 实证矩阵 | `tools/dev/figure_ready_matrix.json` | 27 条的 sha256 核验结果 |
 | 项目 manifest | `workspace/projects/<id>/project.json` | 分组设计、阈值、pipeline_dag |
 | 门禁清单 | `tools/dev/run_all_gates.mjs` | 门禁顺序与参数的唯一真源 |
 

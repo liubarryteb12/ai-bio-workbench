@@ -8,12 +8,15 @@
 | 当你 | 读 |
 |---|---|
 | 要知道架构宪法、路由表、范围红线、术语、重构契约在哪 | 根目录 `SPEC.md`、`ROUTER.yaml`、`SCOPE.md`、`GLOSSARY.md`、`MIGRATION.md`（2026-11-08 整体重构 W1 已上移，判据见 `MIGRATION.md`） |
+| 要按当前改造目标开工（AIM、里程碑、待办、红线） | [docs/GOAL_2026-11-11.md](docs/GOAL_2026-11-11.md)（采买优先、单权威租约、受控队列；含 T0 至 T6 与验收命令） |
 | 动 `tools/bio/` 下任何分析代码或 `core/bridge_guard.sh` 前 | [docs/coding-standards.md](docs/coding-standards.md)（Linux 运行面、seed 契约、退出码） |
 | 跨线搬数据、定文件放哪 | [docs/isolation.md](docs/isolation.md)（三线隔离）、[docs/directories.md](docs/directories.md)（文件放哪） |
 | 开始一项功能、改架构、写 spec 或票 | [docs/mattpocock-workflow-spec.md](docs/mattpocock-workflow-spec.md) |
+| 把 spec 拆成阶段 TODO 并开 goal 无人值守 | [docs/AFK_SPEC_TODO_GOAL.md](docs/AFK_SPEC_TODO_GOAL.md)（预裁定、停机条件、终态判据） |
+| 改 AI 管理员编排、单权威租约或回执 actor | [docs/AI_ORCHESTRATION_SPEC.md](docs/AI_ORCHESTRATION_SPEC.md) |
 | 写或改 skill、`AGENTS.md`、任何 agent 会读的文档 | [docs/mattpocock-writing-spec.md](docs/mattpocock-writing-spec.md) |
 | 跑 K40 / 部署 / 台账相关 | [docs/isolation.md](docs/isolation.md) 起手，再看 `tools/ops/`、`ledger/` 与具体线文档 |
-| 远程执行 / 设备连不上 | [docs/remote_channel_policy.md](docs/remote_channel_policy.md)（ADB 主通道，SSH 仅显式特殊开关） |
+| 远程执行 / 设备连不上 | [docs/remote_channel_policy.md](docs/remote_channel_policy.md)（ADB 单通道） |
 | 出图或改图件模板 | [docs/figure_spec.md](docs/figure_spec.md)（v2.3：只出单图，300 DPI，图例外置右侧，图注左下） |
 | 自动执行客户项目（发工单出回执） | [docs/WORK_ORDER_ORCHESTRATOR.md](docs/WORK_ORDER_ORCHESTRATOR.md)（工单 schema、fail closed 判据、回执落点） |
 | 增删生信分析模块或改 `tools/bio/workflows.json` | 先跑 `node tools/dev/module_ablation_matrix_gate.mjs`，判据见 [docs/MODULE_ABLATION_MATRIX.md](docs/MODULE_ABLATION_MATRIX.md) |
@@ -32,7 +35,7 @@
   反卷积精度提升一律走零算力路线：上游提纯输入 Marker（每个亚型严格限 Top 20 特异基因）与输出端 $<0.05$ 极低丰度硬截断。
   参考库中的 RCTD 等重型代码仅作为外部 PC 资产或客户专属交付件，严禁合并进生产流水线。
 - 中文可进注释与报告正文。文档里不用 em dash，用逗号、冒号、句号、括号。
-- **计算与文件传输默认走 ADB**：主计算入口、任务回执与新增文件传输一律经 `tools/ops/adb_exec.ps1` 或 `BioanalysDesktop/server/adb_transfer.js`；SSH 只在显式 `BIO_COMPUTE_ADAPTER=ssh` 或 `-Transport ssh` 的特殊场景启用，禁用自动回落。
+- **计算与文件传输走 ADB 单通道**：主计算入口、任务回执与新增文件传输一律经 `tools/ops/adb_exec.ps1` 或 `BioanalysDesktop/server/adb_transfer.js`。SSH 配置、备用通道文档与相关契约已封存至 `_archive/ssh_retired_20261111/`，恢复方式见该目录 `RESTORE.md`。
 - **生产图件只出单图**：组合图模板保持 draft/pending，Ready 基线见 `tools/dev/figure_ready_allowlist.json`；新增模板先过 `figure_ready_matrix` 与 `figure_code_gate`。
 - 展示任何命令、输出、捕获产物前先打码：secret 一律写 `<REDACTED>`，别打印凭证或 key。
 - **交付报告只写对读者有意义的事实**：统计量来源、口径、可追溯性。

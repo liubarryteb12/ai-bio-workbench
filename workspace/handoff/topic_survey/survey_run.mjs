@@ -1,5 +1,5 @@
 // 模式 A 全链路验证：从疾病名出发，跑完 L0 到 L4，产出结果单。
-// 用法：node con_hf/topic_survey/survey_run.cjs "<疾病名>" [--kinds bulk,scrna] [--ticket TSV-xxx]
+// 用法：node workspace/handoff/topic_survey/survey_run.mjs "<疾病名>" [--kinds bulk,scrna] [--ticket TSV-xxx]
 //
 // 这一步补上评审指出的缺口：此前只验证了「给定 GSE 抽要素卡」，
 // 没有验证「给定方向检索出候选集」，也没有跑 L2 到 L4。
@@ -54,7 +54,7 @@ const gjson = u => gb(u).then(b => JSON.parse(b.toString('utf8')));
 // 肿瘤/免疫词面快筛（准入第一道闸）：复用权威实现，不另写正则。
 // 权威实现是 ESM，本文件是 .cjs，用 require 会走 CJS 解析并污染全局
 // （实测导致后续 https 请求被改写）。改成顶层 await import。
-const { checkTumorBlacklist } = await import('../../BioanalysDesktop/server/tumor_blacklist.js');
+const { checkTumorBlacklist } = await import('../../../BioanalysDesktop/server/tumor_blacklist.js');
 
 function geoDir(acc) {
   const m = /^([A-Za-z]+)([0-9]+)$/.exec(acc);
@@ -206,7 +206,7 @@ function inferL4(cards) {
 async function main() {
   const args = process.argv.slice(2);
   const disease = args[0];
-  if (!disease) { console.log('用法：node survey_run.cjs "<疾病名>" [--kinds bulk,scrna] [--ticket TSV-xxx]'); process.exit(2); }
+  if (!disease) { console.log('用法：node survey_run.mjs "<疾病名>" [--kinds bulk,scrna] [--ticket TSV-xxx]'); process.exit(2); }
 
   let kinds = ['bulk'];
   let ticket = null;
