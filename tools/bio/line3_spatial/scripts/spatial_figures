@@ -800,7 +800,7 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         for c in cats:
             m = labels == c
             ax.scatter(um[m, 0], um[m, 1], s=3, color=colors[c], label=c, linewidths=0)
-        # 源级外置：横版图（8x6）落轴框下方（规范 §三之二）
+        # 源级外置：统一落轴框外右侧，避免布局守卫二次搬迁
         ax.legend(markerscale=3, fontsize=8, ncol=1, frameon=False,
                   loc="upper left", bbox_to_anchor=(1.02, 1.0))
         caption(fig, "line3 %s: UMAP (colored by sample)" % species,

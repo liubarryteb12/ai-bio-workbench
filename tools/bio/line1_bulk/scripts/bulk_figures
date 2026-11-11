@@ -428,6 +428,7 @@ if expr is not None:
     ax.set_xticklabels([samples[i] for i in _tick_idx], rotation=90, fontsize=8)
     ax.set_yticks(_tick_idx)
     ax.set_yticklabels([samples[i] for i in _tick_idx], fontsize=8)
+    ax.set_title("样本间相关性热图", pad=10)
     caption(fig, "line1: sample-sample correlation",
             "expr_genes.tsv from step2 prep_matrix",
             "expr, n=%d samples" % len(samples))
@@ -448,6 +449,7 @@ if expr is not None:
     ax.set_xticklabels([samples[i] for i in _tick_idx_h], rotation=90, fontsize=8)
     ax.set_yticks(range(len(genes)))
     ax.set_yticklabels(genes, fontsize=8)
+    ax.set_title("高变异基因表达热图", pad=10)
     caption(fig, "line1: top-50 most variable genes",
             "expr_genes.tsv from step2 prep_matrix", "row z-scored")
     fig.colorbar(im, ax=ax, shrink=0.7, label="z")
@@ -467,6 +469,7 @@ if pca is not None:
     # 图上只用颜色与 95% 椭圆表达分组，避免图内文字压点。
     ax.set_xlabel("PC1")
     ax.set_ylabel("PC2")
+    ax.set_title("样本PCA分组散点图", pad=10)
     caption(fig, "line1: PCA",
             "pca_scores.tsv from step3 pca_matrix",
             "n=%d samples; sample labels omitted for legibility" % len(pca),
@@ -601,10 +604,11 @@ if qc is not None:
     ax.set_xticks(range(len(samples)))
     ax.set_xticklabels(samples, rotation=90, fontsize=8)
     ax.set_ylabel("genes detected")
+    ax.set_title("每样本基因检出数", pad=10)
     caption(fig, "line1: genes detected per sample")
     ax.legend(fontsize=8, title="group", loc="upper left",
               bbox_to_anchor=(1.02, 1.0), borderaxespad=0)
-    fig.subplots_adjust(left=0.08, right=0.88, top=0.97, bottom=0.16)
+    fig.subplots_adjust(left=0.08, right=0.88, top=0.90, bottom=0.16)
     save(fig, "l1_05a_genes_detected.png")
 
     fig, ax = plt.subplots(figsize=(12, 5))
@@ -617,10 +621,11 @@ if qc is not None:
     ax.set_xticks(range(len(samples)))
     ax.set_xticklabels(samples, rotation=90, fontsize=8)
     ax.set_ylabel("median within-group cor")
+    ax.set_title("组内样本相关性中位数", pad=10)
     caption(fig, "line1: within-group correlation", "red dashed = 0.9")
     ax.legend(fontsize=8, title="group", loc="upper left",
               bbox_to_anchor=(1.02, 1.0), borderaxespad=0)
-    fig.subplots_adjust(left=0.08, right=0.88, top=0.97, bottom=0.16)
+    fig.subplots_adjust(left=0.08, right=0.88, top=0.90, bottom=0.16)
     save(fig, "l1_05b_within_group_cor.png")
     plt.rcParams["figure.autolayout"] = True
 

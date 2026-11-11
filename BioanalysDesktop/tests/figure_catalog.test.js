@@ -8,15 +8,20 @@ import { fileURLToPath } from 'node:url';
 import { loadTemplateCatalog, validateTemplateCatalog } from '../server/figure_template_catalog.js';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const READY_BASELINE = JSON.parse(
+  fs.readFileSync(path.join(REPO, 'tools', 'dev', 'figure_ready_allowlist.json'), 'utf8'),
+).ready_baseline;
 
 test('候选图库真源覆盖 92 个模板且每条都带介绍', () => {
   const catalog = loadTemplateCatalog();
   const validation = validateTemplateCatalog();
+  const blocked = catalog.filter((item) => item.status === 'blocked_r453').length;
   assert.equal(catalog.length, 92);
   assert.deepEqual(validation.errors, []);
-  assert.equal(catalog.filter((item) => item.status === 'ready').length, 39);
-  assert.equal(catalog.filter((item) => item.status === 'pending').length, 52);
-  assert.equal(catalog.filter((item) => item.status === 'blocked_r453').length, 1);
+  assert.equal(catalog.filter((item) => item.status === 'ready').length, READY_BASELINE);
+  assert.equal(catalog.filter((item) => item.status === 'pending').length,
+    catalog.length - READY_BASELINE - blocked);
+  assert.equal(blocked, 1);
   assert.ok(catalog.every((item) => item.introduction && item.purpose));
 });
 
@@ -42,7 +47,9 @@ test('候选图库接口返回全量 92 条，状态统计与真源一致', asyn
   const body = await response.json();
   assert.equal(body.catalog_ok, true);
   assert.equal(body.entries.length, 92);
-  assert.deepEqual(body.stats, { ready: 39, pending: 52, blocked_r453: 1 });
+  assert.equal(body.stats.ready, READY_BASELINE);
+  assert.equal(body.stats.blocked_r453, 1);
+  assert.equal(body.stats.pending, body.entries.length - READY_BASELINE - body.stats.blocked_r453);
   assert.ok(body.entries.every((item) => item.introduction && item.purpose));
 
   const preview = await fetch(`${base}/api/figures/catalog/preview?id=fig_l2_pca`);

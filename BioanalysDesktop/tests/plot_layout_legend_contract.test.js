@@ -82,3 +82,14 @@ test("四个真源均包含右侧纵向语义", () => {
   assert.match(helper, /outside_right/);
   assert.match(helper, /vertical/);
 });
+
+test("bin/layout_helper.R 的 16:9 默认图例在轴框外右侧纵向", () => {
+  const src = read("bin/layout_helper.R");
+  const block = blockFrom(src, "template_16x9 = list(", "bin/layout_helper.R");
+  assert.match(block, /legend_position = "outside_right"/);
+  assert.match(block, /legend_direction = "vertical"/);
+  assert.equal(/bottom_center|horizontal/.test(block), false,
+    "R 端 16:9 默认块不得再出现图例底部语义");
+  assert.match(src, /rules\$legend_position <- "outside_right"/,
+    "R 端历史配置必须被强制归一到右侧");
+});

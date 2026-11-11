@@ -243,13 +243,13 @@
     },
     {
       "id": "fig_l1_groupedbar",
-      "name": "分组和堆叠条形图",
+      "name": "富集分析结果",
       "english_name": "L1 Groupedbar",
       "level": "L1",
       "level_label": "基础统计图",
       "tier": 1,
-      "category": "Composition",
-      "category_label": "组成结构",
+      "category": "Enrichment",
+      "category_label": "功能富集",
       "language": "r",
       "language_label": "R",
       "status": "ready",
@@ -342,8 +342,8 @@
           }
         ]
       },
-      "purpose": "比较各类别在总体中的占比，观察组成结构是否随分组变化。",
-      "introduction": "比较各类别在总体中的占比，观察组成结构是否随分组变化。属于组成结构类，来自生产流水线实证模板。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_enrich_bulk，输入 enrichment_gsea_go.tsv，登记产物 custom_fig_l1_groupedbar.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。",
+      "purpose": "展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。",
+      "introduction": "展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。属于功能富集类，来自生产流水线实证模板。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_enrich_bulk，输入 enrichment_gsea_go.tsv，登记产物 custom_fig_l1_groupedbar.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。",
       "library_status": null,
       "source_location": null
     },
@@ -827,45 +827,36 @@
     },
     {
       "id": "fig_l1_bubble",
-      "name": "气泡图",
+      "name": "差异火山气泡图",
       "english_name": "Bubble",
       "level": "L1",
       "level_label": "基础统计图",
       "tier": 1,
-      "category": "Correlation",
-      "category_label": "相关关系",
+      "category": "DifferentialExpression",
+      "category_label": "差异表达",
       "language": "r",
       "language_label": "R",
-      "status": "ready",
-      "status_label": "已验证可用",
-      "verified": true,
+      "status": "pending",
+      "status_label": "规划中",
+      "verified": false,
       "deprecated": false,
-      "lines": [
-        "line1_bulk"
-      ],
-      "line_labels": [
-        "线 1：GEO Bulk 常规挖掘"
-      ],
-      "line_id": "line1_bulk",
-      "analysis_step": "l1_de_limma",
-      "producing_mod_id": "l1_de_limma",
+      "lines": [],
+      "line_labels": [],
+      "line_id": null,
+      "analysis_step": null,
+      "producing_mod_id": null,
       "required_mod_ids": [
-        "l1_de_limma",
         "l1_figures_bulk"
       ],
       "linked_mods": [
         "l1_figures_bulk"
       ],
-      "input_tables": [
-        "deg_all.tsv"
-      ],
-      "input_artifact": "deg_all.tsv",
-      "input_format": "tsv",
-      "produces": [
-        "L1_bubble_verified.png"
-      ],
-      "canonical_output": "L1_bubble_verified.png",
-      "output_glob": "figures/line1_bulk/L1_bubble_verified.png",
+      "input_tables": [],
+      "input_artifact": null,
+      "input_format": null,
+      "produces": [],
+      "canonical_output": null,
+      "output_glob": null,
       "dependencies": [
         "dplyr",
         "gapminder",
@@ -879,9 +870,9 @@
         "y_col": "纵轴列名",
         "label_genes": "需要标注的基因清单，可为空"
       },
-      "source": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R",
-      "preview": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_bubble_verified.png",
-      "sample_project_output": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_bubble.png",
+      "source": null,
+      "preview": null,
+      "sample_project_output": null,
       "block_reason": null,
       "academic_tier": "L1_qc_basic",
       "render_evidence": null,
@@ -893,7 +884,7 @@
         }
       },
       "portal_binding": {
-        "default_on_mod_select": true,
+        "default_on_mod_select": false,
         "unlock_prompt": "需补选前置分析步骤以解锁该图件",
         "adapt_vars_schema": [
           {
@@ -918,9 +909,9 @@
           }
         ]
       },
-      "purpose": "展示变量或样本之间的相关强度，识别共变关系和潜在离群样本。",
-      "introduction": "展示变量或样本之间的相关强度，识别共变关系和潜在离群样本。参考图型为 Bubble，属于相关关系类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_de_limma，输入 deg_all.tsv，登记产物 L1_bubble_verified.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。",
-      "library_status": "ready",
+      "purpose": "展示差异倍数和显著性，快速识别上调、下调和不显著的基因。",
+      "introduction": "展示差异倍数和显著性，快速识别上调、下调和不显著的基因。参考图型为 Bubble，属于差异表达类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 dplyr、gapminder、ggplot2、hrbrthemes、viridis；该图型暂不可派发生产任务。",
+      "library_status": "待采集",
       "source_location": "_meta/R453_compat/L1_bubble_verified.png"
     },
     {
@@ -1107,45 +1098,36 @@
     },
     {
       "id": "fig_l1_connectedscatter",
-      "name": "连接散点图",
+      "name": "空间自相关连接散点图",
       "english_name": "ConnectedScatter",
       "level": "L1",
       "level_label": "基础统计图",
       "tier": 1,
-      "category": "Correlation",
-      "category_label": "相关关系",
-      "language": "python",
-      "language_label": "Python",
-      "status": "ready",
-      "status_label": "已验证可用",
-      "verified": true,
+      "category": "SpatialStatistics",
+      "category_label": "空间统计",
+      "language": "r",
+      "language_label": "R",
+      "status": "pending",
+      "status_label": "规划中",
+      "verified": false,
       "deprecated": false,
-      "lines": [
-        "line3_spatial"
-      ],
-      "line_labels": [
-        "线 3：空间转录组"
-      ],
-      "line_id": "line3_spatial",
-      "analysis_step": "l3_stats_autocorr",
-      "producing_mod_id": "l3_stats_autocorr",
+      "lines": [],
+      "line_labels": [],
+      "line_id": null,
+      "analysis_step": null,
+      "producing_mod_id": null,
       "required_mod_ids": [
-        "l3_stats_autocorr",
-        "l3_figures_spatial"
+        "l1_figures_bulk"
       ],
       "linked_mods": [
-        "l3_figures_spatial"
+        "l1_figures_bulk"
       ],
-      "input_tables": [
-        "gene_autocorr_human.tsv"
-      ],
-      "input_artifact": "gene_autocorr_human.tsv",
-      "input_format": "tsv",
-      "produces": [
-        "L3_spatial_autocorr_verified.png"
-      ],
-      "canonical_output": "L3_spatial_autocorr_verified.png",
-      "output_glob": "figures/line3_spatial/L3_spatial_autocorr_verified.png",
+      "input_tables": [],
+      "input_artifact": null,
+      "input_format": null,
+      "produces": [],
+      "canonical_output": null,
+      "output_glob": null,
       "dependencies": [
         "dplyr",
         "ggplot2"
@@ -1156,9 +1138,9 @@
         "y_col": "纵轴列名",
         "label_genes": "需要标注的基因清单，可为空"
       },
-      "source": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_cellcomm_autocorr_code.py",
-      "preview": "references/05.可参考生信代码/可用代码预筛选/源码/L3_高级组合图/L3_spatial_autocorr_verified.png",
-      "sample_project_output": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/custom_fig_l1_connectedscatter.png",
+      "source": null,
+      "preview": null,
+      "sample_project_output": null,
       "block_reason": null,
       "academic_tier": "L1_qc_basic",
       "render_evidence": null,
@@ -1170,7 +1152,7 @@
         }
       },
       "portal_binding": {
-        "default_on_mod_select": true,
+        "default_on_mod_select": false,
         "unlock_prompt": "需补选前置分析步骤以解锁该图件",
         "adapt_vars_schema": [
           {
@@ -1196,13 +1178,13 @@
         ]
       },
       "purpose": "展示变量或样本之间的相关强度，识别共变关系和潜在离群样本。",
-      "introduction": "展示变量或样本之间的相关强度，识别共变关系和潜在离群样本。参考图型为 ConnectedScatter，属于相关关系类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 3：空间转录组，对应步骤 l3_stats_autocorr，输入 gene_autocorr_human.tsv，登记产物 L3_spatial_autocorr_verified.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。",
-      "library_status": "ready",
+      "introduction": "展示变量或样本之间的相关强度，识别共变关系和潜在离群样本。参考图型为 ConnectedScatter，属于空间统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 dplyr、ggplot2；该图型暂不可派发生产任务。",
+      "library_status": "待采集",
       "source_location": "L3_高级组合图/L3_spatial_autocorr_verified.png"
     },
     {
       "id": "fig_l1_correlogram",
-      "name": "相关图",
+      "name": "样本相关性三角热图",
       "english_name": "Correlogram",
       "level": "L1",
       "level_label": "基础统计图",
@@ -1211,36 +1193,27 @@
       "category_label": "相关关系",
       "language": "r",
       "language_label": "R",
-      "status": "ready",
-      "status_label": "已验证可用",
-      "verified": true,
+      "status": "pending",
+      "status_label": "规划中",
+      "verified": false,
       "deprecated": false,
-      "lines": [
-        "line1_bulk"
-      ],
-      "line_labels": [
-        "线 1：GEO Bulk 常规挖掘"
-      ],
-      "line_id": "line1_bulk",
-      "analysis_step": "l1_ingest_prep",
-      "producing_mod_id": "l1_ingest_prep",
+      "lines": [],
+      "line_labels": [],
+      "line_id": null,
+      "analysis_step": null,
+      "producing_mod_id": null,
       "required_mod_ids": [
-        "l1_ingest_prep",
         "l1_figures_bulk"
       ],
       "linked_mods": [
         "l1_figures_bulk"
       ],
-      "input_tables": [
-        "expr_genes.tsv"
-      ],
-      "input_artifact": "expr_genes.tsv",
-      "input_format": "tsv",
-      "produces": [
-        "L1_correlogram_verified.png"
-      ],
-      "canonical_output": "L1_correlogram_verified.png",
-      "output_glob": "figures/line1_bulk/L1_correlogram_verified.png",
+      "input_tables": [],
+      "input_artifact": null,
+      "input_format": null,
+      "produces": [],
+      "canonical_output": null,
+      "output_glob": null,
       "dependencies": [
         "GGally",
         "corrgram",
@@ -1251,9 +1224,9 @@
         "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
         "group_col": "分组列名"
       },
-      "source": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R",
-      "preview": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_correlogram_verified.png",
-      "sample_project_output": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_correlogram.png",
+      "source": null,
+      "preview": null,
+      "sample_project_output": null,
       "block_reason": null,
       "academic_tier": "L1_qc_basic",
       "render_evidence": null,
@@ -1265,7 +1238,7 @@
         }
       },
       "portal_binding": {
-        "default_on_mod_select": true,
+        "default_on_mod_select": false,
         "unlock_prompt": "需补选前置分析步骤以解锁该图件",
         "adapt_vars_schema": [
           {
@@ -1280,9 +1253,9 @@
           }
         ]
       },
-      "purpose": "展示变量或样本之间的相关强度，识别共变关系和潜在离群样本。",
-      "introduction": "展示变量或样本之间的相关强度，识别共变关系和潜在离群样本。参考图型为 Correlogram，属于相关关系类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_ingest_prep，输入 expr_genes.tsv，登记产物 L1_correlogram_verified.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。",
-      "library_status": "ready",
+      "purpose": "用颜色矩阵展示多个基因在样本、细胞类型或空间域中的相对变化。",
+      "introduction": "用颜色矩阵展示多个基因在样本、细胞类型或空间域中的相对变化。参考图型为 Correlogram，属于相关关系类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 GGally、corrgram、corrplot、ggcorrplot；该图型暂不可派发生产任务。",
+      "library_status": "待采集",
       "source_location": "_meta/R453_compat/L1_correlogram_verified.png"
     },
     {
@@ -2240,7 +2213,7 @@
     },
     {
       "id": "fig_l1_boxplot",
-      "name": "箱线图",
+      "name": "分组显著性箱线图",
       "english_name": "BoxPlot",
       "level": "L1",
       "level_label": "基础统计图",
@@ -2249,36 +2222,27 @@
       "category_label": "分布形态",
       "language": "r",
       "language_label": "R",
-      "status": "ready",
-      "status_label": "已验证可用",
-      "verified": true,
+      "status": "pending",
+      "status_label": "规划中",
+      "verified": false,
       "deprecated": false,
-      "lines": [
-        "line1_bulk"
-      ],
-      "line_labels": [
-        "线 1：GEO Bulk 常规挖掘"
-      ],
-      "line_id": "line1_bulk",
-      "analysis_step": "l1_de_limma",
-      "producing_mod_id": "l1_de_limma",
+      "lines": [],
+      "line_labels": [],
+      "line_id": null,
+      "analysis_step": null,
+      "producing_mod_id": null,
       "required_mod_ids": [
-        "l1_de_limma",
         "l1_figures_bulk"
       ],
       "linked_mods": [
         "l1_figures_bulk"
       ],
-      "input_tables": [
-        "deg_all.tsv"
-      ],
-      "input_artifact": "deg_all.tsv",
-      "input_format": "tsv",
-      "produces": [
-        "custom_fig_l1_boxplot.png"
-      ],
-      "canonical_output": "L1_boxplot_verified.png",
-      "output_glob": "figures/line1_bulk/custom_fig_l1_boxplot.png",
+      "input_tables": [],
+      "input_artifact": null,
+      "input_format": null,
+      "produces": [],
+      "canonical_output": null,
+      "output_glob": null,
       "dependencies": [
         "dplyr",
         "ggExtra",
@@ -2292,19 +2256,15 @@
       ],
       "adapt_vars": {
         "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "value_col": "效应量列名"
+        "group_col": "分组列名",
+        "value_col": "表达或测量值列名"
       },
-      "source": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_boxplot_code.R",
-      "preview": "references/05.可参考生信代码/可用代码预筛选/源码/L1_基础统计图/L1_boxplot_verified.png",
-      "sample_project_output": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_boxplot.png",
+      "source": null,
+      "preview": null,
+      "sample_project_output": null,
       "block_reason": null,
       "academic_tier": "L1_qc_basic",
-      "render_evidence": {
-        "entry_id": "compat_l1_boxplot",
-        "artifact": "L1_boxplot_verified.png",
-        "sha256": "ce3d2cb08118011f727b4c901fe4921d81129433a9e0507e43edad5b22bf8a82",
-        "matches_preview": true
-      },
+      "render_evidence": null,
       "spec_contract": {
         "dpi": 300,
         "palette_family": "okabe_ito_extended",
@@ -2313,12 +2273,17 @@
         }
       },
       "portal_binding": {
-        "default_on_mod_select": true,
+        "default_on_mod_select": false,
         "unlock_prompt": "需补选前置分析步骤以解锁该图件",
         "adapt_vars_schema": [
           {
             "key": "input_data",
             "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
             "type": "string"
           },
           {
@@ -2329,8 +2294,8 @@
         ]
       },
       "purpose": "比较数值分布、集中趋势和离散程度，识别偏态与异常值。",
-      "introduction": "比较数值分布、集中趋势和离散程度，识别偏态与异常值。参考图型为 BoxPlot，属于分布形态类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_de_limma，输入 deg_all.tsv，登记产物 custom_fig_l1_boxplot.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。",
-      "library_status": "ready",
+      "introduction": "比较数值分布、集中趋势和离散程度，识别偏态与异常值。参考图型为 BoxPlot，属于分布形态类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 dplyr、ggExtra、ggplot2、ggpmisc、ggpubr、ggtext、hrbrthemes、rstatix；该图型暂不可派发生产任务。",
+      "library_status": "待采集",
       "source_location": "L1_基础统计图/L1_boxplot_verified.png"
     },
     {
@@ -2422,36 +2387,27 @@
       "category_label": "分布形态",
       "language": "r",
       "language_label": "R",
-      "status": "ready",
-      "status_label": "已验证可用",
-      "verified": true,
+      "status": "pending",
+      "status_label": "规划中",
+      "verified": false,
       "deprecated": false,
-      "lines": [
-        "line1_bulk"
-      ],
-      "line_labels": [
-        "线 1：GEO Bulk 常规挖掘"
-      ],
-      "line_id": "line1_bulk",
-      "analysis_step": "l1_ingest_prep",
-      "producing_mod_id": "l1_ingest_prep",
+      "lines": [],
+      "line_labels": [],
+      "line_id": null,
+      "analysis_step": null,
+      "producing_mod_id": null,
       "required_mod_ids": [
-        "l1_ingest_prep",
         "l1_figures_bulk"
       ],
       "linked_mods": [
         "l1_figures_bulk"
       ],
-      "input_tables": [
-        "expr_genes.tsv"
-      ],
-      "input_artifact": "expr_genes.tsv",
-      "input_format": "tsv",
-      "produces": [
-        "custom_fig_l1_density.png"
-      ],
-      "canonical_output": "L1_density_verified.png",
-      "output_glob": "figures/line1_bulk/custom_fig_l1_density.png",
+      "input_tables": [],
+      "input_artifact": null,
+      "input_format": null,
+      "produces": [],
+      "canonical_output": null,
+      "output_glob": null,
       "dependencies": [
         "cowplot",
         "dplyr",
@@ -2466,19 +2422,16 @@
         "viridis"
       ],
       "adapt_vars": {
-        "input_data": "项目本线只读输入文件路径，相对于本项目根目录"
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "value_col": "数值列名",
+        "group_col": "分组列名"
       },
-      "source": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R",
-      "preview": "references/05.可参考生信代码/可用代码预筛选/源码/L1_基础统计图/L1_density_verified.png",
-      "sample_project_output": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_density.png",
+      "source": null,
+      "preview": null,
+      "sample_project_output": null,
       "block_reason": null,
       "academic_tier": "L1_qc_basic",
-      "render_evidence": {
-        "entry_id": "compat_l1_rest",
-        "artifact": "L1_density_verified.png",
-        "sha256": "075f329e6a74cdfcc63ae1f16499bc5b43acd12c8aa9ad84c68165c6886782c8",
-        "matches_preview": true
-      },
+      "render_evidence": null,
       "spec_contract": {
         "dpi": 300,
         "palette_family": "okabe_ito_extended",
@@ -2487,19 +2440,29 @@
         }
       },
       "portal_binding": {
-        "default_on_mod_select": true,
+        "default_on_mod_select": false,
         "unlock_prompt": "需补选前置分析步骤以解锁该图件",
         "adapt_vars_schema": [
           {
             "key": "input_data",
             "source_field": "data_contract.input_artifact",
             "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
           }
         ]
       },
       "purpose": "比较数值分布、集中趋势和离散程度，识别偏态与异常值。",
-      "introduction": "比较数值分布、集中趋势和离散程度，识别偏态与异常值。参考图型为 Density，属于分布形态类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_ingest_prep，输入 expr_genes.tsv，登记产物 custom_fig_l1_density.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。",
-      "library_status": "ready",
+      "introduction": "比较数值分布、集中趋势和离散程度，识别偏态与异常值。参考图型为 Density，属于分布形态类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 cowplot、dplyr、geomtextpath、ggExtra、ggplot2、ggpmisc、ggpubr、hrbrthemes；该图型暂不可派发生产任务。",
+      "library_status": "待采集",
       "source_location": "L1_基础统计图/L1_density_verified.png"
     },
     {
@@ -2513,36 +2476,27 @@
       "category_label": "分布形态",
       "language": "r",
       "language_label": "R",
-      "status": "ready",
-      "status_label": "已验证可用",
-      "verified": true,
+      "status": "pending",
+      "status_label": "规划中",
+      "verified": false,
       "deprecated": false,
-      "lines": [
-        "line1_bulk"
-      ],
-      "line_labels": [
-        "线 1：GEO Bulk 常规挖掘"
-      ],
-      "line_id": "line1_bulk",
-      "analysis_step": "l1_ingest_prep",
-      "producing_mod_id": "l1_ingest_prep",
+      "lines": [],
+      "line_labels": [],
+      "line_id": null,
+      "analysis_step": null,
+      "producing_mod_id": null,
       "required_mod_ids": [
-        "l1_ingest_prep",
         "l1_figures_bulk"
       ],
       "linked_mods": [
         "l1_figures_bulk"
       ],
-      "input_tables": [
-        "expr_genes.tsv"
-      ],
-      "input_artifact": "expr_genes.tsv",
-      "input_format": "tsv",
-      "produces": [
-        "custom_fig_l1_histogram.png"
-      ],
-      "canonical_output": "L1_histogram_verified.png",
-      "output_glob": "figures/line1_bulk/custom_fig_l1_histogram.png",
+      "input_tables": [],
+      "input_artifact": null,
+      "input_format": null,
+      "produces": [],
+      "canonical_output": null,
+      "output_glob": null,
       "dependencies": [
         "cowplot",
         "ggExtra",
@@ -2554,19 +2508,16 @@
         "viridis"
       ],
       "adapt_vars": {
-        "input_data": "项目本线只读输入文件路径，相对于本项目根目录"
+        "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
+        "value_col": "数值列名",
+        "group_col": "分组列名"
       },
-      "source": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R",
-      "preview": "references/05.可参考生信代码/可用代码预筛选/源码/L1_基础统计图/L1_histogram_verified.png",
-      "sample_project_output": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_histogram.png",
+      "source": null,
+      "preview": null,
+      "sample_project_output": null,
       "block_reason": null,
       "academic_tier": "L1_qc_basic",
-      "render_evidence": {
-        "entry_id": "compat_l1_rest",
-        "artifact": "L1_histogram_verified.png",
-        "sha256": "edd894c9d5e5c3c2e8544ff4f3f0a444290781ac80e32c7f56450e649a2bac04",
-        "matches_preview": true
-      },
+      "render_evidence": null,
       "spec_contract": {
         "dpi": 300,
         "palette_family": "okabe_ito_extended",
@@ -2575,19 +2526,29 @@
         }
       },
       "portal_binding": {
-        "default_on_mod_select": true,
+        "default_on_mod_select": false,
         "unlock_prompt": "需补选前置分析步骤以解锁该图件",
         "adapt_vars_schema": [
           {
             "key": "input_data",
             "source_field": "data_contract.input_artifact",
             "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
+            "type": "string"
           }
         ]
       },
       "purpose": "比较数值分布、集中趋势和离散程度，识别偏态与异常值。",
-      "introduction": "比较数值分布、集中趋势和离散程度，识别偏态与异常值。参考图型为 Histogram，属于分布形态类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_ingest_prep，输入 expr_genes.tsv，登记产物 custom_fig_l1_histogram.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。",
-      "library_status": "ready",
+      "introduction": "比较数值分布、集中趋势和离散程度，识别偏态与异常值。参考图型为 Histogram，属于分布形态类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 cowplot、ggExtra、ggplot2、ggpmisc、ggpubr、readr、tidyverse、viridis；该图型暂不可派发生产任务。",
+      "library_status": "待采集",
       "source_location": "L1_基础统计图/L1_histogram_verified.png"
     },
     {
@@ -2761,45 +2722,36 @@
     },
     {
       "id": "fig_l1_ridgeline",
-      "name": "山脊线图",
+      "name": "GSEA NES 山脊分布图",
       "english_name": "Ridgeline",
       "level": "L1",
       "level_label": "基础统计图",
       "tier": 1,
-      "category": "Distribution",
-      "category_label": "分布形态",
+      "category": "Enrichment",
+      "category_label": "功能富集",
       "language": "r",
       "language_label": "R",
-      "status": "ready",
-      "status_label": "已验证可用",
-      "verified": true,
+      "status": "pending",
+      "status_label": "规划中",
+      "verified": false,
       "deprecated": false,
-      "lines": [
-        "line1_bulk"
-      ],
-      "line_labels": [
-        "线 1：GEO Bulk 常规挖掘"
-      ],
-      "line_id": "line1_bulk",
-      "analysis_step": "l1_enrich_bulk",
-      "producing_mod_id": "l1_enrich_bulk",
+      "lines": [],
+      "line_labels": [],
+      "line_id": null,
+      "analysis_step": null,
+      "producing_mod_id": null,
       "required_mod_ids": [
-        "l1_enrich_bulk",
         "l1_figures_bulk"
       ],
       "linked_mods": [
         "l1_figures_bulk"
       ],
-      "input_tables": [
-        "enrichment_gsea_go.tsv"
-      ],
-      "input_artifact": "enrichment_gsea_go.tsv",
-      "input_format": "tsv",
-      "produces": [
-        "L1_ridgeline_verified.png"
-      ],
-      "canonical_output": "L1_ridgeline_verified.png",
-      "output_glob": "figures/line1_bulk/L1_ridgeline_verified.png",
+      "input_tables": [],
+      "input_artifact": null,
+      "input_format": null,
+      "produces": [],
+      "canonical_output": null,
+      "output_glob": null,
       "dependencies": [
         "ggplot2",
         "ggridges",
@@ -2811,9 +2763,9 @@
         "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
         "group_col": "分组列名"
       },
-      "source": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R",
-      "preview": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_ridgeline_verified.png",
-      "sample_project_output": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_ridgeline.png",
+      "source": null,
+      "preview": null,
+      "sample_project_output": null,
       "block_reason": null,
       "academic_tier": "L1_qc_basic",
       "render_evidence": null,
@@ -2825,7 +2777,7 @@
         }
       },
       "portal_binding": {
-        "default_on_mod_select": true,
+        "default_on_mod_select": false,
         "unlock_prompt": "需补选前置分析步骤以解锁该图件",
         "adapt_vars_schema": [
           {
@@ -2840,15 +2792,15 @@
           }
         ]
       },
-      "purpose": "比较数值分布、集中趋势和离散程度，识别偏态与异常值。",
-      "introduction": "比较数值分布、集中趋势和离散程度，识别偏态与异常值。参考图型为 Ridgeline，属于分布形态类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_enrich_bulk，输入 enrichment_gsea_go.tsv，登记产物 L1_ridgeline_verified.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。",
-      "library_status": "ready",
+      "purpose": "展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。",
+      "introduction": "展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。参考图型为 Ridgeline，属于功能富集类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 ggplot2、ggridges、hrbrthemes、readr、viridis；该图型暂不可派发生产任务。",
+      "library_status": "待采集",
       "source_location": "_meta/R453_compat/L1_ridgeline_verified.png"
     },
     {
-      "id": "fig_l1_violin",
+      "id": "fig_l1_violinplot",
       "name": "小提琴图",
-      "english_name": "L1 Violin",
+      "english_name": "ViolinPlot",
       "level": "L1",
       "level_label": "基础统计图",
       "tier": 1,
@@ -2856,36 +2808,27 @@
       "category_label": "分布形态",
       "language": "r",
       "language_label": "R",
-      "status": "ready",
-      "status_label": "已验证可用",
-      "verified": true,
+      "status": "pending",
+      "status_label": "规划中",
+      "verified": false,
       "deprecated": false,
-      "lines": [
-        "line1_bulk"
-      ],
-      "line_labels": [
-        "线 1：GEO Bulk 常规挖掘"
-      ],
-      "line_id": "line1_bulk",
-      "analysis_step": "l1_de_limma",
-      "producing_mod_id": "l1_de_limma",
+      "lines": [],
+      "line_labels": [],
+      "line_id": null,
+      "analysis_step": null,
+      "producing_mod_id": null,
       "required_mod_ids": [
-        "l1_de_limma",
         "l1_figures_bulk"
       ],
       "linked_mods": [
         "l1_figures_bulk"
       ],
-      "input_tables": [
-        "deg_all.tsv"
-      ],
-      "input_artifact": "deg_all.tsv",
-      "input_format": "tsv",
-      "produces": [
-        "custom_fig_l1_violin.png"
-      ],
-      "canonical_output": "L1_violin_verified.png",
-      "output_glob": "figures/line1_bulk/custom_fig_l1_violin.png",
+      "input_tables": [],
+      "input_artifact": null,
+      "input_format": null,
+      "produces": [],
+      "canonical_output": null,
+      "output_glob": null,
       "dependencies": [
         "dplyr",
         "forcats",
@@ -2900,19 +2843,15 @@
       ],
       "adapt_vars": {
         "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "value_col": "效应量列名"
+        "group_col": "分组列名",
+        "value_col": "表达或测量值列名"
       },
-      "source": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_violin_code.R",
-      "preview": "references/05.可参考生信代码/可用代码预筛选/源码/L1_基础统计图/L1_violin_verified.png",
-      "sample_project_output": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_violin.png",
+      "source": null,
+      "preview": null,
+      "sample_project_output": null,
       "block_reason": null,
       "academic_tier": "L1_qc_basic",
-      "render_evidence": {
-        "entry_id": "compat_l1_violin",
-        "artifact": "L1_violin_verified.png",
-        "sha256": "d76f7b185a8b587c09af407a14d7c761381b04758e55286165e368a0fd2c04ea",
-        "matches_preview": true
-      },
+      "render_evidence": null,
       "spec_contract": {
         "dpi": 300,
         "palette_family": "okabe_ito_extended",
@@ -2921,12 +2860,17 @@
         }
       },
       "portal_binding": {
-        "default_on_mod_select": true,
+        "default_on_mod_select": false,
         "unlock_prompt": "需补选前置分析步骤以解锁该图件",
         "adapt_vars_schema": [
           {
             "key": "input_data",
             "source_field": "data_contract.input_artifact",
+            "type": "string"
+          },
+          {
+            "key": "group_col",
+            "source_field": "groupingDesign.byLine",
             "type": "string"
           },
           {
@@ -2937,9 +2881,9 @@
         ]
       },
       "purpose": "比较数值分布、集中趋势和离散程度，识别偏态与异常值。",
-      "introduction": "比较数值分布、集中趋势和离散程度，识别偏态与异常值。属于分布形态类，来自生产流水线实证模板。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_de_limma，输入 deg_all.tsv，登记产物 custom_fig_l1_violin.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。",
-      "library_status": null,
-      "source_location": null
+      "introduction": "比较数值分布、集中趋势和离散程度，识别偏态与异常值。参考图型为 ViolinPlot，属于分布形态类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 dplyr、forcats、gghalves、ggplot2、ggstatsplot、hrbrthemes、palmerpenguins、readr；该图型暂不可派发生产任务。",
+      "library_status": "待采集",
+      "source_location": "L1_基础统计图/L1_violin_verified.png"
     },
     {
       "id": "fig_l1_barplot",
@@ -3143,36 +3087,27 @@
       "category_label": "排序比较",
       "language": "r",
       "language_label": "R",
-      "status": "ready",
-      "status_label": "已验证可用",
-      "verified": true,
+      "status": "pending",
+      "status_label": "规划中",
+      "verified": false,
       "deprecated": false,
-      "lines": [
-        "line1_bulk"
-      ],
-      "line_labels": [
-        "线 1：GEO Bulk 常规挖掘"
-      ],
-      "line_id": "line1_bulk",
-      "analysis_step": "l1_de_limma",
-      "producing_mod_id": "l1_de_limma",
+      "lines": [],
+      "line_labels": [],
+      "line_id": null,
+      "analysis_step": null,
+      "producing_mod_id": null,
       "required_mod_ids": [
-        "l1_de_limma",
         "l1_figures_bulk"
       ],
       "linked_mods": [
         "l1_figures_bulk"
       ],
-      "input_tables": [
-        "deg_all.tsv"
-      ],
-      "input_artifact": "deg_all.tsv",
-      "input_format": "tsv",
-      "produces": [
-        "L1_upset_verified.png"
-      ],
-      "canonical_output": "L1_upset_verified.png",
-      "output_glob": "figures/line1_bulk/L1_upset_verified.png",
+      "input_tables": [],
+      "input_artifact": null,
+      "input_format": null,
+      "produces": [],
+      "canonical_output": null,
+      "output_glob": null,
       "dependencies": [
         "UpSetR",
         "ggupset"
@@ -3181,9 +3116,9 @@
         "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
         "group_col": "分组列名"
       },
-      "source": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R",
-      "preview": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_upset_verified.png",
-      "sample_project_output": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_upsetplot.png",
+      "source": null,
+      "preview": null,
+      "sample_project_output": null,
       "block_reason": null,
       "academic_tier": "L1_qc_basic",
       "render_evidence": null,
@@ -3195,7 +3130,7 @@
         }
       },
       "portal_binding": {
-        "default_on_mod_select": true,
+        "default_on_mod_select": false,
         "unlock_prompt": "需补选前置分析步骤以解锁该图件",
         "adapt_vars_schema": [
           {
@@ -3211,8 +3146,8 @@
         ]
       },
       "purpose": "按统计值排序展示条目，快速定位排名靠前的基因、通路或类别。",
-      "introduction": "按统计值排序展示条目，快速定位排名靠前的基因、通路或类别。参考图型为 UpsetPlot，属于排序比较类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_de_limma，输入 deg_all.tsv，登记产物 L1_upset_verified.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。",
-      "library_status": "ready",
+      "introduction": "按统计值排序展示条目，快速定位排名靠前的基因、通路或类别。参考图型为 UpsetPlot，属于排序比较类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 UpSetR、ggupset；该图型暂不可派发生产任务。",
+      "library_status": "待采集",
       "source_location": "_meta/R453_compat/L1_upset_verified.png"
     },
     {
@@ -3226,36 +3161,27 @@
       "category_label": "排序比较",
       "language": "r",
       "language_label": "R",
-      "status": "ready",
-      "status_label": "已验证可用",
-      "verified": true,
+      "status": "pending",
+      "status_label": "规划中",
+      "verified": false,
       "deprecated": false,
-      "lines": [
-        "line1_bulk"
-      ],
-      "line_labels": [
-        "线 1：GEO Bulk 常规挖掘"
-      ],
-      "line_id": "line1_bulk",
-      "analysis_step": "l1_de_limma",
-      "producing_mod_id": "l1_de_limma",
+      "lines": [],
+      "line_labels": [],
+      "line_id": null,
+      "analysis_step": null,
+      "producing_mod_id": null,
       "required_mod_ids": [
-        "l1_de_limma",
         "l1_figures_bulk"
       ],
       "linked_mods": [
         "l1_figures_bulk"
       ],
-      "input_tables": [
-        "deg_all.tsv"
-      ],
-      "input_artifact": "deg_all.tsv",
-      "input_format": "tsv",
-      "produces": [
-        "L1_venn_verified.png"
-      ],
-      "canonical_output": "L1_venn_verified.png",
-      "output_glob": "figures/line1_bulk/L1_venn_verified.png",
+      "input_tables": [],
+      "input_artifact": null,
+      "input_format": null,
+      "produces": [],
+      "canonical_output": null,
+      "output_glob": null,
       "dependencies": [
         "VennDiagram",
         "ggVennDiagram",
@@ -3265,9 +3191,9 @@
         "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
         "group_col": "分组列名"
       },
-      "source": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R",
-      "preview": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_venn_verified.png",
-      "sample_project_output": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_vennplot.png",
+      "source": null,
+      "preview": null,
+      "sample_project_output": null,
       "block_reason": null,
       "academic_tier": "L1_qc_basic",
       "render_evidence": null,
@@ -3279,7 +3205,7 @@
         }
       },
       "portal_binding": {
-        "default_on_mod_select": true,
+        "default_on_mod_select": false,
         "unlock_prompt": "需补选前置分析步骤以解锁该图件",
         "adapt_vars_schema": [
           {
@@ -3295,8 +3221,8 @@
         ]
       },
       "purpose": "按统计值排序展示条目，快速定位排名靠前的基因、通路或类别。",
-      "introduction": "按统计值排序展示条目，快速定位排名靠前的基因、通路或类别。参考图型为 VennPlot，属于排序比较类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_de_limma，输入 deg_all.tsv，登记产物 L1_venn_verified.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。",
-      "library_status": "ready",
+      "introduction": "按统计值排序展示条目，快速定位排名靠前的基因、通路或类别。参考图型为 VennPlot，属于排序比较类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 VennDiagram、ggVennDiagram、ggplot2；该图型暂不可派发生产任务。",
+      "library_status": "待采集",
       "source_location": "_meta/R453_compat/L1_venn_verified.png"
     },
     {
@@ -4059,8 +3985,8 @@
           }
         ]
       },
-      "purpose": "展示组学统计中的主要模式，辅助比较分组、排序和异常结构。",
-      "introduction": "展示组学统计中的主要模式，辅助比较分组、排序和异常结构。参考图型为 GeneStructurePlot，属于组学统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 gggenes、ggtree、tidyverse；该图型暂不可派发生产任务。",
+      "purpose": "展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。",
+      "introduction": "展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。参考图型为 GeneStructurePlot，属于组学统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 gggenes、ggtree、tidyverse；该图型暂不可派发生产任务。",
       "library_status": "待采集",
       "source_location": null
     },
@@ -4133,8 +4059,8 @@
           }
         ]
       },
-      "purpose": "展示组学统计中的主要模式，辅助比较分组、排序和异常结构。",
-      "introduction": "展示组学统计中的主要模式，辅助比较分组、排序和异常结构。属于组学统计类，来自生产流水线实证模板。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为受 R 版本兼容阻塞，依赖 dbplyr、pathview；该图型暂不可派发生产任务。",
+      "purpose": "展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。",
+      "introduction": "展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。属于组学统计类，来自生产流水线实证模板。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为受 R 版本兼容阻塞，依赖 dbplyr、pathview；该图型暂不可派发生产任务。",
       "library_status": null,
       "source_location": null
     },
@@ -4632,8 +4558,8 @@
           }
         ]
       },
-      "purpose": "比较各类别在总体中的占比，观察组成结构是否随分组变化。",
-      "introduction": "比较各类别在总体中的占比，观察组成结构是否随分组变化。参考图型为 TextEnrichmentBarPlot，属于组学统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 未登记第三方依赖；该图型暂不可派发生产任务。",
+      "purpose": "展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。",
+      "introduction": "展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。参考图型为 TextEnrichmentBarPlot，属于组学统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 未登记第三方依赖；该图型暂不可派发生产任务。",
       "library_status": "待采集",
       "source_location": null
     },
@@ -5212,7 +5138,7 @@
     },
     {
       "id": "fig_l2p_enrichmentplot",
-      "name": "富集分析图（Python）",
+      "name": "ORA 富集气泡图（Python）",
       "english_name": "EnrichmentPlot",
       "level": "L2",
       "level_label": "组学常用图",
@@ -5292,8 +5218,8 @@
           }
         ]
       },
-      "purpose": "展示Python 通用统计中的主要模式，辅助比较分组、排序和异常结构。",
-      "introduction": "展示Python 通用统计中的主要模式，辅助比较分组、排序和异常结构。参考图型为 EnrichmentPlot，属于Python 通用统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 2：单细胞转录组，对应步骤 l2_branches_enrich，输入 enrichment_ora.tsv，登记产物 L2p_enrichment_verified.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。",
+      "purpose": "展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。",
+      "introduction": "展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。参考图型为 EnrichmentPlot，属于Python 通用统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 2：单细胞转录组，对应步骤 l2_branches_enrich，输入 enrichment_ora.tsv，登记产物 L2p_enrichment_verified.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。",
       "library_status": "ready",
       "source_location": "L2_组学常用图/L2p_enrichment_verified.png"
     },
@@ -5377,7 +5303,7 @@
     },
     {
       "id": "fig_l2p_gseaplot",
-      "name": "GSEA 运行分数图（Python）",
+      "name": "GSEA NES 条形图（Python）",
       "english_name": "GseaPlot",
       "level": "L2",
       "level_label": "组学常用图",
@@ -5457,8 +5383,8 @@
           }
         ]
       },
-      "purpose": "展示Python 通用统计中的主要模式，辅助比较分组、排序和异常结构。",
-      "introduction": "展示Python 通用统计中的主要模式，辅助比较分组、排序和异常结构。参考图型为 GseaPlot，属于Python 通用统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 2：单细胞转录组，对应步骤 l2_branches_enrich，输入 enrichment_gsea.tsv，登记产物 L2p_gsea_verified.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。",
+      "purpose": "展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。",
+      "introduction": "展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。参考图型为 GseaPlot，属于Python 通用统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 2：单细胞转录组，对应步骤 l2_branches_enrich，输入 enrichment_gsea.tsv，登记产物 L2p_gsea_verified.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。",
       "library_status": "ready",
       "source_location": "L2_组学常用图/L2p_gsea_verified.png"
     },
@@ -5994,21 +5920,16 @@
       "category_label": "Python 通用统计",
       "language": "python",
       "language_label": "Python",
-      "status": "ready",
-      "status_label": "已验证可用",
-      "verified": true,
+      "status": "pending",
+      "status_label": "规划中",
+      "verified": false,
       "deprecated": false,
-      "lines": [
-        "line2_scrna"
-      ],
-      "line_labels": [
-        "线 2：单细胞转录组"
-      ],
-      "line_id": "line2_scrna",
-      "analysis_step": "l2_integrate_annotate",
-      "producing_mod_id": "l2_integrate_annotate",
+      "lines": [],
+      "line_labels": [],
+      "line_id": null,
+      "analysis_step": null,
+      "producing_mod_id": null,
       "required_mod_ids": [
-        "l2_integrate_annotate",
         "l2_figures_scrna",
         "l3_figures_spatial"
       ],
@@ -6016,16 +5937,12 @@
         "l2_figures_scrna",
         "l3_figures_spatial"
       ],
-      "input_tables": [
-        "cluster_markers.tsv"
-      ],
-      "input_artifact": "cluster_markers.tsv",
-      "input_format": "tsv",
-      "produces": [
-        "custom_fig_l2p_scatterplot.png"
-      ],
-      "canonical_output": "L2p_scatter_verified.png",
-      "output_glob": "figures/line2_scrna/custom_fig_l2p_scatterplot.png",
+      "input_tables": [],
+      "input_artifact": null,
+      "input_format": null,
+      "produces": [],
+      "canonical_output": null,
+      "output_glob": null,
       "dependencies": [
         "matplotlib",
         "seaborn",
@@ -6039,9 +5956,9 @@
         "y_col": "纵轴列名",
         "label_genes": "需要标注的基因清单，可为空"
       },
-      "source": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_stats_code.py",
-      "preview": "references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_scatter_verified.png",
-      "sample_project_output": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_scatterplot.png",
+      "source": null,
+      "preview": null,
+      "sample_project_output": null,
       "block_reason": null,
       "academic_tier": "L2_mechanism_core",
       "render_evidence": null,
@@ -6053,7 +5970,7 @@
         }
       },
       "portal_binding": {
-        "default_on_mod_select": true,
+        "default_on_mod_select": false,
         "unlock_prompt": "需补选前置分析步骤以解锁该图件",
         "adapt_vars_schema": [
           {
@@ -6079,8 +5996,8 @@
         ]
       },
       "purpose": "比较标志基因在不同细胞类型或分组中的表达，核验注释和定位。",
-      "introduction": "比较标志基因在不同细胞类型或分组中的表达，核验注释和定位。参考图型为 ScatterPlot，属于Python 通用统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 2：单细胞转录组，对应步骤 l2_integrate_annotate，输入 cluster_markers.tsv，登记产物 custom_fig_l2p_scatterplot.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。",
-      "library_status": "ready",
+      "introduction": "比较标志基因在不同细胞类型或分组中的表达，核验注释和定位。参考图型为 ScatterPlot，属于Python 通用统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 matplotlib、seaborn、pandas、numpy、scipy；该图型暂不可派发生产任务。",
+      "library_status": "待采集",
       "source_location": "L2_组学常用图/L2p_scatter_verified.png"
     },
     {
@@ -6258,7 +6175,7 @@
     },
     {
       "id": "fig_l2p_umap",
-      "name": "单细胞 UMAP 图（Python）",
+      "name": "样本 UMAP 降维图（Python）",
       "english_name": "L2p Umap",
       "level": "L2",
       "level_label": "组学常用图",
@@ -6957,36 +6874,27 @@
       "category_label": "比例构成",
       "language": "r",
       "language_label": "R",
-      "status": "ready",
-      "status_label": "已验证可用",
-      "verified": true,
+      "status": "pending",
+      "status_label": "规划中",
+      "verified": false,
       "deprecated": false,
-      "lines": [
-        "line1_bulk"
-      ],
-      "line_labels": [
-        "线 1：GEO Bulk 常规挖掘"
-      ],
-      "line_id": "line1_bulk",
-      "analysis_step": "l1_de_wgcna",
-      "producing_mod_id": "l1_de_wgcna",
+      "lines": [],
+      "line_labels": [],
+      "line_id": null,
+      "analysis_step": null,
+      "producing_mod_id": null,
       "required_mod_ids": [
-        "l1_de_wgcna",
         "l1_figures_bulk"
       ],
       "linked_mods": [
         "l1_figures_bulk"
       ],
-      "input_tables": [
-        "wgcna_modules.tsv"
-      ],
-      "input_artifact": "wgcna_modules.tsv",
-      "input_format": "tsv",
-      "produces": [
-        "custom_fig_l3_sankey.png"
-      ],
-      "canonical_output": "L3_sankey_verified.png",
-      "output_glob": "figures/line1_bulk/custom_fig_l3_sankey.png",
+      "input_tables": [],
+      "input_artifact": null,
+      "input_format": null,
+      "produces": [],
+      "canonical_output": null,
+      "output_glob": null,
       "dependencies": [
         "dplyr",
         "ggalluvial",
@@ -6999,19 +6907,16 @@
       ],
       "adapt_vars": {
         "input_data": "项目本线只读输入文件路径，相对于本项目根目录",
-        "module_col": "模块列名"
+        "axis_cols": "按顺序排列的流轴列名",
+        "value_col": "流量数值列名",
+        "flow_col": "流向分类列名"
       },
-      "source": "references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L3_sankey_code.R",
-      "preview": "references/05.可参考生信代码/可用代码预筛选/源码/L3_高级组合图/L3_sankey_verified.png",
-      "sample_project_output": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l3_sankey.png",
+      "source": null,
+      "preview": null,
+      "sample_project_output": null,
       "block_reason": null,
       "academic_tier": "L3_spatial_advanced",
-      "render_evidence": {
-        "entry_id": "compat_l3_sankey",
-        "artifact": "L3_sankey_verified.png",
-        "sha256": "cf3b81baa6926d765db965dc14d5a818efefc762b852663bcd62eff9c41a8f79",
-        "matches_preview": true
-      },
+      "render_evidence": null,
       "spec_contract": {
         "dpi": 300,
         "palette_family": "okabe_ito_extended",
@@ -7020,7 +6925,7 @@
         }
       },
       "portal_binding": {
-        "default_on_mod_select": true,
+        "default_on_mod_select": false,
         "unlock_prompt": "需补选前置分析步骤以解锁该图件",
         "adapt_vars_schema": [
           {
@@ -7029,15 +6934,25 @@
             "type": "string"
           },
           {
-            "key": "module_col",
+            "key": "axis_cols",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "value_col",
+            "source_field": "manual",
+            "type": "string"
+          },
+          {
+            "key": "flow_col",
             "source_field": "manual",
             "type": "string"
           }
         ]
       },
       "purpose": "比较各类别在总体中的占比，观察组成结构是否随分组变化。",
-      "introduction": "比较各类别在总体中的占比，观察组成结构是否随分组变化。参考图型为 Sankey，属于比例构成类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_de_wgcna，输入 wgcna_modules.tsv，登记产物 custom_fig_l3_sankey.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。",
-      "library_status": "ready",
+      "introduction": "比较各类别在总体中的占比，观察组成结构是否随分组变化。参考图型为 Sankey，属于比例构成类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 dplyr、ggalluvial、ggplot2、networkD3、openxlsx、readxl、tidyverse、webshot；该图型暂不可派发生产任务。",
+      "library_status": "待采集",
       "source_location": "L3_高级组合图/L3_sankey_verified.png"
     },
     {

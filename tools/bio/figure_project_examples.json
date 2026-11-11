@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-09T09:42:01.782Z",
+  "generated_at": "2026-11-10T03:32:08.928Z",
   "source_chain": "DCM_CHAIN_20261109",
   "source_receipt": "workspace/projects/DCM_CHAIN_20261109/report/chain.receipt.json",
   "examples": [
@@ -23,66 +23,6 @@
       "height": 2695,
       "dpi": 300,
       "sha256": "59163d72604f6add541be370a956196e8dbd837b0cd904a7632630ef155fa18f"
-    },
-    {
-      "id": "fig_l1_bubble",
-      "kind": "registry_sample",
-      "path": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_bubble.png",
-      "bytes": 182449,
-      "width": 1051,
-      "height": 885,
-      "dpi": 300,
-      "sha256": "87d27334bd1ee898b291480acc4e7130f8e8fc0ab188420fd12c5fd850502077"
-    },
-    {
-      "id": "fig_l1_bubble",
-      "kind": "latest_project",
-      "path": "workspace/projects/DCM_CHAIN_20261109/report/figures/L1_hub_overlap.png",
-      "bytes": 138860,
-      "width": 3082,
-      "height": 1788,
-      "dpi": 300,
-      "sha256": "e1373b87b04c6727fa218af817348b473b8d1a97e9cd860d98fa020423c79b3a"
-    },
-    {
-      "id": "fig_l1_connectedscatter",
-      "kind": "registry_sample",
-      "path": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/custom_fig_l1_connectedscatter.png",
-      "bytes": 22411,
-      "width": 341,
-      "height": 304,
-      "dpi": 100,
-      "sha256": "e68124fd7f3ed0c17599065bfc0f1de015badfeecb6f51617123380a5a489c65"
-    },
-    {
-      "id": "fig_l1_connectedscatter",
-      "kind": "latest_project",
-      "path": "workspace/projects/DCM_CHAIN_20261109/report/figures/L3_ATM_Ctrl.png",
-      "bytes": 1061203,
-      "width": 1380,
-      "height": 1260,
-      "dpi": 300,
-      "sha256": "71a2ae1b3844942a1270419a3f537ddf7e85068b5190cf25e83937f43091882c"
-    },
-    {
-      "id": "fig_l1_correlogram",
-      "kind": "registry_sample",
-      "path": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_correlogram.png",
-      "bytes": 86558,
-      "width": 1417,
-      "height": 1299,
-      "dpi": 300,
-      "sha256": "938f181842b64ec33184ec24ceeaa7af048ebc3b29f79d9092311743f287851c"
-    },
-    {
-      "id": "fig_l1_correlogram",
-      "kind": "latest_project",
-      "path": "workspace/projects/DCM_CHAIN_20261109/report/figures/L1_within_group_cor.png",
-      "bytes": 300167,
-      "width": 3167,
-      "height": 1757,
-      "dpi": 300,
-      "sha256": "632b9c10c1dfcdc58d98812a05a95175be615c80ed3f9f7a4651a7266aaf3b72"
     },
     {
       "id": "fig_l2_heatmap",
@@ -163,146 +103,6 @@
       "height": 1177,
       "dpi": 300,
       "sha256": "4acade660531882d3df4e6409b45b55934d6c371c7bea0168847df832d31af6c"
-    },
-    {
-      "id": "fig_l1_boxplot",
-      "kind": "registry_sample",
-      "path": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_boxplot.png",
-      "bytes": 8545,
-      "width": 1051,
-      "height": 708,
-      "dpi": 300,
-      "sha256": "910174d423875dfe7d428d11527d4928d58cf08770ebc66a7180f007c5bd0418"
-    },
-    {
-      "id": "fig_l1_boxplot",
-      "kind": "latest_project",
-      "path": "workspace/projects/DCM_CHAIN_20261109/report/figures/L1_volcano_limma.png",
-      "bytes": 143799,
-      "width": 1039,
-      "height": 779,
-      "dpi": 300,
-      "sha256": "5a099542a88e0d02a28bfcff6382c9e59f1f172432add0cde980d1ebb45851ec"
-    },
-    {
-      "id": "fig_l1_density",
-      "kind": "registry_sample",
-      "path": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_density.png",
-      "bytes": 175086,
-      "width": 1417,
-      "height": 944,
-      "dpi": 300,
-      "sha256": "d28cc9e831c0ef943ff815051d2b0bfc6ac341661e1a7ea0776b097fcf97399b"
-    },
-    {
-      "id": "fig_l1_density",
-      "kind": "latest_project",
-      "path": "workspace/projects/DCM_CHAIN_20261109/report/figures/L1_ma_fdr.png",
-      "bytes": 207865,
-      "width": 2281,
-      "height": 1963,
-      "dpi": 300,
-      "sha256": "787aeebd1d42e5fd08aac4544c029993d7894228f404fbca94c82a15aefb14cf"
-    },
-    {
-      "id": "fig_l1_histogram",
-      "kind": "registry_sample",
-      "path": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_histogram.png",
-      "bytes": 17627,
-      "width": 1051,
-      "height": 708,
-      "dpi": 300,
-      "sha256": "9f1f53d66e45c5e4cfb9db8d6e745cf03b8cec91bdcabfb23a2953315594246e"
-    },
-    {
-      "id": "fig_l1_histogram",
-      "kind": "latest_project",
-      "path": "workspace/projects/DCM_CHAIN_20261109/report/figures/L1_genes_detected.png",
-      "bytes": 292569,
-      "width": 3167,
-      "height": 1710,
-      "dpi": 300,
-      "sha256": "bd754c9aecb9b9fb129725a4e95d563ebb0c3b2e3377a81819fc49344995b88e"
-    },
-    {
-      "id": "fig_l1_ridgeline",
-      "kind": "registry_sample",
-      "path": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_ridgeline.png",
-      "bytes": 57565,
-      "width": 1051,
-      "height": 885,
-      "dpi": 300,
-      "sha256": "eda22fa6970fe042026dcd535be9370dc1ae80af9390618181b45e34043fe69d"
-    },
-    {
-      "id": "fig_l1_ridgeline",
-      "kind": "latest_project",
-      "path": "workspace/projects/DCM_CHAIN_20261109/report/figures/L1_wgcna_module_trait.png",
-      "bytes": 126322,
-      "width": 2850,
-      "height": 1530,
-      "dpi": 300,
-      "sha256": "912d4950572d97a747fe9ed3a324cd8f2f0fbd5b72265732593617e1bf24bf0f"
-    },
-    {
-      "id": "fig_l1_violin",
-      "kind": "registry_sample",
-      "path": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_violin.png",
-      "bytes": 13220,
-      "width": 1051,
-      "height": 708,
-      "dpi": 300,
-      "sha256": "a1b202be048d4cd2463300ee97e93c96d0b82292dd2ebccad79bad5f17e6830e"
-    },
-    {
-      "id": "fig_l1_violin",
-      "kind": "latest_project",
-      "path": "workspace/projects/DCM_CHAIN_20261109/report/figures/L1_within_group_cor.png",
-      "bytes": 300167,
-      "width": 3167,
-      "height": 1757,
-      "dpi": 300,
-      "sha256": "632b9c10c1dfcdc58d98812a05a95175be615c80ed3f9f7a4651a7266aaf3b72"
-    },
-    {
-      "id": "fig_l1_upsetplot",
-      "kind": "registry_sample",
-      "path": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_upsetplot.png",
-      "bytes": 77706,
-      "width": 1051,
-      "height": 885,
-      "dpi": 300,
-      "sha256": "c8eb90b7f93f18453545de5d0d90af3bf88b8f35fd56c0ced49c3ad6cf84ef78"
-    },
-    {
-      "id": "fig_l1_upsetplot",
-      "kind": "latest_project",
-      "path": "workspace/projects/DCM_CHAIN_20261109/report/figures/L1_hub_overlap.png",
-      "bytes": 138860,
-      "width": 3082,
-      "height": 1788,
-      "dpi": 300,
-      "sha256": "e1373b87b04c6727fa218af817348b473b8d1a97e9cd860d98fa020423c79b3a"
-    },
-    {
-      "id": "fig_l1_vennplot",
-      "kind": "registry_sample",
-      "path": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_vennplot.png",
-      "bytes": 85140,
-      "width": 1051,
-      "height": 885,
-      "dpi": 300,
-      "sha256": "636bb43977270525eea952bd4ca00044d9f9507c64638e791a1b7711ff9cefbb"
-    },
-    {
-      "id": "fig_l1_vennplot",
-      "kind": "latest_project",
-      "path": "workspace/projects/DCM_CHAIN_20261109/report/figures/L1_hub_overlap.png",
-      "bytes": 138860,
-      "width": 3082,
-      "height": 1788,
-      "dpi": 300,
-      "sha256": "e1373b87b04c6727fa218af817348b473b8d1a97e9cd860d98fa020423c79b3a"
     },
     {
       "id": "fig_l2_networkplot",
@@ -445,26 +245,6 @@
       "sha256": "b92ce3f79c065e3cb0231fca66b55a4b46755cfbbffc0652d787bea4aa4589da"
     },
     {
-      "id": "fig_l2p_scatterplot",
-      "kind": "registry_sample",
-      "path": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_scatterplot.png",
-      "bytes": 90940,
-      "width": 2131,
-      "height": 1386,
-      "dpi": 300,
-      "sha256": "77462be8655247dd2d89b6df0acf16c71af0e23a6832c8ec6ea87b27f401c34d"
-    },
-    {
-      "id": "fig_l2p_scatterplot",
-      "kind": "latest_project",
-      "path": "workspace/projects/DCM_CHAIN_20261109/report/figures/L2_umap_celltype.png",
-      "bytes": 491679,
-      "width": 1759,
-      "height": 1177,
-      "dpi": 300,
-      "sha256": "4acade660531882d3df4e6409b45b55934d6c371c7bea0168847df832d31af6c"
-    },
-    {
       "id": "fig_l2p_dotplot",
       "kind": "registry_sample",
       "path": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/l2_13_target_gene_dotplot.png",
@@ -563,26 +343,6 @@
       "height": 1280,
       "dpi": 300,
       "sha256": "94cc620b17874bd2979d8c28b915ae1261f3567c3c55e17d0ab9197a730a141a"
-    },
-    {
-      "id": "fig_l3_sankey",
-      "kind": "registry_sample",
-      "path": "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l3_sankey.png",
-      "bytes": 142981,
-      "width": 2161,
-      "height": 1062,
-      "dpi": 300,
-      "sha256": "05acd2626c0281684f563ebaa153d1d124be2376c8d3708678a528221efae931"
-    },
-    {
-      "id": "fig_l3_sankey",
-      "kind": "latest_project",
-      "path": "workspace/projects/DCM_CHAIN_20261109/report/figures/L1_wgcna_module_trait.png",
-      "bytes": 126322,
-      "width": 2850,
-      "height": 1530,
-      "dpi": 300,
-      "sha256": "912d4950572d97a747fe9ed3a324cd8f2f0fbd5b72265732593617e1bf24bf0f"
     },
     {
       "id": "fig_l3_banksy_domain",

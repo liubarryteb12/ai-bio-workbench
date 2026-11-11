@@ -11,6 +11,7 @@ import {
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const read = (relative) => fs.readFileSync(path.join(REPO, relative), 'utf8');
+const READY_BASELINE = JSON.parse(read('tools/dev/figure_ready_allowlist.json')).ready_baseline;
 
 test('92 个模板全量进入同一目录真源', () => {
   const catalog = loadTemplateCatalog();
@@ -44,13 +45,13 @@ function inputTablesOf(item) {
   return item.input_tables || [];
 }
 
-test('状态分层完整，39 个 Ready 均有最新实例', () => {
+test('状态分层完整，全部 Ready 均有最新实例', () => {
   const catalog = loadTemplateCatalog();
   const ready = catalog.filter((item) => item.status === 'ready');
   const pending = catalog.filter((item) => item.status === 'pending');
   const blocked = catalog.filter((item) => item.status === 'blocked_r453');
-  assert.equal(ready.length, 39);
-  assert.equal(pending.length, 52);
+  assert.equal(ready.length, READY_BASELINE);
+  assert.equal(pending.length, catalog.length - READY_BASELINE - blocked.length);
   assert.equal(blocked.length, 1);
   assert.ok(ready.every((item) => item.preview_available && item.example_source === 'DCM_CHAIN_20261109'));
   assert.ok(pending.every((item) => item.introduction.includes('候选目录展示')));

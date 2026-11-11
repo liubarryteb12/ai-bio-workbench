@@ -1,15 +1,15 @@
 # 54 模块功能级消融与兼容性矩阵
 
-日期 2026-11-08T23:46:45.495Z
+日期 2026-11-11T15:49:32.210Z
 
 本报告按 `tools/bio/workflows.json` 真源逐模块检查母版、输入、产物、seed、退出码、独立运行闭包、相邻模块承接与故障注入判据。脚本不重跑生信分析，不连接设备。
 
 ## 汇总
 
 - 模块：54，分析线：3
-- 相邻兼容性边：121
+- 相邻兼容性边：122
 - remove-one-module 与故障注入场景：486
-- Ready 单图：39，退役组合图：3
+- Ready 单图：27，退役组合图：3
 - 静态守卫：4
 - 缺口：0
 
@@ -26,7 +26,7 @@
 | l1_enrich_figures | line1_bulk | enrich#4 | enrichment_figures | 否 | 4 | 2 | 无 |
 | l1_enrich_ppi | line1_bulk | enrich#4 | ppi_string | 否 | 2 | 2 | 无 |
 | l1_ml_keygenes | line1_bulk | ml#5 | key_genes | 否 | 4 | 5 | 无 |
-| l1_ml_model | line1_bulk | ml#5 | ml_model | 否 | 5 | 3 | 无 |
+| l1_ml_model | line1_bulk | ml#5 | ml_model | 否 | 5 | 4 | 无 |
 | l1_ml_hub | line1_bulk | ml#5 | ml_hub_analysis | 否 | 5 | 4 | 无 |
 | l1_ml_diag | line1_bulk | ml#5 | ml_diagnostics | 否 | 6 | 3 | 无 |
 | l1_ml_external | line1_bulk | ml#5 | external_validation | 否 | 5 | 3 | 无 |

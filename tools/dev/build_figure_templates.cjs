@@ -167,20 +167,6 @@ function adaptVars(row) {
 }
 
 const TEMPLATE_MAPPINGS = {
-  // py_l2p_stats 四合一 runner 准入（2026-11-02，k40 真机验证 seed=20261013）
-  fig_l2p_scatterplot: {
-    lines: ['line2_scrna'],
-    analysis_step: "l2_integrate_annotate",
-    input_tables: ["cluster_markers.tsv"],
-    produces: ["custom_fig_l2p_scatterplot.png"],
-    output_glob: "figures/line2_scrna/custom_fig_l2p_scatterplot.png",
-    canonical_output: "L2p_scatter_verified.png",
-    sample_project_output: "workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_scatterplot.png",
-  },
-  // r_l1_p0_gallery 三合一 runner 准入（2026-11-02，k40 真机验证 seed=20261013，
-  // 两次实跑 PNG sha256 逐字节一致；4 Argon 第十一轮批次 A 裁定）
-  // 收官批（2026-11-02，4 Argon 第十三轮第 2 节）
-  // 第 29/30 张（2026-11-02，4 Argon 第十五轮裁定，Argon 本人而非 Flash-Lite）
   fig_l3_chorddiagram: {
     // 复用 L3 弦图槽位承载 Line 2 的细胞通讯：CSV 语言列本就是 r，
     // 母版用 circlize（已在库 0.4.18），所以只需把线与 mod 指到 Line 2 的 Python 侧出图 mod。
@@ -194,75 +180,6 @@ const TEMPLATE_MAPPINGS = {
     canonical_output: "L3_cellcomm_chord_verified.png",
     source_runner_id: "py_l2p_cellcomm_autocorr",
     sample_project_output: "workspace/projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l3_cellcomm_chord.png",
-  },
-  fig_l1_connectedscatter: {
-    // 用 L1 的连接散点槽位承载 Line 3 的空间自相关：Moran's I × -Geary's C 正是双变量关系图，
-    // 不新增 ID，保持 total === 82 的不变量。
-    language: "python",
-    lines: ['line3_spatial'],
-    linked_mods: ["l3_figures_spatial"],
-    analysis_step: "l3_stats_autocorr",
-    input_tables: ["gene_autocorr_human.tsv"],
-    produces: ["L3_spatial_autocorr_verified.png"],
-    output_glob: "figures/line3_spatial/L3_spatial_autocorr_verified.png",
-    canonical_output: "L3_spatial_autocorr_verified.png",
-    source_runner_id: "py_l2p_cellcomm_autocorr",
-    sample_project_output: "workspace/projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/custom_fig_l1_connectedscatter.png",
-  },
-  fig_l1_correlogram: {
-    lines: ['line1_bulk'],
-    // expr_genes.tsv 的声明产出者是 l1_ingest_prep（不是 l1_qc_matrix）。
-    // 图件消费「样本间表达量相关性」，语义上也属于接入后的表达矩阵，绑定一致。
-    analysis_step: "l1_ingest_prep",
-    input_tables: ["expr_genes.tsv"],
-    produces: ["L1_correlogram_verified.png"],
-    output_glob: "figures/line1_bulk/L1_correlogram_verified.png",
-    canonical_output: "L1_correlogram_verified.png",
-    source_runner_id: "r_l1_p0_gallery",
-    sample_project_output: "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_correlogram.png",
-  },
-  fig_l1_bubble: {
-    lines: ['line1_bulk'],
-    analysis_step: "l1_de_limma",
-    input_tables: ["deg_all.tsv"],
-    produces: ["L1_bubble_verified.png"],
-    output_glob: "figures/line1_bulk/L1_bubble_verified.png",
-    canonical_output: "L1_bubble_verified.png",
-    source_runner_id: "r_l1_p0_gallery",
-    sample_project_output: "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_bubble.png",
-  },
-  fig_l1_ridgeline: {
-    lines: ['line1_bulk'],
-    analysis_step: "l1_enrich_bulk",
-    input_tables: ["enrichment_gsea_go.tsv"],
-    produces: ["L1_ridgeline_verified.png"],
-    output_glob: "figures/line1_bulk/L1_ridgeline_verified.png",
-    canonical_output: "L1_ridgeline_verified.png",
-    source_runner_id: "r_l1_p0_gallery",
-    sample_project_output: "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_ridgeline.png",
-  },
-  fig_l1_upsetplot: {
-    lines: ['line1_bulk'],
-    analysis_step: "l1_de_limma",
-    // 用 deg_all.tsv 而不是 deg_sig.tsv：示例项目里 deg_sig 是空表（adj_P_Val 最小 0.45，
-    // 无基因过 0.05），按 Argon 原话「多阈值/多子集交集」本就该从全表切阈值。
-    // 两者都是 l1_de_limma 自己声明的产物，step 绑定不变。
-    input_tables: ["deg_all.tsv"],
-    produces: ["L1_upset_verified.png"],
-    output_glob: "figures/line1_bulk/L1_upset_verified.png",
-    canonical_output: "L1_upset_verified.png",
-    source_runner_id: "r_l1_p0_gallery",
-    sample_project_output: "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_upsetplot.png",
-  },
-  fig_l1_vennplot: {
-    lines: ['line1_bulk'],
-    analysis_step: "l1_de_limma",
-    input_tables: ["deg_all.tsv"],
-    produces: ["L1_venn_verified.png"],
-    output_glob: "figures/line1_bulk/L1_venn_verified.png",
-    canonical_output: "L1_venn_verified.png",
-    source_runner_id: "r_l1_p0_gallery",
-    sample_project_output: "workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_vennplot.png",
   },
   // py_l2p_enrich_ko 三合一 runner 准入（2026-11-02，k40 真机实跑两次 sha256 一致）
   fig_l2p_gseaplot: {
@@ -411,52 +328,6 @@ const TEMPLATE_MAPPINGS = {
       label_genes: '需要标注的基因清单，可为空',
     },
   },
-  fig_l1_boxplot: {
-    lines: ['line1_bulk'], analysis_step: 'l1_de_limma',
-    input_tables: ['deg_all.tsv'],
-    produces: ['custom_fig_l1_boxplot.png'],
-    output_glob: 'figures/line1_bulk/custom_fig_l1_boxplot.png',
-    canonical_output: 'L1_boxplot_verified.png',
-    sample_project_output: 'workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_boxplot.png',
-    adapt_vars: {
-      input_data: '项目本线只读输入文件路径，相对于本项目根目录',
-      value_col: '效应量列名',
-    },
-  },
-  fig_l1_density: {
-    lines: ['line1_bulk'], analysis_step: 'l1_ingest_prep',
-    input_tables: ['expr_genes.tsv'],
-    produces: ['custom_fig_l1_density.png'],
-    output_glob: 'figures/line1_bulk/custom_fig_l1_density.png',
-    canonical_output: 'L1_density_verified.png',
-    sample_project_output: 'workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_density.png',
-    adapt_vars: {
-      input_data: '项目本线只读输入文件路径，相对于本项目根目录',
-    },
-  },
-  fig_l1_histogram: {
-    lines: ['line1_bulk'], analysis_step: 'l1_ingest_prep',
-    input_tables: ['expr_genes.tsv'],
-    produces: ['custom_fig_l1_histogram.png'],
-    output_glob: 'figures/line1_bulk/custom_fig_l1_histogram.png',
-    canonical_output: 'L1_histogram_verified.png',
-    sample_project_output: 'workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_histogram.png',
-    adapt_vars: {
-      input_data: '项目本线只读输入文件路径，相对于本项目根目录',
-    },
-  },
-  fig_l1_violin: {
-    lines: ['line1_bulk'], analysis_step: 'l1_de_limma',
-    input_tables: ['deg_all.tsv'],
-    produces: ['custom_fig_l1_violin.png'],
-    output_glob: 'figures/line1_bulk/custom_fig_l1_violin.png',
-    canonical_output: 'L1_violin_verified.png',
-    sample_project_output: 'workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l1_violin.png',
-    adapt_vars: {
-      input_data: '项目本线只读输入文件路径，相对于本项目根目录',
-      value_col: '效应量列名',
-    },
-  },
   fig_l2_umap: {
     lines: ['line2_scrna'], analysis_step: 'l2_integrate_cluster',
     input_tables: ['scrna_clustered.h5ad'],
@@ -498,18 +369,6 @@ const TEMPLATE_MAPPINGS = {
       input_data: '项目本线只读输入文件路径，相对于本项目根目录',
       group_col: '细胞类型列名',
       value_col: '组成比例列名',
-    },
-  },
-  fig_l3_sankey: {
-    lines: ['line1_bulk'], analysis_step: 'l1_de_wgcna',
-    input_tables: ['wgcna_modules.tsv'],
-    produces: ['custom_fig_l3_sankey.png'],
-    output_glob: 'figures/line1_bulk/custom_fig_l3_sankey.png',
-    canonical_output: 'L3_sankey_verified.png',
-    sample_project_output: 'workspace/projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l3_sankey.png',
-    adapt_vars: {
-      input_data: '项目本线只读输入文件路径，相对于本项目根目录',
-      module_col: '模块列名',
     },
   },
 };
@@ -812,7 +671,7 @@ function buildRegistry() {
    *   - pending_mapping 必须为 0（CSV 标 ready 但映射不全 = 真缺陷）；
    *   - blocked_r453 固定 1（只有 fig_kegg_pathway 一条被裁定的阻塞）。
    */
-  const READY_BASELINE = 39;
+  const READY_BASELINE = 27;
   const statusSum = Object.values(counts).reduce((acc, n) => acc + n, 0);
   if (statusSum !== 92) fail(`状态计数之和不是 92：${statusSum}`);
   if ((counts.ready || 0) < READY_BASELINE) fail(`ready 从基线 ${READY_BASELINE} 倒退：${counts.ready || 0}`);

@@ -91,12 +91,11 @@ docs/figure_spec.md（v2.2），以及你要改的那一线 scripts/README.md。
 - 字号下限：图内任何文本（tick 刻度、图例、阈值标注、图注）统一 >= 8pt，杜绝 5~6pt 模糊小字。
 - 语言环境：图内禁止任何中文字符（容器缺字体会出方块），全部使用英文规范术语。
 - 图例一律外置：严禁轴内 `loc="best"`、`"upper right"`、`"lower right"` 等任何轴内 loc。
-  竖版图（宽 < 高）图例置轴框外右上角（`bbox_to_anchor=(1.02, 1.0)`，
-  `subplots_adjust(right=0.74)`）；横版图（宽 >= 高）图例置轴框正下方
-  （`bbox_to_anchor=(0.5, -0.10)`，`subplots_adjust(bottom=...)` 留位）；
-  条目 > 12 条按列分组，每列 <= 12 行，`frameon=False`。
-- 图注独立分行：分析口径与统计参数（n=...、adj.p < 0.05、log2FC >= 1 等）置于坐标轴框外，
-  横版在图幅下方左下起、竖版在图幅右上角，一条一行纵向排列，绝不遮挡数据点。
+  所有图幅方向统一置轴框外右侧（`bbox_to_anchor=(1.02, 1.0)`，
+  `loc="upper left"`，`subplots_adjust(right=...)` 留位），纵向排列，`frameon=False`。
+  多组图例按 slot 依次右移，条目过多时增加列数，绝不回到轴框下方。
+- 图注独立分行：分析口径与统计参数（n=...、adj.p < 0.05、log2FC >= 1 等）固定置于图幅左下角、
+  坐标轴框外，一条一行纵向排列，绝不遮挡数据点或图例。
   调用 `caption(fig, 条目1, 条目2, ...)`，不用 `ax.set_title()` / `fig.suptitle()`。
 - 文本自动避让：火山图/散点图关键基因标签用 `adjustText`（Python）或 `ggrepel`（R）计算引线避让；
   网络图节点标签用 `adjust_text` 基于拓扑引线展开。禁止靠缩小字号或删标签消除重叠。
@@ -144,7 +143,7 @@ docs/figure_spec.md（v2.2），以及你要改的那一线 scripts/README.md。
    预览与渲染产物 sha 必须相等（`tools/dev/figure_preview_provenance.mjs`）。
    无真实客户订单不得激活 pending 模板。
 5. **便携包同源**：改 `shared/`、`server/`、`src/figure_templates.json` 等入包资产后，
-   必须重建 `dist/portable/BioanalysWorkbench`，否则 `tools/dev/dist_parity_gate.mjs` 判红。
+   必须重建 `software/BioanalysWorkbench`，否则 `tools/dev/dist_parity_gate.mjs` 判红。
 6. **门禁清单**：`node tools/dev/run_all_gates.mjs` 现为 17 道串联；改任何出图代码后跑
    `node tools/dev/figure_spec_gate.mjs`（产线项目强制 300 DPI）、
    `python3 ops/audit_figure_layout.py --script <脚本> --cwd <数据目录>`（A~E 几何判定）、

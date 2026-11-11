@@ -2,7 +2,7 @@
 
 > 真源：`tools/bio/figure_template_profiles.json`。本文由 92 条模板元数据生成，面向客户端展示与人工查阅。
 
-共 92 个模板，其中 Ready 39 个，规划中 52 个，兼容阻塞 1 个。
+共 92 个模板，其中 Ready 27 个，规划中 64 个，兼容阻塞 1 个。
 
 ## 目录说明
 
@@ -43,15 +43,15 @@
 - 用途：比较各类别在总体中的占比，观察组成结构是否随分组变化。
 - 介绍：比较各类别在总体中的占比，观察组成结构是否随分组变化。参考图型为 Donut，属于组成结构类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 ggplot2；该图型暂不可派发生产任务。
 
-### 分组和堆叠条形图（L1 Groupedbar）
+### 富集分析结果（L1 Groupedbar）
 
 - ID：`fig_l1_groupedbar`
-- 基本信息：基础统计图，Tier 1，组成结构，R，已验证可用
+- 基本信息：基础统计图，Tier 1，功能富集，R，已验证可用
 - 分析线：线 1：GEO Bulk 常规挖掘，对应步骤：l1_enrich_bulk
 - 输入：enrichment_gsea_go.tsv，登记产物：custom_fig_l1_groupedbar.png
 - 依赖：RColorBrewer、dplyr、ggplot2、hrbrthemes、streamgraph、tibble、tidyr、viridis
-- 用途：比较各类别在总体中的占比，观察组成结构是否随分组变化。
-- 介绍：比较各类别在总体中的占比，观察组成结构是否随分组变化。属于组成结构类，来自生产流水线实证模板。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_enrich_bulk，输入 enrichment_gsea_go.tsv，登记产物 custom_fig_l1_groupedbar.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。
+- 用途：展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。
+- 介绍：展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。属于功能富集类，来自生产流水线实证模板。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_enrich_bulk，输入 enrichment_gsea_go.tsv，登记产物 custom_fig_l1_groupedbar.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。
 - 最新实例：`workspace/projects/DCM_CHAIN_20261109/report/figures/L1_gsea_top.png`，300 DPI，`59163d72604f6add541be370a956196e8dbd837b0cd904a7632630ef155fa18f`
 
 ### 部分高亮饼图（PartPieChart）
@@ -114,38 +114,35 @@
 - 用途：展示变量或样本之间的相关强度，识别共变关系和潜在离群样本。
 - 介绍：展示变量或样本之间的相关强度，识别共变关系和潜在离群样本。参考图型为 Biplot，属于相关关系类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 dplyr、ggbiplot；该图型暂不可派发生产任务。
 
-### 气泡图（Bubble）
+### 差异火山气泡图（Bubble）
 
 - ID：`fig_l1_bubble`
-- 基本信息：基础统计图，Tier 1，相关关系，R，已验证可用
-- 分析线：线 1：GEO Bulk 常规挖掘，对应步骤：l1_de_limma
-- 输入：deg_all.tsv，登记产物：L1_bubble_verified.png
+- 基本信息：基础统计图，Tier 1，差异表达，R，规划中
+- 分析线：未绑定，对应步骤：未绑定
+- 输入：尚未绑定，登记产物：尚未登记
 - 依赖：dplyr、gapminder、ggplot2、hrbrthemes、viridis
-- 用途：展示变量或样本之间的相关强度，识别共变关系和潜在离群样本。
-- 介绍：展示变量或样本之间的相关强度，识别共变关系和潜在离群样本。参考图型为 Bubble，属于相关关系类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_de_limma，输入 deg_all.tsv，登记产物 L1_bubble_verified.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。
-- 最新实例：`workspace/projects/DCM_CHAIN_20261109/report/figures/L1_hub_overlap.png`，300 DPI，`e1373b87b04c6727fa218af817348b473b8d1a97e9cd860d98fa020423c79b3a`
+- 用途：展示差异倍数和显著性，快速识别上调、下调和不显著的基因。
+- 介绍：展示差异倍数和显著性，快速识别上调、下调和不显著的基因。参考图型为 Bubble，属于差异表达类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 dplyr、gapminder、ggplot2、hrbrthemes、viridis；该图型暂不可派发生产任务。
 
-### 连接散点图（ConnectedScatter）
+### 空间自相关连接散点图（ConnectedScatter）
 
 - ID：`fig_l1_connectedscatter`
-- 基本信息：基础统计图，Tier 1，相关关系，Python，已验证可用
-- 分析线：线 3：空间转录组，对应步骤：l3_stats_autocorr
-- 输入：gene_autocorr_human.tsv，登记产物：L3_spatial_autocorr_verified.png
+- 基本信息：基础统计图，Tier 1，空间统计，R，规划中
+- 分析线：未绑定，对应步骤：未绑定
+- 输入：尚未绑定，登记产物：尚未登记
 - 依赖：dplyr、ggplot2
 - 用途：展示变量或样本之间的相关强度，识别共变关系和潜在离群样本。
-- 介绍：展示变量或样本之间的相关强度，识别共变关系和潜在离群样本。参考图型为 ConnectedScatter，属于相关关系类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 3：空间转录组，对应步骤 l3_stats_autocorr，输入 gene_autocorr_human.tsv，登记产物 L3_spatial_autocorr_verified.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。
-- 最新实例：`workspace/projects/DCM_CHAIN_20261109/report/figures/L3_ATM_Ctrl.png`，300 DPI，`71a2ae1b3844942a1270419a3f537ddf7e85068b5190cf25e83937f43091882c`
+- 介绍：展示变量或样本之间的相关强度，识别共变关系和潜在离群样本。参考图型为 ConnectedScatter，属于空间统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 dplyr、ggplot2；该图型暂不可派发生产任务。
 
-### 相关图（Correlogram）
+### 样本相关性三角热图（Correlogram）
 
 - ID：`fig_l1_correlogram`
-- 基本信息：基础统计图，Tier 1，相关关系，R，已验证可用
-- 分析线：线 1：GEO Bulk 常规挖掘，对应步骤：l1_ingest_prep
-- 输入：expr_genes.tsv，登记产物：L1_correlogram_verified.png
+- 基本信息：基础统计图，Tier 1，相关关系，R，规划中
+- 分析线：未绑定，对应步骤：未绑定
+- 输入：尚未绑定，登记产物：尚未登记
 - 依赖：GGally、corrgram、corrplot、ggcorrplot
-- 用途：展示变量或样本之间的相关强度，识别共变关系和潜在离群样本。
-- 介绍：展示变量或样本之间的相关强度，识别共变关系和潜在离群样本。参考图型为 Correlogram，属于相关关系类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_ingest_prep，输入 expr_genes.tsv，登记产物 L1_correlogram_verified.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。
-- 最新实例：`workspace/projects/DCM_CHAIN_20261109/report/figures/L1_within_group_cor.png`，300 DPI，`632b9c10c1dfcdc58d98812a05a95175be615c80ed3f9f7a4651a7266aaf3b72`
+- 用途：用颜色矩阵展示多个基因在样本、细胞类型或空间域中的相对变化。
+- 介绍：用颜色矩阵展示多个基因在样本、细胞类型或空间域中的相对变化。参考图型为 Correlogram，属于相关关系类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 GGally、corrgram、corrplot、ggcorrplot；该图型暂不可派发生产任务。
 
 ### 二维密度图（Density2D）
 
@@ -228,16 +225,15 @@
 - 用途：展示数值随时间或有序阶段的变化趋势，比较轨迹与拐点。
 - 介绍：展示数值随时间或有序阶段的变化趋势，比较轨迹与拐点。参考图型为 Timeseries，属于时间趋势类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 dplyr、ggplot2、patchwork；该图型暂不可派发生产任务。
 
-### 箱线图（BoxPlot）
+### 分组显著性箱线图（BoxPlot）
 
 - ID：`fig_l1_boxplot`
-- 基本信息：基础统计图，Tier 1，分布形态，R，已验证可用
-- 分析线：线 1：GEO Bulk 常规挖掘，对应步骤：l1_de_limma
-- 输入：deg_all.tsv，登记产物：custom_fig_l1_boxplot.png
+- 基本信息：基础统计图，Tier 1，分布形态，R，规划中
+- 分析线：未绑定，对应步骤：未绑定
+- 输入：尚未绑定，登记产物：尚未登记
 - 依赖：dplyr、ggExtra、ggplot2、ggpmisc、ggpubr、ggtext、hrbrthemes、rstatix、viridis
 - 用途：比较数值分布、集中趋势和离散程度，识别偏态与异常值。
-- 介绍：比较数值分布、集中趋势和离散程度，识别偏态与异常值。参考图型为 BoxPlot，属于分布形态类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_de_limma，输入 deg_all.tsv，登记产物 custom_fig_l1_boxplot.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。
-- 最新实例：`workspace/projects/DCM_CHAIN_20261109/report/figures/L1_volcano_limma.png`，300 DPI，`5a099542a88e0d02a28bfcff6382c9e59f1f172432add0cde980d1ebb45851ec`
+- 介绍：比较数值分布、集中趋势和离散程度，识别偏态与异常值。参考图型为 BoxPlot，属于分布形态类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 dplyr、ggExtra、ggplot2、ggpmisc、ggpubr、ggtext、hrbrthemes、rstatix；该图型暂不可派发生产任务。
 
 ### 断点图（BreakPlot）
 
@@ -252,24 +248,22 @@
 ### 密度图（Density）
 
 - ID：`fig_l1_density`
-- 基本信息：基础统计图，Tier 1，分布形态，R，已验证可用
-- 分析线：线 1：GEO Bulk 常规挖掘，对应步骤：l1_ingest_prep
-- 输入：expr_genes.tsv，登记产物：custom_fig_l1_density.png
+- 基本信息：基础统计图，Tier 1，分布形态，R，规划中
+- 分析线：未绑定，对应步骤：未绑定
+- 输入：尚未绑定，登记产物：尚未登记
 - 依赖：cowplot、dplyr、geomtextpath、ggExtra、ggplot2、ggpmisc、ggpubr、hrbrthemes、readr、tidyr、viridis
 - 用途：比较数值分布、集中趋势和离散程度，识别偏态与异常值。
-- 介绍：比较数值分布、集中趋势和离散程度，识别偏态与异常值。参考图型为 Density，属于分布形态类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_ingest_prep，输入 expr_genes.tsv，登记产物 custom_fig_l1_density.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。
-- 最新实例：`workspace/projects/DCM_CHAIN_20261109/report/figures/L1_ma_fdr.png`，300 DPI，`787aeebd1d42e5fd08aac4544c029993d7894228f404fbca94c82a15aefb14cf`
+- 介绍：比较数值分布、集中趋势和离散程度，识别偏态与异常值。参考图型为 Density，属于分布形态类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 cowplot、dplyr、geomtextpath、ggExtra、ggplot2、ggpmisc、ggpubr、hrbrthemes；该图型暂不可派发生产任务。
 
 ### 直方图（Histogram）
 
 - ID：`fig_l1_histogram`
-- 基本信息：基础统计图，Tier 1，分布形态，R，已验证可用
-- 分析线：线 1：GEO Bulk 常规挖掘，对应步骤：l1_ingest_prep
-- 输入：expr_genes.tsv，登记产物：custom_fig_l1_histogram.png
+- 基本信息：基础统计图，Tier 1，分布形态，R，规划中
+- 分析线：未绑定，对应步骤：未绑定
+- 输入：尚未绑定，登记产物：尚未登记
 - 依赖：cowplot、ggExtra、ggplot2、ggpmisc、ggpubr、readr、tidyverse、viridis
 - 用途：比较数值分布、集中趋势和离散程度，识别偏态与异常值。
-- 介绍：比较数值分布、集中趋势和离散程度，识别偏态与异常值。参考图型为 Histogram，属于分布形态类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_ingest_prep，输入 expr_genes.tsv，登记产物 custom_fig_l1_histogram.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。
-- 最新实例：`workspace/projects/DCM_CHAIN_20261109/report/figures/L1_genes_detected.png`，300 DPI，`bd754c9aecb9b9fb129725a4e95d563ebb0c3b2e3377a81819fc49344995b88e`
+- 介绍：比较数值分布、集中趋势和离散程度，识别偏态与异常值。参考图型为 Histogram，属于分布形态类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 cowplot、ggExtra、ggplot2、ggpmisc、ggpubr、readr、tidyverse、viridis；该图型暂不可派发生产任务。
 
 ### 径向柱状图（RadialColumnChart）
 
@@ -291,27 +285,25 @@
 - 用途：比较数值分布、集中趋势和离散程度，识别偏态与异常值。
 - 介绍：比较数值分布、集中趋势和离散程度，识别偏态与异常值。参考图型为 RaincloudPlot，属于分布形态类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 tidyverse、ggbeeswarm、palmerpenguins；该图型暂不可派发生产任务。
 
-### 山脊线图（Ridgeline）
+### GSEA NES 山脊分布图（Ridgeline）
 
 - ID：`fig_l1_ridgeline`
-- 基本信息：基础统计图，Tier 1，分布形态，R，已验证可用
-- 分析线：线 1：GEO Bulk 常规挖掘，对应步骤：l1_enrich_bulk
-- 输入：enrichment_gsea_go.tsv，登记产物：L1_ridgeline_verified.png
+- 基本信息：基础统计图，Tier 1，功能富集，R，规划中
+- 分析线：未绑定，对应步骤：未绑定
+- 输入：尚未绑定，登记产物：尚未登记
 - 依赖：ggplot2、ggridges、hrbrthemes、readr、viridis
-- 用途：比较数值分布、集中趋势和离散程度，识别偏态与异常值。
-- 介绍：比较数值分布、集中趋势和离散程度，识别偏态与异常值。参考图型为 Ridgeline，属于分布形态类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_enrich_bulk，输入 enrichment_gsea_go.tsv，登记产物 L1_ridgeline_verified.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。
-- 最新实例：`workspace/projects/DCM_CHAIN_20261109/report/figures/L1_wgcna_module_trait.png`，300 DPI，`912d4950572d97a747fe9ed3a324cd8f2f0fbd5b72265732593617e1bf24bf0f`
+- 用途：展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。
+- 介绍：展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。参考图型为 Ridgeline，属于功能富集类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 ggplot2、ggridges、hrbrthemes、readr、viridis；该图型暂不可派发生产任务。
 
-### 小提琴图（L1 Violin）
+### 小提琴图（ViolinPlot）
 
-- ID：`fig_l1_violin`
-- 基本信息：基础统计图，Tier 1，分布形态，R，已验证可用
-- 分析线：线 1：GEO Bulk 常规挖掘，对应步骤：l1_de_limma
-- 输入：deg_all.tsv，登记产物：custom_fig_l1_violin.png
+- ID：`fig_l1_violinplot`
+- 基本信息：基础统计图，Tier 1，分布形态，R，规划中
+- 分析线：未绑定，对应步骤：未绑定
+- 输入：尚未绑定，登记产物：尚未登记
 - 依赖：dplyr、forcats、gghalves、ggplot2、ggstatsplot、hrbrthemes、palmerpenguins、readr、tidyr、viridis
 - 用途：比较数值分布、集中趋势和离散程度，识别偏态与异常值。
-- 介绍：比较数值分布、集中趋势和离散程度，识别偏态与异常值。属于分布形态类，来自生产流水线实证模板。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_de_limma，输入 deg_all.tsv，登记产物 custom_fig_l1_violin.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。
-- 最新实例：`workspace/projects/DCM_CHAIN_20261109/report/figures/L1_within_group_cor.png`，300 DPI，`632b9c10c1dfcdc58d98812a05a95175be615c80ed3f9f7a4651a7266aaf3b72`
+- 介绍：比较数值分布、集中趋势和离散程度，识别偏态与异常值。参考图型为 ViolinPlot，属于分布形态类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 dplyr、forcats、gghalves、ggplot2、ggstatsplot、hrbrthemes、palmerpenguins、readr；该图型暂不可派发生产任务。
 
 ### 条形图（BarPlot）
 
@@ -336,24 +328,22 @@
 ### Upset图（UpsetPlot）
 
 - ID：`fig_l1_upsetplot`
-- 基本信息：基础统计图，Tier 1，排序比较，R，已验证可用
-- 分析线：线 1：GEO Bulk 常规挖掘，对应步骤：l1_de_limma
-- 输入：deg_all.tsv，登记产物：L1_upset_verified.png
+- 基本信息：基础统计图，Tier 1，排序比较，R，规划中
+- 分析线：未绑定，对应步骤：未绑定
+- 输入：尚未绑定，登记产物：尚未登记
 - 依赖：UpSetR、ggupset
 - 用途：按统计值排序展示条目，快速定位排名靠前的基因、通路或类别。
-- 介绍：按统计值排序展示条目，快速定位排名靠前的基因、通路或类别。参考图型为 UpsetPlot，属于排序比较类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_de_limma，输入 deg_all.tsv，登记产物 L1_upset_verified.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。
-- 最新实例：`workspace/projects/DCM_CHAIN_20261109/report/figures/L1_hub_overlap.png`，300 DPI，`e1373b87b04c6727fa218af817348b473b8d1a97e9cd860d98fa020423c79b3a`
+- 介绍：按统计值排序展示条目，快速定位排名靠前的基因、通路或类别。参考图型为 UpsetPlot，属于排序比较类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 UpSetR、ggupset；该图型暂不可派发生产任务。
 
 ### 韦恩图（VennPlot）
 
 - ID：`fig_l1_vennplot`
-- 基本信息：基础统计图，Tier 1，排序比较，R，已验证可用
-- 分析线：线 1：GEO Bulk 常规挖掘，对应步骤：l1_de_limma
-- 输入：deg_all.tsv，登记产物：L1_venn_verified.png
+- 基本信息：基础统计图，Tier 1，排序比较，R，规划中
+- 分析线：未绑定，对应步骤：未绑定
+- 输入：尚未绑定，登记产物：尚未登记
 - 依赖：VennDiagram、ggVennDiagram、ggplot2
 - 用途：按统计值排序展示条目，快速定位排名靠前的基因、通路或类别。
-- 介绍：按统计值排序展示条目，快速定位排名靠前的基因、通路或类别。参考图型为 VennPlot，属于排序比较类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_de_limma，输入 deg_all.tsv，登记产物 L1_venn_verified.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。
-- 最新实例：`workspace/projects/DCM_CHAIN_20261109/report/figures/L1_hub_overlap.png`，300 DPI，`e1373b87b04c6727fa218af817348b473b8d1a97e9cd860d98fa020423c79b3a`
+- 介绍：按统计值排序展示条目，快速定位排名靠前的基因、通路或类别。参考图型为 VennPlot，属于排序比较类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 VennDiagram、ggVennDiagram、ggplot2；该图型暂不可派发生产任务。
 
 ## L2：组学常用图
 
@@ -497,8 +487,8 @@
 - 分析线：未绑定，对应步骤：未绑定
 - 输入：尚未绑定，登记产物：尚未登记
 - 依赖：gggenes、ggtree、tidyverse
-- 用途：展示组学统计中的主要模式，辅助比较分组、排序和异常结构。
-- 介绍：展示组学统计中的主要模式，辅助比较分组、排序和异常结构。参考图型为 GeneStructurePlot，属于组学统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 gggenes、ggtree、tidyverse；该图型暂不可派发生产任务。
+- 用途：展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。
+- 介绍：展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。参考图型为 GeneStructurePlot，属于组学统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 gggenes、ggtree、tidyverse；该图型暂不可派发生产任务。
 
 ### KEGG通路图（Kegg Pathway）
 
@@ -507,8 +497,8 @@
 - 分析线：未绑定，对应步骤：未绑定
 - 输入：尚未绑定，登记产物：尚未登记
 - 依赖：dbplyr、pathview
-- 用途：展示组学统计中的主要模式，辅助比较分组、排序和异常结构。
-- 介绍：展示组学统计中的主要模式，辅助比较分组、排序和异常结构。属于组学统计类，来自生产流水线实证模板。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为受 R 版本兼容阻塞，依赖 dbplyr、pathview；该图型暂不可派发生产任务。
+- 用途：展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。
+- 介绍：展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。属于组学统计类，来自生产流水线实证模板。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为受 R 版本兼容阻塞，依赖 dbplyr、pathview；该图型暂不可派发生产任务。
 
 ### 曼哈顿图（ManhattanPlot）
 
@@ -558,8 +548,8 @@
 - 分析线：未绑定，对应步骤：未绑定
 - 输入：尚未绑定，登记产物：尚未登记
 - 依赖：未登记
-- 用途：比较各类别在总体中的占比，观察组成结构是否随分组变化。
-- 介绍：比较各类别在总体中的占比，观察组成结构是否随分组变化。参考图型为 TextEnrichmentBarPlot，属于组学统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 未登记第三方依赖；该图型暂不可派发生产任务。
+- 用途：展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。
+- 介绍：展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。参考图型为 TextEnrichmentBarPlot，属于组学统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 未登记第三方依赖；该图型暂不可派发生产任务。
 
 ### 火山图（L2 Volcano）
 
@@ -624,26 +614,26 @@
 - 用途：展示差异分析中的效应量与显著性，核对阈值线和显著基因数量。
 - 介绍：展示差异分析中的效应量与显著性，核对阈值线和显著基因数量。参考图型为 ConfusionMatrixPlot，属于Python 通用统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 matplotlib、seaborn、numpy、scikit-learn；该图型暂不可派发生产任务。
 
-### 富集分析图（Python）（EnrichmentPlot）
+### ORA 富集气泡图（Python）（EnrichmentPlot）
 
 - ID：`fig_l2p_enrichmentplot`
 - 基本信息：组学常用图，Tier 2，Python 通用统计，Python，已验证可用
 - 分析线：线 2：单细胞转录组，对应步骤：l2_branches_enrich
 - 输入：enrichment_ora.tsv，登记产物：L2p_enrichment_verified.png
 - 依赖：matplotlib、seaborn、pandas、numpy
-- 用途：展示Python 通用统计中的主要模式，辅助比较分组、排序和异常结构。
-- 介绍：展示Python 通用统计中的主要模式，辅助比较分组、排序和异常结构。参考图型为 EnrichmentPlot，属于Python 通用统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 2：单细胞转录组，对应步骤 l2_branches_enrich，输入 enrichment_ora.tsv，登记产物 L2p_enrichment_verified.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。
+- 用途：展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。
+- 介绍：展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。参考图型为 EnrichmentPlot，属于Python 通用统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 2：单细胞转录组，对应步骤 l2_branches_enrich，输入 enrichment_ora.tsv，登记产物 L2p_enrichment_verified.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。
 - 最新实例：`workspace/projects/DCM_CHAIN_20261109/report/figures/L1_gsea_top.png`，300 DPI，`59163d72604f6add541be370a956196e8dbd837b0cd904a7632630ef155fa18f`
 
-### GSEA 运行分数图（Python）（GseaPlot）
+### GSEA NES 条形图（Python）（GseaPlot）
 
 - ID：`fig_l2p_gseaplot`
 - 基本信息：组学常用图，Tier 2，Python 通用统计，Python，已验证可用
 - 分析线：线 2：单细胞转录组，对应步骤：l2_branches_enrich
 - 输入：enrichment_gsea.tsv，登记产物：L2p_gsea_verified.png
 - 依赖：matplotlib、seaborn、pandas、numpy
-- 用途：展示Python 通用统计中的主要模式，辅助比较分组、排序和异常结构。
-- 介绍：展示Python 通用统计中的主要模式，辅助比较分组、排序和异常结构。参考图型为 GseaPlot，属于Python 通用统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 2：单细胞转录组，对应步骤 l2_branches_enrich，输入 enrichment_gsea.tsv，登记产物 L2p_gsea_verified.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。
+- 用途：展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。
+- 介绍：展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。参考图型为 GseaPlot，属于Python 通用统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 2：单细胞转录组，对应步骤 l2_branches_enrich，输入 enrichment_gsea.tsv，登记产物 L2p_gsea_verified.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。
 - 最新实例：`workspace/projects/DCM_CHAIN_20261109/report/figures/L1_gsea_top.png`，300 DPI，`59163d72604f6add541be370a956196e8dbd837b0cd904a7632630ef155fa18f`
 
 ### 热力图（Python）（Heatmap）
@@ -680,13 +670,12 @@
 ### 散点图（Python）（ScatterPlot）
 
 - ID：`fig_l2p_scatterplot`
-- 基本信息：组学常用图，Tier 2，Python 通用统计，Python，已验证可用
-- 分析线：线 2：单细胞转录组，对应步骤：l2_integrate_annotate
-- 输入：cluster_markers.tsv，登记产物：custom_fig_l2p_scatterplot.png
+- 基本信息：组学常用图，Tier 2，Python 通用统计，Python，规划中
+- 分析线：未绑定，对应步骤：未绑定
+- 输入：尚未绑定，登记产物：尚未登记
 - 依赖：matplotlib、seaborn、pandas、numpy、scipy
 - 用途：比较标志基因在不同细胞类型或分组中的表达，核验注释和定位。
-- 介绍：比较标志基因在不同细胞类型或分组中的表达，核验注释和定位。参考图型为 ScatterPlot，属于Python 通用统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 2：单细胞转录组，对应步骤 l2_integrate_annotate，输入 cluster_markers.tsv，登记产物 custom_fig_l2p_scatterplot.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。
-- 最新实例：`workspace/projects/DCM_CHAIN_20261109/report/figures/L2_umap_celltype.png`，300 DPI，`4acade660531882d3df4e6409b45b55934d6c371c7bea0168847df832d31af6c`
+- 介绍：比较标志基因在不同细胞类型或分组中的表达，核验注释和定位。参考图型为 ScatterPlot，属于Python 通用统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 matplotlib、seaborn、pandas、numpy、scipy；该图型暂不可派发生产任务。
 
 ### 单细胞点图（Python）（L2p Dotplot）
 
@@ -709,7 +698,7 @@
 - 用途：比较各类别在总体中的占比，观察组成结构是否随分组变化。
 - 介绍：比较各类别在总体中的占比，观察组成结构是否随分组变化。参考图型为 ScrnaStackedViolin，属于Python 通用统计类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 scanpy、anndata、pandas、numpy、matplotlib；该图型暂不可派发生产任务。
 
-### 单细胞 UMAP 图（Python）（L2p Umap）
+### 样本 UMAP 降维图（Python）（L2p Umap）
 
 - ID：`fig_l2p_umap`
 - 基本信息：组学常用图，Tier 2，Python 通用统计，Python，已验证可用
@@ -913,13 +902,12 @@
 ### 桑基图（Sankey）
 
 - ID：`fig_l3_sankey`
-- 基本信息：高级统计图，Tier 3，比例构成，R，已验证可用
-- 分析线：线 1：GEO Bulk 常规挖掘，对应步骤：l1_de_wgcna
-- 输入：wgcna_modules.tsv，登记产物：custom_fig_l3_sankey.png
+- 基本信息：高级统计图，Tier 3，比例构成，R，规划中
+- 分析线：未绑定，对应步骤：未绑定
+- 输入：尚未绑定，登记产物：尚未登记
 - 依赖：dplyr、ggalluvial、ggplot2、networkD3、openxlsx、readxl、tidyverse、webshot
 - 用途：比较各类别在总体中的占比，观察组成结构是否随分组变化。
-- 介绍：比较各类别在总体中的占比，观察组成结构是否随分组变化。参考图型为 Sankey，属于比例构成类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。绑定线 1：GEO Bulk 常规挖掘，对应步骤 l1_de_wgcna，输入 wgcna_modules.tsv，登记产物 custom_fig_l3_sankey.png。已通过就绪准入，按单图规范输出 300 DPI PNG，图例置于轴框外右侧，图注置于左下角。
-- 最新实例：`workspace/projects/DCM_CHAIN_20261109/report/figures/L1_wgcna_module_trait.png`，300 DPI，`912d4950572d97a747fe9ed3a324cd8f2f0fbd5b72265732593617e1bf24bf0f`
+- 介绍：比较各类别在总体中的占比，观察组成结构是否随分组变化。参考图型为 Sankey，属于比例构成类。读取时先看坐标轴、颜色映射和图例，再结合样本量、阈值与分组口径判断结论。当前仅作候选目录展示，未进入生产可选清单，输入和产物仍待映射。当前状态为规划中，依赖 dplyr、ggalluvial、ggplot2、networkD3、openxlsx、readxl、tidyverse、webshot；该图型暂不可派发生产任务。
 
 ### 空间功能域切片分布图（Spatial Functional Domains）
 

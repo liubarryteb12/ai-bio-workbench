@@ -34,7 +34,7 @@ node ops\build_portable_package.mjs
 
 构建器会先做 `runtimeFiles()` 预检：缺目录 → 报「从哪组装」的指引；
 缺任一关键二进制（node/ssh/scp/tar/sha256sum/openssl）→ 点名缺谁并拒绝打包。
-两项都过才会继续产出 `dist/portable/`。**因此这份说明的正确性是可执行的，
+两项都过才会继续产出 `software/`。**因此这份说明的正确性是可执行的，
 不是口头承诺**，这也是它作为测试替身（vendor 不入库，测试无法 import 二进制）的补偿。
 
 ## 为什么不是下载清单方案

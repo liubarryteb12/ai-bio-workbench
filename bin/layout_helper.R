@@ -31,8 +31,8 @@ LAYOUT_TEMPLATES <- list(
   ),
   template_16x9 = list(
     aspect_ratio = "16:9",
-    legend_position = "bottom_center",
-    legend_direction = "horizontal",
+    legend_position = "outside_right",
+    legend_direction = "vertical",
     axis_style = "boxed",
     x_label_rotation = "auto_45",
     show_footnote_panel = TRUE
@@ -80,6 +80,9 @@ normalize_layout_spec_r <- function(spec = NULL) {
       if (!is.null(incoming[[key]])) rules[[key]] <- incoming[[key]]
     }
   }
+  # 图例位置是全局硬规则，历史 project.json 也不得把图例拉回底部或轴内。
+  rules$legend_position <- "outside_right"
+  rules$legend_direction <- "vertical"
   dpi <- spec$dpi
   if (is.null(dpi) || is.na(suppressWarnings(as.numeric(dpi)))) dpi <- 300
   list(template_id = template_id, dpi = as.numeric(dpi), theme_rules = rules)
@@ -133,18 +136,12 @@ apply_sci_plot_layout_r <- function(p, layout_spec = NULL, footnote_text = NULL,
   normalized <- normalize_layout_spec_r(layout_spec)
   rules <- normalized$theme_rules
 
-  position <- rules$legend_position
-  if (identical(position, "bottom_center")) {
-    legend_position <- "bottom"
-    legend_direction <- "horizontal"
-    legend_box <- "horizontal"
-  } else {
-    # 右侧外挂：ggplot 的 legend.position="right" 本身就在面板外，
-    # 不需要像 matplotlib 那样手动算 bbox
-    legend_position <- "right"
-    legend_direction <- "vertical"
-    legend_box <- "vertical"
-  }
+  position <- "outside_right"
+  # 右侧外挂：ggplot 的 legend.position="right" 本身就在面板外，
+  # 不需要像 matplotlib 那样手动算 bbox。
+  legend_position <- "right"
+  legend_direction <- "vertical"
+  legend_box <- "vertical"
 
   # X 轴标签避让：auto_45 只在"标签长且项多"时触发，避免无谓倾斜
   angle <- 0
@@ -178,21 +175,13 @@ apply_sci_plot_layout_r <- function(p, layout_spec = NULL, footnote_text = NULL,
     axis.text.x = ggplot2::element_text(angle = angle, hjust = hjust, vjust = if (angle > 0) 1 else 0.5, size = 8),
     axis.text.y = ggplot2::element_text(size = 8),
     axis.title = ggplot2::element_text(size = 9),
-    plot.title = ggplot2::element_text(
-      size = 10, face = "bold",
-      hjust = if (identical(position, "bottom_center")) 0.5 else 0
-    ),
+    plot.title = ggplot2::element_text(size = 10, face = "bold", hjust = 0),
     # 图注一律左下起（figure_spec §三之二：横版在轴框下方，从左边开始），
     # 不能依赖脚本自己写 hjust —— ggplot 默认 caption 是右对齐的。
     plot.caption = ggplot2::element_text(hjust = 0, size = 8, colour = "grey20"),
     plot.caption.position = "plot",
     plot.title.position = "plot"
   )
-
-  if (identical(position, "bottom_center")) {
-    # 底部预留 15% 安全内边距，防图例与脚注贴边被裁
-    p <- p + ggplot2::theme(plot.margin = ggplot2::margin(8, 8, 22, 8))
-  }
 
   if (!is.null(title)) {
     p <- p + ggplot2::labs(title = title)

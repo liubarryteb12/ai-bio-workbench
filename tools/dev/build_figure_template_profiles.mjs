@@ -88,6 +88,7 @@ const CATEGORY_LABELS = {
   DimReduction: '降维嵌入',
   Distribution: '分布形态',
   Downstream: '下游网络',
+  Enrichment: '功能富集',
   Omics: '组学统计',
   Proportion: '比例构成',
   Python: 'Python 通用统计',
@@ -132,6 +133,7 @@ const V2_NAMES = {
 };
 
 const PURPOSE_RULES = [
+  [/(enrich|gsea|富集|通路|nes)/i, '展示富集分析中通路或功能条目的富集方向与强度，识别被激活与被抑制的通路。'],
   [/(volcano|火山)/i, '展示差异倍数和显著性，快速识别上调、下调和不显著的基因。'],
   [/(pca|主成分|umap|降维|embed)/i, '展示降维后的样本或细胞分布，检查分组结构和批次效应。'],
   [/(heatmap|热图)/i, '用颜色矩阵展示多个基因在样本、细胞类型或空间域中的相对变化。'],

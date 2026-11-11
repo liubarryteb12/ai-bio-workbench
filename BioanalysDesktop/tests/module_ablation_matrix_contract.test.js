@@ -53,7 +53,9 @@ test('remove-one-module 与八类故障逐模块 fail closed', () => {
 
 test('图件消费只允许 Ready 单图，退役组合图不得带证据', () => {
   const matrix = buildMatrix();
-  assert.equal(matrix.counts.ready_figures, 39);
+  const allowlist = JSON.parse(read('tools/dev/figure_ready_allowlist.json'));
+  assert.equal(matrix.counts.ready_figures, allowlist.ready_baseline);
+  assert.equal(matrix.counts.ready_figures, allowlist.ids.length);
   assert.deepEqual(matrix.figures.issues, []);
   const templates = JSON.parse(read('tools/bio/figure_templates.json')).templates;
   for (const id of ['fig_l3_multipanel', 'fig_l3_combinationpanel', 'fig_l3_sankeybubbleplot']) {

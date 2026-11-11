@@ -122,14 +122,15 @@ p <- ggplot(scores, aes(x = PC1, y = PC2, color = group)) +
   geom_point(size = 3) +
   stat_ellipse(aes(color = group), type = "norm") +
   scale_color_manual(values = setNames(group_colors, group_levels)) +
-  labs(caption = paste(
+  labs(title = "样本PCA分组散点图", caption = paste(
     "line1: PCA on top variable genes (step pca_matrix)",
     sprintf("PC1 %.1f%% | PC2 %.1f%%", var_explained[1], var_explained[2]),
     sprintf("n=%d samples, top %d variable genes", length(samples), top_n),
     sep = "\n")) +
   theme_classic(base_size = 12) +
   theme(plot.caption.position = "plot",
-        plot.caption = element_text(hjust = 0, size = 8))
+        plot.caption = element_text(hjust = 0, size = 8),
+        plot.title = element_text(hjust = 0.5, size = 12))
 ggsave(pca_png, p, width = 6, height = 5, dpi = 300)
 
 report_lines <- c(

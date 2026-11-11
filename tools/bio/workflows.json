@@ -273,7 +273,8 @@
               "requires": [
                 "expr_genes.tsv",
                 "group_map.tsv",
-                "key_genes.tsv"
+                "key_genes.tsv",
+                "deg_all.tsv"
               ],
               "produces": [
                 "ml_report.txt",

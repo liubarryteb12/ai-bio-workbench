@@ -13,20 +13,10 @@ const CHAIN_FIGURES = 'workspace/projects/DCM_CHAIN_20261109/report/figures';
 
 const LATEST_DCM_MAPPING = {
   fig_l1_groupedbar: path.posix.join(CHAIN_FIGURES, 'L1_gsea_top.png'),
-  fig_l1_bubble: path.posix.join(CHAIN_FIGURES, 'L1_hub_overlap.png'),
-  fig_l1_connectedscatter: path.posix.join(CHAIN_FIGURES, 'L3_ATM_Ctrl.png'),
-  fig_l1_correlogram: path.posix.join(CHAIN_FIGURES, 'L1_within_group_cor.png'),
   fig_l2_heatmap: path.posix.join(CHAIN_FIGURES, 'L1_topvar_heatmap.png'),
   fig_l2_pca: path.posix.join(CHAIN_FIGURES, 'L1_pca.png'),
   fig_l1_scatter: path.posix.join(CHAIN_FIGURES, 'L1_wgcna_mm_gs.png'),
   fig_l2_umap: path.posix.join(CHAIN_FIGURES, 'L2_umap_celltype.png'),
-  fig_l1_boxplot: path.posix.join(CHAIN_FIGURES, 'L1_volcano_limma.png'),
-  fig_l1_density: path.posix.join(CHAIN_FIGURES, 'L1_ma_fdr.png'),
-  fig_l1_histogram: path.posix.join(CHAIN_FIGURES, 'L1_genes_detected.png'),
-  fig_l1_ridgeline: path.posix.join(CHAIN_FIGURES, 'L1_wgcna_module_trait.png'),
-  fig_l1_violin: path.posix.join(CHAIN_FIGURES, 'L1_within_group_cor.png'),
-  fig_l1_upsetplot: path.posix.join(CHAIN_FIGURES, 'L1_hub_overlap.png'),
-  fig_l1_vennplot: path.posix.join(CHAIN_FIGURES, 'L1_hub_overlap.png'),
   fig_l2_networkplot: path.posix.join(CHAIN_FIGURES, 'L1_ppi_network.png'),
   fig_l2_volcano: path.posix.join(CHAIN_FIGURES, 'L1_volcano.png'),
   fig_l2p_barplot: path.posix.join(CHAIN_FIGURES, 'L2_celltype_composition.png'),
@@ -34,13 +24,11 @@ const LATEST_DCM_MAPPING = {
   fig_l2p_enrichmentplot: path.posix.join(CHAIN_FIGURES, 'L1_gsea_top.png'),
   fig_l2p_gseaplot: path.posix.join(CHAIN_FIGURES, 'L1_gsea_top.png'),
   fig_l2p_heatmap: path.posix.join(CHAIN_FIGURES, 'L1_cluster_heatmap.png'),
-  fig_l2p_scatterplot: path.posix.join(CHAIN_FIGURES, 'L2_umap_celltype.png'),
   fig_l2p_dotplot: path.posix.join(CHAIN_FIGURES, 'L2_umap_group.png'),
   fig_l2p_umap: path.posix.join(CHAIN_FIGURES, 'L2_umap_celltype.png'),
   fig_l2p_violin: path.posix.join(CHAIN_FIGURES, 'L2_celltype_composition.png'),
   fig_l2p_volcano: path.posix.join(CHAIN_FIGURES, 'L2_fibroblast_volcano.png'),
   fig_l3_chorddiagram: path.posix.join(CHAIN_FIGURES, 'L2_cellcomm_top20.png'),
-  fig_l3_sankey: path.posix.join(CHAIN_FIGURES, 'L1_wgcna_module_trait.png'),
   fig_l3_banksy_domain: path.posix.join(CHAIN_FIGURES, 'L3_banksy_domain.png'),
   fig_l3_nnls_deconv_pie: path.posix.join(CHAIN_FIGURES, 'L3_nnls_deconv_pie.png'),
   fig_l3_multigene_coloc: path.posix.join(CHAIN_FIGURES, 'L3_multigene_coloc.png'),
@@ -121,7 +109,7 @@ function main() {
       console.error('FIGURE_PROJECT_EXAMPLES_FAIL 清单与最新 DCM 图实例不一致');
       process.exit(1);
     }
-    console.log('FIGURE_PROJECT_EXAMPLES_OK 39 条最新 DCM 图实例已对齐');
+    console.log('FIGURE_PROJECT_EXAMPLES_OK 27 条最新 DCM 图实例已对齐');
     return;
   }
   const doc = collect();

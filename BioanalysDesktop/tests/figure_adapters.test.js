@@ -24,25 +24,13 @@ const SUPPORTED_IDS = [
   'fig_l2p_umap',
   'fig_l1_groupedbar',
   'fig_l1_scatter',
-  'fig_l1_boxplot',
-  'fig_l1_density',
-  'fig_l1_histogram',
-  'fig_l1_violin',
   'fig_l2_umap',
-  'fig_l2p_violin',
-  'fig_l3_sankey',
-  'fig_l2p_scatterplot',
   'fig_l2p_barplot',
   'fig_l2p_boxplot',
   'fig_l2p_heatmap',
-  'fig_l1_ridgeline',
-  'fig_l1_upsetplot',
-  'fig_l1_vennplot',
   'fig_l2p_gseaplot',
   'fig_l2p_enrichmentplot',
   'fig_l2_networkplot',
-  'fig_l1_correlogram',
-  'fig_l1_bubble',
   'fig_l3_chorddiagram',
 ];
 
@@ -237,33 +225,6 @@ const CASES = {
     adaptVars: { input_data: 'data/line2_scrna/processed/cellcomm_interactions.tsv' },
     marker: 'chord',
   },
-  fig_l1_connectedscatter: {
-    source: 'references/05.可参考生信代码/可用代码预筛选/源码/L3_高级组合图/L3_spatial_autocorr_code.R',
-    language: 'r',
-    lineId: 'line3_spatial',
-    inputPath: 'data/line3_spatial/processed/gene_autocorr_human.tsv',
-    canonicalOutput: 'L3_spatial_autocorr_verified.png',
-    adaptVars: { input_data: 'data/line3_spatial/processed/gene_autocorr_human.tsv' },
-    marker: 'autocorr',
-  },
-  fig_l1_correlogram: {
-    source: 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R',
-    language: 'r',
-    lineId: 'line1_bulk',
-    inputPath: 'data/line1_bulk/processed/expr_genes.tsv',
-    canonicalOutput: 'L1_correlogram_verified.png',
-    adaptVars: { input_data: 'data/line1_bulk/processed/expr_genes.tsv' },
-    marker: 'correlogram',
-  },
-  fig_l1_bubble: {
-    source: 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R',
-    language: 'r',
-    lineId: 'line1_bulk',
-    inputPath: 'data/line1_bulk/processed/deg_all.tsv',
-    canonicalOutput: 'L1_bubble_verified.png',
-    adaptVars: { input_data: 'data/line1_bulk/processed/deg_all.tsv' },
-    marker: 'bubble',
-  },
   fig_l2p_gseaplot: {
     source: 'references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_enrich_ko_code.py',
     language: 'python',
@@ -290,33 +251,6 @@ const CASES = {
     canonicalOutput: 'L2p_konetwork_verified.png',
     adaptVars: { input_data: 'data/line2_scrna/processed/dr_regulatory_network.tsv' },
     marker: 'network',
-  },
-  fig_l1_ridgeline: {
-    source: 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R',
-    language: 'r',
-    lineId: 'line1_bulk',
-    inputPath: 'data/line1_bulk/processed/enrichment_gsea_go.tsv',
-    canonicalOutput: 'L1_ridgeline_verified.png',
-    adaptVars: { input_data: 'data/line1_bulk/processed/enrichment_gsea_go.tsv' },
-    marker: 'ridgeline',
-  },
-  fig_l1_upsetplot: {
-    source: 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R',
-    language: 'r',
-    lineId: 'line1_bulk',
-    inputPath: 'data/line1_bulk/processed/deg_all.tsv',
-    canonicalOutput: 'L1_upset_verified.png',
-    adaptVars: { input_data: 'data/line1_bulk/processed/deg_all.tsv' },
-    marker: 'upset',
-  },
-  fig_l1_vennplot: {
-    source: 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_p0_gallery_code.R',
-    language: 'r',
-    lineId: 'line1_bulk',
-    inputPath: 'data/line1_bulk/processed/deg_all.tsv',
-    canonicalOutput: 'L1_venn_verified.png',
-    adaptVars: { input_data: 'data/line1_bulk/processed/deg_all.tsv' },
-    marker: 'venn',
   },
   fig_l2p_violin: {
     lineId: 'line2_scrna',
@@ -467,7 +401,7 @@ test('R adapted sources declare the BIOANALYS_SEED contract', () => {
   const rIds = SUPPORTED_IDS.filter((templateId) => registryById.get(templateId).language === 'r');
   // 水位线而非相等：每准入一个 R 模板都要改一次魔数，等于把准入成本抬到最高。
   // 这里只守「R 模板不许从 11 条倒退」，新增模板由 parity 的 ready 断言负责。
-  assert.ok(rIds.length >= 11, `R 模板数从 11 倒退：${rIds.length}`);
+  assert.ok(rIds.length >= 5, `R 模板数从 5 倒退：${rIds.length}`);
   for (const templateId of rIds) {
     const source = buildSource(templateId);
     assert.match(source, /BIOANALYS_SEED/);
@@ -575,85 +509,6 @@ const CANDIDATE_ADAPTERS = {
     },
     marker: 'scatter',
   },
-  fig_l1_boxplot: {
-    source: 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_boxplot_code.R',
-    language: 'r',
-    lineId: 'line1_bulk',
-    inputPath: 'data/line1_bulk/processed/deg_all.tsv',
-    canonicalOutput: 'L1_boxplot_verified.png',
-    adaptVars: {
-      input_data: 'data/line1_bulk/processed/deg_all.tsv',
-      value_col: 'log2FC',
-    },
-    marker: 'boxplot',
-  },
-  fig_l1_density: {
-    source: 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R',
-    language: 'r',
-    lineId: 'line1_bulk',
-    inputPath: 'data/line1_bulk/processed/expr_genes.tsv',
-    canonicalOutput: 'L1_density_verified.png',
-    adaptVars: { input_data: 'data/line1_bulk/processed/expr_genes.tsv' },
-    marker: 'density',
-  },
-  fig_l1_histogram: {
-    source: 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_rest_code.R',
-    language: 'r',
-    lineId: 'line1_bulk',
-    inputPath: 'data/line1_bulk/processed/expr_genes.tsv',
-    canonicalOutput: 'L1_histogram_verified.png',
-    adaptVars: { input_data: 'data/line1_bulk/processed/expr_genes.tsv' },
-    marker: 'histogram',
-  },
-  fig_l1_violin: {
-    source: 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L1_violin_code.R',
-    language: 'r',
-    lineId: 'line1_bulk',
-    inputPath: 'data/line1_bulk/processed/deg_all.tsv',
-    canonicalOutput: 'L1_violin_verified.png',
-    adaptVars: {
-      input_data: 'data/line1_bulk/processed/deg_all.tsv',
-      value_col: 'log2FC',
-    },
-    marker: 'violin',
-  },
-  fig_l2_umap: {
-    source: 'references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_umap_code.py',
-    language: 'python',
-    lineId: 'line2_scrna',
-    inputPath: 'data/line2_scrna/processed/scrna_clustered.h5ad',
-    canonicalOutput: 'umap_L2p_umap_verified.png',
-    adaptVars: {
-      input_data: 'data/line2_scrna/processed/scrna_clustered.h5ad',
-      group_col: 'leiden',
-    },
-    marker: 'umap',
-  },
-  fig_l2p_violin: {
-    source: 'references/05.可参考生信代码/可用代码预筛选/源码/L2_组学常用图/L2p_violin_code.py',
-    language: 'python',
-    lineId: 'line2_scrna',
-    inputPath: 'data/line2_scrna/processed/celltype_composition.tsv',
-    canonicalOutput: 'figures/violin_L2p_violin_verified.png',
-    adaptVars: {
-      input_data: 'data/line2_scrna/processed/celltype_composition.tsv',
-      group_col: 'celltype',
-      value_col: 'prop',
-    },
-    marker: 'violin',
-  },
-  fig_l3_sankey: {
-    source: 'references/05.可参考生信代码/可用代码预筛选/源码/_meta/R453_compat/L3_sankey_code.R',
-    language: 'r',
-    lineId: 'line1_bulk',
-    inputPath: 'data/line1_bulk/processed/wgcna_modules.tsv',
-    canonicalOutput: 'L3_sankey_verified.png',
-    adaptVars: {
-      input_data: 'data/line1_bulk/processed/wgcna_modules.tsv',
-      module_col: 'module',
-    },
-    marker: 'sankey',
-  },
 };
 
 // ── Prelude 符号防覆盖（2026-11-02，4 Argon 第十六轮 Priority 2）──
@@ -750,19 +605,3 @@ test('火山图叠加层按三档阈值与红蓝灰语义渲染（第二十九�
   assert.equal(hasCjkOutsideComments(source), false, '图内文字不得出现中文（注释除外）');
 });
 
-test('桑基图叠加层走真 ggalluvial 且不用手绘多边形（第二十九轮 ③）', () => {
-  const source = buildSource('fig_l3_sankey');
-  assert.match(source, /library\(ggalluvial\)/);
-  assert.match(source, /geom_alluvium\(aes\(fill = axis_module\)/);
-  assert.match(source, /geom_stratum\(/);
-  assert.match(source, /stat = "stratum"/);
-  assert.match(source, /quantile\(kept_counts, probs = c\(1\/3, 2\/3\)/);
-  assert.equal(/segments\(/.test(source), false, '桑基图禁止手绘 segments');
-  assert.equal(/rect\(/.test(source), false, '桑基图禁止手绘 rect');
-  assert.match(source, /ADAPT_REAL_INPUT_OK sankey/);
-  // 图例必须出轴框且带真实基因数，标题改图注（禁 title/subtitle）
-  assert.match(source, /legend\.position = "right"/);
-  assert.match(source, /sprintf\("%s \(%d\)", counts_df\$module, counts_df\$n\)/);
-  assert.equal(/labs\([^)]*title =/.test(source), false, '桑基图标题改走 caption');
-  assert.equal(hasCjkOutsideComments(source), false, '图内文字不得出现中文（注释除外）');
-});
