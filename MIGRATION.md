@@ -90,7 +90,7 @@
 | W7 | SOP 转 `skills/` 规约资产 | 首个 skill（工单编排）YAML 解析绿；exit_criteria 与门禁一一对应 |
 | W8 | 台账与数据面迁 `ledger/`、`workspace/` | ledger 契约绿；服务器侧路径同步方案落地 |
 | W9 | `reference/` 改名 `references/` | 索引双向匹配；gitignore 白名单同步 |
-| W10 | 总收口 | 官方全量测试对齐基线；全量门禁（当前 25 道）全绿；便携包重建一致；AGENTS.md 与 docs 导航全更新 |
+| W10 | 总收口 | 官方全量测试对齐基线；全量门禁（当前 27 道）全绿；便携包重建一致；AGENTS.md 与 docs 导航全更新 |
 
 ## 六、外部项目迁入六步 SOP（面向后续新项目）
 
@@ -123,7 +123,7 @@
 1. 治理文件在根目录，控制面在 `core/`、`schemas/`、`skills/`、`tools/`，数据面在
    `workspace/projects/`，台账在 `ledger/`，只读参考在 `references/`，运行证据在 `docs/runs/`。
 2. 官方全量测试与基线一致：1953 tests / 1952 pass / 0 fail / 1 skipped。
-3. `node tools/dev/run_all_gates.mjs --skip-tests` 25 道全绿；`metrics_sync --check` 基线一致。
+3. `node tools/dev/run_all_gates.mjs --skip-tests` 27 道全绿；`metrics_sync --check` 基线一致。
 4. 便携包重建完成，`MANIFEST.sha256` 覆盖 1891 个文件，`dist_parity` 关键资产零分叉。
 5. 设备侧项目根、台账根与 QA 事故脚本保持固定布局，仓库改名不推导设备路径。
 

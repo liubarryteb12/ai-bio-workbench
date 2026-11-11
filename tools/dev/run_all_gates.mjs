@@ -108,6 +108,10 @@ export const GATES = Object.freeze([
   // 离线环境不会被它拖红，但 [SKIP] 行会明确写出少验了什么。
   { id: 'k40_parity', label: 'K40 脚本同源（设备离线时 SKIP）', exec: 'node', args: ['tools/dev/k40_script_parity.mjs'], cwd: '.', slow: false, skipExitCodes: [2] },
   { id: 'q3q2_mutation', label: 'Q3/Q2 变异反证（6 条）', exec: 'node', args: ['tools/dev/q3q2_mutation_gate.mjs'], cwd: '.', slow: false },
+  // 控制面门禁：租约与队列都是「能不能开写」的闸门，放在全量测试之前，
+  // 让控制面回归在 20 秒内暴露，不必等三分钟的全量测试。
+  { id: 'authority_lease', label: '单权威租约准入（含变异自证）', exec: 'node', args: ['tools/dev/authority_lease_gate.mjs'], cwd: '.', slow: false },
+  { id: 'work_order_queue', label: '队列单消费者（含变异自证）', exec: 'node', args: ['tools/dev/work_order_queue_gate.mjs'], cwd: '.', slow: false },
   // metrics 内部跑全量 node --test 的自限是 600 秒。外层必须比它更宽，
   // 否则慢机上外层先动手杀进程，TAP 被截断，出来的红是「假红」而不是用例真挂。
   { id: 'metrics', label: '全量测试 + 运行时 skip + 基线一致', exec: 'node', args: ['tools/dev/metrics_sync.mjs', '--check'], cwd: '.', slow: true, timeoutMs: 900000 },

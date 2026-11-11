@@ -10,7 +10,7 @@
  *   L3 便携运行时  vendor/tools/ -> runtime/（node + MSYS ssh/scp/tar/sha256sum/openssl/bash）
  *   L4 运行时产物  .tmp/ outputs/ project_data/ node_modules/ .npmcache/ 一律不进包
  *
- * 判据不是「复制成功」，而是「净化 PATH 下 gate:all 25 道全绿」：
+ * 判据不是「复制成功」，而是「净化 PATH 下 gate:all 27 道全绿」：
  * --verify 会把 PATH 缩到只有 runtime/ 与系统目录再跑一遍门禁。
  *
  * 纯 node:fs + 一次 git ls-files（打包机有 git，目标机不需要）。
@@ -153,7 +153,7 @@ function writeReadme(outDir, stats) {
     '',
     '## 先做这一步',
     '',
-    '运行 gate.cmd（加 --skip-tests 可快检）。看到 GATE_ALL_OK 25 道全绿即表示这台机器上一切就绪。',
+    '运行 gate.cmd（加 --skip-tests 可快检）。看到 GATE_ALL_OK 27 道全绿即表示这台机器上一切就绪。',
     '',
     '## 点三点开始分析',
     '',
@@ -165,7 +165,7 @@ function writeReadme(outDir, stats) {
     '',
     '| 命令 | 作用 |',
     '| --- | --- |',
-    '| gate.cmd | 25 道总门禁（按 GATES 清单顺序执行） |',
+    '| gate.cmd | 27 道总门禁（按 GATES 清单顺序执行） |',
     '| delivery.cmd <tar.gz> | 交付包四关验收（侧车哈希、解包结构、签名、清单闭合），全绿才写回执 |',
     '| toolchain.cmd | 打印每个工具解析到了哪个路径 |',
     '| test.cmd | 只跑全量测试（约 140 秒，排查用） |',
