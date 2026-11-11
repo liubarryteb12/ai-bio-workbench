@@ -33,6 +33,11 @@ test('门禁清单：齐全，顺序越便宜越靠前，只有最后一道是 s
   // 主链把它转成带标签的 SKIP。少了这个字段，离线机器会被它整条拖红。
   const k40 = GATES.find((g) => g.id === 'k40_parity');
   assert.deepEqual(k40.skipExitCodes, [2], 'k40_parity 必须把退出码 2 声明为 SKIP');
+  // metrics 内部跑全量测试的自限是 600 秒。外层上限必须严格宽于它，
+  // 否则慢机上外层先杀进程，TAP 缺尾部汇总，报出来的是假红而不是用例真挂。
+  const metricsGate = GATES.find((g) => g.id === 'metrics');
+  assert.ok(Number(metricsGate.timeoutMs) > 600000,
+    'metrics 的外层上限必须宽于内部 600 秒，实际 ' + metricsGate.timeoutMs);
   assert.equal(GATES.filter((g) => g.slow).length, 1, '只能有一道 slow（全量测试）');
   assert.equal(GATES[GATES.length - 1].slow, true, '最慢的一道必须排最后');
   for (const gate of GATES) {

@@ -159,6 +159,9 @@ def sq_spatial_graph(sub):
     本机装不上 squidpy 时自动落到 native_spatial_graph，并在报告里写明实现来源。"""
     if sq is None:
         return native_spatial_graph(sub)
+    fn = getattr(sq.gr, "spatial_neighbors", None)
+    if fn is None:
+        return native_spatial_graph(sub)
     kwargs = _filter_kwargs(fn, {"coord_type": "generic", "n_neighors": SQ_K,
                                  "n_neighbors": SQ_K, "n_rings": 1,
                                  "key_added": "spatial_neighbors"})
@@ -168,12 +171,14 @@ def sq_spatial_graph(sub):
     else:
         fn(**kwargs)  # 少数版本只吃全局 adata？不存在则下面 obsp 检查兜住
     entry = sub.uns.get("spatial_neighbors") or {}
-    ckey = entry.get("conn_key")
-    dkey = entry.get("dist_key")
+    ckey = entry.get("conn_key") or entry.get("connectivities_key")
+    dkey = entry.get("dist_key") or entry.get("distances_key")
     if not ckey or ckey not in sub.obsp:
-        ckey = "spatial_connectivities" if "spatial_connectivities" in sub.obsp else "connectivities"
+        ckey = next((k for k in ("spatial_neighbors_connectivities", "spatial_connectivities", "connectivities")
+                     if k in sub.obsp), "")
     if not dkey or dkey not in sub.obsp:
-        dkey = "spatial_distances" if "spatial_distances" in sub.obsp else "distances"
+        dkey = next((k for k in ("spatial_neighbors_distances", "spatial_distances", "distances")
+                     if k in sub.obsp), "")
     if ckey not in sub.obsp:
         fail("squidpy 建图后 obsp 无连接矩阵（keys=%s）" % list(sub.obsp.keys()))
     return ckey, dkey

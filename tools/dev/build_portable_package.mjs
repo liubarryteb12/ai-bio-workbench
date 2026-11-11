@@ -15,7 +15,7 @@
  *
  * 纯 node:fs + 一次 git ls-files（打包机有 git，目标机不需要）。
  * 用法：
- *   node tools/dev/build_portable_package.mjs             构建到 dist/portable/BioanalysWorkbench
+ *   node tools/dev/build_portable_package.mjs             构建到 software/BioanalysWorkbench
  *   node tools/dev/build_portable_package.mjs --verify    构建后净化 PATH 跑 gate:all --skip-tests
  *   node tools/dev/build_portable_package.mjs --out <dir> 指定输出目录
  *   node tools/dev/build_portable_package.mjs --keep      保留既有输出目录（默认先清）
@@ -29,7 +29,9 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, '..', '..');
-export const DEFAULT_OUT = path.join(REPO_ROOT, 'dist', 'portable', 'BioanalysWorkbench');
+// 发布包唯一落点。落点由构建器与 dist_parity_gate 共同引用，改一处两边同动，
+// 避免仓库里并存两份会各自漂移的包（REJ-007）。
+export const DEFAULT_OUT = path.join(REPO_ROOT, 'software', 'BioanalysWorkbench');
 
 /** 四层划分。prefixes 是相对仓库根的路径前缀，layer 只用于清单与报告。 */
 export const LAYERS = Object.freeze([
@@ -108,7 +110,7 @@ function copyFile(from, to) {
 }
 
 /** 启动器统一用正斜杠路径，避免生成器里再套一层反斜杠转义。 */
-function launcherBody(command) {
+function launcherBody(lines) {
   return [
     '@echo off',
     'chcp 65001 >nul',
@@ -118,7 +120,7 @@ function launcherBody(command) {
     'if not exist "%~dp0.tmp" mkdir "%~dp0.tmp"',
     'set "TEMP=%~dp0.tmp"',
     'set "TMP=%~dp0.tmp"',
-    command,
+    ...lines,
     'set "EXITCODE=%ERRORLEVEL%"',
     'endlocal & exit /b %EXITCODE%',
     '',
@@ -127,11 +129,15 @@ function launcherBody(command) {
 
 function writeLaunchers(outDir) {
   const files = {
-    'gate.cmd': launcherBody('"%~dp0runtime/node.exe" "%~dp0tools/dev/run_all_gates.mjs" %*'),
-    'delivery.cmd': launcherBody('"%~dp0runtime/node.exe" "%~dp0tools/reporting/delivery_acceptance_core.mjs" %*'),
-    'toolchain.cmd': launcherBody('"%~dp0runtime/node.exe" "%~dp0tools/dev/toolchain.mjs" %*'),
-    'start-workbench.cmd': launcherBody('"%~dp0runtime/node.exe" "%~dp0BioanalysDesktop/server/index.js" %*'),
-    'test.cmd': launcherBody('"%~dp0runtime/node.exe" --test --test-concurrency=1 "%~dp0BioanalysDesktop/tests/*.test.js" %*'),
+    'gate.cmd': launcherBody(['"%~dp0runtime/node.exe" "%~dp0tools/dev/run_all_gates.mjs" %*']),
+    'delivery.cmd': launcherBody(['"%~dp0runtime/node.exe" "%~dp0tools/reporting/delivery_acceptance_core.mjs" %*']),
+    'toolchain.cmd': launcherBody(['"%~dp0runtime/node.exe" "%~dp0tools/dev/toolchain.mjs" %*']),
+    'start-workbench.cmd': launcherBody([
+      'set "BIO_ALLOW_DEV_NOAUTH=1"',
+      'start "" "http://127.0.0.1:18787/"',
+      '"%~dp0runtime/node.exe" "%~dp0BioanalysDesktop/server/index.js" %*',
+    ]),
+    'test.cmd': launcherBody(['"%~dp0runtime/node.exe" --test --test-concurrency=1 "%~dp0BioanalysDesktop/tests/*.test.js" %*']),
   };
   for (const [name, text] of Object.entries(files)) {
     fs.writeFileSync(path.join(outDir, name), text, 'utf8');
@@ -149,6 +155,12 @@ function writeReadme(outDir, stats) {
     '',
     '运行 gate.cmd（加 --skip-tests 可快检）。看到 GATE_ALL_OK 25 道全绿即表示这台机器上一切就绪。',
     '',
+    '## 点三点开始分析',
+    '',
+    '1. 双击 start-workbench.cmd，浏览器自动打开管理工作台。',
+    '2. 打开作业中心，选中门户提交包，客户已勾选的分析步骤会自动带入。',
+    '3. 点击「一键分析并排队」，页面显示排队位置、执行状态、回执与产物清单。',
+    '',
     '## 五个入口',
     '',
     '| 命令 | 作用 |',
@@ -157,7 +169,7 @@ function writeReadme(outDir, stats) {
     '| delivery.cmd <tar.gz> | 交付包四关验收（侧车哈希、解包结构、签名、清单闭合），全绿才写回执 |',
     '| toolchain.cmd | 打印每个工具解析到了哪个路径 |',
     '| test.cmd | 只跑全量测试（约 140 秒，排查用） |',
-    '| start-workbench.cmd | 启动管理工作台（默认 http://127.0.0.1:18787/） |',
+    '| start-workbench.cmd | 自动打开管理工作台（默认 http://127.0.0.1:18787/） |',
     '',
     '## 连通算力端（可选）',
     '',
@@ -185,13 +197,14 @@ function writeReadme(outDir, stats) {
 
 export function buildPackage({ repoRoot = REPO_ROOT, outDir = DEFAULT_OUT, env = process.env, clean = true, verify = false, io = console } = {}) {
   const tracked = trackedFiles({ repoRoot, env });
+  const sources = tracked;
   const runtime = runtimeFiles({ repoRoot });
   if (clean && fs.existsSync(outDir)) fs.rmSync(outDir, { recursive: true, force: true });
   fs.mkdirSync(outDir, { recursive: true });
 
   const counts = { 'L1-core': 0, 'L2-truth': 0, 'L4-runtime-artifact': 0 };
   const manifest = [];
-  for (const rel of tracked) {
+  for (const rel of sources) {
     const norm = rel.split(path.sep).join('/');
     if (isExcluded(norm)) { counts['L4-runtime-artifact'] += 1; continue; }
     const from = path.join(repoRoot, rel);

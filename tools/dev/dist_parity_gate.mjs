@@ -2,14 +2,14 @@
 /**
  * 便携包关键资产同源门禁（第三十五轮 4 Argon Q4 条件同意）。
  *
- * 实测背景：dist/portable/BioanalysWorkbench 是第 28 轮生成的陈旧快照，
+ * 实测背景：发布包曾是第 28 轮生成的陈旧快照（当时的落点是 dist/portable/），
  * 历经 29~35 轮修复后已与主仓分叉（figure_adapters.js 主仓 fe7e7b4f 对 dist 0b9b68d8，
  * 且 dist 里仍残留 13 处 #D55E00 旧暗橙色）。这类陈旧脏包一旦分发，用户拿到的
  * 出图配色与注册表都不是修复后的版本。
  *
  * 按裁定：
- *   - dist/ 存在 → 强制逐一比对关键资产 SHA256，分叉即报红并提示刷新包；
- *   - dist/ 不存在（CI 干净 Runner、刚 clone）→ 显式标 SKIP_NO_DIST 并 exit 0，
+ *   - 包存在 → 强制逐一比对关键资产 SHA256，分叉即报红并提示刷新包；
+ *   - 包不存在（CI 干净 Runner、刚 clone）→ 显式标 SKIP_NO_DIST 并 exit 0，
  *     不误报。存在性守卫是硬要求。
  *
  * 用法：
@@ -21,8 +21,11 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
+import { DEFAULT_OUT } from './build_portable_package.mjs';
+
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const DIST_ROOT = path.join(REPO, 'dist', 'portable', 'BioanalysWorkbench');
+// 落点真源取自构建器的 DEFAULT_OUT，两边不可能各指一处。
+const DIST_ROOT = DEFAULT_OUT;
 
 /**
  * 关键资产清单。每条都是「主仓改了而便携包没重跑就会危害用户」的文件：

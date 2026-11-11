@@ -202,7 +202,7 @@ for gene in targets:
         cb = fig.colorbar(sp, cax=cax)
         cb.set_label("log expr (grey=low, red=high)", fontsize=6.5)
         cb.ax.tick_params(labelsize=5.5)
-        cap = ("source: %s | line3 spatial (PRJ_DCM_BENCH_20261105) | lowres x %.3f"
+        cap = ("source: %s | line3 spatial | lowres x %.3f"
                " | color grey #BEBEBE -> red #EE0000 (vmax=p99 %.3f) | spots=%d") % (
                os.path.basename(src), sf, vmax, int(m.sum()))
         fig.text(0.02, 0.03, cap, fontsize=5.0, ha="left", va="bottom")

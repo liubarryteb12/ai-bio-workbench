@@ -80,7 +80,7 @@ export const GATES = Object.freeze([
   // 第 8 道前置：30 条 Ready 模板的实证矩阵（第 41 轮）。
   // 白名单只证明「ID 被封板」，不证明源码与预览还和登记时一致。这道门禁对每条 ready
   // 做真实的 sha256 比对：文件被悄悄改动、预览被重渲染覆盖，都会当场红。
-  { id: 'ready_matrix', label: 'Ready 模板实证矩阵（39 条 sha 核验）', exec: 'node', args: ['tools/dev/figure_ready_matrix.mjs'], cwd: '.', slow: false },
+  { id: 'ready_matrix', label: 'Ready 模板实证矩阵（基线由 allowlist 决定）', exec: 'node', args: ['tools/dev/figure_ready_matrix.mjs'], cwd: '.', slow: false },
   // 生信代码专项审核产物：出图溯源诚实性。注册表登记了参考库 source，但出图脚本
   // 从未引用库 —— 本门禁要求每份出图脚本显式声明 DERIVED/INSPIRED/INDEPENDENT，
   // 并抓「声称派生却不引用库」的假溯源。
@@ -108,7 +108,9 @@ export const GATES = Object.freeze([
   // 离线环境不会被它拖红，但 [SKIP] 行会明确写出少验了什么。
   { id: 'k40_parity', label: 'K40 脚本同源（设备离线时 SKIP）', exec: 'node', args: ['tools/dev/k40_script_parity.mjs'], cwd: '.', slow: false, skipExitCodes: [2] },
   { id: 'q3q2_mutation', label: 'Q3/Q2 变异反证（6 条）', exec: 'node', args: ['tools/dev/q3q2_mutation_gate.mjs'], cwd: '.', slow: false },
-  { id: 'metrics', label: '全量测试 + 运行时 skip + 基线一致', exec: 'node', args: ['tools/dev/metrics_sync.mjs', '--check'], cwd: '.', slow: true },
+  // metrics 内部跑全量 node --test 的自限是 600 秒。外层必须比它更宽，
+  // 否则慢机上外层先动手杀进程，TAP 被截断，出来的红是「假红」而不是用例真挂。
+  { id: 'metrics', label: '全量测试 + 运行时 skip + 基线一致', exec: 'node', args: ['tools/dev/metrics_sync.mjs', '--check'], cwd: '.', slow: true, timeoutMs: 900000 },
 ]);
 
 /** 取子进程环境的保底：Windows 原生 ssh 缺 SystemRoot 会静默 255（proc.js 同款教训）。 */
@@ -123,10 +125,14 @@ function gateEnv(extra = {}) {
  */
 export function runGate(gate, { repoRoot = REPO_ROOT, env = gateEnv(), timeoutMs = 300000 } = {}) {
   const started = Date.now();
+  // 单道门禁可以声明自己的上限（gate.timeoutMs），缺省沿用 300 秒。
+  // 为什么需要：全量测试那道内部自限 600 秒，外层若一律 300 秒截断，
+  // TAP 会缺尾部汇总与半截 SKIP 行，metrics 报出的就是假红。
+  const limit = Number(gate.timeoutMs) > 0 ? Number(gate.timeoutMs) : timeoutMs;
   const result = spawnSync(gate.exec, gate.args, {
     cwd: path.join(repoRoot, gate.cwd),
     encoding: 'utf8',
-    timeout: timeoutMs,
+    timeout: limit,
     maxBuffer: 64 * 1024 * 1024,
     env,
     windowsHide: true,
