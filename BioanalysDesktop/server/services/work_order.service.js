@@ -399,6 +399,7 @@ export function enqueueWorkOrder(workOrderId, baseDir, options = {}) {
       approved_at: meta.approved_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
       ...(actor ? { approved_by: actor, last_updated_by: { ...actor } } : {}),
+      ...(options.leaseId ? { lease_id: String(options.leaseId) } : {}),
     };
   if (!alreadyStamped) writeMeta(baseDir, next);
   wakeQueue();
@@ -409,7 +410,11 @@ export function enqueueWorkOrder(workOrderId, baseDir, options = {}) {
   };
 }
 
-function recoverInterruptedRunning(baseDir) {
+/**
+ * 崩溃恢复：重启后仍在 running 的作业没有活跃执行体，统一标 failed 并写明原因。
+ * 导出供契约测试直接验，不依赖真实泵。
+ */
+export function recoverInterruptedRunning(baseDir) {
   const recovered = [];
   for (const { meta, metaFile } of readAllMeta(baseDir)) {
     if (String(meta.status) !== 'running') continue;
