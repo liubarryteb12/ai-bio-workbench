@@ -13,6 +13,7 @@ import {
   uploadIdFromFingerprint,
 } from '../lib/uploadSession';
 import type { UploadStatus } from '../lib/uploadSession';
+import { UppyUploader } from '../components/UppyUploader';
 import {
   SPECIES_OPTIONS,
   DOMAIN_OPTIONS,
@@ -1654,6 +1655,8 @@ function UploadPanel({ project }: { project: string }) {
   const [status, setStatus] = useState('');
   const [resumeNote, setResumeNote] = useState('');
   const [result, setResult] = useState<UploadResult | null>(null);
+  // 默认仍是原有上传面板；勾选后走 Uppy（拖拽 / 断点重试），传输层与服务端契约不变。
+  const [useUppy, setUseUppy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const upload = useCallback(async () => {
@@ -1774,12 +1777,32 @@ function UploadPanel({ project }: { project: string }) {
 
       <div className="form-group">
         <label className="form-label">选择文件</label>
-        <input ref={inputRef} type="file"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-        {file && <span className="subtle">{file.name}（{(file.size / 1024 / 1024).toFixed(2)} MB）</span>}
+        <label className="subtle" style={{ display: 'block', marginBottom: 8 }}>
+          <input type="checkbox" checked={useUppy}
+            onChange={(e) => setUseUppy(e.target.checked)} />{' '}
+          试用新版上传面板（拖拽、进度、断点重试）
+        </label>
+        {useUppy ? (
+          <UppyUploader
+            project={project}
+            lineId={lineId}
+            onProgress={setProgress}
+            onDone={(payload) => {
+              setResult(payload as unknown as UploadResult);
+              setStatus(payload.ok ? '上传完成，字节校验通过' : '上传完成，未通过校验');
+            }}
+            onError={(message) => setStatus('失败：' + message)}
+          />
+        ) : (
+          <>
+            <input ref={inputRef} type="file"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+            {file && <span className="subtle">{file.name}（{(file.size / 1024 / 1024).toFixed(2)} MB）</span>}
+          </>
+        )}
       </div>
 
-      <div className="chip-row">
+      {!useUppy && <div className="chip-row">
         <button className="btn btn-primary" onClick={() => void upload()} disabled={busy}>
           {busy ? `上传中 ${progress}%` : (resumeNote ? '继续上传' : '开始上传')}
         </button>
@@ -1789,7 +1812,7 @@ function UploadPanel({ project }: { project: string }) {
             if (inputRef.current) inputRef.current.value = '';
           }}>清空</button>
         )}
-      </div>
+      </div>}
 
       {busy && (
         <div className="progress-outer">
