@@ -44,7 +44,7 @@ export const ERR_HEARTBEAT_INVALID = 'ERR_HEARTBEAT_INVALID';
 export const ERR_HEARTBEAT_STALE = 'ERR_HEARTBEAT_STALE';
 
 /** 四个服务的 supervise/stat 期望值 */
-export const HEARTBEAT_SERVICES = ['sshd', 'ubuntu-sshd', 'crond', 'ssh-agent', 'pi-a2a'];
+export const HEARTBEAT_SERVICES = ['sshd', 'ubuntu-sshd', 'crond', 'ssh-agent'];
 
 /**
  * 复合诊断标志（Argon 第二十轮）。

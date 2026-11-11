@@ -79,8 +79,8 @@ test('未知 BIO_COMPUTE_ADAPTER 一律 fail-closed', (t) => {
   process.env.BIO_COMPUTE_ADAPTER = 'bash';
   delete process.env.BIO_ALLOW_MOCK_COMPUTE;
 
-  assert.throws(() => runSshRaw('k40-ubuntu', 'echo hi'), /仅接受 adb \/ ssh \/ mock/);
-  assert.throws(() => runSync(['scp', 'source', 'target']), /仅接受 adb \/ ssh \/ mock/);
+  assert.throws(() => runSshRaw('k40-ubuntu', 'echo hi'), /仅接受 adb \/ mock/);
+  assert.throws(() => runSync(['scp', 'source', 'target']), /仅接受 adb \/ mock/);
 });
 
 test('mock 门禁：非测试环境且未显式放行时抛错，测试环境可单靠 NODE_TEST_CONTEXT 放行', (t) => {
@@ -303,27 +303,15 @@ test('mock 覆盖 scp：runStream 对 scp argv 同样短路（report.js 拉包�
   assert.doesNotThrow(() => stream.kill());
 });
 
-test('runSshRaw 被显式调用时仍走 ssh 子进程路径（特殊开关通道）', (t) => {
+test('SSH 适配器已封存，显式设置也 fail-closed', (t) => {
   const keys = ['BIO_COMPUTE_ADAPTER', 'BIO_ALLOW_MOCK_COMPUTE'];
   const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
   restoreEnv(t, previous, keys);
   process.env.BIO_COMPUTE_ADAPTER = 'ssh';
   delete process.env.BIO_ALLOW_MOCK_COMPUTE;
 
-  const calls = [];
-  t.mock.method(childProcess, 'spawnSync', (program, args) => {
-    calls.push([program, ...args]);
-    return { status: 0, stdout: 'SSH_DEFAULT_OK\n', stderr: '' };
-  });
-
-  assert.deepEqual(
-    runSshRaw('k40-ubuntu', 'echo SSH_DEFAULT_OK'),
-    { code: 0, text: 'SSH_DEFAULT_OK' },
-  );
-  assert.deepEqual(calls, [[
-    'ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10',
-    'k40-ubuntu', 'echo SSH_DEFAULT_OK',
-  ]]);
+  assert.throws(() => runSshRaw('k40-ubuntu', 'echo hi'), /SSH 通道已封存/);
+  assert.throws(() => runSync(['scp', 'source', 'target']), /SSH 通道已封存/);
 });
 
 // ───────── 5.1 收尾新增（2026-11-01）：execFile/流式接缝的 mock 覆盖 ─────────

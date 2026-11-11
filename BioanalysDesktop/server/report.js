@@ -333,8 +333,10 @@ function scpFetch(remotePath, localPath) {
     {},
     'scp'
   ).then(({ stderr, code }) => {
-    if (code === 0) return;
-    throw new Error(`scp 拉取失败 (exit ${code}): ${stripSshNoise(stderr).trim() || 'stderr 为空'}`);
+    const cleanErr = stripSshNoise(stderr);
+    if (code !== 0) {
+      throw new Error(`scp 拉取失败 (exit ${code}): ${cleanErr.trim() || 'stderr 为空'}`);
+    }
   });
 }
 

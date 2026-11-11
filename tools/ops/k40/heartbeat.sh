@@ -66,9 +66,6 @@ svc_stat() {
 
 listening_8022=$(json_bool port_listen 8022)
 listening_10022=$(json_bool port_listen 10022)
-# pi agent 的 A2A server 监听 9910。它不参与链路四段的分级判定（链路只看 sshd 两条），
-# 但「sv 说 run 而端口没听」是真实故障形态，必须能被交叉校验抓到。
-listening_pi9910=$(json_bool port_listen 9910)
 ssd_writable=$(json_bool test -w "$ROOTFS/mnt/ssd/bio_data")
 # 只数真正的监督进程。三种形态都实测过（2026-11-03）：
 #   26563 runsvdir /data/.../usr/var/service          健康实例，runsvdir 启动后把 argv 改写掉了 -P
@@ -89,9 +86,9 @@ runsvdir_count=$(ps -A -o pid,args 2>/dev/null \
 [ -n "$runsvdir_count" ] || runsvdir_count=0
 ts=$(date +%s)
 
-line=$(printf '{"schema":"k40_heartbeat/v2","ts":%s,"runsvdir_count":%s,"sshd_8022_listen":%s,"dropbear_10022_listen":%s,"pi_9910_listen":%s,"ssd_writable":%s,"port_probe":"tcp-connect","svc_sshd":"%s","svc_ubuntu_sshd":"%s","svc_crond":"%s","svc_ssh_agent":"%s","svc_pi_a2a":"%s"}' \
-  "$ts" "$runsvdir_count" "$listening_8022" "$listening_10022" "$listening_pi9910" "$ssd_writable" \
-  "$(svc_stat sshd)" "$(svc_stat ubuntu-sshd)" "$(svc_stat crond)" "$(svc_stat ssh-agent)" "$(svc_stat pi-a2a)")
+line=$(printf '{"schema":"k40_heartbeat/v2","ts":%s,"runsvdir_count":%s,"sshd_8022_listen":%s,"dropbear_10022_listen":%s,"ssd_writable":%s,"port_probe":"tcp-connect","svc_sshd":"%s","svc_ubuntu_sshd":"%s","svc_crond":"%s","svc_ssh_agent":"%s"}' \
+  "$ts" "$runsvdir_count" "$listening_8022" "$listening_10022" "$ssd_writable" \
+  "$(svc_stat sshd)" "$(svc_stat ubuntu-sshd)" "$(svc_stat crond)" "$(svc_stat ssh-agent)")
 
 if [ "${1:-}" = "--write" ]; then
   tmp="$LOG_PATH.tmp.$$"

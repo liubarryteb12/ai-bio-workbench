@@ -1,10 +1,10 @@
 /**
- * 远程通道策略契约（2026-11-06 用户要求：adb 为主，sshd 备用）。
+ * 远程通道策略契约（2026-11-11 用户要求：封存 SSH，ADB 单通道）。
  *
  * 只做静态校验（真机连通性由 tools/ops/adb_exec.ps1 自己保证）：
- *   1. 辅助脚本存在，且确实实现了 adb 与 ssh 两条通道；
- *   2. 默认通道是 adb，adb 失败即报错，ssh 只在显式选择时使用；
- *   3. 显式 ssh 特殊开关必须能自愈端口转发（adb server 重启会清空转发）。
+ *   1. 辅助脚本存在，且只实现 adb 通道；
+ *   2. 默认通道是 adb，adb 失败即报错，脚本不含 ssh 调用；
+ *   3. 恢复手册存在，记录封存范围与恢复步骤。
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -15,36 +15,30 @@ import { fileURLToPath } from "node:url";
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const HELPER = path.join(REPO, "tools/ops/adb_exec.ps1");
 
-test("存在 adb 执行辅助脚本，且实现 adb 与 ssh 两条通道", () => {
+test("存在 adb 执行辅助脚本，且只实现 adb 单通道", () => {
   assert.ok(fs.existsSync(HELPER), "必须存在 tools/ops/adb_exec.ps1");
   const src = fs.readFileSync(HELPER, "utf8");
   assert.match(src, /run-as com\.termux/, "adb 通道必须用 run-as 进 Termux");
   assert.match(src, /proot-distro login ubuntu/, "adb 通道必须能进 ubuntu 容器");
-  assert.match(src, /ssh\.exe/, "必须保留 ssh 备用通道");
+  assert.equal(/\bssh\.exe\b/.test(src), false, "SSH 客户端调用必须封存");
+  assert.equal(/Invoke-ViaSsh/.test(src), false, "SSH 备用分支必须封存");
 });
 
-test("默认走 adb，ssh 只在显式选择时使用，不保留 auto 回落", () => {
+test("固定走 adb，不保留任何备用通道或 auto 回落", () => {
   const src = fs.readFileSync(HELPER, "utf8");
-  assert.match(src, /\[ValidateSet\('adb', 'ssh'\)\]\[string\]\$Transport = 'adb'/,
-    "Transport 默认必须是 adb，且只接受 adb/ssh");
+  assert.match(src, /\[ValidateSet\('adb'\)\]\[string\]\$Transport = 'adb'/,
+    "Transport 必须固定为 adb");
   assert.equal(src.includes("'auto'"), false, "不得保留 auto 回落档位");
-  // 只看默认分支内部（} else { 之后）：必须只调用 adb，不得再调用 ssh。
-  const dispatchAt = src.indexOf("if ($Transport -eq 'ssh')");
-  assert.ok(dispatchAt > 0, "必须有通道分派段落");
-  const elseAt = src.indexOf("} else {", dispatchAt);
-  assert.ok(elseAt > dispatchAt, "分派段落里必须有默认 adb 分支");
-  const defaultBlock = src.slice(elseAt);
-  assert.ok(defaultBlock.indexOf("Invoke-ViaAdb $payload") > 0, "默认分支必须走 adb");
-  assert.equal(defaultBlock.includes("Invoke-ViaSsh $payload"), false,
-    "默认分支不得回落 ssh；ssh 只能由显式 -Transport ssh 进入");
+  assert.match(src, /Invoke-ViaAdb \$payload/, "唯一执行分支必须走 adb");
+  assert.equal(src.includes("if ($Transport -eq 'ssh')"), false, "不得保留 SSH 分派");
 });
 
-test("备用通道必须能自愈 adb 端口转发", () => {
-  const src = fs.readFileSync(HELPER, "utf8");
-  assert.match(src, /function Repair-Forwards/, "必须有 Repair-Forwards");
-  assert.match(src, /adb.*forward --list|forward --list/, "必须检查现有转发");
-  assert.match(src, /8022/, "必须覆盖 Termux 侧端口");
-  assert.match(src, /10022/, "必须覆盖 ubuntu 侧端口");
+test("SSH 封存恢复手册存在且记录范围", () => {
+  const doc = path.join(REPO, "_archive/ssh_retired_20261111/RESTORE.md");
+  assert.ok(fs.existsSync(doc), "必须有 SSH 恢复手册");
+  const t = fs.readFileSync(doc, "utf8");
+  assert.match(t, /恢复步骤/, "必须写明恢复步骤");
+  assert.match(t, /Transport ssh/, "必须写明 -Transport ssh 恢复项");
 });
 
 test("必须提供无 root 下的内存护栏参数", () => {
@@ -57,12 +51,12 @@ test("必须提供无 root 下的内存护栏参数", () => {
   assert.match(src, /\$MemLimitMB -gt 0/, "只有显式给值时才注入上限");
 });
 
-test("策略文档记录了 adb 优先的理由与实测故障", () => {
+test("策略文档记录了 ADB 单通道与 SSH 封存", () => {
   const doc = path.join(REPO, "docs/remote_channel_policy.md");
   assert.ok(fs.existsSync(doc), "必须有 docs/remote_channel_policy.md");
   const t = fs.readFileSync(doc, "utf8");
-  assert.match(t, /adb/, "必须写明 adb 为主");
-  assert.match(t, /备用/, "必须写明 ssh 为备用");
+  assert.match(t, /ADB 单通道/, "必须写明 ADB 单通道");
+  assert.match(t, /ssh_retired_20261111/, "必须写明 SSH 封存目录");
   assert.match(t, /run-as/, "必须写明权限边界");
-  assert.match(t, /不回落/, "必须写明默认不回落 ssh");
+  assert.match(t, /无 `auto` 回落路径/, "必须写明不回落");
 });

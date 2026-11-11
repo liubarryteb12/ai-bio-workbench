@@ -1,8 +1,11 @@
-# 远程通道策略：ADB 主通道，SSH 仅显式特殊开关（2026-11-08 更新）
+# 远程通道策略：ADB 单通道（2026-11-11 封存 SSH）
 
 ## 结论
 
-日常执行一律走 **adb**；sshd 只作显式特殊开关，默认失败即报错，不回落。理由不是偏好，是可用性实测：
+日常执行一律走 **adb** 单通道。用户当前不使用 SSH，相关配置、备用链路文档与
+契约测试已封存到 `_archive/ssh_retired_20261111/`，恢复方式见同目录 `RESTORE.md`。
+应用入口、工单 schema、运维脚本与前端均不再暴露 SSH 开关。
+理由不是偏好，是可用性实测：
 
 | 通道 | 依赖 | 设备侧故障时 |
 |---|---|---|
@@ -16,19 +19,17 @@ sshd 全程不可用。
 就在写这份文档时又复现一次：`adb kill-server` 之后端口转发清空，
 `ssh` 报 `Connection refused`，而 adb 通道照常工作。
 
-## 产品服务端默认通道
+## 产品服务端通道
 
 产品服务端（`BioanalysDesktop/server/remote_exec.js`）的
-`runRemote` / `runRemoteRaw` / `runRemoteStrict` 默认全部走 ADB：
+`runRemote` / `runRemoteRaw` / `runRemoteStrict` 固定走 ADB：
 
-- `BIO_COMPUTE_ADAPTER` 未设置：ADB；
-- `BIO_COMPUTE_ADAPTER=adb`：ADB，adb 不可用直接报错，不回落 SSH；
-- `BIO_COMPUTE_ADAPTER=ssh`：仅作为特殊开关，显式切到 SSH；
+- `BIO_COMPUTE_ADAPTER` 未设置或设为 `adb`：ADB，adb 不可用直接报错；
 - `BIO_COMPUTE_ADAPTER=mock`：测试或离线演示，仍受 `BIO_ALLOW_MOCK_COMPUTE=1` 门禁约束；
+- `BIO_COMPUTE_ADAPTER=ssh`：已封存，启动时 fail-closed 并指向恢复手册；
 - 其它值：执行时 fail-closed，不静默改走任何通道。
 
-`ops/adb_exec.ps1` 自身也默认 `-Transport adb`。只有显式传
-`-Transport ssh` 才会启用 SSH，用于验证备用链路本身是否健康。
+`ops/adb_exec.ps1` 固定 `-Transport adb`，不再接受 `-Transport ssh`。
 
 ## 怎么用
 
@@ -42,14 +43,17 @@ pwsh -File ops/adb_exec.ps1 -Level termux -Command 'id -un'
 # 跑本地脚本（内容经 stdin 送入，避开引号转义）
 pwsh -File ops/adb_exec.ps1 -Level ubuntu -ScriptPath .tmp/step.sh
 
-# 显式走特殊通道（也用于验证 sshd 是否健康）
-pwsh -File ops/adb_exec.ps1 -Level ubuntu -Transport ssh -Command 'hostname'
 ```
 
-`-Transport` 取值：`adb`（默认，失败即报错）、`ssh`（显式特殊开关）。
-默认不包含 `auto` 回落路径，避免链路抖动时静默切到不稳定的 sshd。
+`-Transport` 取值固定为 `adb`（失败即报错）。无 `auto` 回落路径。
 
 退出码透传远端命令的退出码，可直接用于判据。
+
+## Pi Agent 退场裁定（2026-11-11）
+
+Pi Agent 集成已于 2026-11-11 整体退场，手机侧不再有自主执行体。
+主计算入口只剩 ADB 单通道加服务端 P-29 串行闸门，避免两套命令入口并存。
+手机侧遗留的进程、配置目录与 runit 服务由设备维护单独回收，仓库不再提供对应脚本。
 
 ## 权限边界（实测，无需 root）
 

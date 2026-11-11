@@ -37,7 +37,7 @@ export HOME="${HOME:-/data/data/com.termux/files/home}"
 
 LOCK_FILE="$PREFIX/var/run/runsvdir.singleton.lock"
 PID_FILE="$LOCK_FILE.pid"
-SERVICES="sshd crond ssh-agent ubuntu-sshd pi-a2a"
+SERVICES="sshd crond ssh-agent ubuntu-sshd"
 # 进程表位置（自测脚本指向 fixture 目录，生产恒为 /proc）
 PROC_DIR="${PROC_DIR:-/proc}"
 mkdir -p "$PREFIX/var/run" "$LOGDIR"

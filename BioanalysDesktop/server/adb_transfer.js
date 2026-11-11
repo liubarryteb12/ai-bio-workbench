@@ -28,7 +28,7 @@ function adapterArgs(extra = {}) {
   const adapter = computeMode();
   if (adapter === 'mock') throw new Error('mock 计算面不提供真实文件传输');
   if (adapter === 'ssh') {
-    return { mode: 'ssh', target: process.env.BIO_SSH_TARGET || 'k40-ubuntu' };
+    throw new Error('SSH 通道已封存，见 _archive/ssh_retired_20261111/RESTORE.md');
   }
   return { mode: 'adb', ...extra };
 }
@@ -42,6 +42,9 @@ function adbExec(args) {
     cwd: REPO_ROOT,
     encoding: 'utf8',
     timeout: 900000,
+    // 大图（Visium 1.5-2MB PNG）经 base64 回传会超过 spawnSync 默认 1MB stdout 缓冲，
+    // 表现为 ENOBUFS 且文件被判失败。ADB 文本通道本身无此限制，这里只放宽本地缓冲。
+    maxBuffer: 256 * 1024 * 1024,
     windowsHide: true,
     env: childEnv(),
   });

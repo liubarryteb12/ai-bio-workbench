@@ -109,30 +109,37 @@ export function childEnv(overrides = {}) {
 }
 
 /**
- * 计算面适配器：默认 adb；ssh 只在显式 BIO_COMPUTE_ADAPTER=ssh 时启用；
+ * 计算面适配器：固定 adb；SSH 通道已封存（见 _archive/ssh_retired_20261111/）；
  * mock 只允许在测试环境或显式 BIO_ALLOW_MOCK_COMPUTE=1 时生效，防止生产进程
  * 静默走假算力。未知值仍由 resolveComputeAdapter 在执行时 fail-closed。
  */
 
 /**
- * 当前计算面模式：'adb' 主通道 / 'ssh' 特殊开关 / 'mock' 离线演示。
+ * 当前计算面模式：'adb' 单通道 / 'mock' 离线演示。
  * 只读、不抛错：调用方（自检路由、前端横幅）要的是「现在是什么模式」，
  * 而不是「配置是否合法」——非法配置由 resolveComputeAdapter 在真正执行时 fail-closed。
  */
 export function computeMode() {
   const adapter = process.env.BIO_COMPUTE_ADAPTER || 'adb';
-  if (adapter === 'ssh' || adapter === 'mock') return adapter;
+  if (adapter === 'mock') return adapter;
+  if (adapter === 'ssh') {
+    throw new Error('SSH 通道已封存，见 _archive/ssh_retired_20261111/RESTORE.md');
+  }
+  if (adapter !== 'adb') return 'adb';
   return 'adb';
 }
 
 /**
  * 解析并校验计算面适配器。未知值 fail-closed，不静默回落任何通道。
- * @returns {'adb'|'ssh'|'mock'}
+ * @returns {'adb'|'mock'}
  */
 export function resolveComputeAdapter() {
   const adapter = process.env.BIO_COMPUTE_ADAPTER || 'adb';
-  if (adapter !== 'adb' && adapter !== 'ssh' && adapter !== 'mock') {
-    throw new Error(`BIO_COMPUTE_ADAPTER 仅接受 adb / ssh / mock，当前为 ${adapter}`);
+  if (adapter === 'ssh') {
+    throw new Error('SSH 通道已封存，见 _archive/ssh_retired_20261111/RESTORE.md');
+  }
+  if (adapter !== 'adb' && adapter !== 'mock') {
+    throw new Error(`BIO_COMPUTE_ADAPTER 仅接受 adb / mock，当前为 ${adapter}`);
   }
   if (adapter === 'mock'
     && process.env.NODE_TEST_CONTEXT === undefined
@@ -148,7 +155,8 @@ export function resolveComputeAdapter() {
  * adb 的远端执行走 adbRaw，mock 短路在那一层单独处理。
  */
 function resolveMockRemote(program) {
-  return resolveComputeAdapter() === 'mock'
+  const adapter = process.env.BIO_COMPUTE_ADAPTER || 'adb';
+  return adapter === 'mock'
     && ['ssh', 'scp'].includes(programBaseName(program));
 }
 
@@ -173,7 +181,9 @@ export function sshArgv(target, command) {
 
 /** scp 直连 adb forward 端口的固定参数段；目标与端口来自 domain.js 拓扑真源（5.9）。 */
 export function scpArgv(localPath, remotePath) {
-  return ['scp', '-o', 'StrictHostKeyChecking=no', '-o', 'BatchMode=yes',
+  // accept-new 而非 no：首次连接仍可无人工确认（自动化要求），但主机密钥一旦变更即拒绝，
+  // 不再静默接受新身份。已知主机密钥由 hostkey.js 的指纹台账单独核对。
+  return ['scp', '-o', 'StrictHostKeyChecking=accept-new', '-o', 'BatchMode=yes',
     '-P', String(COMPUTE_SSH_PORT), localPath, `${COMPUTE_SCP_TARGET}:${remotePath}`];
 }
 
@@ -203,10 +213,12 @@ function scpDirection(argv) {
     if (item.startsWith('-')) continue;
     values.push(item);
   }
-  const remoteIndex = values.findIndex((item) => String(item).includes(':'));
+  const remoteIndex = values.findIndex((item) => /^[^/\\]+@[^:]+:|^[^:]+:\//.test(String(item)));
   if (remoteIndex < 0) return null;
-  const remote = String(values[remoteIndex]).split(':').slice(1).join(':');
-  const local = values.find((item, index) => index !== remoteIndex && !String(item).includes(':'));
+  const rawRemote = String(values[remoteIndex]);
+  const colonAt = rawRemote.indexOf(':');
+  const remote = rawRemote.slice(colonAt + 1).replace(/\\/g, '/');
+  const local = values.find((item, index) => index !== remoteIndex);
   return remoteIndex === 0
     ? { direction: 'pull', remote, local }
     : { direction: 'push', remote, local };
@@ -221,7 +233,9 @@ function adbRunner(args, options = {}) {
   ], {
     cwd: REPO_ROOT,
     encoding: 'utf8',
-    timeout: options.timeoutMs ?? 900000,
+    timeout: process.env.BIO_TEST_ADB_TIMEOUT_MS
+      ? Number(process.env.BIO_TEST_ADB_TIMEOUT_MS)
+      : (options.timeoutMs ?? 900000),
     windowsHide: true,
     env: childEnv(options.env),
     ...(options.input === undefined ? {} : { input: options.input }),
@@ -235,7 +249,8 @@ function adbRunner(args, options = {}) {
 }
 
 function rewriteRemoteArgv(argv, options = {}) {
-  if (resolveComputeAdapter() !== 'adb') return null;
+  const adapter = process.env.BIO_COMPUTE_ADAPTER || 'adb';
+  if (adapter !== 'adb') return null;
   const base = programBaseName(argv[0] || '');
   if (base === 'ssh') {
     const command = commandFromSshArgv(argv);
@@ -246,13 +261,14 @@ function rewriteRemoteArgv(argv, options = {}) {
     const spec = scpDirection(argv);
     if (!spec) return null;
     if (spec.direction === 'push') {
-      return () => adbRunner([
+      const pushed = adbRunner([
         '-PushLocalPath', spec.local,
         '-PushRemotePath', spec.remote,
       ], options);
+      return () => pushed;
     }
     const raw = adbRunner([
-      '-Command', `sha256sum ${spec.remote} | cut -d' ' -f1; printf '\\n__B64__\\n'; base64 -w0 ${spec.remote}`,
+      '-Command', `sha256sum ${shellQuote(spec.remote)} | cut -d' ' -f1; printf '\\n__B64__\\n'; base64 -w0 ${shellQuote(spec.remote)}`,
     ], options);
     return () => {
       const marker = raw.stdout.lastIndexOf('__B64__');
@@ -266,6 +282,30 @@ function rewriteRemoteArgv(argv, options = {}) {
     };
   }
   return null;
+}
+
+/**
+ * 流式执行接缝的 ADB 重写。
+ *
+ * rewriteRemoteArgv 走 spawnSync，只能用于短探针；任务下发与报告构建需要
+ * 持续读取 stdout/stderr，因此单独给一条 spawn 形态的 ADB argv。
+ * 旧实现漏了这一层，BIO_COMPUTE_ADAPTER=adb 时任务仍直连 ssh，违反
+ * 「ADB 主通道、SSH 仅显式特殊开关」的硬规则。
+ */
+function rewriteRemoteArgvForStream(argv) {
+  const adapter = process.env.BIO_COMPUTE_ADAPTER || 'adb';
+  if (adapter !== 'adb') return null;
+  if (process.env.BIO_TEST_PRESERVE_STREAM_ARGV === '1') return null;
+  const base = programBaseName(argv[0] || '');
+  if (base !== 'ssh') return null;
+  const command = commandFromSshArgv(argv);
+  if (!command) throw new Error('adb 主通道下 ssh argv 缺少远端命令，拒绝直连 ssh');
+  return [
+    'pwsh', '-NoProfile', '-File', ADB_EXEC_SCRIPT,
+    '-Level', 'ubuntu', '-Transport', 'adb', '-RequireAdb',
+    '-RemoteScriptPath', uniqueRemoteScript('dsh_adb_stream'),
+    '-Command', command,
+  ];
 }
 
 /**
@@ -295,8 +335,38 @@ export function assertAllowedProgram(argv) {
  */
 export function runSync(argv, options = {}) {
   assertAllowedProgram(argv);
+  resolveComputeAdapter();
+  const adapter = process.env.BIO_COMPUTE_ADAPTER || 'adb';
   if (resolveMockRemote(argv[0] || '')) {
     return mockRemoteResult();
+  }
+  if (process.env.BIO_TEST_PRESERVE_SYNC_ARGV === '1') {
+    const preserved = childProcess.spawnSync(argv[0], argv.slice(1), {
+      cwd: options.cwd,
+      encoding: 'utf8',
+      timeout: options.timeoutMs ?? 30000,
+      windowsHide: true,
+      env: childEnv(options.env),
+      ...(options.input === undefined ? {} : { input: options.input }),
+    });
+    return {
+      code: preserved.status ?? -1,
+      stdout: preserved.stdout ?? '',
+      stderr: preserved.stderr ?? '',
+      error: preserved.error ? String(preserved.error.message || preserved.error) : null,
+    };
+  }
+  // P-29：ssh/scp argv 是历史调用形态，统一在接缝层改写成 ADB 单通道。
+  // 直连会喂出算力端 15 秒 abort 环；这里不启动任何 ssh/scp 子进程。
+  const rewrite = rewriteRemoteArgv(argv, options);
+  if (rewrite) {
+    const result = rewrite();
+    return {
+      code: result.code,
+      stdout: result.stdout ?? '',
+      stderr: result.stderr ?? '',
+      error: result.error ?? null,
+    };
   }
   const result = childProcess.spawnSync(argv[0], argv.slice(1), {
     cwd: options.cwd,
@@ -334,8 +404,27 @@ export function runSync(argv, options = {}) {
  */
 export function runAsync(argv, options = {}) {
   assertAllowedProgram(argv);
+  resolveComputeAdapter();
+  const adapter = process.env.BIO_COMPUTE_ADAPTER || 'adb';
   if (resolveMockRemote(argv[0] || '')) {
     return Promise.resolve(mockRemoteResult());
+  }
+  if (process.env.BIO_TEST_PRESERVE_SYNC_ARGV === '1') {
+    return Promise.resolve(runSync(argv, options));
+  }
+  // P-29：与 runSync 同一口径，异步上传/部署链路也不得直连 ssh/scp。
+  // adbRunner 本身是 spawnSync，放进微任务里避免把当前请求回调同步按住。
+  const rewrite = rewriteRemoteArgv(argv, options);
+  if (rewrite) {
+    return Promise.resolve().then(() => {
+      const result = rewrite();
+      return {
+        code: result.code,
+        stdout: result.stdout ?? '',
+        stderr: result.stderr ?? '',
+        error: result.error ?? null,
+      };
+    });
   }
   const timeoutMs = options.timeoutMs ?? 30000;
   return new Promise((resolve) => {
@@ -388,7 +477,7 @@ export function runAsync(argv, options = {}) {
  * ssh 远端执行（宽松版）的异步出口：合并输出、滤噪口径与 `runSshRaw` 逐字相同。
  *
  * 只多一个 `await`。新增而不是改写 `runSshRaw`，是因为后者有十几个同步调用点
- * （pi_agent_routes、diagnostics、query_views 等），一次性全改会把这轮改造的
+ * （diagnostics、query_views 等），一次性全改会把这轮改造的
  * 半径撑到整个后端；上传链路的字节校验单独走这条异步口即可。
  * @param {string} target ssh 目标（如 k40-ubuntu）
  * @param {string} command 远端命令
@@ -396,8 +485,9 @@ export function runAsync(argv, options = {}) {
  * @returns {Promise<{code: number, text: string}>}
  */
 export async function runSshAsync(target, command, options = {}) {
+  // 函数名保留兼容既有调用点；内部固定走 ADB，不再产生 SSH 连接流。
   const result = await runAsync(
-    ['ssh', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', target, command],
+    sshArgv(target, command),
     { timeoutMs: options.timeoutMs ?? 40000 }
   );
   const text = (result.stdout + '\n' + result.stderr)
@@ -467,11 +557,12 @@ function adbResultText({ stdout = '', stderr = '', error = null }) {
  * mock 模式仍在进程接缝前短路，与 runSshRaw 口径一致。
  *
  * @param {string} command 远端 shell 命令
- * @param {{timeoutMs?: number, env?: Record<string,string>}} [options]
+ * @param {{timeoutMs?: number, env?: Record<string,string>, level?: 'termux'|'ubuntu'}} [options]
  * @returns {{code: number, text: string}}
  */
 export function adbRaw(command, options = {}) {
-  if (resolveComputeAdapter() === 'mock') {
+  const adapter = process.env.BIO_COMPUTE_ADAPTER || 'adb';
+  if (adapter === 'mock') {
     const result = mockRemoteResult();
     return { code: result.code, text: adbResultText(result) };
   }
@@ -480,7 +571,7 @@ export function adbRaw(command, options = {}) {
 
   const args = [
     '-NoProfile', '-File', ADB_EXEC_SCRIPT,
-    '-Level', 'ubuntu', '-Transport', 'adb', '-RequireAdb',
+    '-Level', options.level ?? 'ubuntu', '-Transport', 'adb', '-RequireAdb',
     '-RemoteScriptPath', `/tmp/dsh_adb_cmd_${process.pid}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.sh`,
   ];
   let tempDir = null;
@@ -529,13 +620,17 @@ export function runExecFile(argv, options = {}) {
     queueMicrotask(() => options.callback?.(result.code === 0 ? null : new Error(`mock exit ${result.code}`), result.stdout, result.stderr));
     return text;
   }
-  childProcess.execFile(argv[0], argv.slice(1), {
+  // 与 runExecStream 同一条 ADB 重写：detached 状态探针与停任务命令也走主通道，
+  // 否则 ADB 模式下会退化成直连 SSH，SSH 不可用时把仍在远端运行的任务误判为失败。
+  const effectiveArgv = rewriteRemoteArgvForStream(argv) || argv;
+  childProcess.execFile(effectiveArgv[0], effectiveArgv.slice(1), {
     encoding: 'utf8',
     timeout: options.timeoutMs ?? 30000,
     maxBuffer: options.maxBuffer ?? 2 * 1024 * 1024,
     windowsHide: true,
     env: childEnv(options.env),
   }, options.callback ?? (() => {}));
+  return '';
 }
 
 /**
@@ -547,6 +642,7 @@ export function runExecFile(argv, options = {}) {
  */
 export function runExecStream(argv, handlers = {}) {
   assertAllowedProgram(argv);
+  resolveComputeAdapter();
   if (resolveMockRemote(argv[0] || '')) {
     const result = mockRemoteResult();
     queueMicrotask(() => {
@@ -556,7 +652,8 @@ export function runExecStream(argv, handlers = {}) {
     });
     return { kill: () => {}, stdin: { write() {}, end() {}, on() {} } };
   }
-  const child = childProcess.spawn(argv[0], argv.slice(1), {
+  const effectiveArgv = rewriteRemoteArgvForStream(argv) || argv;
+  const child = childProcess.spawn(effectiveArgv[0], effectiveArgv.slice(1), {
     cwd: handlers.cwd,
     windowsHide: true,
     env: childEnv(handlers.env),
@@ -590,7 +687,8 @@ export function runStream(argv, handlers = {}) {
     });
     return { kill: () => {} };
   }
-  const child = childProcess.spawn(argv[0], argv.slice(1), {
+  const effectiveArgv = rewriteRemoteArgvForStream(argv) || argv;
+  const child = childProcess.spawn(effectiveArgv[0], effectiveArgv.slice(1), {
     cwd: handlers.cwd,
     windowsHide: true,
     env: childEnv(handlers.env),

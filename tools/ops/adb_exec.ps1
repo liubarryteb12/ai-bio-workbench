@@ -1,13 +1,13 @@
 <#
 .SYNOPSIS
-  在手机上执行命令：默认 adb，adb 不可用即报错；ssh 只作显式特殊开关。
+  在手机上执行命令：固定走 adb，adb 不可用即报错。
 
 .DESCRIPTION
-  为什么优先 adb（2026-11-06 决定）：
+  为什么只用 adb（2026-11-06 决定，2026-11-11 封存 SSH）：
     adb 由系统 adbd 提供，Termux 进程被杀后依然可用；
     sshd 跑在 Termux 内部，Termux 一死连接就断（本机实测过 5 次，
     每次都只能靠 adb shell am start 重启 Termux 才能恢复）。
-  因此 adb 作为主通道，sshd 只在显式 -Transport ssh 时启用，默认不回落。
+  用户当前不使用 SSH，备用通道已封存至 _archive/ssh_retired_20261111/。
 
   权限边界（实测）：
     adb shell 身份是 uid=2000(shell)，读不到 /data/data/com.termux；
@@ -53,8 +53,8 @@ param(
   [string]$PushLocalPath,
   [string]$PushRemotePath,
   [int]$TimeoutSec = 1800,
-  # adb 是默认且唯一的主通道；ssh 需要显式选择，只用于验证备用链路。
-  [ValidateSet('adb', 'ssh')][string]$Transport = 'adb',
+  # 单通道：只接受 adb，SSH 备用通道已封存。
+  [ValidateSet('adb')][string]$Transport = 'adb',
   # 给远端进程设地址空间上限（MB）。0 表示不限制。
   # 为什么需要：本机 Termux 的 phantom killer 已关、电池白名单已加、wake lock 已持、
   # oom_score_adj 已是 -1000，保护措施全开仍被杀 5 次 —— 真正的原因是自身峰值内存
@@ -131,29 +131,6 @@ function Invoke-ViaAdb([string]$payload) {
   return Invoke-AdbStdin $runner
 }
 
-function Repair-Forwards {
-  # ssh 备用通道依赖 adb 端口转发（8022/10022）。adb server 重启后转发会丢，
-  # 表现为 Connection refused —— 这里按需重建，让备用通道真的可用。
-  try {
-    $have = (& $ADB forward --list 2>&1) -join " "
-    foreach ($port in @('8022', '10022')) {
-      if ($have -notmatch ("tcp:" + $port + " tcp:" + $port)) {
-        & $ADB forward ("tcp:" + $port) ("tcp:" + $port) 2>&1 | Out-Null
-      }
-    }
-  } catch {
-    Write-Verbose "转发修复失败（继续尝试直连）：$_"
-  }
-}
-
-function Invoke-ViaSsh([string]$payload) {
-  $target = if ($Level -eq 'ubuntu') { 'k40-ubuntu' } else { 'k40' }
-  $ssh = 'D:/Git/usr/bin/ssh.exe'
-  Repair-Forwards
-  $out = $payload | & $ssh -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $target "bash -s" 2>&1
-  return @{ Output = $out; Code = $LASTEXITCODE }
-}
-
 $payload = Get-Payload
 
 # 内存上限：只在显式给 -MemLimitMB 时注入，避免默认改变既有行为。
@@ -163,19 +140,11 @@ if ($MemLimitMB -gt 0) {
   $payload = $limitLine + $payload
 }
 
-$used = $Transport
 $result = $null
-
-if ($Transport -eq 'ssh') {
-  # 显式特殊开关：只用于验证 sshd 本身是否健康，不是默认路径
-  $result = Invoke-ViaSsh $payload
-} else {
-  $probe = & $ADB get-state 2>&1
-  if (($probe -join '').Trim() -ne 'device') { throw "adb 通道不可用: $probe" }
-  $result = Invoke-ViaAdb $payload
-  $used = 'adb'
-}
+$probe = & $ADB get-state 2>&1
+if (($probe -join '').Trim() -ne 'device') { throw "adb 通道不可用: $probe" }
+$result = Invoke-ViaAdb $payload
 
 $result.Output | ForEach-Object { Write-Output $_ }
-Write-Verbose ("transport=" + $used + " code=" + $result.Code)
+Write-Verbose ("transport=adb code=" + $result.Code)
 exit $result.Code

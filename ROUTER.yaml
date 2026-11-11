@@ -245,7 +245,6 @@ routes:
       - "设备"
       - "连不上"
       - "adb"
-      - "ssh"
       - "超时"
     target_line_or_gate: "tools/dev/preflight.mjs"
     allowed_scripts:

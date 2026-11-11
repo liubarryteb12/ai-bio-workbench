@@ -1,23 +1,16 @@
 /**
  * 远端执行层：本地零算力红线的唯一出口。
  *
- * 默认经 ADB 到 k40-ubuntu 执行；只有显式 BIO_COMPUTE_ADAPTER=ssh 才走 ssh。
- * 本模块只负责把命令送过去、按宽松/严格两种口径取回结果，并把 ssh 通道
- * 自身可能混入的 noise 从引擎输出里滤掉。
+ * 固定经 ADB 到 k40-ubuntu 执行；SSH 通道已封存，见
+ * `_archive/ssh_retired_20261111/RESTORE.md`。本模块只负责把命令送过去、
+ * 按宽松/严格两种口径取回结果，并把通道自身可能混入的 noise 滤掉。
  */
 
 import { projectLineDir } from './domain.js';
-import { adbRaw, runSshRaw } from './proc.js';
-
-/** ssh 是特殊开关，不是默认通道。未设置或设为 adb 时一律走 ADB。 */
-function usesSshAdapter() {
-  return process.env.BIO_COMPUTE_ADAPTER === 'ssh';
-}
+import { adbRaw, resolveComputeAdapter } from './proc.js';
 
 export function runRemoteRaw(command) {
-  if (usesSshAdapter()) {
-    return runSshRaw('k40-ubuntu', command, { timeoutMs: 40000 });
-  }
+  resolveComputeAdapter();
   return adbRaw(command, { timeoutMs: 40000 });
 }
 

@@ -16,7 +16,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-pwsh -NoProfile -File "%~dp0ops\port_preflight.ps1" -Port 8080 -ExpectedPattern "portal[\\/]serve\.mjs" >nul 2>nul
+pwsh -NoProfile -File "%~dp0tools\ops\port_preflight.ps1" -Port 8080 -ExpectedPattern "portal[\\/]serve\.mjs" >nul 2>nul
 if not errorlevel 1 goto portal_port_free
 echo [提示] 8080 端口已被 Bound 或 Listen 状态占用，启动已取消。
 echo         请运行以下命令查看占用者，禁止直接结束未知进程：
@@ -31,6 +31,7 @@ echo 需求收件箱  : %~dp0portal\inbox\
 echo 按 Ctrl+C 可停止服务。
 echo.
 
+start "" "http://127.0.0.1:8080/"
 node "%~dp0portal\serve.mjs"
 
 echo.

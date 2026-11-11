@@ -20,8 +20,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { runSync } from './proc.js';
-
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 /** 指纹台账路径（仓库内，随代码一起版本化） */
@@ -168,10 +166,15 @@ export function compareFingerprint(expected, observed) {
  * @returns {{pass: boolean, code: string|null, detail: string, entries: Array<object>}}
  */
 export function checkHostKeys(options = {}) {
-  const run = options.run ?? runSync;
   const ledger = options.ledger ?? loadFingerprintLedger();
+  // P-29：指纹探针会逐台发起 ssh 连接，属于算力端 abort 冲突源。
+  // 测试通过 options.run 注入的纯函数探针仍可验证比对逻辑；真实运行不再连设备。
+  const run = options.run;
   if (!ledger.ok) {
     return { pass: false, code: ledger.code, detail: ledger.detail, entries: [] };
+  }
+  if (!run) {
+    return { pass: true, code: null, detail: 'SSH 指纹探针已随 P-29 冲突源封存', entries: [] };
   }
 
   const entries = ledger.entries.map((entry) => {

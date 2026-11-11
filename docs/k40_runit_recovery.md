@@ -50,7 +50,6 @@ ssh k40 'echo BASE_OK' && ssh k40-ubuntu 'echo CONTAINER_OK'
 |---|---|
 | `tools/ops/k40/sv/{sshd,crond,ssh-agent,ubuntu-sshd}/{run,log/run}` | 8 个 runit 服务定义，log/run 带 10MB 轮转 |
 | `tools/ops/k40/ensure_runsvdir.sh` | 幂等点火（flock 单实例 + 快判短路 + 15 秒死人开关 + 绝不杀 sshd） |
-| `tools/ops/k40/pi_a2a_launch.sh` | Pi A2A 启动器镜像（Termux `$HOME/bin` 落点） |
 
 ## 四、尚未解决（交接给下一轮）
 
