@@ -18,6 +18,7 @@
     "dataType": "microarray"
   },
   "dataSource": {
+    "source": "GEO",
     "dataType": "microarray",
     "sampleCount": 10,
     "tissue": "blood",
@@ -32,12 +33,13 @@
     ]
   },
   "groupingDesign": {
+    "mode": "two_group",
     "groups": [
-      { "groupName": "Control", "role": "reference" },
-      { "groupName": "Disease", "role": "disease_stage" }
+      { "groupName": "Control", "role": "reference", "sampleIds": ["GSM000001"] },
+      { "groupName": "Disease", "role": "disease_stage", "sampleIds": ["GSM000002"] }
     ],
     "contrasts": [
-      { "case": "Disease", "ctrl": "Control", "isPrimary": true }
+      { "name": "Disease_vs_Control", "case": "Disease", "ctrl": "Control", "isPrimary": true }
     ]
   },
   "analysisCutoffs": {

@@ -12,6 +12,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { normalizeWorkOrderV2, WORK_ORDER_V2_SCHEMA_VERSION } from '../../shared/work_order_v2.mjs';
+import {
+  buildOldReceiptProjection,
+  computeWorkOrderDigest,
+  createReceiptV1,
+  updateReceiptStatus,
+  writeReceiptV1Atomic,
+} from '../../BioanalysDesktop/server/receipt_v1.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, '..', '..');
@@ -19,6 +27,13 @@ const WORKFLOWS_FILE = path.join(REPO_ROOT, 'tools', 'bio', 'workflows.json');
 const FIGURE_TEMPLATES_FILE = path.join(REPO_ROOT, 'tools', 'bio', 'figure_templates.json');
 const ALLOWLIST_FILE = path.join(REPO_ROOT, 'tools', 'dev', 'figure_ready_allowlist.json');
 export const WORK_ORDER_SCHEMA_VERSION = 'work_order/v1';
+const RECEIPT_V1_FILENAME = 'receipt.v1.json';
+const LEGACY_RECEIPT_FILENAME = 'work_order.receipt.json';
+const BLOCKED_TERMINAL_CODES = new Set([
+  'ERR_API_UNREACHABLE',
+  'ERR_INPUT_FILE',
+  'ERR_ADMIN_REVIEW_REQUIRED',
+]);
 
 const LINES = Object.freeze(['line1_bulk', 'line2_scrna', 'line3_spatial']);
 const PROJECT_ID_RE = /^[A-Za-z0-9._-]{1,64}$/;
@@ -68,6 +83,88 @@ function sha256Hex(value) {
   return createHash('sha256').update(value).digest('hex');
 }
 
+async function sha256File(filePath) {
+  const hash = createHash('sha256');
+  for await (const chunk of fs.createReadStream(filePath, { highWaterMark: 1024 * 1024 })) {
+    hash.update(chunk);
+  }
+  return hash.digest('hex');
+}
+
+/**
+ * 按 chunkSize 从文件流产出分片，内存峰值约一个分片。
+ * createReadStream 的 highWaterMark 固定 1 MiB，避免服务端给出超大 chunkSize 时
+ * 单次 read 直接吃掉同等内存。
+ */
+async function* fileChunks(filePath, chunkSize) {
+  let pending = [];
+  let pendingBytes = 0;
+  for await (const piece of fs.createReadStream(filePath, { highWaterMark: 1024 * 1024 })) {
+    let offset = 0;
+    while (offset < piece.length) {
+      const take = Math.min(chunkSize - pendingBytes, piece.length - offset);
+      pending.push(piece.subarray(offset, offset + take));
+      pendingBytes += take;
+      offset += take;
+      if (pendingBytes === chunkSize) {
+        yield Buffer.concat(pending, pendingBytes);
+        pending = [];
+        pendingBytes = 0;
+      }
+    }
+  }
+  if (pendingBytes > 0) yield Buffer.concat(pending, pendingBytes);
+}
+
+/**
+ * v2 文件引用预检：路径必须落在 inputsRoot 内、真实存在、是文件，
+ * 声明大小与声明 SHA-256 都必须和磁盘一致。任一不符 fail closed。
+ */
+async function prepareInputFiles(inputs, inputsRoot) {
+  const root = path.resolve(inputsRoot);
+  let realRoot;
+  try {
+    realRoot = fs.realpathSync(root);
+  } catch {
+    fail('ERR_INPUT_FILE', `inputsRoot 不可读: ${inputsRoot}`, { stage: 'uploads' });
+  }
+  const prepared = [];
+  for (const [index, input] of inputs.entries()) {
+    const at = `inputs[${index}]`;
+    const absolutePath = path.resolve(root, input.path);
+    const relative = path.relative(root, absolutePath);
+    if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
+      fail('ERR_INPUT_FILE', `${at}.path 解析后越出 inputsRoot: ${input.path}`, { stage: 'uploads' });
+    }
+    let stat;
+    try {
+      stat = fs.statSync(absolutePath);
+    } catch {
+      fail('ERR_INPUT_FILE', `${at}.path 不存在: ${input.path}`, { stage: 'uploads' });
+    }
+    if (!stat.isFile()) fail('ERR_INPUT_FILE', `${at}.path 不是文件: ${input.path}`, { stage: 'uploads' });
+    let realFile;
+    try {
+      realFile = fs.realpathSync(absolutePath);
+    } catch {
+      fail('ERR_INPUT_FILE', `${at}.path 无法解析真实路径: ${input.path}`, { stage: 'uploads' });
+    }
+    const realRelative = path.relative(realRoot, realFile);
+    if (!realRelative || realRelative.startsWith('..') || path.isAbsolute(realRelative)) {
+      fail('ERR_INPUT_FILE', `${at}.path 通过链接逃出 inputsRoot: ${input.path}`, { stage: 'uploads' });
+    }
+    if (stat.size !== input.size) {
+      fail('ERR_INPUT_FILE', `${at}.size 声明 ${input.size}，实际 ${stat.size}: ${input.path}`, { stage: 'uploads' });
+    }
+    const actualSha256 = await sha256File(absolutePath);
+    if (actualSha256 !== input.sha256) {
+      fail('ERR_INPUT_HASH', `${at}.sha256 声明 ${input.sha256}，实际 ${actualSha256}: ${input.path}`, { stage: 'uploads' });
+    }
+    prepared.push({ ...input, absolutePath, bytes: stat.size, actualSha256 });
+  }
+  return prepared;
+}
+
 function nowIso() {
   return new Date().toISOString();
 }
@@ -79,6 +176,25 @@ function readJson(file, label) {
     fail('ERR_FACT_SOURCE', `${label} 不可读: ${cause.message}`);
   }
   return null;
+}
+
+/**
+ * v2 输入归一化层。
+ *
+ * v1 工单原样返回，编译与执行逻辑不变。v2 工单先经 shared/work_order_v2.mjs
+ * 校验并转成内部 camelCase 形态，schema_version 回落为 v1 以复用同一编译契约。
+ * 归一化失败抛 WorkOrderError，由 runWorkOrder 的失败路径转成失败回执。
+ */
+export function normalizeWorkOrderInput(order) {
+  if (!isPlainObject(order) || String(order.schema_version || '') !== WORK_ORDER_V2_SCHEMA_VERSION) {
+    return order;
+  }
+  const normalized = normalizeWorkOrderV2(order);
+  if (!normalized.ok) {
+    const firstCode = normalized.codes[0] || 'ERR_WORK_ORDER_V2';
+    fail(firstCode, normalized.errors.join('；'), { errors: normalized.errors, codes: normalized.codes });
+  }
+  return normalized.workOrder;
 }
 
 function indexRegistry() {
@@ -232,6 +348,21 @@ export function compileWorkOrderPlan(order, options = {}) {
       language: entry.mod.language || null,
       optional: entry.optional,
     }));
+  const speciesScope = Array.isArray(body.speciesScope)
+    ? body.speciesScope.map((item) => String(item).trim()).filter(Boolean)
+    : [];
+  if (speciesScope.length) {
+    const scopeText = speciesScope.join(' ').toLowerCase();
+    const allowHuman = /homo sapiens|human/.test(scopeText);
+    const allowMouse = /mus musculus|mouse/.test(scopeText);
+    for (const node of dag) {
+      node.outputs = node.outputs.filter((name) => {
+        if (/_human\./i.test(name) && !allowHuman) return false;
+        if (/_mouse\./i.test(name) && !allowMouse) return false;
+        return true;
+      });
+    }
+  }
   if (!dag.length) fail('ERR_EMPTY_DAG', '编译后的 DAG 为空');
   const uploads = requireArray(body.uploads ?? [], 'uploads').map((item, index) => {
     const upload = requirePlainObject(item, `uploads[${index}]`);
@@ -255,11 +386,11 @@ export function compileWorkOrderPlan(order, options = {}) {
   for (const upload of uploads) {
     if (upload.lineId !== lineId) fail('ERR_CROSS_LINE_UPLOAD', `上传文件跨线: ${upload.filename}`);
   }
-  if (body.computeAdapter && !['adb', 'ssh', 'mock'].includes(String(body.computeAdapter))) {
-    fail('ERR_COMPUTE_ADAPTER', `computeAdapter 非法: ${body.computeAdapter}`);
+  if (body.computeAdapter === 'ssh' || body.allowSsh === true) {
+    fail('ERR_SSH_DISABLED', 'SSH 通道已封存，见 _archive/ssh_retired_20261111/RESTORE.md');
   }
-  if (body.computeAdapter === 'ssh' && body.allowSsh !== true) {
-    fail('ERR_SSH_DISABLED', 'SSH 仅在工单显式 allowSsh=true 的特殊场景启用');
+  if (body.computeAdapter && !['adb', 'mock'].includes(String(body.computeAdapter))) {
+    fail('ERR_COMPUTE_ADAPTER', `computeAdapter 非法: ${body.computeAdapter}`);
   }
   return {
     schema_version: WORK_ORDER_SCHEMA_VERSION,
@@ -271,6 +402,7 @@ export function compileWorkOrderPlan(order, options = {}) {
     figureSelections: selections,
     uploads,
     computeAdapter: String(body.computeAdapter || 'adb'),
+    speciesScope,
     dag,
     facts: { readyBaseline: facts.readyFigures.size, workflowMods: facts.mods.size },
   };
@@ -287,6 +419,15 @@ function makeReceiptIndex(receipts) {
     if (!previous || time >= String(previous.end_time || previous.ended_at || '')) byStep.set(step, raw);
   }
   return byStep;
+}
+
+function receiptStartedAfter(receipt, sinceMs) {
+  const raw = String(receipt?.start_time || receipt?.started_at || '').trim();
+  if (!raw) return true;
+  const started = Date.parse(raw);
+  if (!Number.isFinite(started)) return true;
+  // 允许 5 秒时钟抖动；更早的回执属于上一轮，不能被当成本轮完成证据。
+  return started >= sinceMs - 5000;
 }
 
 function pickReceipts(payload) {
@@ -340,6 +481,10 @@ function normalizeTaskFromPlan(task) {
     scriptPath: String(task.scriptPath || task.script_path || ''),
     language: String(task.language || ''),
     canonicalOutput: String(task.canonicalOutput || task.canonical_output || ''),
+    canonicalOutputs: Array.isArray(task.canonicalOutputs)
+      ? task.canonicalOutputs.map(String)
+      : (Array.isArray(task.canonical_outputs) ? task.canonical_outputs.map(String) : []),
+    directOutputs: task.directOutputs === true,
     dependsOnStep: String(task.depends_on_step || task.dependsOnStep || ''),
   };
 }
@@ -369,14 +514,28 @@ function normalizeReceipts(payload) {
   return [];
 }
 
-function createDefaultRequest({ baseUrl = 'http://127.0.0.1:18787', headers = {} } = {}) {
+function createDefaultRequest({ baseUrl = 'http://127.0.0.1:18787', headers = {}, timeoutMs } = {}) {
   if (typeof fetch !== 'function') fail('ERR_HTTP_CLIENT', '当前运行环境缺少 fetch');
   return async (method, requestPath, body) => {
-    const isBinaryChunk = /\/api\/upload\/chunk\b/.test(requestPath) && isPlainObject(body)
-      && typeof body.content_base64 === 'string';
+    const isChunk = /\/api\/upload\/chunk\b/.test(requestPath);
+    const isBinaryChunk = isChunk && (
+      Buffer.isBuffer(body)
+      || (isPlainObject(body) && Buffer.isBuffer(body.data))
+      || (isPlainObject(body) && typeof body.content_base64 === 'string')
+    );
     const requestBody = isBinaryChunk
-      ? Buffer.from(body.content_base64, 'base64')
+      ? (Buffer.isBuffer(body) ? body : (Buffer.isBuffer(body.data)
+        ? body.data
+        : Buffer.from(body.content_base64, 'base64')))
       : body;
+    // 分级超时（2026-11-11 P1）：统一 30s 会把合法长调用（上传 complete /
+    // 任务 submit / 报告 build，服务端侧 scp 900s、桥接 300s）在编排器侧掐死，
+    // 报 ERR_API_UNREACHABLE 而服务端还在干活。按调用形态分级给超时。
+    const isLongCall = /\/api\/upload\/(init|complete)\b/.test(requestPath)
+      || /\/api\/tasks\/submit\b/.test(requestPath)
+      || /\/api\/report\/build\b/.test(requestPath)
+      || /\/api\/projects\/(create|execution-plan)\b/.test(requestPath);
+    const effectiveTimeoutMs = Number(timeoutMs ?? (isLongCall ? 960000 : 30000));
     const response = await fetch(`${String(baseUrl).replace(/\/+$/, '')}${requestPath}`, {
       method,
       headers: {
@@ -388,7 +547,7 @@ function createDefaultRequest({ baseUrl = 'http://127.0.0.1:18787', headers = {}
       body: body === undefined
         ? undefined
         : (isBinaryChunk ? requestBody : JSON.stringify(requestBody)),
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(effectiveTimeoutMs),
     });
     const text = await response.text();
     let payload = text;
@@ -432,12 +591,138 @@ function blockedStages() {
   ];
 }
 
-function writeLocalArtifacts(repoRoot, projectId, summary, receipt) {
-  const projectDir = path.join(repoRoot, 'workspace/projects', projectId);
-  const reportDir = path.join(projectDir, 'report');
+function receiptReportDir(repoRoot, projectId) {
+  return path.join(repoRoot, 'workspace/projects', projectId, 'report');
+}
+
+function relativePosix(repoRoot, filePath) {
+  return path.relative(repoRoot, filePath).split(path.sep).join('/');
+}
+
+function canPersistReceipt(projectId) {
+  return PROJECT_ID_RE.test(String(projectId || '')) && !String(projectId || '').startsWith('.');
+}
+
+function redactReceiptText(value, repoRoot) {
+  let text = String(value ?? '');
+  if (!text) return text;
+  if (repoRoot) text = text.split(repoRoot).join('<workspace>');
+  text = text.replace(/[A-Za-z]:[\\/][^\s"'`]+/g, '<path>');
+  text = text.replace(/\/(?:mnt|home|root|tmp|var|usr|opt)\/[^\s"'`]+/g, '<path>');
+  return text;
+}
+
+function basenameOnly(value) {
+  const text = String(value ?? '').trim();
+  if (!text) return text;
+  const parts = text.replace(/\\/g, '/').split('/').filter(Boolean);
+  return parts.length ? parts.at(-1) : text;
+}
+
+function sanitizeTaskReceipt(receipt) {
+  if (!isPlainObject(receipt)) return receipt;
+  const clone = { ...receipt };
+  if (isPlainObject(receipt.io_files)) {
+    clone.io_files = {
+      ...receipt.io_files,
+      ...(Array.isArray(receipt.io_files.input) ? { input: receipt.io_files.input.map(basenameOnly) } : {}),
+      ...(Array.isArray(receipt.io_files.output) ? { output: receipt.io_files.output.map(basenameOnly) } : {}),
+    };
+  }
+  if (typeof receipt.error_log === 'string' && receipt.error_log.trim()) {
+    clone.error_log = basenameOnly(receipt.error_log);
+  }
+  return clone;
+}
+
+function sanitizeStages(stages, repoRoot) {
+  return (Array.isArray(stages) ? stages : []).map((stage) => {
+    if (!isPlainObject(stage)) return stage;
+    const clone = { ...stage };
+    if (typeof stage.error === 'string') clone.error = redactReceiptText(stage.error, repoRoot);
+    if (stage.name === 'task_dispatch' && Array.isArray(stage.tasks)) {
+      clone.tasks = stage.tasks.map((task) => (
+        isPlainObject(task) ? { ...task, receipt: sanitizeTaskReceipt(task.receipt) } : task
+      ));
+    }
+    return clone;
+  });
+}
+
+function sanitizeTaskReceipts(tasks) {
+  return (Array.isArray(tasks) ? tasks : []).map((item) => ({
+    order: item.order,
+    mod_id: item.modId,
+    step: item.step,
+    task_id: item.taskId,
+    status: item.status,
+    receipt: sanitizeTaskReceipt(item.receipt),
+  }));
+}
+
+function terminalStatusFor(error) {
+  if (error?.details?.blocked === true) return 'blocked';
+  return BLOCKED_TERMINAL_CODES.has(String(error?.code || '')) ? 'blocked' : 'failed';
+}
+
+async function buildDeliverySegment(repoRoot, projectId, report, tarName) {
+  const acceptance = isPlainObject(report?.acceptance) ? report.acceptance : {};
+  const receiptName = String(acceptance.receipt || `${projectId}.receipt.json`);
+  const acceptanceFile = path.join(
+    repoRoot,
+    'workspace/projects',
+    projectId,
+    'deliverables',
+    'acceptance',
+    receiptName,
+  );
+  let tarSha256 = null;
+  let verifiedCount = Number.isInteger(acceptance.verified_count) ? acceptance.verified_count : null;
+  let coverageOk = acceptance.sentinel === 'DELIVERY_ACCEPTANCE_OK 四道关全绿';
+  let verifierVersion = acceptance.verifier_version || null;
+
+  if (fs.existsSync(acceptanceFile)) {
+    try {
+      const stored = JSON.parse(fs.readFileSync(acceptanceFile, 'utf8'));
+      if (typeof stored.tar_sha256 === 'string') tarSha256 = stored.tar_sha256;
+      if (Number.isInteger(stored.verified_count)) verifiedCount = stored.verified_count;
+      if (typeof stored.coverage_ok === 'boolean') coverageOk = stored.coverage_ok;
+      if (stored.verifier_version) verifierVersion = String(stored.verifier_version);
+    } catch {
+      // 回执不可读时保留报告构建返回值，放行判据仍由现有下载门禁决定。
+    }
+  }
+
+  if (!tarSha256 && tarName) {
+    const tarFile = path.join(repoRoot, 'workspace/projects', projectId, 'deliverables', tarName);
+    if (fs.existsSync(tarFile)) tarSha256 = await sha256File(tarFile);
+  }
+
+  return {
+    receipt_path: relativePosix(repoRoot, acceptanceFile),
+    tar_sha256: tarSha256,
+    verified_count: verifiedCount,
+    coverage_ok: coverageOk === true,
+    verifier_version: verifierVersion,
+  };
+}
+
+async function artifactEntry(repoRoot, filePath, role, stage) {
+  if (!fs.existsSync(filePath)) return null;
+  const stat = fs.statSync(filePath);
+  return {
+    path: relativePosix(repoRoot, filePath),
+    role,
+    bytes: stat.size,
+    sha256: await sha256File(filePath),
+    stage,
+  };
+}
+
+function writeProjectSummary(repoRoot, projectId, summary) {
+  const reportDir = receiptReportDir(repoRoot, projectId);
   fs.mkdirSync(reportDir, { recursive: true });
   const summaryFile = path.join(reportDir, 'Project_Summary.md');
-  const receiptFile = path.join(reportDir, 'work_order.receipt.json');
   const summaryText = [
     `# 项目汇总：${projectId}`,
     '',
@@ -458,11 +743,23 @@ function writeLocalArtifacts(repoRoot, projectId, summary, receipt) {
     'WORK_ORDER_SUMMARY_OK',
   ].join('\n');
   fs.writeFileSync(summaryFile, summaryText, 'utf8');
+  return summaryFile;
+}
+
+function writeLegacyReceipt(repoRoot, projectId, receipt) {
+  const reportDir = receiptReportDir(repoRoot, projectId);
+  fs.mkdirSync(reportDir, { recursive: true });
+  const receiptFile = path.join(reportDir, LEGACY_RECEIPT_FILENAME);
   fs.writeFileSync(receiptFile, JSON.stringify(receipt, null, 2), 'utf8');
-  return {
-    project_summary: path.relative(repoRoot, summaryFile).split(path.sep).join('/'),
-    work_order_receipt: path.relative(repoRoot, receiptFile).split(path.sep).join('/'),
-  };
+  return receiptFile;
+}
+
+function persistAuthorityReceipt(repoRoot, receiptV1) {
+  if (!canPersistReceipt(receiptV1.project_id)) return null;
+  const reportDir = receiptReportDir(repoRoot, receiptV1.project_id);
+  const receiptFile = path.join(reportDir, RECEIPT_V1_FILENAME);
+  writeReceiptV1Atomic(receiptV1, receiptFile);
+  return receiptFile;
 }
 
 export async function runWorkOrder(order, options = {}) {
@@ -476,9 +773,37 @@ export async function runWorkOrder(order, options = {}) {
   const stages = [];
   const tasks = [];
   const uploadReceipts = [];
+  const startedAt = nowIso();
+  const workOrderDigest = computeWorkOrderDigest(order ?? {});
+  const initialProjectId = String(order?.projectId || order?.project_id || '');
+  const initialWorkOrderId = String(
+    order?.workOrderId || order?.work_order_id || (initialProjectId ? `WO-${initialProjectId}` : 'WO-UNKNOWN'),
+  );
+  let receiptV1 = createReceiptV1({
+    workOrderDigest,
+    workOrderId: initialWorkOrderId,
+    projectId: initialProjectId,
+    lineId: String(order?.lineId || order?.execution?.line_id || ''),
+    startedAt,
+    sourceSchemaVersion: String(order?.schema_version || WORK_ORDER_SCHEMA_VERSION),
+    seed: Number.isInteger(Number(order?.seed ?? order?.execution?.seed))
+      ? Number(order?.seed ?? order?.execution?.seed)
+      : null,
+    computeAdapter: String(order?.computeAdapter || order?.execution?.compute_adapter || 'adb'),
+  });
   let compiled;
   try {
+    order = normalizeWorkOrderInput(order);
     compiled = compileWorkOrderPlan(order, options);
+    receiptV1 = updateReceiptStatus(receiptV1, 'running', {
+      work_order_id: String(order.workOrderId || order.ticketId || `WO-${compiled.projectId}`),
+      project_id: compiled.projectId,
+      line_id: compiled.lineId,
+      source_schema_version: order.sourceSchemaVersion || WORK_ORDER_SCHEMA_VERSION,
+      seed: compiled.seed,
+      compute_adapter: compiled.computeAdapter,
+      dag: compiled.dag.map((node) => ({ order: node.order, mod_id: node.modId, step: node.script })),
+    });
     stages.push(baseStageResult('validate', 'passed', {
       projectId: compiled.projectId,
       lineId: compiled.lineId,
@@ -490,20 +815,43 @@ export async function runWorkOrder(order, options = {}) {
     const error = cause instanceof WorkOrderError
       ? cause
       : new WorkOrderError('ERR_VALIDATE', cause.message);
-    const receipt = {
-      schema_version: WORK_ORDER_SCHEMA_VERSION,
+    const terminalStatus = terminalStatusFor(error);
+    const failureStages = sanitizeStages([
+      baseStageResult('validate', 'failed', {
+        code: error.code,
+        error: redactReceiptText(error.message, repoRoot),
+      }),
+      ...blockedStages(),
+    ], repoRoot);
+    receiptV1 = updateReceiptStatus(receiptV1, terminalStatus, {
+      finished_at: nowIso(),
+      failure_stage: 'validate',
+      error: { code: error.code, message: redactReceiptText(error.message, repoRoot) },
+      stages: failureStages,
+    });
+    try {
+      persistAuthorityReceipt(repoRoot, receiptV1);
+    } catch {
+      // 权威回执写失败不掩盖原始校验错误，失败码仍按工单校验结果返回。
+    }
+    const receipt = buildOldReceiptProjection(receiptV1);
+    return {
       ok: false,
-      status: 'failed',
+      status: terminalStatus,
       code: error.code,
       error: error.message,
-      at: nowIso(),
-      stages: [baseStageResult('validate', 'failed', { code: error.code, error: error.message }), ...blockedStages()],
+      receipt,
+      receiptV1,
+      stages: failureStages,
     };
-    return { ok: false, status: 'failed', code: error.code, error: error.message, receipt, stages: receipt.stages };
   }
 
   const projectId = compiled.projectId;
   const lineId = compiled.lineId;
+  const resume = order.resume === true;
+  const resumeSinceRaw = String(order.resumeSince || '').trim();
+  const resumeSince = resumeSinceRaw ? Date.parse(resumeSinceRaw) : 0;
+  const resumeSinceMs = Number.isFinite(resumeSince) ? resumeSince : 0;
   const koGene = String(order.biologicalPriors?.targetKoGene || order.koGene || '').trim();
   const createBody = {
     ...(isPlainObject(order.createPayload) ? order.createPayload : {}),
@@ -516,19 +864,92 @@ export async function runWorkOrder(order, options = {}) {
     projectId,
     lineId,
     seriesId: lineId,
-    name: String(order.name || order.projectName || projectId),
+    name: String(order.basicInfo?.name || order.name || order.projectName || projectId),
     description: String(order.description || ''),
     modIds: compiled.selectedMods,
     figure_templates: compiled.figureSelections,
     seed: compiled.seed,
   };
   const workOrderId = String(order.workOrderId || order.ticketId || `WO-${projectId}`);
+  const v2Inputs = order.sourceSchemaVersion === WORK_ORDER_V2_SCHEMA_VERSION && Array.isArray(order.inputs)
+    ? order.inputs
+    : [];
 
   try {
-    const created = await callApi(request, 'POST', '/api/projects/create', createBody, 'create_project');
-    if (created?.ok === false) fail('ERR_CREATE_PROJECT', created.error || '建项返回 ok=false');
-    stages.push(baseStageResult('create_project', 'passed', { projectId, lineId }));
+    const preparedInputs = v2Inputs.length > 0
+      ? await prepareInputFiles(v2Inputs, options.inputsRoot || repoRoot)
+      : [];
+    let created = null;
+    try {
+      created = await callApi(request, 'POST', '/api/projects/create', createBody, 'create_project');
+      if (created?.ok === false) fail('ERR_CREATE_PROJECT', created.error || '建项返回 ok=false');
+      stages.push(baseStageResult('create_project', 'passed', { projectId, lineId }));
+    } catch (cause) {
+      if (resume && cause instanceof WorkOrderError && cause.code === 'ERR_API_FAILED'
+        && cause.details?.status === 409) {
+        stages.push(baseStageResult('create_project', 'passed', { projectId, lineId, resumed: true }));
+      } else {
+        throw cause;
+      }
+    }
 
+    if (preparedInputs.length > 0) {
+      for (const [index, input] of preparedInputs.entries()) {
+        const init = await callApi(request, 'POST', '/api/upload/init', {
+          projectId,
+          lineId,
+          filename: input.filename,
+          size: input.bytes,
+          fileSize: input.bytes,
+          lastModified: `${compiled.seed}-${index}`,
+        }, 'upload_init');
+        const uploadId = String(init?.uploadId || '');
+        if (!uploadId) fail('ERR_UPLOAD_INIT', '上传初始化未返回 uploadId');
+        const chunkSize = Number(init?.chunkSize || 1048576);
+        if (!Number.isInteger(chunkSize) || chunkSize <= 0) {
+          fail('ERR_UPLOAD_INIT', `上传初始化返回的 chunkSize 非法: ${init?.chunkSize}`);
+        }
+        let chunkIndex = 0;
+        let uploadedBytes = 0;
+        for await (const chunk of fileChunks(input.absolutePath, chunkSize)) {
+          await callApi(
+            request,
+            'POST',
+            `/api/upload/chunk?uploadId=${encodeURIComponent(uploadId)}&index=${chunkIndex}`,
+            { uploadId, index: chunkIndex, data: chunk },
+            'upload_chunk',
+          );
+          uploadedBytes += chunk.length;
+          chunkIndex += 1;
+        }
+        if (uploadedBytes !== input.bytes) {
+          fail('ERR_INPUT_FILE', `上传字节数与声明不一致: ${input.path}，声明 ${input.bytes}，实际 ${uploadedBytes}`);
+        }
+        const complete = await callApi(request, 'POST', '/api/upload/complete', {
+          projectId,
+          lineId,
+          uploadId,
+          filename: input.filename,
+        }, 'upload_complete');
+        if (complete?.ok !== true || complete?.sizeMatch !== true) {
+          fail('ERR_UPLOAD_RECEIPT', `上传回执不完整: ${input.filename}`);
+        }
+        const remoteSha256 = typeof complete?.sha256 === 'string' ? complete.sha256 : null;
+        if (remoteSha256 && remoteSha256 !== input.sha256) {
+          fail('ERR_UPLOAD_HASH_MISMATCH', `上传回执哈希与工单声明不一致: ${input.filename}`);
+        }
+        uploadReceipts.push({
+          filename: input.filename,
+          role: input.role,
+          path: input.path,
+          uploadId,
+          bytes: input.bytes,
+          sha256: input.sha256,
+          remote_sha256: remoteSha256,
+          sizeMatch: complete.sizeMatch,
+        });
+      }
+    }
     for (const [index, upload] of compiled.uploads.entries()) {
       const init = await callApi(request, 'POST', '/api/upload/init', {
         projectId,
@@ -571,6 +992,7 @@ export async function runWorkOrder(order, options = {}) {
 
     const planPayload = await callApi(request, 'POST', '/api/projects/execution-plan', {
       projectId,
+      ...(compiled.speciesScope.length ? { speciesScope: compiled.speciesScope } : {}),
       pipelineDag: compiled.dag.map((node) => ({
         order: node.order,
         stepId: node.stepId,
@@ -598,9 +1020,45 @@ export async function runWorkOrder(order, options = {}) {
         body.scriptPath = task.scriptPath;
         body.language = task.language;
         body.canonicalOutput = task.canonicalOutput;
+        if (task.canonicalOutputs.length) body.canonicalOutputs = task.canonicalOutputs;
+        if (task.directOutputs) body.directOutputs = true;
         body.dependsOnStep = task.dependsOnStep;
       }
       if (koGene && /knockout|ko_/i.test(task.step)) body.targetKoGene = koGene;
+      if (resume) {
+        try {
+          const priorLedger = await callApi(
+            request,
+            'GET',
+            `/api/ledger/check?project=${encodeURIComponent(projectId)}`,
+            undefined,
+            'task_ledger',
+          );
+          const priorByStep = makeReceiptIndex(
+            pickReceipts(priorLedger).filter((item) => receiptStartedAfter(item, resumeSinceMs)),
+          );
+          const prior = priorByStep.get(task.step) || priorByStep.get(expected.modId);
+          if (prior) {
+            const problems = validateTaskReceipt(expected, prior, compiled);
+            if (problems.length === 0) {
+              tasks.push({
+                order: expected.order,
+                modId: expected.modId,
+                step: task.step,
+                taskId: String(prior.task_id || ''),
+                status: 'passed',
+                receipt: prior,
+                receipt_problems: [],
+                resumed: true,
+              });
+              continue;
+            }
+          }
+        } catch {
+          // 台账暂时不可读时继续走正常提交，不让续跑判断本身成为单点。
+        }
+      }
+      const submittedAt = Date.now();
       const submitted = await callApi(request, 'POST', '/api/tasks/submit', body, 'task_submit');
       const taskId = String(submitted?.taskId || '');
       if (!taskId) fail('ERR_TASK_SUBMIT', `${task.step} 未返回 taskId`);
@@ -609,11 +1067,19 @@ export async function runWorkOrder(order, options = {}) {
       for (let attempt = 0; attempt < poll.maxAttempts; attempt += 1) {
         const taskList = await callApi(request, 'GET', '/api/tasks', undefined, 'task_status');
         const running = (Array.isArray(taskList?.tasks) ? taskList.tasks : []).some((item) => String(item?.taskId) === taskId);
-        const ledger = await callApi(request, 'GET', '/api/ledger/check', undefined, 'task_ledger');
+        const ledger = await callApi(
+          request,
+          'GET',
+          `/api/ledger/check?project=${encodeURIComponent(projectId)}`,
+          undefined,
+          'task_ledger',
+        );
         if (ledger?.blocked === true) {
           fail('ERR_LEDGER_BLOCKED', ledger.reason || '台账巡检被阻塞');
         }
-        const byStep = makeReceiptIndex(pickReceipts(ledger));
+        const byStep = makeReceiptIndex(
+          pickReceipts(ledger).filter((item) => receiptStartedAfter(item, submittedAt)),
+        );
         const candidate = byStep.get(task.step) || byStep.get(expected.modId);
         if (candidate) {
           const problems = validateTaskReceipt(expected, candidate, compiled);
@@ -645,7 +1111,13 @@ export async function runWorkOrder(order, options = {}) {
     }
     stages.push(baseStageResult('task_dispatch', 'passed', { task_count: tasks.length, tasks }));
 
-    const report = await callApi(request, 'POST', '/api/report/build', { projectId, force: false }, 'report_build');
+    const report = await callApi(
+      request,
+      'POST',
+      '/api/report/build',
+      { projectId, force: order.forceReportBuild === true },
+      'report_build',
+    );
     if (report?.ok !== true || report?.acceptance?.sentinel !== 'DELIVERY_ACCEPTANCE_OK 四道关全绿') {
       fail('ERR_REPORT_ACCEPTANCE', report?.error || '报告构建未返回有效验收哨兵');
     }
@@ -690,40 +1162,65 @@ export async function runWorkOrder(order, options = {}) {
       delivery_tar: tar,
       at: nowIso(),
     };
-    const receipt = {
-      schema_version: WORK_ORDER_SCHEMA_VERSION,
-      ok: true,
-      status: 'completed',
-      work_order_id: workOrderId,
-      project_id: projectId,
-      line_id: lineId,
-      seed: compiled.seed,
-      compute_adapter: compiled.computeAdapter,
-      dag: compiled.dag.map((node) => ({ order: node.order, mod_id: node.modId, step: node.script })),
+    const delivery = await buildDeliverySegment(repoRoot, projectId, report, tar);
+    const completed = updateReceiptStatus(receiptV1, 'completed', {
+      finished_at: nowIso(),
+      stages: sanitizeStages(stages, repoRoot),
       upload_receipts: uploadReceipts,
-      task_receipts: tasks.map((item) => ({
-        order: item.order,
-        mod_id: item.modId,
-        step: item.step,
-        task_id: item.taskId,
-        status: item.status,
-        receipt: item.receipt,
-      })),
+      task_receipts: sanitizeTaskReceipts(tasks),
       acceptance: report.acceptance || {},
-      stages,
+      delivery,
       summary,
-      sentinel: 'WORK_ORDER_ORCHESTRATOR_OK',
+    });
+
+    const summaryFile = writeProjectSummary(repoRoot, projectId, summary);
+    const reportDir = receiptReportDir(repoRoot, projectId);
+    const legacyFile = path.join(reportDir, LEGACY_RECEIPT_FILENAME);
+    const summaryArtifact = await artifactEntry(repoRoot, summaryFile, 'project_summary', 'report_build');
+    const reportArtifacts = (await Promise.all([
+      artifactEntry(repoRoot, path.join(repoRoot, 'workspace/projects', projectId, 'deliverables', 'Analysis_Report.md'), 'analysis_report_md', 'acceptance'),
+      artifactEntry(repoRoot, path.join(repoRoot, 'workspace/projects', projectId, 'deliverables', 'Analysis_Report.html'), 'analysis_report_html', 'acceptance'),
+      artifactEntry(repoRoot, path.join(repoRoot, 'workspace/projects', projectId, 'deliverables', tar), 'delivery_tar', 'acceptance'),
+    ])).filter(Boolean);
+    const legacyRel = relativePosix(repoRoot, legacyFile);
+    const artifacts = {
+      project_summary: summaryArtifact?.path || relativePosix(repoRoot, summaryFile),
+      work_order_receipt: legacyRel,
     };
-    const artifacts = writeLocalArtifacts(repoRoot, projectId, summary, receipt);
-    receipt.artifacts = artifacts;
     summary.artifacts = artifacts;
+    completed.summary = summary;
+    completed.artifacts = [
+      ...(summaryArtifact ? [summaryArtifact] : []),
+      ...reportArtifacts,
+      { path: legacyRel, role: 'work_order_receipt', bytes: null, sha256: null, stage: 'report_build' },
+    ];
+
+    const legacyReceipt = buildOldReceiptProjection(completed);
+    writeLegacyReceipt(repoRoot, projectId, legacyReceipt);
+    const legacyArtifact = await artifactEntry(repoRoot, legacyFile, 'work_order_receipt', 'report_build');
+    completed.artifacts = completed.artifacts
+      .map((item) => (item.role === 'work_order_receipt' ? legacyArtifact : item))
+      .filter(Boolean);
+
+    try {
+      persistAuthorityReceipt(repoRoot, completed);
+    } catch (cause) {
+      try {
+        fs.rmSync(legacyFile, { force: true });
+      } catch {
+        // 清理失败不改变 fail closed 结论，调用方仍拿到写盘错误。
+      }
+      throw new WorkOrderError('ERR_RECEIPT_WRITE', `权威回执写盘失败: ${cause.message}`, { stage: 'acceptance' });
+    }
+
     return {
       ok: true,
       status: 'completed',
       projectId,
       lineId,
       summary,
-      receipt,
+      receipt: legacyReceipt,
+      receiptV1: completed,
       stages,
       artifacts,
     };
@@ -750,37 +1247,42 @@ export async function runWorkOrder(order, options = {}) {
     for (const name of remaining) {
       stages.push(baseStageResult(name, name === normalizedStage ? 'failed' : 'blocked'));
     }
-    const receipt = {
-      schema_version: WORK_ORDER_SCHEMA_VERSION,
-      ok: false,
-      status: 'failed',
-      work_order_id: workOrderId,
-      project_id: projectId,
-      line_id: lineId,
-      seed: compiled.seed,
-      compute_adapter: compiled.computeAdapter,
-      code: error.code,
-      error: error.message,
-      stages,
-      task_receipts: tasks,
-      upload_receipts: uploadReceipts,
-      at: nowIso(),
-    };
+    const terminalStatus = terminalStatusFor(error);
+    const failureStages = sanitizeStages(stages, repoRoot);
+    try {
+      receiptV1 = updateReceiptStatus(receiptV1, terminalStatus, {
+        finished_at: nowIso(),
+        failure_stage: normalizedStage,
+        error: { code: error.code, message: redactReceiptText(error.message, repoRoot) },
+        stages: failureStages,
+        task_receipts: sanitizeTaskReceipts(tasks),
+        upload_receipts: uploadReceipts,
+      });
+    } catch (transitionCause) {
+      if (transitionCause?.code !== 'ERR_RECEIPT_TERMINAL') throw transitionCause;
+    }
+    try {
+      persistAuthorityReceipt(repoRoot, receiptV1);
+    } catch {
+      // 权威回执写失败不掩盖原始执行错误，调用方仍拿到失败码与阶段证据。
+    }
+    const receipt = buildOldReceiptProjection(receiptV1);
     return {
       ok: false,
-      status: 'failed',
+      status: terminalStatus,
       code: error.code,
       error: error.message,
       projectId,
       lineId,
       receipt,
-      stages,
+      receiptV1,
+      stages: failureStages,
     };
   }
 }
 
 export function loadWorkOrder(file) {
-  return JSON.parse(fs.readFileSync(path.resolve(file), 'utf8'));
+  return normalizeWorkOrderInput(JSON.parse(fs.readFileSync(path.resolve(file), 'utf8')));
 }
 
 export function main(argv = process.argv.slice(2)) {
@@ -796,7 +1298,14 @@ export function main(argv = process.argv.slice(2)) {
   const headers = authUser && authPass
     ? { Authorization: `Basic ${Buffer.from(`${authUser}:${authPass}`).toString('base64')}` }
     : {};
-  return runWorkOrder(loadWorkOrder(file), { baseUrl, headers }).then((result) => {
+  let order;
+  try {
+    order = loadWorkOrder(file);
+  } catch (cause) {
+    console.error(`${cause.code || 'ERR_WORK_ORDER_LOAD'}: ${cause.message}`);
+    return Promise.resolve(1);
+  }
+  return runWorkOrder(order, { baseUrl, headers }).then((result) => {
     console.log(JSON.stringify(result.receipt, null, 2));
     if (!result.ok) {
       console.error(`${result.code}: ${result.error}`);

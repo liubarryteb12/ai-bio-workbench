@@ -94,6 +94,7 @@ test('listInboxManifests：坏 JSON 条目带 parseError 且不挡其他条目',
   fs.writeFileSync(goodFile, JSON.stringify({
     basicInfo: { name: '探针项目', species: 'Homo sapiens' },
     dataSource: { dataType: 'scrna', sampleCount: 6 },
+    modIds: ['l2_ingest_counts', 'l2_qc_cells', ''],
   }));
   try {
     const r = listInboxManifests();
@@ -104,6 +105,7 @@ test('listInboxManifests：坏 JSON 条目带 parseError 且不挡其他条目',
     assert.ok(good && good.summary, '好条目不受坏条目影响');
     assert.equal(good.summary.suggestedLine, 'line2_scrna', 'scrna 必须建议 line2');
     assert.equal(good.summary.name, '探针项目');
+    assert.deepEqual(good.summary.modIds, ['l2_ingest_counts', 'l2_qc_cells']);
   } finally {
     fs.rmSync(badFile, { force: true });
     fs.rmSync(goodFile, { force: true });

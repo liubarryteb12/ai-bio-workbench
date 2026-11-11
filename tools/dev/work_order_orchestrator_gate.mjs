@@ -31,8 +31,8 @@ async function main() {
 
   add('单入口存在', fs.existsSync(path.join(HERE, 'work_order_orchestrator.mjs')));
   add('ADB 默认', /computeAdapter \|\| 'adb'/.test(source));
-  add('SSH 特殊开关', /allowSsh !== true/.test(source));
-  add('无 SSH 直接调用', !/runSsh|sshArgv|scpArgv/.test(source));
+  add('SSH 已封存', /ERR_SSH_DISABLED/.test(source) && /ssh_retired_20261111/.test(source));
+  add('编排器不直接调用 SSH', !/runSsh|sshArgv|scpArgv/.test(source));
   add('Ready 单图准入', /ERR_FIGURE_NOT_READY/.test(source) && /RETIRED_FIGURE_IDS/.test(source));
   add('DAG 串行派发', /for \(const \[index, task\] of planTasks\.entries\(\)\)/.test(source));
   add('完成回执校验', /validateTaskReceipt/.test(source) && /ERR_TASK_RECEIPT/.test(source));
@@ -86,9 +86,9 @@ async function main() {
   }
   try {
     module.compileWorkOrderPlan({ ...order, computeAdapter: 'ssh' }, { facts: registryFacts });
-    add('SSH fail closed', false, '未带 allowSsh 仍放行');
+    add('SSH 通道 fail closed', false, 'SSH 工单仍被放行');
   } catch (cause) {
-    add('SSH fail closed', cause.code === 'ERR_SSH_DISABLED', cause.message);
+    add('SSH 通道 fail closed', cause.code === 'ERR_SSH_DISABLED', cause.message);
   }
   try {
     module.compileWorkOrderPlan({ ...order, figureSelections: [{ template_id: 'fig_l3_multipanel' }] }, { facts: registryFacts });

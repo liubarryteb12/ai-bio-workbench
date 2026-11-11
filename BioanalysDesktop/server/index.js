@@ -20,7 +20,7 @@ import {
   DEFAULT_SERIAL, SYSTEM_LOGS, LINES, DEFAULT_PROJECT, sanitizeProjectId, projectLineDir,
   PROJECTS_ROOT, resolveLineFromDataType, normalizeDatasets, normalizeDataSource,
 } from './domain.js';
-import { findAdb, runSync, runSshRaw, runSshStrict } from './proc.js';
+import { findAdb, runSync, runSshAsync, runSshRaw, runSshStrict } from './proc.js';
 import { checkLink } from './link.js';
 import {
   buildHardwareCommand, parseHardwareOutput, evaluateHardware,
@@ -59,7 +59,8 @@ import { handleReportRoutes } from './routes/report.routes.js';
 import { handleFiguresRoutes } from './routes/figures.routes.js';
 import { handleTasksRoutes } from './routes/tasks.routes.js';
 import { handleProjectRoutes } from './routes/projects.routes.js';
-import { handlePiAgentRoutes } from './pi_agent_routes.js';
+import { handleWorkOrdersRoutes } from './routes/work_orders.routes.js';
+import { startQueue } from './services/work_order.service.js';
 import { createSink, dropSink, sendEvent, closeSink } from './sinks.js';
 import { fetchLedgerFromServer } from './ledger_fetch.js';
 import { renderFiguresPreview } from './portal_page.js';
@@ -252,6 +253,24 @@ const routeCtx = {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://127.0.0.1:${PORT}`);
 
+  // 顶层异常兜底（2026-11-11 P1）：路由层任何未捕获异常（含 decodeURIComponent
+  // 的 URIError、statSync 的 ENOENT）都收敛成 500，不让单个请求把后端带崩、
+  // 连带杀掉正在跑的分析任务。
+  try {
+    await handleRequest(req, res, url);
+  } catch (cause) {
+    console.error(`[http] 未捕获异常: ${req.method} ${url.pathname}: ${cause instanceof Error ? cause.stack : cause}`);
+    if (!res.headersSent) {
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: '服务器内部错误（详见服务端日志）' }));
+    } else {
+      res.end();
+    }
+  }
+});
+
+async function handleRequest(req, res, url) {
+
   if (url.pathname === '/api/health') {
     return json(res, 200, { ok: true, service: 'bioanalys-desktop', port: PORT });
   }
@@ -270,15 +289,13 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // 诊断路由（自检 / 链路 / 台账 / 文件树），处理体在 routes/diagnostics.routes.js
-  if (await handleDiagnosticsRoutes(req, res, url, { ...routeCtx, adb })) {
+  // 作业中心路由（创建 / 列表 / 执行 / 回执），处理体在 routes/work_orders.routes.js
+  if (await handleWorkOrdersRoutes(req, res, url, routeCtx)) {
     return;
   }
 
-  // Pi Agent 观测插槽（第三批择优合入）：处理体在 pi_agent_routes.js。
-  // runSshRaw 直引 proc.js：pi 模块的 ssh 走 k40 别名（Termux 宿主），不是
-  // k40-ubuntu 容器执行面，语义与 remote_exec 的 runRemote 不同，注入接缝本体。
-  if (await handlePiAgentRoutes(req, res, url, { json, runSshRaw })) {
+  // 诊断路由（自检 / 链路 / 台账 / 文件树），处理体在 routes/diagnostics.routes.js
+  if (await handleDiagnosticsRoutes(req, res, url, { ...routeCtx, adb })) {
     return;
   }
 
@@ -324,7 +341,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   return json(res, 404, { error: `未知接口: ${url.pathname}` });
-});
+}
 
 // 清一次陈旧上传会话：TTL 24h（BIO_UPLOAD_TTL_HOURS 可覆盖），只删 .uploads 下
 // 合法 id 且长期没动过的会话目录。旁路动作，失败只记日志，不能影响服务启动。
@@ -355,7 +372,19 @@ if (process.env.LINE_INFER_PROBE) {
   server.listen(PORT, '127.0.0.1', () => {
     console.log(`[bioanalys-desktop] backend listening on http://127.0.0.1:${PORT}`);
     console.log(`[bioanalys-desktop] adb = ${adb}`);
-    setImmediate(runStartupUploadGc);
+    setImmediate(() => {
+      runStartupUploadGc();
+      if (!IS_TEST_RUNTIME) {
+        const headers = AUTH_ENABLED
+          ? { Authorization: `Basic ${Buffer.from(`${AUTH_USER}:${AUTH_PASS}`).toString('base64')}` }
+          : {};
+        startQueue(REPO_ROOT, {
+          baseUrl: `http://127.0.0.1:${PORT}`,
+          headers,
+          idlePollMs: 1000,
+        });
+      }
+    });
   });
 }
 

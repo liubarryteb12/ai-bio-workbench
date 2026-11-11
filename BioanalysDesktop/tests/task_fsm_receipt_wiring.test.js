@@ -16,30 +16,35 @@ import { Readable, Writable } from 'node:stream';
 
 import { runTask, buildLedgerWriteCommand } from '../server/run.js';
 
-function makeChild(emitWrote) {
+function ledgerPayloadFromArgs(args) {
+  const joined = (args || []).join(' ');
+  const inline = /printf '%s' '([A-Za-z0-9+/=]+)'/.exec(joined);
+  return inline ? Buffer.from(inline[1], 'base64').toString('utf8') : null;
+}
+
+function makeChild(emitWrote, args) {
   const child = new EventEmitter();
   child.stdout = new Readable({ read() {} });
   child.stderr = new Readable({ read() {} });
-  const chunks = [];
   child.stdin = new Writable({
-    write(chunk, _enc, cb) { chunks.push(chunk); cb(); },
+    write(_chunk, _enc, cb) { cb(); },
   });
   child.kill = () => {};
-  child.stdin.on('finish', () => {
-    setImmediate(() => {
-      // 关键变异：无 WROTE 回执，模拟远端命令被截断 / 落盘没执行
-      if (emitWrote) {
-        const encoded = Buffer.concat(chunks).toString('utf8');
-        const payload = Buffer.from(encoded, 'base64').toString('utf8');
-        // 回执路径必须与真实落盘命令一致：persistReceiptMarker 做的是前缀逐字比对，
-        // 写死路径会被判成「无 WROTE 标记」，那是夹具错而不是实现错。
-        const { remotePath } = buildLedgerWriteCommand(JSON.parse(payload));
-        child.stdout.push(`WROTE '${remotePath}' ${Buffer.byteLength(payload, 'utf8')}\n`);
-      }
-      child.stdout.push(null);
-      child.stderr.push(null);
-      child.emit('exit', 0, null);
-    });
+  // 台账 payload 现在内嵌在远端命令里（ADB 主通道不转发 stdin），
+  // 因此从 argv 的 -Command 段取回 base64，而不是等 stdin finish。
+  const payload = ledgerPayloadFromArgs(args);
+  setImmediate(() => {
+    // 关键变异：无 WROTE 回执，模拟远端命令被截断 / 落盘没执行
+    if (emitWrote) {
+      assert.ok(payload, '台账命令必须内嵌 base64 payload');
+      // 回执路径必须与真实落盘命令一致：persistReceiptMarker 做的是前缀逐字比对，
+      // 写死路径会被判成「无 WROTE 标记」，那是夹具错而不是实现错。
+      const { remotePath } = buildLedgerWriteCommand(JSON.parse(payload));
+      child.stdout.push(`WROTE '${remotePath}' ${Buffer.byteLength(payload, 'utf8')}\n`);
+    }
+    child.stdout.push(null);
+    child.stderr.push(null);
+    child.emit('exit', 0, null);
   });
   return child;
 }
@@ -53,7 +58,7 @@ function runWithReceipt(emitWrote, t) {
 
   t.mock.method(childProcess, 'spawn', (_program, args) => {
     const joined = (args || []).join(' ');
-    if (joined.includes('mkdir -p')) return makeChild(emitWrote);
+    if (joined.includes('mkdir -p')) return makeChild(emitWrote, args);
     return taskChild;
   });
   t.mock.method(childProcess, 'spawnSync', () => ({

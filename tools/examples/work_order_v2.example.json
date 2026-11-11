@@ -1,0 +1,75 @@
+{
+  "schema_version": "work_order/v2",
+  "work_order_id": "WO-EXAMPLE-V2-001",
+  "project_id": "PRJ_EXAMPLE_V2_BULK",
+  "source_package": {
+    "package_dir": "PKG_20261110_120000_example",
+    "requirement_path": "PKG_20261110_120000_example/requirement.json",
+    "manifest_path": "PKG_20261110_120000_example/package_manifest.json"
+  },
+  "requirement": {
+    "basicInfo": {
+      "name": "示例 v2 批量转录组项目",
+      "species": "Homo sapiens",
+      "domain": "cardiovascular",
+      "dataType": "microarray"
+    },
+    "dataSource": {
+      "source": "GEO",
+      "dataType": "microarray",
+      "sampleCount": 10,
+      "tissue": "blood",
+      "datasets": [
+        {
+          "gse": "GSE000000",
+          "gpl": "GPL0000",
+          "role": "train",
+          "sampleCount": 10,
+          "tissue": "blood"
+        }
+      ]
+    },
+    "groupingDesign": {
+      "mode": "two_group",
+      "groups": [
+        { "groupName": "Control", "role": "reference", "sampleIds": ["GSM000001"] },
+        { "groupName": "Disease", "role": "disease_stage", "sampleIds": ["GSM000002"] }
+      ],
+      "contrasts": [
+        { "name": "Disease_vs_Control", "case": "Disease", "ctrl": "Control", "isPrimary": true }
+      ]
+    },
+    "analysisCutoffs": {
+      "profile": "standard",
+      "use_adj_p": true,
+      "log2fc_threshold": 1.0,
+      "adj_p_threshold": 0.05
+    },
+    "biologicalPriors": {
+      "focusGenes": ["GENE1"]
+    },
+    "figure_templates": []
+  },
+  "inputs": [],
+  "execution": {
+    "line_id": "line1_bulk",
+    "mod_ids": ["l1_ingest_prep", "l1_qc_matrix"],
+    "figure_selections": [],
+    "seed": 20261013,
+    "compute_adapter": "adb",
+    "allow_ssh": false,
+    "species_scope": ["Homo sapiens"]
+  },
+  "delivery": {
+    "profile": "client_standard",
+    "report_md": "Analysis_Report.md",
+    "report_html": "Analysis_Report.html",
+    "delivery_tar_pattern": "Client_Delivery.tar.gz"
+  },
+  "controls": {
+    "require_admin_review": true,
+    "resume": false,
+    "resume_since": null,
+    "force_report_build": false
+  }
+}

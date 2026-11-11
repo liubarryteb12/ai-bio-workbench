@@ -97,6 +97,9 @@ function listInboxManifests() {
         refCount: Array.isArray(raw?.references) ? raw.references.length : 0,
         notes: typeof raw?.notes === 'string' ? raw.notes : '',
         submittedAt: raw?.submitted_at || '',
+        modIds: Array.isArray(raw?.modIds)
+          ? raw.modIds.map((item) => String(item || '').trim()).filter(Boolean)
+          : [],
         stepCount: Array.isArray(raw?.pipelineDag) ? raw.pipelineDag.length : 0,
         groupCount: Array.isArray(raw?.groupingDesign?.groups) ? raw.groupingDesign.groups.length : 0,
       };

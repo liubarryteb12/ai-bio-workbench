@@ -18,8 +18,15 @@ import os
 import sys
 import json
 import argparse
-from typing import List, Dict, Any, Optional
-from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+from typing import Annotated, List, Dict, Any, Optional
+from pydantic import (
+    BaseModel,
+    Field,
+    StringConstraints,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 if sys.platform == "win32":
     try:
@@ -29,10 +36,17 @@ if sys.platform == "win32":
         pass
 
 
+NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+
+
 class BasicInfoSchema(BaseModel):
-    projectName: str = Field(..., min_length=1, description="项目名称")
-    diseaseName: str = Field(..., min_length=1, description="疾病名称")
+    name: NonEmptyStr = Field(..., description="项目人读名称，进入建项 name")
+
+
+class DataSourceSchema(BaseModel):
+    source: NonEmptyStr = Field(..., description="数据来源声明，例如 GEO")
     dataType: str = Field(..., description="数据类型")
+    datasets: List[Dict[str, Any]] = Field(..., min_length=1, description="数据集列表")
 
     @field_validator("dataType")
     @classmethod
@@ -43,6 +57,33 @@ class BasicInfoSchema(BaseModel):
         return v
 
 
+class GroupSchema(BaseModel):
+    groupName: NonEmptyStr = Field(..., description="组名")
+    role: str = Field(..., description="reference | disease_stage")
+    sampleIds: List[str] = Field(..., description="该组包含的样本 ID")
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, v: str) -> str:
+        allowed = {"reference", "disease_stage"}
+        if v not in allowed:
+            raise ValueError(f"role 必须在 {allowed} 中，当前为: {v}")
+        return v
+
+
+class ContrastSchema(BaseModel):
+    name: NonEmptyStr = Field(..., description="对比对的人读名称")
+    case: NonEmptyStr = Field(..., description="变化组")
+    ctrl: NonEmptyStr = Field(..., description="基准组")
+    isPrimary: bool = Field(..., description="全项目恰好 1 条为 true")
+
+
+class GroupingDesignSchema(BaseModel):
+    mode: NonEmptyStr = Field(..., description="项目级分组模式")
+    groups: List[GroupSchema] = Field(..., min_length=2, description="样本分组")
+    contrasts: List[ContrastSchema] = Field(..., min_length=1, description="对比对")
+
+
 class CutoffProfileSchema(BaseModel):
     profile: Optional[str] = "standard"
     log2fc: Optional[float] = 1.0
@@ -51,9 +92,9 @@ class CutoffProfileSchema(BaseModel):
 
 class RequirementSchema(BaseModel):
     basicInfo: BasicInfoSchema
-    datasets: List[Dict[str, Any]] = Field(..., min_length=1, description="数据集列表")
-    groups: List[Dict[str, Any]] = Field(..., min_length=1, description="样本分组")
-    analysisCutoffs: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    dataSource: DataSourceSchema
+    groupingDesign: GroupingDesignSchema
+    analysisCutoffs: Optional[Dict[str, Any]] = Field(None, description="差异基因筛选阈值")
 
 
 class ProjectMetaSchema(BaseModel):

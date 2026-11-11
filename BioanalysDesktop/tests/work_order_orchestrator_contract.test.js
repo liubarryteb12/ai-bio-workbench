@@ -11,6 +11,10 @@ import {
   runWorkOrder,
 } from '../../tools/dev/work_order_orchestrator.mjs';
 
+const READY_ALLOWLIST = JSON.parse(
+  fs.readFileSync(path.join(REPO_ROOT, 'tools', 'dev', 'figure_ready_allowlist.json'), 'utf8'),
+);
+
 function syntheticFacts() {
   const stages = [
     {
@@ -136,7 +140,7 @@ function makeRequest(order) {
     if (requestPath === '/api/tasks') {
       return ok({ tasks: [...state.running].map((taskId) => ({ taskId })) });
     }
-    if (requestPath === '/api/ledger/check') {
+    if (requestPath === '/api/ledger/check' || requestPath.startsWith('/api/ledger/check?')) {
       return ok({
         blocked: false,
         entries: state.ledger.map((data) => ({ file: `${data.step_name}.json`, data })),
@@ -194,20 +198,23 @@ test('工单编译：补齐上游闭包、默认 ADB、拒绝组图与非 Ready 
   );
 });
 
-test('SSH 只在显式特殊开关下允许，非法通道 fail closed', () => {
+test('SSH 通道已封存，非法通道 fail closed', () => {
   const facts = syntheticFacts();
   assert.throws(
     () => compileWorkOrderPlan(baseOrder({ computeAdapter: 'ssh' }), { facts }),
     (cause) => cause.code === 'ERR_SSH_DISABLED',
   );
-  assert.equal(compileWorkOrderPlan(baseOrder({ computeAdapter: 'ssh', allowSsh: true }), { facts }).computeAdapter, 'ssh');
+  assert.throws(
+    () => compileWorkOrderPlan(baseOrder({ computeAdapter: 'ssh', allowSsh: true }), { facts }),
+    (cause) => cause.code === 'ERR_SSH_DISABLED',
+  );
   assert.throws(
     () => compileWorkOrderPlan(baseOrder({ computeAdapter: 'telnet' }), { facts }),
     (cause) => cause.code === 'ERR_COMPUTE_ADAPTER',
   );
 });
 
-test('真实真源：54 模块、39 Ready 单图、白名单与注册表一致', () => {
+test('真实真源：54 模块、Ready 单图基线、白名单与注册表一致', () => {
   const plan = compileWorkOrderPlan({
     ...baseOrder(),
     projectId: 'PRJ_REAL_FACTS',
@@ -216,7 +223,8 @@ test('真实真源：54 模块、39 Ready 单图、白名单与注册表一致',
     uploads: [],
   });
   assert.equal(plan.facts.workflowMods, 54);
-  assert.equal(plan.facts.readyBaseline, 39);
+  assert.equal(plan.facts.readyBaseline, READY_ALLOWLIST.ready_baseline);
+  assert.equal(READY_ALLOWLIST.ids.length, READY_ALLOWLIST.ready_baseline);
   assert.equal(plan.computeAdapter, 'adb');
 });
 
@@ -282,7 +290,8 @@ test('完成回执不完整：fail closed，且不写验收通过', async () => 
     const original = request;
     const brokenRequest = async (method, requestPath, body) => {
       const response = await original(method, requestPath, body);
-      if (requestPath === '/api/ledger/check' && state.ledger.length === 1) {
+      if ((requestPath === '/api/ledger/check' || requestPath.startsWith('/api/ledger/check?'))
+        && state.ledger.length === 1) {
         response.body.entries[0].data.exit_code = 1;
         response.body.entries[0].data.status = 'failed';
         response.body.receipts[0].exit_code = 1;
@@ -332,7 +341,7 @@ test('静态契约：编排器单入口不直接调用 SSH 或远端进程', () 
   assert.equal(/from ['"].*remote_exec\.js['"]/.test(source), false);
   assert.equal(/runSshRaw|runSshAsync|sshArgv|scpArgv/.test(source), false);
   assert.match(source, /computeAdapter \|\| 'adb'/);
-  assert.match(source, /allowSsh !== true/);
+  assert.match(source, /ssh_retired_20261111/);
   assert.match(source, /Project_Summary\.md/);
   assert.match(source, /work_order\.receipt\.json/);
 });

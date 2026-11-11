@@ -59,6 +59,9 @@ export function validateRequirement(payload) {
   if (!isPlainObject(ds)) {
     push('缺少 dataSource（数据来源）');
   } else {
+    if (typeof ds.source !== 'string' || !ds.source.trim()) {
+      push('dataSource.source 不能为空（数据来源是需求单的必填声明）');
+    }
     if (!DATA_TYPE_IDS.includes(ds.dataType)) {
       push(`dataSource.dataType 非法: ${JSON.stringify(ds.dataType ?? null)}，应为 ${DATA_TYPE_IDS.join(' / ')} 之一`);
     }
@@ -109,6 +112,9 @@ export function validateRequirement(payload) {
   if (!isPlainObject(gd)) {
     push('缺少 groupingDesign（分组设计）');
   } else {
+    if (typeof gd.mode !== 'string' || !gd.mode.trim()) {
+      push('groupingDesign.mode 不能为空（分组模式是需求单的必填声明）');
+    }
     const groups = Array.isArray(gd.groups) ? gd.groups : [];
     if (groups.length < 2) push(`groupingDesign.groups 至少 2 组，当前 ${groups.length} 组`);
     const names = [];
@@ -119,6 +125,9 @@ export function validateRequirement(payload) {
       else names.push(g.groupName);
       if (!GROUP_ROLES.includes(g.role)) {
         push(`${at}（${g.groupName ?? '未命名'}）的 role 非法: ${JSON.stringify(g.role)}，应为 reference（基准组）/ disease_stage（变化组）`);
+      }
+      if (!Array.isArray(g.sampleIds)) {
+        push(`${at}（${g.groupName ?? '未命名'}）的 sampleIds 必须是数组`);
       }
     });
     const refs = groups.filter((g) => isPlainObject(g) && g.role === 'reference');
@@ -132,6 +141,7 @@ export function validateRequirement(payload) {
       if (!isPlainObject(c)) return push(`${at} 不是对象`);
       if (!names.includes(c.case)) push(`${at} 的 case（变化组）${JSON.stringify(c.case ?? null)} 不是已命名的组`);
       if (!names.includes(c.ctrl)) push(`${at} 的 ctrl（基准组）${JSON.stringify(c.ctrl ?? null)} 不是已命名的组`);
+      if (typeof c.name !== 'string' || !c.name.trim()) push(`${at} 缺少对比名称 name`);
       if (typeof c.isPrimary !== 'boolean') push(`${at} 的 isPrimary 必须是布尔`);
     });
     if (contrasts.length) {
@@ -167,6 +177,31 @@ export function validateRequirement(payload) {
       // 勾了 adj.P 却只给名义 p 阈值：判据自相矛盾，宁可当场拒绝也别让下游猜
       if (ac.use_adj_p === true && ac.p_threshold != null && ac.adj_p_threshold == null && ac.padj_threshold == null) {
         push('勾选了「用 adj.P 判定显著性」却只填 p_threshold：请填 adj_p_threshold，或留空沿用档位默认值');
+      }
+    }
+  }
+
+  // ── biologicalPriors（可缺省；门户当前只产出 focusGenes） ──
+  if (payload.biologicalPriors !== undefined) {
+    if (!isPlainObject(payload.biologicalPriors)) {
+      push('biologicalPriors 必须是对象');
+    } else {
+      const focusGenes = payload.biologicalPriors.focusGenes;
+      if (focusGenes !== undefined) {
+        if (!Array.isArray(focusGenes)) {
+          push('biologicalPriors.focusGenes 必须是字符串数组');
+        } else {
+          if (focusGenes.length > 5) {
+            push(`核心研究基因最多 5 个，当前 ${focusGenes.length} 个`);
+          }
+          focusGenes.forEach((gene, i) => {
+            if (typeof gene !== 'string' || !gene.trim()) {
+              push(`核心研究基因第 ${i + 1} 项为空`);
+            } else if (!/^[A-Za-z][A-Za-z0-9._-]*$/.test(gene.trim())) {
+              push(`核心研究基因第 ${i + 1} 项格式非法: ${JSON.stringify(gene)}（应为英文基因符号）`);
+            }
+          });
+        }
       }
     }
   }

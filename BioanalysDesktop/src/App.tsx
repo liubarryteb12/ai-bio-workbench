@@ -8,22 +8,20 @@ import { ViewErrorBoundary } from './components/ViewErrorBoundary';
 import { ResultPreviewStudio } from './views/ResultStudioView';
 import { PreFlightDashboard } from './views/SelfCheckAdminView';
 import { OnboardingPortal, CustomerInputConsole } from './views/OnboardingView';
-import { PiAgentMonitor } from './views/PiAgentView';
-import { PiAgentChat } from './PiAgentChat';
+import { WorkOrderCenterView } from './views/WorkOrderCenterView';
 
 // ============================================================
 // 视图枚举
 // ============================================================
 
-type ViewKey = 'onboarding' | 'console' | 'preflight' | 'studio' | 'pi-agent' | 'pi-chat';
+type ViewKey = 'onboarding' | 'console' | 'work-orders' | 'preflight' | 'studio';
 
 const VIEWS: Array<{ key: ViewKey; label: string }> = [
   { key: 'onboarding', label: '新建项目向导' },
   { key: 'console', label: '分析输入控制台' },
+  { key: 'work-orders', label: '作业中心' },
   { key: 'preflight', label: '五维自检' },
   { key: 'studio', label: '结果预览 Studio' },
-  { key: 'pi-agent', label: 'Pi Agent 监控' },
-  { key: 'pi-chat', label: 'Pi Agent 对话' },
 ];
 
 const VIEW_LABELS: Record<ViewKey, string> = VIEWS.reduce(
@@ -40,12 +38,13 @@ export function App() {
   const [project, setProject] = useState<string>('default');
   const [projects, setProjects] = useState<ProjectEntry[]>([]);
   const [projectError, setProjectError] = useState<string | null>(null);
-  // 计算面模式：'adb' 主通道，'ssh' 特殊开关，'mock' 离线演示。
+  // 计算面模式：'adb' 单通道，'mock' 离线演示。SSH 通道已封存。
   // 只用于顶部提示，不阻塞任何交互；拿不到按 ADB 主通道处理。
-  const [computeMode, setComputeMode] = useState<'adb' | 'ssh' | 'mock'>('adb');
+  const [computeMode, setComputeMode] = useState<'adb' | 'mock'>('adb');
   // ErrorBoundary 重试计数：递增即让失败视图换 key 重新挂载
   const [retryTick, setRetryTick] = useState(0);
   const projectInit = useRef(false);
+  const lastProjectsRefresh = useRef(0);
 
   const refreshProjects = useCallback(async () => {
     try {
@@ -72,13 +71,21 @@ export function App() {
   // 项目列表只在挂载时拉一次会长期停留在旧快照：项目可能在别处新增
   // （用户端提交后由工作台建项、另一个标签页建项），切视图/回到本页时必须重拉，
   // 否则选择器里只剩当时存在的 default（2026-10-19 实测踩到）。
+  // 切视图时不再无条件重拉：项目列表是同步 SSH 端点，每次切页都拉会阻塞
+  // 事件循环近 10 秒，连带把 Pi 监控/对话的轮询一起拖成假死。
+  // 保留新鲜度的做法是 30 秒节流；焦点/可见性变化仍会立即刷新。
   useEffect(() => {
+    if (Date.now() - lastProjectsRefresh.current < 30000) return;
+    lastProjectsRefresh.current = Date.now();
     void refreshProjects();
   }, [view, refreshProjects]);
 
   useEffect(() => {
     const reload = () => {
-      if (document.visibilityState === 'visible') void refreshProjects();
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastProjectsRefresh.current < 30000) return;
+      lastProjectsRefresh.current = Date.now();
+      void refreshProjects();
     };
     window.addEventListener('focus', reload);
     document.addEventListener('visibilitychange', reload);
@@ -96,6 +103,7 @@ export function App() {
   // 函数体内，结果是首页挂载时根本不会请求 /api/selfcheck，而卸载时会在清理函数里
   // 调 hooks 触发 Invalid hook call。
   useEffect(() => {
+    if (view !== 'preflight') return undefined;
     let alive = true;
     const loadMode = async () => {
       try {
@@ -103,11 +111,7 @@ export function App() {
         if (!response.ok) return;
         const payload = (await response.json()) as { compute_mode?: string };
         if (!alive) return;
-        setComputeMode(
-          payload.compute_mode === 'mock' || payload.compute_mode === 'ssh'
-            ? payload.compute_mode
-            : 'adb',
-        );
+        setComputeMode(payload.compute_mode === 'mock' ? 'mock' : 'adb');
       } catch {
         // 静默：模式读取失败不该变成新的错误来源
       }
@@ -119,7 +123,7 @@ export function App() {
       alive = false;
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, []);
+  }, [view]);
 
   const retryFailedView = useCallback(() => {
     setRetryTick((n) => n + 1);
@@ -194,10 +198,9 @@ export function App() {
       >
         {view === 'onboarding' && <OnboardingPortal onCreated={refreshProjects} onProjectSet={setProject} />}
         {view === 'console' && <CustomerInputConsole project={project} />}
+        {view === 'work-orders' && <WorkOrderCenterView project={project} />}
         {view === 'preflight' && <PreFlightDashboard />}
         {view === 'studio' && <ResultPreviewStudio project={project} />}
-        {view === 'pi-agent' && <PiAgentMonitor />}
-        {view === 'pi-chat' && <PiAgentChat />}
       </ViewErrorBoundary>
     </div>
   );

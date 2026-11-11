@@ -56,7 +56,9 @@
       ],
       "properties": {
         "source": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1,
+          "description": "数据来源声明，例如 GEO、自有上传。空白字符串视为未声明。"
         },
         "dataType": {
           "type": "string"
@@ -197,7 +199,9 @@
           }
         },
         "mode": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1,
+          "description": "项目级分组模式，例如 two_group。空白字符串视为未声明。"
         },
         "groups": {
           "type": "array",
@@ -230,6 +234,7 @@
               },
               "sampleIds": {
                 "type": "array",
+                "description": "该组包含的样本 ID。每个组必须显式声明，空数组合法但字段必须存在。",
                 "items": {
                   "type": "string"
                 }
@@ -251,7 +256,9 @@
             ],
             "properties": {
               "name": {
-                "type": "string"
+                "type": "string",
+                "minLength": 1,
+                "description": "对比对的人读名称，例如 Disease_vs_Control。"
               },
               "case": {
                 "type": "string",
