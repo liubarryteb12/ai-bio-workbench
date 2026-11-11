@@ -93,8 +93,8 @@ test('提交请求落盘时初始化 sync_status=pending', async () => {
       groupingDesign: {
         mode: 'two_group',
         groups: [
-          { groupName: 'Control', role: 'reference' },
-          { groupName: 'Sepsis', role: 'disease_stage' },
+          { groupName: 'Control', role: 'reference', sampleIds: ['S1'] },
+          { groupName: 'Sepsis', role: 'disease_stage', sampleIds: ['S2'] },
         ],
         contrasts: [{ name: 'Sepsis_vs_Control', case: 'Sepsis', ctrl: 'Control', isPrimary: true }],
       },

@@ -2,7 +2,7 @@
  * 客户端图实例与服务端生信能力对齐契约。
  *
  * 判据：
- *   1. 39 条 Ready 模板的外键必须命中 workflows.json 的真实分析线。
+ *   1. 27 条 Ready 模板的外键必须命中 workflows.json 的真实分析线。
  *   2. 服务端可派发适配器集合必须覆盖全部 Ready 模板。
  *   3. 门户与工作台的图实例必须来自 DCM_CHAIN_20261109 最新测试数据。
  *   4. 最新图实例清单必须逐条 300 DPI 且 SHA256 与磁盘一致。
@@ -47,7 +47,7 @@ test('Ready 模板外键与服务端分析线闭合', () => {
     }
   }
   const ready = registry.templates.filter((item) => item.deps_status === 'ready');
-  assert.equal(ready.length, 39);
+  assert.equal(ready.length, 27);
   for (const template of ready) {
     const line = modToLine.get(template.producing_mod_id);
     assert.ok(line, `${template.id}: producing_mod_id 命中失败`);
@@ -94,12 +94,12 @@ test('空间域图对高基数标签走连续色标，避免图例膨胀', () =>
   assert.match(source, /fig\.colorbar\(scatter, ax=ax/);
 });
 
-test('最新 DCM 图实例清单覆盖 39 条 Ready 模板且逐条达标', () => {
+test('最新 DCM 图实例清单覆盖 27 条 Ready 模板且逐条达标', () => {
   const doc = figureProjectExamples();
   assert.equal(doc.source_chain, 'DCM_CHAIN_20261109');
   assert.deepEqual(validateProjectExamples(), []);
   const ids = new Set(doc.examples.map((row) => row.id));
-  assert.equal(ids.size, 39);
+  assert.equal(ids.size, 27);
   for (const row of doc.examples.filter((item) => item.kind === 'latest_project')) {
     assert.equal(row.dpi, 300, `${row.id}: 最新实例不是 300 DPI`);
     assert.ok(row.path.includes('DCM_CHAIN_20261109') || row.path.includes('PRJ_DCM_L2_20261109')

@@ -2,7 +2,7 @@
  * 四视图三态契约（梯队 3 P2，Argon 第 65 轮 Q5 裁定）。
  *
  * 裁定：趁 941e92e 刚打通 FigureGalleryView 三态锚点，把其余四视图
- * （LedgerAuditView / OnboardingView / PiAgentView / SelfCheckAdminView）的
+ * （LedgerAuditView / OnboardingView / SelfCheckAdminView）的
  * Loading / Empty / Error data-testid 与 CSS 变量收齐，可测性强且零业务破坏风险。
  *
  * 判据：每个视图必须给出三态各自独立的锚点，并带归类属性，
@@ -20,7 +20,6 @@ const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", ".
 const VIEWS = [
   { rel: "BioanalysDesktop/src/views/LedgerAuditView.tsx", kind: "ledger" },
   { rel: "BioanalysDesktop/src/views/OnboardingView.tsx", kind: "projects" },
-  { rel: "BioanalysDesktop/src/views/PiAgentView.tsx", kind: "pi-calls" },
   { rel: "BioanalysDesktop/src/views/SelfCheckAdminView.tsx", kind: "selfcheck" },
 ];
 

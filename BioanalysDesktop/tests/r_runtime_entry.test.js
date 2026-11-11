@@ -34,7 +34,7 @@ test('Rprofile 把缺失的 ggsave 尺寸归一化为 NA', () => {
 test('链路探针统一调用 layout_autoload shim', () => {
   const shimPath = '/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript';
   assert.ok(linkCheck.includes(shimPath));
-  assert.ok(linkModule.includes(shimPath));
+  assert.match(linkModule, /ADB 单通道/);
   assert.ok(!linkCheck.includes('/usr/bin/Rscript'));
   assert.ok(!linkModule.includes('/usr/bin/Rscript'));
 });

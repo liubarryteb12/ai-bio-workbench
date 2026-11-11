@@ -18,9 +18,8 @@
  *  11. JSON_BODY_LIMIT 集中定义在 http_body.js，值为 1MB。
  *  12. 静态反证：上限比较与 413 回写都落在 data 回调体内。
  *  13. 派发接线：handler 声明 async，index.js 全部 await（漏 await 就绕过闸门）。
- *  14. pi-agent heartbeat：超限只回 413 一次；非法 JSON 仍回 400（既有语义不变）。
- *  15. 超限连接被服务端释放：静音客户端不能长期占住连接（防资源泄漏）。
- *  16. 端到端：真 server 派发链上三个入口超限回 413，零远端调用，服务仍活着。
+ *  14. 超限连接被服务端释放：静音客户端不能长期占住连接（防资源泄漏）。
+ *  15. 端到端：真 server 派发链上三个入口超限回 413，零远端调用，服务仍活着。
  *
  * 运行：node --test tests/http_body_limit.test.js
  * 期望（改造前）：FAIL（server/http_body.js 还不存在，第 1 条就红）。
@@ -33,7 +32,6 @@ import http from 'node:http';
 import net from 'node:net';
 import childProcess from 'node:child_process';
 import { mock } from 'node:test';
-import os from 'node:os';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
 import { fileURLToPath } from 'node:url';
@@ -317,9 +315,8 @@ function resStub() {
 
 // ───────────────────────── 源码扫描接缝 ─────────────────────────
 
-/** 12 处 JSON 入口的期望分布：helper 收口的 pi_agent 记 1 处 */
+/** 11 处 JSON 入口的期望分布 */
 const EXPECTED_CALLS = {
-  'pi_agent_routes.js': 1,
   'routes/figures.routes.js': 2,
   'routes/projects.routes.js': 5,
   'routes/report.routes.js': 1,
@@ -363,7 +360,7 @@ test('9. 源码扫描：server/ 下 JSON 裸累积点为 0（raw 分片端点白
   assert.equal(uploadRaw.includes('collectJsonBody(req, res, json, { maxBytes: JSON_BODY_LIMIT })\n    req.on') , false);
 });
 
-test('10. 12 处全部改走 collectJsonBody 并传具名常量，且无裸数字上限', () => {
+test('10. 11 处全部改走 collectJsonBody 并传具名常量，且无裸数字上限', () => {
   let total = 0;
   for (const [rel, expected] of Object.entries(EXPECTED_CALLS)) {
     const calls = trackedSource(rel).split(CALL_SHAPE).length - 1;
@@ -374,7 +371,7 @@ test('10. 12 处全部改走 collectJsonBody 并传具名常量，且无裸数�
       rel + ' 未 import http_body.js');
   }
   assert.equal(total, EXPECTED_TOTAL,
-    '调用点总数应为 12（pi_agent 1 + figures 2 + projects 5 + report 1 + tasks 1 + upload 2）');
+    '调用点总数应为 11（figures 2 + projects 5 + report 1 + tasks 1 + upload 2）');
 
   for (const file of listServerJs()) {
     const rel = path.relative(SERVER_DIR, file).split(path.sep).join('/');
@@ -412,7 +409,6 @@ test('13. 派发接线：handler 声明 async，index.js 全部 await', () => {
     ['routes/tasks.routes.js', 'handleTasksRoutes'],
     ['routes/report.routes.js', 'handleReportRoutes'],
     ['routes/upload.routes.js', 'handleUploadRoutes'],
-    ['pi_agent_routes.js', 'handlePiAgentRoutes'],
     ['routes/diagnostics.routes.js', 'handleDiagnosticsRoutes'],
   ];
   for (const [rel, name] of handlers) {
@@ -430,60 +426,7 @@ test('13. 派发接线：handler 声明 async，index.js 全部 await', () => {
     '任务路由派发必须保持 if (await ...) 形态');
 });
 
-// ───────────── pi-agent 接线：helper 收口，超限与非法 JSON 不双写 ─────────────
-
-/** 伪造与既有 pi_agent_routes.test.js 同款的事件流 req（无 socket：闸门实现不碰 socket） */
-function fakeReq(chunks) {
-  const req = new EventEmitter();
-  req.method = 'POST';
-  req.url = '/api/v1/a2a/heartbeat';
-  req.pause = () => {};
-  req.resume = () => {};
-  process.nextTick(() => {
-    for (const chunk of chunks) req.emit('data', chunk);
-    req.emit('end');
-  });
-  return req;
-}
-
-/** ledgerRoot 注入临时目录：心跳会写 actions 台账，测试不得污染 ledger 正本 */
-function tempLedgerRoot() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'pi-body-limit-'));
-}
-
-async function driveHeartbeat(chunks) {
-  const { handlePiAgentRoutes } = await import('../server/pi_agent_routes.js');
-  const responses = [];
-  const sshCalls = [];
-  const handled = await handlePiAgentRoutes(
-    fakeReq(chunks),
-    {},
-    new URL('http://x/api/v1/a2a/heartbeat'),
-    {
-      json: (res, status, payload) => responses.push({ status, payload }),
-      runSshRaw: () => { sshCalls.push(1); return { code: 0, text: '' }; },
-      ledgerRoot: tempLedgerRoot(),
-    },
-  );
-  return { handled, responses, sshCalls };
-}
-
-test('14. pi-agent heartbeat：超限只回 413 一次，非法 JSON 仍回 400', async () => {
-  const big = await driveHeartbeat([Buffer.alloc(2 * 1024 * 1024, 0x7b)]); // 2MB 的 '{'
-  assert.equal(big.handled, true);
-  assert.deepEqual(big.responses.map((r) => r.status), [413],
-    '超限后不得再补第二个响应：双写会抛 ERR_HTTP_HEADERS_SENT 打死进程');
-  assert.match(big.responses[0].payload.error, /请求体超过上限 1048576 字节/);
-
-  const bad = await driveHeartbeat([Buffer.from('not-json', 'utf8')]);
-  assert.deepEqual(bad.responses.map((r) => r.status), [400], '非法 JSON 的既有语义必须保持 400');
-
-  const ok = await driveHeartbeat([Buffer.from(JSON.stringify({ node_id: 'k40-ubuntu-node01' }), 'utf8')]);
-  assert.deepEqual(ok.responses.map((r) => r.status), [200], '合法心跳仍照常 200');
-  assert.equal(ok.handled, true);
-});
-
-test('15. 超限连接被服务端释放：客户端静音不写也躲不掉', async () => {
+test('14. 超限连接被服务端释放：客户端静音不写也躲不掉', async () => {
   // 真实攻击形态是「发够超限字节就静音」：连接不释放就是长期占住句柄的资源泄漏。
   // 用 raw net socket 精确控制：只发超限 body，之后一个字都不写。
   const harness = await startHarness(1024);
@@ -529,7 +472,7 @@ function freePort() {
   });
 }
 
-test('16. 端到端：真服务派发链上超限回 413，进程存活且合法请求照常', async () => {
+test('15. 端到端：真服务派发链上超限回 413，进程存活且合法请求照常', async () => {
   // 断言 9~13 是静态面（源码扫描 + 接线文本），这条是动态面：真 http.createServer
   // 走完鉴权、派发、handler、闸门、业务校验的完整链。漏接一个 await 或漏改一处
   // 入口，这条会直接给出 200/超时，而不是靠文本匹配蒙过去。

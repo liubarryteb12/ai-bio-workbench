@@ -13,12 +13,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const READY_BASELINE = JSON.parse(
+  fs.readFileSync(path.join(REPO_ROOT, 'tools', 'dev', 'figure_ready_allowlist.json'), 'utf8'),
+).ready_baseline;
 
 test('门禁把 ready 分三桶且三桶之和等于 ready 数', () => {
   const r = checkPreviewProvenance();
   assert.equal(r.equal.length + r.diverged.length + r.noEvidence.length, r.ready,
     `三桶之和 ${r.equal.length}+${r.diverged.length}+${r.noEvidence.length} 不等于 ready ${r.ready}`);
-  assert.equal(r.ready, 39, `ready 必须是 39，实际 ${r.ready}`);
+  assert.equal(r.ready, READY_BASELINE, `ready 必须等于白名单基线 ${READY_BASELINE}，实际 ${r.ready}`);
 });
 
 test('分叉条目必须被单列出来并能定位到 runner（不许只报个数）', () => {

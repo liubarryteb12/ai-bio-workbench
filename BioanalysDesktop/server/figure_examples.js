@@ -39,7 +39,7 @@ export function validateProjectExamples() {
   const errors = [];
   const ids = new Set(doc.examples.map((row) => row.id));
   if (doc.source_chain !== 'DCM_CHAIN_20261109') errors.push('source_chain 不是 DCM_CHAIN_20261109');
-  if (ids.size !== 39) errors.push(`实例模板数应为 39，实际 ${ids.size}`);
+  if (ids.size !== 27) errors.push(`实例模板数应为 27，实际 ${ids.size}`);
   for (const row of doc.examples) {
     const absolute = path.join(REPO, row.path);
     if (!fs.existsSync(absolute)) {

@@ -40,8 +40,9 @@ function freePort() {
   });
 }
 
-const PORT = await freePort();
-const BASE = `http://127.0.0.1:${PORT}`;
+let PORT = 0;
+let BASE = '';
+let serverModule = null;
 
 /** 垫片配置：calls 记录全部 ssh 调用，用于断言下发命令里真的带了 BIO_KO_GENE */
 const shim = {
@@ -63,7 +64,42 @@ function fakeSshChild(exitCode) {
   return child;
 }
 
+function waitForHealth(deadlineMs) {
+  const deadline = Date.now() + deadlineMs;
+  return (async () => {
+    for (;;) {
+      try {
+        const response = await fetch(`${BASE}/api/health`, { signal: AbortSignal.timeout(1000) });
+        if (response.ok) return true;
+      } catch { /* 还没起来就继续等 */ }
+      if (Date.now() > deadline) return false;
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+  })();
+}
+
+async function closeServer() {
+  if (!serverModule?.server) return;
+  serverModule.server.closeAllConnections?.();
+  await new Promise((resolve) => serverModule.server.close(() => resolve()));
+}
+
+async function listenAgain() {
+  PORT = await freePort();
+  BASE = `http://127.0.0.1:${PORT}`;
+  await new Promise((resolve, reject) => {
+    const onError = (error) => reject(error);
+    serverModule.server.once('error', onError);
+    serverModule.server.listen(PORT, '127.0.0.1', () => {
+      serverModule.server.off('error', onError);
+      resolve();
+    });
+  });
+}
+
 before(async () => {
+  PORT = await freePort();
+  BASE = `http://127.0.0.1:${PORT}`;
   process.env.BAD_PORT = String(PORT);
   const { mock } = await import('node:test');
   mock.method(childProcess, 'spawnSync', (cmd, args) => {
@@ -74,22 +110,18 @@ before(async () => {
     shim.calls.push({ kind: 'spawn', cmd, joined: (args || []).join(' ') });
     return fakeSshChild(shim.taskExit);
   });
-  await import('../server/index.js');
-  const deadline = Date.now() + 10000;
-  for (;;) {
-    try {
-      const response = await fetch(`${BASE}/api/health`, { signal: AbortSignal.timeout(1000) });
-      if (response.ok) break;
-    } catch { /* 没起来就继续等 */ }
-    if (Date.now() > deadline) throw new Error(`服务 10s 内没就绪（端口 ${PORT}）`);
-    await new Promise((resolve) => setTimeout(resolve, 200));
+  serverModule = await import('../server/index.js');
+  let ready = await waitForHealth(3000);
+  for (let attempt = 0; attempt < 3 && !ready; attempt += 1) {
+    await closeServer();
+    await listenAgain();
+    ready = await waitForHealth(3000);
   }
+  if (!ready) throw new Error(`服务重试 4 个端口后仍未就绪（最后端口 ${PORT}）`);
 });
 
 after(async () => {
-  const mod = await import('../server/index.js');
-  mod.server.closeAllConnections?.();
-  await new Promise((resolve) => mod.server.close(resolve));
+  await closeServer();
 });
 
 async function submit(body) {

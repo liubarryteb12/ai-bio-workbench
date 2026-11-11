@@ -290,14 +290,19 @@ export function assembleChunks(uploadId, filename) {
     if (parts[i] !== i) throw new Error(`分片不连续，缺 ${i}`);
   }
   const outPath = path.join(dir, safe);
-  const fd = fs.openSync(outPath, 'w');
+  const tmpPath = `${outPath}.assembling-${process.pid}-${Date.now()}`;
+  const fd = fs.openSync(tmpPath, 'w');
   try {
     for (const idx of parts) {
       const data = fs.readFileSync(path.join(dir, `${idx}.part`));
       fs.writeSync(fd, data);
     }
+    // 原子收口（2026-11-11 P1）：先写同目录临时文件再 rename，进程在合并中途
+    // 崩溃时留下的是 .assembling-* 临时件而不是一个被当成「已合并完成」的半成品。
+    fs.renameSync(tmpPath, outPath);
   } finally {
     fs.closeSync(fd);
+    try { fs.rmSync(tmpPath, { force: true }); } catch { /* 已 rename 则不存在 */ }
   }
   return outPath;
 }

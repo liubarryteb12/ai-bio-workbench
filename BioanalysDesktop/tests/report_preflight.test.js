@@ -83,10 +83,12 @@ function dispatchSpawn(program, args) {
 }
 
 before(() => {
+  process.env.BIO_COMPUTE_ADAPTER = 'ssh';
   mock.method(childProcess, 'spawn', (program, args) => dispatchSpawn(program, args));
 });
 
 after(() => {
+  delete process.env.BIO_COMPUTE_ADAPTER;
   mock.restoreAll();
   fs.rmSync(LOCAL_ROOT, { recursive: true, force: true });
 });

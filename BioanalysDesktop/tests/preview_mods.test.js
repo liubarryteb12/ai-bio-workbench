@@ -19,6 +19,14 @@ const SERVER = fileURLToPath(new URL('../server/index.js', import.meta.url));
 const FIGURES_ROUTES = fileURLToPath(new URL('../server/routes/figures.routes.js', import.meta.url));
 // processed 列目录辅助搬进 remote_exec.js，守卫扫并集，断言口径不动。
 const REMOTE_EXEC = fileURLToPath(new URL('../server/remote_exec.js', import.meta.url));
+const ADB_EXEC = fileURLToPath(new URL('../../tools/ops/adb_exec.ps1', import.meta.url));
+
+function runRemoteShell(command) {
+  return spawnSync('pwsh', [
+    '-NoProfile', '-File', ADB_EXEC,
+    '-Level', 'ubuntu', '-Transport', 'adb', '-RequireAdb', '-Command', command,
+  ], { encoding: 'utf8', timeout: 30000 });
+}
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -60,10 +68,7 @@ async function startServer() {
  */
 async function remoteReachable() {
   try {
-    const { spawnSync } = await import('node:child_process');
-    const r = spawnSync('ssh', [
-      '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', 'k40-ubuntu', 'echo PROBE_OK',
-    ], { encoding: 'utf8', timeout: 20000 });
+    const r = runRemoteShell('echo PROBE_OK');
     return r.status === 0 && /PROBE_OK/.test(r.stdout || '');
   } catch {
     return false;
@@ -121,16 +126,12 @@ test('missing 与 complete 要能区分（不是所有缺失都叫文件丢失�
 
   const project = `preview_mods_test_${process.pid}`;
   const remoteDir = `/mnt/ssd/bio_data/projects/${project}/line3_spatial`;
-  const setup = spawnSync('ssh', [
-    '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', 'k40-ubuntu',
+  const setup = runRemoteShell(
     `mkdir -p ${remoteDir}/processed && touch ${remoteDir}/processed/spatial_counts_mouse.h5ad ${remoteDir}/processed/spatial_counts_human.h5ad ${remoteDir}/processed/samples_meta.tsv ${remoteDir}/processed/ingest_report.txt`,
-  ], { encoding: 'utf8', timeout: 20000 });
+  );
   assert.equal(setup.status, 0, setup.stderr);
   t.after(() => {
-    spawnSync('ssh', [
-      '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', 'k40-ubuntu',
-      `rm -rf /mnt/ssd/bio_data/projects/${project}`,
-    ], { encoding: 'utf8', timeout: 20000 });
+    runRemoteShell(`rm -rf /mnt/ssd/bio_data/projects/${project}`);
   });
 
   const body = await (await fetch(`${base}/api/preview/mods?project=${project}&line=line3_spatial&modIds=l3_ingest_spatial,l3_figures_spatial`, {

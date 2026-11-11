@@ -15,17 +15,25 @@ import { posix as pathPosix } from "node:path";
  * 现在远端用一条 for 循环把所有文件编码成「文件名<TAB>内容」逐行输出，
  * 本地一次 ssh 拿全量再解析，往返次数恒为 1。
  */
-export async function fetchLedgerFromServer(logsDir = SYSTEM_LOGS) {
+export async function fetchLedgerFromServer(logsDir = SYSTEM_LOGS, options = {}) {
   const dir = shellQuote(logsDir);
+  const projectId = String(options.projectId || '').trim();
+  if (projectId && !/^[A-Za-z0-9._-]{1,64}$/.test(projectId)) {
+    throw new Error(`projectId 非法: ${projectId}`);
+  }
+  // 单项目过滤是有必要的：system_logs 会随项目数线性增长，全量 base64 批量回传
+  // 在几百个台账时会被通道缓冲截断，调用方看到的是 0 条回执而不是错误。
+  // 只取最新 200 条，保证当前任务一定在窗口内，同时给历史审计留出足够上下文。
+  const glob = projectId ? `${dir}/*_${projectId}_*.json` : `${dir}/*.json`;
   // 每行格式 <文件名base64><TAB><内容base64>；文件名也编码避免 TAB/换行歧义
   const remoteScript = [
-    "for f in " + dir + "/*.json; do",
+    "for f in $(ls -t " + glob + " 2>/dev/null | head -n 200); do",
     "  [ -f \"$f\" ] || continue",
     "  n=$(printf '%s' \"$(basename \"$f\")\" | base64 -w0)",
     "  b=$(base64 -w0 \"$f\" 2>/dev/null || true)",
     "  printf '%s\\t%s\\n' \"$n\" \"$b\"",
     "done",
-  ].join("; ");
+  ].join("\n");
   const batch = runRemote(remoteScript);
   const entries = [];
   for (const line of batch.split(/\r?\n/)) {

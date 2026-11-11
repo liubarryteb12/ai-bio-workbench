@@ -592,7 +592,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       </div>
       <div class="card" id="native-qc-card" style="display:none;">
         <div class="card-title">质检图（标准步骤自动产出）</div>
-        <div class="card-sub">PCA、样本间相关性、表达均质性与基因检出数由质控步骤自动生成，不需要在图级模板中勾选。</div>
+        <div class="card-sub">PCA、样本间相关性、高变异基因热图、基因检出数与组内相关性由质控步骤自动生成，不需要在图级模板中勾选。</div>
         <div id="native-qc-list" class="native-qc-list"></div>
       </div>
       <div class="card figure-selector" id="figure-template-card">
@@ -661,6 +661,16 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
         </div>
         <div class="msg err" id="e-cutoff" role="alert"></div>
       </div>
+      <div class="card" id="focus-gene-card">
+        <div class="card-title">核心研究基因（可选）</div>
+        <div class="card-sub">填写你最关心的基因符号（最多 5 个，逗号或空格分隔），将写入生物学先验并全程追踪其表现。留空时默认研究 hub 基因重要性排名前十的基因。</div>
+        <div class="field">
+          <label for="f-focusgenes">核心研究基因</label>
+          <input type="text" id="f-focusgenes" placeholder="例如：ATP6V0A2, COL6A3（留空默认 hub 前十）" aria-describedby="h-focusgenes" />
+          <div class="hint" id="h-focusgenes">英文基因符号，逗号 / 空格分隔，最多 5 个；留空则分析默认聚焦 hub 基因排名前十。</div>
+          <div class="msg err" id="e-focusgenes" role="alert"></div>
+        </div>
+      </div>
     </section>
 
     <!-- ============ Step 5 ============ -->
@@ -711,7 +721,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
         </section>
         <section class="result-figure-zone qc" id="result-qc-zone" data-testid="result-qc-zone" aria-labelledby="qc-zone-title" style="display:none;">
           <h3 id="qc-zone-title">项目质检图（自动产出）</h3>
-          <p>PCA、样本间相关性、表达均质性与基因检出数，随 QC 步骤自动产出，不需要在图级模板中勾选。</p>
+          <p>PCA、样本间相关性、高变异基因热图、基因检出数与组内相关性，随 QC 步骤自动产出，不需要在图级模板中勾选。</p>
           <ul class="result-figure-list" id="result-qc-list"></ul>
         </section>
         <section class="result-figure-zone real" id="result-real-zone" data-testid="result-real-zone" aria-labelledby="real-zone-title" style="display:none;">
@@ -836,9 +846,9 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     line1_bulk: [
       { name: 'PCA 分组验证', step: 'l1_qc_pca', files: ['l1_02_pca_step3.png', 'l1_02_pca.png'] },
       { name: '样本间相关性', step: 'l1_figures_bulk', files: ['l1_01_correlation.png'] },
-      { name: '表达均质性热图', step: 'l1_figures_bulk', files: ['l1_04_topvar_heatmap.png'] },
-      { name: '基因检出数', step: 'l1_figures_bulk', files: ['l1_05a_genes_detected.png'] },
-      { name: '组内相关性', step: 'l1_figures_bulk', files: ['l1_05b_within_group_cor.png'] }
+      { name: '高变异基因热图', step: 'l1_figures_bulk', files: ['l1_04_topvar_heatmap.png'] },
+      { name: '每样本基因检出数', step: 'l1_figures_bulk', files: ['l1_05a_genes_detected.png'] },
+      { name: '组内相关性中位数', step: 'l1_figures_bulk', files: ['l1_05b_within_group_cor.png'] }
     ],
     line2_scrna: [
       { name: '细胞基因检出数分布', step: 'l2_qc_cells', files: ['L2_qc_nfeature_by_sample.png'] },
@@ -2447,6 +2457,7 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       ['分析线', lineSel ? ((lineSeries && lineSeries.name) || lineName[lineSel.value] || lineSel.value) : '未选择'],
       ['分析步骤', picked.length ? picked.length + ' 个' : '未选择'],
       ['DEG 阈值', cutoffSummary()],
+      ['核心研究基因', focusGenesSummary()],
       ['参考文献', state.refs.length ? state.refs.length + ' 篇' : '未上传']
     ];
     // 自有上传模式才显示这两行，公共数据库路径的摘要与既往一致
@@ -2654,7 +2665,10 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     var s5 = prSection('五、分析线与分析步骤', '共勾选 ' + modIds.length + ' 个步骤');
     s5.appendChild(prKV([
       ['分析线', series ? series.name : (lineSel ? (LINE_LABEL[lineSel.value] || lineSel.value) : '未选择')],
-      ['靶基因', m.koGene || ao.targetKoGene]
+      ['靶基因', m.koGene || ao.targetKoGene],
+      ['核心研究基因', ((m.biologicalPriors || {}).focusGenes || []).length
+        ? m.biologicalPriors.focusGenes.join('、')
+        : '未填（默认研究 hub 基因重要性排名前十）']
     ]));
     s5.appendChild(prTable(
       ['序号', 'Mod ID', '步骤名称', '主要工具'],
@@ -2818,6 +2832,28 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     return out;
   }
 
+  function parseFocusGenes() {
+    var raw = String(val('f-focusgenes') || '').trim();
+    if (!raw) return [];
+    var seen = [];
+    raw.split(/[\s,;，；]+/).forEach(function (token) {
+      var gene = token.trim();
+      if (gene && seen.indexOf(gene) < 0) seen.push(gene);
+    });
+    return seen;
+  }
+
+  function focusGenesProblem() {
+    var genes = parseFocusGenes();
+    if (genes.length > 5) return '核心研究基因最多 5 个，当前 ' + genes.length + ' 个（重复项已合并）';
+    return '';
+  }
+
+  function focusGenesSummary() {
+    var genes = parseFocusGenes();
+    return genes.length ? genes.join('、') : '未填（默认研究 hub 基因重要性排名前十）';
+  }
+
   function validateStep(n) {
     var ok = true;
     if (n === 1) {
@@ -2857,8 +2893,9 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       else if (!selectedWorkflowMods().length) { showMsg('e-line', '请至少勾选一个分析步骤', 'err'); ok = false; }
       else if (koGeneProblem()) { showMsg('e-line', koGeneProblem(), 'err'); ok = false; }
       else if (figureTemplateProblem()) { showMsg('e-line', figureTemplateProblem(), 'err'); ok = false; }
+      else if (focusGenesProblem()) { showMsg('e-focusgenes', focusGenesProblem(), 'err'); ok = false; }
       else if (cutoffProblem()) { showMsg('e-cutoff', cutoffProblem(), 'err'); ok = false; }
-      else { showMsg('e-cutoff', '', 'err'); showMsg('e-line', '', 'err'); }
+      else { showMsg('e-cutoff', '', 'err'); showMsg('e-line', '', 'err'); showMsg('e-focusgenes', '', 'err'); }
     }
     return ok;
   }
@@ -2933,6 +2970,9 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
       // 差异基因筛选阈值：字段名与服务端 project.js 的 normalizeAnalysisCutoffs 完全一致，
       // 建项时原样写入 project.json 的 analysis_cutoffs 并锁死（事后不可逆）。
       analysisCutoffs: buildAnalysisCutoffs(),
+      // 核心研究基因：写入 biologicalPriors.focusGenes（服务端归一化上限 5 个并做黑名单校验）。
+      // 留空时报告端默认聚焦 hub 基因重要性排名前十（ml_core_hub_genes.tsv 的 importance_rank）。
+      biologicalPriors: { focusGenes: parseFocusGenes() },
       // 参考文献：只记元数据与收件箱内相对路径，文件本体已由 /api/references 落在 inbox/refs/<sid>/
       references: state.refs.map(function (r) { return { name: r.name, path: r.path, size: r.size }; }),
       // 备注 / 分析需求补充说明（自由文本，参与服务端非肿瘤合规校验）

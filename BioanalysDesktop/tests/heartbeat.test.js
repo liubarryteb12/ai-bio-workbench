@@ -21,9 +21,9 @@ import {
 
 const REAL_LINE = JSON.stringify({
   schema: 'k40_heartbeat/v2', ts: 1793694009, runsvdir_count: 1,
-  sshd_8022_listen: 1, dropbear_10022_listen: 1, pi_9910_listen: 1, ssd_writable: 1,
+  sshd_8022_listen: 1, dropbear_10022_listen: 1, ssd_writable: 1,
   port_probe: 'tcp-connect', svc_sshd: 'run', svc_ubuntu_sshd: 'run',
-  svc_crond: 'run', svc_ssh_agent: 'run', svc_pi_a2a: 'run',
+  svc_crond: 'run', svc_ssh_agent: 'run',
 });
 
 const baseData = () => parseHeartbeat({ stdout: REAL_LINE }).data;

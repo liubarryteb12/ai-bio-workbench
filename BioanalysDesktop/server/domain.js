@@ -334,23 +334,18 @@ export const SYSTEM_LOGS = `${SSD_ROOT}/system_logs`;
 export const LINE_SUBDIRS = ['raw_data', 'processed', 'results', 'figures'];
 
 /** runit 监管的四个服务 */
-export const SERVICES = ['sshd', 'crond', 'ssh-agent', 'ubuntu-sshd', 'pi-a2a'];
+export const SERVICES = ['sshd', 'crond', 'ssh-agent', 'ubuntu-sshd'];
 
 /**
- * adb forward 的四条隧道。
+ * adb forward 的两条隧道。
  *
  * 语义边界：这张表是"手机端口在 PC 侧可达"的唯一真源。checkForwards() 只遍历这张表
- * 补隧道，表里没登记的端口永远不会被重建 —— 这也是第二十九轮前 pi agent 检测一直
- * 全红的第一根因：pi_agent.js 直连 127.0.0.1:9910/9911，而这两条不在表内。
- *
- * 前两条是 ssh 数据面（Termux 底座 / 容器），后两条是 pi agent 的观测面：
- *   9910 = A2A AgentCard 与 JSON-RPC 任务口，9911 = 遥测侧车。
+ * 补隧道，表里没登记的端口永远不会被重建。两条都是 ssh 数据面：
+ * Termux 底座与容器。
  */
 export const FORWARD_PAIRS = [
   { local: 'tcp:8022', remote: 'tcp:8022', purpose: 'Termux sshd' },
   { local: 'tcp:10022', remote: 'tcp:10022', purpose: '容器 sshd' },
-  { local: 'tcp:9910', remote: 'tcp:9910', purpose: 'pi agent A2A' },
-  { local: 'tcp:9911', remote: 'tcp:9911', purpose: 'pi 遥测侧车' },
 ];
 
 /** 默认手机序列号 */

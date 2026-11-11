@@ -1074,6 +1074,8 @@ def summarize_focus_genes(project, lines):
     """关注基因全流程表现：在哪些结果表里出现过。"""
     genes = (project.get("biological_priors") or {}).get("focus_genes") or []
     if not genes:
+        genes = default_top_hub_genes(lines)
+    if not genes:
         return []
     out = []
     for gene in genes:
@@ -1091,6 +1093,42 @@ def summarize_focus_genes(project, lines):
                     hits.append("%s/%s" % (line, os.path.basename(rel)))
         out.append({"gene": gene, "hits": hits})
     return out
+
+
+def default_top_hub_genes(lines, top_n=10):
+    """未填核心研究基因时的默认口径：hub 基因重要性排名前十。
+
+    来源是各线 results 根目录的 ml_core_hub_genes.tsv（importance_rank 由
+    ml_hub_analysis 写出）；多个线都有该表时合并排序后去重取前 N。
+    """
+    ranked = []
+    for entry in lines.values():
+        path = os.path.join(entry["dir"], "ml_core_hub_genes.tsv")
+        text = read_text(path, limit=2 * 1024 * 1024)
+        if not text:
+            continue
+        rows = [row.split("\t") for row in text.splitlines() if row.strip()]
+        if len(rows) < 2:
+            continue
+        header = [h.strip().lower() for h in rows[0]]
+        if "gene" not in header or "importance_rank" not in header:
+            continue
+        gene_i = header.index("gene")
+        rank_i = header.index("importance_rank")
+        for row in rows[1:]:
+            if len(row) <= max(gene_i, rank_i):
+                continue
+            try:
+                rank = int(float(row[rank_i]))
+            except ValueError:
+                continue
+            ranked.append((rank, row[gene_i].strip()))
+    ranked.sort()
+    ordered = []
+    for _, gene in ranked:
+        if gene and gene not in ordered:
+            ordered.append(gene)
+    return ordered[:top_n]
 
 
 # ============================================================

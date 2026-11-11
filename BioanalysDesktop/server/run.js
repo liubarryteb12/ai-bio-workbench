@@ -311,7 +311,10 @@ export function runTask(task, handlers = {}) {
     return { id: taskId, launched: true };
   };
 
-  routeTask({ ...task, taskId }, { executor: launchOnNode }).catch((cause) => {
+  routeTask({ ...task, taskId }, {
+    executor: launchOnNode,
+    actionPath: process.env.BIO_ACTIONS_LEDGER,
+  }).catch((cause) => {
     handlers.onStderr?.(`[failover] 新任务无法路由: ${cause.message}\n`);
     handlers.onExit?.(-1);
   });
@@ -403,9 +406,15 @@ export function buildLedgerFileName(entry) {
  * 抽成纯函数是为了可单测：远端路径必须整体加单引号，裸露重定向会被文件名里的空格
  * 拆断（2026-10-13 事故）。
  */
-export function buildLedgerWriteCommand(entry) {
+export function buildLedgerWriteCommand(entry, payloadBase64 = '') {
   const remotePath = `${SYSTEM_LOGS}/${buildLedgerFileName(entry)}`;
-  const command = `mkdir -p '${SYSTEM_LOGS}' && base64 -d > '${remotePath}'`
+  // ADB 主通道的 adb_exec.ps1 不转发 stdin，因此台账 payload 直接内嵌到命令里。
+  // base64 字母表不含单引号，单引号包裹安全；命令由 adb_exec 落成远端脚本，
+  // 不再受 argv 长度限制。
+  const writer = payloadBase64
+    ? `printf '%s' '${payloadBase64}' | base64 -d > '${remotePath}'`
+    : `base64 -d > '${remotePath}'`;
+  const command = `mkdir -p '${SYSTEM_LOGS}' && ${writer}`
     + ` && echo WROTE "'${remotePath}'" $(wc -c < '${remotePath}')`;
   return { command, remotePath };
 }
@@ -443,9 +452,9 @@ export function persistReceiptMarker(output, remotePath) {
 }
 
 export async function persistEntry(entry, lineId, options = {}) {
-  const { command, remotePath } = buildLedgerWriteCommand(entry);
   const payload = Buffer.from(JSON.stringify(entry, null, 2), 'utf8');
-  const result = await runSsh(command, payload.toString('base64'), options.sshTarget || 'k40-ubuntu');
+  const { command, remotePath } = buildLedgerWriteCommand(entry, payload.toString('base64'));
+  const result = await runSsh(command, null, options.sshTarget || 'k40-ubuntu');
   const reportedBytes = persistReceiptMarker(result, remotePath);
   if (reportedBytes === null) {
     throw new Error(`写台账失败：远端未回 WROTE 标记（命令疑似被截断或落盘未执行） path=${remotePath} tail=${result.slice(-300)}`);

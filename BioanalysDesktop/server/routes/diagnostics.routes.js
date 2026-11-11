@@ -189,6 +189,7 @@ export async function handleDiagnosticsRoutes(req, res, url, {
   if (url.pathname === '/api/ledger/check') {
     // 台账巡检：SSD 未挂载时必须显式报阻塞，不能假装 0 违规
     const requested = url.searchParams.get('dir') || SYSTEM_LOGS;
+    const requestedProject = url.searchParams.get('project') || '';
     // T0-4：requested 直接来自 URL 参数，必须过 shellQuote，否则一个 ' 就能接任意命令
     const probe = runRemote(`if [ -d ${shellQuote(requested)} ]; then echo EXISTS; else echo MISSING; fi`);
     if (!probe.includes('EXISTS')) {
@@ -202,7 +203,7 @@ export async function handleDiagnosticsRoutes(req, res, url, {
     }
 
     try {
-      const { entries } = await fetchLedgerFromServer(requested);
+      const { entries } = await fetchLedgerFromServer(requested, { projectId: requestedProject });
       const audited = entries.map((entry) => ({
         file: entry.file,
         path: entry.path,

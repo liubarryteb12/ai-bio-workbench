@@ -106,14 +106,7 @@ export async function handleFiguresRoutes(req, res, url, {
       : lower.endsWith('.webp') ? 'image/webp'
       : lower.endsWith('.pdf') ? 'application/pdf'
       : 'image/jpeg';
-    const stat = fs.statSync(file);
-    res.writeHead(200, {
-      'Content-Type': mime,
-      'Content-Length': stat.size,
-      'Cache-Control': 'no-store',
-    });
-    fs.createReadStream(file).pipe(res);
-    return true;
+    return streamFigureFile(res, file, mime, json);
   }
 
   if (url.pathname === '/api/figures/catalog') {
@@ -177,19 +170,13 @@ export async function handleFiguresRoutes(req, res, url, {
       return true;
     }
     const file = path.resolve(REPO_ROOT, entry.preview_source);
-    if (!file.startsWith(REPO_ROOT + path.sep) || !fs.statSync(file).isFile()) {
+    let isFile = false;
+    try { isFile = fs.statSync(file).isFile(); } catch { isFile = false; }
+    if (!file.startsWith(REPO_ROOT + path.sep) || !isFile) {
       json(res, 404, { error: `候选图预览不可用: ${catalogId}` });
       return true;
     }
-    const stat = fs.statSync(file);
-    res.writeHead(200, {
-      'Content-Type': 'image/png',
-      'Content-Length': stat.size,
-      'Cache-Control': 'no-store',
-      'X-Content-Type-Options': 'nosniff',
-    });
-    fs.createReadStream(file).pipe(res);
-    return true;
+    return streamFigureFile(res, file, 'image/png', json, { 'X-Content-Type-Options': 'nosniff' });
   }
 
   if (url.pathname === '/api/figures/adapt') {
@@ -538,4 +525,29 @@ export async function handleFiguresRoutes(req, res, url, {
   }
 
   return false;
+}
+
+/**
+ * 统一的本地文件流式响应（2026-11-11 P1）：statSync 前移进 try，文件在
+ * existsSync 与 statSync 之间被删、或读取中途出错时返回 404/500，
+ * 而不是让异常冒泡顶穿顶层 handler 把整个后端带崩。
+ */
+function streamFigureFile(res, file, mime, json, extraHeaders = {}) {
+  let stat;
+  try {
+    stat = fs.statSync(file);
+  } catch {
+    json(res, 404, { error: '预览文件不存在' });
+    return true;
+  }
+  res.writeHead(200, {
+    'Content-Type': mime,
+    'Content-Length': stat.size,
+    'Cache-Control': 'no-store',
+    ...extraHeaders,
+  });
+  const stream = fs.createReadStream(file);
+  stream.on('error', () => res.end());
+  stream.pipe(res);
+  return true;
 }

@@ -78,7 +78,10 @@ export async function applyFigures({ body }, deps) {
   const updated = { ...meta, line_id: lineId, figure_tasks: mergedTasks };
   const metaPath = `${PROJECTS_ROOT}/${projectId}/project.json`;
   const payload = Buffer.from(JSON.stringify(updated, null, 2)).toString('base64');
-  const write = runRemoteRaw(`echo ${payload} | base64 -d > ${shellQuote(metaPath)}`);
+  // 原子写（2026-11-11 P1）：先落同目录临时文件再 mv 覆盖。截断写法在断连或
+  // 磁盘满时会留下损坏的 project.json；mv 在同一文件系统上是原子的。
+  const tmpPath = `${metaPath}.tmp.$$`;
+  const write = runRemoteRaw(`echo ${payload} | base64 -d > ${shellQuote(tmpPath)} && mv ${shellQuote(tmpPath)} ${shellQuote(metaPath)}`);
   if (write.code !== 0) {
     return { status: 503, payload: { ok: false, error: `项目元数据写回失败: ${write.text}` } };
   }

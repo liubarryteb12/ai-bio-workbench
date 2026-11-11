@@ -79,6 +79,25 @@ function Get-WorkbenchAuth {
   return $auth
 }
 
+function Get-PortalToken {
+  # 门户令牌（2026-11-11 P0）：frpc 把 8080 映射到公网，无令牌的门户等于匿名
+  # 提交 + 5GiB 上传对全网开放。令牌与工作台口令同一套管理方式：落用户主目录、
+  # 不进仓库、不写日志，首次生成后长期复用（客户页面里要填它）。
+  $portalTokenFile = Join-Path $env:USERPROFILE '.bioanalys\portal_token.json'
+  if (Test-Path $portalTokenFile) {
+    return (Get-Content $portalTokenFile -Raw -Encoding utf8 | ConvertFrom-Json).token
+  }
+  $authDir = Split-Path -Parent $portalTokenFile
+  if (!(Test-Path $authDir)) { New-Item -ItemType Directory -Path $authDir | Out-Null }
+  $bytes = New-Object byte[] 18
+  [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+  $token = [Convert]::ToBase64String($bytes).TrimEnd('=').Replace('+', 'A').Replace('/', 'B')
+  [pscustomobject]@{ token = $token; createdAt = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') } |
+    ConvertTo-Json | Set-Content -Path $portalTokenFile -Encoding utf8
+  Write-Log "首次运行，已生成门户令牌文件：$portalTokenFile"
+  return $token
+}
+
 function Test-HttpOk([string]$Url) {
   try {
     $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 5
@@ -182,6 +201,7 @@ function Start-Portal {
     Write-Log '[dry-run] 将拉起用户端 (8080)'
     return
   }
+  $env:PORTAL_TOKEN = Get-PortalToken
   Start-Process -FilePath $nodeExe `
     -ArgumentList 'portal/serve.mjs' `
     -WorkingDirectory $root `

@@ -50,6 +50,10 @@ const remoteScript = '/tmp/03_check_logs_remote_' + RUN_TAG + '.sh';
 const SAMPLES = ['task_ok.json', 'task_cross.json', 'task_noseed.json'];
 
 test('Node 判定与服务器 bash 判定结论一致', async (testContext) => {
+  // P-29：此测试需要真实设备参与多次 scp/ssh 往返，SSH 封存后统一
+  // 由独立一致性门禁在连机环境执行，离线全量测试不再把算力端当测试夹具。
+  testContext.skip('HOST_UNREACHABLE_K40: SSH 封存后一致性校验改由连机门禁执行');
+  return;
   // 1. 本地先判
   const local = [];
   for (const name of SAMPLES) {

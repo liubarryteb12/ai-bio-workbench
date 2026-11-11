@@ -161,6 +161,13 @@ export function probeNodeHealth(node, options = {}) {
  * 默认单节点最多 4.5 秒，整体截止时间锁死在 10 秒故障转移预算内。
  */
 export function probeComputeNodes(nodes, options = {}) {
+  // P-29：多节点健康探针会产生并发/高频远端连接流，算力端实测会触发
+  // proot 15 秒 abort 环。ADB 单通道下固定单设备，首节点直接判可用；
+  // 纯函数 routeTask 仍可用注入的 healthByNodeId 验证故障转移逻辑。
+  return { [nodes[0].id]: { reachable: true, tempC: null, reason: null } };
+}
+
+export function probeComputeNodesLegacy(nodes, options = {}) {
   const now = options.now || Date.now;
   const deadline = Number(options.deadline || (now() + NODE_FAILOVER_LIMIT_MS));
   const healthByNodeId = {};
@@ -687,7 +694,7 @@ export function buildTaskScript(task) {
   const {
     projectId = DEFAULT_PROJECT, lineId, step, inputs = [], outputs = [], seed, throttled = false,
     targetKoGene, detached = false, wrapperTaskId = '', scriptPath = '', language = '',
-    canonicalOutput = '', adapted = false,
+    canonicalOutput = '', canonicalOutputs = [], adapted = false, directOutputs = false,
   } = task;
   if (!LINES.includes(lineId)) {
     throw new Error(`line_id 非法: ${lineId}`);
@@ -764,29 +771,57 @@ export function buildTaskScript(task) {
     if (!adaptedScript.startsWith(expectedPrefix) || !/\.(R|py)$/.test(adaptedScript)) {
       throw new Error(`adapted scriptPath 非法: ${adaptedScript}`);
     }
-    if (!canonicalOutput || outputList.length !== 1) {
-      throw new Error('adapted 任务必须提供一个 canonicalOutput 和一个 output');
-    }
     const scriptDir = path.posix.dirname(adaptedScript);
-    const outputPath = outputList[0];
-    const candidates = [path.posix.join(scriptDir, canonicalOutput)];
-    if (!canonicalOutput.startsWith('figures/')) {
-      candidates.push(path.posix.join(scriptDir, 'figures', canonicalOutput));
-    }
     const runner = language === 'python'
       ? `python3 ${shellQuote(adaptedScript)}`
       : `Rscript --vanilla ${shellQuote(adaptedScript)}`;
-    const copyBranches = candidates.map((candidate, index) => {
-      const prefix = index === 0 ? 'if' : 'elif';
-      return `${prefix} [ -f ${shellQuote(candidate)} ]; then cp ${shellQuote(candidate)} ${shellQuote(outputPath)};`;
-    }).join(' ');
-    rawCmd = [
-      `cd ${shellQuote(scriptDir)}`,
-      `mkdir -p ${shellQuote(path.posix.dirname(outputPath))}`,
-      `rm -f ${shellQuote(outputPath)}`,
-      runner,
-      `${copyBranches} else echo ${shellQuote(`adapted output missing: ${canonicalOutput}`)} >&2; exit 1; fi`,
-    ].join(' && ');
+    const outputDirs = [...new Set(outputList.map((item) => path.posix.dirname(item)))];
+    if (directOutputs === true) {
+      // 项目适配脚本按线根或 processed/results 直接写目标路径。把「复制候选」
+      // 拼进 ssh 命令会让多产物任务轻松超过 dropbear 的命令长度上限，连接在
+      // 执行前就被对端关闭。这里只做存在性校验，命令长度与产物数线性相关。
+      if (!outputList.length) throw new Error('adapted directOutputs 任务至少需要一个 output');
+      rawCmd = [
+        `cd ${shellQuote(scriptDir)}`,
+        ...outputDirs.map((dir) => `mkdir -p ${shellQuote(dir)}`),
+        ...outputList.map((item) => `rm -f ${shellQuote(item)}`),
+        runner,
+        ...outputList.map((item) => `[ -f ${shellQuote(item)} ] || { echo ${shellQuote(`adapted output missing: ${item}`)} >&2; exit 1; }`),
+      ].join(' && ');
+    } else {
+      // 旧形态：适配脚本把产物写在线根，由任务层复制到目标路径。
+      const canonicalList = Array.isArray(canonicalOutputs) && canonicalOutputs.length
+        ? canonicalOutputs.map((name) => String(name))
+        : [String(canonicalOutput || '')].filter(Boolean);
+      if (!canonicalList.length || outputList.length !== canonicalList.length) {
+        throw new Error('adapted 任务的 canonicalOutputs 数量必须与 outputs 一致');
+      }
+      const copyBranches = canonicalList.map((canonicalName, index) => {
+        const outputPath = outputList[index];
+        const candidates = [
+          path.posix.join(scriptDir, canonicalName),
+          path.posix.join(scriptDir, 'figures', canonicalName),
+          path.posix.join(scriptDir, '..', canonicalName),
+          path.posix.join(scriptDir, '..', 'processed', canonicalName),
+          path.posix.join(scriptDir, '..', 'results', canonicalName),
+          path.posix.join(scriptDir, '..', 'figures', canonicalName),
+        ];
+        const checks = candidates.map((candidate, candidateIndex) => {
+          const prefix = candidateIndex === 0 ? 'if' : 'elif';
+          return `${prefix} [ -f ${shellQuote(candidate)} ]; then `
+            + `if [ ${shellQuote(candidate)} = ${shellQuote(outputPath)} ]; then :; `
+            + `else cp -f ${shellQuote(candidate)} ${shellQuote(outputPath)}; fi;`;
+        }).join(' ');
+        return `${checks} else echo ${shellQuote(`adapted output missing: ${canonicalName}`)} >&2; exit 1; fi`;
+      });
+      rawCmd = [
+        `cd ${shellQuote(scriptDir)}`,
+        ...outputDirs.map((dir) => `mkdir -p ${shellQuote(dir)}`),
+        ...outputList.map((item) => `rm -f ${shellQuote(item)}`),
+        runner,
+        ...copyBranches,
+      ].join(' && ');
+    }
     gatePath = adaptedScript;
   } else {
     rawCmd = [

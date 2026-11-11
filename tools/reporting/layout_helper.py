@@ -117,6 +117,9 @@ def normalize_layout_spec(spec):
         for key in rules:
             if incoming.get(key) is not None:
                 rules[key] = incoming[key]
+    # 图例位置是全局硬规则，历史 project.json 也不得把图例拉回底部或轴内。
+    rules["legend_position"] = "outside_right"
+    rules["legend_direction"] = "vertical"
     return {"template_id": template_id, "dpi": int(spec.get("dpi") or 300),
             "theme_rules": rules}
 
@@ -181,28 +184,19 @@ def _place_legend(ax, fig, rules, legend):
     position = rules.get("legend_position")
 
     if position == "bottom_center":
-        # 兼容旧配置：2026-11-07 前落盘的 16:9 模板图例在底部横排。
-        # 新配置一律走下方 outside_right 分支，全部图幅方向图例外置右侧纵向。
-        ncol = max(3, min(5, int(math.ceil(n_items / 4.0)) or 3))
-        _set_legend_ncols(legend, ncol)
-        legend.set_bbox_to_anchor((0.5, -0.18), transform=fig.transFigure)
-        legend.set_loc("upper center")
-        # 底部预留 15% 安全内边距，防 tight bbox 之外再被裁切
+        # 兼容旧配置：历史 project.json 可能仍写着 bottom_center。
+        # 只保留键名识别，实际位置一律归一到右侧纵向，避免旧配置回潮。
+        position = "outside_right"
+    # 右侧外挂垂直排布；条目 >6 拆 2 列，防止挤压主画布宽度
+    ncol = 2 if n_items > 6 else 1
+    _set_legend_ncols(legend, ncol)
+    legend.set_bbox_to_anchor((1.02, 1.0), transform=ax.transAxes)
+    legend.set_loc("upper left")
+    if ncol == 2:
         try:
-            fig.subplots_adjust(bottom=0.18)
+            fig.subplots_adjust(right=0.72)
         except Exception:
             pass
-    else:
-        # 右侧外挂垂直排布；条目 >6 拆 2 列，防止挤压主画布宽度
-        ncol = 2 if n_items > 6 else 1
-        _set_legend_ncols(legend, ncol)
-        legend.set_bbox_to_anchor((1.02, 1.0), transform=ax.transAxes)
-        legend.set_loc("upper left")
-        if ncol == 2:
-            try:
-                fig.subplots_adjust(right=0.72)
-            except Exception:
-                pass
 
     legend.set_frame_on(False)
     return legend

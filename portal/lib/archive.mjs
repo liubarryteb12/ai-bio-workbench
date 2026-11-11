@@ -86,6 +86,27 @@ export function refArchiveName(index, originalName) {
   return `${String(Number(index) + 1).padStart(2, '0')}_${sanitizeFileName(originalName)}`;
 }
 
+/**
+ * 数据文件唯一合法来源：本提交会话的上传目录 uploads/<sid>/。
+ *
+ * 客户端不再提供来源路径（file.path 声明值一律忽略——2026-11-11 P0 修复）。
+ * 旧实现采信 dataFiles[].path 并只做 inbox 包含检查，攻击者可以把其他会话
+ * （甚至其他包）里的文件声明成自己的来源，提交时被 renameSync 搬进自己的包。
+ * 现在来源由服务端从 uploadSid 派生，跨会话引用在路径层就不成立。
+ */
+export function dataFileSourcePath(sid, file) {
+  // 与上传端 uniqueInDir 的重名规则对齐：磁盘上可能是 name、name_2、name_3…。
+  // 客户端声明的 path 仍作为「第几次重名」的提示被信任（它来自上传回执，只影响
+  // 同名序号，不影响目录），目录与会话身份完全由服务端派生，跨会话引用不成立。
+  const base = sanitizeFileName(file && file.name);
+  const declared = String((file && file.path) || '');
+  const stem = base.lastIndexOf('.') >= 0 ? base.slice(0, base.lastIndexOf('.')) : base;
+  const ext = base.lastIndexOf('.') >= 0 ? base.slice(base.lastIndexOf('.')) : '';
+  const match = new RegExp('^' + stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '_(\\d+)' + ext.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$').exec(declared);
+  const suffix = match ? `_${Number(match[1])}` : '';
+  return `uploads/${String(sid || '_')}/${base}${suffix}`;
+}
+
 /** 数据文件归档名：`<角色>__<绑定编号>__<原名>`；无绑定编号时只留角色与原名 */
 export function dataArchiveName(role, bind, originalName) {
   const parts = [
@@ -242,7 +263,7 @@ export function buildPackagePlan({
       original_name: (file && file.name) || '',
       archive_name: archiveName,
       size: Number((file && file.size) || 0),
-      from: (file && file.path) || '',
+      from: dataFileSourcePath(sid, file),
       to: `${packageDir}/raw_data/${archiveName}`,
     };
   });

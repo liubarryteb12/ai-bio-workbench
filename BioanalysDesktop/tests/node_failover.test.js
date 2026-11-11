@@ -15,6 +15,7 @@ import {
   routeTask,
 } from '../server/task.js';
 import { runTask } from '../server/run.js';
+import { ADB_EXEC_SCRIPT } from '../server/proc.js';
 
 const nodes = [
   { id: 'k40-ubuntu', host: 'k40-ubuntu', primary: true },
@@ -87,26 +88,28 @@ test('routeTask 主节点故障时执行备用节点并写动作台账', async (
   assert.equal(action.within_10s, true);
 });
 
-test('runTask 生产路径在主节点离线时把新任务下发到显式备用节点并记账', async (t) => {
+test('runTask 单通道下固定使用主节点，不再做多节点健康探活', async (t) => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bio-run-failover-'));
   const actionFile = path.join(dir, 'actions.jsonl');
   const previousNodes = process.env.BIO_COMPUTE_NODES;
   const previousActions = process.env.BIO_ACTIONS_LEDGER;
+  const previousAdapter = process.env.BIO_COMPUTE_ADAPTER;
   process.env.BIO_COMPUTE_NODES = JSON.stringify(nodes);
   process.env.BIO_ACTIONS_LEDGER = actionFile;
+  // SSH 已封存，P-29 冲突源收口后生产路径固定单设备；
+  // 多节点 failover 只在注入 healthByNodeId 的纯函数路径保留。
+  process.env.BIO_COMPUTE_ADAPTER = 'adb';
   t.after(() => {
     if (previousNodes === undefined) delete process.env.BIO_COMPUTE_NODES;
     else process.env.BIO_COMPUTE_NODES = previousNodes;
     if (previousActions === undefined) delete process.env.BIO_ACTIONS_LEDGER;
     else process.env.BIO_ACTIONS_LEDGER = previousActions;
+    if (previousAdapter === undefined) delete process.env.BIO_COMPUTE_ADAPTER;
+    else process.env.BIO_COMPUTE_ADAPTER = previousAdapter;
   });
 
-  t.mock.method(childProcess, 'spawnSync', (_program, args) => {
-    const host = args.at(-2);
-    if (host === 'k40-ubuntu') {
-      return { status: 255, stdout: '', stderr: 'ssh: connect to host k40-ubuntu: Connection timed out' };
-    }
-    return { status: 0, stdout: 'TEMP|48000\nNODE_HEALTH_END\n', stderr: '' };
+  t.mock.method(childProcess, 'spawnSync', () => {
+    throw new Error('单通道不应再发起节点健康探针');
   });
 
   const spawned = [];
@@ -131,34 +134,32 @@ test('runTask 生产路径在主节点离线时把新任务下发到显式备用
   await new Promise((resolve) => setTimeout(resolve, 20));
 
   assert.ok(handle.id, '生产 runTask 应返回任务句柄');
-  assert.equal(spawned.length, 1, '健康检查不应被打成任务执行');
-  assert.equal(spawned[0].program, 'ssh');
-  assert.equal(spawned[0].args.at(-2), 'backup-arm64');
-  const action = JSON.parse(fs.readFileSync(actionFile, 'utf8'));
-  assert.equal(action.from_node_id, 'k40-ubuntu');
-  assert.equal(action.to_node_id, 'backup-arm64');
-  assert.equal(action.reason, 'offline');
+  assert.equal(spawned.length, 1, '任务执行只有一次');
+  assert.equal(spawned[0].program, 'pwsh');
+  assert.match(JSON.stringify(spawned), /adb_exec\.ps1/);
+  assert.equal(fs.existsSync(actionFile), false, '单通道不应产生 failover 台账');
 });
 
-test('runTask 生产路径在主节点达到 95C 时切换到备用节点', async (t) => {
+test('runTask 单通道下温度健康探针已封存', async (t) => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bio-run-hot-'));
   const actionFile = path.join(dir, 'actions.jsonl');
   const previousNodes = process.env.BIO_COMPUTE_NODES;
   const previousActions = process.env.BIO_ACTIONS_LEDGER;
+  const previousAdapter = process.env.BIO_COMPUTE_ADAPTER;
   process.env.BIO_COMPUTE_NODES = JSON.stringify(nodes);
   process.env.BIO_ACTIONS_LEDGER = actionFile;
+  process.env.BIO_COMPUTE_ADAPTER = 'adb';
   t.after(() => {
     if (previousNodes === undefined) delete process.env.BIO_COMPUTE_NODES;
     else process.env.BIO_COMPUTE_NODES = previousNodes;
     if (previousActions === undefined) delete process.env.BIO_ACTIONS_LEDGER;
     else process.env.BIO_ACTIONS_LEDGER = previousActions;
+    if (previousAdapter === undefined) delete process.env.BIO_COMPUTE_ADAPTER;
+    else process.env.BIO_COMPUTE_ADAPTER = previousAdapter;
   });
 
-  t.mock.method(childProcess, 'spawnSync', (_program, args) => {
-    const host = args.at(-2);
-    return host === 'k40-ubuntu'
-      ? { status: 0, stdout: 'TEMP|96000\nNODE_HEALTH_END\n', stderr: '' }
-      : { status: 0, stdout: 'TEMP|47000\nNODE_HEALTH_END\n', stderr: '' };
+  t.mock.method(childProcess, 'spawnSync', () => {
+    throw new Error('单通道不应再发起节点健康探针');
   });
 
   const spawned = [];
@@ -182,10 +183,8 @@ test('runTask 生产路径在主节点达到 95C 时切换到备用节点', asyn
 
   await new Promise((resolve) => setTimeout(resolve, 20));
   assert.equal(spawned.length, 1);
-  assert.equal(spawned[0].args.at(-2), 'backup-arm64');
-  const action = JSON.parse(fs.readFileSync(actionFile, 'utf8'));
-  assert.equal(action.reason, 'temperature_threshold');
-  assert.equal(action.within_10s, true);
+  assert.equal(spawned[0].program, 'pwsh');
+  assert.equal(fs.existsSync(actionFile), false, '单通道不应产生 failover 台账');
 });
 
 test('未配置备用节点时保持 K40 主路径且不产生额外健康探针', async (t) => {
@@ -223,5 +222,7 @@ test('未配置备用节点时保持 K40 主路径且不产生额外健康探针
   await new Promise((resolve) => setTimeout(resolve, 20));
   assert.equal(healthProbes, 0);
   assert.equal(spawned.length, 1);
-  assert.equal(spawned[0].args.at(-2), 'k40-ubuntu');
+  assert.equal(spawned[0].program, 'pwsh', '默认 ADB 主通道应经 adb_exec 包装');
+  assert.ok(spawned[0].args.includes(ADB_EXEC_SCRIPT), '应使用 tools/ops/adb_exec.ps1');
+  assert.equal(spawned[0].args.at(-2), '-Command');
 });

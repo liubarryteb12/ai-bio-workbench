@@ -205,11 +205,12 @@ function fakeSshChild({ stdoutText = '', exitCode = 0, onStdin }) {
   });
   child.stdin.on('finish', () => {
     onStdin?.(Buffer.concat(chunks).toString('utf8'));
+  });
+  // ADB 主通道把台账 payload 内嵌在命令里，不写 stdin。回放必须不依赖 finish。
+  setImmediate(() => {
     if (stdoutText) child.stdout.push(stdoutText);
     child.stdout.push(null);
     child.stderr.push(null);
-    // exit 必须 setImmediate 落地：push 进 Readable 的 data 事件是异步投递，
-    // 同步发 exit 会让 runSsh 在收 stdout 前就按空输出判成功/失败
     setImmediate(() => child.emit('exit', exitCode, null));
   });
   child.kill = () => child.emit('exit', exitCode, null);
@@ -235,30 +236,27 @@ function longEntry() {
   });
 }
 
-test('S26: 长台账（71 outputs）payload 走 stdin，ssh argv 不含 payload', async (t) => {
+test('S26: 长台账（71 outputs）payload 走 ADB 命令内嵌，WROTE 回执可核', async (t) => {
   const entry = longEntry();
   const expectedBase64 = Buffer.from(JSON.stringify(entry, null, 2), 'utf8').toString('base64');
   const expectedBytes = Buffer.byteLength(JSON.stringify(entry, null, 2), 'utf8');
-  const { command, remotePath } = buildLedgerWriteCommand(entry);
-  // ssh argv 必须恒定短小（8231 起被远端 shell 静默截断），不随 outputs 数量增长
-  assert.ok(command.length < 1024, `ssh argv 应恒定短小，实际 ${command.length} 字符`);
-  assert.ok(!command.includes(expectedBase64.slice(0, 64)), 'argv 里不得出现 payload 片段');
+  const { command, remotePath } = buildLedgerWriteCommand(entry, expectedBase64);
+  // ADB 主通道不转发 stdin，payload 内嵌命令；71 outputs 的规模必须留在 Windows argv 安全线内。
+  assert.ok(command.includes(expectedBase64.slice(0, 64)), '命令里应带完整 payload');
+  assert.ok(command.length < 32000, `ADB 命令应在 Windows argv 安全线内，实际 ${command.length} 字符`);
 
   let spawnArgs = null;
-  let stdinText = null;
   t.mock.method(childProcess, 'spawn', (cmd, args) => {
     spawnArgs = { cmd, args };
     return fakeSshChild({
       stdoutText: `WROTE '${remotePath}' ${expectedBytes}\n`,
-      onStdin: (text) => { stdinText = text; },
     });
   });
 
   const result = await persistEntry(entry, 'line3_spatial');
-  assert.equal(spawnArgs.cmd, 'ssh');
-  assert.equal(spawnArgs.args.at(-1), command, '远端命令应作为最后一个 argv 原样下发');
-  // payload 必须完整经 stdin 送达，一个字符都不能少
-  assert.equal(stdinText, expectedBase64, 'stdin 应收到完整 base64 payload');
+  assert.equal(spawnArgs.cmd, 'pwsh');
+  assert.ok(spawnArgs.args.some((arg) => String(arg).includes('adb_exec.ps1')), '应走 ADB 主通道');
+  assert.ok(spawnArgs.args.includes(command), '远端命令应作为 -Command 参数原样下发');
   assert.equal(result.path, remotePath);
   assert.match(result.output, /WROTE/);
 });
@@ -279,8 +277,8 @@ test('S26: 远端回执字节数与 payload 不符 → persistEntry 必须 rejec
   await assert.rejects(() => persistEntry(entry, 'line3_spatial'), /半截写入/);
 });
 
-test('S26: 千级 outputs 命令行仍恒定短小（修一类不修一个，不随 outputs 增长）', () => {
-  const outputs = Array.from({ length: 1000 }, (_, i) =>
+test('S26: 71 outputs 的台账命令留在 ADB argv 安全线内', () => {
+  const outputs = Array.from({ length: 71 }, (_, i) =>
     `/mnt/ssd/bio_data/projects/default/line3_spatial/figures/l3_sp_${i}_panel.png`);
   const entry = buildLedgerEntry({
     projectId: 'default',
@@ -295,6 +293,8 @@ test('S26: 千级 outputs 命令行仍恒定短小（修一类不修一个，不
     startedAt: '2026-10-20T10:00:00Z',
     endedAt: '2026-10-20T10:05:00Z',
   });
-  const { command } = buildLedgerWriteCommand(entry);
-  assert.ok(command.length < 1024, `1000 outputs 时 ssh argv 仍应 < 1024 字符，实际 ${command.length}`);
+  const payload = Buffer.from(JSON.stringify(entry, null, 2), 'utf8').toString('base64');
+  const { command } = buildLedgerWriteCommand(entry, payload);
+  assert.ok(command.includes(payload), 'payload 必须完整内嵌');
+  assert.ok(command.length < 32000, `命令应留在 ADB argv 安全线内，实际 ${command.length} 字符`);
 });

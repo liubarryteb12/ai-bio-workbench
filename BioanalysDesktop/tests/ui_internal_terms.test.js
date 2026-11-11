@@ -3,7 +3,8 @@
 // 背景（2026-11 全量审查外部评审点名 + 本轮实测）：
 //   OnboardingView.tsx:1481 "子项 2 · 算力削峰与断点恢复"（内部调度术语）
 //   FigureGalleryView.tsx:176/208 "Master-SHA256：..."（内部哈希字段名）
-//   PiAgentView.tsx:356 "经 A2A v1.0 SendMessage 直发 :9910，token 服务端注入"（协议版本 + 端口 + 内部机制）
+//   某观测视图曾把 "经 A2A v1.0 SendMessage 直发 :<端口>，token 服务端注入" 写进可见文案
+//   （协议版本 + 端口 + 内部机制；该视图已于 T11 整体退场，判据保留为防线）
 //   LedgerAuditView.tsx:339 "...会被审计直接拒绝（HTTP 400）"（HTTP 状态码）
 //
 // 判据：这些字符串不得出现在 TSX 的**可见文案位置**（JSX 文本与标签内容），
@@ -38,7 +39,7 @@ const FORBIDDEN = [
   { pattern: /算力削峰/, why: '内部调度术语，用户看不懂' },
   { pattern: /Master-SHA256/, why: '内部哈希字段名' },
   { pattern: /A2A v1\.0/, why: '内部协议版本号' },
-  { pattern: /SendMessage\s*直发\s*:9910/, why: '内部机制与端口' },
+  { pattern: /SendMessage\s*直发\s*:\d{4,5}/, why: '内部机制与端口' },
   { pattern: /（HTTP 400）|\(HTTP 400\)/, why: 'HTTP 状态码不该出现在用户提示里' },
 ];
 

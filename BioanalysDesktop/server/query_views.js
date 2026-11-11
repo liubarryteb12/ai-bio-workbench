@@ -20,11 +20,17 @@ export function resolveProjectParam(url) {
 /**
  * 列出数据面全部项目（含元数据）。
  * 项目目录存在但缺 project.json 时也列出，meta=null，不假装它不存在。
+ * 15 秒短缓存：远端列表是 N+1 次同步 SSH，全量刷新一次近 10 秒，
+ * 首页切页/焦点刷新若每次都打会把事件循环整段占住。
  */
+let projectListCache = { at: 0, projects: null };
 export function listProjectsWithMeta() {
+  if (projectListCache.projects && Date.now() - projectListCache.at < 15000) {
+    return projectListCache.projects;
+  }
   const listing = runRemote(buildProjectListCommand());
   const ids = parseProjectList(listing);
-  return ids.map((id) => {
+  const projects = ids.map((id) => {
     const encoded = runRemote(buildReadProjectMetaCommand(id));
     let meta = null;
     if (encoded.trim()) {
@@ -32,6 +38,8 @@ export function listProjectsWithMeta() {
     }
     return { projectId: id, meta };
   });
+  projectListCache = { at: Date.now(), projects };
+  return projects;
 }
 
 function readProjectMetaFile(file) {

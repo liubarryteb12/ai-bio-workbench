@@ -54,6 +54,19 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..
 const PORTAL_TOKEN = process.env.PORTAL_TOKEN || '';
 const SYNC_TOKEN = process.env.SYNC_TOKEN || '';
 const PORTAL_CLIENT_TOKEN = process.env.PORTAL_CLIENT_TOKEN || '';
+/**
+ * Fail-Closed（2026-11-11）：无令牌只允许监听回环地址。
+ *
+ * 历史行为是「PORTAL_TOKEN 为空即完全开放」，本地开发方便，但一旦把 PORTAL_HOST
+ * 改成 0.0.0.0 或经 frp 暴露，任何人都能匿名提交需求并上传 5 GiB 文件。
+ * 现在把「无令牌」限定在本机回环：要对外，必须显式设置 PORTAL_TOKEN。
+ */
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
+if (!PORTAL_TOKEN && !LOOPBACK_HOSTS.has(HOST)) {
+  console.error('[SECURITY][Fail-Closed] PORTAL_HOST 不是回环地址，但未设置 PORTAL_TOKEN；拒绝启动。');
+  console.error('[SECURITY] 对外暴露请设置 PORTAL_TOKEN，或把 PORTAL_HOST 改回 127.0.0.1。');
+  process.exit(1);
+}
 /** 鉴权失败的统一响应文案（不回显 token 本身，避免把收到的令牌写进日志/响应） */
 const AUTH_ERROR = '未授权：缺少或错误的 access token（设置 PORTAL_TOKEN 的服务需要令牌）';
 const SYNC_AUTH_ERROR = '未授权：缺少或错误的 SYNC_TOKEN';
@@ -118,6 +131,8 @@ const DATA_TYPE_IDS = ['microarray', 'bulk_rnaseq', 'scrna', 'spatial'];
  * 最多 5 篇、单篇 ≤20MB、扩展名白名单；文件落在 inbox/refs/<sid>/ 下。
  */
 const REF_MAX_FILES = 5;
+/** /api/survey/result 的每 IP 限速表（见路由内的 30 次/分钟口径） */
+const surveyRateMap = new Map();
 const REF_MAX_BYTES = 20 * 1024 * 1024;
 const REF_EXT = ['.pdf', '.doc', '.docx', '.txt', '.md', '.zip'];
 const REF_SID_RE = /^[A-Za-z0-9_-]{6,64}$/;
@@ -1300,7 +1315,14 @@ function handleDataFileUpload(req, res, url) {
         fs.mkdirSync(dir, { recursive: true });
         // 同 sid 下同角色只留一个：重复上传先删旧的，避免包里有多个 train_matrix
         try {
-          const existing = fs.readdirSync(dir).filter((n) => n.startsWith(`${role}__`));
+          // 旧实现按 `${role}__` 前缀清理，但上传落盘名是纯文件名（uniqueInDir(dir, name)），
+          // 前缀永远对不上，旧文件从不被删。改为按扩展名无关的角色无关清理不安全——
+          // 会误删 other 角色文件——所以按「同角色 + 扩展名白名单」近似：直接按
+          // 归档名规则反推不可行（磁盘上没有角色信息），退而按声明名删除同名旧文件，
+          // 并保留 uniqueInDir 的 _2/_3 语义（重复上传同一名时新文件不覆盖旧文件）。
+          const existing = fs.readdirSync(dir).filter((n) => n === name
+            || new RegExp('^' + name.slice(0, name.lastIndexOf('.')).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+              + '_\\d+' + name.slice(name.lastIndexOf('.')).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$').test(n));
           for (const old of existing) fs.rmSync(path.join(dir, old), { force: true });
         } catch { /* 目录不存在即首次上传，正常 */ }
         target = uniqueInDir(dir, name);
@@ -1367,6 +1389,22 @@ function resolveInInbox(rel) {
   const root = path.resolve(INBOX);
   if (!full.startsWith(root + path.sep)) return null;
   return full;
+}
+
+/** 分块读取文件算 SHA-256，内存峰值一个读缓冲。 */
+function hashFileSync(filePath, chunkSize = 1024 * 1024) {
+  const hash = crypto.createHash('sha256');
+  const fd = fs.openSync(filePath, 'r');
+  const buffer = Buffer.allocUnsafe(chunkSize);
+  try {
+    let read;
+    while ((read = fs.readSync(fd, buffer, 0, buffer.length, null)) > 0) {
+      hash.update(buffer.subarray(0, read));
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
+  return hash.digest('hex');
 }
 
 /**
@@ -1467,6 +1505,13 @@ function handleSubmit(req, res) {
     // 包形态：带上传会话或数据文件清单时，校验并归档成 PKG_ 目录
     const dataFiles = Array.isArray(payload.dataFiles) ? payload.dataFiles : [];
     if (payload.uploadSid || dataFiles.length > 0) {
+      // uploadSid 是归档来源路径的一部分（refs/<sid>/、uploads/<sid>/），
+      // 必须与上传接口同一条 SID 白名单校验，否则伪造的 sid 可以把别的会话
+      // 目录里的参考文献搬进自己的包。
+      const sidText = String(payload.uploadSid || '');
+      if (!SID_RE.test(sidText)) {
+        return sendJson(res, 400, { ok: false, error: '上传会话 id 非法' });
+      }
       const check = validateDataFiles(dataFiles, payload);
       if (!check.ok) {
         return sendJson(res, 400, { ok: false, error: `数据文件校验未通过: ${check.errors.join('；')}` });
@@ -1488,6 +1533,23 @@ function handleSubmit(req, res) {
         // 需求与包清单
         fs.writeFileSync(path.join(INBOX, plan.requirementPath),
           JSON.stringify(payload, null, 2), 'utf8');
+        // 归档前先按真实落盘文件登记哈希与字节数，清单不采信客户端声明。
+        for (const file of plan.dataFiles) {
+          const src = resolveInInbox(file.from);
+          if (!src || !fs.existsSync(src) || !fs.statSync(src).isFile()) {
+            throw new Error(`数据文件缺失或越界: ${file.original_name}（${file.from}）`);
+          }
+          file.size = fs.statSync(src).size;
+          file.sha256 = hashFileSync(src);
+        }
+        for (const ref of plan.references) {
+          const src = resolveInInbox(ref.from);
+          if (!src || !fs.existsSync(src) || !fs.statSync(src).isFile()) {
+            throw new Error(`参考文献缺失或越界: ${ref.originalName}（${ref.from}）`);
+          }
+          ref.size = fs.statSync(src).size;
+          ref.sha256 = hashFileSync(src);
+        }
         const manifest = {
           package_dir: plan.packageDir,
           created_at: new Date().toISOString(),
@@ -1498,7 +1560,9 @@ function handleSubmit(req, res) {
         };
         fs.writeFileSync(path.join(INBOX, plan.manifestPath),
           JSON.stringify(manifest, null, 2), 'utf8');
-        // 数据文件与参考文献归位（inbox 内移动，失败即整体失败，不留半包）
+        // 数据文件与参考文献归位（inbox 内移动，失败即整体失败，不留半包）。
+        // 来源路径现在全部由 buildPackagePlan 从 uploadSid 派生（dataFileSourcePath /
+        // refs/<sid>/），客户端声明的 path 不再参与目录选择，跨包搬文件在路径层被挡死。
         for (const file of plan.dataFiles) {
           const src = resolveInInbox(file.from);
           const dest = resolveInInbox(file.to);
@@ -1950,6 +2014,22 @@ const server = http.createServer((req, res) => {
     if (!fs.existsSync(file)) return sendJson(res, 404, { error: '找不到该调研单' });
     try {
       const rec = JSON.parse(fs.readFileSync(file, 'utf8'));
+      // 简单限速（2026-11-11 P2）：ticket 后缀只有 32 位熵，无限速时可以被穷举。
+      // 每 IP 每分钟最多 30 次结果查询，超限 429；条目超过 256 个时整体过期重置。
+      const ip = String((req.socket && req.socket.remoteAddress) || 'unknown');
+      const now = Date.now();
+      if (!surveyRateMap.has(ip)) surveyRateMap.set(ip, []);
+      const hits = surveyRateMap.get(ip).filter((t) => now - t < 60000);
+      if (hits.length >= 30) {
+        return sendJson(res, 429, { error: '查询过于频繁，请稍后再试' });
+      }
+      hits.push(now);
+      surveyRateMap.set(ip, hits);
+      if (surveyRateMap.size > 256) {
+        for (const [key, times] of surveyRateMap) {
+          if (times.every((t) => now - t >= 60000)) surveyRateMap.delete(key);
+        }
+      }
       return sendJson(res, 200, rec);
     } catch {
       return sendJson(res, 500, { error: '调研单读取失败' });

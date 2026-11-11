@@ -196,8 +196,8 @@ test('probeRemoteState: 只发一次只读 SSH，解析本任务标记与产物�
 
   const probe = probeRemoteState(TASK_ID, paths);
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].program, 'ssh');
-  assert.equal(calls[0].args.at(-2), 'k40-ubuntu');
+  assert.equal(calls[0].program, 'pwsh');
+  assert.match(JSON.stringify(calls[0].args), /adb_exec\.ps1/);
   assert.equal(calls[0].options.input, Buffer.from(paths.map((p) => `${p}\0`).join(''), 'utf8').toString('base64'));
   assert.equal(probe.state, 'ok');
   assert.deepEqual(probe.runningMarkers, [`${TASK_ID}.json`]);
@@ -289,7 +289,7 @@ test('runTask: 链路丢失但远端仍在跑，台账先修正为终态 failed 
     return taskChild;
   });
   t.mock.method(childProcess, 'spawnSync', (program, args) => {
-    assert.equal(program, 'ssh');
+    assert.equal(program, 'pwsh');
     assert.match((args || []).at(-1), /RECONCILE_END/);
     return { status: 0, stdout: `RUNNING\n${RECONCILE_PROBE_SENTINEL}\n`, stderr: '' };
   });

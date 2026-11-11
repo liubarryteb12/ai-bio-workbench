@@ -9,6 +9,7 @@
 // json() 与 uploadError() 都返回 undefined，所以绝不能拿它们的返回值当命中信号，
 // 必须显式 return true。
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 
 import { LINES, DEFAULT_PROJECT, sanitizeProjectId } from '../domain.js';
 import { runAsync, runSshAsync, scpArgv, shellQuote } from '../proc.js';
@@ -19,6 +20,16 @@ import {
   checkChunkAdmission, writeSessionMeta, clearSessionMeta,
 } from '../upload.js';
 import { collectJsonBody, runJsonRoute, JSON_BODY_LIMIT } from '../http_body.js';
+
+function sha256File(filePath) {
+  return new Promise((resolve, reject) => {
+    const hash = createHash('sha256');
+    const stream = fs.createReadStream(filePath, { highWaterMark: 1024 * 1024 });
+    stream.on('data', (chunk) => hash.update(chunk));
+    stream.on('error', reject);
+    stream.on('end', () => resolve(hash.digest('hex')));
+  });
+}
 
 export async function handleUploadRoutes(req, res, url, { json, uploadError, runRemote }) {
   if (url.pathname === '/api/upload/init' && req.method === 'POST') {
@@ -112,12 +123,21 @@ export async function handleUploadRoutes(req, res, url, { json, uploadError, run
     const index = url.searchParams.get('index') || '';
     const chunks = [];
     let size = 0;
+    let tooLarge = false;
     req.on('data', (chunk) => {
       size += chunk.length;
-      if (size > CHUNK_SIZE * 2) { req.destroy(); return; }
+      if (size > CHUNK_SIZE * 2) {
+        // 超限不再直接断连（客户端只会看到连接重置）：继续读完并丢弃，
+        // 让 end 回调把 413 明确送达。
+        tooLarge = true;
+        return;
+      }
       chunks.push(chunk);
     });
     req.on('end', () => {
+      if (tooLarge) {
+        return uploadError(res, 413, `分片超过上限（${CHUNK_SIZE * 2} 字节）`);
+      }
       const buf = Buffer.concat(chunks);
       // P4：写盘之前先过两道闸门，顺序固定：
       //   1. 会话预留额度 reservedBytes（超了 413，一个字节都不写）；
@@ -210,6 +230,7 @@ export async function handleUploadRoutes(req, res, url, { json, uploadError, run
         }
         const remote = remoteRawPath(projectId, lineId, filename);
         const localSize = fs.statSync(localPath).size;
+        const sha256 = await sha256File(localPath);
         const scp = await runAsync(scpArgv(localPath, remote), { timeoutMs: 900000 });
         if (scp.code !== 0) {
           return uploadError(res, 500, `scp 上传失败（code=${scp.code}）: ${scp.stderr || scp.stdout}`);
@@ -223,7 +244,7 @@ export async function handleUploadRoutes(req, res, url, { json, uploadError, run
         cleanupUpload(uploadId);
         return json(res, 200, {
           ok: sizeMatch, validation, remotePath: remote,
-          localSize, remoteSize: Number.isFinite(remoteSize) ? remoteSize : null, sizeMatch,
+          localSize, remoteSize: Number.isFinite(remoteSize) ? remoteSize : null, sizeMatch, sha256,
           hint: sizeMatch ? '上传完成，字节校验通过' : '上传后字节数不一致，请重试',
         });
       } catch (cause) {

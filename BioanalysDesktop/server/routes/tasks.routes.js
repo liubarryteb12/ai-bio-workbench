@@ -136,10 +136,15 @@ export async function handleTasksRoutes(req, res, url, {
       let adaptedScript = '';
       let adaptedLanguage = '';
       let canonicalOutput = '';
+      let canonicalOutputs = [];
+      const directOutputs = requested.directOutputs === true;
       if (adapted) {
         adaptedScript = String(requested.scriptPath || '');
         adaptedLanguage = String(requested.language || '');
         canonicalOutput = String(requested.canonicalOutput || '');
+        canonicalOutputs = Array.isArray(requested.canonicalOutputs)
+          ? requested.canonicalOutputs.map((item) => String(item))
+          : [];
         const scriptPrefix = `/mnt/ssd/bio_data/projects/${projectId}/${lineId}/scripts/adapt_`;
         if (!adaptedScript.startsWith(scriptPrefix) || !/\.(R|py)$/.test(adaptedScript)) {
           return json(res, 400, { error: `adapted scriptPath 非法: ${adaptedScript}` });
@@ -147,9 +152,14 @@ export async function handleTasksRoutes(req, res, url, {
         if (!['r', 'python'].includes(adaptedLanguage)) {
           return json(res, 400, { error: `adapted language 非法: ${adaptedLanguage}` });
         }
-        if (!canonicalOutput || canonicalOutput.includes('..') || canonicalOutput.startsWith('/')
-          || !/^[A-Za-z0-9._/-]+$/.test(canonicalOutput)) {
-          return json(res, 400, { error: `adapted canonicalOutput 非法: ${canonicalOutput}` });
+        if (!directOutputs) {
+          const canonicalNames = canonicalOutputs.length ? canonicalOutputs : [canonicalOutput];
+          for (const name of canonicalNames) {
+            if (!name || name.includes('..') || name.startsWith('/') || !/^[A-Za-z0-9._/-]+$/.test(name)) {
+              return json(res, 400, { error: `adapted canonicalOutput 非法: ${name}` });
+            }
+          }
+          canonicalOutput = canonicalNames[0] || '';
         }
       }
 
@@ -259,7 +269,9 @@ export async function handleTasksRoutes(req, res, url, {
         scriptPath: adapted ? adaptedScript : undefined,
         language: adapted ? adaptedLanguage : undefined,
         canonicalOutput: adapted ? canonicalOutput : undefined,
+        canonicalOutputs: adapted && canonicalOutputs.length ? canonicalOutputs : undefined,
         adapted,
+        directOutputs: adapted && directOutputs,
         dependsOnStep: adapted ? (dependsOnStep || undefined) : undefined,
       };
 
@@ -447,7 +459,21 @@ export async function handleTasksRoutes(req, res, url, {
       return true;
     }
 
-    const sink = createSink(taskId, (text) => res.write(text));
+    // 背压兜底（2026-11-11 P2）：write 返回 false 说明客户端收不动了，累计
+    // 丢写超过 4MB 直接断流并摘除 sink，不让一个卡死的浏览器把日志缓冲撑爆。
+    let bufferedDrops = 0;
+    const sink = createSink(taskId, (text) => {
+      const ok = res.write(text);
+      if (ok) {
+        bufferedDrops = 0;
+      } else {
+        bufferedDrops += Buffer.byteLength(text);
+        if (bufferedDrops > 4 * 1024 * 1024) {
+          dropSink(taskId, sink);
+          res.end();
+        }
+      }
+    });
     req.on('close', () => {
       dropSink(taskId, sink);
     });

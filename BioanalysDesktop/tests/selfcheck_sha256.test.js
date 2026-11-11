@@ -186,7 +186,7 @@ test('evaluateSha256Parity：同时有不一致与缺失 → fail（已测出的
   assert.equal(light.status, 'fail');
 });
 
-test('runSha256ParityCheck：mock spawnSync 后一致 → pass，命令确实走 ssh 且带哨兵', () => {
+test('runSha256ParityCheck：mock spawnSync 后一致 → pass，命令走 ADB 单接缝且带哨兵', () => {
   const local = collectLocalSha256(CORE_SYNC_FILES);
   const stdout = CORE_SYNC_FILES.map((item) => local.get(item.repo) + '  ' + item.remote).join('\n')
     + '\n' + SHA256_SENTINEL + '\n';
@@ -198,8 +198,8 @@ test('runSha256ParityCheck：mock spawnSync 后一致 → pass，命令确实走
     assert.equal(light.value, CORE_SYNC_FILES.length + '/' + CORE_SYNC_FILES.length + ' 一致');
     assert.equal(spy.mock.calls.length, 1, '必须只调一次 spawnSync');
     const [command, args] = spy.mock.calls[0].arguments;
-    assert.equal(command, 'ssh');
-    assert.ok(args.includes('k40-ubuntu'), 'ssh 目标应是 k40-ubuntu');
+    assert.equal(command, 'pwsh');
+    assert.ok(args.some((item) => String(item).includes('adb_exec.ps1')), '必须走 ADB helper');
     assert.ok(args[args.length - 1].includes(SHA256_SENTINEL), '远端命令必须带哨兵');
     assert.ok(args[args.length - 1].includes('sha256sum'), '远端命令必须跑 sha256sum');
   } finally {

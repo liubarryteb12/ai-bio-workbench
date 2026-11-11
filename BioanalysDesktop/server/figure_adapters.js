@@ -349,9 +349,10 @@ plot <- ggplot(enrich, aes(x = .data[[x_col]], y = .data[[value_col]], fill = di
   scale_fill_manual(values = c(Activated = "#D55E00", Suppressed = "#0072B2")) +
   coord_flip() +
   facet_wrap(stats::as.formula(paste("~", group_col)), scales = "free_y") +
-  labs(x = NULL, y = value_col, fill = NULL) +
+  labs(x = NULL, y = value_col, fill = NULL, title = "富集分析结果（GSEA NES）") +
   theme_classic(base_size = 7) +
-  theme(legend.position = "top", strip.text = element_text(size = 6))
+  theme(legend.position = "top", strip.text = element_text(size = 6),
+        plot.title = element_text(hjust = 0.5, size = 9))
 ggsave(output_file, plot, width = 183, height = 120, units = "mm", dpi = 300,
        device = png, type = "cairo", bg = "white")
 cat("ADAPT_REAL_INPUT_OK groupedbar rows=", nrow(enrich), "\n", sep = "")

@@ -28,6 +28,7 @@ export function readPrivateKey(options = {}) {
   const envName = options.privateKeyEnv || 'BIO_ED25519_PRIVATE_KEY';
   const pathEnvName = options.privateKeyPathEnv || 'BIO_ED25519_PRIVATE_KEY_PATH';
   if (options.privateKey) return normalizeKey(options.privateKey);
+  if (options.privateKeyPath) return readRawFile(options.privateKeyPath);
   const fromEnv = process.env[envName];
   if (fromEnv) return fromEnv;
   const fromPath = process.env[pathEnvName];
@@ -39,6 +40,10 @@ export function readPublicKey(options = {}) {
   const envName = options.publicKeyEnv || 'BIO_ED25519_PUBLIC_KEY';
   const pathEnvName = options.publicKeyPathEnv || 'BIO_ED25519_PUBLIC_KEY_PATH';
   if (options.publicKey) return normalizeKey(options.publicKey);
+  // 调用方经常拿到的是「受信公钥路径」本身（server/report.js 的 trustedPublicKeyPath），
+  // 不是环境变量名。旧实现只读 publicKeyPathEnv 指向的环境变量，直接传路径会被静默忽略，
+  // 最终报“公钥不可用”。这里补上直接路径分支，两个入口语义不再混淆。
+  if (options.publicKeyPath) return readRawFile(options.publicKeyPath);
   const fromEnv = process.env[envName];
   if (fromEnv) return fromEnv;
   const fromPath = process.env[pathEnvName];
