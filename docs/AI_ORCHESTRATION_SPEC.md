@@ -30,7 +30,7 @@ Actor 对象固定为 `{kind, id, role}`，例如 `{"kind":"ai_assist","id":"ai-
 
 ## 三、全局单权威租约
 
-租约路径固定为 `.ops_state/orchestration_authority.json`，原子写。字段：
+租约落在 `.ops_state/orchestration_authority.sqlite` 单表（`authority_lease`），判定与写入在同一个 `BEGIN IMMEDIATE` 事务内完成。改成 SQLite 的理由：手写 JSON 锁在「读到过期、写回新租约」之间有窗口，第二个写者能插进来，正是要防的双写；事务把判定与写入合成一个原子动作。库文件必须放本地盘，WAL 不能跑在网络映射盘上。对外形态仍是下面这个 JSON 对象：
 
 ```json
 {

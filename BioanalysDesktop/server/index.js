@@ -12,7 +12,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { timingSafeEqual, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 import { cleanupAuthRuntimeFile } from './auth_runtime.js';
@@ -60,7 +60,10 @@ import { handleFiguresRoutes } from './routes/figures.routes.js';
 import { handleTasksRoutes } from './routes/tasks.routes.js';
 import { handleProjectRoutes } from './routes/projects.routes.js';
 import { handleWorkOrdersRoutes } from './routes/work_orders.routes.js';
+import { handleAuthorityRoutes } from './routes/authority.routes.js';
 import { startQueue } from './services/work_order.service.js';
+import { defaultAuthorityFile } from './services/authority.service.js';
+import { resolvePrincipal } from './auth_principal.js';
 import { createSink, dropSink, sendEvent, closeSink } from './sinks.js';
 import { fetchLedgerFromServer } from './ledger_fetch.js';
 import { renderFiguresPreview } from './portal_page.js';
@@ -91,6 +94,10 @@ const REPO_ROOT = path.resolve(fileURLToPath(new URL('../../', import.meta.url))
 let AUTH_USER = process.env.BAD_AUTH_USER || process.env.WORKBENCH_AUTH_USER || '';
 let AUTH_PASS = process.env.BAD_AUTH_PASS || process.env.WORKBENCH_AUTH_PASS || '';
 let AUTH_ENABLED = Boolean(AUTH_USER && AUTH_PASS);
+// AI 管理员独立凭证：与人工账号分开，回执里的 actor 才具备可追责性。
+const AI_AUTH_USER = process.env.BIO_AI_AUTH_USER || '';
+const AI_AUTH_PASS = process.env.BIO_AI_AUTH_PASS || '';
+const AI_AUTH_ON = Boolean(AI_AUTH_USER && AI_AUTH_PASS);
 
 const IS_TEST_RUNTIME = Boolean(process.env.NODE_TEST_CONTEXT) && process.env.BIO_TEST_FORCE_FAIL_CLOSED !== '1';
 const DEV_NOAUTH = process.env.BIO_ALLOW_DEV_NOAUTH === '1';
@@ -142,31 +149,23 @@ if (!AUTH_ENABLED && !IS_TEST_RUNTIME && !DEV_NOAUTH) {
   process.once('SIGTERM', () => { cleanupAuthRuntimeFile(); process.exit(143); });
 }
 
-/** 定长比较，避免按字节提前返回泄露口令前缀 */
-function safeEqual(left, right) {
-  const a = Buffer.from(String(left), 'utf8');
-  const b = Buffer.from(String(right), 'utf8');
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
+/**
+ * 当前请求的认证主体。身份真源只在这里，路由与 service 都消费它的结果。
+ * 人工与 AI 使用独立凭证；两类凭证都未配置时按本地信任环境处理（与改造前一致）。
+ */
+function currentActor(req) {
+  return resolvePrincipal(req, {
+    humanUser: AUTH_USER,
+    humanPass: AUTH_PASS,
+    aiUser: AI_AUTH_USER,
+    aiPass: AI_AUTH_PASS,
+    devNoAuth: !AUTH_ENABLED && !AI_AUTH_ON,
+  }).actor;
 }
 
 function isAuthorized(req) {
-  if (!AUTH_ENABLED) return true;
-  if (!AUTH_USER || !AUTH_PASS) return false;
-  const header = req.headers.authorization || '';
-  if (!header.startsWith('Basic ')) return false;
-  let decoded;
-  try {
-    decoded = Buffer.from(header.slice(6), 'base64').toString('utf8');
-  } catch {
-    return false;
-  }
-  const split = decoded.indexOf(':');
-  if (split < 0) return false;
-  // 两项都比较完再合并结果，不因用户名错就短路
-  const userOk = safeEqual(decoded.slice(0, split), AUTH_USER);
-  const passOk = safeEqual(decoded.slice(split + 1), AUTH_PASS);
-  return userOk && passOk;
+  if (!AUTH_ENABLED && !AI_AUTH_ON) return true;
+  return Boolean(currentActor(req));
 }
 
 const adb = findAdb();
@@ -239,6 +238,8 @@ export function lineFromPipeline(dag) {
 // 路由模块共用的响应辅助、远端执行器与前置层辅助，全部从各自模块 import 进来，
 // 再以对象注入交给路由模块。远端执行器定义在 remote_exec.js，响应辅助在 http_response.js；
 // 相关静态守卫按并集计数，见 tests/selfcheck_isolation_merge.test.js 的 STRICT_GUARD_SRC。
+const AUTHORITY_FILE = process.env.BIO_AUTHORITY_FILE || defaultAuthorityFile(REPO_ROOT);
+
 const routeCtx = {
   json, uploadError, runRemote, runRemoteRaw, runRemoteStrict, fetchLedgerFromServer, resolveProjectParam,
   REPO_ROOT, listFiguresForLine, listRemoteProcessed, remoteTaskInput,
@@ -284,13 +285,21 @@ async function handleRequest(req, res, url) {
     return res.end(JSON.stringify({ error: '需要登录：请输入工作台账号口令' }));
   }
 
+  // 每个请求解析一次主体：人工、AI 与本地信任环境都在这里定性，下游不再重复解析。
+  const requestCtx = { ...routeCtx, actor: currentActor(req), authorityFile: AUTHORITY_FILE };
+
+  // 租约路由（读取 / 获取 / 续租 / 释放 / 人工接管）
+  if (await handleAuthorityRoutes(req, res, url, requestCtx)) {
+    return;
+  }
+
   // 项目与建项路由，处理体在 routes/projects.routes.js
-  if (await handleProjectRoutes(req, res, url, routeCtx)) {
+  if (await handleProjectRoutes(req, res, url, requestCtx)) {
     return;
   }
 
   // 作业中心路由（创建 / 列表 / 执行 / 回执），处理体在 routes/work_orders.routes.js
-  if (await handleWorkOrdersRoutes(req, res, url, routeCtx)) {
+  if (await handleWorkOrdersRoutes(req, res, url, requestCtx)) {
     return;
   }
 

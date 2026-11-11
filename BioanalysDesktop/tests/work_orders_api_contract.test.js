@@ -30,9 +30,18 @@ import {
   handleWorkOrdersRoutes,
 } from "../server/routes/work_orders.routes.js";
 import { validateRouteTable } from "../server/route_dispatcher.js";
+import { acquireAuthority, closeAuthorityDatabase } from "../server/services/authority.service.js";
 
 function tempRoot() {
   return fs.mkdtempSync(path.join(os.tmpdir(), "work-orders-api-"));
+}
+
+/** 状态变更端点需要有效租约：给每个用例发一张本地租约，测完关库。 */
+function leaseFor(root) {
+  const authorityFile = path.join(root, "authority.sqlite");
+  const actor = { kind: "local_dev", id: "test", role: "admin" };
+  const { lease_id: leaseId } = acquireAuthority(actor, { file: authorityFile });
+  return { authorityFile, actor, headers: { "x-bio-lease-id": leaseId } };
 }
 
 function draft(overrides = {}) {
@@ -364,16 +373,18 @@ function fakeResponse() {
 
 test("路由冒烟：创建、列表、详情、回执与原始工单经 dispatcher 可达", async () => {
   const root = tempRoot();
+  const lease = leaseFor(root);
 
   const createRes = fakeResponse();
   const createReq = Readable.from([Buffer.from(JSON.stringify(draft()), "utf8")]);
   createReq.method = "POST";
+  createReq.headers = lease.headers;
   assert.equal(
     await handleWorkOrdersRoutes(
       createReq,
       createRes.res,
       new URL("http://x/api/work-orders"),
-      { json: createRes.json, REPO_ROOT: root },
+      { json: createRes.json, REPO_ROOT: root, authorityFile: lease.authorityFile, actor: lease.actor },
     ),
     true,
   );
@@ -459,17 +470,19 @@ test("路由冒烟：创建、列表、详情、回执与原始工单经 dispatc
 
 test("路由冒烟：执行端点拒未确认，确认后进入队列", async () => {
   const root = tempRoot();
+  const lease = leaseFor(root);
   createWorkOrder(draft(), root);
 
   const denied = fakeResponse();
   const deniedReq = Readable.from([Buffer.from(JSON.stringify({}), "utf8")]);
   deniedReq.method = "POST";
+  deniedReq.headers = lease.headers;
   assert.equal(
     await handleWorkOrdersRoutes(
       deniedReq,
       denied.res,
       new URL("http://x/api/work-orders/WO-T4-001/run"),
-      { json: denied.json, REPO_ROOT: root },
+      { json: denied.json, REPO_ROOT: root, authorityFile: lease.authorityFile, actor: lease.actor },
     ),
     true,
   );
@@ -479,12 +492,13 @@ test("路由冒烟：执行端点拒未确认，确认后进入队列", async ()
   const confirmed = fakeResponse();
   const confirmedReq = Readable.from([Buffer.from(JSON.stringify({ confirm: true }), "utf8")]);
   confirmedReq.method = "POST";
+  confirmedReq.headers = lease.headers;
   assert.equal(
     await handleWorkOrdersRoutes(
       confirmedReq,
       confirmed.res,
       new URL("http://x/api/work-orders/WO-T4-001/run"),
-      { json: confirmed.json, REPO_ROOT: root },
+      { json: confirmed.json, REPO_ROOT: root, authorityFile: lease.authorityFile, actor: lease.actor },
     ),
     true,
   );
@@ -492,4 +506,42 @@ test("路由冒烟：执行端点拒未确认，确认后进入队列", async ()
   assert.equal(confirmed.state.payload.status, "queued");
   assert.equal(confirmed.state.payload.position, 1);
   assert.equal(confirmed.state.payload.work_order.approved, true);
+});
+
+test("租约准入：缺 X-Bio-Lease-Id 的状态变更端点一律 409", async () => {
+  const root = tempRoot();
+  const lease = leaseFor(root);
+  createWorkOrder(draft(), root);
+
+  const cases = [
+    { path: "/api/work-orders", body: draft() },
+    { path: "/api/work-orders/WO-T4-001/run", body: { confirm: true } },
+  ];
+  for (const item of cases) {
+    const response = fakeResponse();
+    const request = Readable.from([Buffer.from(JSON.stringify(item.body), "utf8")]);
+    request.method = "POST";
+    const handled = await handleWorkOrdersRoutes(
+      request,
+      response.res,
+      new URL(`http://x${item.path}`),
+      { json: response.json, REPO_ROOT: root, authorityFile: lease.authorityFile, actor: lease.actor },
+    );
+    assert.equal(handled, true);
+    assert.equal(response.state.status, 409, item.path);
+    assert.equal(response.state.payload.code, "ERR_AUTHORITY_REQUIRED", item.path);
+  }
+
+  // 读接口不受租约约束
+  const readRes = fakeResponse();
+  assert.equal(
+    await handleWorkOrdersRoutes(
+      { method: "GET" },
+      readRes.res,
+      new URL("http://x/api/work-orders"),
+      { json: readRes.json, REPO_ROOT: root, authorityFile: lease.authorityFile, actor: lease.actor },
+    ),
+    true,
+  );
+  assert.equal(readRes.state.status, 200);
 });

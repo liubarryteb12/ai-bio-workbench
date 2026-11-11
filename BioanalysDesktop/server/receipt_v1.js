@@ -67,13 +67,15 @@ export function createReceiptV1({
   sourceSchemaVersion,
   seed,
   computeAdapter,
+  actors = null,
+  actorTrace = null,
 } = {}) {
   const digest = String(workOrderDigest || '');
   if (!SHA256_RE.test(digest)) {
     throw receiptError('ERR_RECEIPT_DIGEST', 'workOrderDigest 必须是 64 位小写十六进制 SHA-256');
   }
   const start = String(startedAt || new Date().toISOString());
-  return {
+  const receipt = {
     schema_version: RECEIPT_V1_SCHEMA_VERSION,
     receipt_id: receiptIdFor(digest, start),
     work_order_digest: digest,
@@ -99,6 +101,41 @@ export function createReceiptV1({
     sentinel: null,
     producer: Object.freeze({ name: 'work_order_orchestrator', version: '1.0.0' }),
   };
+  // 可选字段：只有调用方给出主体时才写入，旧回执与新回执都能通过同一份 schema。
+  if (actors && typeof actors === 'object') receipt.actors = { ...actors };
+  if (Array.isArray(actorTrace) && actorTrace.length) receipt.actor_trace = actorTrace.map((row) => ({ ...row }));
+  return receipt;
+}
+
+/**
+ * 追加一条操作留痕。actors 取对应动作的最后一条，供列表与详情快速展示。
+ * 顺序固定为追加，不改历史。
+ */
+export function appendActorTrace(receipt, entry = {}) {
+  if (!receipt || typeof receipt !== 'object') {
+    throw receiptError('ERR_RECEIPT_SHAPE', '回执必须是 JSON 对象');
+  }
+  const action = String(entry.action || '');
+  const actor = entry.actor && entry.actor.kind ? entry.actor : null;
+  if (!action || !actor) {
+    throw receiptError('ERR_ACTOR_TRACE', 'actor_trace 记录需要 action 与 actor');
+  }
+  if (!Array.isArray(receipt.actor_trace)) receipt.actor_trace = [];
+  receipt.actor_trace.push({
+    action,
+    actor: { kind: actor.kind, id: String(actor.id || actor.kind), role: String(actor.role || 'admin') },
+    at: String(entry.at || new Date().toISOString()),
+    lease_id: entry.lease_id ? String(entry.lease_id) : null,
+    request_id: entry.request_id ? String(entry.request_id) : null,
+  });
+  if (!receipt.actors || typeof receipt.actors !== 'object') receipt.actors = {};
+  const field = {
+    'work_order.created': 'created_by',
+    'work_order.approved': 'approved_by',
+  }[action];
+  if (field) receipt.actors[field] = { ...receipt.actor_trace[receipt.actor_trace.length - 1].actor };
+  receipt.actors.last_updated_by = { ...receipt.actor_trace[receipt.actor_trace.length - 1].actor };
+  return receipt;
 }
 
 export function updateReceiptStatus(receipt, status, extras = {}) {

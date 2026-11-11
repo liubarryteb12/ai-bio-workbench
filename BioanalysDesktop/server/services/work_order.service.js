@@ -112,10 +112,10 @@ function redact(value, baseDir) {
   return text;
 }
 
-function metaFromOrder(baseDir, order, normalized, status = 'queued') {
+function metaFromOrder(baseDir, order, normalized, status = 'queued', actor = null) {
   const now = new Date().toISOString();
   const projectId = normalized.projectId;
-  return {
+  const meta = {
     status,
     work_order_id: normalized.workOrderId,
     project_id: projectId,
@@ -126,6 +126,12 @@ function metaFromOrder(baseDir, order, normalized, status = 'queued') {
     approved_at: null,
     receipt_path: relativePosix(baseDir, receiptFile(baseDir, projectId)),
   };
+  // 主体字段只由服务端认证结果写入，请求体里的 actor 不参与。
+  if (actor && actor.kind) {
+    meta.created_by = { kind: actor.kind, id: String(actor.id || actor.kind), role: String(actor.role || 'admin') };
+    meta.last_updated_by = { ...meta.created_by };
+  }
+  return meta;
 }
 
 function readAllMeta(baseDir, projectId = null) {
@@ -220,7 +226,7 @@ function existingWorkOrder(baseDir, workOrderId) {
   }
 }
 
-export function createWorkOrder(draft, baseDir) {
+export function createWorkOrder(draft, baseDir, options = {}) {
   const normalized = validateDraft(draft);
   if (existingWorkOrder(baseDir, normalized.workOrderId)) {
     fail('ERR_WORK_ORDER_EXISTS', `作业号已存在: ${normalized.workOrderId}`, 409);
@@ -228,7 +234,7 @@ export function createWorkOrder(draft, baseDir) {
   const dir = workOrderDir(baseDir, normalized.projectId);
   const orderFile = path.join(dir, `${normalized.workOrderId}.json`);
   const metaFile = path.join(dir, `${normalized.workOrderId}.meta.json`);
-  const meta = metaFromOrder(baseDir, draft, normalized, 'queued');
+  const meta = metaFromOrder(baseDir, draft, normalized, 'queued', options.actor);
 
   fs.mkdirSync(dir, { recursive: true });
   writeJsonAtomic(orderFile, draft);
@@ -291,7 +297,7 @@ export function createWorkOrderFromPackage(packageDirRelPath, baseDir, options =
     fail(code, built.errors.join('；'), 400, { errors: built.errors, codes: built.codes });
   }
 
-  const created = createWorkOrder(built.draft, baseDir);
+  const created = createWorkOrder(built.draft, baseDir, { actor: options.actor });
   return { draft: built.draft, package: built.package, ...created };
 }
 
@@ -382,6 +388,9 @@ export function enqueueWorkOrder(workOrderId, baseDir, options = {}) {
   }
 
   const alreadyStamped = meta.approved === true && Boolean(meta.approved_at);
+  const actor = options.actor && options.actor.kind
+    ? { kind: String(options.actor.kind), id: String(options.actor.id || options.actor.kind), role: String(options.actor.role || 'admin') }
+    : null;
   const next = alreadyStamped
     ? meta
     : {
@@ -389,6 +398,7 @@ export function enqueueWorkOrder(workOrderId, baseDir, options = {}) {
       approved: true,
       approved_at: meta.approved_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      ...(actor ? { approved_by: actor, last_updated_by: { ...actor } } : {}),
     };
   if (!alreadyStamped) writeMeta(baseDir, next);
   wakeQueue();

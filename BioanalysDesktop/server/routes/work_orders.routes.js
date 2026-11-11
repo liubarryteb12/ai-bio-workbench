@@ -12,6 +12,7 @@ import { collectJsonBody, JSON_BODY_LIMIT } from '../http_body.js';
 import { sanitizeProjectId } from '../domain.js';
 import { WORK_ORDER_LINES } from '../../../shared/work_order_v2.mjs';
 import * as workOrderService from '../services/work_order.service.js';
+import { assertAuthority } from '../services/authority.service.js';
 
 const PREFIX = '/api/work-orders/';
 const DEFAULT_REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -68,7 +69,7 @@ function readReceiptSummary(id, baseDir) {
   }
 }
 
-function buildRoutes(baseDir, inboxRoot) {
+function buildRoutes(baseDir, inboxRoot, leaseCtx = {}) {
   return [
     {
       method: 'GET',
@@ -111,7 +112,10 @@ function buildRoutes(baseDir, inboxRoot) {
       handler: async ({ body, json: reply, res }) => {
         try {
           const draft = parseJsonBody(body);
-          const result = workOrderService.createWorkOrder(draft, baseDir);
+          const result = workOrderService.createWorkOrder(draft, baseDir, {
+            actor: leaseCtx.actor,
+            leaseId: leaseCtx.leaseId,
+          });
           reply(res, 201, { ok: true, work_order: result.meta });
         } catch (cause) {
           respondError(cause, res, reply, baseDir);
@@ -190,6 +194,8 @@ function buildRoutes(baseDir, inboxRoot) {
             requireAdminReview: payload.require_admin_review,
             projectId: payload.project_id,
             workOrderId: payload.work_order_id,
+            actor: leaseCtx.actor,
+            leaseId: leaseCtx.leaseId,
           });
           reply(res, 201, {
             ok: true,
@@ -209,6 +215,7 @@ export const WORK_ORDER_ROUTES = buildRoutes(DEFAULT_REPO_ROOT);
 
 async function handleDynamic(req, res, url, json, baseDir, deps) {
   if (!url.pathname.startsWith(PREFIX)) return false;
+  const leaseCtx = deps.leaseCtx || {};
   const rest = url.pathname.slice(PREFIX.length);
   // decodeURIComponent 在 try 外会以 URIError 顶穿顶层 handler（畸形 % 序列），
   // 现在就地拦成 400。
@@ -257,6 +264,8 @@ async function handleDynamic(req, res, url, json, baseDir, deps) {
       const payload = parseJsonBody(rawBody);
       const result = workOrderService.enqueueWorkOrder(id, baseDir, {
         approved: payload.confirm === true || payload.approved === true,
+        actor: leaseCtx.actor,
+        leaseId: leaseCtx.leaseId,
       });
       json(res, 202, {
         ok: true,
@@ -280,11 +289,41 @@ async function readBody(req, res, json) {
 export async function handleWorkOrdersRoutes(req, res, url, deps) {
   const { json } = deps;
   const baseDir = deps.REPO_ROOT || DEFAULT_REPO_ROOT;
+  const leaseCtx = await requireLeaseIfNeeded(req, res, url, deps, json, baseDir);
+  if (leaseCtx === false) return true;
   if (await dispatchRoutes(
     { req, res, url, json, runJsonRoute: (fn) => fn() },
-    buildRoutes(baseDir, deps.PORTAL_INBOX),
+    buildRoutes(baseDir, deps.PORTAL_INBOX, leaseCtx),
   )) {
     return true;
   }
-  return handleDynamic(req, res, url, json, baseDir, deps);
+  return handleDynamic(req, res, url, json, baseDir, { ...deps, leaseCtx });
+}
+
+/**
+ * 首期租约只约束三个状态变更端点，读接口保持开放（规格第三节第 8 条）。
+ * 返回 leaseCtx；被拒时已回写响应并返回 false。
+ */
+async function requireLeaseIfNeeded(req, res, url, deps, json, baseDir) {
+  const method = String(req.method || 'GET').toUpperCase();
+  const target = url.pathname;
+  // 注意：集合端点不带尾斜杠，不能用 PREFIX（带斜杠）做统一判断，
+  // 否则创建端点会静默绕过租约。这里显式列出首期三个状态变更路径。
+  const inScope = target === '/api/work-orders'
+    || target === '/api/work-orders/from-package'
+    || /^\/api\/work-orders\/[^/]+\/run$/.test(target);
+  if (!inScope) return {};
+  const stateChanging = (method === 'POST' && (target === '/api/work-orders' || target === '/api/work-orders/from-package'))
+    || (method === 'POST' && /^\/api\/work-orders\/[^/]+\/run$/.test(target));
+  if (!stateChanging) return {};
+
+  const headers = (req && req.headers) || {};
+  const leaseId = String(headers['x-bio-lease-id'] || '');
+  try {
+    assertAuthority(leaseId, { file: deps.authorityFile });
+  } catch (cause) {
+    respondError(cause, res, json, baseDir);
+    return false;
+  }
+  return { actor: deps.actor, leaseId };
 }

@@ -5,6 +5,18 @@
   "description": "权威回执落在 workspace/projects/<project_id>/report/receipt.v1.json，旧 work_order.receipt.json 只作为成功投影。本文件固定顶层字段、五态枚举、产物相对路径与交付引用形态。",
   "type": "object",
   "additionalProperties": true,
+  "$defs": {
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "role"],
+      "properties": {
+        "kind": { "enum": ["human", "ai_assist", "local_dev"] },
+        "id": { "type": "string", "minLength": 1 },
+        "role": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
   "required": [
     "schema_version",
     "receipt_id",
@@ -249,6 +261,38 @@
         "string",
         "null"
       ]
+    },
+    "actors": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "created_by": { "$ref": "#/$defs/actor" },
+        "approved_by": { "$ref": "#/$defs/actor" },
+        "last_updated_by": { "$ref": "#/$defs/actor" }
+      }
+    },
+    "actor_trace": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action", "actor", "at"],
+        "properties": {
+          "action": {
+            "enum": [
+              "work_order.created",
+              "work_order.approved",
+              "work_order.status_changed",
+              "work_order.failed",
+              "work_order.blocked"
+            ]
+          },
+          "actor": { "$ref": "#/$defs/actor" },
+          "at": { "type": "string", "minLength": 1 },
+          "lease_id": { "type": ["string", "null"] },
+          "request_id": { "type": ["string", "null"] }
+        }
+      }
     },
     "producer": {
       "type": "object",

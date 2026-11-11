@@ -19,6 +19,7 @@ import { Readable } from "node:stream";
 import { buildWorkOrderDraftFromPackage } from "../server/services/package_to_work_order.js";
 import { createWorkOrderFromPackage } from "../server/services/work_order.service.js";
 import { handleWorkOrdersRoutes } from "../server/routes/work_orders.routes.js";
+import { acquireAuthority, closeAuthorityDatabase } from "../server/services/authority.service.js";
 import { normalizeWorkOrderV2 } from "../../shared/work_order_v2.mjs";
 
 const PKG = "PKG_2026-11-10_231500_测试项目";
@@ -361,12 +362,22 @@ function fakeResponse() {
 
 test("路由 POST /api/work-orders/from-package 创建作业并回草稿", async (t) => {
   const fixture = makePackage(t);
+  // 租约库放独立临时目录：SQLite 打开期间会锁住宿主目录，混在 fixture 里会让清理 EPERM。
+  const authorityDir = fs.mkdtempSync(path.join(os.tmpdir(), "pkg-lease-"));
+  const authorityFile = path.join(authorityDir, "authority.sqlite");
+  const actor = { kind: "local_dev", id: "test", role: "admin" };
+  const { lease_id: leaseId } = acquireAuthority(actor, { file: authorityFile });
+  t.after(() => {
+    closeAuthorityDatabase(authorityFile);
+    fs.rmSync(authorityDir, { recursive: true, force: true });
+  });
   const response = fakeResponse();
   const request = Readable.from([Buffer.from(JSON.stringify({
     package_dir: PKG,
     mod_ids: ["l1_ingest_prep"],
   }), "utf8")]);
   request.method = "POST";
+  request.headers = { "x-bio-lease-id": leaseId };
 
   const handled = await handleWorkOrdersRoutes(
     request,
@@ -376,6 +387,8 @@ test("路由 POST /api/work-orders/from-package 创建作业并回草稿", async
       json: response.json,
       REPO_ROOT: fixture.root,
       PORTAL_INBOX: fixture.inbox,
+      authorityFile,
+      actor,
     },
   );
 
@@ -386,19 +399,28 @@ test("路由 POST /api/work-orders/from-package 创建作业并回草稿", async
   assert.equal(response.state.payload.draft.execution.line_id, "line1_bulk");
 });
 
-test("路由拒绝越界 package_dir", async () => {
+test("路由拒绝越界 package_dir", async (t) => {
+  const authorityDir = fs.mkdtempSync(path.join(os.tmpdir(), "pkg-lease-"));
+  const authorityFile = path.join(authorityDir, "authority.sqlite");
+  const actor = { kind: "local_dev", id: "test", role: "admin" };
+  const { lease_id: leaseId } = acquireAuthority(actor, { file: authorityFile });
+  t.after(() => {
+    closeAuthorityDatabase(authorityFile);
+    fs.rmSync(authorityDir, { recursive: true, force: true });
+  });
   const response = fakeResponse();
   const request = Readable.from([Buffer.from(JSON.stringify({
     package_dir: "../PKG_evil",
     mod_ids: ["l1_ingest_prep"],
   }), "utf8")]);
   request.method = "POST";
+  request.headers = { "x-bio-lease-id": leaseId };
 
   const handled = await handleWorkOrdersRoutes(
     request,
     response.res,
     new URL("http://x/api/work-orders/from-package"),
-    { json: response.json, REPO_ROOT: os.tmpdir() },
+    { json: response.json, REPO_ROOT: os.tmpdir(), authorityFile, actor },
   );
 
   assert.equal(handled, true);

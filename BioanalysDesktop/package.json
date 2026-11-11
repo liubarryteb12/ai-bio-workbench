@@ -20,6 +20,7 @@
     "gate:all": "node ../tools/dev/run_all_gates.mjs"
   },
   "dependencies": {
+    "better-sqlite3": "^13.0.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
