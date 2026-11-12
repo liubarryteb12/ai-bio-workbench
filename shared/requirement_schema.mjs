@@ -33,6 +33,13 @@ export const LEGACY_CUTOFF_PROFILES = { standard_sci: 'standard', sensitive: 'lo
 /** 分组角色：reference = 基准组（恰好 1 个），disease_stage = 变化组 */
 export const GROUP_ROLES = ['reference', 'disease_stage'];
 
+/**
+ * 研究领域枚举（与 BioanalysDesktop/server/domain.js 的 DOMAIN_ENUM、portal/index.html 领域下拉同值）。
+ * 服务端建项一直按这份枚举硬拒，之前共享校验器不查，于是门户与工单能把非法值送到建项才炸。
+ * 同值由 BioanalysDesktop/tests/requirement_schema_contract.test.js 钉住。
+ */
+export const DOMAIN_ENUM = ['心脑血管', '神经退行', '代谢', '纤维化', '发育', '免疫', '其他非肿瘤'];
+
 const isPlainObject = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const isPositiveInt = (v) => Number.isInteger(v) && v >= 1;
 const isOdd = (v) => Number.isFinite(v) && v > 0 && v < 1;
@@ -52,6 +59,14 @@ export function validateRequirement(payload) {
     push('缺少 basicInfo（项目基本信息）');
   } else if (typeof payload.basicInfo.name !== 'string' || !payload.basicInfo.name.trim()) {
     push('basicInfo.name 不能为空（项目名是建项主键）');
+  }
+  // domain 单独查：上面的 else if 链只管 name，name 合法时 domain 不会被看到。
+  // 空串与非法值都在这里拒掉，与 server/project.js 建项口径一致（R11 点名的脏值）。
+  if (isPlainObject(payload.basicInfo)) {
+    const domain = String(payload.basicInfo.domain ?? '').trim();
+    if (!DOMAIN_ENUM.includes(domain)) {
+      push(`basicInfo.domain 非法: ${JSON.stringify(payload.basicInfo.domain ?? null)}，只能是 ${DOMAIN_ENUM.join(' / ')} 之一`);
+    }
   }
 
   // ── dataSource ───────────────────────────────────────────

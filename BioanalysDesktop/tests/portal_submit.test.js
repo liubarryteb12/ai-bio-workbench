@@ -150,7 +150,7 @@ test('老客户端（无数据文件）仍落平铺 JSON，工作台两种形态
     body: JSON.stringify({
       manifest_version: '1.0',
       submitted_at: '2026-10-19_120000',
-      basicInfo: { name: '测试项目_旧格式', disease: 'Flu', domain: '呼吸', species: 'Homo sapiens' },
+      basicInfo: { name: '测试项目_旧格式', disease: 'Flu', domain: '免疫', species: 'Homo sapiens' },
       dataSource: { source: 'GEO', dataType: 'microarray', trainGse: 'GSE10001', valGse: '', gpl: 'GPL570', sampleCount: 6, tissue: 'Blood', datasets: [{ gse: 'GSE10001', gpl: 'GPL570', role: 'train', sampleCount: 6, tissue: 'Blood' }] },
       groupingDesign: {
         mode: 'two_group',

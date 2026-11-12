@@ -12,7 +12,7 @@
     "basicInfo": {
       "name": "示例 v2 带输入的项目",
       "species": "Homo sapiens",
-      "domain": "cardiovascular",
+      "domain": "心脑血管",
       "dataType": "microarray"
     },
     "dataSource": {

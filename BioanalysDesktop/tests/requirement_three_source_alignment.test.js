@@ -195,6 +195,22 @@ test('负路径：dataSource.source 缺失时三个校验器都拒', () => {
   assertAllThreeReject(payload, 'source', 'dataSource.source');
 });
 
+test('负路径：domain 非法值时三个校验器都拒（枚举跨源一致）', () => {
+  // 2026-11-12 真机工单实测：英文 domain 过了门户与工单校验，到服务端建项才 HTTP 400。
+  // 三源必须对同一个值给同一个结论，客户与 AI 才不会再在建项阶段撞墙。
+  const payload = clone(requirementFromExample());
+  payload.basicInfo.domain = 'cardiovascular';
+
+  assert.notDeepEqual(checkAgainstSchema(payload, REQUIREMENT_SCHEMA), [], 'JSON Schema 应拒绝非法 domain');
+  const runtime = validateRequirement(payload);
+  assert.equal(runtime.ok, false, '共享校验器应拒绝非法 domain');
+  assert.ok(runtime.errors.some((item) => item.includes('domain')), runtime.errors.join('；'));
+  const gateway = pydantic(payload);
+  assert.equal(gateway.allowed, false, 'Pydantic 网关应拒绝非法 domain');
+  assert.ok(gateway.errors.some((item) => item.path === 'basicInfo.domain'),
+    `网关报错路径应为 basicInfo.domain: ${JSON.stringify(gateway.errors)}`);
+});
+
 test('负路径：groupingDesign.mode 缺失时三个校验器都拒', () => {
   const payload = clone(requirementFromExample());
   delete payload.groupingDesign.mode;

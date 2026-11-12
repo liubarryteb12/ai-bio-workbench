@@ -84,7 +84,9 @@ test('提交请求落盘时初始化 sync_status=pending', async () => {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      basicInfo: { name: 'sync_flat' },
+      // domain 是建项硬要求（服务端一直按 DOMAIN_ENUM 拒缺失），2026-11-12 起
+      // 共享校验器同口径拦下，不再放行到建项才炸。
+      basicInfo: { name: 'sync_flat', domain: '免疫' },
       dataSource: {
         dataType: 'microarray', sampleCount: 2, tissue: 'Blood', species: 'Homo sapiens',
         data_source_mode: 'PUBLIC_DB', source: 'GEO',

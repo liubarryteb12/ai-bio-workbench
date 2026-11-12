@@ -17,9 +17,10 @@ import { fileURLToPath } from 'node:url';
 import {
   validateRequirement, DATA_TYPE_IDS, DATASET_ROLES, CUTOFF_PROFILES,
   LEGACY_CUTOFF_PROFILES, GROUP_ROLES,
+  DOMAIN_ENUM,
 } from '../../shared/requirement_schema.mjs';
 import { ANALYSIS_CUTOFFS, LEGACY_CUTOFF_PROFILES as SERVER_LEGACY } from '../server/project.js';
-import { DATA_TYPE_IDS as SERVER_DATA_TYPES } from '../server/domain.js';
+import { DATA_TYPE_IDS as SERVER_DATA_TYPES, DOMAIN_ENUM as SERVER_DOMAIN_ENUM } from '../server/domain.js';
 
 const REPO = path.resolve(fileURLToPath(import.meta.url), '..', '..', '..');
 const SCHEMA_PATH = path.join(REPO, 'shared', 'requirement_schema.json');
@@ -125,6 +126,20 @@ test('两边口径一致：dataType / role / profile / 组角色枚举逐项相�
   assert.deepEqual([...GROUP_ROLES].sort(),
     [...schema.properties.groupingDesign.properties.groups.items.properties.role.enum].sort(),
     '分组角色枚举：schema 与共享校验器必须同值');
+  // domain 三处必须同值：门户建项请求能带上的值，服务端建项侧必须全部接受。
+  // 2026-11-12 真机工单实测过一次漂移：cardiovascular 过了门户与工单校验，到建项才 HTTP 400。
+  assert.deepEqual([...DOMAIN_ENUM], [...SERVER_DOMAIN_ENUM],
+    '研究领域枚举：共享校验器与工作台建项侧必须同值同序');
+  assert.deepEqual([...schema.properties.basicInfo.properties.domain.enum].sort(),
+    [...DOMAIN_ENUM].sort(),
+    '研究领域枚举：声明面 schema 与共享校验器必须同值');
+  assert.ok(schema.properties.basicInfo.required.includes('domain'),
+    '声明面 basicInfo 必须把 domain 列为必填');
+  // 门户下拉是用户实际能提交的唯一入口，选项集合必须与枚举完全一致
+  for (const item of DOMAIN_ENUM) {
+    assert.ok(portalHtml.includes(`<option value="${item}">`),
+      `门户领域下拉必须提供 ${item} 选项，否则该枚举值在界面上不可达`);
+  }
 });
 
 test('schema 声明的数据集行必填字段与门户实际写出的字段集合一致', () => {
@@ -144,6 +159,34 @@ test('负路径：行级样本数缺一行，schema 与共享校验器都拒', (
   const res = validateRequirement(doc);
   assert.equal(res.ok, false);
   assert.ok(res.errors.some((e) => /sampleCount/.test(e)), res.errors.join('；'));
+});
+
+test('负路径：domain 非法值与缺省，schema、共享校验器、Pydantic 网关三源都拒', () => {
+  // 2026-11-12 真机工单实测的漂移：英文 domain 能过门户与工单校验，到服务端建项才 400。
+  // 这道门把同一个值在三源上一并拦住，非法值不再有机会走到建项。
+  for (const domain of ['cardiovascular', '', '   ']) {
+    const doc = goldenRequirement();
+    doc.basicInfo.domain = domain;
+
+    const schemaErrors = checkAgainstSchema(doc, schema);
+    assert.notDeepEqual(schemaErrors, [], `声明面应拒绝 ${JSON.stringify(domain)}`);
+    assert.ok(schemaErrors.some((e) => e.includes('domain') && e.includes('不在枚举内')),
+      `声明面报错应点名 domain 枚举: ${JSON.stringify(schemaErrors)}`);
+
+    const res = validateRequirement(doc);
+    assert.equal(res.ok, false, `共享校验器应拒绝 ${JSON.stringify(domain)}`);
+    assert.ok(res.errors.some((e) => /basicInfo\.domain 非法/.test(e)),
+      `共享校验器报错应点名 domain: ${res.errors.join('；')}`);
+  }
+});
+
+test('负路径：domain 整个缺失时，声明面与共享校验器都按缺字段拒', () => {
+  const doc = goldenRequirement();
+  delete doc.basicInfo.domain;
+  assert.ok(checkAgainstSchema(doc, schema).some((e) => /缺少必填字段 domain/.test(e)),
+    '声明面 domain 是必填');
+  assert.ok(validateRequirement(doc).errors.some((e) => /basicInfo\.domain 非法/.test(e)),
+    '共享校验器把缺 domain 判成非法（服务端建项同样拒）');
 });
 
 test('负路径：对比对引用了不存在的组名，schema 层不拦但共享校验器必须拦（这条只有校验器能抓）', () => {

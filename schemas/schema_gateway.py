@@ -41,6 +41,17 @@ NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length
 
 class BasicInfoSchema(BaseModel):
     name: NonEmptyStr = Field(..., description="项目人读名称，进入建项 name")
+    # domain 服务端建项一直按七值枚举硬拒，之前网关不查，非法值能穿过三源校验到建项才炸
+    # （2026-11-12 真机工单实测：cardiovascular 过校验、建项 HTTP 400）。
+    domain: str = Field("", description="研究领域，七值枚举，与 server/domain.js DOMAIN_ENUM 同值")
+
+    @field_validator("domain")
+    @classmethod
+    def validate_domain(cls, v: str) -> str:
+        allowed = {"心脑血管", "神经退行", "代谢", "纤维化", "发育", "免疫", "其他非肿瘤"}
+        if v.strip() not in allowed:
+            raise ValueError(f"domain 必须在 {sorted(allowed)} 中，当前为: {v}")
+        return v
 
 
 class DataSourceSchema(BaseModel):

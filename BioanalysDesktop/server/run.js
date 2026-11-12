@@ -112,8 +112,13 @@ export function runTask(task, handlers = {}) {
     }
   }
 
-  // 只保留 stderr 尾部用于 error_log；全量日志由调用方自己收集，不在这里存两份
+  // 保留 stderr 与 stdout 两条尾部用于失败取证；全量日志由调用方自己收集，不在这里存两份。
+  // 为什么也要 stdout：包装器 run_throttled_task.sh 的前置门禁（存储水位、F2FS GC 保护、
+  // 跨线扫描）在重定向到 LOG_FILE **之前**就执行，中止原因只打到 stdout。
+  // 2026-11-12 真机工单实测：设备剩余 18% 触发门禁 exit 1，台账里只剩
+  // "stderr 为空，退出码非零"，真因（存储水位）在控制面与回执里全部丢失。
   let stderrTail = '';
+  let stdoutTail = '';
   let settled = false;
   let stopped = false;
   let child = null;
@@ -123,6 +128,9 @@ export function runTask(task, handlers = {}) {
   const wrapperLedgerPath = `/tmp/${wrapperTaskId}_ledger.json`;
   const wrapperMarkerPath = `${SYSTEM_LOGS}/_running/${wrapperTaskId}.json`;
   const wrapperLogPath = `${SYSTEM_LOGS}/${wrapperTaskId}.wrapper.log`;
+  // 包装器把任务自身的 stdout/stderr 重定向到这里（仅在执行体真正启动后才会创建）。
+  // 前置门禁中止时这个文件不存在，所以占位文案要把它说成「若已启动则见此处」。
+  const taskLogHint = `${SYSTEM_LOGS}/${wrapperTaskId}.log`;
 
   const finishTask = (code, options = {}) => {
     if (settled) return;
@@ -152,7 +160,10 @@ export function runTask(task, handlers = {}) {
       status: success ? 'completed' : 'failed',
       checkpointStatus: options.checkpointStatus || (success ? 'passed' : 'failed'),
       exitCode: code,
-      errorLog: success ? null : (reasonTag + (options.errorLog || stripSshNoise(stderrTail).trim() || 'stderr 为空，退出码非零')),
+      errorLog: success ? null : (reasonTag + (options.errorLog
+        || composeFailureEvidence({
+          exitCode: code, stderrText: stderrTail, stdoutText: stdoutTail, logFile: taskLogHint,
+        }))),
       startedAt,
       endedAt,
       language: env?.language,
@@ -288,7 +299,10 @@ export function runTask(task, handlers = {}) {
       sshArgv(node.host, script),
       {
         cwd: handlers.cwd,
-        onStdout: (text) => handlers.onStdout?.(text),
+        onStdout: (text) => {
+          stdoutTail = (stdoutTail + text).slice(-2000);
+          handlers.onStdout?.(text);
+        },
         onStderr: (text) => {
           stderrTail = (stderrTail + text).slice(-2000);
           handlers.onStderr?.(text);
@@ -341,6 +355,30 @@ export function runTask(task, handlers = {}) {
   };
 
   return { id: taskId, kill: stopTask };
+}
+
+/**
+ * 失败取证：按 stderr 优先、stdout 兜底的顺序取第一条真实证据。
+ *
+ * 存在的理由：包装器 run_throttled_task.sh 的前置门禁（存储水位、F2FS GC 保护、跨线扫描）
+ * 在把任务输出重定向进 LOG_FILE **之前**就执行，中止原因只落在 stdout。
+ * 只看 stderr 就会把「设备剩余 18% 触发水位门禁」这类真因吞成
+ * 「stderr 为空，退出码非零」，控制面与回执里查不到任何东西（2026-11-12 真机工单实测）。
+ *
+ * 两条流都空时仍诚实留占位，同时点明日志文件位置，方便上设备取证。
+ * @param {{exitCode?: number, stderrText?: string, stdoutText?: string, logFile?: string}} parts
+ * @returns {string} 不含前缀的取证正文
+ */
+export function composeFailureEvidence({ exitCode, stderrText = '', stdoutText = '', logFile = '' } = {}) {
+  const clean = (text) => stripSshNoise(String(text ?? '')).trim();
+  const fromStderr = clean(stderrText);
+  if (fromStderr) return fromStderr;
+  const fromStdout = clean(stdoutText);
+  if (fromStdout) return `[stdout] ${fromStdout}`;
+  // 两条流都空通常意味着执行体根本没起来（门禁中止、启动失败），此时任务日志并不存在，
+  // 所以只把它当作「若已启动」的线索给出，不写成确定的取证位置。
+  const tail = logFile ? `；若执行体已启动，任务日志见 ${logFile}` : '';
+  return `stdout 与 stderr 均无内容（退出码 ${String(exitCode ?? '?')}）${tail}`;
 }
 
 /**

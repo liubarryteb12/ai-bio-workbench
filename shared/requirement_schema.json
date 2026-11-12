@@ -20,7 +20,8 @@
     "basicInfo": {
       "type": "object",
       "required": [
-        "name"
+        "name",
+        "domain"
       ],
       "properties": {
         "name": {
@@ -31,7 +32,17 @@
           "type": "string"
         },
         "domain": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "心脑血管",
+            "神经退行",
+            "代谢",
+            "纤维化",
+            "发育",
+            "免疫",
+            "其他非肿瘤"
+          ],
+          "description": "研究领域，服务端建项硬校验的七值枚举；与 BioanalysDesktop/server/domain.js 的 DOMAIN_ENUM、shared/requirement_schema.mjs 同值"
         },
         "disease": {
           "type": "string"

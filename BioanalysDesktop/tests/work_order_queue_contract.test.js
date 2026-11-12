@@ -40,7 +40,7 @@ function draft(overrides = {}) {
       basicInfo: {
         name: 'Q 契约项目',
         species: 'Homo sapiens',
-        domain: 'cardiovascular',
+        domain: '心脑血管',
         dataType: 'microarray',
       },
       dataSource: {

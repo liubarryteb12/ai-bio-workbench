@@ -14,7 +14,7 @@
   "basicInfo": {
     "name": "示例批量转录组项目",
     "species": "Homo sapiens",
-    "domain": "cardiovascular",
+    "domain": "心脑血管",
     "dataType": "microarray"
   },
   "dataSource": {
