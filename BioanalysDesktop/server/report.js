@@ -24,7 +24,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash, verify as cryptoVerify } from 'node:crypto';
 
 import { HOSTS, SSD_ROOT, PROJECTS_ROOT, SYSTEM_LOGS, LINES, sanitizeProjectId } from './domain.js';
-import { runStream, shellQuote } from './proc.js';
+import { computeMode, runAsync, runStream, shellQuote } from './proc.js';
 import { stripSshNoise } from './run.js';
 import { readPublicKey } from '../../tools/reporting/ed25519_tools.mjs';
 import {
@@ -328,6 +328,22 @@ export async function runReportBuild(projectId, handlers = {}) {
 /** scp 拉单文件回本地（pull.js 范式的 argv 数组；buildFetchCommand 的整串形式
  * 在 Windows cmd 下同样受单引号/特殊字符限制，故统一走 argv） */
 function scpFetch(remotePath, localPath) {
+  // ADB 单通道下 scp 回拉走 adb_transfer.pullFile（远端 sha256 + base64 取回 + 本地落盘并核对哈希）。
+  // 不能走 runStream：它只重写 ssh argv，scp 会直连已封存的 SSH 通道
+  // （2026-11-12 真机实测 report_build 500，scp exit 255 banner exchange Connection refused）。
+  // 测试用 BIO_TEST_PRESERVE_STREAM_ARGV=1 保留原 argv，让假 scp 垫片按老语义回放。
+  if (computeMode() === 'adb' && process.env.BIO_TEST_PRESERVE_STREAM_ARGV !== '1') {
+    // runAsync 的 scp pull 分支会重写成「远端 sha256 + base64 取回 + 本地落盘」，
+    // 全程 spawn 异步，不占事件循环；maxBuffer 放宽以容纳交付 tar 的 base64 体积。
+    return runAsync(
+      ['scp', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', `${HOSTS.compute}:${remotePath}`, localPath],
+      { maxBuffer: 768 * 1024 * 1024 },
+    ).then(({ stderr, code }) => {
+      if (code !== 0) {
+        throw new Error(`scp 拉取失败 (exit ${code}): ${stripSshNoise(stderr).trim() || 'stderr 为空'}`);
+      }
+    });
+  }
   return streamRemote(
     ['scp', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=10', `${HOSTS.compute}:${remotePath}`, localPath],
     {},

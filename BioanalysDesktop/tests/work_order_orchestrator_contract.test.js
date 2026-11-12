@@ -345,3 +345,72 @@ test('静态契约：编排器单入口不直接调用 SSH 或远端进程', () 
   assert.match(source, /Project_Summary\.md/);
   assert.match(source, /work_order\.receipt\.json/);
 });
+
+test('建项 409 且项目元数据可读：按复用放行，同项目追加分析能跑通', async () => {
+  // 2026-11-12 真机三单排队实测：同项目第二张工单在建项第一步就 409 硬失败，
+  // 之前只有 resume 模式容忍。同项目追加分析是正常场景，改为「元数据读得到就复用」。
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), `work-order-reuse-${process.pid}-`));
+  try {
+    const order = baseOrder();
+    const { request, state, facts } = makeRequest(order);
+    const original = request;
+    const reuseRequest = async (method, requestPath, body) => {
+      if (requestPath === '/api/projects/create') {
+        state.calls.push({ method, path: requestPath, body });
+        return { status: 409, ok: false, body: { error: '项目已存在: PRJ_WO_CONTRACT' } };
+      }
+      if (requestPath.startsWith('/api/projects/meta')) {
+        state.calls.push({ method, path: requestPath, body });
+        return { status: 200, ok: true, body: { projectId: 'PRJ_WO_CONTRACT' } };
+      }
+      return original(method, requestPath, body);
+    };
+    const result = await runWorkOrder(order, {
+      request: reuseRequest,
+      repoRoot,
+      pollIntervalMs: 0,
+      pollMaxAttempts: 2,
+      facts,
+    });
+    assert.equal(result.ok, true, JSON.stringify(result.receipt?.error || null));
+    const createStage = result.receipt.stages.find((stage) => stage.name === 'create_project');
+    assert.equal(createStage.status, 'passed');
+    assert.equal(createStage.reused, true, '复用必须留痕，便于排查同一项目多工单');
+    assert.equal(state.calls.some((call) => call.path === '/api/report/build'), true);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('建项 409 但项目元数据读不到：仍按失败处理，不把残缺目录当可复用', async () => {
+  const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), `work-order-reuse-miss-${process.pid}-`));
+  try {
+    const order = baseOrder();
+    const { request, state, facts } = makeRequest(order);
+    const original = request;
+    const brokenRequest = async (method, requestPath, body) => {
+      if (requestPath === '/api/projects/create') {
+        state.calls.push({ method, path: requestPath, body });
+        return { status: 409, ok: false, body: { error: '项目已存在: PRJ_WO_CONTRACT' } };
+      }
+      if (requestPath.startsWith('/api/projects/meta')) {
+        state.calls.push({ method, path: requestPath, body });
+        return { status: 500, ok: false, body: { error: 'meta 读取失败' } };
+      }
+      return original(method, requestPath, body);
+    };
+    const result = await runWorkOrder(order, {
+      request: brokenRequest,
+      repoRoot,
+      pollIntervalMs: 0,
+      pollMaxAttempts: 2,
+      facts,
+    });
+    assert.equal(result.ok, false);
+    assert.equal(result.code, 'ERR_API_FAILED');
+    assert.equal(result.receipt.status, 'failed');
+    assert.equal(state.calls.some((call) => call.path === '/api/report/build'), false);
+  } finally {
+    fs.rmSync(repoRoot, { recursive: true, force: true });
+  }
+});

@@ -885,12 +885,30 @@ export async function runWorkOrder(order, options = {}) {
       if (created?.ok === false) fail('ERR_CREATE_PROJECT', created.error || '建项返回 ok=false');
       stages.push(baseStageResult('create_project', 'passed', { projectId, lineId }));
     } catch (cause) {
-      if (resume && cause instanceof WorkOrderError && cause.code === 'ERR_API_FAILED'
-        && cause.details?.status === 409) {
-        stages.push(baseStageResult('create_project', 'passed', { projectId, lineId, resumed: true }));
-      } else {
+      // 建项 409 = 项目已存在。同项目追加分析是正常场景（同一项目多张工单、分阶段补跑），
+      // 不能当硬失败；之前只在 resume 模式放行，导致同项目第二张工单必然在第一步倒下
+      // （2026-11-12 真机三单排队实测：M03 完成，M01/M02 均 6~35ms 内 create_project 失败）。
+      // 复用前先读一次项目元数据：读得到才认「是同一个项目」，读不到就是残留损坏，照旧失败。
+      const conflict = cause instanceof WorkOrderError && cause.code === 'ERR_API_FAILED'
+        && cause.details?.status === 409;
+      if (!conflict) throw cause;
+      let meta = null;
+      try {
+        meta = await callApi(
+          request, 'GET',
+          `/api/projects/meta?project=${encodeURIComponent(projectId)}`,
+          undefined, 'project_meta',
+        );
+      } catch {
+        meta = null;
+      }
+      if (!meta || String(meta.projectId || '') !== projectId) {
+        // 复用不了就把原始 409 抛回去，别把「项目目录残缺」静默当成可复用
         throw cause;
       }
+      stages.push(baseStageResult('create_project', 'passed', {
+        projectId, lineId, reused: true, ...(resume ? { resumed: true } : {}),
+      }));
     }
 
     if (preparedInputs.length > 0) {

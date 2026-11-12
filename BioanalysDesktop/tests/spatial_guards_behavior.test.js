@@ -47,6 +47,13 @@ test("真机行为：标定 fail-closed 与指纹守卫对污染敏感", (t) => 
     "LANG=C.UTF-8 /root/venvs/bio-py/bin/python3 /tmp/spatial_guards_behavior.py 2>&1 | tail -20"),
     { timeoutMs: 180000 });
   const text = String(r.stdout || "") + String(r.stderr || "");
+  // 设备侧标定切片已按用户裁定归档清理（2026-11-12，见 docs/GOAL_2026-11-11.md 8.11）。
+  // 行为脚本自己检测到数据缺失时会打印 SKIP no_device_data 并以 0 退出；
+  // 这里如实跳过，等切片数据恢复后自动重跑。静态契约仍在守代码面。
+  if (/SKIP no_device_data/.test(text)) {
+    t.skip("HOST_MISSING_LOCAL_DATA: 标定切片已归档清理，恢复数据后本用例自动重跑");
+    return;
+  }
   assert.equal(r.code, 0, "行为脚本非零退出：\n" + text);
   assert.match(text, /BEHAVIOR_OK/, "未打印 BEHAVIOR_OK：\n" + text);
   for (const tag of ["A.", "B.", "C.", "D."]) {

@@ -91,8 +91,10 @@ npm run dev        # 后端 18787 + 前端 5173 同时起
 npm test
 ```
 
-当前基线 **2032 tests / 2028 pass / 0 fail / 4 skipped**（245 个测试文件；口径由 tools/dev/metrics_sync.mjs 实测 node --test 汇总行）｜代码规模 25571 SLOC（非空行，91 个文件）
-唯一 skip 是条件跳过（宿主缺 python+anndata 时 `bridge_stage` 的坏 h5ad 用例），属设计行为。
+当前基线 **2034 tests / 2029 pass / 0 fail / 5 skipped**（245 个测试文件；口径由 tools/dev/metrics_sync.mjs 实测 node --test 汇总行）｜代码规模 25587 SLOC（非空行，91 个文件）
+5 条 skip 全是条件跳过，原因由 `tools/dev/skip_reason_gate.mjs` 白名单把关：2 条 `HOST_UNREACHABLE_K40`
+（SSH 封存后的一致性校验、真机链路探活），3 条 `HOST_MISSING_LOCAL_DATA`（本机项目数据已清理、
+GSE233814 原始 tar 不在位、标定切片按 2026-11-12 裁定归档）。数据或设备回位后自动真跑。
 链路断开时会是 `1077 / 1073 / 3+ / 1+`：那几条红来自 `proc.test.js` 真连、`consistency.test.js` 远端目录、`link.test.js` 四段自检，全是链路信号，见下面第 2 条。
 
 跑之前先知道三件事，否则会把环境问题误读成代码回归：
