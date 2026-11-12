@@ -127,11 +127,17 @@ async function selectVolcano(page: Page) {
   const inputData = card.getByLabel(/input_data/);
   const groupCol = card.getByLabel(/group_col/);
   const labelGenes = card.getByLabel(/label_genes/);
+  // 2026-11-12：火山图模板新增两个必填 adapt 变量，漏填会让第 4 步卡在
+  // 「图模板 火山图 的 log2fc_cutoff 必填」，第 5 步永远不可见。
+  const log2fcCutoff = card.getByLabel(/log2fc_cutoff/);
+  const padjCutoff = card.getByLabel(/padj_cutoff/);
   await expect(inputData).toBeVisible();
   await expect(groupCol).toBeVisible();
   await inputData.fill('data/line1_bulk/de_results.tsv');
   await groupCol.fill('condition');
   await labelGenes.fill('GPD1');
+  await log2fcCutoff.fill('1');
+  await padjCutoff.fill('0.05');
   await expect(page.getByTestId('selected-figure-template')).toContainText('fig_l2_volcano');
 }
 
@@ -259,15 +265,26 @@ test('virtual knockout exposes target_ko_gene and blocks progression until it is
 test('figure selector groups cards by figure tiers with language and preview labels', async ({ page }) => {
   await advanceToStep4(page, 'line1_bulk');
   await waitForFigureRegistry(page);
-  for (const level of ['L1', 'L2', 'L3']) {
-    await expect(page.getByTestId(`figure-level-${level}`)).toBeVisible();
-  }
 
   const response = await page.request.get('/api/figure-templates');
   expect(response.status()).toBe(200);
   const body = await response.json();
   expect(body.templates).toHaveLength(92);
   expect(body.templates.filter((item: { deps_status: string }) => item.deps_status === 'ready')).toHaveLength(READY_BASELINE);
+
+  // 层级断言按注册表推导，不写死三档：Ready 27 条的分布里 line1 没有 L3，
+  // 写死 ['L1','L2','L3'] 会让这条用例永远红（2026-11-12 实测）。
+  const lineReady = body.templates.filter((item: { deps_status: string; lines?: string[] }) => (
+    item.deps_status === 'ready' && Array.isArray(item.lines) && item.lines.includes('line1_bulk')
+  ));
+  const levels: string[] = Array.from(new Set(lineReady.map((item: { level: string }) => item.level)));
+  expect(levels.length).toBeGreaterThan(1);
+  for (const level of levels) {
+    await expect(page.getByTestId(`figure-level-${level}`)).toBeVisible();
+  }
+  for (const level of ['L1', 'L2', 'L3'].filter((item) => !levels.includes(item))) {
+    await expect(page.getByTestId(`figure-level-${level}`)).toHaveCount(0);
+  }
 
   const readyCard = page.locator('[data-template-id="fig_l2_pca"]');
   await expect(readyCard).toContainText('R');
@@ -279,24 +296,23 @@ test('figure selector groups cards by figure tiers with language and preview lab
 });
 
 test('every ready figure card switches between fixture and real project previews', async ({ page }) => {
+  // Ready 基线 27 条（tools/dev/figure_ready_allowlist.json 封板）。分布：
+  // line1 = L1x2 + L2x3（没有 L3），line2 = L2x15 + L3x1，line3 = L2x1 + L3x6。
   const readyByLine = [
     ['line1_bulk', [
-      'fig_l1_groupedbar', 'fig_l1_bubble', 'fig_l1_correlogram', 'fig_l1_scatter',
-      'fig_l1_boxplot', 'fig_l1_density', 'fig_l1_histogram', 'fig_l1_ridgeline',
-      'fig_l1_violin', 'fig_l1_upsetplot', 'fig_l1_vennplot', 'fig_l2_heatmap',
-      'fig_l2_pca', 'fig_l2_volcano', 'fig_l3_sankey',
+      'fig_l1_groupedbar', 'fig_l1_scatter',
+      'fig_l2_heatmap', 'fig_l2_pca', 'fig_l2_volcano',
     ]],
     ['line2_scrna', [
-      'fig_l2_umap', 'fig_l2_networkplot', 'fig_l2p_barplot', 'fig_l2p_boxplot',
-      'fig_l2p_enrichmentplot', 'fig_l2p_gseaplot', 'fig_l2p_heatmap', 'fig_l2p_scatterplot',
-      'fig_l2p_dotplot', 'fig_l2p_violin', 'fig_l2p_volcano', 'fig_l3_chorddiagram',
-      'fig_l2_harmony_umap_entropy', 'fig_l2_liana_lr_dotplot', 'fig_l2_canonical_marker_dotplot',
-      'fig_l2_dr_trajectory_post', 'fig_l2_celltype_deg_volcano',
+      'fig_l2_canonical_marker_dotplot', 'fig_l2_celltype_deg_volcano', 'fig_l2_dr_trajectory_post',
+      'fig_l2_harmony_umap_entropy', 'fig_l2_liana_lr_dotplot', 'fig_l2_networkplot', 'fig_l2_umap',
+      'fig_l2p_barplot', 'fig_l2p_boxplot', 'fig_l2p_dotplot', 'fig_l2p_enrichmentplot',
+      'fig_l2p_gseaplot', 'fig_l2p_heatmap', 'fig_l2p_violin', 'fig_l2p_volcano',
+      'fig_l3_chorddiagram',
     ]],
     ['line3_spatial', [
-      'fig_l1_connectedscatter', 'fig_l2p_umap', 'fig_l3_banksy_domain',
-      'fig_l3_nnls_deconv_pie', 'fig_l3_multigene_coloc', 'fig_l3_morans_i_spatial',
-      'fig_l3_niche_comm_spatial',
+      'fig_l2p_umap', 'fig_l3_banksy_domain', 'fig_l3_morans_i_spatial',
+      'fig_l3_multigene_coloc', 'fig_l3_niche_comm_spatial', 'fig_l3_nnls_deconv_pie',
     ]],
   ] as const;
 
@@ -308,7 +324,7 @@ test('every ready figure card switches between fixture and real project previews
     for (const templateId of templateIds) {
       const card = page.locator(`[data-template-id="${templateId}"]`);
       const image = card.locator('img.figure-preview');
-      const fixtureButton = card.getByRole('button', { name: '标准 Fixture 预览' });
+      const fixtureButton = card.getByRole('button', { name: '最新测试数据（标准示例）' });
       const projectButton = card.getByRole('button', { name: '真实项目实例（最近一次运行）' });
 
       await expect(fixtureButton).toHaveAttribute('aria-pressed', 'true');
@@ -359,25 +375,32 @@ test('figure selector defaults to ready previews and keeps pending cards behind 
 
   await expect(page.getByTestId('figure-filter-ready')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('figure-filter-all')).toHaveAttribute('aria-pressed', 'false');
-  await expect(page.locator('[data-testid="figure-template-card"]')).toHaveCount(11);
+  await expect(page.locator('[data-testid="figure-template-card"]')).toHaveCount(5);
   await expect(page.locator('.figure-card .figure-preview-empty')).toHaveCount(0);
-  await expect(page.locator('.figure-preview')).toHaveCount(11);
+  await expect(page.locator('.figure-preview')).toHaveCount(5);
   await expect.poll(async () => page.locator('.figure-preview').evaluateAll(
     (images: HTMLImageElement[]) => images.filter((image) => image.complete && image.naturalWidth > 0).length,
-  )).toBe(11);
+  )).toBe(5);
 
   await page.getByTestId('figure-filter-all').click();
   await expect(page.getByTestId('figure-filter-ready')).toHaveAttribute('aria-pressed', 'false');
   await expect(page.getByTestId('figure-filter-all')).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('[data-testid="figure-template-card"]')).toHaveCount(60);
-  await expect(page.locator('[data-template-id="fig_l1_circularpacking"]')).toBeVisible();
+  // 「全部」把未就绪与跨线可复用模板一并放出，数量随注册表增长，
+  // 不写死具体条数；判据是「比 Ready 视图多」且 pending 卡片确实可见。
+  const allCount = await page.locator('[data-testid="figure-template-card"]').count();
+  expect(allCount).toBeGreaterThan(5);
+  // 未就绪模板在「全部」视图里位于折叠的灰态区，DOM 中存在但不可见，
+  // 判据是「已渲染且标注 pending」，不是 visible。
+  const pendingCard = page.locator('[data-template-id="fig_l1_circularpacking"]');
+  await expect(pendingCard).toBeAttached();
+  await expect(pendingCard).toHaveAttribute('data-deps-status', 'pending');
 });
 
 test('ready preview count follows the selected analysis line', async ({ page }) => {
   for (const [lineId, expectedCount] of [
-    ['line1_bulk', 11],
-    ['line2_scrna', 4],
-    ['line3_spatial', 1],
+    ['line1_bulk', 5],
+    ['line2_scrna', 16],
+    ['line3_spatial', 6],
   ] as const) {
     await advanceToStep4(page, lineId);
     await waitForFigureRegistry(page);
@@ -437,6 +460,8 @@ test('adapt_vars values and the selected template enter the submitted manifest',
         input_data: 'data/line1_bulk/de_results.tsv',
         group_col: 'condition',
         label_genes: ['GPD1'],
+        log2fc_cutoff: '1',
+        padj_cutoff: '0.05',
       },
     },
   ]);
@@ -449,7 +474,9 @@ test('result view physically separates built-in previews from project result fig
   await advanceToSubmission(page);
 
   const getSubmitted = await mockSubmission(page, [
-    { path: 'workspace/projects/e2e_project/figures/line1_bulk/l1_02_pca.png' },
+    // 不能再用 l1_02_pca.png：它命中质检图正则，会被归到 QC 区，
+    // 而本用例判的是「真实项目结果图」区（非 QC 类）。
+    { path: 'workspace/projects/e2e_project/figures/line1_bulk/custom_deg_volcano.png' },
   ]);
   await page.locator('#btn-gen').click();
   await expect(page.locator('#result-card')).toBeVisible();
@@ -462,7 +489,7 @@ test('result view physically separates built-in previews from project result fig
   await expect(page.getByTestId('result-real-zone')).toBeVisible();
   await expect(page.getByTestId('result-real-zone')).toContainText('项目真实图');
   await expect(page.getByTestId('result-real-zone')).toContainText(
-    'workspace/projects/e2e_project/figures/line1_bulk/l1_02_pca.png',
+    'workspace/projects/e2e_project/figures/line1_bulk/custom_deg_volcano.png',
   );
 });
 
@@ -477,7 +504,15 @@ test('server accepts a valid figure selection and rejects a cross-line adapt pat
       data_source_mode: 'PUBLIC_DB',
       datasets: [{ gse: 'GSE10001', gpl: 'GPL570', role: 'train' }],
     },
-    groupingDesign: { mode: 'two_group', groups: [], contrasts: [] },
+    // 需求单总闸要求至少 2 组 + 1 条对比（schema 第二十九轮），空数组会被 400。
+    groupingDesign: {
+      mode: 'two_group',
+      groups: [
+        { groupName: 'Control', role: 'reference', sampleIds: ['GSM1'] },
+        { groupName: 'Disease', role: 'disease_stage', sampleIds: ['GSM2'] },
+      ],
+      contrasts: [{ name: 'Disease_vs_Control', case: 'Disease', ctrl: 'Control', isPrimary: true }],
+    },
     dataFiles: [],
     references: [],
     notes: 'non tumor validation',
@@ -489,6 +524,8 @@ test('server accepts a valid figure selection and rejects a cross-line adapt pat
         input_data: 'data/line1_bulk/de_results.tsv',
         group_col: 'condition',
         label_genes: [],
+        log2fc_cutoff: '1',
+        padj_cutoff: '0.05',
       },
     }],
   };
@@ -600,7 +637,15 @@ test('client sync trigger enforces the 60 second per-ticket cooldown', async ({ 
         data_source_mode: 'PUBLIC_DB',
         datasets: [{ gse: 'GSE10001', gpl: 'GPL570', role: 'train' }],
       },
-      groupingDesign: { mode: 'two_group', groups: [], contrasts: [] },
+      // 与 server-accepts 同口径：需求单总闸要求 2 组 + 1 条对比。
+      groupingDesign: {
+        mode: 'two_group',
+        groups: [
+          { groupName: 'Control', role: 'reference', sampleIds: ['GSM1'] },
+          { groupName: 'Disease', role: 'disease_stage', sampleIds: ['GSM2'] },
+        ],
+        contrasts: [{ name: 'Disease_vs_Control', case: 'Disease', ctrl: 'Control', isPrimary: true }],
+      },
       uploadSid,
       dataFiles: [{
         role: 'train_matrix',
