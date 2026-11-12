@@ -37,6 +37,10 @@ workspace/projects/*/data/
 workspace/projects/*/figures/
 workspace/projects/*/debug/
 workspace/projects/*/deliverables/
+# 工单运行的落地位置是 workspace/projects/<id>/work_orders/；
+# 仓库根下的 workspace/work_orders/ 是 2026-11-09 手工串联 DCM 链时的临时工作区
+# （46 个调试脚本、日志与回执，0.96 MB）。它不进版本库，避免把一次性取证混进真源。
+workspace/work_orders/
 workspace/projects/default/
 workspace/projects/PRJ_20261019_IS_lactylation/
 !workspace/projects/PRJ_AIMS_V3_20261027/figures/
