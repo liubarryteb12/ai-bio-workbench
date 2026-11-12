@@ -69,7 +69,12 @@ childProcess.spawnSync = function fakeSpawnSync(program, args, options) {
 };
 
 childProcess.spawn = function fakeSpawn(program, args, options) {
-  if (!['scp', 'ssh'].includes(program)) return realSpawn(program, args, options);
+  // 2026-11-12：上传链路的 ADB 重写改成真正的 spawn（原先在构造期用 spawnSync，
+  // 异步入口照样阻塞主线程）。接缝搬家后这里必须同步拦 pwsh/adb_exec，
+  // 否则假夹具放真实 adb 出去，用例会因为环境缺失而假红，而不是因为阻塞。
+  const isTransferCall = ['scp', 'ssh'].includes(program)
+    || (program === 'pwsh' && (args || []).some((part) => String(part).includes('adb_exec.ps1')));
+  if (!isTransferCall) return realSpawn(program, args, options);
   calls.push({ api: 'spawn', program: String(program) });
   const child = new EventEmitter();
   child.stdout = new PassThrough();

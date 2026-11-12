@@ -103,7 +103,6 @@ export function App() {
   // 函数体内，结果是首页挂载时根本不会请求 /api/selfcheck，而卸载时会在清理函数里
   // 调 hooks 触发 Invalid hook call。
   useEffect(() => {
-    if (view !== 'preflight') return undefined;
     let alive = true;
     const loadMode = async () => {
       try {
@@ -123,7 +122,9 @@ export function App() {
       alive = false;
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [view]);
+    // 只在挂载时读一次：切 tab 重发会让「首页只请求 1 次自检」的契约失效
+    // （tests/e2e/home_mount.spec.ts），而模式变化由 visibilitychange 兜住。
+  }, []);
 
   const retryFailedView = useCallback(() => {
     setRetryTick((n) => n + 1);

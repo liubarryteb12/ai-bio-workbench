@@ -27,7 +27,10 @@ test('门禁清单：齐全，顺序越便宜越靠前，只有最后一道是 s
   // 再证删除旧报告/旧图/来源配置后项目内容仍自洽，最后证受控桥接事实源。
   assert.deepEqual(GATES.map((g) => g.id), [
     'preflight', 'static_gate', 'test_isolation', 'dist_parity', 'skip_static', 'project_script', 'project_content_ablation', 'work_order_orchestrator', 'skills_contract', 'module_ablation_matrix', 'isolated_bridge', 'router', 'ledger',
-    'figure_registry', 'preview_provenance', 'ready_matrix', 'figure_provenance', 'python_interpreter', 'figure_spec', 'figure_code', 'audit_summary', 'mutation_gate', 'k40_parity', 'q3q2_mutation', 'metrics',
+    'figure_registry', 'preview_provenance', 'ready_matrix', 'figure_provenance', 'python_interpreter', 'figure_spec', 'figure_code', 'audit_summary', 'mutation_gate', 'k40_parity', 'q3q2_mutation',
+    // 控制面两道（2026-11-12）：租约准入与队列单消费者，各自带变异自证。
+    // 排在全量测试之前：控制面回归 20 秒内可见，不必等三分钟。
+    'authority_lease', 'work_order_queue', 'metrics',
   ]);
   // k40_parity 必须带 skipExitCodes：设备离线时以退出码 2 表达「本轮未校验」，
   // 主链把它转成带标签的 SKIP。少了这个字段，离线机器会被它整条拖红。

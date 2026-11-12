@@ -285,6 +285,96 @@ function rewriteRemoteArgv(argv, options = {}) {
 }
 
 /**
+ * 异步版 ADB 执行器：语义与 adbRunner 逐项对齐，唯一区别是内部用 spawn。
+ *
+ * 存在的理由：runAsync 原先走 rewriteRemoteArgv，而那个函数在**构造阶段**就调用
+ * adbRunner（spawnSync），所以「异步上传」实际仍在主线程上阻塞 1.5 秒一双。
+ * 上传窗口内 /api/health 探针空档因此能到 3 秒（2026-11-12 实测）。
+ * 这里把整条 ADB 调用改成 spawn + Promise，主线程在传输期间照常响应。
+ */
+function adbRunnerAsync(args, options = {}) {
+  const argv = [
+    'pwsh', '-NoProfile', '-File', ADB_EXEC_SCRIPT,
+    '-Level', 'ubuntu', '-Transport', 'adb', '-RequireAdb',
+    '-RemoteScriptPath', uniqueRemoteScript('dsh_adb_bridge'),
+    ...args,
+  ];
+  const timeoutMs = process.env.BIO_TEST_ADB_TIMEOUT_MS
+    ? Number(process.env.BIO_TEST_ADB_TIMEOUT_MS)
+    : (options.timeoutMs ?? 900000);
+  const maxBuffer = options.maxBuffer ?? 256 * 1024 * 1024;
+
+  return new Promise((resolve) => {
+    let settled = false;
+    let stdout = '';
+    let stderr = '';
+    let pending = null;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      if (pending) clearTimeout(pending);
+      resolve(result);
+    };
+    const child = childProcess.spawn(argv[0], argv.slice(1), {
+      cwd: REPO_ROOT,
+      windowsHide: true,
+      env: childEnv(options.env),
+    });
+    if (options.input !== undefined) {
+      try { child.stdin?.end?.(String(options.input)); } catch { /* 已关闭则忽略 */ }
+    }
+    pending = setTimeout(() => {
+      try { killProcessTree(child); } catch { /* 已退出则忽略 */ }
+      finish({ code: -1, stdout, stderr, error: `超时 ${timeoutMs}ms 未结束，已中止子进程（adb）` });
+    }, timeoutMs);
+    const append = (chunk) => { stdout += chunk.toString(); };
+    child.stdout?.on?.('data', append);
+    child.stderr?.on?.('data', (chunk) => { stderr += chunk.toString(); });
+    child.on?.('error', (error) => finish({ code: -1, stdout, stderr, error: String(error.message || error) }));
+    child.on?.('close', (code) => {
+      if (stdout.length + stderr.length > maxBuffer) {
+        finish({ code: -1, stdout, stderr, error: `输出超过 ${maxBuffer} 字节，已中止子进程` });
+        return;
+      }
+      finish({ code: code ?? -1, stdout, stderr, error: null });
+    });
+  });
+}
+
+/** rewriteRemoteArgv 的异步孪生：返回一个返回 Promise 的惰性 thunk，构造期不执行。 */
+function rewriteRemoteArgvAsync(argv, options = {}) {
+  const adapter = process.env.BIO_COMPUTE_ADAPTER || 'adb';
+  if (adapter !== 'adb') return null;
+  const base = programBaseName(argv[0] || '');
+  if (base === 'ssh') {
+    const command = commandFromSshArgv(argv);
+    if (!command) return null;
+    return () => adbRunnerAsync(['-Command', command], options);
+  }
+  if (base === 'scp') {
+    const spec = scpDirection(argv);
+    if (!spec) return null;
+    if (spec.direction === 'push') {
+      return () => adbRunnerAsync(['-PushLocalPath', spec.local, '-PushRemotePath', spec.remote], options);
+    }
+    return async () => {
+      const raw = await adbRunnerAsync([
+        '-Command', `sha256sum ${shellQuote(spec.remote)} | cut -d' ' -f1; printf '\\n__B64__\\n'; base64 -w0 ${shellQuote(spec.remote)}`,
+      ], options);
+      const marker = raw.stdout.lastIndexOf('__B64__');
+      const hash = (raw.stdout.match(/[0-9a-f]{64}/) || [])[0] || '';
+      const encoded = marker >= 0 ? raw.stdout.slice(marker + '__B64__'.length).replace(/\s+/g, '') : '';
+      if (raw.code !== 0 || !hash || !encoded) return { ...raw, code: 1 };
+      const buffer = Buffer.from(encoded, 'base64');
+      mkdirSync(path.dirname(path.resolve(spec.local)), { recursive: true });
+      writeFileSync(spec.local, buffer);
+      return { ...raw, stdout: hash };
+    };
+  }
+  return null;
+}
+
+/**
  * 流式执行接缝的 ADB 重写。
  *
  * rewriteRemoteArgv 走 spawnSync，只能用于短探针；任务下发与报告构建需要
@@ -413,18 +503,16 @@ export function runAsync(argv, options = {}) {
     return Promise.resolve(runSync(argv, options));
   }
   // P-29：与 runSync 同一口径，异步上传/部署链路也不得直连 ssh/scp。
-  // adbRunner 本身是 spawnSync，放进微任务里避免把当前请求回调同步按住。
-  const rewrite = rewriteRemoteArgv(argv, options);
+  // 这里必须用异步孪生：rewriteRemoteArgv 在构造期就调 adbRunner（spawnSync），
+  // 会让「异步」上传照旧阻塞主线程，健康探针在传输窗口内掉到 3 秒。
+  const rewrite = rewriteRemoteArgvAsync(argv, options);
   if (rewrite) {
-    return Promise.resolve().then(() => {
-      const result = rewrite();
-      return {
-        code: result.code,
-        stdout: result.stdout ?? '',
-        stderr: result.stderr ?? '',
-        error: result.error ?? null,
-      };
-    });
+    return rewrite().then((result) => ({
+      code: result.code,
+      stdout: result.stdout ?? '',
+      stderr: result.stderr ?? '',
+      error: result.error ?? null,
+    }));
   }
   const timeoutMs = options.timeoutMs ?? 30000;
   return new Promise((resolve) => {
