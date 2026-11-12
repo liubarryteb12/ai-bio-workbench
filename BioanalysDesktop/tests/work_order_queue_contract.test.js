@@ -14,9 +14,13 @@ import {
   createWorkOrder,
   enqueueWorkOrder,
   executeWorkOrderById,
+  getReceipt,
   getWorkOrderMeta,
   recoverInterruptedRunning,
 } from '../server/services/work_order.service.js';
+import {
+  computeWorkOrderDigest, createReceiptV1, updateReceiptStatus, writeReceiptV1Atomic,
+} from '../server/receipt_v1.js';
 
 function tempRoot() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'work-order-queue-'));
@@ -196,4 +200,48 @@ test('执行失败：meta 收敛 failed，租约与 actor 留痕不丢', async (
   assert.equal(meta.lease_id, 'AUTH-20261112-0002');
   assert.deepEqual(meta.approved_by, actor);
   assert.equal(meta.error.code, 'ERR_DEVICE_OFFLINE');
+});
+
+test('同项目多工单：权威回执按工单号各存一份，不互相覆盖', async () => {
+  const root = tempRoot();
+  const ids = ['WO-Q-MULTI-001', 'WO-Q-MULTI-002'];
+  for (const id of ids) createWorkOrder(draft({ work_order_id: id }), root);
+
+  const runWorkOrderFn = async (input) => {
+    const projectId = input.projectId || input.project_id;
+    const workOrderId = input.workOrderId || input.work_order_id;
+    // 模拟编排器：先写项目级回执（会被后一单覆盖），再交给 service 落单工单副本。
+    let receipt = createReceiptV1({
+      workOrderDigest: computeWorkOrderDigest(draft({ work_order_id: workOrderId })),
+      workOrderId,
+      projectId,
+      lineId: 'line1_bulk',
+      startedAt: new Date().toISOString(),
+    });
+    receipt = updateReceiptStatus(receipt, 'running');
+    receipt = updateReceiptStatus(receipt, 'completed', {
+      delivery: {
+        tar_sha256: 'a'.repeat(64),
+        verified_count: 1,
+        coverage_ok: true,
+        verifier_version: 'test-1.0.0',
+      },
+    });
+    writeReceiptV1Atomic(receipt, path.join(root, 'workspace', 'projects', projectId, 'report', 'receipt.v1.json'));
+    return { ok: true, receiptV1: receipt };
+  };
+
+  for (const id of ids) {
+    await executeWorkOrderById(id, root, { runWorkOrderFn });
+  }
+
+  const paths = new Set();
+  for (const id of ids) {
+    const meta = getWorkOrderMeta(id, root);
+    assert.equal(meta.status, 'completed');
+    paths.add(meta.receipt_path);
+    const receipt = getReceipt(id, root);
+    assert.equal(receipt.work_order_id, id, `${id} 必须读回自己的回执`);
+  }
+  assert.equal(paths.size, 2, '两张工单的回执路径必须不同，不能共用项目级文件');
 });

@@ -265,7 +265,7 @@ test("执行状态机：未审核拒、queued 到 completed、重复执行拒", 
   );
 });
 
-test("审核即入队：approved 落盘，重复确认幂等，列表按 created_at 升序", () => {
+test("审核即入队：approved 落盘，重复确认幂等，已批准排在前", () => {
   const root = tempRoot();
   createWorkOrder(draft(), root);
   createWorkOrder(draft({

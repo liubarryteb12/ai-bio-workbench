@@ -1,0 +1,85 @@
+{
+  "_comment": "带 inputs 的工单样例。inputs[] 的契约：role / path / filename / size / sha256 必填，format 可选。path 是相对 inputsRoot 的包内路径，filename 必须是纯文件名（不能带分隔符），size 与 sha256 由调用方对真实文件实测填入。2026-11-12 实测：只写 path 会被 ERR_INPUTS_SHAPE 拒掉。",
+  "schema_version": "work_order/v2",
+  "work_order_id": "WO-EXAMPLE-V2-INPUTS-001",
+  "project_id": "PRJ_EXAMPLE_V2_INPUTS",
+  "source_package": {
+    "package_dir": "PKG_20261112_120000_example",
+    "requirement_path": "PKG_20261112_120000_example/requirement.json",
+    "manifest_path": "PKG_20261112_120000_example/package_manifest.json"
+  },
+  "requirement": {
+    "basicInfo": {
+      "name": "示例 v2 带输入的项目",
+      "species": "Homo sapiens",
+      "domain": "cardiovascular",
+      "dataType": "microarray"
+    },
+    "dataSource": {
+      "source": "GEO",
+      "dataType": "microarray",
+      "sampleCount": 10,
+      "tissue": "blood",
+      "datasets": [
+        {
+          "gse": "GSE000000",
+          "gpl": "GPL0000",
+          "role": "train",
+          "sampleCount": 10,
+          "tissue": "blood"
+        }
+      ]
+    },
+    "groupingDesign": {
+      "mode": "two_group",
+      "groups": [
+        { "groupName": "Control", "role": "reference", "sampleIds": ["GSM000001"] },
+        { "groupName": "Disease", "role": "disease_stage", "sampleIds": ["GSM000002"] }
+      ],
+      "contrasts": [
+        { "name": "Disease_vs_Control", "case": "Disease", "ctrl": "Control", "isPrimary": true }
+      ]
+    },
+    "analysisCutoffs": {
+      "profile": "standard",
+      "use_adj_p": true,
+      "log2fc_threshold": 1.0,
+      "adj_p_threshold": 0.05
+    },
+    "biologicalPriors": {
+      "focusGenes": ["GENE1"]
+    },
+    "figure_templates": []
+  },
+  "inputs": [
+    {
+      "role": "train_matrix",
+      "path": "deg_sig.tsv",
+      "filename": "deg_sig.tsv",
+      "size": 178699,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "format": "tsv"
+    }
+  ],
+  "execution": {
+    "line_id": "line1_bulk",
+    "mod_ids": ["l1_ingest_prep", "l1_qc_matrix"],
+    "figure_selections": [],
+    "seed": 20261013,
+    "compute_adapter": "adb",
+    "allow_ssh": false,
+    "species_scope": ["Homo sapiens"]
+  },
+  "delivery": {
+    "profile": "client_standard",
+    "report_md": "Analysis_Report.md",
+    "report_html": "Analysis_Report.html",
+    "delivery_tar_pattern": "Client_Delivery.tar.gz"
+  },
+  "controls": {
+    "require_admin_review": true,
+    "resume": false,
+    "resume_since": null,
+    "force_report_build": false
+  }
+}

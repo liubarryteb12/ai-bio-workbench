@@ -130,6 +130,9 @@ v2 样例保持 `inputs: []`，补上真实文件项即可进入流式上传链�
 4. `delivery` 只引用现有验收回执的相对路径、`tar_sha256`、`verified_count`、
    `coverage_ok` 与 `verifier_version`，不复制四关判据。下载门禁仍只认
    `deliverables/acceptance/<projectId>.receipt.json` 的实时哈希。
+   **这四项是 `completed` 的硬前提**：`receipt_v1.js` 的 `assertReceiptShape`
+   会对 completed 回执逐项检查，缺任一键直接 `ERR_RECEIPT_SHAPE`，回执落不了盘，
+   工单会被收敛成 `failed`。自研执行端（含 AI 客户端）必须照这个形状产回执。
 5. `artifacts` 登记报告、交付 tar、`Project_Summary.md` 与兼容投影的相对路径、大小与
    SHA-256。权威回执自身不登记，避免自指。
 6. 失败与阻塞也写权威回执，旧投影只在成功时写。校验失败在 `projectId` 合法时同样落

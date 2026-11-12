@@ -16,6 +16,7 @@ import {
 import { normalizeWorkOrderV2 } from '../../../shared/work_order_v2.mjs';
 import { PORTAL_INBOX } from '../portal_inbox.js';
 import { buildWorkOrderDraftFromPackage } from './package_to_work_order.js';
+import { writeReceiptV1Atomic } from '../receipt_v1.js';
 
 export const WORK_ORDER_STATUSES = Object.freeze([
   'queued', 'running', 'completed', 'failed', 'blocked',
@@ -27,7 +28,8 @@ const inflight = new Set();
 
 /**
  * 进程内单并发泵。队列真源始终是磁盘 meta：
- *   approved === true 且 status === 'queued' 的作业按 created_at 升序排队。
+ *   approved === true 且 status === 'queued' 的作业按 approved_at 升序排队（先批准先执行），
+ *   approved_at 缺失时按 created_at 升序兜底。
  * 这里只保存当前泵的句柄与运行标志，不做第二份队列副本。
  */
 const queueRunner = {
@@ -71,6 +73,17 @@ function workOrderDir(baseDir, projectId) {
 
 function receiptFile(baseDir, projectId) {
   return path.join(projectsRoot(baseDir), projectId, 'report', 'receipt.v1.json');
+}
+
+/**
+ * 单工单专属回执副本。
+ *
+ * 项目级 report/receipt.v1.json 是「最近一次」的位置，同项目多张工单会互相覆盖
+ * （2026-11-12 模拟实测：4 单同项目跑完，只有最后一单能读回自己的回执）。
+ * 权威回执按工单号各存一份，项目级文件保留作最新投影。
+ */
+function workOrderReceiptFile(baseDir, projectId, workOrderId) {
+  return path.join(workOrderDir(baseDir, projectId), `${workOrderId}.receipt.v1.json`);
 }
 
 function safeReceiptFile(baseDir, relativePath) {
@@ -160,6 +173,17 @@ function readAllMeta(baseDir, projectId = null) {
     }
   }
   rows.sort((left, right) => {
+    // 排序键：approved_at 优先（先批准先执行），创建序兜底。
+    // 为什么：管理员乱序批准时，position 显示「先批准先执行」，但泵实际按 created_at
+    // 出队，人看到的顺序与实际执行顺序不一致（2026-11-12 模拟实测）。
+    // approved_at 缺失（未批准的 queued）按创建序兜底，保持旧行为。
+    const approvedLeft = String(left.meta.approved_at || '').trim();
+    const approvedRight = String(right.meta.approved_at || '').trim();
+    if (approvedLeft && approvedRight && approvedLeft !== approvedRight) {
+      return approvedLeft.localeCompare(approvedRight);
+    }
+    if (approvedLeft && !approvedRight) return -1;
+    if (!approvedLeft && approvedRight) return 1;
     const byTime = String(left.meta.created_at).localeCompare(String(right.meta.created_at));
     if (byTime !== 0) return byTime;
     return String(left.meta.work_order_id).localeCompare(String(right.meta.work_order_id));
@@ -335,7 +359,8 @@ export function listWorkOrders(baseDir, projectId = null) {
 
 /**
  * 待执行队列完全由磁盘 meta 派生：
- *   approved === true 且 status === 'queued'，按 created_at 升序。
+ *   approved === true 且 status === 'queued'，按 approved_at 升序（先批准先执行），
+ *   approved_at 缺失（未批准的 queued）按 created_at 升序兜底。
  * position 从 1 开始，供前端展示与确认接口复用。
  */
 export function listQueue(baseDir, projectId = null) {
@@ -632,12 +657,24 @@ export async function executeWorkOrderById(workOrderId, baseDir, options = {}) {
       }
     }
     const status = finalStatus(result, receipt);
+    // 权威回执按工单号各存一份：同项目多单不会互相覆盖。
+    // 项目级文件由编排器写，保留为「最近一次」投影；这里落的是本单专属副本。
+    let receiptRelPath = relativePosix(baseDir, receiptPath);
+    if (receipt && typeof receipt === 'object') {
+      try {
+        const perOrderPath = workOrderReceiptFile(baseDir, running.project_id, meta.work_order_id);
+        writeReceiptV1Atomic(receipt, perOrderPath);
+        receiptRelPath = relativePosix(baseDir, perOrderPath);
+      } catch {
+        // 回执形状不合法时退回项目级路径，meta 仍按执行结果收敛，不阻断状态机。
+      }
+    }
     running = {
       ...running,
       status,
       updated_at: new Date().toISOString(),
       finished_at: receipt?.finished_at || new Date().toISOString(),
-      receipt_path: relativePosix(baseDir, receiptPath),
+      receipt_path: receiptRelPath,
       ...(receipt?.receipt_id ? { receipt_id: receipt.receipt_id } : {}),
       ...(receipt?.error
         ? { error: { code: receipt.error.code || null, message: redact(receipt.error.message, baseDir) } }

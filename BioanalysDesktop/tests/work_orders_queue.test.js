@@ -140,7 +140,7 @@ afterEach(async () => {
   await stopQueue();
 });
 
-test("列表与队列按 created_at 升序，队列只含 approved 且 queued", () => {
+test("未批准按 created_at，队列按 approved_at 升序，且只含 approved 且 queued", () => {
   const root = tempRoot();
   createThree(root);
 
@@ -150,17 +150,28 @@ test("列表与队列按 created_at 升序，队列只含 approved 且 queued", 
   enqueueWorkOrder("WO-Q-C", root, { approved: true });
   enqueueWorkOrder("WO-Q-A", root, { approved: true });
   enqueueWorkOrder("WO-Q-B", root, { approved: true });
+  // 批准序显式落定（同一毫秒内连续批准会撞时间戳，用固定值消除抖动）
+  patchMeta(root, "PRJ_Q_C", "WO-Q-C", { approved_at: "2026-11-12T10:00:01.000Z" });
+  patchMeta(root, "PRJ_Q_A", "WO-Q-A", { approved_at: "2026-11-12T10:00:02.000Z" });
+  patchMeta(root, "PRJ_Q_B", "WO-Q-B", { approved_at: "2026-11-12T10:00:03.000Z" });
 
   const queue = listQueue(root);
-  assert.deepEqual(queue.map((row) => row.work_order_id), ["WO-Q-A", "WO-Q-B", "WO-Q-C"]);
+  assert.deepEqual(queue.map((row) => row.work_order_id), ["WO-Q-C", "WO-Q-A", "WO-Q-B"]);
   assert.deepEqual(queue.map((row) => row.position), [1, 2, 3]);
   assert.ok(queue.every((row) => row.status === "queued"));
 });
 
-test("泵按 FIFO 逐个执行，完成后自动接下一个", async () => {
+test("泵按批准序逐个执行，完成后自动接下一个", async () => {
   const root = tempRoot();
   createThree(root);
   const seen = [];
+
+  enqueueWorkOrder("WO-Q-C", root, { approved: true });
+  enqueueWorkOrder("WO-Q-A", root, { approved: true });
+  enqueueWorkOrder("WO-Q-B", root, { approved: true });
+  patchMeta(root, "PRJ_Q_C", "WO-Q-C", { approved_at: "2026-11-12T10:00:01.000Z" });
+  patchMeta(root, "PRJ_Q_A", "WO-Q-A", { approved_at: "2026-11-12T10:00:02.000Z" });
+  patchMeta(root, "PRJ_Q_B", "WO-Q-B", { approved_at: "2026-11-12T10:00:03.000Z" });
 
   startQueue(root, {
     idlePollMs: 10,
@@ -170,15 +181,11 @@ test("泵按 FIFO 逐个执行，完成后自动接下一个", async () => {
     },
   });
 
-  enqueueWorkOrder("WO-Q-C", root, { approved: true });
-  enqueueWorkOrder("WO-Q-A", root, { approved: true });
-  enqueueWorkOrder("WO-Q-B", root, { approved: true });
-
   await waitFor(
     () => listWorkOrders(root).every((row) => row.status === "completed"),
     "三个作业全部完成",
   );
-  assert.deepEqual(seen, ["WO-Q-A", "WO-Q-B", "WO-Q-C"]);
+  assert.deepEqual(seen, ["WO-Q-C", "WO-Q-A", "WO-Q-B"]);
   assert.equal(listQueue(root).length, 0);
 });
 

@@ -174,7 +174,7 @@
 1. 工单与元数据落 `workspace/projects/<project_id>/work_orders/`，
    权威回执落 `workspace/projects/<project_id>/report/receipt.v1.json`。
 2. `run` 写入 `approved=true` 与 `approved_at`，返回 `{ok:true,status,position}`；重复确认幂等，`running` 返回执行中，终态返回 409。
-3. 队列由磁盘元数据派生，只含 `approved=true` 且 `status=queued` 的作业，按 `created_at` 升序，`position` 从 1 开始。
+3. 队列由磁盘元数据派生，只含 `approved=true` 且 `status=queued` 的作业，按 `approved_at` 升序（先批准先执行），`approved_at` 缺失时按 `created_at` 升序兜底，`position` 从 1 开始。
 4. 后台泵单进程单并发，按队列顺序执行，完成后自动取下一个；`startQueue` 与 `stopQueue` 控制生命周期。
 5. 服务启动时扫描 `running` 且无 inflight 的作业，标记 `failed` 并写 `recovery_reason=server_restart`，随后继续排空队列。
 6. 前端执行按钮为确认并排队，展示队列位置；存在 `running` 作业时每 3 秒轮询列表、队列与详情，直到终态。
