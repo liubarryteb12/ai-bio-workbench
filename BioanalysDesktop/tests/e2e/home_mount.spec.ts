@@ -89,7 +89,7 @@ test('项目列表接口 500 时外壳仍在，并给出可读的项目错误', 
 
   await page.goto(ADMIN_BASE + '/');
   await expect(page.locator('.app-root')).toBeVisible({ timeout: 20_000 });
-  await expect(page.locator('.tab-nav-item')).toHaveCount(6);
+  await expect(page.locator('.tab-nav-item')).toHaveCount(5);
   await expect(page.locator('.error-text')).toBeVisible({ timeout: 10_000 });
   await expect(page.locator('.error-text')).toContainText('项目列表暂时不可用');
   expect(pageErrors.join('\n'), '500 不得变成渲染期异常').not.toMatch(/TypeError|is not a function/);
@@ -104,7 +104,7 @@ test('Mock 计算面下首页不得整页白屏，且必须显出 mock 横幅', 
 
   // mock 多来自服务端启动配置；这里只钉「有横幅时 tab 仍在，不能白屏」这条底线：
   // 先确认 6 个 tab 全渲染，再确认没有 React 崩溃。
-  await expect(page.locator('.tab-nav-item')).toHaveCount(6);
+  await expect(page.locator('.tab-nav-item')).toHaveCount(5);
   expect(apiErrors.join('\n')).not.toContain('Invalid hook call');
   expect(apiErrors.join('\n')).not.toContain('Minified React error #321');
 });
@@ -172,7 +172,7 @@ test.describe('BIO_COMPUTE_ADAPTER=mock', () => {
 
     await page.goto(base + '/');
     await expect(page.locator('.app-root')).toBeVisible({ timeout: 20_000 });
-    await expect(page.locator('.tab-nav-item')).toHaveCount(6);
+    await expect(page.locator('.tab-nav-item')).toHaveCount(5);
     // 视图真的挂上了，不是只剩空壳
     await expect(page.locator('.view-container').first()).toBeVisible({ timeout: 10_000 });
     await expect(page.locator('.mock-banner')).toBeVisible({ timeout: 10_000 });

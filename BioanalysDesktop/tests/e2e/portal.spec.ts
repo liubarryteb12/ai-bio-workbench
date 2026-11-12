@@ -91,7 +91,12 @@ async function advanceToStep3(page: Page, dataType = 'microarray') {
   await page.locator('#f-datatype').selectOption(dataType);
   await page.locator('#d-gse-d1').fill('GSE10001');
   await page.locator('#d-gse-d2').fill('GSE10002');
-  await page.locator('#f-sample-count').fill('4');
+  // 项目级样本总数已被按数据集逐行填写取代（portal_intake_contract 明确禁止
+  // 再出现 #f-sample-count）。这里跟随现行 DOM：样本数与组织来源都挂在行级。
+  await page.locator('#d-count-d1').fill('4');
+  await page.locator('#d-count-d2').fill('4');
+  await page.locator('#d-tissue-d1').fill('peripheral blood');
+  await page.locator('#d-tissue-d2').fill('peripheral blood');
   await page.locator('#btn-next').click();
   await expect(panel(page, 3)).toBeVisible();
 }

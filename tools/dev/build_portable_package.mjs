@@ -40,9 +40,17 @@ export const LAYERS = Object.freeze([
 ]);
 
 /** L4：一律不进包的路径前缀（未跟踪产物、依赖缓存、构建中间件）。 */
-/** ui_render_smoke 等测试要真渲染 .tsx：只带这条闭包，不带整个 node_modules。 */
+/**
+ * 必须随包的 npm 依赖白名单（node_modules 整目录被排除，这里逐个复制）。
+ *
+ * - react / react-dom / scheduler 等：ui_render_smoke 等测试要真渲染 .tsx；
+ * - better-sqlite3 + node-addon-api：租约服务的运行时原生模块。包内自带
+ *   prebuilds/{win32-x64,linux-arm64,...}.node，干净机器无需编译；漏带会让
+ *   服务在 import 阶段直接 MODULE_NOT_FOUND，2026-11-12 首次重建时踩到。
+ */
 export const TEST_DEPENDENCY_PACKAGES = Object.freeze([
   'react', 'react-dom', 'scheduler', 'loose-envify', 'js-tokens', 'esbuild', '@esbuild',
+  'better-sqlite3', 'node-addon-api',
 ]);
 
 export const EXCLUDED_PREFIXES = Object.freeze([

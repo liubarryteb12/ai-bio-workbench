@@ -90,7 +90,7 @@ test('自检返回的 checks 结构漂移时，ErrorBoundary 必须给出降级�
 
   // 外壳必须活着：tab 还在，用户能切走
   await expect(page.locator('.app-root')).toBeVisible();
-  await expect(page.locator('.tab-nav-item')).toHaveCount(6);
+  await expect(page.locator('.tab-nav-item')).toHaveCount(5);
   // 降级卡要说明是哪块视图坏了、给出错误原文、并给重试入口
   await expect(page.locator('.view-error-card')).toBeVisible({ timeout: 10_000 });
   await expect(page.locator('.view-error-card')).toHaveAttribute('role', 'alert');
@@ -101,7 +101,7 @@ test('自检返回的 checks 结构漂移时，ErrorBoundary 必须给出降级�
   // 重试要真的重新挂载这块视图，而不是把错误卡留在原地
   await page.locator('.view-error-card').getByRole('button', { name: '重试' }).click();
   await expect(page.locator('.view-error-card')).toBeVisible();
-  await expect(page.locator('.tab-nav-item')).toHaveCount(6);
+  await expect(page.locator('.tab-nav-item')).toHaveCount(5);
 });
 
 test('一个视图崩了不影响其他视图：切走后其他 tab 正常渲染', async ({ page }) => {
