@@ -1,0 +1,61 @@
+gene	section	file	vmax	spots	smoothed
+Myh9	panel	spatial_panel_5sections_Myh9_styleD.png	2.0321		
+Egr1	panel	spatial_panel_5sections_Egr1_styleD.png	2.0666		
+Gstp1	panel	spatial_panel_5sections_Gstp1_styleD.png	1.7477		
+Epha4	panel	spatial_panel_5sections_Epha4_styleD.png	1.5867		
+Tjp1	panel	spatial_panel_5sections_Tjp1_styleD.png	1.4254		
+Abca1	panel	spatial_panel_5sections_Abca1_styleD.png	1.686		
+Akt1	panel	spatial_panel_5sections_Akt1_styleD.png	1.8096		
+Sox9	panel	spatial_panel_5sections_Sox9_styleD.png	1.1267		
+Adipor2	panel	spatial_panel_5sections_Adipor2_styleD.png	1.742		
+Dpm1	panel	spatial_panel_5sections_Dpm1_styleD.png	1.6856		
+Myh9	sham	slice_sham_Myh9_styleD.png	2.0321	2417.0	False
+Myh9	D1	slice_D1_Myh9_styleD.png	2.0321	2586.0	False
+Myh9	D3	slice_D3_Myh9_styleD.png	2.0321	2572.0	False
+Myh9	D7	slice_D7_Myh9_styleD.png	2.0321	2596.0	False
+Myh9	D7b	slice_D7b_Myh9_styleD.png	2.0321	1926.0	False
+Egr1	sham	slice_sham_Egr1_styleD.png	2.0666	2417.0	False
+Egr1	D1	slice_D1_Egr1_styleD.png	2.0666	2586.0	False
+Egr1	D3	slice_D3_Egr1_styleD.png	2.0666	2572.0	False
+Egr1	D7	slice_D7_Egr1_styleD.png	2.0666	2596.0	False
+Egr1	D7b	slice_D7b_Egr1_styleD.png	2.0666	1926.0	False
+Gstp1	sham	slice_sham_Gstp1_styleD.png	1.7477	2417.0	False
+Gstp1	D1	slice_D1_Gstp1_styleD.png	1.7477	2586.0	False
+Gstp1	D3	slice_D3_Gstp1_styleD.png	1.7477	2572.0	False
+Gstp1	D7	slice_D7_Gstp1_styleD.png	1.7477	2596.0	False
+Gstp1	D7b	slice_D7b_Gstp1_styleD.png	1.7477	1926.0	False
+Epha4	sham	slice_sham_Epha4_styleD.png	1.5867	2417.0	False
+Epha4	D1	slice_D1_Epha4_styleD.png	1.5867	2586.0	False
+Epha4	D3	slice_D3_Epha4_styleD.png	1.5867	2572.0	False
+Epha4	D7	slice_D7_Epha4_styleD.png	1.5867	2596.0	False
+Epha4	D7b	slice_D7b_Epha4_styleD.png	1.5867	1926.0	False
+Tjp1	sham	slice_sham_Tjp1_styleD.png	1.4254	2417.0	False
+Tjp1	D1	slice_D1_Tjp1_styleD.png	1.4254	2586.0	False
+Tjp1	D3	slice_D3_Tjp1_styleD.png	1.4254	2572.0	False
+Tjp1	D7	slice_D7_Tjp1_styleD.png	1.4254	2596.0	False
+Tjp1	D7b	slice_D7b_Tjp1_styleD.png	1.4254	1926.0	False
+Abca1	sham	slice_sham_Abca1_styleD.png	1.686	2417.0	False
+Abca1	D1	slice_D1_Abca1_styleD.png	1.686	2586.0	False
+Abca1	D3	slice_D3_Abca1_styleD.png	1.686	2572.0	False
+Abca1	D7	slice_D7_Abca1_styleD.png	1.686	2596.0	False
+Abca1	D7b	slice_D7b_Abca1_styleD.png	1.686	1926.0	False
+Akt1	sham	slice_sham_Akt1_styleD.png	1.8096	2417.0	False
+Akt1	D1	slice_D1_Akt1_styleD.png	1.8096	2586.0	False
+Akt1	D3	slice_D3_Akt1_styleD.png	1.8096	2572.0	False
+Akt1	D7	slice_D7_Akt1_styleD.png	1.8096	2596.0	False
+Akt1	D7b	slice_D7b_Akt1_styleD.png	1.8096	1926.0	False
+Sox9	sham	slice_sham_Sox9_styleD.png	1.1267	2417.0	False
+Sox9	D1	slice_D1_Sox9_styleD.png	1.1267	2586.0	False
+Sox9	D3	slice_D3_Sox9_styleD.png	1.1267	2572.0	False
+Sox9	D7	slice_D7_Sox9_styleD.png	1.1267	2596.0	False
+Sox9	D7b	slice_D7b_Sox9_styleD.png	1.1267	1926.0	False
+Adipor2	sham	slice_sham_Adipor2_styleD.png	1.742	2417.0	False
+Adipor2	D1	slice_D1_Adipor2_styleD.png	1.742	2586.0	False
+Adipor2	D3	slice_D3_Adipor2_styleD.png	1.742	2572.0	False
+Adipor2	D7	slice_D7_Adipor2_styleD.png	1.742	2596.0	False
+Adipor2	D7b	slice_D7b_Adipor2_styleD.png	1.742	1926.0	False
+Dpm1	sham	slice_sham_Dpm1_styleD.png	1.6856	2417.0	False
+Dpm1	D1	slice_D1_Dpm1_styleD.png	1.6856	2586.0	False
+Dpm1	D3	slice_D3_Dpm1_styleD.png	1.6856	2572.0	False
+Dpm1	D7	slice_D7_Dpm1_styleD.png	1.6856	2596.0	False
+Dpm1	D7b	slice_D7b_Dpm1_styleD.png	1.6856	1926.0	False

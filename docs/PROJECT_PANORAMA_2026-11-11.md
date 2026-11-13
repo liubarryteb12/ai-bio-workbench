@@ -158,7 +158,7 @@
 
 ### 3.4 算力红线
 
-运行面是 8 GB 内存设备，容器配额 7680 MB，纯 ARM CPU。硬约束：
+运行面是 12 GB 物理内存设备，容器默认上限 7.5 GB，单任务最高 8.0 GB，由 `BIO_MEM_LIMIT_GB` 控制，纯 ARM CPU。硬约束：
 
 - 空间与单细胞解卷积只允许 `scipy.optimize.nnls`，单步内存不超过 2.2 GB。
 - 禁止 `cell2location`、`Stereoscope`、`RCTD` 等重型算法进入生产链。

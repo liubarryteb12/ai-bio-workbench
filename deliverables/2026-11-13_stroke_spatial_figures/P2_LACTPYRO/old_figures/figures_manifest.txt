@@ -1,0 +1,63 @@
+step=- seed=20261013 out=../figures count=23 elapsed=24.9s
+render_ms=l3_mouse_01_domains_B1-D1.png=1061.0
+render_ms=l3_mouse_01_domains_C1-D7.png=817.5
+render_ms=l3_mouse_01_domains_C1-control.png=963.4
+render_ms=l3_mouse_01_domains_D1-D3.png=851.3
+render_ms=l3_mouse_01_domains_D1-D7.png=729.8
+render_ms=l3_mouse_02_target_gene_B1-D1.png=816.7
+render_ms=l3_mouse_02_target_gene_C1-D7.png=810.0
+render_ms=l3_mouse_02_target_gene_C1-control.png=785.4
+render_ms=l3_mouse_02_target_gene_D1-D3.png=809.0
+render_ms=l3_mouse_02_target_gene_D1-D7.png=843.9
+render_ms=l3_mouse_08_target_gene_by_domain.png=714.0
+render_ms=l3_mouse_04_morans_top.png=356.1
+render_ms=l3_mouse_04_morans_slice_Ttr.png=880.1
+render_ms=l3_mouse_04_morans_slice_Nrgn.png=901.4
+render_ms=l3_mouse_04_morans_slice_Cck.png=908.5
+render_ms=l3_mouse_04_morans_slice_Mbp.png=863.4
+render_ms=l3_mouse_06_umap_sample.png=288.5
+render_ms=l3_mouse_07_domain_composition.png=726.4
+render_ms=l3_mouse_16_domain_panel.png=2101.0
+render_ms=l3_mouse_17_celltype_composition.png=573.7
+render_ms=l3_mouse_18_cooccur_domain_coherence.png=569.0
+render_ms=l3_mouse_19_communication.png=227.3
+render_ms=l3_mouse_20_localization.png=402.2
+scalebar_check=figure=l3_mouse_01_domains_B1-D1.png label=500.0 actual=500.000 um_per_px=0.757554 bar_px=126.06 px_per_data=0.19099667 dpi=300.0 calib=lattice
+scalebar_check=figure=l3_mouse_01_domains_C1-D7.png label=500.0 actual=500.000 um_per_px=0.757554 bar_px=116.29 px_per_data=0.17619494 dpi=300.0 calib=lattice
+scalebar_check=figure=l3_mouse_01_domains_C1-control.png label=500.0 actual=500.000 um_per_px=0.757554 bar_px=120.19 px_per_data=0.18210402 dpi=300.0 calib=lattice
+scalebar_check=figure=l3_mouse_01_domains_D1-D3.png label=500.0 actual=500.000 um_per_px=0.757554 bar_px=116.15 px_per_data=0.17598640 dpi=300.0 calib=lattice
+scalebar_check=figure=l3_mouse_01_domains_D1-D7.png label=500.0 actual=500.000 um_per_px=0.757554 bar_px=127.39 px_per_data=0.19300481 dpi=300.0 calib=lattice
+scalebar_check=figure=l3_mouse_02_target_gene_B1-D1.png label=500.0 actual=500.000 um_per_px=0.757554 bar_px=133.88 px_per_data=0.20283762 dpi=300.0 calib=lattice
+scalebar_check=figure=l3_mouse_02_target_gene_C1-D7.png label=500.0 actual=500.000 um_per_px=0.757554 bar_px=123.50 px_per_data=0.18711825 dpi=300.0 calib=lattice
+scalebar_check=figure=l3_mouse_02_target_gene_C1-control.png label=500.0 actual=500.000 um_per_px=0.757554 bar_px=131.09 px_per_data=0.19862067 dpi=300.0 calib=lattice
+scalebar_check=figure=l3_mouse_02_target_gene_D1-D3.png label=500.0 actual=500.000 um_per_px=0.757554 bar_px=123.36 px_per_data=0.18689678 dpi=300.0 calib=lattice
+scalebar_check=figure=l3_mouse_02_target_gene_D1-D7.png label=500.0 actual=500.000 um_per_px=0.757554 bar_px=135.28 px_per_data=0.20497026 dpi=300.0 calib=lattice
+scalebar_check=figure=l3_mouse_04_morans_slice_Ttr.png label=500.0 actual=500.000 um_per_px=0.757554 bar_px=133.88 px_per_data=0.20283762 dpi=300.0 calib=lattice
+scalebar_check=figure=l3_mouse_04_morans_slice_Nrgn.png label=500.0 actual=500.000 um_per_px=0.757554 bar_px=133.88 px_per_data=0.20283762 dpi=300.0 calib=lattice
+scalebar_check=figure=l3_mouse_04_morans_slice_Cck.png label=500.0 actual=500.000 um_per_px=0.757554 bar_px=133.88 px_per_data=0.20283762 dpi=300.0 calib=lattice
+scalebar_check=figure=l3_mouse_04_morans_slice_Mbp.png label=500.0 actual=500.000 um_per_px=0.757554 bar_px=133.88 px_per_data=0.20283762 dpi=300.0 calib=lattice
+input_sha256=spatial_localization_mouse.h5ad=sampled:89a38687d6a31aa674379ebb4ba5ea1203505966907a0f70647f6ed79e54e6f1
+l3_mouse_01_domains_B1-D1.png	244705
+l3_mouse_01_domains_C1-D7.png	234212
+l3_mouse_01_domains_C1-control.png	257840
+l3_mouse_01_domains_D1-D3.png	241427
+l3_mouse_01_domains_D1-D7.png	197039
+l3_mouse_02_target_gene_B1-D1.png	583514
+l3_mouse_02_target_gene_C1-D7.png	582698
+l3_mouse_02_target_gene_C1-control.png	545626
+l3_mouse_02_target_gene_D1-D3.png	572717
+l3_mouse_02_target_gene_D1-D7.png	453892
+l3_mouse_08_target_gene_by_domain.png	236244
+l3_mouse_04_morans_top.png	94510
+l3_mouse_04_morans_slice_Ttr.png	598502
+l3_mouse_04_morans_slice_Nrgn.png	604731
+l3_mouse_04_morans_slice_Cck.png	604563
+l3_mouse_04_morans_slice_Mbp.png	596849
+l3_mouse_06_umap_sample.png	637623
+l3_mouse_07_domain_composition.png	155590
+l3_mouse_16_domain_panel.png	763097
+l3_mouse_17_celltype_composition.png	256840
+l3_mouse_18_cooccur_domain_coherence.png	191772
+l3_mouse_19_communication.png	71582
+l3_mouse_20_localization.png	112939
+outputs=figures_manifest.txt, l3_mouse_01_domains_B1-D1.png, l3_mouse_01_domains_C1-D7.png, l3_mouse_01_domains_C1-control.png, l3_mouse_01_domains_D1-D3.png, l3_mouse_01_domains_D1-D7.png, l3_mouse_02_target_gene_B1-D1.png, l3_mouse_02_target_gene_C1-D7.png, l3_mouse_02_target_gene_C1-control.png, l3_mouse_02_target_gene_D1-D3.png, l3_mouse_02_target_gene_D1-D7.png, l3_mouse_08_target_gene_by_domain.png, l3_mouse_04_morans_top.png, l3_mouse_04_morans_slice_Ttr.png, l3_mouse_04_morans_slice_Nrgn.png, l3_mouse_04_morans_slice_Cck.png, l3_mouse_04_morans_slice_Mbp.png, l3_mouse_06_umap_sample.png, l3_mouse_07_domain_composition.png, l3_mouse_16_domain_panel.png, l3_mouse_17_celltype_composition.png, l3_mouse_18_cooccur_domain_coherence.png, l3_mouse_19_communication.png, l3_mouse_20_localization.png

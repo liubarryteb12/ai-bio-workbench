@@ -62,8 +62,22 @@ export const RSCRIPT_PROJECT_BIN = '/mnt/ssd/bio_data/ops/layout_autoload/bin/Rs
  */
 export const EXPECTED_R_VERSION = '4.5.3';
 
-/** 容器内存配额（aims §六.4：7.5GB 软熔断）；cgroup 未给出数值上限时的兜底 */
-export const MEM_QUOTA_BYTES = 7.5 * 1024 * 1024 * 1024;
+/** 运行时内存上限：生产默认 7.5GB，单任务最高 8.0GB；cgroup 未给出数值上限时的兜底 */
+export const DEFAULT_MEM_QUOTA_GB = 7.5;
+export const MAX_MEM_QUOTA_GB = 8.0;
+export const MEM_QUOTA_BYTES = DEFAULT_MEM_QUOTA_GB * 1024 * 1024 * 1024;
+
+/**
+ * 解析 BIO_MEM_LIMIT_GB，口径与 tools/ops/bio_memory_guard.py 保持一致。
+ * cgroup 在 proot 下通常不可读，自检灯要靠这个兜底值判断水位。
+ */
+export function resolveMemQuotaBytes(env = process.env) {
+  const raw = env?.BIO_MEM_LIMIT_GB;
+  if (raw === undefined || raw === null || String(raw).trim() === '') return MEM_QUOTA_BYTES;
+  const gb = Number(raw);
+  if (!Number.isFinite(gb) || gb <= 0) return MEM_QUOTA_BYTES;
+  return Math.min(gb, MAX_MEM_QUOTA_GB) * 1024 * 1024 * 1024;
+}
 
 /** 温度阈值（摄氏度） */
 export const TEMP_WARN_C = 85;
@@ -83,7 +97,7 @@ export const ISOLATION_SCRIPT = '/mnt/ssd/bio_data/ops/check_storage_and_isolati
 export const BRIDGE_SCRIPT = '/mnt/ssd/bio_data/ops/verify_bridge_checkpoint.py';
 
 /**
- * 第 3 维命令：SoC 算力 / 温度 / 7.5GB 内存水位，一次 ssh 取全。
+ * 第 3 维命令：SoC 算力 / 温度 / 内存水位，一次 ssh 取全。
  * 每一步都带 `2>/dev/null`，缺传感器或非 cgroup v2 时只是少一行，不炸整条命令。
  */
 export function buildHardwareCommand() {
@@ -176,7 +190,7 @@ export function evaluateHardware(parsed) {
     return { status: 'unknown', value: '', detail: '远端输出缺 END 标记（疑似命令被截断，不能当作通过）' };
   }
 
-  const quotaBytes = parsed.memMaxBytes ?? MEM_QUOTA_BYTES;
+  const quotaBytes = parsed.memMaxBytes ?? resolveMemQuotaBytes();
   const usedBytes = parsed.memCurBytes !== null
     ? parsed.memCurBytes
     : (parsed.memTotalKb !== null && parsed.memAvailKb !== null

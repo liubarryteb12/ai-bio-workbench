@@ -29,7 +29,8 @@
 - `check_storage_and_isolation.sh`（ops/）：校验 FUSE 红线、存储水位 >= 20% 门禁及跨线路径静态扫描。
 - `run_throttled_task.sh`（ops/）：唯一合法的重度任务启动器，强制执行 `taskset -c 4,5,6 nice -n 10 ionice -c 2 -n 4`，并自动落盘结构化台账 JSON 至 `system_logs/`。
 - `verify_bridge_checkpoint.py`（ops/）：跨语言转换时的四项硬性断言（基因名 Symbol 合法性、矩阵方向与非零元、Barcode 对齐、Embedding 坐标保留）。
-- `bio_memory_guard.py`（ops/）：Python 脚本级 `RLIMIT_AS = 7.5GB` 虚拟内存软熔断头。
+- `bio_memory_guard.py`（ops/）：Python 脚本级 `RLIMIT_AS` 虚拟内存软熔断头，读
+  `BIO_MEM_LIMIT_GB`，生产默认 7.5GB，单任务最高 8.0GB。
 - `bio_r_header.R`（ops/）：R 脚本级 `bitmapType='cairo'` + `setDTthreads(3)` + `future(workers=2)` 防崩头。
 
 ### 4. 三条物理隔离分析线与 53 个母版脚本路由（部署于 `bin/<line>/`）
@@ -78,7 +79,7 @@
 
 ## 四、六大典型客户数据差异化适配预案（以母版为地基微调）
 
-在修改 `projects/<project_id>/<line>/scripts/` 下的实例副本时，必须保留母版的**防崩头部（7.5GB 内存锁 / 3 线程锁）、检查点落盘机制与出图规范 v2.1 函数**，仅对以下业务层逻辑做精准适配：
+在修改 `projects/<project_id>/<line>/scripts/` 下的实例副本时，必须保留母版的**防崩头部（`BIO_MEM_LIMIT_GB` 内存锁 / 3 线程锁）、检查点落盘机制与出图规范 v2.1 函数**，仅对以下业务层逻辑做精准适配：
 
 1. **原始文件格式与读取适配**
    - 若客户上传为 `.csv` / `.xlsx` / `.txt.gz` 或非标准 10x 结构（如单 `.h5` 或分离的 `counts.tsv` + `meta.tsv`），仅改写脚本首部的数据加载与解析段落，将其统一转换为母版标准承接的 `DataFrame` / `AnnData (.h5ad)` / `ExpressionSet` 结构。

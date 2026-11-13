@@ -74,6 +74,8 @@ shell 母版写完用 `bash -n <脚本>` 查语法（bash 位于 `D:\Git\bin\bas
 | 3 | `BIOANALYS_SEED` 未注入（引擎契约破坏） |
 | 1 | 自校验失败（计算或产物不合口径） |
 
+包装器专用退出码：`4` = 同步骤锁互斥，`5` = 启动前内存余量不足，任务未执行。
+
 ## Python 侧约定
 
 - 栈：anndata / scanpy / numpy / scipy（线3 空间分析按需 squidpy，装前先 dry-run，
@@ -90,7 +92,7 @@ shell 母版写完用 `bash -n <脚本>` 查语法（bash 位于 `D:\Git\bin\bas
 
 ## 算力与内存红线（硬件受限运行面硬约束）
 
-本分析流水线运行于物理内存 8GB（容器内存配额 7680 MB，纯 ARM CPU）的真机设备上。
+本分析流水线运行于物理内存 12GB（容器默认上限 7.5GB，单任务最高 8.0GB，由 `BIO_MEM_LIMIT_GB` 控制，纯 ARM CPU）的真机设备上。
 为保证长时间批处理稳定运行，对各步骤的算法选型与内存消耗实行刚性熔断限制：
 
 - **空间与单细胞解卷积必须保持轻量 `scipy.optimize.nnls`**：

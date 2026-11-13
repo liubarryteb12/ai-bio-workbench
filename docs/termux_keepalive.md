@@ -175,7 +175,7 @@ adb shell 'ps -eo pid,etime,args | grep "[p]root --kill" | head -1 | cut -c1-30'
 ### WP-1.3 实现落点
 
 - `tools/ops/bio_limits.sh`：线程固定为 3，母版不得再覆盖。
-- `tools/ops/layout_autoload/sitecustomize.py`：Python 启动即设置 `RLIMIT_AS=7.5GB`。
+- `tools/ops/layout_autoload/sitecustomize.py`：Python 启动即按 `BIO_MEM_LIMIT_GB` 设置 `RLIMIT_AS`，生产默认 7.5GB，单任务最高 8.0GB。
 - `tools/ops/layout_autoload/Rprofile`：R 启动即设置 data.table 3 线程、future 2 worker 与 6GiB globals 上限。
 - `tools/ops/run_throttled_task.sh`：启动前读取 thermal zones，温度达到 90C 时每 30 秒复测，低于 78C 才启动任务。
 - `BioanalysDesktop/server/task.js` 与 `server/run.js`：长步骤用 `setsid nohup`，状态文件每 60 秒单次轮询。

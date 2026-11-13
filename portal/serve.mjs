@@ -75,6 +75,8 @@ const INDEX = fileURLToPath(new URL('./index.html', import.meta.url));
 const INBOX = process.env.PORTAL_INBOX
   ? path.resolve(process.env.PORTAL_INBOX)
   : fileURLToPath(new URL('./inbox/', import.meta.url));
+// 用户需求专栏单独落一个子目录，和正式分析需求单分开，避免工作台收件箱把想法当成可执行需求。
+const FEATURE_DIR = path.join(INBOX, 'feature_requests');
 const SID_RE = /^[A-Za-z0-9_-]{6,64}$/;
 
 /**
@@ -254,6 +256,132 @@ function saveSurveyRequest(payload) {
   fs.mkdirSync(INBOX, { recursive: true });
   fs.writeFileSync(file, `${JSON.stringify(record, null, 2)}\n`, 'utf8');
   return { ok: true, ticketId, file };
+}
+
+/**
+ * 用户需求专栏：收「想法」不收正式分析单。
+ *
+ * 设计约束（2026-11-12 用户裁定）：
+ *   - 10 类方向，只做引导，不作为硬性必填；
+ *   - 标题、描述、细节、联系方式全部可以空着；
+ *   - 落盘到 inbox/feature_requests/，不混入 portal/inbox 根目录。
+ *
+ * @returns {{ok: boolean, error?: string, ticketId?: string, file?: string}}
+ */
+const FEATURE_CATEGORIES = [
+  'function', 'figure_new', 'figure_style', 'report_content', 'data_source',
+  'report_style', 'portal_ux', 'delivery', 'performance', 'other',
+];
+const FEATURE_MAX_TITLE = 120;
+const FEATURE_MAX_DESC = 8000;
+const FEATURE_MAX_DETAIL = 2000;
+const FEATURE_MAX_EMAIL = 200;
+const FEATURE_LIMITS = new Map();
+
+function saveFeatureRequest(payload) {
+  const category = FEATURE_CATEGORIES.includes(payload.category) ? payload.category : 'other';
+  const title = String(payload.title || '').trim().slice(0, FEATURE_MAX_TITLE);
+  const description = String(payload.description || '').trim().slice(0, FEATURE_MAX_DESC);
+  const email = String((payload.contact && payload.contact.email) || '').trim().slice(0, FEATURE_MAX_EMAIL);
+
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { ok: false, error: '联系方式邮箱格式不正确' };
+  }
+
+  const details = {};
+  if (payload.details && typeof payload.details === 'object' && !Array.isArray(payload.details)) {
+    for (const [key, value] of Object.entries(payload.details)) {
+      if (!/^[A-Za-z0-9_-]{1,40}$/.test(key)) continue;
+      if (Array.isArray(value)) {
+        const rows = value.slice(0, 20)
+          .map((item) => String(item).trim().slice(0, 200))
+          .filter(Boolean);
+        if (rows.length) details[key] = rows;
+      } else if (value !== undefined && value !== null) {
+        const text = String(value).trim().slice(0, FEATURE_MAX_DETAIL);
+        if (text) details[key] = text;
+      }
+    }
+  }
+
+  const detailText = Object.values(details)
+    .reduce((acc, value) => acc.concat(Array.isArray(value) ? value : [value]), [])
+    .join(' ');
+  const allText = [title, description, detailText].join(' ').trim();
+  if (!allText && !email) {
+    return { ok: false, error: '至少写一句话，其他字段都可以空着' };
+  }
+
+  // 与正式需求单共用同一份肿瘤/免疫词面快筛，避免专栏成为绕过合规校验的旁路。
+  const bl = validateProjectFields({ disease: '', interest: allText, tissue: '', clue: '' });
+  if (bl.hit) {
+    return {
+      ok: false,
+      error: '需求内容命中平台排除范围（非肿瘤、非免疫专精）',
+      field: bl.field,
+      matched: bl.matches,
+    };
+  }
+
+  const ticketId = 'FR-' + new Date().toISOString().slice(0, 10).replace(/-/g, '')
+    + '-' + crypto.randomBytes(4).toString('hex');
+  const record = {
+    ticket_id: ticketId,
+    kind: 'feature_request',
+    schema_version: 1,
+    created_at: new Date().toISOString(),
+    category,
+    title,
+    description,
+    details,
+    contact: { email },
+    status: 'pending',
+  };
+
+  fs.mkdirSync(FEATURE_DIR, { recursive: true });
+  const file = path.join(FEATURE_DIR, `${ticketId}.json`);
+  fs.writeFileSync(file, `${JSON.stringify(record, null, 2)}\n`, 'utf8');
+  return { ok: true, ticketId, file };
+}
+
+/**
+ * 用户需求专栏提交：限速、解析、落盘。
+ * 每 IP 10 分钟最多 10 条，防止匿名脚本把想法收件箱刷满。
+ */
+function handleFeatureRequest(req, res) {
+  const ip = String((req.socket && req.socket.remoteAddress) || 'unknown');
+  const now = Date.now();
+  const hits = (FEATURE_LIMITS.get(ip) || []).filter((time) => now - time < 10 * 60 * 1000);
+  if (hits.length >= 10) {
+    return sendJson(res, 429, { ok: false, error: '提交过于频繁，请 10 分钟后再试' });
+  }
+  hits.push(now);
+  FEATURE_LIMITS.set(ip, hits);
+
+  const chunks = [];
+  let size = 0;
+  let tooLarge = false;
+  req.on('data', (chunk) => {
+    size += chunk.length;
+    if (size > MAX_BODY) { tooLarge = true; req.destroy(); return; }
+    chunks.push(chunk);
+  });
+  req.on('end', () => {
+    if (tooLarge) return sendJson(res, 413, { ok: false, error: '请求体过大' });
+    let payload;
+    try {
+      payload = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
+    } catch (cause) {
+      return sendJson(res, 400, { ok: false, error: `请求体不是合法 JSON: ${cause.message}` });
+    }
+    const result = saveFeatureRequest(payload);
+    if (!result.ok) return sendJson(res, 422, result);
+    return sendJson(res, 200, {
+      ok: true,
+      ticket_id: result.ticketId,
+      saved_as: path.basename(result.file),
+    });
+  });
 }
 
 /**
@@ -1709,6 +1837,7 @@ const server = http.createServer((req, res) => {
   const SURVEY_PAGES = {
     '/survey_request.html': 'survey_request.html',
     '/survey_result.html': 'survey_result.html',
+    '/feature_request.html': 'feature_request.html',
   };
   if (SURVEY_PAGES[url.pathname]) {
     const file = fileURLToPath(new URL(`./${SURVEY_PAGES[url.pathname]}`, import.meta.url));
@@ -1754,6 +1883,7 @@ const server = http.createServer((req, res) => {
   const PROTECTED_API = url.pathname === '/api/submit'
     || url.pathname === '/api/datafiles'
     || url.pathname === '/api/references'
+    || url.pathname === '/api/feature-request'
     || url.pathname === '/api/survey/request'
     || url.pathname === '/api/survey/select';
   if (PROTECTED_API) {
@@ -1784,6 +1914,10 @@ const server = http.createServer((req, res) => {
 
   if (url.pathname === '/api/references' && req.method === 'POST') {
     return handleReferenceUpload(req, res, url);
+  }
+
+  if (url.pathname === '/api/feature-request' && req.method === 'POST') {
+    return handleFeatureRequest(req, res);
   }
 
   // Sync 编排面接口：只接受独立 SYNC_TOKEN，客户登录 token 不得触发下载或结算。

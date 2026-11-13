@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0d9488">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AC%3C/text%3E%3C/svg%3E">
+<meta name="description" content="用户需求专栏：提交生信分析相关的功能、出图、报告与体验想法">
+<title>用户需求专栏 · 提交想法</title>
+<style>
+:root {
+  --brand: #0d9488;
+  --brand-dark: #0f766e;
+  --brand-soft: #ccfbf1;
+  --bg: #f6f8fb;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --text-faint: #94a3b8;
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --success: #059669;
+  --success-soft: #ecfdf5;
+  --warn: #b45309;
+  --warn-soft: #fffbeb;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, .06);
+  --shadow: 0 1px 3px rgba(15, 23, 42, .08), 0 1px 2px rgba(15, 23, 42, .04);
+  color-scheme: light;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: 64px;
+}
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 8px;
+  z-index: 100;
+  background: var(--brand);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.skip-link:focus { left: 8px; }
+:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; border-radius: 6px; }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.site-header {
+  background: linear-gradient(135deg, #0f766e, #0d9488 55%, #14b8a6);
+  color: #fff;
+  padding: 30px 24px 28px;
+}
+.header-inner { max-width: 720px; margin: 0 auto; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-mark {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, .18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.brand h1 { font-size: 21px; font-weight: 700; letter-spacing: .2px; text-wrap: balance; }
+.brand p { font-size: 13px; opacity: .9; margin-top: 2px; }
+.header-note {
+  margin-top: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, .14);
+  border: 1px solid rgba(255, 255, 255, .22);
+  padding: 7px 13px;
+  border-radius: 999px;
+  font-size: 12.5px;
+}
+.header-note svg { width: 15px; height: 15px; }
+
+#token-gate {
+  display: none;
+  max-width: 720px;
+  margin: 14px auto 0;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+#token-gate .token-title { font-size: 13px; font-weight: 600; }
+#token-gate .token-hint { display: block; font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+#token-gate input {
+  display: block;
+  margin-top: 8px;
+  width: 100%;
+  max-width: 360px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+main { max-width: 720px; margin: 0 auto; padding: 24px 20px 0; }
+
+.guide-card {
+  background: linear-gradient(180deg, #f0fdfa 0%, #ffffff 100%);
+  border: 1px solid #99f6e4;
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  margin-bottom: 26px;
+  box-shadow: var(--shadow-sm);
+}
+.guide-card h2 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--brand-dark);
+  margin-bottom: 10px;
+}
+.guide-steps {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.guide-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.guide-steps .step-num {
+  width: 21px;
+  height: 21px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  background: var(--brand);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 560px) {
+  .guide-steps { grid-template-columns: 1fr; gap: 9px; }
+}
+
+.form-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow-sm);
+  scroll-margin-top: 16px;
+}
+.section-head { margin-bottom: 16px; }
+.section-head .section-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .6px;
+  color: var(--brand-dark);
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.section-head .section-kicker .badge {
+  width: 19px;
+  height: 19px;
+  border-radius: 6px;
+  background: var(--brand-soft);
+  color: var(--brand-dark);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.section-head h2 { font-size: 18px; font-weight: 700; letter-spacing: -.1px; text-wrap: balance; }
+.section-head p { color: var(--text-muted); font-size: 13.5px; margin-top: 4px; }
+
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+@media (max-width: 600px) {
+  .cat-grid { grid-template-columns: 1fr; }
+}
+.cat-card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 13px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
+}
+@media (hover: hover) {
+  .cat-card:hover { border-color: #5eead4; background: #f0fdfa; }
+}
+.cat-card:focus-within { outline: 3px solid var(--brand); outline-offset: 2px; }
+.cat-card.is-selected {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  box-shadow: 0 0 0 1px var(--brand) inset;
+}
+.cat-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--brand-dark);
+}
+.cat-icon svg { width: 17px; height: 17px; }
+.cat-card.is-selected .cat-icon { border-color: #99f6e4; background: #fff; }
+.cat-body { min-width: 0; }
+.cat-name { display: block; font-size: 13.5px; font-weight: 700; }
+.cat-desc { display: block; font-size: 12px; color: var(--text-muted); margin-top: 2px; line-height: 1.45; }
+.cat-check {
+  margin-inline-start: auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border-strong);
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  margin-top: 2px;
+}
+.cat-check svg { width: 11px; height: 11px; opacity: 0; }
+.cat-card.is-selected .cat-check { background: var(--brand); border-color: var(--brand); }
+.cat-card.is-selected .cat-check svg { opacity: 1; }
+
+.field { margin-bottom: 16px; }
+.field:last-child { margin-bottom: 0; }
+.field > label, .field > .field-label {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.field .optional {
+  font-weight: 400;
+  color: var(--text-faint);
+  font-size: 12px;
+  margin-inline-start: 4px;
+}
+.hint { color: var(--text-muted); font-size: 12.5px; margin-top: 6px; line-height: 1.5; }
+.field-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 6px;
+}
+.field-meta .count { color: var(--text-faint); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+input[type="text"], input[type="email"], input[type="url"], input[type="number"], select, textarea {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 16px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--radius);
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+@media (min-width: 640px) {
+  input[type="text"], input[type="email"], input[type="url"], input[type="number"], select, textarea { font-size: 14px; }
+}
+input:hover, select:hover, textarea:hover { border-color: #94a3b8; }
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, .15);
+}
+textarea { resize: vertical; min-height: 96px; line-height: 1.55; }
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 34px;
+}
+input[aria-invalid="true"], textarea[aria-invalid="true"], select[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+.chip {
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--brand-dark);
+  background: var(--surface);
+  border: 1px solid #99f6e4;
+  border-radius: 999px;
+  padding: 6px 11px;
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease;
+}
+@media (hover: hover) {
+  .chip:hover { background: var(--brand-soft); border-color: var(--brand); }
+}
+.chip:active { transform: translateY(1px); }
+
+.check-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.check-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 11px;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease;
+}
+.check-pill input { width: 15px; height: 15px; accent-color: var(--brand); margin: 0; }
+.check-pill:has(input:checked) { border-color: var(--brand); background: var(--brand-soft); }
+
+.contact-disclosure {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  padding: 13px 15px;
+}
+.contact-disclosure summary {
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.contact-disclosure summary::-webkit-details-marker { display: none; }
+.contact-disclosure summary::before {
+  content: "+";
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: var(--brand-soft);
+  color: var(--brand-dark);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.contact-disclosure[open] summary::before { content: "−"; }
+.contact-disclosure[open] summary { color: var(--text); margin-bottom: 12px; }
+
+.submit-area { margin-top: 4px; }
+.banner {
+  display: none;
+  padding: 12px 15px;
+  border-radius: var(--radius);
+  font-size: 13.5px;
+  margin-bottom: 14px;
+  align-items: flex-start;
+  gap: 9px;
+  line-height: 1.5;
+}
+.banner.is-shown { display: flex; }
+.banner.ok { background: var(--success-soft); border: 1px solid #a7f3d0; color: #065f46; }
+.banner.err { background: var(--danger-soft); border: 1px solid #fecaca; color: #991b1b; }
+.banner.warn { background: var(--warn-soft); border: 1px solid #fde68a; color: var(--warn); }
+.banner svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 1px; }
+
+.btn {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: var(--radius);
+  padding: 12px 22px;
+  border: 1.5px solid transparent;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .1s ease;
+}
+.btn:active { transform: scale(.96); }
+.btn-primary { background: var(--brand); color: #fff; box-shadow: var(--shadow-sm); }
+.btn-primary:hover:not(:disabled) { background: var(--brand-dark); }
+.btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+.btn-ghost { background: var(--surface); color: var(--text); border-color: var(--border-strong); }
+.btn-ghost:hover { background: var(--surface-2); border-color: #94a3b8; }
+.btn-block { width: 100%; }
+.submit-hint { color: var(--text-faint); font-size: 12.5px; text-align: center; margin-top: 10px; }
+
+.result-card {
+  background: var(--surface);
+  border: 1px solid #a7f3d0;
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow);
+  margin-top: 18px;
+}
+.result-card .result-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--success-soft);
+  color: var(--success);
+  display: grid;
+  place-items: center;
+  margin-bottom: 12px;
+}
+.result-card .result-icon svg { width: 22px; height: 22px; }
+.result-card h2 { font-size: 19px; font-weight: 700; margin-bottom: 5px; }
+.result-card p { color: var(--text-muted); font-size: 14px; }
+.ticket-box {
+  margin-top: 16px;
+  padding: 13px 15px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px dashed var(--border-strong);
+}
+.ticket-box .ticket-label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+.ticket-box .ticket-id {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: .4px;
+  overflow-wrap: anywhere;
+}
+.result-actions { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+
+.site-footer {
+  max-width: 720px;
+  margin: 34px auto 0;
+  padding: 20px 20px;
+  color: var(--text-faint);
+  font-size: 12.5px;
+  border-top: 1px solid var(--border);
+}
+.site-footer a { color: var(--brand-dark); }
+
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">跳到主内容</a>
+
+<header class="site-header">
+  <div class="header-inner">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+        </svg>
+      </div>
+      <div>
+        <h1>用户需求专栏</h1>
+        <p>想到什么写什么，能实现就是双赢</p>
+      </div>
+    </div>
+    <div class="header-note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+      </svg>
+      <span>不是正式分析单，写一句就能提交，其他空着</span>
+    </div>
+  </div>
+</header>
+
+<div id="token-gate" role="region" aria-label="访问令牌">
+  <span class="token-title">访问令牌</span>
+  <span class="token-hint" id="token-hint-text">本实例已启用访问令牌，请输入对接人提供的 token</span>
+  <input id="f-token" type="password" autocomplete="off" placeholder="access token" aria-describedby="token-hint-text" />
+</div>
+
+<main id="main-content">
+
+  <section class="guide-card" aria-labelledby="guide-title">
+    <h2 id="guide-title">怎么用这个专栏</h2>
+    <ol class="guide-steps">
+      <li><span class="step-num" aria-hidden="true">1</span><span>选一个最接近的方向，不用纠结分类。</span></li>
+      <li><span class="step-num" aria-hidden="true">2</span><span>用一句话说清你想要什么，下面的提示会跟着变。</span></li>
+      <li><span class="step-num" aria-hidden="true">3</span><span>其他内容想到再补，空着也能提交。</span></li>
+    </ol>
+  </section>
+
+  <form id="request-form" novalidate>
+
+    <section class="form-section" id="category-section" aria-labelledby="cat-title">
+      <div class="section-head">
+        <div class="section-kicker"><span class="badge" aria-hidden="true">1</span>选方向</div>
+        <h2 id="cat-title">这更接近哪一类</h2>
+        <p>选一个最接近的，下面的填写提示会跟着变。不确定就选「其他想法」。</p>
+      </div>
+
+      <div class="cat-grid" role="radiogroup" aria-labelledby="cat-title">
+
+        <label class="cat-card" data-cat="function">
+          <input class="sr-only" type="radio" name="category" value="function">
+          <span class="cat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M19.439 7.85c-.049.322.059.648.289.878l1.568 1.568c.47.47.706 1.087.706 1.704s-.235 1.233-.706 1.704l-1.611 1.611a.98.98 0 0 1-.837.276c-.47-.07-.802-.48-.968-.925a2.501 2.501 0 1 0-3.214 3.214c.446.166.855.497.925.968a.979.979 0 0 1-.276.837l-1.61 1.61a2.404 2.404 0 0 1-1.705.707 2.402 2.402 0 0 1-1.704-.706l-1.568-1.568a1.026 1.026 0 0 0-.877-.29c-.493.074-.84.504-1.02.968a2.5 2.5 0 1 1-3.237-3.237c.464-.18.894-.527.967-1.02a1.026 1.026 0 0 0-.289-.877l-1.568-1.568A2.402 2.402 0 0 1 1.998 12c0-.617.236-1.234.706-1.704L4.23 8.77c.24-.24.581-.353.917-.303.515.077.877.528 1.073 1.01a2.5 2.5 0 1 0 3.259-3.259c-.482-.196-.933-.558-1.01-1.073-.05-.336.062-.676.303-.917l1.525-1.525A2.402 2.402 0 0 1 12 1.998c.617 0 1.234.236 1.704.706l1.568 1.568c.23.23.556.338.877.29.493-.074.84-.504 1.02-.968a2.5 2.5 0 1 1 3.237 3.237c-.464.18-.894.527-.967 1.02Z"/></svg></span>
+          <span class="cat-body">
+            <span class="cat-name">功能需求</span>
+            <span class="cat-desc">加分析模块、换算法、加验证线</span>
+          </span>
+          <span class="cat-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+        </label>
+
+        <label class="cat-card" data-cat="figure_new">
+          <input class="sr-only" type="radio" name="category" value="figure_new">
+          <span class="cat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></span>
+          <span class="cat-body">
+            <span class="cat-name">出图需求</span>
+            <span class="cat-desc">新图类型、组合图、特定图件</span>
+          </span>
+          <span class="cat-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+        </label>
+
+        <label class="cat-card" data-cat="figure_style">
+          <input class="sr-only" type="radio" name="category" value="figure_style">
+          <span class="cat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg></span>
+          <span class="cat-body">
+            <span class="cat-name">出图美化</span>
+            <span class="cat-desc">配色、图例、字号、留白、标注</span>
+          </span>
+          <span class="cat-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+        </label>
+
+        <label class="cat-card" data-cat="report_content">
+          <input class="sr-only" type="radio" name="category" value="report_content">
+          <span class="cat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>
+          <span class="cat-body">
+            <span class="cat-name">报告内容</span>
+            <span class="cat-desc">加章节、加解读、加方法学说明</span>
+          </span>
+          <span class="cat-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+        </label>
+
+        <label class="cat-card" data-cat="data_source">
+          <input class="sr-only" type="radio" name="category" value="data_source">
+          <span class="cat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg></span>
+          <span class="cat-body">
+            <span class="cat-name">数据接入</span>
+            <span class="cat-desc">GEO、EBI、自有文件、新格式</span>
+          </span>
+          <span class="cat-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+        </label>
+
+        <label class="cat-card" data-cat="report_style">
+          <input class="sr-only" type="radio" name="category" value="report_style">
+          <span class="cat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></span>
+          <span class="cat-body">
+            <span class="cat-name">报告美化</span>
+            <span class="cat-desc">排版、配色、图表嵌入、页眉页脚</span>
+          </span>
+          <span class="cat-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+        </label>
+
+        <label class="cat-card" data-cat="portal_ux">
+          <input class="sr-only" type="radio" name="category" value="portal_ux">
+          <span class="cat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>
+          <span class="cat-body">
+            <span class="cat-name">门户体验</span>
+            <span class="cat-desc">提交流程、页面布局、进度可见性</span>
+          </span>
+          <span class="cat-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+        </label>
+
+        <label class="cat-card" data-cat="delivery">
+          <input class="sr-only" type="radio" name="category" value="delivery">
+          <span class="cat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></span>
+          <span class="cat-body">
+            <span class="cat-name">交付形态</span>
+            <span class="cat-desc">打包方式、文件格式、在线链接</span>
+          </span>
+          <span class="cat-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+        </label>
+
+        <label class="cat-card" data-cat="performance">
+          <input class="sr-only" type="radio" name="category" value="performance">
+          <span class="cat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg></span>
+          <span class="cat-body">
+            <span class="cat-name">性能与速度</span>
+            <span class="cat-desc">跑得更快、省内存、断点续跑</span>
+          </span>
+          <span class="cat-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+        </label>
+
+        <label class="cat-card" data-cat="other">
+          <input class="sr-only" type="radio" name="category" value="other">
+          <span class="cat-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span>
+          <span class="cat-body">
+            <span class="cat-name">其他想法</span>
+            <span class="cat-desc">不在上面九类里的任何想法</span>
+          </span>
+          <span class="cat-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+        </label>
+
+      </div>
+    </section>
+
+    <section class="form-section" id="content-section" aria-labelledby="content-title">
+      <div class="section-head">
+        <div class="section-kicker"><span class="badge" aria-hidden="true">2</span>说想法</div>
+        <h2 id="content-title">说说你的想法</h2>
+        <p id="content-lead">一句话也行，细节想到再补。</p>
+      </div>
+
+      <div class="field">
+        <label for="f-title">需求标题<span class="optional">可以空着</span></label>
+        <input type="text" id="f-title" name="title" maxlength="120" autocomplete="off" placeholder="例如：希望火山图能标注前 20 个显著基因">
+      </div>
+
+      <div class="field">
+        <label for="f-desc">详细描述<span class="optional">可以空着</span></label>
+        <textarea id="f-desc" name="description" rows="5" maxlength="8000" placeholder="为什么想要、现在哪里不方便、希望做成什么样"></textarea>
+        <div class="field-meta">
+          <span class="hint">可以只写一句，提交后再慢慢确认。</span>
+          <span class="count" id="desc-count">0 / 8000</span>
+        </div>
+        <div class="chips" id="example-chips" aria-label="描述灵感"></div>
+      </div>
+    </section>
+
+    <section class="form-section" id="detail-section" aria-labelledby="detail-title">
+      <div class="section-head">
+        <div class="section-kicker"><span class="badge" aria-hidden="true">3</span>补细节</div>
+        <h2 id="detail-title" tabindex="-1">补充一点细节</h2>
+        <p id="detail-hint">先在上方选一个方向，这里会显示对应的补充问题。所有补充项都可以空着。</p>
+      </div>
+
+      <p class="hint" id="detail-empty">选完方向后，这里会出现几条针对性的提示，想到多少写多少。</p>
+
+      <div class="cat-fields" data-cat="function" hidden>
+        <div class="field">
+          <label for="fn-input">期望输入<span class="optional">可以空着</span></label>
+          <textarea id="fn-input" rows="2" maxlength="2000" placeholder="例如：已经注释好的单细胞 h5ad，或者一组差异基因表"></textarea>
+        </div>
+        <div class="field">
+          <label for="fn-output">期望输出<span class="optional">可以空着</span></label>
+          <textarea id="fn-output" rows="2" maxlength="2000" placeholder="例如：一张通路交叉图，加一份可下载的 TSV"></textarea>
+        </div>
+        <div class="field">
+          <label for="fn-priority">优先级<span class="optional">可以空着</span></label>
+          <select id="fn-priority">
+            <option value="">暂不选</option>
+            <option value="normal">一般，想到了就提</option>
+            <option value="high">比较急，影响当前项目</option>
+            <option value="low">不急，长期想要</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="cat-fields" data-cat="figure_new" hidden>
+        <div class="field">
+          <label for="fg-type">图类型<span class="optional">可以空着</span></label>
+          <select id="fg-type">
+            <option value="">暂不选</option>
+            <option value="volcano">火山图</option>
+            <option value="heatmap">热图</option>
+            <option value="pca">PCA</option>
+            <option value="umap">UMAP / tSNE</option>
+            <option value="enrichment">富集气泡图 / 条形图</option>
+            <option value="spatial">空间图</option>
+            <option value="composite">组合面板图</option>
+            <option value="other">其他</option>
+          </select>
+        </div>
+        <div class="field">
+          <span class="field-label">单图还是组合图<span class="optional">可以空着</span></span>
+          <div class="check-row">
+            <label class="check-pill"><input type="radio" name="fg-mode" value="single">单图</label>
+            <label class="check-pill"><input type="radio" name="fg-mode" value="composite">组合图</label>
+          </div>
+        </div>
+        <div class="field">
+          <label for="fg-format">期望格式<span class="optional">可以空着</span></label>
+          <select id="fg-format">
+            <option value="">暂不选</option>
+            <option value="png">PNG</option>
+            <option value="pdf">PDF</option>
+            <option value="svg">SVG</option>
+            <option value="other">其他</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="cat-fields" data-cat="figure_style" hidden>
+        <div class="field">
+          <label for="fs-target">涉及图件<span class="optional">可以空着</span></label>
+          <input type="text" id="fs-target" maxlength="200" placeholder="例如：火山图、热图、某个项目的图 3">
+        </div>
+        <div class="field">
+          <span class="field-label">想改什么<span class="optional">可以空着</span></span>
+          <div class="check-row">
+            <label class="check-pill"><input type="checkbox" name="fs-aspect" value="color">配色</label>
+            <label class="check-pill"><input type="checkbox" name="fs-aspect" value="legend">图例</label>
+            <label class="check-pill"><input type="checkbox" name="fs-aspect" value="font">字号</label>
+            <label class="check-pill"><input type="checkbox" name="fs-aspect" value="label">标注</label>
+            <label class="check-pill"><input type="checkbox" name="fs-aspect" value="spacing">留白</label>
+            <label class="check-pill"><input type="checkbox" name="fs-aspect" value="title">标题</label>
+            <label class="check-pill"><input type="checkbox" name="fs-aspect" value="other">其他</label>
+          </div>
+        </div>
+        <div class="field">
+          <label for="fs-ref">参考样例链接<span class="optional">可以空着</span></label>
+          <input type="url" id="fs-ref" maxlength="500" placeholder="https://...">
+        </div>
+      </div>
+
+      <div class="cat-fields" data-cat="report_content" hidden>
+        <div class="field">
+          <label for="rc-section">想加的章节<span class="optional">可以空着</span></label>
+          <select id="rc-section">
+            <option value="">暂不选</option>
+            <option value="methods">方法学</option>
+            <option value="qc">QC 指标解读</option>
+            <option value="results">结果解读</option>
+            <option value="references">参考文献列表</option>
+            <option value="limitations">局限性说明</option>
+            <option value="other">其他</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="rc-content">期望内容<span class="optional">可以空着</span></label>
+          <textarea id="rc-content" rows="3" maxlength="2000" placeholder="例如：希望每个图后面都有一段结果解读，说明这张图说明了什么"></textarea>
+        </div>
+      </div>
+
+      <div class="cat-fields" data-cat="data_source" hidden>
+        <div class="field">
+          <label for="ds-source">数据来源<span class="optional">可以空着</span></label>
+          <select id="ds-source">
+            <option value="">暂不选</option>
+            <option value="geo">GEO</option>
+            <option value="arrayexpress">EBI ArrayExpress</option>
+            <option value="self">自有文件</option>
+            <option value="other">其他</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="ds-format">文件格式<span class="optional">可以空着</span></label>
+          <input type="text" id="ds-format" maxlength="200" placeholder="例如：h5ad、mtx、csv、fastq">
+        </div>
+        <div class="field">
+          <label for="ds-scale">样本规模<span class="optional">可以空着</span></label>
+          <input type="number" id="ds-scale" min="0" max="1000000" placeholder="例如：24">
+        </div>
+      </div>
+
+      <div class="cat-fields" data-cat="report_style" hidden>
+        <div class="field">
+          <span class="field-label">想改什么<span class="optional">可以空着</span></span>
+          <div class="check-row">
+            <label class="check-pill"><input type="checkbox" name="rs-aspect" value="layout">排版</label>
+            <label class="check-pill"><input type="checkbox" name="rs-aspect" value="color">配色</label>
+            <label class="check-pill"><input type="checkbox" name="rs-aspect" value="embed">图表嵌入</label>
+            <label class="check-pill"><input type="checkbox" name="rs-aspect" value="header">页眉页脚</label>
+            <label class="check-pill"><input type="checkbox" name="rs-aspect" value="other">其他</label>
+          </div>
+        </div>
+        <div class="field">
+          <label for="rs-ref">参考样例链接<span class="optional">可以空着</span></label>
+          <input type="url" id="rs-ref" maxlength="500" placeholder="https://...">
+        </div>
+      </div>
+
+      <div class="cat-fields" data-cat="portal_ux" hidden>
+        <div class="field">
+          <label for="ux-scene">使用场景<span class="optional">可以空着</span></label>
+          <textarea id="ux-scene" rows="2" maxlength="2000" placeholder="例如：经常在手机上填需求，填到一半切出去就没了"></textarea>
+        </div>
+        <div class="field">
+          <label for="ux-pain">现在的痛点<span class="optional">可以空着</span></label>
+          <textarea id="ux-pain" rows="2" maxlength="2000" placeholder="例如：不知道提交后到哪一步了"></textarea>
+        </div>
+        <div class="field">
+          <label for="ux-want">期望改进<span class="optional">可以空着</span></label>
+          <textarea id="ux-want" rows="2" maxlength="2000" placeholder="例如：希望提交后能看到进度条和预计时间"></textarea>
+        </div>
+      </div>
+
+      <div class="cat-fields" data-cat="delivery" hidden>
+        <div class="field">
+          <label for="dl-form">交付形式<span class="optional">可以空着</span></label>
+          <select id="dl-form">
+            <option value="">暂不选</option>
+            <option value="zip">压缩包</option>
+            <option value="link">在线链接</option>
+            <option value="email">邮件</option>
+            <option value="other">其他</option>
+          </select>
+        </div>
+        <div class="field">
+          <span class="field-label">必需文件<span class="optional">可以空着</span></span>
+          <div class="check-row">
+            <label class="check-pill"><input type="checkbox" name="dl-file" value="code">可复现代码</label>
+            <label class="check-pill"><input type="checkbox" name="dl-file" value="figures">图表</label>
+            <label class="check-pill"><input type="checkbox" name="dl-file" value="report">报告</label>
+            <label class="check-pill"><input type="checkbox" name="dl-file" value="results">原始结果</label>
+            <label class="check-pill"><input type="checkbox" name="dl-file" value="other">其他</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="cat-fields" data-cat="performance" hidden>
+        <div class="field">
+          <label for="pf-stage">哪个环节慢<span class="optional">可以空着</span></label>
+          <input type="text" id="pf-stage" maxlength="200" placeholder="例如：单细胞聚类、空间解卷积、批量出图">
+        </div>
+        <div class="field">
+          <label for="pf-now">当前耗时<span class="optional">可以空着</span></label>
+          <input type="text" id="pf-now" maxlength="100" placeholder="例如：一次要 6 小时">
+        </div>
+        <div class="field">
+          <label for="pf-want">期望耗时<span class="optional">可以空着</span></label>
+          <input type="text" id="pf-want" maxlength="100" placeholder="例如：希望压到 2 小时以内">
+        </div>
+      </div>
+
+      <div class="cat-fields" data-cat="other" hidden>
+        <div class="field">
+          <label for="ot-detail">自由描述<span class="optional">可以空着</span></label>
+          <textarea id="ot-detail" rows="4" maxlength="4000" placeholder="想到什么写什么，不用管格式"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="form-section" aria-labelledby="contact-title">
+      <div class="section-head">
+        <div class="section-kicker"><span class="badge" aria-hidden="true">4</span>留个联系方式</div>
+        <h2 id="contact-title">想收到进展通知</h2>
+        <p>不填也能提交，填了实现到关键节点时好找你确认。</p>
+      </div>
+      <details class="contact-disclosure">
+        <summary>展开填写联系方式（可选）</summary>
+        <div class="field">
+          <label for="f-email">邮箱<span class="optional">可以空着</span></label>
+          <input type="email" id="f-email" maxlength="200" autocomplete="email" placeholder="name@example.com">
+        </div>
+      </details>
+    </section>
+
+    <div class="submit-area">
+      <div class="banner" id="form-banner" role="status" aria-live="polite"></div>
+      <button type="submit" class="btn btn-primary btn-block" id="btn-submit">提交需求</button>
+      <p class="submit-hint">提交后你会拿到一个编号，方便后续对账。写一句就能提交，其他都能空着。</p>
+    </div>
+
+  </form>
+
+  <section class="result-card" id="result-card" hidden aria-labelledby="result-title">
+    <div class="result-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h2 id="result-title">需求已记录</h2>
+    <p>已进入评估队列。可行的话会排入开发计划，实现到关键节点时会按你留下的联系方式找你确认。</p>
+    <div class="ticket-box">
+      <div class="ticket-label">需求编号</div>
+      <div class="ticket-id" id="ticket-id"></div>
+    </div>
+    <div class="result-actions">
+      <button type="button" class="btn btn-ghost" id="btn-again">再提一条</button>
+      <a class="btn btn-ghost" href="/index.html">返回需求提交</a>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <p>本专栏只收集想法，不替代正式分析需求单。正式分析请返回 <a href="/index.html">提交生信分析需求</a>。</p>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  var CATEGORY_HINTS = {
+    function: '这类需求通常和「加一个分析能力」有关。说说你希望输入什么、输出什么，想到多少写多少。',
+    figure_new: '这类需求通常和「要一张现在没有的图」有关。图类型、单图还是组合图，选一个最接近的就行。',
+    figure_style: '这类需求通常和「图已经能出，但不好看」有关。配色、图例、字号、留白，勾一个最在意的就行。',
+    report_content: '这类需求通常和「报告里少了一段话」有关。想加方法学、QC 解读还是结果解读，选一个就行。',
+    data_source: '这类需求通常和「数据进不来」有关。数据从哪来、什么格式、大概多少样本，写一句就行。',
+    report_style: '这类需求通常和「报告能看，但排版不顺手」有关。排版、配色、图表嵌入，勾一个最想改的就行。',
+    portal_ux: '这类需求通常和「提交流程不顺手」有关。说说你在什么场景下用、哪里最费劲，写一句就行。',
+    delivery: '这类需求通常和「交付包拿到手不好用」有关。想要压缩包、在线链接还是邮件，选一个就行。',
+    performance: '这类需求通常和「跑得太慢或太吃内存」有关。哪个环节慢、现在多久、希望多久，写一句就行。',
+    other: '没对上任何一类也没关系。想到什么写什么，不用管格式。'
+  };
+
+  var EXAMPLES = {
+    __default: ['希望出一个能直接写进论文的图', '希望报告能自动生成解读', '希望提交流程更顺手'],
+    function: ['希望增加通路交叉分析', '希望支持批量外部验证', '希望能自定义分析参数'],
+    figure_new: ['希望出一张火山图', '希望做组合面板图', '希望支持 UMAP 分群图'],
+    figure_style: ['图例希望放到右侧', '配色希望改成色盲友好', '字号和留白希望更适合排版'],
+    report_content: ['希望报告增加方法学段落', '希望增加 QC 指标解读', '希望增加参考文献列表'],
+    data_source: ['希望支持 GEO 批量下载', '希望支持 h5ad 上传', '希望支持 ArrayExpress 数据'],
+    report_style: ['希望报告排版更紧凑', '希望图表按章节重新组织', '希望页眉页脚统一品牌'],
+    portal_ux: ['希望提交后能看到进度', '希望需求单能保存草稿', '希望移动端填写更顺手'],
+    delivery: ['希望交付包里带可复现代码', '希望图表单独打包', '希望提供在线结果链接'],
+    performance: ['希望单细胞流程跑得更快', '希望降低内存占用', '希望支持断点续跑'],
+    other: ['我有一个不在上面的想法', '希望能电话沟通', '希望先做个原型看看']
+  };
+
+  var form = document.getElementById('request-form');
+  var banner = document.getElementById('form-banner');
+  var detailSection = document.getElementById('detail-section');
+  var detailHint = document.getElementById('detail-hint');
+  var detailEmpty = document.getElementById('detail-empty');
+  var detailTitle = document.getElementById('detail-title');
+  var exampleChips = document.getElementById('example-chips');
+  var desc = document.getElementById('f-desc');
+  var descCount = document.getElementById('desc-count');
+  var titleInput = document.getElementById('f-title');
+  var emailInput = document.getElementById('f-email');
+  var btnSubmit = document.getElementById('btn-submit');
+  var resultCard = document.getElementById('result-card');
+  var ticketId = document.getElementById('ticket-id');
+  var currentCategory = '';
+  var authRequired = false;
+  var AUTH_STORAGE_KEY = 'portal_token';
+
+  function authHeaders(extra) {
+    var headers = extra ? Object.assign({}, extra) : {};
+    if (!authRequired) return headers;
+    var token = '';
+    try { token = localStorage.getItem(AUTH_STORAGE_KEY) || ''; } catch (error) { token = ''; }
+    if (token) headers.Authorization = 'Bearer ' + token;
+    return headers;
+  }
+
+  function authDeniedHint(status, message) {
+    if (status !== 401) return message;
+    return message + '（本实例已启用访问令牌：请在页面顶部重新输入 token 后重试）';
+  }
+
+  function initAuth() {
+    fetch('/health').then(function (response) { return response.json(); }).then(function (health) {
+      if (!health || !health.auth_required) return;
+      authRequired = true;
+      var gate = document.getElementById('token-gate');
+      gate.style.display = 'block';
+      var input = document.getElementById('f-token');
+      try { input.value = localStorage.getItem(AUTH_STORAGE_KEY) || ''; } catch (error) { input.value = ''; }
+      input.addEventListener('input', function () {
+        try { localStorage.setItem(AUTH_STORAGE_KEY, input.value.trim()); } catch (error) { /* 隐私模式仅本次生效 */ }
+      });
+      if (!input.value) input.focus();
+    }).catch(function () { /* /health 不可达时按未启用处理，提交失败会原样报错 */ });
+  }
+
+  function showBanner(type, text) {
+    banner.className = 'banner is-shown ' + type;
+    banner.textContent = text;
+  }
+
+  function hideBanner() {
+    banner.className = 'banner';
+    banner.textContent = '';
+  }
+
+  function setSelectedCategory(category) {
+    currentCategory = category || '';
+    var cards = document.querySelectorAll('.cat-card');
+    for (var i = 0; i < cards.length; i += 1) {
+      var radio = cards[i].querySelector('input[name="category"]');
+      var selected = radio && radio.value === currentCategory;
+      cards[i].classList.toggle('is-selected', selected);
+      if (radio) radio.checked = selected;
+    }
+
+    if (!currentCategory) {
+      detailEmpty.hidden = false;
+      var idleGroups = document.querySelectorAll('.cat-fields');
+      for (var n = 0; n < idleGroups.length; n += 1) idleGroups[n].hidden = true;
+      renderExamples('');
+      return;
+    }
+
+    detailEmpty.hidden = true;
+    detailHint.textContent = CATEGORY_HINTS[currentCategory] || CATEGORY_HINTS.other;
+
+    var groups = document.querySelectorAll('.cat-fields');
+    for (var j = 0; j < groups.length; j += 1) {
+      groups[j].hidden = groups[j].getAttribute('data-cat') !== currentCategory;
+    }
+
+    renderExamples(currentCategory);
+    detailSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    detailTitle.focus({ preventScroll: true });
+  }
+
+  function renderExamples(category) {
+    exampleChips.innerHTML = '';
+    var items = EXAMPLES[category] || EXAMPLES.__default;
+    for (var i = 0; i < items.length; i += 1) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'chip';
+      button.textContent = items[i];
+      button.addEventListener('click', function (event) {
+        var text = event.currentTarget.textContent;
+        var current = desc.value.trim();
+        desc.value = current ? current + '；' + text : text;
+        updateDescCount();
+        desc.focus();
+      });
+      exampleChips.appendChild(button);
+    }
+  }
+
+  function updateDescCount() {
+    descCount.textContent = desc.value.length + ' / 8000';
+  }
+
+  function collectDetails() {
+    var details = {};
+    var groups = document.querySelectorAll('.cat-fields');
+    for (var i = 0; i < groups.length; i += 1) {
+      if (groups[i].getAttribute('data-cat') !== currentCategory) continue;
+      var inputs = groups[i].querySelectorAll('input, select, textarea');
+      for (var j = 0; j < inputs.length; j += 1) {
+        var el = inputs[j];
+        if (!el.name && !el.id) continue;
+        var key = el.name || el.id;
+        if (el.type === 'checkbox') {
+          if (!details[key]) details[key] = [];
+          if (el.checked) details[key].push(el.value);
+        } else if (el.type === 'radio') {
+          if (el.checked) details[key] = el.value;
+        } else if (el.value && el.value.trim()) {
+          details[key] = el.value.trim();
+        }
+      }
+    }
+    return details;
+  }
+
+  function isEmptyPayload(payload) {
+    if (payload.title) return false;
+    if (payload.description) return false;
+    var details = payload.details || {};
+    var keys = Object.keys(details);
+    for (var i = 0; i < keys.length; i += 1) {
+      var value = details[keys[i]];
+      if (Array.isArray(value) ? value.length : String(value || '').trim()) return false;
+    }
+    return !payload.contact || !payload.contact.email;
+  }
+
+  function setBusy(busy) {
+    btnSubmit.disabled = busy;
+    btnSubmit.textContent = busy ? '提交中…' : '提交需求';
+  }
+
+  form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    hideBanner();
+
+    var payload = {
+      category: currentCategory || 'other',
+      title: titleInput.value.trim(),
+      description: desc.value.trim(),
+      details: collectDetails(),
+      contact: { email: emailInput.value.trim() }
+    };
+
+    if (isEmptyPayload(payload)) {
+      showBanner('warn', '写一句话就能提交，其他都可以空着。先填个标题或描述吧。');
+      titleInput.focus();
+      return;
+    }
+
+    setBusy(true);
+    fetch('/api/feature-request', {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(payload)
+    }).then(function (response) {
+      return response.json().then(function (body) {
+        return { status: response.status, body: body };
+      });
+    }).then(function (result) {
+      if (result.status === 200 && result.body && result.body.ok) {
+        ticketId.textContent = result.body.ticket_id || '';
+        form.hidden = true;
+        resultCard.hidden = false;
+        resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+      var message = authDeniedHint(result.status, (result.body && result.body.error) || ('提交失败（HTTP ' + result.status + '）'));
+      showBanner('err', message + '。可以稍后重试。');
+    }).catch(function () {
+      showBanner('err', '网络异常，未能提交。可以稍后重试。');
+    }).then(function () {
+      setBusy(false);
+    });
+  });
+
+  var radios = document.querySelectorAll('input[name="category"]');
+  for (var k = 0; k < radios.length; k += 1) {
+    radios[k].addEventListener('change', function () {
+      setSelectedCategory(this.value);
+    });
+  }
+
+  desc.addEventListener('input', updateDescCount);
+
+  document.getElementById('btn-again').addEventListener('click', function () {
+    window.location.reload();
+  });
+
+  renderExamples('');
+  updateDescCount();
+  initAuth();
+})();
+</script>
+</body>
+</html>

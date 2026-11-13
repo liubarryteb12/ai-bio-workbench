@@ -35,16 +35,19 @@ def _warn(message):
 
 
 def _install_memory_guard():
-    """在任何科学计算包导入前设置进程级 7.5GB 虚拟内存软熔断。"""
+    """在任何科学计算包导入前设置进程级虚拟内存软熔断。
+
+    上限由 BIO_MEM_LIMIT_GB 控制：生产默认 7.5GB，单任务最高 8.0GB。
+    """
     here = os.path.dirname(os.path.abspath(__file__))
     ops_root = os.path.dirname(here)
     if ops_root not in sys.path:
         sys.path.insert(0, ops_root)
     try:
         from bio_memory_guard import enable_memory_guard
-        enable_memory_guard(7.5)
+        enable_memory_guard()
     except Exception as cause:  # noqa: BLE001 - 守卫失败不能阻断解释器启动
-        _warn("7.5GB 内存守卫挂载失败: %s" % cause)
+        _warn("内存守卫挂载失败: %s" % cause)
 
 
 _install_memory_guard()

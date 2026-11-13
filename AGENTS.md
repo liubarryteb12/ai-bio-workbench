@@ -18,6 +18,7 @@
 | 跑 K40 / 部署 / 台账相关 | [docs/isolation.md](docs/isolation.md) 起手，再看 `tools/ops/`、`ledger/` 与具体线文档 |
 | 远程执行 / 设备连不上 | [docs/remote_channel_policy.md](docs/remote_channel_policy.md)（ADB 单通道） |
 | 出图或改图件模板 | [docs/figure_spec.md](docs/figure_spec.md)（v2.3：只出单图，300 DPI，图例外置右侧，图注左下） |
+| 出空间转录组 H&E 叠加图 | [docs/SPATIAL_HE_OVERLAY_PIPELINE.md](docs/SPATIAL_HE_OVERLAY_PIPELINE.md)（原生坐标、零值层、展示层平滑、一条命令重跑） |
 | 自动执行客户项目（发工单出回执） | [docs/WORK_ORDER_ORCHESTRATOR.md](docs/WORK_ORDER_ORCHESTRATOR.md)（工单 schema、fail closed 判据、回执落点） |
 | 增删生信分析模块或改 `tools/bio/workflows.json` | 先跑 `node tools/dev/module_ablation_matrix_gate.mjs`，判据见 [docs/MODULE_ABLATION_MATRIX.md](docs/MODULE_ABLATION_MATRIX.md) |
 | 做课题设计、选题准入判定、筛数据 | [docs/topic_sieve_spec.md](docs/topic_sieve_spec.md)（规则正本：L0 到 L4 与 T1 到 T9） |
@@ -29,7 +30,7 @@
 
 - 分析代码跑在 k40-ubuntu 容器，按 Linux 面写：shebang + `set -euo pipefail`、LF 行尾、
   POSIX 路径、纯英文路径与文件名、脚本 755。`tools/ops/` 下的 PowerShell 只做本地运维，不受此约束。
-- **算力与内存红线（硬件受限运行面硬约束）**：运行环境为 8GB 内存设备（容器配额 7680 MB，纯 ARM CPU）。
+- **算力与内存红线（硬件受限运行面硬约束）**：运行环境为 12GB 物理内存设备（容器默认上限 7.5GB，单任务最高 8.0GB，由 `BIO_MEM_LIMIT_GB` 控制，纯 ARM CPU）。
   空间与单细胞解卷积分析必须保持轻量 `scipy.optimize.nnls`（单步内存 $\le 2.2\text{ GB}$），
   严禁在生产流水线上引入 `cell2location`、`Stereoscope`、`RCTD` 等深度学习或重型迭代回归算法（会直接导致 OOM Exit 137 或高温降频死锁）。
   反卷积精度提升一律走零算力路线：上游提纯输入 Marker（每个亚型严格限 Top 20 特异基因）与输出端 $<0.05$ 极低丰度硬截断。

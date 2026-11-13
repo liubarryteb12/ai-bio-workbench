@@ -28,6 +28,8 @@
 #   保留开关：BIO_PIN_CPUS=4,5,6 可恢复静态绑核（特殊场景用）。
 # 绑核失败保护（坑 #200）：开关启用时若 taskset EINVAL（Android 动态核隔离实测可致），
 #   自动降级为不绑核，不让任务因绑核失败而夭折；降级事件打 stdout 供 SSE 日志流可见。
+# 内存门禁：BIO_MEM_LIMIT_GB 是唯一运行时真源，生产默认 7.5，单任务最高 8.0。
+#   启动前检查 MemAvailable + 有限交换额度是否够覆盖上限与安全余量，不足则 exit 5。
 set -e
 
 RSCRIPT_BIN="${BIOANALYS_RSCRIPT:-/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript}"
@@ -35,6 +37,35 @@ THERMAL_ROOT="${BIO_THERMAL_ROOT:-/sys/class/thermal}"
 THERMAL_HOT_C="${BIO_THERMAL_HOT_C:-90}"
 THERMAL_COOL_C="${BIO_THERMAL_COOL_C:-78}"
 THERMAL_POLL_SECONDS="${BIO_THERMAL_POLL_SECONDS:-30}"
+
+# --- 内存策略（BIO_MEM_LIMIT_GB 单一真源，2026-11-13）---
+# 生产默认 7.5GB，单任务可覆盖到 8.0GB；超过上限按 8.0GB 执行并告警。
+# 余量门禁用 MemAvailable 加最多 2GB 交换额度，扣掉 1GB headroom 后必须覆盖上限。
+MEM_LIMIT_DEFAULT_GB=7.5
+MEM_LIMIT_MAX_GB=8.0
+MEM_LIMIT_RAW="${BIO_MEM_LIMIT_GB:-}"
+MEM_HEADROOM_GB="${BIO_MEM_HEADROOM_GB:-1.0}"
+MEM_SWAP_CREDIT_GB="${BIO_MEM_SWAP_CREDIT_GB:-2.0}"
+MEM_LIMIT_GB=$(awk -v raw="$MEM_LIMIT_RAW" -v def="$MEM_LIMIT_DEFAULT_GB" -v max="$MEM_LIMIT_MAX_GB" 'BEGIN {
+    value = raw + 0
+    if (raw == "" || value <= 0) value = def
+    if (value > max) value = max
+    printf "%.2f", value
+}')
+MEM_HEADROOM_GB=$(awk -v raw="$MEM_HEADROOM_GB" -v def="1.0" 'BEGIN {
+    value = raw + 0
+    if (value <= 0) value = def
+    printf "%.2f", value
+}')
+MEM_SWAP_CREDIT_GB=$(awk -v raw="$MEM_SWAP_CREDIT_GB" -v def="2.0" 'BEGIN {
+    value = raw + 0
+    if (value < 0) value = def
+    printf "%.2f", value
+}')
+export BIO_MEM_LIMIT_GB="$MEM_LIMIT_GB"
+if [ -n "$MEM_LIMIT_RAW" ] && ! awk -v requested="$MEM_LIMIT_RAW" -v effective="$MEM_LIMIT_GB" 'BEGIN { exit !(requested + 0 == effective + 0) }'; then
+    echo "[wrapper] $(date -u +%Y-%m-%dT%H:%M:%SZ) MEM_LIMIT_NORMALIZED request=$MEM_LIMIT_RAW effective=${MEM_LIMIT_GB}GB default=${MEM_LIMIT_DEFAULT_GB}GB max=${MEM_LIMIT_MAX_GB}GB"
+fi
 
 TASK_ID="$1"
 LINE_ID="$2"
@@ -180,6 +211,54 @@ thermal_max_c() {
     printf '%s\n' "$max_value"
 }
 
+meminfo_kb() {
+    awk -v key="$1:" '$1 == key { print $2; exit }' /proc/meminfo 2>/dev/null
+}
+
+memory_headroom_gate() {
+    # 返回 0 表示可启动；返回 1 表示余量不足，调用方统一 exit 5。
+    local stamp avail_kb swap_kb kernel
+    stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+    kernel=$(uname -s 2>/dev/null || echo unknown)
+    case "$kernel" in
+        MINGW*|MSYS*|CYGWIN*)
+            # Git-Bash 宿主测试面没有 Linux 的 MemAvailable，跳过门禁。
+            echo "[wrapper] $stamp MEMORY_HEADROOM_SKIPPED reason=non_linux_host kernel=$kernel"
+            return 0
+            ;;
+    esac
+    if [ ! -r /proc/meminfo ]; then
+        # 真机 Linux 面永远可读；缺文件说明运行面不是目标环境。
+        echo "[wrapper] $stamp MEMORY_HEADROOM_SKIPPED reason=no_proc_meminfo"
+        return 0
+    fi
+    avail_kb=$(meminfo_kb MemAvailable)
+    if [ -z "$avail_kb" ]; then
+        echo "[wrapper] $stamp INSUFFICIENT_MEMORY_HEADROOM reason=MemAvailable_unreadable"
+        return 1
+    fi
+    swap_kb=$(meminfo_kb SwapFree)
+    [ -n "$swap_kb" ] || swap_kb=0
+    awk -v ts="$stamp" \
+        -v avail_kb="$avail_kb" \
+        -v swap_kb="$swap_kb" \
+        -v limit_gb="$MEM_LIMIT_GB" \
+        -v headroom_gb="$MEM_HEADROOM_GB" \
+        -v credit_gb="$MEM_SWAP_CREDIT_GB" '
+        BEGIN {
+            avail_gb = avail_kb / 1048576
+            swap_free_gb = swap_kb / 1048576
+            swap_credit_gb = (swap_free_gb < credit_gb) ? swap_free_gb : credit_gb
+            backing_gb = avail_gb + swap_credit_gb
+            required_gb = limit_gb + headroom_gb
+            ok = (backing_gb + 0.0001 >= required_gb)
+            printf("[wrapper] %s %s available_gb=%.2f swap_free_gb=%.2f swap_credit_gb=%.2f backing_gb=%.2f required_gb=%.2f limit_gb=%.2f headroom_gb=%.2f\n",
+                ts, (ok ? "MEMORY_HEADROOM_OK" : "INSUFFICIENT_MEMORY_HEADROOM"),
+                avail_gb, swap_free_gb, swap_credit_gb, backing_gb, required_gb, limit_gb, headroom_gb)
+            exit (ok ? 0 : 1)
+        }'
+}
+
 INITIAL_TEMP_C=$(thermal_max_c)
 POST_COOLDOWN_TEMP_C="$INITIAL_TEMP_C"
 THERMAL_WAIT_SECONDS=0
@@ -201,6 +280,22 @@ elif awk -v current="$INITIAL_TEMP_C" -v hot="$THERMAL_HOT_C" 'BEGIN { exit !(cu
         echo "[wrapper] $(date -u +%Y-%m-%dT%H:%M:%SZ) THERMAL_COOLDOWN current=${POST_COOLDOWN_TEMP_C}C waited=${THERMAL_WAIT_SECONDS}s"
     done
     echo "[wrapper] $(date -u +%Y-%m-%dT%H:%M:%SZ) THERMAL_READY current=${POST_COOLDOWN_TEMP_C}C waited=${THERMAL_WAIT_SECONDS}s"
+fi
+
+# --- 启动前内存余量门禁（2026-11-13）---
+# 目的：在重型进程起来之前拦住「设备已经没余量」的启动，避免任务跑到一半被 LMK 杀。
+# 判据：MemAvailable + min(SwapFree, 2GB) >= 上限 + 1GB。
+if ! memory_headroom_gate; then
+    echo "[wrapper] $(date -u +%Y-%m-%dT%H:%M:%SZ) TASK_REFUSED reason=insufficient_memory_headroom limit_gb=${MEM_LIMIT_GB} headroom_gb=${MEM_HEADROOM_GB}"
+    exit 5
+fi
+
+# 进程级硬顶：与 Python 守卫同源，先由 shell 设一次，R 与 Python 都继承。
+MEM_LIMIT_KB=$(awk -v gb="$MEM_LIMIT_GB" 'BEGIN { printf "%d", gb * 1048576 }')
+if ulimit -v "$MEM_LIMIT_KB" 2>/dev/null; then
+    echo "[wrapper] $(date -u +%Y-%m-%dT%H:%M:%SZ) RLIMIT_AS_SET limit_gb=${MEM_LIMIT_GB} source=BIO_MEM_LIMIT_GB"
+else
+    echo "[wrapper] $(date -u +%Y-%m-%dT%H:%M:%SZ) RLIMIT_AS_UNAVAILABLE limit_gb=${MEM_LIMIT_GB} fallback=interpreter_guard"
 fi
 
 START_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -296,7 +391,9 @@ cat <<EOF > "$LEDGER_JSON"
   "environment": {
     "language": "$LANG_SPEC",
     "wrapper": "$AFFINITY_DESC nice -n 10 ionice -c 2 -n 4",
-    "memory_limit_gb": 7.5,
+    "memory_limit_gb": $MEM_LIMIT_GB,
+    "memory_headroom_gb": $MEM_HEADROOM_GB,
+    "memory_swap_credit_gb": $MEM_SWAP_CREDIT_GB,
     "thermal": {
       "initial_temp_c": ${INITIAL_TEMP_C:-null},
       "post_cooldown_temp_c": ${POST_COOLDOWN_TEMP_C:-null},

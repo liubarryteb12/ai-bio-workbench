@@ -1,0 +1,28 @@
+{"ts":"2026-11-12T08:27:27.107Z","source":"dsh-bio-plugin","tool":"bio_selftest","status":"ok","summary":"unit test"}
+{"ts":"2026-11-12T08:36:16.651Z","source":"dsh-bio-plugin","tool":"bio_gateway_check","status":"ok","detail":{"callId":"call-allow"}}
+{"ts":"2026-11-12T08:36:17.032Z","source":"dsh-bio-plugin","tool":"bio_gateway_check","status":"ok","detail":{"callId":"call-deny"}}
+{"ts":"2026-11-12T08:36:18.644Z","source":"dsh-bio-plugin","tool":"bio_adb_exec","status":"error","detail":{"callId":"call-adb"}}
+{"ts":"2026-11-12T08:36:28.812Z","source":"dsh-bio-plugin","tool":"bio_gateway_check","status":"ok","detail":{"callId":"call-allow"}}
+{"ts":"2026-11-12T08:36:29.275Z","source":"dsh-bio-plugin","tool":"bio_gateway_check","status":"ok","detail":{"callId":"call-deny"}}
+{"ts":"2026-11-12T08:36:30.981Z","source":"dsh-bio-plugin","tool":"bio_adb_exec","status":"ok","detail":{"callId":"call-adb"}}
+{"ts":"2026-11-12T08:36:55.110Z","source":"dsh-bio-plugin","tool":"bio_selftest","status":"ok","summary":"unit test"}
+{"ts":"2026-11-12T08:37:16.654Z","source":"dsh-bio-plugin","tool":"bio_gateway_check","status":"ok","detail":{"callId":"call-allow"}}
+{"ts":"2026-11-12T08:37:17.055Z","source":"dsh-bio-plugin","tool":"bio_gateway_check","status":"ok","detail":{"callId":"call-deny"}}
+{"ts":"2026-11-12T08:37:18.790Z","source":"dsh-bio-plugin","tool":"bio_adb_exec","status":"ok","detail":{"callId":"call-adb"}}
+{"ts":"2026-11-12T08:37:18.798Z","source":"dsh-bio-plugin","tool":"bio_ledger_tail","status":"ok","detail":{"callId":"call-ledger"}}
+{"ts":"2026-11-12T08:40:31.442Z","source":"dsh-bio-plugin","tool":"bio_selftest","status":"ok","summary":"unit test"}
+{"ts":"2026-11-12T08:40:34.709Z","source":"dsh-bio-plugin","tool":"bio_gateway_check","status":"ok","detail":{"callId":"call-allow"}}
+{"ts":"2026-11-12T08:40:35.115Z","source":"dsh-bio-plugin","tool":"bio_gateway_check","status":"ok","detail":{"callId":"call-deny"}}
+{"ts":"2026-11-12T08:40:36.622Z","source":"dsh-bio-plugin","tool":"bio_adb_exec","status":"ok","detail":{"callId":"call-adb"}}
+{"ts":"2026-11-12T08:40:36.630Z","source":"dsh-bio-plugin","tool":"bio_ledger_tail","status":"ok","detail":{"callId":"call-ledger"}}
+{"ts":"2026-11-12T08:42:44.911Z","source":"dsh-bio-plugin","tool":"bio_devices","status":"ok","detail":{"callId":"call_00_6ojmv1qd8dttcdf8d9j51zpz"}}
+{"ts":"2026-11-12T08:42:48.194Z","source":"dsh-bio-plugin","tool":"bio_gateway_check","status":"ok","detail":{"callId":"call_00_kmwabfrcrbvz31nod8ct45jd"}}
+{"ts":"2026-11-12T08:45:21.857Z","source":"dsh-bio-plugin","tool":"bio_devices","status":"ok","detail":{"callId":"call_00_i0y5ci7tlrfb5mj6oqqf5vxj"}}
+{"ts":"2026-11-12T08:48:15.765Z","source":"dsh-bio-plugin","tool":"bio_gateway_check","status":"ok","detail":{"callId":"call_736fe8cc38524bcfa3345439"}}
+{"ts":"2026-11-12T08:48:17.334Z","source":"dsh-bio-plugin","tool":"bio_adb_exec","status":"ok","detail":{"callId":"call_de3c81720ff14eb697b3c860"}}
+{"ts":"2026-11-12T08:48:27.159Z","source":"dsh-bio-plugin","tool":"bio_ledger_tail","status":"ok","detail":{"callId":"call_2414246fa17348f0b9746f93"}}
+{"ts":"2026-11-12T08:50:10.487Z","source":"dsh-bio-plugin","tool":"bio_selftest","status":"ok","summary":"unit test"}
+{"ts":"2026-11-12T08:50:13.566Z","source":"dsh-bio-plugin","tool":"bio_gateway_check","status":"ok","detail":{"callId":"call-allow"}}
+{"ts":"2026-11-12T08:50:13.932Z","source":"dsh-bio-plugin","tool":"bio_gateway_check","status":"ok","detail":{"callId":"call-deny"}}
+{"ts":"2026-11-12T08:50:15.495Z","source":"dsh-bio-plugin","tool":"bio_adb_exec","status":"ok","detail":{"callId":"call-adb"}}
+{"ts":"2026-11-12T08:50:15.502Z","source":"dsh-bio-plugin","tool":"bio_ledger_tail","status":"ok","detail":{"callId":"call-ledger"}}

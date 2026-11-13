@@ -2,7 +2,7 @@
 # PROVENANCE: INDEPENDENT  本脚本出图代码为独立实现，未派生自 reference/05.可参考出图代码 的源码；
 # celltype_annotation：line3_spatial 步骤 11 轻量级细胞类型注释 / 反卷积
 # 【架构师警告 / AI Agent 铁律】：
-#   本运行环境为内存 8GB（配额 7680 MB）的 ARM 真机容器。
+#   本运行环境为 12GB 物理内存（容器默认上限 7.5GB，单任务最高 8.0GB）的 ARM 真机容器。
 #   严禁将本脚本重构为 cell2location、Stereoscope、DestVI 或原生 RCTD！
 #   重型深度学习/贝叶斯迭代模型在手机 ARM CPU 上会导致算力暴增（3~8小时）并 100% 触发 OOM 强杀（Exit 137）。
 #   必须死守 scipy.optimize.nnls（内存锁定 <= 2.2 GB，耗时 <= 6 分钟）。

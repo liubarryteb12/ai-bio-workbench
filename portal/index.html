@@ -51,7 +51,10 @@ body {
 .brand-mark { width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0; background: rgba(255, 255, 255, .18); display: flex; align-items: center; justify-content: center; font-size: 21px; }
 .brand h1 { font-size: 20px; font-weight: 700; letter-spacing: .2px; text-wrap: balance; }
 .brand p { font-size: 13px; opacity: .88; }
-.header-note { margin-top: 16px; display: inline-flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .22); padding: 6px 12px; border-radius: 999px; font-size: 12.5px; }
+.header-actions { margin-top: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.header-note { display: inline-flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .22); padding: 6px 12px; border-radius: 999px; font-size: 12.5px; }
+.header-link { display: inline-flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, .2); border: 1px solid rgba(255, 255, 255, .4); color: #fff; padding: 6px 13px; border-radius: 999px; font-size: 12.5px; font-weight: 600; text-decoration: none; transition: background-color .15s ease; }
+.header-link:hover { background: rgba(255, 255, 255, .3); }
 
 .progress-wrap { background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 20; }
 .progress { max-width: 900px; margin: 0 auto; display: flex; list-style: none; padding: 0 12px; overflow-x: auto; }
@@ -300,9 +303,12 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
         <p>请填写以下信息，完成后生成需求文件交给对接人</p>
       </div>
     </div>
-    <div class="header-note">
-      <span aria-hidden="true">📄</span>
-      <span>填写完成后提交，需求将发送给对接人</span>
+    <div class="header-actions">
+      <div class="header-note">
+        <span aria-hidden="true">📄</span>
+        <span>填写完成后提交，需求将发送给对接人</span>
+      </div>
+      <a class="header-link" href="/feature_request.html">有新的功能想法？去用户需求专栏 →</a>
     </div>
   </div>
 </header>

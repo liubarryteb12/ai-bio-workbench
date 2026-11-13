@@ -14,7 +14,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  MEM_QUOTA_BYTES, TEMP_WARN_C, TEMP_FAIL_C,
+  MEM_QUOTA_BYTES, MAX_MEM_QUOTA_GB, resolveMemQuotaBytes, TEMP_WARN_C, TEMP_FAIL_C,
   buildHardwareCommand, parseHardwareOutput, evaluateHardware, EXPECTED_R_VERSION, RSCRIPT_PROJECT_BIN,
   buildIsolationCommand, parseIsolationOutput, evaluateIsolation,
 } from '../server/selfcheck.js';
@@ -74,6 +74,13 @@ test('parseHardwareOutput：cgroup memory.max 为 max 时不当数值，配额�
   const light = evaluateHardware(parsed);
   assert.equal(light.status, 'pass');
   assert.ok(light.value.includes('1.0/7.5GB'), `内存应显示 1.0/7.5GB，实际: ${light.value}`);
+});
+
+test('resolveMemQuotaBytes：默认 7.5GB，单任务可到 8.0GB，超过上限截断', () => {
+  assert.equal(resolveMemQuotaBytes({}), MEM_QUOTA_BYTES);
+  assert.equal(resolveMemQuotaBytes({ BIO_MEM_LIMIT_GB: '8.0' }), MAX_MEM_QUOTA_GB * 1024 ** 3);
+  assert.equal(resolveMemQuotaBytes({ BIO_MEM_LIMIT_GB: '9.5' }), MAX_MEM_QUOTA_GB * 1024 ** 3);
+  assert.equal(resolveMemQuotaBytes({ BIO_MEM_LIMIT_GB: 'abc' }), MEM_QUOTA_BYTES);
 });
 
 test('evaluateHardware：缺 END 标记 → unknown（截断不许当通过）', () => {

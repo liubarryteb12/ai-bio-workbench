@@ -1,0 +1,66 @@
+# D:\00.AIagent\codespace\AI辅助生信分析流程工作台\Caddyfile
+# 生产级外网安全反向代理网关配置
+
+{
+    admin off
+    auto_https disable_redirects
+}
+
+:443, :8443 {
+    tls internal
+    encode zstd gzip
+
+    # 1. 严格安全响应头防护
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # 2. 外部静态页面放行 (客户门户)
+    handle_path /portal/* {
+        root * D:/00.AIagent/codespace/AI辅助生信分析流程工作台/portal
+        file_server {
+            index index.html
+        }
+    }
+
+    # 3. 客户专有 API 接口反代 (白名单放行到后端 18787)
+    @client_allowed {
+        path_regexp ^/api/work-orders/from-package$
+        path_regexp ^/api/work-orders/[A-Za-z0-9._-]+/status$
+        path_regexp ^/api/work-orders/[A-Za-z0-9._-]+/stream$
+        path_regexp ^/api/work-orders/[A-Za-z0-9._-]+/download$
+        path_regexp ^/api/client/auth/*
+    }
+    handle @client_allowed {
+        request_body {
+            max_size 500MB
+        }
+        reverse_proxy 127.0.0.1:18787 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # 4. 高危管理与诊断路由：直接物理阻断 (返回 403 Access Denied)
+    @admin_forbidden {
+        path /api/diagnostics/*
+        path /api/selfcheck/*
+        path /api/tasks/*
+        path /admin/*
+        path /BioanalysDesktop/*
+    }
+    handle @admin_forbidden {
+        respond "Access Denied: Internal Operations Only." 403 {
+            close
+        }
+    }
+
+    # 5. 默认回退重定向至门户
+    handle {
+        redir /portal/index.html 302
+    }
+}

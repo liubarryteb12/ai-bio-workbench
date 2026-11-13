@@ -1,6 +1,6 @@
 # 结构化工单编排器门禁报告
 
-日期 2026-11-12T08:26:32.063Z
+日期 2026-11-12T08:44:26.444Z
 
 本门禁只使用确定性合成工单与本地 mock 客户端，不连接远端设备，不启动分析任务。
 
@@ -19,7 +19,7 @@
 | 默认通道 | 通过 |  |
 | SSH 通道 fail closed | 通过 | SSH 通道已封存，见 _archive/ssh_retired_20261111/RESTORE.md |
 | 组图 fail closed | 通过 | 组图已退役，禁止选择: fig_l3_multipanel |
-| 契约测试 | 通过 | (node:5580) Warning: node:test run() is being called recursively within a test file. skipping running files. \| (Use `node --trace-warnings ...` to show where the warning was created) |
+| 契约测试 | 通过 | ℹ tests 10 \| ℹ suites 0 \| ℹ pass 10 \| ℹ fail 0 \| ℹ cancelled 0 \| ℹ skipped 0 \| ℹ todo 0 \| ℹ duration_ms 146.8447 |
 
 合计 14 项，通过 14 项，失败 0 项。
 

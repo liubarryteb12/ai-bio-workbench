@@ -299,3 +299,5 @@ references/**/.git/
 !references/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l2_07_marker_top5.png
 !references/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/custom_fig_l2_networkplot.png
 !references/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l2_08_deg_volcano_mitotic.png
+deliverables/**/*.zip
+/$null
