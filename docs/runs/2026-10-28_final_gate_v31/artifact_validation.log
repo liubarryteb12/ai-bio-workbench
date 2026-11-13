@@ -1,7 +1,0 @@
-artifacts=6 invalid=0 missing_expected=0
-local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l2_heatmap.png
-local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l2_pca.png
-local_projects/PRJ_AIMS_V3_20261027/figures/line1_bulk/custom_fig_l2_volcano.png
-local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_dotplot.png
-local_projects/PRJ_AIMS_V3_20261027/figures/line2_scrna/custom_fig_l2p_volcano.png
-local_projects/PRJ_AIMS_V3_20261027/figures/line3_spatial/custom_fig_l2p_umap.png

@@ -1,8 +1,0 @@
-== 同步清单：101 个文件 -> k40-ubuntu:/mnt/ssd/bio_data
-[ OK ] LF 校验通过
-[ OK ] 本地 SHA256 已计算
-[PRE ] 远端现状：65 个缺失（首次同步）、2 个与本地不一致（漂移）
-[WARN] 远端存在落后于仓库的旧版本（本次将被覆盖）：
-       ops/ledger_indexer.py
-       ops/verify_plot_matrix.py
-[FAIL] -FailOnDrift：检测到漂移，未做任何传输
