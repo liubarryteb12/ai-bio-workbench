@@ -77,3 +77,9 @@ pwsh -File tools/ops/adb_exec.ps1 -Level container -ScriptPath .tmp/step.sh
 
 `tools/ops/adb_exec.ps1` 是唯一 ADB 执行器。部署类 PowerShell 脚本统一通过它执行，
 不在产品服务端内部另起默认链路。
+
+## 串行与轮询纪律
+
+- 禁止并发连接到同一算力节点。提交层用全局串行闸门保证同一时刻只有一个任务在跑。
+- 任务状态轮询间隔不小于 60 秒，避免短周期并发连接打断容器进程树。
+- 长任务由节点侧脱离本机进程树执行，本机只做有界轮询。

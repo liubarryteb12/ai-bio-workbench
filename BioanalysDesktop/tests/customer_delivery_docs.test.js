@@ -3,7 +3,7 @@
  *
  * 两份文件都回答「交给一个不认识我们的人」：
  *   HOW_TO_VERIFY.txt —— 在他自己机器上验包（随包走，受 CHECKSUMS 保护）
- *   docs/RUNBOOK_K40_SETUP.md —— 给我们或接手的人搭环境/恢复
+ *   docs/RUNBOOK_COMPUTE_NODE.md —— 给使用者搭环境/恢复
  * 断言只钉「可执行性」与「真源指针」，不复制正文：文档里写死的命令必须真能跑，
  * 引用的文档必须存在，且不能出现「参见某个不存在的文件」。
  */
@@ -14,12 +14,12 @@ import path from 'node:path';
 
 const BIOANALYS_DIR = path.resolve(import.meta.dirname, '..');
 const REPO = path.resolve(BIOANALYS_DIR, '..');
-const RUNBOOK = path.join(REPO, 'docs', 'RUNBOOK_K40_SETUP.md');
+const RUNBOOK = path.join(REPO, 'docs', 'RUNBOOK_COMPUTE_NODE.md');
 const PACKAGER = path.join(REPO, 'tools', 'reporting', 'build_client_report.py');
 const CORE = path.join(REPO, 'tools', 'reporting', 'delivery_acceptance_core.mjs');
 
 test('RUNBOOK 存在且一页式（控制在 120 行内，超了就拆文档）', () => {
-  assert.ok(fs.existsSync(RUNBOOK), 'docs/RUNBOOK_K40_SETUP.md 缺失');
+  assert.ok(fs.existsSync(RUNBOOK), 'docs/RUNBOOK_COMPUTE_NODE.md 缺失');
   const text = fs.readFileSync(RUNBOOK, 'utf8');
   const lines = text.split('\n').length;
   assert.ok(lines <= 120, 'RUNBOOK 过长（' + lines + ' 行），一页式目标要求 <= 120');
@@ -39,14 +39,13 @@ test('RUNBOOK 的每一处文档引用都真实存在（不许指向不存在的
 test('RUNBOOK 的四条命令入口都真实存在（脚本路径可执行）', () => {
   const text = fs.readFileSync(RUNBOOK, 'utf8');
   const scripts = [
-    'tools/ops/00_link_check.ps1',
+    'tools/ops/adb_exec.ps1',
     'tools/dev/preflight.mjs',
-    'tools/ops/fix_runsvdir.sh',
-    'docs/k40_service_contract.md',
-    'docs/k40_heartbeat.md',
-    'docs/k40_runit_recovery.md',
-    'docs/k40_hostkey_guard.md',
-    'tools/ops/k40/env_lock/hostkey_fingerprints.json',
+    'docs/COMPUTE_INTERFACE.md',
+    'docs/remote_channel_policy.md',
+    'docs/directories.md',
+    'docs/coding-standards.md',
+    'docs/isolation.md',
   ];
   for (const rel of scripts) {
     assert.ok(text.includes(rel), 'RUNBOOK 缺关键入口：' + rel);

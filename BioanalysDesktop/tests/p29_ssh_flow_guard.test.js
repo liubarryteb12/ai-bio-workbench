@@ -98,9 +98,9 @@ test('P0 残留标记按 wrapper_pid 自动清扫', () => {
 });
 
 test('P-29 纪律已写进文档', () => {
-  const doc = path.join(REPO, 'docs', 'termux_keepalive.md');
-  assert.ok(fs.existsSync(doc), 'docs/termux_keepalive.md 应存在');
+  const doc = path.join(REPO, 'docs', 'remote_channel_policy.md');
+  assert.ok(fs.existsSync(doc), 'docs/remote_channel_policy.md 应存在');
   const text = fs.readFileSync(doc, 'utf8');
-  assert.match(text, /禁止并发 ssh/, '文档必须写明禁止并发 ssh 到 k40-ubuntu');
+  assert.match(text, /禁止并发连接/, '文档必须写明禁止并发连接算力节点');
   assert.match(text, /轮询间隔不小于 60 秒/, '文档必须写明轮询间隔下限');
 });
