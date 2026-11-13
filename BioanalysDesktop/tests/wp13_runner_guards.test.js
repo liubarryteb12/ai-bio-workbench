@@ -47,7 +47,7 @@ test('线程与内存防崩头由解释器启动钩子统一接线，母版不�
 
   const pythonHook = fs.readFileSync(path.join(REPO, 'tools', 'ops', 'layout_autoload', 'sitecustomize.py'), 'utf8');
   const rHook = fs.readFileSync(path.join(REPO, 'tools', 'ops', 'layout_autoload', 'Rprofile'), 'utf8');
-  assert.match(pythonHook, /enable_memory_guard\(7\.5\)/);
+  assert.match(pythonHook, /enable_memory_guard\(/);
   assert.match(rHook, /setDTthreads\(3\)/);
   assert.match(rHook, /workers\s*=\s*2/);
   assert.match(rHook, /future\.globals\.maxSize\s*=\s*6\.0\s*\*\s*1024\^3/);

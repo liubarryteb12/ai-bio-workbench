@@ -19,7 +19,8 @@ test("存在 adb 执行辅助脚本，且只实现 adb 单通道", () => {
   assert.ok(fs.existsSync(HELPER), "必须存在 tools/ops/adb_exec.ps1");
   const src = fs.readFileSync(HELPER, "utf8");
   assert.match(src, /run-as com\.termux/, "adb 通道必须用 run-as 进 Termux");
-  assert.match(src, /proot-distro login ubuntu/, "adb 通道必须能进 ubuntu 容器");
+  assert.match(src, /proot-distro login/, "adb 通道必须能进 Linux 容器");
+  assert.match(src, /\$ProotDistro/, "容器名必须由 BIO_PROOT_DISTRO 配置");
   assert.equal(/\bssh\.exe\b/.test(src), false, "SSH 客户端调用必须封存");
   assert.equal(/Invoke-ViaSsh/.test(src), false, "SSH 备用分支必须封存");
 });
