@@ -378,7 +378,7 @@
   1. `adb.exe` 一启动即 `Cannot mkdir '\.android': Permission denied`，退出码
      `3221226505` = `0xC0000142`（进程初始化失败）。它要把家目录建在**盘根**，
      而沙箱无权在 `C:\` 或 `D:\` 建目录，所以连 `adb version` 都崩，
-     `adb devices` 自然看不到 `3a3e1f52`，forward 重建也全部失败。
+     `adb devices` 自然看不到目标设备，forward 重建也全部失败。
   2. `ssh` 报 `Could not resolve hostname k40-ubuntu`：`~/.ssh/config` 里的别名
      读不到（沙箱对用户主目录只读），HostAlias 无从解析。
 - **为什么反复误判**：症状长得像"手机没连"或"代码改坏了"，且 `link.test.js` 的断言
@@ -389,7 +389,7 @@
   全部无效，`adb` 仍去建盘根 `\.android`。这不是家目录指向问题，是盘根写权限问题。
 - **永久修复方案**：把判定顺序写进文档，见 `BioanalysDesktop/README.md`
   「跑测试前先知道三件事」第 3 条：看到这 5 条红先提权复跑，再决定是否查代码。
-  提权后实测 `3a3e1f52`（alioth / M2012K11AC）在线、双 forward 在位、
+  提权后实测设备在线、双 forward 在位、
   Termux 与容器 sshd 均返回 OK，**848/848 全绿、0 skipped**，连续三次复跑稳定。
 - **顺带修正的认知**：46 条 skipped 不是"链路类用例的预期形态"，同样是沙箱假象
   （宿主 python3 / bash + pandas 等依赖在提权后才可见）。提权跑出的 0 skipped 才是真基线。

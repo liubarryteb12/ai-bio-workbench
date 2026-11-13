@@ -1,6 +1,6 @@
 # 全局导航中枢（INDEX.yaml）
-version: "1.0.0"
-updated: "2026-11-11"
+version: "1.1.0"
+updated: "2026-11-13"
 structure_contract: MIGRATION.md
 
 goals:
@@ -17,6 +17,11 @@ governance:
   agent_truth: AGENTS.md
   licenses: LICENSES.md
   migration_contract: MIGRATION.md
+
+compute:
+  interface: docs/COMPUTE_INTERFACE.md
+  example: configs/compute.example.json
+  env_example: .env.example
 
 router:
   table: ROUTER.yaml

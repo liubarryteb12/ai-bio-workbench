@@ -343,7 +343,8 @@ export function readHeartbeat(options = {}) {
 
   let raw;
   try {
-    raw = run([adb, '-s', serial, 'exec-out', 'run-as', 'com.termux', 'sh', '-c', 'sh ' + HEARTBEAT_REMOTE_SCRIPT], { timeoutMs });
+    const argv = serial ? [adb, '-s', serial] : [adb];
+    raw = run([...argv, 'exec-out', 'run-as', 'com.termux', 'sh', '-c', 'sh ' + HEARTBEAT_REMOTE_SCRIPT], { timeoutMs });
   } catch (error) {
     return finish({
       testedAt,

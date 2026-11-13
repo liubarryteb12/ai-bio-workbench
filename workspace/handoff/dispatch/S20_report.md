@@ -138,7 +138,7 @@ MAX_BODY、REF_MAX_*、DATA_ROLES、DATA_EXT、handleSubmit、/api/references；
 - **生产实例仍在跑旧代码**：PID 5968 启动于改动之前，其内存里的上限仍是 1 GiB/攒内存逻辑；
   新 5 GiB + 流式行为需重启 portal 才生效（重启被派发单禁止，留给主 Agent 决定时机）。
 - 临时残留：早前两次脚本失败运行（REPO 路径 bug、duplex 缺失，均已修）留下
-  `C:\Users\18765\AppData\Local\Temp\s20_run_bNCpYX`（含 1 个随机源 .bin）与
+  `<USER_HOME>\AppData\Local\Temp\s20_run_bNCpYX`（含 1 个随机源 .bin）与
   `...\s20_run_Ph0a0p`（空）。清理命令被本会话安全策略拦截（"未经授权不删除"），
   两个目录合计 <1MB，可直接删除；成功运行已验证无残留（s20_inbox_* 均清空）。
 - 验证脚本用 `powershell Get-Process` 读 RSS，本机可用；若换环境无 powershell，

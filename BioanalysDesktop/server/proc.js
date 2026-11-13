@@ -69,6 +69,7 @@ const ADB_CANDIDATES = [
  * 用 existsSync 而不是 which，因为 Windows 下 PATH 里的 adb 可能被别的工具遮蔽。
  */
 export function findAdb() {
+  if (process.env.BIO_ADB_PATH) return process.env.BIO_ADB_PATH;
   const fromEnv = [
     process.env.LOCALAPPDATA && `${process.env.LOCALAPPDATA}/Android/Sdk/platform-tools/adb.exe`,
     process.env.USERPROFILE && `${process.env.USERPROFILE}/AppData/Local/Android/Sdk/platform-tools/adb.exe`,
@@ -662,6 +663,9 @@ export function adbRaw(command, options = {}) {
     '-Level', options.level ?? 'ubuntu', '-Transport', 'adb', '-RequireAdb',
     '-RemoteScriptPath', `/tmp/dsh_adb_cmd_${process.pid}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.sh`,
   ];
+  if (process.env.BIO_ADB_SERIAL) {
+    args.push('-Serial', process.env.BIO_ADB_SERIAL);
+  }
   let tempDir = null;
   try {
     if (text.includes('\n') || text.includes('\r') || text.length > ADB_INLINE_COMMAND_LIMIT) {

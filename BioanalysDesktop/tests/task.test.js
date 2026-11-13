@@ -12,13 +12,13 @@ const baseParams = {
   seed: 42,
 };
 
-test('算力节点池未配置备用节点时只包含 K40 主节点', () => {
+test('算力节点池未配置备用节点时只包含默认主节点', () => {
   assert.deepEqual(parseComputeNodes(null), [
     { id: 'k40-ubuntu', host: 'k40-ubuntu', primary: true },
   ]);
 });
 
-test('算力节点池从显式环境变量读取备用节点，且只允许 K40 作主节点', () => {
+test('算力节点池从显式环境变量读取备用节点，且只允许一个主节点', () => {
   const pool = parseComputeNodes(JSON.stringify([
     { id: 'k40-ubuntu', host: 'k40-ubuntu', primary: true },
     { id: 'backup-arm64', host: 'backup-arm64', primary: false },
@@ -27,10 +27,10 @@ test('算力节点池从显式环境变量读取备用节点，且只允许 K40 
   assert.equal(pool[1].id, 'backup-arm64');
   assert.throws(
     () => parseComputeNodes(JSON.stringify([
-      { id: 'k40-ubuntu', host: 'k40-ubuntu', primary: false },
-      { id: 'other', host: 'other', primary: true },
+      { id: 'primary-a', host: 'primary-a', primary: true },
+      { id: 'primary-b', host: 'primary-b', primary: true },
     ])),
-    /k40-ubuntu/,
+    /主节点/,
   );
 });
 

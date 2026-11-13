@@ -5,8 +5,8 @@
 
 ## 一句话定位
 
-**本地只做交互，零算力。** 计算命令默认经 ADB 到手机 Linux 服务器执行；
-SSH 仅在显式 `BIO_COMPUTE_ADAPTER=ssh` 时作为特殊开关启用。本地不跑 R/Python。
+**本地只做交互，零算力。** 计算命令默认经 ADB 到用户自备的算力节点执行，
+适配器与节点信息由 `docs/COMPUTE_INTERFACE.md` 定义。本地不跑 R/Python。
 
 ## 硬红线（本地零算力）
 
@@ -16,9 +16,8 @@ SSH 仅在显式 `BIO_COMPUTE_ADAPTER=ssh` 时作为特殊开关启用。本地�
 
 | 放行 | 用途 |
 |---|---|
-| `ssh` | 特殊开关通道：仅 `BIO_COMPUTE_ADAPTER=ssh` 时用于命令下发、探活、读文件 |
-| `scp` | 特殊开关通道：仅 `BIO_COMPUTE_ADAPTER=ssh` 时取产物回本地 |
-| `adb` | 设备状态、forward 重建 |
+| `adb` | 设备状态、命令下发与文件传输 |
+| `ssh` / `scp` | 历史兼容白名单项，默认适配器不会使用 |
 
 ADB 主通道经 `server/proc.js` 的 `adbRaw` 调用 `ops/adb_exec.ps1`，其中会启动
 `pwsh` 作为通道执行器。`pwsh` 不在分析程序白名单里，只允许这个固定入口使用，
@@ -92,7 +91,7 @@ npm test
 ```
 
 当前基线 **2034 tests / 2029 pass / 0 fail / 5 skipped**（245 个测试文件；口径由 tools/dev/metrics_sync.mjs 实测 node --test 汇总行）｜代码规模 25587 SLOC（非空行，91 个文件）
-5 条 skip 全是条件跳过，原因由 `tools/dev/skip_reason_gate.mjs` 白名单把关：2 条 `HOST_UNREACHABLE_K40`
+5 条 skip 全是条件跳过，原因由 `tools/dev/skip_reason_gate.mjs` 白名单把关：2 条宿主不可达
 （SSH 封存后的一致性校验、真机链路探活），3 条 `HOST_MISSING_LOCAL_DATA`（本机项目数据已清理、
 GSE233814 原始 tar 不在位、标定切片按 2026-11-12 裁定归档）。数据或设备回位后自动真跑。
 链路断开时会是 `1077 / 1073 / 3+ / 1+`：那几条红来自 `proc.test.js` 真连、`consistency.test.js` 远端目录、`link.test.js` 四段自检，全是链路信号，见下面第 2 条。
@@ -108,12 +107,12 @@ GSE233814 原始 tar 不在位、标定切片按 2026-11-12 裁定归档）。�
 2. **链路类用例「不通就红」是设计行为，不要删也不要改成跳过**：
    `proc.test.js` 的真连服务器验证（经远端子进程接缝拿 `CONTAINER_OK`）、
    `consistency.test.js` 的远端目录准备、`link.test.js` 的设备/forward/四段自检。
-   K40 或 adb 不在位时它们红，属于预期信号。
+   算力节点或 adb 不在位时它们红，属于预期信号。
 
 3. **adb 与 ssh 的失败是沙箱权限假象，先提权再判定**。沙箱内 `adb.exe` 一启动就
    `Cannot mkdir '\.android': Permission denied`（退出码 `0xC0000142`），连 `adb version`
-   都崩；ssh 则报 `Could not resolve hostname k40-ubuntu`。两者都不是代码问题，提权重跑
-   即通（2026-10-24 实测：提权后 `3a3e1f52` 在线、双 forward 在位、四段自检全 PASS，
+   都崩；ssh 则报 `Could not resolve hostname compute-node`。两者都不是代码问题，提权重跑
+   即通（2026-10-24 实测：提权后设备在线、双 forward 在位、四段自检全 PASS，
    848/848 全绿，46 条 skipped 也全部真跑）。
    所以看到这 5 条红（`link.test.js` 三条 + `proc.test.js` 一条 + `consistency.test.js` 一条）
    先提权复跑，再决定要不要查代码。环境变量绕不过去：设 `HOME` 与

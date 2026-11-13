@@ -199,7 +199,7 @@
 >   沙箱外真实设备复跑为 **tests 1013 / pass 1012 / fail 0 / skipped 1**，`duration_ms 93146.3019`。
 >   唯一 skip 是 `all ready templates have real project inputs with expected extensions`，原因是远端 SSD
 >   真实项目数据的本地副本已于 2026-10-31 裁剪。设备侧确认 `ssh k40-ubuntu` 返回 `CONTAINER_OK` 与
->   `aarch64`，`adb devices -l` 见 `3a3e1f52`、`69b31964` 两台 device。
+>   `aarch64`，`adb devices -l` 见 `<REDACTED_SERIAL>`、`<REDACTED_SERIAL_2>` 两台 device。
 > ⑦ **终验补强**：Spec 双轴复核发现两处覆盖边界。`writeSha256Sidecars` 原先只在 tar 在场时
 >   强制验签，只有 md/html 的文本交付仍可绕过；现改为任何允许集合内的交付件在场都要求
 >   `CHECKSUMS.sha256 + CHECKSUMS.sig`，缺一即 `REPORT_INTEGRITY_FAIL`。临时口令清理失败
@@ -912,7 +912,7 @@ spatial_communication / spatial_localization，共 11 步 + 步骤 11 解卷积�
 
 | 项 | 证据 |
 |---|---|
-| adb ↔ 手机 | `3a3e1f52 device` 在线 |
+| adb ↔ 手机 | `<REDACTED_SERIAL> device` 在线 |
 | forward 8022 / 10022 | 两条在位，脚本幂等 |
 | `ssh k40`（Termux） | TERMUX_OK，aarch64 |
 | `ssh k40-ubuntu`（容器） | CONTAINER_OK，R 4.3.3，Python 3.12.3，5 核 11G |
@@ -4245,7 +4245,7 @@ heredoc 必须闭合 / figures manifest。
 
 **触发**：用户「git 仓库先不管……先解决 2 的问题」。
 
-**链路结论（好消息）**：链路四段实际完好。`ops/00_link_check.ps1` PASS（设备 3a3e1f52、
+**链路结论（好消息）**：链路四段实际完好。`ops/00_link_check.ps1` PASS（设备 <REDACTED_SERIAL>、
 双 forward 在位、Termux sshd 通、容器 sshd 通、四服务 RUN）。此前在沙箱内 adb 起不来
 （`Cannot mkdir '\.android'`）与 SSH 主机名解析失败，**均为沙箱权限所致，非真实故障**；
 提权后 `ssh k40` / `ssh k40-ubuntu` 立刻通。

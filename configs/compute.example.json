@@ -1,0 +1,19 @@
+{
+  "adapter": "adb",
+  "nodes": [
+    {
+      "id": "compute-node-1",
+      "host": "compute-node-1",
+      "primary": true
+    }
+  ],
+  "adb": {
+    "serial": "<your-device-serial>",
+    "path": "adb"
+  },
+  "remote": {
+    "termux_prefix": "/data/data/com.termux/files/usr",
+    "proot_distro": "ubuntu",
+    "data_root": "/mnt/ssd/bio_data"
+  }
+}

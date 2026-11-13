@@ -9,7 +9,7 @@
 #>
 [CmdletBinding()]
 param(
-  [string]$Serial = '3a3e1f52',
+  [string]$Serial = $env:BIO_ADB_SERIAL,
   [string[]]$ForwardPairs = @('tcp:8022 tcp:8022', 'tcp:10022 tcp:10022')
 )
 

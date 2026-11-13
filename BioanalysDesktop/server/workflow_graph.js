@@ -10,7 +10,7 @@
  *   3. 阶段倒挂：选中的 mod 的 stage order 比它依赖的 mod 更小；
  *   4. 母版缺失：mod id 在 src/<line>/scripts/ 下没有对应文件。
  *
- * 成本预估（est_minutes / peak_mem_mb）用于组合前拦截：超出 K40 7.5G 内存配额
+ * 成本预估（est_minutes / peak_mem_mb）用于组合前拦截：超出算力节点 7.5G 内存配额
  * 或总时长超上限时拒绝，而不是等远端跑爆。
  */
 
@@ -279,7 +279,7 @@ export function resolvePlan(seriesId, selectedIds, opts = {}) {
 
   const quota = wf.constraints.mem_quota_mb;
   if (peakMemMb > quota) {
-    errors.push(`峰值内存 ${peakMemMb}MB 超出 K40 配额 ${quota}MB`);
+    errors.push(`峰值内存 ${peakMemMb}MB 超出算力节点配额 ${quota}MB`);
   }
 
   // 敲除类 mod 必须带靶基因：母版在参数解析处就会 exit 2，不预先拦就是白跑一次远端执行

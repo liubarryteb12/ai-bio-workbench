@@ -1,7 +1,7 @@
 # AI 辅助生信分析工作台（BioanalysDesktop）工程评估与后续执行规划报告
 
 > **基线版本**：git HEAD `2fcc513`（2026-10-21 17:30 实测）
-> **评审视角**：全栈架构（Node.js / TypeScript / ESM）+ 移动端容器系统工程（ARM64 proot / UFS 3.1）+ 计算生物学（Bulk / scRNA / Spatial + 虚拟敲除）
+> **评审视角**：全栈架构（Node.js / TypeScript / ESM）+ 移动端容器系统工程（ARM64 proot / 本地存储）+ 计算生物学（Bulk / scRNA / Spatial + 虚拟敲除）
 > 
 > 
 
@@ -26,7 +26,7 @@
 | **传输与守护链路** | PowerShell (`00_link_check.ps1`) + `adb forward` + SSH (8022/10022) + `nohup`/`tmux` | 断链自动重连、`monkey` 拉起 Termux、基于 `exit 0` 与产物校验的断点续跑。
 
  |
-| **远端计算与存储层** | **硬件**：红米 K40 (骁龙 870 / 12G LPDDR5 / 原生 UFS 3.1 `ext4`/`f2fs`)<br>
+| **远端计算与存储层** | **硬件**：自备算力节点 (通用 ARM64 处理器 / 12G 内存 / 原生 本地存储 `ext4`/`f2fs`)<br>
 
 <br>**环境**：Termux 无 Root 底座 + Ubuntu 24.04 ARM64 proot 容器 | 锚定 `/mnt/ssd/bio_data/`（严禁 FUSE 层）；EAS 动态调度 + `nice/ionice` 降权；锁死 3 线程与 `7.5GB` 内存软熔断。
 
@@ -336,7 +336,7 @@ foreach ($item in $FilesToSync) {
 * **M2 下半月（交付防伪升级）**：将包内明文 `CHECKSUMS.sha256` 升级为服务端私钥 HMAC/Ed25519 签名清单（`CHECKSUMS.sig`），解决“连包一起替换”的防伪边界问题。
 
 
-* **M3（多节点热备与算力弹性路由）**：在 `server/task.js` 抽象 SSH 计算节点池（支持主节点 K40 + 备用骁龙 870/8+ 手机容器或轻量云主机），当五维自检检测到主节点温度 $\ge 95^\circ\text{C}$ 或离线时，自动将新任务路由至备用节点，彻底解除单机硬件故障风险。
+* **M3（多节点热备与算力弹性路由）**：在 `server/task.js` 抽象 SSH 计算节点池（支持主节点 K40 + 备用通用 ARM64 处理器/8+ 手机容器或轻量云主机），当五维自检检测到主节点温度 $\ge 95^\circ\text{C}$ 或离线时，自动将新任务路由至备用节点，彻底解除单机硬件故障风险。
 
 
 

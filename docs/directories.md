@@ -12,6 +12,9 @@
 
 ```
 AI辅助生信分析流程工作台/
+├── README.md                # 项目入口：定位、架构、快速开始、算力接口
+├── .env.example             # 算力配置模板；真实值只放未跟踪的 .env.local
+├── configs/                 # 算力接口示例配置，不保存真实设备信息
 ├── SPEC.md / ROUTER.yaml / SCOPE.md / GLOSSARY.md /
 │   MIGRATION.md / INDEX.yaml / LICENSES.md / AGENT.md
 │                             # 治理文件（2026-11-08 整体重构 W1 上移，契约见 MIGRATION.md）

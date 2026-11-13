@@ -52,7 +52,7 @@
   * **执行内容**：编写幂等脚手架脚本，给定 `--project <id> --line <line> [--ticket <id>]`，自动创建 `local_projects/<项目>/` 下全部标准子目录、初始化 5 个空的 `.jsonl` 台账文件、写入首条 `kind: "init"` 的 `actions.jsonl` 记录，并初始化全局 `con_hf/ledger/*.jsonl` 与 `con_hf/sync/{inbox,outbox}`。
   * **验收 DoD**：新增 `BioanalysDesktop/tests/project_scaffold.test.js` 验证目录树、工作区 root 边界、幂等重跑与首条 `init` JSONL 格式 100% 符合 §3.1.2 Schema。
 
-### 【WP-1.3】红米 K40 算力底座防崩与长任务守护硬化
+### 【WP-1.3】自备算力节点 算力底座防崩与长任务守护硬化
 * **前置依赖**：`WP-1.2`
 * **独占 `write_scopes`**：`ops/bio_limits.sh`、`ops/run_throttled_task.sh`、`ops/00_link_check.ps1`、`ops/bio_memory_guard.py`、`ops/bio_r_header.R`、`ops/layout_autoload/sitecustomize.py`、`ops/layout_autoload/Rprofile`、`docs/termux_keepalive.md`、`BioanalysDesktop/server/{task.js,run.js,index.js,audit.js}`、`cn_debug/lib/chain_runner.mjs`、受影响母版与对应测试
 

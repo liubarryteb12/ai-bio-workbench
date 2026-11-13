@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { handleDiagnosticsRoutes } from '../server/routes/diagnostics.routes.js';
-import { projectLineDir } from '../server/domain.js';
+import { projectLineDir, DEFAULT_SERIAL } from '../server/domain.js';
 import { resolveProjectParam } from '../server/query_views.js';
 
 // ── routes/diagnostics.routes.js 契约面测试（2026-11-03，4 Argon 第十八轮 P2）──
@@ -322,7 +322,7 @@ test('/api/k40/heartbeat 全通时 ok=true，serial 缺省取 DEFAULT_SERIAL', a
   assert.equal(r.handled, true);
   assert.equal(r.last.status, 200);
   assert.equal(r.last.payload.ok, true);
-  assert.equal(r.last.payload.serial, '3a3e1f52');
+  assert.equal(r.last.payload.serial, DEFAULT_SERIAL);
   assert.equal(r.last.payload.code, null);
   assert.equal(r.last.payload.hint, '');
 });

@@ -30,7 +30,7 @@ Termux 包是可调试的（`dumpsys package com.termux | grep flags` 含 `DEBUG
 所以 `adb exec-out run-as com.termux ...` 能以 app uid（10283）读私有目录、执行脚本：
 
 ```
-adb -s 3a3e1f52 exec-out run-as com.termux sh -c "sh files/usr/bin/k40_heartbeat.sh"
+adb -s <your-device-serial> exec-out run-as com.termux sh -c "sh files/usr/bin/k40_heartbeat.sh"
 {"schema":"k40_heartbeat/v2","ts":1793694009,"runsvdir_count":1,"sshd_8022_listen":1,
  "dropbear_10022_listen":1,"ssd_writable":1,"port_probe":"tcp-connect",
  "svc_sshd":"run","svc_ubuntu_sshd":"run","svc_crond":"run","svc_ssh_agent":"run"}
@@ -229,7 +229,7 @@ ppid 为 1。它不影响判据（已排除），但存在于进程表里，清�
 
 ```bash
 # Windows 侧（不经 ssh）
-adb -s 3a3e1f52 exec-out run-as com.termux sh -c "sh files/usr/bin/k40_heartbeat.sh"
+adb -s <your-device-serial> exec-out run-as com.termux sh -c "sh files/usr/bin/k40_heartbeat.sh"
 
 # 设备侧，直接跑
 sh $PREFIX/bin/k40_heartbeat.sh

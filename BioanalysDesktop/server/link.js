@@ -24,11 +24,15 @@ function clean(text) {
 export function checkDevice(adb = findAdb(), serial = DEFAULT_SERIAL) {
   const result = runSync([adb, 'devices'], { timeoutMs: 15000 });
   const lines = clean(result.stdout);
-  const deviceLine = lines.find((line) => line.startsWith(serial));
+  const deviceLine = serial
+    ? lines.find((line) => line.startsWith(serial))
+    : lines.find((line) => /device$/.test(line.trim()));
   const pass = Boolean(deviceLine) && /device$/.test(deviceLine);
   return {
     pass,
-    detail: deviceLine || `序列号 ${serial} 未出现在 adb devices 输出中`,
+    detail: deviceLine || (serial
+      ? `序列号 ${serial} 未出现在 adb devices 输出中`
+      : '未配置 BIO_ADB_SERIAL，且 adb devices 没有在线设备'),
   };
 }
 

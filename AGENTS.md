@@ -15,7 +15,7 @@
 | 把 spec 拆成阶段 TODO 并开 goal 无人值守 | [docs/AFK_SPEC_TODO_GOAL.md](docs/AFK_SPEC_TODO_GOAL.md)（预裁定、停机条件、终态判据） |
 | 改 AI 管理员编排、单权威租约或回执 actor | [docs/AI_ORCHESTRATION_SPEC.md](docs/AI_ORCHESTRATION_SPEC.md) |
 | 写或改 skill、`AGENTS.md`、任何 agent 会读的文档 | [docs/mattpocock-writing-spec.md](docs/mattpocock-writing-spec.md) |
-| 跑 K40 / 部署 / 台账相关 | [docs/isolation.md](docs/isolation.md) 起手，再看 `tools/ops/`、`ledger/` 与具体线文档 |
+| 跑算力节点 / 部署 / 台账相关 | [docs/isolation.md](docs/isolation.md) 起手，再看 `tools/ops/`、`ledger/` 与具体线文档 |
 | 远程执行 / 设备连不上 | [docs/remote_channel_policy.md](docs/remote_channel_policy.md)（ADB 单通道） |
 | 出图或改图件模板 | [docs/figure_spec.md](docs/figure_spec.md)（v2.3：只出单图，300 DPI，图例外置右侧，图注左下） |
 | 出空间转录组 H&E 叠加图 | [docs/SPATIAL_HE_OVERLAY_PIPELINE.md](docs/SPATIAL_HE_OVERLAY_PIPELINE.md)（原生坐标、零值层、展示层平滑、一条命令重跑） |
@@ -28,7 +28,7 @@
 
 ## 硬规则
 
-- 分析代码跑在 k40-ubuntu 容器，按 Linux 面写：shebang + `set -euo pipefail`、LF 行尾、
+- 分析代码跑在算力节点的 Linux 容器，按 Linux 面写：shebang + `set -euo pipefail`、LF 行尾、
   POSIX 路径、纯英文路径与文件名、脚本 755。`tools/ops/` 下的 PowerShell 只做本地运维，不受此约束。
 - **算力与内存红线（硬件受限运行面硬约束）**：运行环境为 12GB 物理内存设备（容器默认上限 7.5GB，单任务最高 8.0GB，由 `BIO_MEM_LIMIT_GB` 控制，纯 ARM CPU）。
   空间与单细胞解卷积分析必须保持轻量 `scipy.optimize.nnls`（单步内存 $\le 2.2\text{ GB}$），
@@ -37,6 +37,7 @@
   参考库中的 RCTD 等重型代码仅作为外部 PC 资产或客户专属交付件，严禁合并进生产流水线。
 - 中文可进注释与报告正文。文档里不用 em dash，用逗号、冒号、句号、括号。
 - **计算与文件传输走 ADB 单通道**：主计算入口、任务回执与新增文件传输一律经 `tools/ops/adb_exec.ps1` 或 `BioanalysDesktop/server/adb_transfer.js`。SSH 配置、备用通道文档与相关契约已封存至 `_archive/ssh_retired_20261111/`，恢复方式见该目录 `RESTORE.md`。
+- **算力节点只以接口形式出现**：仓库、README、报告与公开文档只描述 `docs/COMPUTE_INTERFACE.md` 的适配器契约。设备型号、序列号、主机名、密钥指纹、个人目录与其他设备身份信息只放本机 `.env.local` 或 `_private/`，不进仓库、不进报告、不进提交信息。新增算力接入先改接口与示例配置，再改实现。
 - **生产图件只出单图**：组合图模板保持 draft/pending，Ready 基线见 `tools/dev/figure_ready_allowlist.json`；新增模板先过 `figure_ready_matrix` 与 `figure_code_gate`。
 - 展示任何命令、输出、捕获产物前先打码：secret 一律写 `<REDACTED>`，别打印凭证或 key。
 - **交付报告只写对读者有意义的事实**：统计量来源、口径、可追溯性。

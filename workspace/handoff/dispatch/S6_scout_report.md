@@ -346,7 +346,7 @@ DUPES: [('enrichment', [225, 395])]
 | `con_hf/dispatch/S6_scout_report.md` | **新建** | 本报告（派发单允许的唯一新文件） |
 | `cn_debug/code_audit.csv` | **未改动** | 派发单允许写，但工具在 `no issue` 时提前 return，实际未写；mtime 仍为 2026-10-19 11:35:54 |
 | `src/**`、`ops/**`、`BioanalysDesktop/**` | 未触碰 | 只读 |
-| 仓库外 scratch | 4 个临时统计脚本 + 1 个 C1 盲区探针 | 位于 `C:\Users\18765\AppData\Local\hermes\profiles\sw-engineer\cache\scratch\`，不在项目内 |
+| 仓库外 scratch | 4 个临时统计脚本 + 1 个 C1 盲区探针 | 位于 `<USER_HOME>\AppData\Local\hermes\profiles\sw-engineer\cache\scratch\`，不在项目内 |
 
 ---
 

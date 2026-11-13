@@ -301,3 +301,10 @@ references/**/.git/
 !references/05.可参考生信代码/可用代码预筛选/源码/_v2_previews/l2_08_deg_volcano_mitotic.png
 deliverables/**/*.zip
 /$null
+
+# ===== 本地算力配置与个人环境 =====
+# 设备序列号、主机名、密钥指纹与个人路径只允许留在本机。
+.env
+.env.local
+.env.*.local
+_private/

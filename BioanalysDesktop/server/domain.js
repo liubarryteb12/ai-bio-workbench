@@ -304,13 +304,13 @@ export const COMPUTE_SSH_PORT = Number(process.env.BIO_COMPUTE_SSH_PORT || 10022
 /** 执行面术语到 ssh 别名的映射 */
 export const HOSTS = {
   /** 底座面：Termux，编排/传文件/服务管理，不跑分析 */
-  base: 'k40',
+  base: process.env.BIO_COMPUTE_BASE_HOST || 'k40',
   /** 容器计算面：Ubuntu 24.04 proot，R/Python 计算 */
-  compute: 'k40-ubuntu',
+  compute: process.env.BIO_COMPUTE_HOST || 'k40-ubuntu',
 };
 
 /** SSD 数据面根（未挂载时一切数据操作必须显式失败） */
-export const SSD_ROOT = '/mnt/ssd/bio_data';
+export const SSD_ROOT = process.env.BIO_REMOTE_DATA_ROOT || '/mnt/ssd/bio_data';
 
 /** 项目根：每个项目一套三线，项目之间物理隔离 */
 export const PROJECTS_ROOT = `${SSD_ROOT}/projects`;
@@ -348,8 +348,8 @@ export const FORWARD_PAIRS = [
   { local: 'tcp:10022', remote: 'tcp:10022', purpose: '容器 sshd' },
 ];
 
-/** 默认手机序列号 */
-export const DEFAULT_SERIAL = '3a3e1f52';
+/** 默认 ADB 设备序列号，由环境变量提供，仓库不保存设备身份 */
+export const DEFAULT_SERIAL = (process.env.BIO_ADB_SERIAL || '').trim();
 
 /**
  * 项目 ID 消毒：项目 ID 会进服务器路径与台账文件名，必须严格。

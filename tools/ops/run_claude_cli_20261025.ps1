@@ -17,7 +17,7 @@ $root = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $rootFull = [System.IO.Path]::GetFullPath($root).TrimEnd(
     [char[]]@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
 )
-$exe = 'C:\Users\18765\AppData\Roaming\npm\node_modules\@anthropic-ai\claude-code\bin\claude.exe'
+$exe = if ($env:CLAUDE_CLI) { $env:CLAUDE_CLI } else { 'claude.exe' }
 
 function Assert-NoReparsePoint {
     param(

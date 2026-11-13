@@ -7,7 +7,7 @@
   "state_note": "Gate 1, Gate 2 and Final Gate passed. The K40 55-script pipeline, portal selector and 12 E2E tests, adapted figure delivery, Ed25519 signing, compute-node failover and portal-to-workbench-to-K40 Sync acceptance are complete. K40 was not rebooted or shut down.",
   "expected_r_version": "4.5.3",
   "actual_r_version": "4.5.3",
-  "device_serial": "3a3e1f52",
+  "device_serial": "<your-device-serial>",
   "phases": [
     {
       "id": "phase_0_device_profile",

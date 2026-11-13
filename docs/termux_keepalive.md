@@ -1,7 +1,7 @@
 # Termux 保活机制（K40 底座面）
 
 > 版本：v1.1（2026-10-27）
-> 适用：红米 K40（M2012K11AC，MIUI V816 / Android 13）上的 Termux 底座
+> 适用：自备 Android 设备上的 Termux 底座
 > 关联：`tools/ops/bio_watchdog.sh`、`~/.termux/boot/start-p_actions.sh`、`~/.termux/boot/start-sshd.sh`
 
 ## 一、掉线根因（2026-10-18 实测）

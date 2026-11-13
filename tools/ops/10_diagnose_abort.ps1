@@ -7,7 +7,7 @@
     P-28  /tmp 堆积（已推翻为根因，仅作卫生项复查）
 
   用法：  pwsh -File tools/ops/10_diagnose_abort.ps1
-          pwsh -File tools/ops/10_diagnose_abort.ps1 -Serial 3a3e1f52
+          pwsh -File tools/ops/10_diagnose_abort.ps1 -Serial <your-device-serial>
   退出码：0 = 未发现 abort 或判定为卫生项；1 = 判定 P-29 或 P-23，需按脚本提示处置；
           2 = 链路不通，先跑 tools/ops/00_link_check.ps1
 
@@ -16,7 +16,7 @@
 #>
 [CmdletBinding()]
 param(
-  [string]$Serial = '3a3e1f52',
+  [string]$Serial = $env:BIO_ADB_SERIAL,
   [int]$LogLines = 400
 )
 

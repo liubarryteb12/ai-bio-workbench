@@ -274,7 +274,7 @@ function runSsh(command, handlers = {}) {
 
 /**
  * 远端传输类命令（ssh / scp）的流式执行，走 proc.js 单接缝：白名单与
- * BIO_COMPUTE_ADAPTER 都在那一层收口，report 门禁在 mock 下不会真连 K40。
+ * BIO_COMPUTE_ADAPTER 都在那一层收口，report 门禁在 mock 下不会真连算力节点。
  * 启动失败与退出码非 0 分开报（前 08 号书复核要求"起不来"不能被吞成"跑失败"）。
  */
 function streamRemote(argv, handlers, label) {

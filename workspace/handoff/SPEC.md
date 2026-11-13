@@ -7,7 +7,7 @@
 ## Problem Statement
 
 用户已有一套架构设想（云-端解耦：本地纯交互，计算存储下沉到手机 Linux 服务器，三条生信分析线物理隔离），
-且在 `reference/` 下已有大量红米 K40 服务器的实测经验（Termux + Ubuntu 容器 + adb forward + runit）。
+且在 `reference/` 下已有大量自备算力节点 服务器的实测经验（Termux + Ubuntu 容器 + adb forward + runit）。
 但当前工作台本身还是空的：没有工程目录、没有台账、没有可复用的连接脚本、没有规范。
 用户要求：**先打通链路 → 再立规范 → 再搭框架 → 再写分析代码**，稳步推进。
 

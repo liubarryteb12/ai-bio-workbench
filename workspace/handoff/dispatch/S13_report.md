@@ -460,7 +460,7 @@ md5 `183a2e8d84f57ebdbff53ca82c851a82`，内容 `l2_13_target_gene_dotplot.png,P
 ### 5.7 A4 — 合并 `cn_debug/figure_audit_all.csv`
 
 合并脚本（临时工具，**未进仓库**，落在
-`C:\Users\18765\AppData\Local\hermes\profiles\sw-engineer\cache\scratch\s13\merge_audit_csv.py`）：
+`<USER_HOME>\AppData\Local\hermes\profiles\sw-engineer\cache\scratch\s13\merge_audit_csv.py`）：
 
 ```
 $ python <scratch>/s13/merge_audit_csv.py "D:/00.AIagent/codespace/AI辅助生信分析流程工作台"

@@ -58,8 +58,8 @@ if (!(Test-Path $nodeExe)) {
 }
 
 $workbenchDir = Join-Path $root 'BioanalysDesktop'
-$frpcDir = 'C:\Users\18765\Desktop\旅游攻略\frp_0.69.1_windows_amd64\frp_0.69.1_windows_amd64'
-$frpcExe = Join-Path $frpcDir 'frpc.exe'
+$frpcDir = if ($env:BIO_FRPC_DIR) { $env:BIO_FRPC_DIR } else { '' }
+$frpcExe = if ($frpcDir) { Join-Path $frpcDir 'frpc.exe' } else { '' }
 $authFile = Join-Path $env:USERPROFILE '.bioanalys\workbench_auth.json'
 $syncDaemon = Join-Path $root 'ops\sync_daemon.ps1'
 

@@ -20,7 +20,7 @@ import { resolveLinkOverall } from '../server/link.js';
 // 复制粘贴串行（k40 的 probe 写到容器钥匙路径）在这里就会红。
 
 /** 真机上 ssh-keygen -lf 的原始输出（k40 Termux 侧，2026-11-03 实测） */
-const REAL_TERMUX_LINE = '256 SHA256:mKwIdn9qAXN73WVRYnH6aMrRC37LTUkaNl276UpSrKE u0_a283@localhost (ED25519)';
+const REAL_TERMUX_LINE = '256 SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA u0_a283@localhost (ED25519)';
 
 function ledgerObject(overrides = {}) {
   return {
@@ -30,13 +30,13 @@ function ledgerObject(overrides = {}) {
         host: 'k40', port: 8022, algorithm: 'ED25519', bits: 256,
         key_path: '/data/data/com.termux/files/usr/etc/ssh/ssh_host_ed25519_key.pub',
         probe: 'ssh-keygen -lf /data/data/com.termux/files/usr/etc/ssh/ssh_host_ed25519_key.pub',
-        fingerprint: 'SHA256:mKwIdn9qAXN73WVRYnH6aMrRC37LTUkaNl276UpSrKE',
+        fingerprint: 'SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
       },
       {
         host: 'k40-ubuntu', port: 10022, algorithm: 'ED25519', bits: 256,
         key_path: '/etc/dropbear/dropbear_ed25519_host_key',
         probe: 'dropbearkey -y -f /etc/dropbear/dropbear_ed25519_host_key | ssh-keygen -lf -',
-        fingerprint: 'SHA256:c0Lm97OYp7up92tIKMXJ7lEKW5crWBLELkHZAUUTQ4A',
+        fingerprint: 'SHA256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
       },
     ],
     ...overrides,
@@ -45,7 +45,7 @@ function ledgerObject(overrides = {}) {
 
 test('parseFingerprintLine 从 ssh-keygen -lf 输出取指纹、位数、算法与注释', () => {
   const parsed = parseFingerprintLine(REAL_TERMUX_LINE);
-  assert.equal(parsed.fingerprint, 'SHA256:mKwIdn9qAXN73WVRYnH6aMrRC37LTUkaNl276UpSrKE');
+  assert.equal(parsed.fingerprint, 'SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
   assert.equal(parsed.bits, 256);
   assert.equal(parsed.algorithm, 'ED25519');
   assert.equal(parsed.comment, 'u0_a283@localhost');
@@ -57,9 +57,9 @@ test('parseFingerprintLine 跳过前置噪声行（PATH 告警、登录 banner�
     'Welcome to Termux',
     '',
     REAL_TERMUX_LINE,
-    '256 SHA256:c0Lm97OYp7up92tIKMXJ7lEKW5crWBLELkHZAUUTQ4A root@localhost (ED25519)',
+    '256 SHA256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB root@localhost (ED25519)',
   ].join('\n');
-  assert.equal(parseFingerprintLine(noisy).fingerprint, 'SHA256:mKwIdn9qAXN73WVRYnH6aMrRC37LTUkaNl276UpSrKE');
+  assert.equal(parseFingerprintLine(noisy).fingerprint, 'SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
 });
 
 test('parseFingerprintLine 没有指纹时返回 null，不返回半成品对象', () => {
@@ -136,7 +136,7 @@ test('checkHostKeys 全匹配时 pass，且每台 host 都只探一次自己的 
   const calls = [];
   const output = {
     k40: REAL_TERMUX_LINE,
-    'k40-ubuntu': '256 SHA256:c0Lm97OYp7up92tIKMXJ7lEKW5crWBLELkHZAUUTQ4A root@localhost (ED25519)',
+    'k40-ubuntu': '256 SHA256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB root@localhost (ED25519)',
   };
   const result = checkHostKeys({
     ledger: parseFingerprintLedger(ledgerObject()),
@@ -159,7 +159,7 @@ test('checkHostKeys 一台指纹变了就产出 ERR_HOSTKEY_ROTATED 并带出新
       const host = args[args.length - 2];
       const line = host === 'k40'
         ? '256 SHA256:BRANDNEWKEYxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx u0_a283@localhost (ED25519)'
-        : '256 SHA256:c0Lm97OYp7up92tIKMXJ7lEKW5crWBLELkHZAUUTQ4A root@localhost (ED25519)';
+        : '256 SHA256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB root@localhost (ED25519)';
       return { stdout: line, stderr: '' };
     },
   });
@@ -167,7 +167,7 @@ test('checkHostKeys 一台指纹变了就产出 ERR_HOSTKEY_ROTATED 并带出新
   assert.equal(result.code, ERR_HOSTKEY_ROTATED);
   assert.match(result.detail, /k40/);
   const k40 = result.entries.find((entry) => entry.host === 'k40');
-  assert.equal(k40.expected, 'SHA256:mKwIdn9qAXN73WVRYnH6aMrRC37LTUkaNl276UpSrKE');
+  assert.equal(k40.expected, 'SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');
   assert.match(k40.observed, /BRANDNEWKEY/);
 });
 

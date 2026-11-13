@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  在手机上执行命令：固定走 adb，adb 不可用即报错。
+  在算力节点上执行命令：固定走 adb，adb 不可用即报错。
 
 .DESCRIPTION
   为什么只用 adb（2026-11-06 决定，2026-11-11 封存 SSH）：
@@ -62,13 +62,21 @@ param(
   # 进程组存活（实测）。
   [int]$MemLimitMB = 0,
   # 保留该开关用于显式声明「adb 必须可用」。默认 adb 本身已经是失败即报错。
-  [switch]$RequireAdb
+  [switch]$RequireAdb,
+  # 目标设备序列号。缺省读 BIO_ADB_SERIAL，仍为空时交给 adb 自己选唯一在线设备。
+  [string]$Serial = $env:BIO_ADB_SERIAL,
+  # adb 可执行文件路径。缺省读 BIO_ADB_PATH，其次用约定路径，最后退回 PATH。
+  [string]$AdbPath = $env:BIO_ADB_PATH,
+  # 远端基础用户空间前缀与容器名，允许使用者按自己的环境覆盖。
+  [string]$TermuxPrefix = $(if ($env:BIO_TERMUX_PREFIX) { $env:BIO_TERMUX_PREFIX } else { '/data/data/com.termux/files/usr' }),
+  [string]$ProotDistro = $(if ($env:BIO_PROOT_DISTRO) { $env:BIO_PROOT_DISTRO } else { 'ubuntu' })
 )
 
 $ErrorActionPreference = 'Stop'
-$ADB = 'C:\adb\platform-tools\adb.exe'
-$PREFIX = '/data/data/com.termux/files/usr'
-$ROOTFS = $PREFIX + '/var/lib/proot-distro/containers/ubuntu/rootfs'
+$ADB = if ($AdbPath) { $AdbPath } elseif (Test-Path -LiteralPath 'C:\adb\platform-tools\adb.exe') { 'C:\adb\platform-tools\adb.exe' } else { 'adb' }
+$PREFIX = $TermuxPrefix
+$ROOTFS = $PREFIX + '/var/lib/proot-distro/containers/' + $ProotDistro + '/rootfs'
+$ADB_TARGET = if ($Serial) { @('-s', $Serial) } else { @() }
 $REMOTE_SCRIPT = if ($RemoteScriptPath) {
   $RemoteScriptPath
 } else {
@@ -112,7 +120,7 @@ function Get-Payload {
 
 function Invoke-AdbStdin([string]$script) {
   $bashPath = $PREFIX + "/bin/bash -s"
-  $out = $script | & $ADB shell ("run-as com.termux " + $bashPath) 2>&1
+  $out = $script | & $ADB @ADB_TARGET shell ("run-as com.termux " + $bashPath) 2>&1
   return @{ Output = $out; Code = $LASTEXITCODE }
 }
 
@@ -127,7 +135,7 @@ function Invoke-ViaAdb([string]$payload) {
   $writer = $EnvSetup + $NL + 'cat > ' + $REMOTE_SCRIPT_HOST + " <<'DSH_ADB_EOF'" + $NL + $payload + $NL + 'DSH_ADB_EOF' + $NL
   $w = Invoke-AdbStdin $writer
   if ($w.Code -ne 0) { return $w }
-  $runner = $EnvSetup + $NL + 'proot-distro login ubuntu -- bash ' + $REMOTE_SCRIPT + $NL
+  $runner = $EnvSetup + $NL + 'proot-distro login ' + $ProotDistro + ' -- bash ' + $REMOTE_SCRIPT + $NL
   return Invoke-AdbStdin $runner
 }
 
@@ -141,7 +149,7 @@ if ($MemLimitMB -gt 0) {
 }
 
 $result = $null
-$probe = & $ADB get-state 2>&1
+$probe = & $ADB @ADB_TARGET get-state 2>&1
 if (($probe -join '').Trim() -ne 'device') { throw "adb 通道不可用: $probe" }
 $result = Invoke-ViaAdb $payload
 

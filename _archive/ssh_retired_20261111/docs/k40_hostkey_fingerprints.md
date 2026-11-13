@@ -38,7 +38,7 @@ hostkey 守卫（见 [k40_hostkey_guard.md](k40_hostkey_guard.md)）在密钥丢
       "algorithm": "ED25519",
       "key_path": "/data/data/com.termux/files/usr/etc/ssh/ssh_host_ed25519_key.pub",
       "probe": "…ssh-keygen -lf $PREFIX/etc/ssh/ssh_host_ed25519_key.pub",
-      "fingerprint": "SHA256:mKwIdn9qAXN73WVRYnH6aMrRC37LTUkaNl276UpSrKE"
+      "fingerprint": "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
     }
   ]
 }
@@ -101,8 +101,8 @@ hostkey 守卫（见 [k40_hostkey_guard.md](k40_hostkey_guard.md)）在密钥丢
 
 ```
 REAL_PASS=true code=null
-  k40         port=8022  observed=SHA256:mKwIdn9qAXN73WVRYnH6aMrRC37LTUkaNl276UpSrKE
-  k40-ubuntu  port=10022 observed=SHA256:c0Lm97OYp7up92tIKMXJ7lEKW5crWBLELkHZAUUTQ4A
+  k40         port=8022  observed=SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  k40-ubuntu  port=10022 observed=SHA256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 ```
 
 红路径用「把期望值换成假指纹、设备不动」的方式验证（不动生产密钥，这是刻意的：删钥演练只在容器侧做过，

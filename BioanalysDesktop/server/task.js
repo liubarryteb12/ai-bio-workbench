@@ -37,7 +37,7 @@ const NODE_HEALTH_END = 'NODE_HEALTH_END';
 
 /**
  * 解析算力节点池。
- * @param {string|null} rawJson 默认读 BIO_COMPUTE_NODES；未配置时只启用 K40
+ * @param {string|null} rawJson 默认读 BIO_COMPUTE_NODES；未配置时只启用默认主节点
  * @returns {Array<{id: string, host: string, primary: boolean}>}
  */
 export function parseComputeNodes(rawJson = process.env.BIO_COMPUTE_NODES) {
@@ -61,8 +61,8 @@ export function parseComputeNodes(rawJson = process.env.BIO_COMPUTE_NODES) {
     };
   });
   const primaries = normalized.filter((node) => node.primary);
-  if (primaries.length !== 1 || primaries[0].id !== 'k40-ubuntu') {
-    throw new Error('BIO_COMPUTE_NODES 必须且只能把 k40-ubuntu 配置为主节点');
+  if (primaries.length !== 1) {
+    throw new Error('BIO_COMPUTE_NODES 必须且只能配置一个主节点');
   }
   if (new Set(normalized.map((node) => node.id)).size !== normalized.length) {
     throw new Error('BIO_COMPUTE_NODES 节点 id 不得重复');

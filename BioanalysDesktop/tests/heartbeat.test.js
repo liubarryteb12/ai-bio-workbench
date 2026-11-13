@@ -171,11 +171,11 @@ test('adb 通道走 run-as 执行设备侧脚本：参数逐项钉死，不经 s
       calls.push({ argv, options });
       return { stdout: REAL_LINE, stderr: '' };
     },
-    adb: 'C:/adb/platform-tools/adb.exe', serial: '3a3e1f52', timeoutMs: 15000, now: 1793694010,
+    adb: 'C:/adb/platform-tools/adb.exe', serial: 'SERIAL_TEST_01', timeoutMs: 15000, now: 1793694010,
   });
   assert.equal(calls.length, 1);
   assert.deepEqual(calls[0].argv, [
-    'C:/adb/platform-tools/adb.exe', '-s', '3a3e1f52',
+    'C:/adb/platform-tools/adb.exe', '-s', 'SERIAL_TEST_01',
     'exec-out', 'run-as', 'com.termux', 'sh', '-c', 'sh ' + HEARTBEAT_REMOTE_SCRIPT,
   ]);
   assert.equal(calls[0].options.timeoutMs, 15000);

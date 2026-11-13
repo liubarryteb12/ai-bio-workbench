@@ -52,7 +52,7 @@ def resolve_memory_limit_gb(env=None) -> float:
 def enable_memory_guard(max_gb: float = None):
     """设置进程虚拟内存上限（RLIMIT_AS）。
 
-    红米 K40 骁龙 870 + 12GB LPDDR5，生产默认 7.5GB，单任务最高 8.0GB。
+    自备算力节点 通用 ARM64 处理器 + 12GB 内存，生产默认 7.5GB，单任务最高 8.0GB。
     """
     if max_gb is None:
         max_gb = resolve_memory_limit_gb()
