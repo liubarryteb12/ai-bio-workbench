@@ -276,6 +276,7 @@ node tools/dev/run_all_gates.mjs --skip-tests
 | 出图规范 | `docs/figure_spec.md` |
 | 空间 H&E 叠加流程 | `docs/SPATIAL_HE_OVERLAY_PIPELINE.md` |
 | 算力接口配置 | `docs/COMPUTE_INTERFACE.md` |
+| 算力节点搭建与恢复 | `docs/RUNBOOK_COMPUTE_NODE.md` |
 | 远程通道策略 | `docs/remote_channel_policy.md` |
 
 ## 隐私与安全边界

@@ -20,6 +20,7 @@ governance:
 
 compute:
   interface: docs/COMPUTE_INTERFACE.md
+  runbook: docs/RUNBOOK_COMPUTE_NODE.md
   example: configs/compute.example.json
   env_example: .env.example
 
