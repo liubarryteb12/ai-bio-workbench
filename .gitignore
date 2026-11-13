@@ -18,6 +18,7 @@ _reference/
 *.jpg
 *.h5ad
 *.rds
+!docs/assets/*.jpg
 
 # ===== 运行时产物 =====
 tools/ops/secrets/*
