@@ -18,6 +18,7 @@ _reference/
 *.jpg
 *.h5ad
 *.rds
+!docs/assets/*.jpg
 !src/figure_previews/
 !src/figure_previews/*.png
 
