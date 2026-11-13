@@ -105,7 +105,7 @@ echo "input_matrix=$NORM"
 echo "bridge_stage=$BRIDGE_STAGE"
 
 # 1) Python 侧：做 pseudobulk（celltype x sample counts 求和），落中间 tsv
-# 解释器 PATH 前置（生信代码专项审核）：K40 系统解释器缺科学计算包，真依赖在 bio-py venv。
+# 解释器 PATH 前置（生信代码专项审核）：算力节点 系统解释器缺科学计算包，真依赖在 bio-py venv。
 # 用 PATH 注入而非改写调用行，是为了让桥接调用的行级计数保持原样（bilingual 判定不变）。
 BIO_PY_BIN="${BIO_PY_BIN:-/root/venvs/bio-py/bin}"
 if [ -x "$BIO_PY_BIN/python3" ]; then
@@ -198,7 +198,7 @@ PYSCRIPT
 
 # 2) 桥接四项断言守卫（task-10 / m00939 边界②）：本母版是跨语言步骤
 #    （Python 侧产物交给 R 侧读），断言必须在首次 R 侧执行之前过。
-#    输入 scrna_norm.h5ad 即上面 INPUTS 里第一个 h5ad；K40 离线时守卫自行
+#    输入 scrna_norm.h5ad 即上面 INPUTS 里第一个 h5ad；算力节点 离线时守卫自行
 #    打印 [BRIDGE SKIP] 并放行，母版不被网络状态绑架。
 # 优先校验本步骤真正消费的矩阵（绝对化后交给远端引擎）；它不存在时才回落到
 # 调用方声明的 --input 里的第一个 h5ad/rds。
@@ -214,7 +214,7 @@ if [ -z "$BRIDGE_INPUT" ] && [ "${#INPUTS[@]}" -gt 0 ]; then
   done
 fi
 # 守卫位置解析：仓库里是 src/bridge_guard.sh（母版在 src/<线>/scripts/），
-# 部署到 K40 后母版在 /mnt/ssd/bio_data/bin/<线>/、守卫在 ops/ 下，两套布局都得认。
+# 部署到 算力节点 后母版在 /mnt/ssd/bio_data/bin/<线>/、守卫在 ops/ 下，两套布局都得认。
 # 全都找不到时打印 SKIP 放行并留痕，不让"守卫没部署"变成"母版跑不起来"。
 BRIDGE_GUARD=""
 for _cand in "$(dirname "$0")/../../bridge_guard.sh" "/mnt/ssd/bio_data/ops/bridge_guard.sh" \
@@ -456,7 +456,7 @@ if not required_meta <= set(ncells.columns):
 profile_celltypes = [str(p).split("|", 1)[0] for p in profiles]
 full_mat = scores.set_index("pathway")[profiles]
 # GSVA 在 celltype x donor 伪 bulk 上打分；热图按 celltype 对 donor 取均值，
-# 避免把每个 donor 列直接铺成超宽图像并触发手机端绘图内存错误。
+# 避免把每个 donor 列直接铺成超宽图像并触发算力节点绘图内存错误。
 mat = full_mat.T.groupby(profile_celltypes, sort=True).mean().T
 celltypes = list(mat.columns)
 if not np.all(np.isfinite(mat.to_numpy())):

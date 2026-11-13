@@ -4,7 +4,7 @@
 # 输入：步骤 17 产物目录同 cwd 的 deg_all_by_celltype.tsv /
 #       deg_significant_by_celltype.tsv。
 #
-# 做法（手机端可行路线；SCENIC 需 cisTarget 人类数据库 >1GB + pySCENIC，
+# 做法（算力节点可行路线；SCENIC 需 cisTarget 人类数据库 >1GB + pySCENIC，
 # 容器内存与算力不支持，如实记为待设备项）：
 #   1. TF 靶基因库：Enrichr 的 ENCODE_and_ChEA_Consensus_TFs_from_ChIP-X
 #      （实验证据 TF->靶基因，92 TF 集）+ ChEA_2022（如可达）。
@@ -35,7 +35,7 @@ done
 echo "step_executed=tf_activity"
 echo "bioanalys_seed=${seed}"
 
-# 解释器 PATH 前置（生信代码专项审核）：K40 系统解释器缺科学计算包，真依赖在 bio-py venv。
+# 解释器 PATH 前置（生信代码专项审核）：算力节点 系统解释器缺科学计算包，真依赖在 bio-py venv。
 # 用 PATH 注入而非改写调用行，是为了让桥接调用的行级计数保持原样（bilingual 判定不变）。
 BIO_PY_BIN="${BIO_PY_BIN:-/root/venvs/bio-py/bin}"
 if [ -x "$BIO_PY_BIN/python3" ]; then
@@ -146,7 +146,7 @@ lines = [
     "libraries=%s" % list(tf_sets.keys()),
     "method=TF 靶基因库 ORA（gseapy.enrich 离线）：显著 DEG 作前景，"
     "显著 TF = 其 ChIP 靶基因在 DEG 中富集",
-    "limitation=SCENIC（pySCENIC + cisTarget 人类库 >1GB）手机端不可行，"
+    "limitation=SCENIC（pySCENIC + cisTarget 人类库 >1GB）算力节点不可行，"
     "本步骤用 TF 靶基因富集近似 TF 调控活性；待更大设备再做 SCENIC",
     "n_rows=%d" % len(out),
 ]

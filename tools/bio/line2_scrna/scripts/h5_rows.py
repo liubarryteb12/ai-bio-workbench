@@ -7,9 +7,9 @@ anndata 在 backed 模式下做子集物化（`adata[rows, cols].to_memory()`）
 
   - 仅 indices 一个数组就是 802 MiB（numpy._core._exceptions._ArrayMemoryError 实测）
   - 叠加 data(float32) 与 indptr，单层约 2.4 GB
-  - 两份 h5ad 同时加载必然超过手机 11.5 GB 的可用量
+  - 两份 h5ad 同时加载必然超过算力节点 11.5 GB 的可用量
 
-后果不是慢慢变卡，而是 Android 内核低内存杀手直接杀掉 Termux 进程：
+后果不是慢慢变卡，而是 系统内核低内存杀手直接杀掉 基础用户空间 进程：
 
   lowmemorykiller: Kill "com.termux" (26208), oom_score_adj 0
     to free 63172kB rss, 44028kB swap; reason: device is in direct reclaim

@@ -15,7 +15,7 @@
 #   单独建网细胞数不够，混群表达占比也贴近闸门，原型对比后选 TNF）。
 #   表达矩阵 = HVG 2000 上的原始计数（scTenifold 内部 CPM 归一化）。不用全基因：
 #   tensor_decomp 产物是 n_genes x n_genes，24969 基因要 15GB  dense 矩阵，
-#   手机 11G 内存放不下；2000 HVG 是聚类/整合同款基因空间，口径一致。
+#   算力节点 11G 内存放不下；2000 HVG 是聚类/整合同款基因空间，口径一致。
 #
 # 敲除基因来源（2026-10-21 全链取证后改造，对齐 aims/aims.txt:185）：
 #   工作台要求勾选虚拟敲除时强制弹出 target_ko_gene 必填框，所以基因不许再写死。
@@ -142,7 +142,7 @@ echo "input_hvg=${hvg_file}"
 echo "ko_gene=${ko_gene}"
 echo "ko_gene_source=${ko_gene_source}"
 
-# 解释器 PATH 前置（生信代码专项审核）：K40 系统解释器缺科学计算包，真依赖在 bio-py venv。
+# 解释器 PATH 前置（生信代码专项审核）：算力节点 系统解释器缺科学计算包，真依赖在 bio-py venv。
 # 用 PATH 注入而非改写调用行，是为了让桥接调用的行级计数保持原样（bilingual 判定不变）。
 BIO_PY_BIN="${BIO_PY_BIN:-/root/venvs/bio-py/bin}"
 if [ -x "$BIO_PY_BIN/python3" ]; then

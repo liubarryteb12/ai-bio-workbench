@@ -36,7 +36,7 @@ done
 echo "step_executed=dr_post_analysis"
 echo "bioanalys_seed=${seed}"
 
-# 解释器 PATH 前置（生信代码专项审核）：K40 系统解释器缺科学计算包，真依赖在 bio-py venv。
+# 解释器 PATH 前置（生信代码专项审核）：算力节点 系统解释器缺科学计算包，真依赖在 bio-py venv。
 # 用 PATH 注入而非改写调用行，是为了让桥接调用的行级计数保持原样（bilingual 判定不变）。
 BIO_PY_BIN="${BIO_PY_BIN:-/root/venvs/bio-py/bin}"
 if [ -x "$BIO_PY_BIN/python3" ]; then

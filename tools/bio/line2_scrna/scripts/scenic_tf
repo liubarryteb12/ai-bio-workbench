@@ -24,12 +24,12 @@
 #   scenic_tf_summary.tsv           每 regulon 的靶基因数/首选 celltype/活性/特异性
 #   scenic_report.txt               口径、参数、结论与局限
 #
-# 口径与算力（手机端约束）：
+# 口径与算力（算力节点约束）：
 #   - 基因空间 = 表达广度 top N（env SCENIC_N_GENES，默认 5000）。全基因（20990
-#     个 >=10 细胞）在手机端 GRNBoost2 约需 90 小时，不可行；top5000 覆盖全部
+#     个 >=10 细胞）在算力节点 GRNBoost2 约需 90 小时，不可行；top5000 覆盖全部
 #     高表达 TF 与主要靶基因，是精度与算力的折中，报告如实记录。
 #   - GRNBoost2 n_estimators=5000（SCENIC 论文默认），不降树数。
-#   - dask 用线程模式（processes=False）：proot 容器内 Nanny 无法 fork worker。
+#   - dask 用线程模式（processes=False）：容器 容器内 Nanny 无法 fork worker。
 #   - 削峰：外部 taskset -c 4,5,6 + nice -n 10，OMP/OPENBLAS=3。
 set -euo pipefail
 
@@ -88,7 +88,7 @@ echo "cistarget_dir=${CISTARGET_DIR}"
 echo "n_genes=${N_GENES}"
 echo "n_workers=${N_WORKERS}"
 
-# 解释器 PATH 前置（生信代码专项审核）：K40 系统解释器缺科学计算包，真依赖在 bio-py venv。
+# 解释器 PATH 前置（生信代码专项审核）：算力节点 系统解释器缺科学计算包，真依赖在 bio-py venv。
 # 用 PATH 注入而非改写调用行，是为了让桥接调用的行级计数保持原样（bilingual 判定不变）。
 BIO_PY_BIN="${BIO_PY_BIN:-/root/venvs/bio-py/bin}"
 if [ -x "$BIO_PY_BIN/python3" ]; then
@@ -305,7 +305,7 @@ lines = [
     "hg38_500bp_up_100bp_down_full_tx_v10_clust",
     "motif_annotations=%s" % os.path.basename(TBL),
     "grnboost2_n_estimators=5000 (SCENIC default)",
-    "dask_mode=threads (processes=False; proot cannot fork Nanny workers)",
+    "dask_mode=threads (processes=False; 容器 cannot fork Nanny workers)",
     "",
     "top regulons by celltype specificity (z of top celltype vs mean):",
 ]
@@ -316,7 +316,7 @@ for _, r in summary.head(15).iterrows():
 lines += [
     "",
     "limitations:",
-    "  1. 基因空间受手机算力限制为表达广度 top%d（全基因 GRNBoost2 约需 90h）；"
+    "  1. 基因空间受算力节点算力限制为表达广度 top%d（全基因 GRNBoost2 约需 90h）；"
     "低表达 TF 的 regulon 可能缺失。" % N_GENES,
     "  2. GRNBoost2 是计算推断，regulon 是 motif 支持下的统计关联，非实验验证。",
     "  3. AUCell 活性为相对打分，跨样本比较需谨慎。",

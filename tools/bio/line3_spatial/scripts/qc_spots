@@ -245,7 +245,7 @@ for species in sorted(loaded):
     # 不等同于单细胞意义上的真双细胞。
     # 为什么读表而不在管线里跑 scrublet（2026-11-06 实测）：本步主进程持约 2.7 GB
     # 输入与约 2.2 GB 过滤副本，再起 scrublet 子进程（约 1 GB），写输出时可用内存
-    # 跌破 600 MB，Android 的 LMK 会杀掉整个 基础用户空间（当天实测 5 次）。
+    # 跌破 600 MB，系统的 LMK 会杀掉整个 基础用户空间（当天实测 5 次）。
     # 因此 scrublet 拆到 ops/doublet_score.py 单独跑，本步只应用判定。
     doublet_info = {
         "enabled": False,
