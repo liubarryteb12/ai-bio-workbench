@@ -229,6 +229,11 @@ export async function handleUploadRoutes(req, res, url, { json, uploadError, run
           });
         }
         const remote = remoteRawPath(projectId, lineId, filename);
+        const remoteDir = remote.slice(0, remote.lastIndexOf('/')) || '/';
+        const mkdir = await runSshAsync('k40-ubuntu', `mkdir -p ${shellQuote(remoteDir)}`, { timeoutMs: 40000 });
+        if (mkdir.code !== 0) {
+          return uploadError(res, 500, `远端目录创建失败（code=${mkdir.code}）: ${mkdir.text || '无输出'}`);
+        }
         const localSize = fs.statSync(localPath).size;
         const sha256 = await sha256File(localPath);
         const scp = await runAsync(scpArgv(localPath, remote), { timeoutMs: 900000 });

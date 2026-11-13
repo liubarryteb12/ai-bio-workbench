@@ -87,6 +87,12 @@ export async function deployDataFiles(projectId, lineId, dataFiles) {
       continue;
     }
     const localSize = fs.statSync(src).size;
+    const remoteDir = remote.slice(0, remote.lastIndexOf('/')) || '/';
+    const mkdir = await runSshAsync('k40-ubuntu', `mkdir -p ${shellQuote(remoteDir)}`, { timeoutMs: 40000 });
+    if (mkdir.code !== 0) {
+      results.push({ name: file.name, ok: false, error: `远端目录创建失败: ${mkdir.text || '无输出'}` });
+      continue;
+    }
     const scp = await runAsync(scpArgv(src, remote), { timeoutMs: 900000 });
     if (scp.code !== 0) {
       results.push({ name: file.name, ok: false, error: `scp 失败: ${scp.stderr || scp.stdout}` });
