@@ -56,7 +56,7 @@
 
 | # | 缺陷 | 性质 | 证据 |
 |---|---|---|---|
-| 1 | 47 个母版硬编码 `python3`，K40 系统解释器缺 matplotlib | **阻塞级** | L2 出图实测 ModuleNotFoundError |
+| 1 | 47 个母版硬编码 `python3`，算力节点 系统解释器缺 matplotlib | **阻塞级** | L2 出图实测 ModuleNotFoundError |
 | 2 | `spatial_figures` 强制双物种，单物种数据永远出不了图 | **阻塞级** | 空间线此前 0 张图 |
 | 3 | `uns` 存 JSON 字符串却按 dict 读 | 真 bug | AttributeError |
 | 4 | `obs['ko_dr_expr']` 来自可选上游却按必需读 | 真 bug | KeyError 中断已经产出的图 |

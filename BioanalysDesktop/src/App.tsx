@@ -180,7 +180,7 @@ export function App() {
           <strong>离线演示模式</strong>
           <span>
             当前未连接真机（BIO_COMPUTE_ADAPTER=mock）。下方自检绿灯与任务结果均为演示数据，
-            不代表真机运行；需要真实算力时请先连上 K40 后重试。
+            不代表真机运行；需要真实算力时请先连上算力节点后重试。
           </span>
         </div>
       )}

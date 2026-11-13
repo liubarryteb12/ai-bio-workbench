@@ -2,7 +2,7 @@
 
 > 版本：v2.3（2026-11-08，组合图退役：生产默认只出单图）
 > 适用范围：三条线所有分析步骤的图件产物（PCA/UMAP/SpatialFeaturePlot/PPI/DR 网络等）。
-> 原则：手机端算力与存储受限，图件必须"可读、可复现、可归档"。
+> 原则：算力节点资源受限，图件必须"可读、可复现、可归档"。
 
 ## 零、组图退役裁定（v2.3）
 
@@ -21,7 +21,7 @@
 | 命名 | `<line前缀>_<序号>_<fig语义>.png`，例：`l1_02_pca.png`、`l3_human_10_dr_gsea_top.png`；同语义的步骤级图与汇总图用后缀区分（如 `l1_02_pca_step3.png` 为步骤级） |
 | 扩展名 | **静态图统一 PNG**（dpi=300，`bbox_inches="tight"`）；**禁止 PDF/SVG 作为交付图件**；交互式不放服务器（零浏览器面） |
 | DPI 声明 | **必须显式声明，不许吃默认值**：R `png()/jpeg()/tiff()` 必须带 `res=300`（R 默认 72dpi，漏写即废图）；Python 必须在 rcParams 声明 `savefig.dpi=300` 或 `savefig(dpi=)`。源级判据 C8/C9，见 §七配套工具链 |
-| 单位 | 尺寸按 12x8 英寸基准缩放；图内字号 >= 8pt（手机屏幕/传输后仍可读） |
+| 单位 | 尺寸按 12x8 英寸基准缩放；图内字号 >= 8pt（缩放与传输后仍可读） |
 | 元数据 | 每图必须能在同步骤 report 里找到生成它的口径（种子、输入产物、关键参数、文件名） |
 | 回搬 | 图件落 `figures/` 后由任务完成自动回搬（aims §7.3），本地 `outputs/<项目>/<线>/figures/` |
 
@@ -54,7 +54,7 @@
 
 ```python
 import matplotlib
-matplotlib.use("Agg")            # 手机端无显示面，禁止交互后端
+matplotlib.use("Agg")            # 算力节点无显示面，禁止交互后端
 import matplotlib.pyplot as plt
 
 plt.rcParams.update({
@@ -74,7 +74,7 @@ plt.rcParams.update({
 - 配色：分类标签用 seaborn 定性调色板（colorblind 友好）；连续量单色 ramp
 - **二分类（Control vs Treat / WT vs Disease）统一标准色**：Control/WT = `#3B4992`（冷蓝），Treat/Disease = `#EE0000`（暖红）；多分类仍用 seaborn 色盲友好色板与 `RdBu_r`
 - **虚拟敲除产出图表标题强制带角标**：`[Virtual KO - DR Genes]` 标识在 caption 首段或图注条首，防与 DEG 混淆
-- 每脚本出图后 `plt.close("all")`，防手机端内存泄漏
+- 每脚本出图后 `plt.close("all")`，防算力节点内存泄漏
 - 图内中文禁用（字体缺失风险），标签一律英文
 
 ## 三之二、图注（caption）与图例（legend）位置

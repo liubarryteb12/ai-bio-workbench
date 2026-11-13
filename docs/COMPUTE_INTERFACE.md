@@ -61,8 +61,9 @@
 |---|---|---|---|
 | `BIO_ADB_SERIAL` | 否 | 空 | 目标设备序列号。为空时使用当前 `adb devices` 中的第一台在线设备 |
 | `BIO_ADB_PATH` | 否 | 自动查找 | `adb` 可执行文件路径 |
-| `BIO_TERMUX_PREFIX` | 否 | `/data/data/com.termux/files/usr` | 远端基础用户空间前缀 |
-| `BIO_PROOT_DISTRO` | 否 | `ubuntu` | 远端容器名称 |
+| `BIO_REMOTE_HOME` | 否 | 参考适配器默认值 | 远端基础用户空间前缀 |
+| `BIO_REMOTE_HOME_DIR` | 否 | 前缀的兄弟目录 `home` | 远端用户主目录 |
+| `BIO_CONTAINER_NAME` | 否 | `ubuntu` | 远端容器名称 |
 
 ### 3.3 资源与路径
 
@@ -102,7 +103,7 @@
 - 数据根可写，且剩余空间不低于门禁阈值。
 - `sha256sum` 可用，用于传输与产物回执。
 - ADB 适配器下，`adb devices` 能看到目标设备，且远端用户空间可通过 `run-as` 或等价机制进入。
-- 容器内可执行 `proot-distro login` 或等价入口。
+- 容器内可执行容器入口命令，具体命令由适配器配置。
 
 仓库只提供参考实现，不提供任何具体设备的连接信息。
 

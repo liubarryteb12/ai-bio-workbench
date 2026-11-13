@@ -1384,7 +1384,7 @@ export function OnboardingPortal({
         <ComputeShieldCard
           title="子项 2 · 长任务稳定运行与断点恢复"
           items={[
-            'K40 降权执行：nice/ionice（默认不绑核，EAS 动态调度实测更快）+ 3 线程封顶',
+            '算力节点降权执行：nice/ionice（默认不绑核，动态调度实测更快）+ 3 线程封顶',
             '7.5GB 内存软熔断与检查点续跑',
             '每步 exit 0 后自动落盘检查点与 JSON 台账',
           ]}
@@ -1567,7 +1567,7 @@ export function OnboardingPortal({
 
         {/* WGCNA 参数（wgcna_config，全部选填，留空取服务端契约默认） */}
         <div className="form-group">
-          <label className="form-label">WGCNA 参数（选填，留空用 K40 安全默认）</label>
+          <label className="form-label">WGCNA 参数（选填，留空用算力节点安全默认）</label>
           <div className="form-grid-2">
             {WGCNA_PARAM_FIELDS.map((f) => (
               <div className="form-group" key={f.key}>

@@ -8,7 +8,7 @@
     "依赖用产物名表达，不用绝对路径——路径由运行方按项目拼接。",
     "series 之间默认硬隔离（aims 铁律二）：不同系列不可穿插、不可跨系列取产物；唯一例外是 constraints.allowed_cross_series_bridges 声明的冻结签名桥。",
     "stage 内 optional=true 的 mod 可自由勾选；跨 stage 只允许按 order 递增的标准序。",
-    "est_minutes / peak_mem_mb 为 K40 实测值，用于组合前的成本预估与拦截。",
+    "est_minutes / peak_mem_mb 为参考算力节点实测值，用于组合前的成本预估与拦截。",
     "运行时内存上限由 BIO_MEM_LIMIT_GB 控制：生产默认 7.5GB，单任务最高 8.0GB；constraints.mem_quota_mb=7680 是规划默认值。"
   ],
   "constraints": {

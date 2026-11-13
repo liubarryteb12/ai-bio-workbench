@@ -1,7 +1,7 @@
 # 非肿瘤·非免疫 GEO 生信分析架构师规范（SOP v2.1 · 正本）
 
 > **版本记录**：v2.0 = 用户 2026-10-20 提供的完整结构化版（Role/Profile/Constrains/Workflow/OutputFormat），**取代 v1**（v1 已于 2026-10-21 归档至 `_archive/docs/geo_mining_sop_v1.md`）。
-> **v2.1（同日）**：在 v2 正文**一字未改**的前提下，新增**附录 C · 工作台适配层**——把规范增量适配到生信分析工作台的三线架构、portal 建项契约、K40 执行链路、台账验收体系与算力约束。正文与附录 A/B 继续有效；工作台内执行以「正文 + 附录 C」为准。
+> **v2.1（同日）**：在 v2 正文**一字未改**的前提下，新增**附录 C · 工作台适配层**——把规范增量适配到生信分析工作台的三线架构、portal 建项契约、算力节点 执行链路、台账验收体系与算力约束。正文与附录 A/B 继续有效；工作台内执行以「正文 + 附录 C」为准。
 > **执行适配**：本规范在生信工作台内执行时，Stage 11 的 00_config–06_report 目录树与 FigNNx 命名按 2026-10-20 用户裁决映射到工作台既有体系（见附录 B 裁决 3、附录 C 适配 3），规范正文本身不做改写。
 
 ---
@@ -121,7 +121,7 @@
 ### 适配 2 · 数据与执行链路（正文 Stage 3–8 的工作台形态）
 
 - **目录与数据面**：`projects/<id>/<line>/{raw_data,processed,results,figures}`（服务器 `/mnt/ssd/bio_data/`），数据经上传接口或 05 通道上数并字节校验；Linux 侧不用中文路径。
-- **脚本执行**：所有分析以全局母版 `bin/<line>/<step>` 运行（bash 包装，内嵌 R/Python heredoc）；本地是零算力架构，**本地只允许 ssh/scp/adb**（`server/proc.js` 白名单强制），一切 R/Python 在 K40 proot ubuntu 容器内跑。
+- **脚本执行**：所有分析以全局母版 `bin/<line>/<step>` 运行（bash 包装，内嵌 R/Python heredoc）；本地是零算力架构，**本地只允许 ssh/scp/adb**（`server/proc.js` 白名单强制），一切 R/Python 在算力节点上的 Linux 容器内跑。
 - **参数正本（正文 params.yaml 的映射）**：`envs/<line>/manifest.txt` 记 language/wrapper/memory_limit + 步骤参数；种子由 `BIOANALYS_SEED` 注入（工作台惯例 20261013），台账 environment 字段可溯源——C3 的工程实现。项目内适配副本走 ops 层直跑沙盒（`run_throttled_task.sh` + 项目内 scripts/ 路径），不改框架。
 - **每步验收链（正文卡点纪律的落地）**：服务器探针定性 → 测试跑 → 回读验证（教科书式独立重算对账）→ 界面验收（SSE 日志流 + exit 0 徽章 + 台账 completed/passed）→ files 面板 → `04_check_logs` 巡检 → `07_pull_outputs` 回搬本地 `outputs/`。任一环失败即正文 C5 卡点：停下报「卡在哪、需要什么」，不硬闯。
 - **阈值纪律实例**：DEG 阈值固定不随结果调整（line1 曾实测 8v8 零显著基因，如实报告）；组间检验 2 组且 C(n,n1)≤20000 全枚举精确置换；同一脚本重跑会覆盖同名产物，重跑对比前先另存。
@@ -140,7 +140,7 @@
 
 ### 适配 4 · 算力与包约束（工具选型的硬边界，正文 Skills 节的落地修正）
 
-- 硬件：自备算力节点 proot ubuntu，5 核 11G，**单进程峰值 ≤5GB**（超限会被 RLIMIT_AS/LMK 杀，症状是 ssh 断连、台账停在旧时间戳）；长任务由本地后台 terminal 持有 ssh 连接；绑核契约已实测变更为"默认不绑核 + 3 线程甜点"（`docs/k40_cpu_affinity.md`）。
+- 硬件：自备算力节点 容器 ubuntu，5 核 11G，**单进程峰值 ≤5GB**（超限会被 RLIMIT_AS/LMK 杀，症状是 ssh 断连、台账停在旧时间戳）；长任务由本地后台 terminal 持有 ssh 连接；绑核契约已实测变更为"默认不绑核 + 3 线程甜点"（`docs/k40_cpu_affinity.md`）。
 - 环境：R 4.5.3 + Python 3.12.3；Bioc 版本与包可用性待实测，以 `docs/software_versions.json` 的实测记录为准。**torch 生态不可行** → 正文 Stage 10 的 cell2location/RCTD/scVI 类去卷积在工作台不可用（line3 已豁免）；scVI 系整合同样不可行，整合用 Harmony（已实测）。
 - 已实测可用：scanpy 1.12.4 / anndata / liana 1.10.0 / scTenifoldpy / gseapy 1.3.1（Enrichr 五库可达）/ pyscenic 0.12.1（dask 须钉 2024.8.0）/ glmnet / shap / clusterProfiler / hgu133plus2.db。
 - **禁用/易崩清单**：zellkonverter（reticulate 易崩）、anndataR（该 Bioc 版本无）、harmonypy 参数是 ncores、singscore 无 rankScore、UCell 不认 Seurat v5、CellChat 与 SeuratObject 5.x 不兼容、monocle2 的 phenoData 须 AnnotatedDataFrame、clusterProfiler 默认按 ENTREZID（传 SYMBOL 静默返回 0 条）。踩坑全录 `ledger/踩坑台账.md`，动工前必搜。

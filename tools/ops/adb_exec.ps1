@@ -15,8 +15,9 @@
     再经 proot-distro 进入 ubuntu 容器。全程无需 root。
 
 .PARAMETER Level
-  termux  = 直接在 Termux 用户态执行（不进容器）
-  ubuntu  = 进入 proot ubuntu 容器执行（分析命令用这个）
+  host      = 在节点基础用户空间执行（不进容器）
+  container = 进入 Linux 容器执行（分析命令用这个）
+  termux / ubuntu = 兼容旧调用名
 
 .PARAMETER Command
   要执行的 bash 片段。与 -ScriptPath 二选一。
@@ -43,10 +44,10 @@
   pwsh -File tools/ops/adb_exec.ps1 -Level ubuntu -Command "python3 -c print(6*7)"
 
 .EXAMPLE
-  pwsh -File tools/ops/adb_exec.ps1 -Level ubuntu -ScriptPath .tmp/step.sh
+  pwsh -File tools/ops/adb_exec.ps1 -Level container -ScriptPath .tmp/step.sh
 #>
 param(
-  [ValidateSet('termux', 'ubuntu')][string]$Level = 'ubuntu',
+  [ValidateSet('host', 'container', 'termux', 'ubuntu')][string]$Level = 'container',
   [string]$Command,
   [string]$ScriptPath,
   [string]$RemoteScriptPath,
@@ -68,15 +69,22 @@ param(
   # adb 可执行文件路径。缺省读 BIO_ADB_PATH，其次用约定路径，最后退回 PATH。
   [string]$AdbPath = $env:BIO_ADB_PATH,
   # 远端基础用户空间前缀与容器名，允许使用者按自己的环境覆盖。
-  [string]$TermuxPrefix = $(if ($env:BIO_TERMUX_PREFIX) { $env:BIO_TERMUX_PREFIX } else { '/data/data/com.termux/files/usr' }),
-  [string]$ProotDistro = $(if ($env:BIO_PROOT_DISTRO) { $env:BIO_PROOT_DISTRO } else { 'ubuntu' })
+  [string]$RemoteHome = $(if ($env:BIO_REMOTE_HOME) { $env:BIO_REMOTE_HOME } elseif ($env:BIO_TERMUX_PREFIX) { $env:BIO_TERMUX_PREFIX } else { '/data/data/com.termux/files/usr' }),
+  [string]$RemoteHomeDir = $(if ($env:BIO_REMOTE_HOME_DIR) { $env:BIO_REMOTE_HOME_DIR } else { '' }),
+  [string]$ContainerName = $(if ($env:BIO_CONTAINER_NAME) { $env:BIO_CONTAINER_NAME } elseif ($env:BIO_PROOT_DISTRO) { $env:BIO_PROOT_DISTRO } else { 'ubuntu' })
 )
 
 $ErrorActionPreference = 'Stop'
 $ADB = if ($AdbPath) { $AdbPath } elseif (Test-Path -LiteralPath 'C:\adb\platform-tools\adb.exe') { 'C:\adb\platform-tools\adb.exe' } else { 'adb' }
-$PREFIX = $TermuxPrefix
-$ROOTFS = $PREFIX + '/var/lib/proot-distro/containers/' + $ProotDistro + '/rootfs'
+$PREFIX = $RemoteHome
+$ROOTFS = $PREFIX + '/var/lib/proot-distro/containers/' + $ContainerName + '/rootfs'
 $ADB_TARGET = if ($Serial) { @('-s', $Serial) } else { @() }
+$EffectiveLevel = switch ($Level) {
+  'host' { 'termux' }
+  'container' { 'ubuntu' }
+  default { $Level }
+}
+$HOME_DIR = if ($RemoteHomeDir) { $RemoteHomeDir } else { $PREFIX + '/../home' }
 $REMOTE_SCRIPT = if ($RemoteScriptPath) {
   $RemoteScriptPath
 } else {
@@ -85,12 +93,7 @@ $REMOTE_SCRIPT = if ($RemoteScriptPath) {
 $REMOTE_SCRIPT_HOST = $ROOTFS + $REMOTE_SCRIPT
 $NL = [char]10
 
-$EnvSetup = @'
-export PREFIX=/data/data/com.termux/files/usr
-export PATH=$PREFIX/bin:$PATH
-export HOME=/data/data/com.termux/files/home
-export TMPDIR=$PREFIX/tmp
-'@
+$EnvSetup = "export PREFIX=$PREFIX`nexport PATH=$PREFIX/bin:`$PATH`nexport HOME=$HOME_DIR`nexport TMPDIR=$PREFIX/tmp`n"
 
 function Get-Payload {
   if ($PushLocalPath) {
@@ -125,7 +128,7 @@ function Invoke-AdbStdin([string]$script) {
 }
 
 function Invoke-ViaAdb([string]$payload) {
-  if ($Level -eq 'termux') {
+  if ($EffectiveLevel -eq 'termux') {
     return Invoke-AdbStdin ($EnvSetup + $NL + $payload)
   }
   # ubuntu：先把 payload 落进容器 rootfs 的 /tmp，再在容器内执行。
@@ -135,7 +138,7 @@ function Invoke-ViaAdb([string]$payload) {
   $writer = $EnvSetup + $NL + 'cat > ' + $REMOTE_SCRIPT_HOST + " <<'DSH_ADB_EOF'" + $NL + $payload + $NL + 'DSH_ADB_EOF' + $NL
   $w = Invoke-AdbStdin $writer
   if ($w.Code -ne 0) { return $w }
-  $runner = $EnvSetup + $NL + 'proot-distro login ' + $ProotDistro + ' -- bash ' + $REMOTE_SCRIPT + $NL
+  $runner = $EnvSetup + $NL + 'proot-distro login ' + $ContainerName + ' -- bash ' + $REMOTE_SCRIPT + $NL
   return Invoke-AdbStdin $runner
 }
 

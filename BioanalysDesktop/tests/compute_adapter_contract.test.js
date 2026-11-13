@@ -87,7 +87,7 @@ test('runRemoteRaw 默认调用 adbRaw：pwsh + tools/ops/adb_exec.ps1 + Transpo
   assert.equal(call.program, 'pwsh');
   assert.ok(call.args.includes('-NoProfile'));
   assert.equal(call.args[call.args.indexOf('-File') + 1], ADB_EXEC_SCRIPT);
-  assert.equal(call.args[call.args.indexOf('-Level') + 1], 'ubuntu');
+  assert.equal(call.args[call.args.indexOf('-Level') + 1], 'container');
   assert.equal(call.args[call.args.indexOf('-Transport') + 1], 'adb');
   assert.ok(call.args.includes('-RequireAdb'));
   assert.equal(call.args[call.args.indexOf('-Command') + 1], 'echo DEFAULT_ADB_OK');

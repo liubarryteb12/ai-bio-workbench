@@ -7,8 +7,8 @@
 
 ## 第一条铁律：代码在 Linux 上跑
 
-**所有分析代码（`src/<line_id>/scripts/` 下的步骤脚本）运行环境是服务器 Ubuntu 容器
-（k40-ubuntu，proot-distro），不是 Windows，也不是本地 PC。**
+**所有分析代码（`src/<line_id>/scripts/` 下的步骤脚本）运行环境是算力节点的
+Linux 容器，不是 Windows，也不是本地 PC。**
 
 因此一切按 Linux 运行面规范写，Windows 习惯一律不带进来：
 

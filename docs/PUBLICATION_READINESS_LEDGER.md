@@ -58,7 +58,7 @@
 | 受控 L2 到 L3 桥 | `docs/isolation.md` 升到 version 2，`workflows.json` 新增 `allowed_cross_series_bridges`，`ops/isolated_bridge_gate.mjs` 守事实源；默认仍 `forbidden_cross_series=true` |
 | 母版 L3 空间图 | `spatial_domains` 默认使用 `obsm['spatial']` 的 cKDTree 6 邻图，`BIO_SPATIAL_GRAPH=0` 才走旧纯表达 PCA Leiden 对照；BANKSY 保持独立特征平滑 |
 
-补充说明：`deg_groups` 因新增 R 后端成为第 5 个 bilingual 母版，已补 `bridge_guard.sh` 前置调用；`task_comment_strip` 与 `bridge_guard_invariant` 契约同步为五个 bilingual 母版。三个新增 P0 母版与 K40 生产面已用 ADB 同源部署，57 个脚本逐字节一致。
+补充说明：`deg_groups` 因新增 R 后端成为第 5 个 bilingual 母版，已补 `bridge_guard.sh` 前置调用；`task_comment_strip` 与 `bridge_guard_invariant` 契约同步为五个 bilingual 母版。三个新增 P0 母版与 算力节点 生产面已用 ADB 同源部署，57 个脚本逐字节一致。
 
 ## 5.2 项目内容消融（2026-11-08）
 

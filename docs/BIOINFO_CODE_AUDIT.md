@@ -69,7 +69,7 @@ line3_spatial/enrichment_figures : NO_REFERENCE
 ### 3.1 L3 出图标题中文字体缺失（已修复）
 
 **症状**：9 张空间定位图标题全部渲染成方框（`ATM / A_Ctrl□>0 □字 68 spot□`）。
-**根因**：标题硬编码中文括号与中文，K40 容器 matplotlib 无中文字体。
+**根因**：标题硬编码中文括号与中文，算力节点 容器 matplotlib 无中文字体。
 **修复**：改纯英文 `ATM / A_Ctrl | >0 expression: 68 spots`（符合 figure_spec 英文标签口径）。
 **状态**：已重跑 9 张图并目视确认（提交 `f57088b`）。
 
@@ -101,7 +101,7 @@ line3_spatial/enrichment_figures : NO_REFERENCE
 
 **症状**：`figures/line2_scrna/` 目录不存在，单细胞线跑到 DEG/签名就停了。
 **后果**：跨线报告里 L2 没有任何可视化证据（UMAP、marker 热图、细胞比例图都缺）。
-**建议**：在 K40 上补跑 `scrna_figures`（768 行，最大出图脚本），产出 UMAP/点图/热图。
+**建议**：在 算力节点 上补跑 `scrna_figures`（768 行，最大出图脚本），产出 UMAP/点图/热图。
 
 ## 四、上下游依赖关系（审核通过）
 

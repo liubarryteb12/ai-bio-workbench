@@ -86,7 +86,7 @@ dist/             3 文件    构建产物
    │ 3. 套 wrapper                  tools/ops/run_throttled_task.sh <task_id> <line> <step> ...
 │ 4. remoteRunner(cmd)          ADB 单通道下发，SSH 已封存
    ▼
-[K40 容器 /mnt/ssd/bio_data]
+[算力节点数据根]
    │ run_throttled_task.sh：nice -n10 / ionice / 幂等锁 / 内存闸门 / 退出码 0-4
    │ 执行 src 母版（或项目适配脚本），工作目录 = <line>/processed
    │ 产物写 processed/ 与 results/

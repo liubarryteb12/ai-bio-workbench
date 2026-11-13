@@ -80,7 +80,7 @@
 | 2 | `l1_29_diag_dca` | `pos=labels[0]` 按字典序把 Ctrl 当阳性，treat-all 起点=12/70=0.171，整图变成识别 Ctrl；y 轴被高阈值负值拉到 4.0 | 正类改读 project.json 主对比 case（DCM）；y 轴限定 0-0.9；x 轴 0.01-0.60；图注写事件数/非事件数与 5-20% 结果 |
 | 3 | `l1_29b_diag_probability` | 无预测概率分布图，无法判断概率是否挤在 0.1-0.25 | 新增原始 vs 交叉拟合 Platt 双面板直方图；原始中位 0.815，0.10-0.25 占比 0；Platt 中位 0.852，仍无低风险区 |
 | 4 | DCA 临床区间 | 5-20% 段 raw 与 Platt 均为 0/16 高于 treat-all，模型等同于全干预 | 如实写入报告：无 5-20% 净获益；简单校准不能解决，需特征重筛（性别/队列相关基因）或外部验证 |
-| 5 | `l1_22/l1_26 SHAP` | K40 bio-py 缺 `shap`，SHAP 图跳过 | ADB 通道安装 shap 0.54.1，重跑 ml_hub_analysis，l1_22/l1_26 正常产出 |
+| 5 | `l1_22/l1_26 SHAP` | 算力节点 bio-py 缺 `shap`，SHAP 图跳过 | ADB 通道安装 shap 0.54.1，重跑 ml_hub_analysis，l1_22/l1_26 正常产出 |
 | 6 | L2 GSEA | gseapy 1.3.1 Rust 结果转换在 11GB 设备上 OOM；只有 T_cell/KEGG 319 行 | 新增 R `fgsea` 默认引擎（gseapy 保留 fallback）；50 个 celltype×library 全部完成，82,431 行，l2_12_gsea_top 正常出图 |
 | 7 | `cell_communication` 母版 | 写死 `n_perms=1000`，11GB 设备必 OOM，只能靠项目适配器跑 | 增加 `BIO_LIANA_NPERMS/EXPR_PROP/MIN_CELLS/MAX_CELLS_PER_CT` 覆盖；本轮不重复跑已完成的全量 LIANA |
 
@@ -88,7 +88,7 @@
 Nomogram 因 min_class=12、EPV=1.1 按 SOP 降级；这三项不是脚本可修复问题。
 
 **全量复核**：新 TAP 为 1865 tests / 1854 pass / 0 fail / 11 skipped；11 条跳过全部命中
-`HOST_UNREACHABLE_K40` 或 `HOST_MISSING_LOCAL_DATA` 白名单。快门禁 1–17、19 全绿；
+`HOST_UNREACHABLE_算力节点` 或 `HOST_MISSING_LOCAL_DATA` 白名单。快门禁 1–17、19 全绿；
 18 因 SSH 停用而 SKIP（57 脚本已用 ADB sha256 核对）；20 的基线/跳过判据用同一份 TAP 核对通过。
 本轮图件对齐后的最终回归为 `GATE_ALL_OK 20 道全绿（263 秒）`。
 

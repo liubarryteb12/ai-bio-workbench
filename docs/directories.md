@@ -15,6 +15,7 @@ AI辅助生信分析流程工作台/
 ├── README.md                # 项目入口：定位、架构、快速开始、算力接口
 ├── .env.example             # 算力配置模板；真实值只放未跟踪的 .env.local
 ├── configs/                 # 算力接口示例配置，不保存真实设备信息
+├── _private/                # 本机隐私区：设备档案、历史交接件；已 gitignore，不入库
 ├── SPEC.md / ROUTER.yaml / SCOPE.md / GLOSSARY.md /
 │   MIGRATION.md / INDEX.yaml / LICENSES.md / AGENT.md
 │                             # 治理文件（2026-11-08 整体重构 W1 上移，契约见 MIGRATION.md）
@@ -74,7 +75,7 @@ AI辅助生信分析流程工作台/
 ## 服务器侧目录
 
 ```
-/mnt/ssd/bio_data/                      # 红米手机自带储存根
+/mnt/ssd/bio_data/                      # 算力节点数据盘根
 ├── projects/                           # 项目根：一个项目一套三线，项目之间物理隔离
 │   ├── default/                        # 默认项目（历史三线数据迁入处）
 │   │   ├── line1_bulk/                 # GEO bulk 线
@@ -197,7 +198,7 @@ python tools/ops/init_project_scaffold.py --root . --project <项目> --line <li
 
 历史沿革：原顶层 `00a.可参考代码库` 与 `05.可参考出图代码` 已并入
 `05.可参考生信代码/可用代码预筛选/源码/`，消费方路径与 gitignore 白名单已同步
-（见 `docs/REFERENCE_CLEANUP_LEDGER.md`）；原 `04.RedmiK40_liunx_container` 已不在参考区，去向待确认；
+（见 `docs/REFERENCE_CLEANUP_LEDGER.md`）；
 原 `06.Visium_v1_载玻片布局` 改编号为 `07`。
 
 新增顶类目编号顺延，不重排已有编号。
@@ -220,8 +221,8 @@ python tools/ops/init_project_scaffold.py --root . --project <项目> --line <li
 
 | 面 | 别名 | 用途 | 不该做什么 |
 |---|---|---|---|
-| Termux 底座 | `k40` | 文件传输、隧道、服务管理、runsv 看护 | 不跑分析计算 |
-| Ubuntu 容器 | `k40-ubuntu` | R/Python 科学计算执行 | 不作为文件长期存放地 |
+| 基础用户空间 | 可配置别名 | 文件传输、通道管理、服务看护 | 不跑分析计算 |
+| Linux 容器 | 可配置别名 | R/Python 科学计算执行 | 不作为文件长期存放地 |
 
 ## 环境隔离
 

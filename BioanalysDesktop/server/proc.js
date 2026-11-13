@@ -660,7 +660,7 @@ export function adbRaw(command, options = {}) {
 
   const args = [
     '-NoProfile', '-File', ADB_EXEC_SCRIPT,
-    '-Level', options.level ?? 'ubuntu', '-Transport', 'adb', '-RequireAdb',
+    '-Level', options.level ?? 'container', '-Transport', 'adb', '-RequireAdb',
     '-RemoteScriptPath', `/tmp/dsh_adb_cmd_${process.pid}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.sh`,
   ];
   if (process.env.BIO_ADB_SERIAL) {

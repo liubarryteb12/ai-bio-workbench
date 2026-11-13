@@ -204,7 +204,7 @@ cd BioanalysDesktop; npm test
 2. 图件基线测试与 `SCOPE.md`、`docs/ARCHITECTURE_OVERVIEW.md` 统一读 allowlist 的 27 条基线，`run_all_gates` 标签去掉硬编码数字。
 3. `ledger_gen.mjs --write` 重建台账，`--check` 返回一致。
 4. `task_fsm_receipt_wiring`、`node_failover`、S26 台账、`report_preflight`、`preview_mods` 改为 ADB 默认语义或显式 SSH 特殊开关，生产逻辑未放宽。
-5. K40 三个分叉脚本经 ADB 推送并 chmod 755，57 个脚本双向逐字节同源。
+5. 算力节点 三个分叉脚本经 ADB 推送并 chmod 755，57 个脚本双向逐字节同源。
 6. 便携包重建 1922 个文件，`MANIFEST.sha256` 校验通过，`dist_parity` 5 个关键资产分叉 0、缺失 0。
 7. `run_all_gates --skip-tests` 25 道全绿。
 8. 全量测试 2062 用例，2060 通过，0 失败，2 跳过。
@@ -232,7 +232,7 @@ cd BioanalysDesktop; npm test
 
 ### 裁定
 
-Pi Agent 收口为只读监控，保留观测面，关闭让手机侧 agent 独自干活的派单能力。
+Pi Agent 收口为只读监控，保留观测面，关闭让算力节点侧 agent 独自干活的派单能力。
 理由：派单产出的结论仍需 Codex 侧逐条复核，复核成本高于边做边审。
 
 ### 关闭端点
@@ -290,7 +290,7 @@ T9 删除 Pi 对话入口后，e2e 用例与样式表里各留一处无宿主的
 
 ### 裁定
 
-Pi Agent 整体退场。手机侧自主执行体与 ADB 主通道并存会形成第二套命令入口，
+Pi Agent 整体退场。算力节点侧自主执行体与 ADB 主通道并存会形成第二套命令入口，
 用户裁定全部删除，不留开关，不留只读残骸。
 
 ### 删除范围
@@ -302,7 +302,7 @@ Pi Agent 整体退场。手机侧自主执行体与 ADB 主通道并存会形成
 4. 运维：`tools/dev/diagnostics/probe_pi.mjs`、`tools/ops/pi_seed_settings.sh`、
    `tools/ops/k40/pi_a2a_daemon.sh`、`pi_a2a_launch.sh`、`pi_telemetry_sidecar.py`、
    `tools/ops/k40/sv/pi-a2a/` 整个目录。
-5. 运行时接缝：`proc.js` 的 `adbTermux`、`domain.js` 的 9910 与 9911 隧道与
+5. 运行时接缝：`proc.js` 的 `adb基础用户空间`、`domain.js` 的 9910 与 9911 隧道与
    `REVERSE_PAIRS`、`link.js` 的 `checkReverseForwards`、心跳的 `pi-a2a` 服务位。
 6. 设备侧脚本：`ensure_runsvdir.sh` 服务清单与 `heartbeat.sh` 的 9910 探针与
    两个 wire 字段。
@@ -318,7 +318,7 @@ Pi Agent 整体退场。手机侧自主执行体与 ADB 主通道并存会形成
 4. 同步 `k40_heartbeat.sh` 与 `ensure_runsvdir.sh` 两份设备脚本，
    逐字节 SHA256 与仓库一致（`a1d7232b` 与 `1325b42a`），权限 755。
 5. 设备侧心跳实测输出只剩四个服务位，`9910` 与 `9911` 无监听。
-6. `runsv pi-a2a`（pid 12324）留在 Termux 的 PID namespace 里，`run-as com.termux kill`
+6. `runsv pi-a2a`（pid 12324）留在 基础用户空间 的 PID namespace 里，`run-as com.termux kill`
    报 Permission denied，属该层级的已知权限形态。它的 `run` 与 `log/run` 已改名禁用，
    监督目录也已移走，因此无法再 exec 任何 pi 组件，重启后由新服务表自然消失。
 

@@ -28,7 +28,7 @@
 | 测试 | **1354 tests / 1336 pass / 0 fail / 18 skipped**（125 个测试文件） |
 | 代码规模 | 20120 SLOC（非空行，66 个文件） |
 | 台账 | workflows 3 系列 / 54 Mod / 断链 0；图件 82 = 30 ready + 52 pending |
-| 设备 | K40 四服务全 run，8022 与 10022 双通，零 SSH 心跳五层全通 |
+| 设备 | 算力节点 四服务全 run，8022 与 10022 双通，零 SSH 心跳五层全通 |
 
 ## 二、八道门禁全绿（收官大合拢实测）
 
@@ -67,7 +67,7 @@ PATH 不含 node 与仓库）逐字照 `HOW_TO_VERIFY.txt` 手工执行四步：
 
 **底座**：三线隔离（GEO bulk / 单细胞 / 空间）的分析编排、图件模板准入、交付打包。
 
-**算力面**：K40 安卓机 Termux + proot 容器四服务，runit 监督，零 SSH 心跳探针，
+**算力面**：算力节点上的 Linux 容器四服务，服务监督，零 SSH 心跳探针，
 host key 指纹台账与轮换检测，runsvdir 幂等点火，三卷冷备恢复演练。
 
 **交付链**（本轮重点收口）：
@@ -123,7 +123,7 @@ npm run clean:workspace
 3. **ubuntu-sshd 的 `got TERM` 残留**：服务是 run，不影响；清掉需重启该服务，收益为零。
 4. **本机无 pwsh 7 / R**：静态门禁对这 16 个文件标记「宿主缺工具跳过」，CI 上会实检。
 5. **Mock 多边形**：`BIO_COMPUTE_ADAPTER=mock` 时前端有横幅，但 mock 仍只能覆盖传输层，
-   真实算力的验证仍必须在 K40 上做。
+   真实算力的验证仍必须在 算力节点 上做。
 
 ## 七、这次专项抓到的真缺陷（留档）
 
@@ -234,14 +234,14 @@ L4 运行时产物不进包：.tmp/ outputs/ projects/ artifacts/ project_data/ 
 | ④ | reference/05 更新了出图代码，要理解后调教 | 母版 L2_core_code.R / L3_sankey_code.R / L2p_more_code.py 按规范与参考代码重写，产线脚本 deg_limma 与 bulk_figures 同步主口径 |
 | ⑤ | 缺 DGE 阈值功能 | 三档 loose/standard/strict + `use_adj_p` 勾选与 `adj_p_threshold`；`normalizeAnalysisCutoffs` 派生唯一 `effective_p_field` |
 | ⑥ | 门户输出要能直接导入服务端建项 | `shared/requirement_schema.json` + `shared/requirement_schema.mjs` 单一真源；`portal/serve.mjs` handleSubmit 前置总闸；门户产出 analysisCutoffs 等 intake 块 |
-| ⑦ | 服务端对手机 piagent 的调用检测全不可用 | 根因是 `FORWARD_PAIRS` 缺 9910/9911 与 pi 无开机自启；补两条隧道 + `ops/k40/sv/pi-a2a/` runit 服务（真机已点火）+ ping/overview 分级 |
+| ⑦ | 服务端对算力节点 piagent 的调用检测全不可用 | 根因是 `FORWARD_PAIRS` 缺 9910/9911 与 pi 无开机自启；补两条隧道 + `ops/k40/sv/pi-a2a/` runit 服务（真机已点火）+ ping/overview 分级 |
 
 ### 10.2 ⑦ piagent 的两个根因与修法
 
 | 根因 | 证据 | 修法 |
 |---|---|---|
 | 隧道缺失 | `server/pi_agent.js:38 ADB_FORWARD_PORT = 9910` 直连本机；`server/domain.js` 的 FORWARD_PAIRS 只有 8022/10022，`link.js` checkForwards 按表补，9910/9911 永不被补 | FORWARD_PAIRS 补 `tcp:9910`（pi agent A2A）与 `tcp:9911`（遥测侧车） |
-| 无开机自启 | 手机 `$PREFIX/var/service/` 只有 crond/ssh-agent/sshd/ubuntu-sshd；pi 只能手动 tmux 起 | 新增 `ops/k40/sv/pi-a2a/{run,log/run}` 四段式 runit 服务，末行 `exec bash pi_a2a_daemon.sh`，自带 20 秒退避防崩溃循环 |
+| 无开机自启 | 算力节点 `$PREFIX/var/service/` 只有 crond/ssh-agent/sshd/ubuntu-sshd；pi 只能手动 tmux 起 | 新增 `ops/k40/sv/pi-a2a/{run,log/run}` 四段式 runit 服务，末行 `exec bash pi_a2a_daemon.sh`，自带 20 秒退避防崩溃循环 |
 
 真机实测：`sv up pi-a2a` 后 `sv status` = `run: pi-a2a: (pid …)`，9910 LISTEN_OK，日志尾 `PASS a2a_server_ready host=127.0.0.1 port=9910`；
 `GET /api/pi-agent/ping` 返回 `{"ok":true,"online":true,"agent_card":{"name":"pi-termux-executor"}}`。
@@ -290,7 +290,7 @@ heartbeat 新增 `pi_9910_listen` 与 `svc_pi_a2a` 两个 wire 字段。
 | `L3_高级组合图/L3_sankey_verified.png` | `cf3b81ba` | 93322 |
 
 同步范围：`src/figure_templates.json`（source_sha256 与 preview_sha256）、`_meta/r453_verification_report.json`（l3.runners 三条）、
-`_meta/script_plot_matrix.json`（27 条入口的 K40 实跑证据，用 `ops/verify_plot_matrix.py` 重跑生成，`overall_status=pass`）、
+`_meta/script_plot_matrix.json`（27 条入口的 算力节点 实跑证据，用 `ops/verify_plot_matrix.py` 重跑生成，`overall_status=pass`）、
 `BioanalysDesktop/tests/wp33_figure_adapt.test.js` 的硬编码 master sha。
 readyCount 仍为 30，`ops/figure_ready_allowlist.json` 未改动，集合恒等断言通过。
 

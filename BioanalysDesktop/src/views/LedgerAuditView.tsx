@@ -411,7 +411,7 @@ export function LedgerPanel() {
           <h3 className="error-card-title">台账读取失败</h3>
           <p className="error-text">{result.error}</p>
           <p className="hint">
-            巡检依赖 SSH 往返读服务器台账。请确认 K40 可达后重试；本页不会在读取失败时显示任何"合规"结论。
+            巡检依赖通道往返读服务器台账。请确认算力节点可达后重试；本页不会在读取失败时显示任何"合规"结论。
           </p>
           <button type="button" className="btn btn-primary" onClick={() => void run()} disabled={loading}>
             {loading ? '重试中...' : '重试'}

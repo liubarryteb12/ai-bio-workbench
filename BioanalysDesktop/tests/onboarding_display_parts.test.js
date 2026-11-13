@@ -73,7 +73,7 @@ const PROPS = {
   title: '模块 A · 契约标题',
   codeText: 'portal/inbox/',
   shieldTitle: '子项 2 · 长任务稳定运行与断点恢复',
-  items: ['K40 降权执行 + 3 线程封顶', '7.5GB 内存软熔断与检查点续跑', '每步 exit 0 后落盘台账'],
+  items: ['算力节点降权执行 + 3 线程封顶', '7.5GB 内存软熔断与检查点续跑', '每步 exit 0 后落盘台账'],
   count: 3,
 };
 

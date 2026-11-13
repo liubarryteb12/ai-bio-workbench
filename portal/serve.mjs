@@ -503,7 +503,7 @@ function resolveLocally(reg, seriesId, selectedIds, koGene) {
   }
   const quota = reg.constraints?.mem_quota_mb;
   if (quota && peakMemMb > quota) {
-    errors.push(`峰值内存 ${peakMemMb}MB 超出 K40 配额 ${quota}MB`);
+    errors.push(`峰值内存 ${peakMemMb}MB 超出算力节点配额 ${quota}MB`);
   }
 
   // 敲除类 mod 必须给靶基因（母版会在参数解析处 exit 2，预先拦省一次远端执行）

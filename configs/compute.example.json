@@ -12,8 +12,9 @@
     "path": "adb"
   },
   "remote": {
-    "termux_prefix": "/data/data/com.termux/files/usr",
-    "proot_distro": "ubuntu",
+    "remote_home": "/home/bio/.local",
+    "remote_home_dir": "/home/bio",
+    "container_name": "ubuntu",
     "data_root": "/mnt/ssd/bio_data"
   }
 }

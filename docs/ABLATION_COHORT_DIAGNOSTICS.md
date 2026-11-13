@@ -88,7 +88,7 @@ GSE316126 两个对比下 **`min_padj = 0.869`，无任何基因显著**。这�
 python .tmp/dcm_bench/gse316126_build2.py
 # 2. 构造两两对比
 python .tmp/dcm_bench/gse316126_contrasts.py
-# 3. K40 上跑（文件名必须含 expr_genes / group_map，且 group_map 为 .tsv）
+# 3. 算力节点 上跑（文件名必须含 expr_genes / group_map，且 group_map 为 .tsv）
 ssh k40-ubuntu 'cd /mnt/ssd/bio_data/projects/PRJ_GSE316126_SANITY/contrasts/t2d && \
   BIOANALYS_SEED=20261105 bash /mnt/ssd/bio_data/bin/line1_bulk/deg_limma \
   --input expr_genes.tsv --input group_map.tsv'

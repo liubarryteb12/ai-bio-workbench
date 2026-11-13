@@ -84,7 +84,7 @@ E 长效防回潮门禁闭环
 |---|---|---|---|---|
 | A | 规范统一与收敛 Spec Unification | 订单已授权 | 6 类冲突逐行有裁定、迁移窗口、责任阶段；`docs/figure_spec.md` 头部有指向 `sci.md` 与豁免台账的 context pointer；`gate:all` 7 道全绿 | 放行 B |
 | B | 渲染后视觉与结构验收机建 Post-Render Visual & Structural Rigging | A 绿 | 6 类违规样例集全部判 FAIL；30 个 Ready 预览无假 PASS；6 张人工目视样本保持 UNVERIFIED；`gate:all` 7 道全绿 | 放行 C |
-| C | 核心 Ready 模板母版重构与真机重渲染 | A + B 绿 | `figure_templates_parity.test.js` 全绿；`ids.length=30` 且 ID 集合与白名单恒等；预览哈希与 K40 产物逐字节一致；30/30 重渲染无 FAIL；`gate:all` 7 道全绿 | 放行 D |
+| C | 核心 Ready 模板母版重构与真机重渲染 | A + B 绿 | `figure_templates_parity.test.js` 全绿；`ids.length=30` 且 ID 集合与白名单恒等；预览哈希与 算力节点 产物逐字节一致；30/30 重渲染无 FAIL；`gate:all` 7 道全绿 | 放行 D |
 | D | 产能扩展与按单受控准入 | C 绿 + 真实外部订单点名 | 每批 4/4 四件套齐备且留档；白名单每次变化可逐条追溯到订单号；被转 Ready 的行 source/preview/verified 全非空；`gate:all` 7 道全绿 | 放行 E |
 | E | 长效防回潮门禁闭环 | D 绿 | 注入 6 类违规后 `--skip-tests` 在 120 秒内返回非 0 且点名第 8 道；样例移除后 8 道全绿；CI 与本地 GATES 清单逐条同构；`gate:all` 全绿 | 专题收口 |
 
@@ -174,7 +174,7 @@ E 长效防回潮门禁闭环
 | 票 | 动作 | 完成判据 |
 |---|---|---|
 | C1.1 | 母版数据缺陷修复：把 `runif(n)` + BH 得 `min_padj=0.540058/n_sig=0` 的假数据换成确定性黄金集（前 120 上调 `runif(1.6,3.2)`、后 120 下调 `-runif(1.5,3.0)`、240 个 `p=10^runif(-8,-3)` 再 BH），得 245 至 247 显著点 | `set.seed(42)` 下两次运行显著点数一致；`n_sig > 200` |
-| C1.2 | 配色与阈值口径：Up=`#EE0000` / Down=`#3B4992` / NS=`#BEBEBE`；loose 0.5/p0.1、standard 1.0/p0.05、strict 2.0/p0.05；`use_adj_p` 派生 `effective_p_field` | K40 真机三档实测落在第二十九轮基线附近（loose up=247/down=249、adj up=124/down=122） |
+| C1.2 | 配色与阈值口径：Up=`#EE0000` / Down=`#3B4992` / NS=`#BEBEBE`；loose 0.5/p0.1、standard 1.0/p0.05、strict 2.0/p0.05；`use_adj_p` 派生 `effective_p_field` | 算力节点 真机三档实测落在第二十九轮基线附近（loose up=247/down=249、adj up=124/down=122） |
 | C1.3 | 走完整条链，回写 `source_sha256` / `preview_sha256` / `master_sha256` | 6 个环节逐一有实测输出，预览 PNG 与仓库字节一致，B1 判 PASS 或 UNAVAILABLE |
 | C1.4 | 变异反证：把黄金集换回 `runif(n)`，红环必须变红（`n_sig=0` 或火山图无红蓝像素） | 换回后 B1 判 FAIL 且点名"无显著点"；换回黄金集后转 PASS |
 
@@ -184,12 +184,12 @@ E 长效防回潮门禁闭环
 |---|---|---|
 | C2 | 母版收敛：main 与 compat 的 `same=4/diff=2`、`compat_only=1`、`main_only=10` 收敛到单一真源，清掉 11 个孤儿副本；`wp33_figure_adapt.test.js:326` 的 `master_sha256` 改指向新真源 | 逐字节 `diff` 只剩 1 份母版；测试硬编码与真源一致 |
 | C3 | 其余 29 个 Ready 各走一遍 C1 的链，批次台账 `docs/figure_ready_rerender_ledger.md` 每行 `{id, source_before, source_after, preview_before, preview_after, verdict, k40_job_id}` | 30 行齐备，每行 7 字段全填 |
-| C4 | 预览端点同源化：`portal/serve.mjs handleFigureTemplatePreview` 从 `readFileSync` 静态字节升级为"注册哈希校验 + 可手动触发真机重渲染"，改适配器后预览可见变化；K40 不可达时**自动回落静态 PNG 并在响应元数据标 `preview_state=stale`**，不抛 503、不返回空白（第三十一轮 Q3 裁定） | 改一处 overlay 的配色常量后，预览端点返回的字节与 `preview_sha256` 同步变化；断掉 K40 后端点仍返回 200 且 `preview_state=stale`；静态 PNG 作为封板资产保留 |
-| C5 | 矩阵与产物判据对齐：`script_plot_matrix.json` 的 `quarantined=1` 补判据，PDF 的 `"PDF header passed; full validation not performed"` 换成 B3 的产物面判据 | `ops/verify_plot_matrix.py` 在 K40 重跑 `{"failed":0,"overall_status":"pass"}`，PDF 条目带 Type42 与页框尺寸实测值 |
+| C4 | 预览端点同源化：`portal/serve.mjs handleFigureTemplatePreview` 从 `readFileSync` 静态字节升级为"注册哈希校验 + 可手动触发真机重渲染"，改适配器后预览可见变化；算力节点 不可达时**自动回落静态 PNG 并在响应元数据标 `preview_state=stale`**，不抛 503、不返回空白（第三十一轮 Q3 裁定） | 改一处 overlay 的配色常量后，预览端点返回的字节与 `preview_sha256` 同步变化；断掉 算力节点 后端点仍返回 200 且 `preview_state=stale`；静态 PNG 作为封板资产保留 |
+| C5 | 矩阵与产物判据对齐：`script_plot_matrix.json` 的 `quarantined=1` 补判据，PDF 的 `"PDF header passed; full validation not performed"` 换成 B3 的产物面判据 | `ops/verify_plot_matrix.py` 在 算力节点 重跑 `{"failed":0,"overall_status":"pass"}`，PDF 条目带 Type42 与页框尺寸实测值 |
 
 **产出物**：收敛后的母版、30 个重渲染预览、`docs/figure_ready_rerender_ledger.md`、`src/figure_templates.json` 新哈希、`portal/serve.mjs` 同源化端点。
 
-**出口判据**：4 Argon Q4 原话"Phase C 全程锁死 30 集合恒等仅重渲染回写哈希"。可检查面：`BioanalysDesktop/tests/figure_templates_parity.test.js` 全绿；`ops/figure_ready_allowlist.json` 的 `ids.length=30` 且 ID 集合绝对恒等；`preview_sha256` 与 K40 产物逐字节一致；30/30 重渲染无 FAIL；`npm run gate:all` 7 道全绿。
+**出口判据**：4 Argon Q4 原话"Phase C 全程锁死 30 集合恒等仅重渲染回写哈希"。可检查面：`BioanalysDesktop/tests/figure_templates_parity.test.js` 全绿；`ops/figure_ready_allowlist.json` 的 `ids.length=30` 且 ID 集合绝对恒等；`preview_sha256` 与 算力节点 产物逐字节一致；30/30 重渲染无 FAIL；`npm run gate:all` 7 道全绿。
 
 ---
 
@@ -200,7 +200,7 @@ E 长效防回潮门禁闭环
 | 票 | 动作 | 完成判据 |
 |---|---|---|
 | D1 | 准入单据模板 `docs/figure_admission_order.md`：每单点名 `{模板 id, 真实项目/数据集, 期望图语义, 验收人}` | 单据 4 字段全填，缺字段的批次留在该批之外 |
-| D2 | 每批四件套门禁：① 真实样例（项目数据，避免 `runif` 假数）② 适配器（`figure_adapters.js` 增 overlay 或 Python overlay）③ `script_plot_matrix.json` 加入口并在 K40 真机跑 ④ B1 自动化审验判 PASS | 每批 4/4 齐备且留档，缺任一件该批保持 pending |
+| D2 | 每批四件套门禁：① 真实样例（项目数据，避免 `runif` 假数）② 适配器（`figure_adapters.js` 增 overlay 或 Python overlay）③ `script_plot_matrix.json` 加入口并在 算力节点 真机跑 ④ B1 自动化审验判 PASS | 每批 4/4 齐备且留档，缺任一件该批保持 pending |
 | D3 | 结构化 `adapt_vars`：把 `ops/build_figure_templates.cjs:355-466` 的中文描述字符串改成 `{type, default, required, description}`；每条模板补 `figure_layout` 字段 `{size_preset, width_mm, height_mm, legend_position, caption_lines}`；`src/figure_templates.json` 同步且 `schema_version` 显式递增；**本票独占一轮、不与任何其他票并行**（第三十一轮 Q4 裁定：跨切面结构性变更须中间态可精确归因） | `ops/build_figure_templates.cjs --check` 绿；82 条模板的 `adapt_vars` 全为对象、`figure_layout` 全非空 |
 | D4 | 挂单咬合：`BioanalysDesktop/server/figure_execution_plan.js:15 buildTaskExecutionSequence` 要求 `adapted === true`（:57）且 `depends_on_step` 在执行计划中（:60），每批新模板在 `meta.figure_tasks` 补条目并验证依赖闭包 | 每批新模板的 `buildTaskExecutionSequence` 返回 `ok:true`，`errors` 为空 |
 | D5 | 白名单与审计回执：按 `docs/figure_pending_triage.md` 分类（actionable / blocked_upstream / excluded_out_of_scope），对齐 `docs/figure_admission_sealed.md:12/14/:56/:61` 的 33 真待办与 22 冻结；每次转 Ready 后更新白名单并追加 `docs/final_closure_report.md` 补录日志（理由 + 授权字样） | 白名单 ids 每次变化可逐条追溯到订单号；补录日志含授权字样；`npm run gate:all` 7 道全绿 |
@@ -218,7 +218,7 @@ E 长效防回潮门禁闭环
 | 票 | 动作 | 完成判据 |
 |---|---|---|
 | E1 | `ops/run_all_gates.mjs:40-47` 的 `GATES` 新增第 8 道 `figure_visual`，插在 `figure_registry` 之后、`metrics`（`slow:true`）之前，调 `ops/audit_figure_visual.py --check`；顺带修掉本文件既有文案不一（`:5` 与 `:116` 写"八道串联"、`:40` 实际 7 条、`:128` 输出"7 道全绿"） | `GATES.length=8`；`node ops/run_all_gates.mjs --skip-tests` 含第 8 道；任一 FAIL 即整体非 0 且点名道号；四处文案与实测道数一致 |
-| E2 | `.github/workflows/ci.yml` 同步，保持"本地与 CI 100% 同构"：单 job `gate-all`、`ubuntu-latest`、`timeout-minutes: 20`、node 22、`node ops/run_all_gates.mjs --json`；CI 无真机的检查按 `HOST_UNREACHABLE_K40` 白名单原因跳过，`skip_reason_gate` 核验 | CI 与本地 `GATES` 清单逐条 diff 为空；CI 刻意不含 SSH/adb 的注释保留 |
+| E2 | `.github/workflows/ci.yml` 同步，保持"本地与 CI 100% 同构"：单 job `gate-all`、`ubuntu-latest`、`timeout-minutes: 20`、node 22、`node ops/run_all_gates.mjs --json`；CI 无真机的检查按 `HOST_UNREACHABLE_算力节点` 白名单原因跳过，`skip_reason_gate` 核验 | CI 与本地 `GATES` 清单逐条 diff 为空；CI 刻意不含 SSH/adb 的注释保留 |
 | E3 | 门禁自验红环：把 B4 的 6 类变红样例固化为 `ops/run_all_gates.mjs` 自检项，每轮自验"注入违规样例 → 第 8 道必须红" | 注入后第 8 道红，移除后 8 道全绿；防止审计机自己腐化成假绿 |
 | E4 | 120 秒拦截：定义快速面 `preflight → static_gate → figure_registry → figure_visual`（`--skip-tests`）从提交到报警 <=120 秒；全量面按 CI 单轮约 3 分钟、上限 `timeout-minutes: 20` | 注入违规后快速面在 120 秒内返回非 0 且点名第 8 道；实测墙钟时间留档 |
 | E5 | retro：把本专题的机械失误（母版假数据、静态预览、C6 误判、`score=100` 假绿）写成确定性检查，判断题写进 `docs/coding-standards.md`，收口到 `docs/final_closure_report.md` 新一节 | 4 类失误各有对应确定性检查；补录节含五阶段落点表与收口基线 |
@@ -265,7 +265,7 @@ D5 ─→ E1 → E2 → E3 → E4 → E5
 
 ```text
 objective: 按 docs/figure_deep_optimization_plan.md 五阶段推进出图深度优化专题：
-A 规范统一 → B 渲染后视觉与结构验收机 → C 30 个 Ready 母版重构与 K40 真机重渲染 →
+A 规范统一 → B 渲染后视觉与结构验收机 → C 30 个 Ready 母版重构与 算力节点 真机重渲染 →
 D 按真实订单受控准入 → E 长效防回潮门禁闭环。
 全程 Phase C 锁死 ops/figure_ready_allowlist.json 的 ids.length=30 与 ID 集合恒等，
 Phase D 起按订单号受控递增；每阶段以该阶段出口判据 + npm run gate:all 全绿收口，
