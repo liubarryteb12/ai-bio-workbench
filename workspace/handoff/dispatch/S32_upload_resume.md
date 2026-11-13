@@ -7,14 +7,14 @@
 架构评审 D5 记录：`aims/` 需求侧称"5MB 分片 + 断点续传"，实测两端都不是这样：
 
 - `BioanalysDesktop/server/upload.js`：`CHUNK_SIZE = 4 * 1024 * 1024`（4MB），分片写入 `writeChunk`，**没有任何续传能力**；
-- `BioanalysDesktop/src/App.tsx` 的上传面板：每次提交都**从 chunk 0 重新开始**，中断后必须整包重传（单细胞 RAW tar 常见 1-3GB，手机热点下这是真实痛点）；
+- `BioanalysDesktop/src/App.tsx` 的上传面板：每次提交都**从 chunk 0 重新开始**，中断后必须整包重传（单细胞 RAW tar 常见 1-3GB，算力节点热点下这是真实痛点）；
 - 工作台侧**没有**"查询已上传分片"的端点（`grep -n "api/uploads\|uploads/status" server/index.js` 无命中）。
 
 结论：不是"文档写错了"，而是"断点续传这半个功能从来没实现过"。本切片要把它补上，并把文档口径改回真实值。
 
 ## 二、硬约束（违反即返工）
 
-1. **不许真连 K40 / 不许跑远端写命令**。上传只写本地 `.uploads/` 暂存目录，本切片所有验证都在本机完成。
+1. **不许真连 算力节点 / 不许跑远端写命令**。上传只写本地 `.uploads/` 暂存目录，本切片所有验证都在本机完成。
 2. **不许改 `CHUNK_SIZE` 的语义**：保持 4MB，只补续传；不要为了迁就文档改成 5MB（既有测试与前端常量都按 4MB 断言）。
 3. **不许动 S28/S29 已接线的东西**：`/api/tasks/submit` 的 `validateTaskPaths` 接线、S28 桥接检查块，一个字都不改。若 `server/index.js` 有冲突，只在你新增的 handler 区域动。
 4. 前端不许引入新依赖；`npm run build` 必须过（`npx tsc --noEmit` 也要过）。

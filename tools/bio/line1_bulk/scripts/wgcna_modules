@@ -196,7 +196,7 @@ log(sprintf("wgcna_config_source=%s | top_n=%d minModuleSize=%d mergeCutHeight=%
 # 设计写的是"截取方差前 5000 基因构建网络"。不落实会有两个后果：
 #   1) blockwiseModules 默认 maxBlockSize=5000，全量 20019 基因会被切成 5 块，
 #      模块不能跨块，"全基因共表达网络"退化成"分块网络"；
-#   2) TOM 内存按基因数平方增长，全量约 3.2 GB，手机端扛不住。
+#   2) TOM 内存按基因数平方增长，全量约 3.2 GB，算力节点扛不住。
 # 过滤后 5000 基因正好落在一个块内，内存约 200 MB。
 TOP_N <- wgcna_cfg$top_n_genes
 gv <- apply(expr, 1, var, na.rm = TRUE)

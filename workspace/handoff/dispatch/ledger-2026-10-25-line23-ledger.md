@@ -51,7 +51,7 @@ src/line2_scrna/scripts 与 src/line3_spatial/scripts 母版已同步为含钩�
 
 ## 双端一致性
 
-39 个 line2 与 line3 脚本本地与 K40 哈希逐项一致，match=39 diff=0 missing=0
+39 个 line2 与 line3 脚本本地与 算力节点 哈希逐项一致，match=39 diff=0 missing=0
 两个新工具已同步到本地 ops/
 
 比对时遇到一个假阳性：line2 与 line3 有 4 组同名脚本（dr_post_analysis、

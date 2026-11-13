@@ -106,7 +106,7 @@ exit 0
 $ cd BioanalysDesktop; node --test tests/bridge_guard_invariant.test.js
 ✔ 引擎返回 0 → 守卫 0 且含 BRIDGE OK
 ✔ 引擎断言失败（3）→ 守卫透传同码且含 BRIDGE FAIL
-✔ ssh 不可达 → 守卫 0 且含 BRIDGE SKIP（K40 离线母版仍可跑）
+✔ ssh 不可达 → 守卫 0 且含 BRIDGE SKIP（算力节点 离线母版仍可跑）
 ✔ 输入非 h5ad/rds → 守卫 0 且 SKIP（不编造可校验对象）
 ℹ tests 9
 ℹ pass 9

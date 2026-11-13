@@ -12,22 +12,22 @@
    修复：payload 改走 ssh stdin；远端回 `WROTE <path> <bytes>` 标记，本地校验字节数。
 2. P1：`tests/index.test.js:18` 硬编码 `PORT = 18787`，与本机无关进程（PID 28256，实测占用中）相撞即 8 条 FAIL。修复：改 `freePort()`（照 portal_submit.test.js 先例）。
 3. 同类隐患排查：检索服务端所有「大 payload 拼进 ssh 命令行」调用点，列清单上报，只修台账一处。
-4. 新增 ≥4 条测试（run.test.js 只增不改）；`npm test` 247/247 全绿；K40 真 E2E。
+4. 新增 ≥4 条测试（run.test.js 只增不改）；`npm test` 247/247 全绿；算力节点 真 E2E。
 
 ## 1. 进度台账（每步更新）
 
 - [x] 读契约 / S18R §9 / run.js / 测试现场
-- [x] 环境确认：项目根**非 git 仓库**（无 diff 可附，改动清单见 §7）；18787 被 PID 28256 占用（netstat 实测）；K40 ssh 可达（BatchMode 实测 `K40_OK`）
-- [x] 任务项 1：P0 复现（先红，真 K40，§2）
+- [x] 环境确认：项目根**非 git 仓库**（无 diff 可附，改动清单见 §7）；18787 被 PID 28256 占用（netstat 实测）；算力节点 ssh 可达（BatchMode 实测 `算力节点_OK`）
+- [x] 任务项 1：P0 复现（先红，真 算力节点，§2）
 - [x] 任务项 2：run.js stdin 传输 + 硬校验（§3）
 - [x] 任务项 3：同类隐患清单（§4）
 - [x] 任务项 4：index.test.js 端口动态化（+ 域外 auth.test.js 同源问题，见 §6.1）
 - [x] 任务项 5：新增 4 条测试 + npm test 251/251 全绿（§5）
-- [x] 任务项 6：K40 真 E2E 12/12 PASS（§5.1）
+- [x] 任务项 6：算力节点 真 E2E 12/12 PASS（§5.1）
 
 ## 2. 复现证据（任务项 1，先红再改）
 
-脚本：`cn_debug/2026-10-20_s26_p0_repro.mjs`（复刻修复前 run.js:167 命令公式，remotePath 指向 /tmp 不碰 system_logs）+ `cn_debug/2026-10-20_s26_ssh_threshold_probe.mjs`。对真 K40 实测：
+脚本：`cn_debug/2026-10-20_s26_p0_repro.mjs`（复刻修复前 run.js:167 命令公式，remotePath 指向 /tmp 不碰 system_logs）+ `cn_debug/2026-10-20_s26_ssh_threshold_probe.mjs`。对真 算力节点 实测：
 
 - 梯度探测：命令长 8000 完整到达（`echo x*8000 | wc -c` → `wc=8001`）；**8231 起 `| wc -c` 被切掉**，`echo` 的 x 串直落 stdout 且 exit=0 —— 与 S18R §8-2「8,231 起截断」完全一致。
 - 台账形态复现（71 outputs entry）：
@@ -82,13 +82,13 @@
 
 | 验证 | 命令 | 结果 |
 |---|---|---|
-| P0 复现（红） | `node cn_debug/2026-10-20_s26_p0_repro.mjs`（真 K40） | exit 0 + 半截 base64 + 无 WROTE + 无文件（§2） |
+| P0 复现（红） | `node cn_debug/2026-10-20_s26_p0_repro.mjs`（真 算力节点） | exit 0 + 半截 base64 + 无 WROTE + 无文件（§2） |
 | 阈值探测 | `node cn_debug/2026-10-20_s26_ssh_threshold_probe.mjs` | 8000 完整 / 8231 起截断，与 S18R 一致 |
 | 全量测试 | `npm test`（BioanalysDesktop） | **ℹ tests 251 / pass 251 / fail 0**（= 247 基线 + 4 条 S26 新增；18787 被 PID 28256、18788 被 PID 6104 占用状态下运行，端口修复同获验证） |
 | run.test.js 单套 | `node --test tests/run.test.js` | 14/14 全绿（既有 10 条断言原样通过 + S26 4 条） |
-| K40 E2E | `node cn_debug/2026-10-20_verification_s26_ledger_e2e.mjs`（自带临时服务实例跑当前代码，不碰 8787 常驻实例） | **12/12 PASS**，见 §5.1 |
+| 算力节点 E2E | `node cn_debug/2026-10-20_verification_s26_ledger_e2e.mjs`（自带临时服务实例跑当前代码，不碰 8787 常驻实例） | **12/12 PASS**，见 §5.1 |
 
-### 5.1 E2E 明细（真 ssh K40，default/line2_scrna/scrna_figures，seed=20261018）
+### 5.1 E2E 明细（真 ssh 算力节点，default/line2_scrna/scrna_figures，seed=20261018）
 
 ```
 PASS | 临时服务实例就绪（当前代码） | http://127.0.0.1:7743
@@ -125,4 +125,4 @@ WROTE 标记证据口径：标记由 persistEntry 内部硬校验（缺失/bytes
 - `BioanalysDesktop/tests/auth.test.js`（域外扩展：端口动态化，待追认）
 - `cn_debug/2026-10-20_s26_p0_repro.mjs`、`cn_debug/2026-10-20_s26_ssh_threshold_probe.mjs`、`cn_debug/2026-10-20_verification_s26_ledger_e2e.mjs`、`cn_debug/2026-10-20_s26_e2e_server_stderr.log`
 
-未触碰：8787 常驻实例、`portal/`、`ops/`、`src/`、`server/figures.js`、`server/project.js`、`server/task.js`、`docs/`、processed 数据、K40 容器环境。
+未触碰：8787 常驻实例、`portal/`、`ops/`、`src/`、`server/figures.js`、`server/project.js`、`server/task.js`、`docs/`、processed 数据、算力节点 容器环境。

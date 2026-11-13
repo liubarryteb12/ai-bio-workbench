@@ -20,9 +20,9 @@
 ## 1. 架构总评（设计 vs 现状）
 
 ### 1.1 云-端解耦：设计成立，保持
-- **你能感受到的**：本地电脑只跑浏览器和两个小服务，重活全在手机；电脑风扇不响。
+- **你能感受到的**：本地电脑只跑浏览器和两个小服务，重活全在算力节点；电脑风扇不响。
 - **证据**：进程实测只有 `portal/serve.mjs`(PID 5968) 与 `server/index.js`(PID 26256)
-  两个 node 服务；计算全部走 ssh 到 K40。aims.txt §一.1 与此一致。
+  两个 node 服务；计算全部走 ssh 到 算力节点。aims.txt §一.1 与此一致。
 - **判断**：**保持**。这是整套设计里最对的一块，不要动。
 
 ### 1.2 "管家"有六套，这是臃肿主因
@@ -140,12 +140,12 @@
 客户浏览器 → portal(8080) 填 5 步表单 + 上传数据文件
    → PKG_ 包落 portal/inbox/
    → 【手工断点1】管理员打开 8787 收件箱视图，人工导入建项
-   → 8787 校验 + scp 数据到 K40 projects/<id>/<line>/raw_data/
-   → 8787 提交任务（ssh 到 K40，run_throttled_task.sh 守护跑）
-   → K40 跑分析 + 写 system_logs 台账
+   → 8787 校验 + scp 数据到 算力节点 projects/<id>/<line>/raw_data/
+   → 8787 提交任务（ssh 到 算力节点，run_throttled_task.sh 守护跑）
+   → 算力节点 跑分析 + 写 system_logs 台账
    → 8787 回搬 outputs/ 到本地
    → Studio 预览（图廊/TSV/解读）
-   → 【手工断点2】客户交付报告：人工 ssh 上 K40 跑 ops/build_client_report.py
+   → 【手工断点2】客户交付报告：人工 ssh 上 算力节点 跑 ops/build_client_report.py
    → 【手工断点3】人工把报告文件捞回本地 deliverables/
 ```
 ### 3.2 手工断点清单（按痛感排序）

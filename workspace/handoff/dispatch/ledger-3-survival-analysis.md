@@ -1,8 +1,8 @@
-# 3.生存分析 K40 生产化台账
+# 3.生存分析 算力节点 生产化台账
 
 日期：2026-10-25
 
-状态：K40 六项验收通过。最终脚本已部署，本地与远端 sha256 一致。
+状态：算力节点 六项验收通过。最终脚本已部署，本地与远端 sha256 一致。
 
 ## 来源与产物
 
@@ -24,13 +24,13 @@ D:\00.AIagent\codespace\AI辅助生信分析流程工作台\reference\00a.可参
 D:\00.AIagent\codespace\AI辅助生信分析流程工作台\src\line1_bulk\scripts\survival_analysis
 ```
 
-K40 部署路径：
+算力节点 部署路径：
 
 ```text
 /mnt/ssd/bio_data/bin/line1_bulk/survival_analysis
 ```
 
-K40 备份：
+算力节点 备份：
 
 ```text
 /mnt/ssd/bio_data/bin/line1_bulk/survival_analysis.bak_20261025_pre_ci_fix
@@ -124,7 +124,7 @@ bom=False
 sha256=c12bdcf4215e60af26383d3b296e93a490069f4933954b11dcf77cea6f2ad99a
 ```
 
-K40：
+算力节点：
 
 ```text
 -rwxr-xr-x. 1 root root 44152 Oct 24 18:21 /mnt/ssd/bio_data/bin/line1_bulk/survival_analysis
@@ -343,10 +343,10 @@ report 含完成时间，不做跨运行逐字节比较。其自身 sha256 由�
 
 ## 遗留项
 
-1. K40 登录 shell 的裸 `Rscript` PATH 仍由另一条任务统一修复。当前生产调用必须使用显式 shim，本次所有 R 验证均使用该 shim。
+1. 算力节点 登录 shell 的裸 `Rscript` PATH 仍由另一条任务统一修复。当前生产调用必须使用显式 shim，本次所有 R 验证均使用该 shim。
 2. 本次只用确定性合成数据验证统计路径，未用真实 TCGA 或 GEO 生存队列重跑。真实数据仍需按项目目录和临床字段命名执行一次入线验收。
 3. 母版 TCGA `-01A` 自动筛选和 barcode 截断未作为隐式行为保留。生产版通过 `--sample-col`、样本 ID 对齐和标准表输入显式处理，避免把 TCGA 规则写死为全库规则。
-4. 未运行任何禁止的母版分析脚本。K40 实际执行的业务入口只有新写的 `survival_analysis`。
+4. 未运行任何禁止的母版分析脚本。算力节点 实际执行的业务入口只有新写的 `survival_analysis`。
 
 ## 返工记录 2026-10-25：CSV 输入被 read.delim 读成单列
 
@@ -637,7 +637,7 @@ c12bdcf4215e60af26383d3b296e93a490069f4933954b11dcf77cea6f2ad99a
 8d601b259e7f5370fc13528eed57cd6fad28214f76f5998722c01094f5d97ce2
 ```
 
-K40 部署状态：
+算力节点 部署状态：
 
 ```text
 /mnt/ssd/bio_data/bin/line1_bulk/survival_analysis mode=755 size=47572

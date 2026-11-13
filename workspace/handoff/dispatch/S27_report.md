@@ -1,6 +1,6 @@
 # S27 执行台账：客户交付报告工作台入口（A 批 A4 / R3）
 
-## 状态：完成（实现 + 测试 + K40 E2E 全过，待主 Agent 验收）
+## 状态：完成（实现 + 测试 + 算力节点 E2E 全过，待主 Agent 验收）
 
 ## 实现落地
 - server/report.js（新建）：LOCAL_DELIVER_ROOT / localDeliverDir / buildReportCommand /
@@ -20,7 +20,7 @@
 - npm test：tests 281 / pass 281 / fail 0（含 22 个既有测试文件与 S26 域的
   index.test.js、run.test.js）。
 - npm run build：✓ built in 689ms（32 modules）。
-- K40 E2E（PRJ_E2E_GSE277173，真 ssh 跑远端引擎）：10/10 PASS——
+- 算力节点 E2E（PRJ_E2E_GSE277173，真 ssh 跑远端引擎）：10/10 PASS——
   build 200 + 三大件（md 34296B / html 48230B / tar.gz 8758657B）；
   三件本地↔远端 md5 逐件一致；download html 200 + 48230B + <!doctype html 头；
   Analysis_Report.md 无 /mnt/ssd 泄漏（{{DATA_ROOT}} 占位正常）。
@@ -29,7 +29,7 @@
      下的 md/html + 根下 tar.gz（非平铺），pullDeliverables 已按递归 find + basename
      匹配落地（首版假设平铺被 E2E 当场打回）。
   2. 本地交付缓存根实际解析为仓库根 deliverables/（与 pull.js 的 outputs/ 同位）。
-- K40 链路实测通（LINK_OK，6 项目在，PRJ_E2E_GSE277173 在）。
+- 算力节点 链路实测通（LINK_OK，6 项目在，PRJ_E2E_GSE277173 在）。
 
 ## 已完成
 - 2026-10-20 已通读：SUBAGENT_CONTRACT.md、architecture_review §3.1/§5 A4、

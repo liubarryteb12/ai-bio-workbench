@@ -61,7 +61,7 @@ h5ad/rds 校验分支包 `try/except SystemExit: raise / except Exception: fail(
   新增 ssh 分支 255 仍 SKIP 用例。
 - `tests/bridge_stage.test.js` 11 → 13 条：损坏 h5ad、输入文件不存在两条真跑。
 
-### 真机（K40 / Ubuntu 容器）
+### 真机（算力节点 / Ubuntu 容器）
 1. `ops/sync_and_verify_remote.ps1 -All`：76 个文件，**76/76 哈希一致**，镜像 `ops/bridge_guard.sh` 1/1 一致，exit 0。
 2. gsva 母版真跑：`EXIT=0`，日志出现
    `[BRIDGE] Python -> R, file=.../scrna_norm.h5ad, stage=pre-dimred`、三条 `[BRIDGE OK]`
@@ -72,7 +72,7 @@ h5ad/rds 校验分支包 `try/except SystemExit: raise / except Exception: fail(
 
 ## 四、遗留
 
-1. line1 全链真机 exit 0 尚未跑全（M1 DoD 剩余项），且 STRING 离线文件在 K40 上还不存在
+1. line1 全链真机 exit 0 尚未跑全（M1 DoD 剩余项），且 STRING 离线文件在 算力节点 上还不存在
    （已把预下载命令写进 `ops/README.md`）。
 2. `inspectBridgeNeed` 的 `guardWired` 判定仍按原文匹配，注释里提到 `bridge_guard.sh` 会假阳性（P3 遗留）。
 3. `mergeIsolationChecks` 的 value 是字符串拼接（`4/4 一致 | 三线均隔离`），前端未做结构化展示；

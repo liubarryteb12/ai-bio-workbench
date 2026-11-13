@@ -42,10 +42,10 @@
 | 脚本 | 保留理由（一句话） |
 |---|---|
 | `ops/serve_guard.ps1` | 8787/8080/frpc 的唯一常驻守护入口；`docs/user_portal_deploy.md` §74-97 全部以它为准 |
-| `ops/bio_watchdog.sh` | Termux 保活正本模板；`docs/termux_keepalive.md` 四处引用 |
+| `ops/bio_watchdog.sh` | 基础用户空间 保活正本模板；`docs/termux_keepalive.md` 四处引用 |
 | `ops/fix_runsvdir.sh` | reboot 后双 runsvdir 抢锁（R15）唯一修复入口，2026-10-20 真机用过 |
 | `ops/04_check_logs.ps1` | 台账校验 PC 侧一键壳；`03_check_logs_remote.sh` 是它调用的服务端本体（壳+体，不是重复） |
-| `ops/svlogger_*` 三个目录 | 本地 `ops/` 下本就不存在（只在远端 Termux 服务目录），无可归档对象 |
+| `ops/svlogger_*` 三个目录 | 本地 `ops/` 下本就不存在（只在远端 基础用户空间 服务目录），无可归档对象 |
 
 执行前已确认：无 Windows 计划任务引用 `serve_guard`（`Get-ScheduledTask` 匹配 0 条）、无 `serve_guard`/8787/8080 进程在跑，移动不影响正在运行的服务。
 

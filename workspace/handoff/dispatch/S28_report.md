@@ -67,7 +67,7 @@ default 项目共 41 个 .h5ad/.rds（find 实测），真链正路径输入选
     default-import 可拦截范式）/ `BridgeCheckError` / 常量 `BRIDGE_ENGINE_REMOTE`、`BRIDGE_SSH_TIMEOUT_MS`
   - index.js 接线位置：`auditCommand` 跨线审计之后、`runTask` 下发之前
   - 退出码判决：0 → `[bridge] ... 四项断言通过` 放行；1..254（非 255）→ 400 带引擎原文；
-    255/-1（ssh 连接失败/超时）→ 503「桥接校验无法执行（K40 不可达）」
+    255/-1（ssh 连接失败/超时）→ 503「桥接校验无法执行（算力节点 不可达）」
   - 已知限制（上报主 Agent，见 §8）：双语步骤但 inputs 无 .h5ad/.rds 时无法构造引擎命令
     （引擎只认这两种格式），实现为 warn 留痕 + 放行，不编造参数、不阻断提交
 - [x] 步骤 1：引擎读码结论（本文件 §1）
@@ -76,8 +76,8 @@ default 项目共 41 个 .h5ad/.rds（find 实测），真链正路径输入选
   - 单文件 `node --test tests/bridge_checkpoint.test.js` → tests 15 / pass 15 / fail 0
 - [x] 步骤 4：`npm test` → tests 296 / pass 296 / fail 0（基线 281 + 新增 15，既有测试零红）；
   `npm run build` → ✓ built in 680ms
-- [x] 步骤 5：K40 真链正/负路径验证（脚本 cn_debug/2026-10-20_verification_s28_bridge.mjs，幂等，8/8 PASS）
-  - 正路径（真 K40、真引擎、真 HTTP）：default/line2 `gsva_pathways`（唯一双语步骤，
+- [x] 步骤 5：算力节点 真链正/负路径验证（脚本 cn_debug/2026-10-20_verification_s28_bridge.mjs，幂等，8/8 PASS）
+  - 正路径（真 算力节点、真引擎、真 HTTP）：default/line2 `gsva_pathways`（唯一双语步骤，
     判定证据见 §2）+ 输入 `processed/scrna_annotated.h5ad`：
     提交 200 返回 taskId=default-line2_scrna-1792509126608；服务端日志出现
     `[bridge] line2_scrna/gsva_pathways 四项断言通过`；任务出现在 /api/tasks（正常下发）；
@@ -89,8 +89,8 @@ default 项目共 41 个 .h5ad/.rds（find 实测），真链正路径输入选
   - 数据面不变性：验证前后 processed+figures 共 97 个文件的 md5 聚合值一致
     （c4f0443efbab64f6868537ccfc31c9d0），且 find -newermt "15:00" 为 0——
     整个验证窗口 default 项目 processed/figures 零写入。
-  - K40 不可达分支（503）无法在真链安全复现（需真断链），由测试垫片覆盖
-    （exit 255 → 503「桥接校验无法执行（K40 不可达）」），标注：未在真链复现 503。
+  - 算力节点 不可达分支（503）无法在真链安全复现（需真断链），由测试垫片覆盖
+    （exit 255 → 503「桥接校验无法执行（算力节点 不可达）」），标注：未在真链复现 503。
 
 ## 5. 验证记录（真链输出原文摘要）
 
@@ -147,5 +147,5 @@ git 状态：以上文件 + 两个派发单 md 为未跟踪/修改态，未提�
    本接线不覆盖（同第 2 条，需脚本级埋点才能覆盖）。
 4. **§6 的 3 条待归因台账**：建议主 Agent 会话排查（可能是 default 会话域的
    看门狗/另一 8787 实例）。
-5. K40 不可达 503 分支未在真链复现（测试垫片覆盖），标注未运行于真链。
+5. 算力节点 不可达 503 分支未在真链复现（测试垫片覆盖），标注未运行于真链。
 6. npm test 现为 296 条（281 + 15），与派发单预期的"281 条基础上只增"一致。

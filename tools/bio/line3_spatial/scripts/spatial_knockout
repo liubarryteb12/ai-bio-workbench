@@ -155,7 +155,7 @@ export KO_GENE="$ko_gene"
 export KO_GENE_SOURCE="$ko_gene_source"
 export KO_OUTDIR="${KO_OUTDIR:-$(pwd)}"
 
-# 解释器 PATH 前置（生信代码专项审核）：K40 系统解释器缺科学计算包，真依赖在 bio-py venv。
+# 解释器 PATH 前置（生信代码专项审核）：算力节点 系统解释器缺科学计算包，真依赖在 bio-py venv。
 # 用 PATH 注入而非改写调用行，是为了让桥接调用的行级计数保持原样（bilingual 判定不变）。
 BIO_PY_BIN="${BIO_PY_BIN:-/root/venvs/bio-py/bin}"
 if [ -x "$BIO_PY_BIN/python3" ]; then
@@ -188,7 +188,7 @@ if not KO_GENE:
     sys.exit(1)
 KO_GENE_SOURCE = os.environ.get("KO_GENE_SOURCE", "unknown").strip() or "unknown"
 ALPHA = 0.05
-N_CPUS = 3              # 手机端 3 大核算力上限（aims.txt 削峰规范）
+N_CPUS = 3              # 算力节点 3 大核算力上限（aims.txt 削峰规范）
 NEED_COLS = ["Gene", "Distance", "Z", "FC", "p-value", "adjusted p-value"]
 
 

@@ -83,7 +83,7 @@ echo "step_executed=external_validation"
 echo "bioanalys_seed=${seed}"
 echo "validation_mode=${validation_mode}"
 
-# 解释器 PATH 前置（生信代码专项审核）：K40 系统解释器缺科学计算包，真依赖在 bio-py venv。
+# 解释器 PATH 前置（生信代码专项审核）：算力节点 系统解释器缺科学计算包，真依赖在 bio-py venv。
 # 用 PATH 注入而非改写调用行，是为了让桥接调用的行级计数保持原样（bilingual 判定不变）。
 BIO_PY_BIN="${BIO_PY_BIN:-/root/venvs/bio-py/bin}"
 if [ -x "$BIO_PY_BIN/python3" ]; then
@@ -259,7 +259,7 @@ def log(m):
     print(m, flush=True)
 
 
-# --- 项目元数据与冻结模型解析（吸收自 K40 远端，第三十八轮同源收敛）---
+# --- 项目元数据与冻结模型解析（吸收自 算力节点 远端，第三十八轮同源收敛）---
 # 远端在这里读 project.json 的 train/validation 数据集角色，并把冻结模型表按
 # record_type 拆成元信息与特征系数。仓库版本缺这段，导致真机 external_validation
 # 拿不到 train_dataset / train_platform 等溯源字段。下面两个函数逐字取自远端，

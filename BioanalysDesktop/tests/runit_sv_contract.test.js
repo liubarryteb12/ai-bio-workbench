@@ -44,7 +44,7 @@ test('四个 sv 目录都有 run 与 log/run，run 可执行', () => {
     assert.ok(fs.existsSync(run), svc + '/run 缺失');
     assert.ok(fs.existsSync(path.join(SV, svc, 'log', 'run')), svc + '/log/run 缺失');
     // 权限位不在 Windows 工作区断言：NTFS 不保存 exec 位（检出后恒为 644），
-    // 755 由 K40 部署侧与 git index 保证，见 docs/k40_hostkey_guard.md。
+    // 755 由部署侧与 git index 保证，见 hostkey 守卫。
   }
 });
 

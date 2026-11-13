@@ -77,7 +77,7 @@ export QC_INPUTS="$inputs_newline"
 export QC_OUTDIR="${QC_OUTDIR:-$(pwd)}"
 
 export BIOANALYS_SEED="$seed"
-# 解释器 PATH 前置（生信代码专项审核）：K40 系统解释器缺科学计算包，真依赖在 bio-py venv。
+# 解释器 PATH 前置（生信代码专项审核）：算力节点 系统解释器缺科学计算包，真依赖在 bio-py venv。
 # 用 PATH 注入而非改写调用行，是为了让桥接调用的行级计数保持原样（bilingual 判定不变）。
 BIO_PY_BIN="${BIO_PY_BIN:-/root/venvs/bio-py/bin}"
 if [ -x "$BIO_PY_BIN/python3" ]; then
@@ -245,7 +245,7 @@ for species in sorted(loaded):
     # 不等同于单细胞意义上的真双细胞。
     # 为什么读表而不在管线里跑 scrublet（2026-11-06 实测）：本步主进程持约 2.7 GB
     # 输入与约 2.2 GB 过滤副本，再起 scrublet 子进程（约 1 GB），写输出时可用内存
-    # 跌破 600 MB，Android 的 LMK 会杀掉整个 Termux（当天实测 5 次）。
+    # 跌破 600 MB，Android 的 LMK 会杀掉整个 基础用户空间（当天实测 5 次）。
     # 因此 scrublet 拆到 ops/doublet_score.py 单独跑，本步只应用判定。
     doublet_info = {
         "enabled": False,

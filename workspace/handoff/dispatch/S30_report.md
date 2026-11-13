@@ -95,7 +95,7 @@ node --check portal/serve.mjs; node --check portal/lib/archive.mjs; node --check
 NPM_TEST_EXIT=0
 ```
 
-说明：322 = 基线 296 + 本任务新增 11 条（307）+ 并发队友新增 15 条。首次运行时曾出现一次与本次改动无关的失败：tests/consistency.test.js:24「Node 判定与服务器 bash 判定结论一致」，错误为 `scp task_ok.json 失败: Connection closed by 127.0.0.1 port 10022`，系 K40 SSH 隧道瞬时断开；随后 `ssh -o BatchMode=yes k40-ubuntu 'echo SSH_OK; hostname'` 返回 SSH_OK / localhost，重跑即全绿。
+说明：322 = 基线 296 + 本任务新增 11 条（307）+ 并发队友新增 15 条。首次运行时曾出现一次与本次改动无关的失败：tests/consistency.test.js:24「Node 判定与服务器 bash 判定结论一致」，错误为 `scp task_ok.json 失败: Connection closed by 127.0.0.1 port 10022`，系 算力节点 SSH 隧道瞬时断开；随后 `ssh -o BatchMode=yes k40-ubuntu 'echo SSH_OK; hostname'` 返回 SSH_OK / localhost，重跑即全绿。
 
 ### 5.3 新增测试（11 条，隔离运行全通过）
 
@@ -198,7 +198,7 @@ grep `支持 .tsv`（portal 目录）：0 处命中；grep `9 项|9项`（portal
 3. 风险：index.html 的 MAX_DATA_BYTES 副本不感知 PORTAL_MAX_DATA_BYTES 环境变量覆盖（既有行为，本次未改）。若运维用环境变量改小上限，前端提示仍是 5 GiB，用户可能先上传后收到服务端拒绝。属既有不一致，不在本次范围。
 4. 风险：upload.js 按派发单 import 了 extOf 但当前未使用（extAllowed 已委托 isAllowedDataFile）。Node ESM 允许未使用的命名 import，不影响运行；若担心 lint 噪音，可后续删掉 extOf 的 import（会偏离派发单字面要求，故保留并在此说明）。
 5. 兼容性：ALLOWED_EXT 与 DATA_EXT 仍是同一数组引用，外部若有人 push 修改该数组会同时影响两端（旧代码里也是导出的可变数组，风险等级不变）。
-6. 远端 K40 只读探测：仅做 SSH 连通性验证，未改远端环境或数据；探测临时文件已清理，无残留。
+6. 远端 算力节点 只读探测：仅做 SSH 连通性验证，未改远端环境或数据；探测临时文件已清理，无残留。
 
 ## 7. 架构/接口变更建议
 

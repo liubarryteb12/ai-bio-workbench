@@ -3,7 +3,7 @@
 为什么不用 squidpy：
   1. squidpy 1.8.3 已移除 morans_i / gearys_c（只剩 neighbors 系列），装了也调不到；
   2. 即便有，整矩阵稠密化在 12,560 spot x 16,765 基因上是 1.68 GB float64，
-     实测直接触发 ArrayMemoryError 并把手机打崩。
+     实测直接触发 ArrayMemoryError 并把算力节点打崩。
 
 数学定义（与 squidpy / PySAL 一致）：
   Moran: I = (n / W) * (x' W x) / (x' x)

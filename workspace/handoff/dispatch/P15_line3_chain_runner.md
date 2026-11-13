@@ -51,7 +51,7 @@
 
 line1 模板（cn_debug/2026-10-21_m1_line1_chain.mjs:45-53）用 latestLedger 取最新一条台账，再与提交时刻比较：ledger.start_time >= submittedAt。两个问题：
 
-1. 台账 start_time 由 K40 生成，submittedAt 由本机生成。K40 是手机/远程主机、本机是 PC，两台机器时钟可能差几十秒到几分钟（line1 跑批时就出现过台账被判旧账的假失败）。时钟往任何一侧偏，比较都不可靠。
+1. 台账 start_time 由 算力节点 生成，submittedAt 由本机生成。算力节点 是算力节点/远程主机、本机是 PC，两台机器时钟可能差几十秒到几分钟（line1 跑批时就出现过台账被判旧账的假失败）。时钟往任何一侧偏，比较都不可靠。
 2. 同一天重复跑同一步会累积多条台账，latestLedger 取"最新"，但"最新"是 ls -t 的 mtime 排序，与"本次提交产生"不等价。
 
 改法：提交前 listLedgers 拍快照 beforeSet，提交后只认"文件名不在快照里"的那一条。与时钟无关，与 mtime 也无关。
@@ -79,7 +79,7 @@ ssh 不通（exit 255 / 连接超时）说明链路或 BatchMode 密钥有问题
 
 ### 2.5 为什么每步要 preflight
 
-缺输入的下发必然 failed（母版第一步就 exit 1 或 exit 2），白占一次远端执行与一轮排队。K40 内存只有 7.5GB 且 line2 重链在跑，浪费一次执行机会代价高。preflight 逐文件 [ -e ]，任一缺失直接判该步失败且不下发，报文里列出缺哪些文件。
+缺输入的下发必然 failed（母版第一步就 exit 1 或 exit 2），白占一次远端执行与一轮排队。算力节点 内存只有 7.5GB 且 line2 重链在跑，浪费一次执行机会代价高。preflight 逐文件 [ -e ]，任一缺失直接判该步失败且不下发，报文里列出缺哪些文件。
 
 ### 2.6 为什么 spatial_knockout 要带 targetKoGene
 
@@ -134,7 +134,7 @@ ssh 不通（exit 255 / 连接超时）说明链路或 BatchMode 密钥有问题
 5. 读台账：等"提交后新出现"的台账，窗口 120s，每 3s 一次。三类失败分开报：ssh 失败 / 文件不存在 / JSON 解析失败。
 6. 结果判定：ledger.status === 'completed' 为成功。否则打印 status、exit_code、start_time→end_time，并把 error_log 原文缩进打出（最多 1200 字符，服务端台账里就是 stderr 尾部，是真实报错文本）。
 7. 产物核对（仅成功步）：verifyOutputs 逐个 [ -e ] 主产物，缺失只 WARN 不计入失败（母版自己会校验产物，这里防"exit 0 但产物落别处"）。
-8. 失败重试一次：等 20s 再走 1-7。K40 有容器重启前科，重试针对的是外部因素，不是让母版改判。
+8. 失败重试一次：等 20s 再走 1-7。算力节点 有容器重启前科，重试针对的是外部因素，不是让母版改判。
 9. 任一步最终失败 → 停止下发后续步骤（后续依赖其产物），汇总打印。
 
 整体判定：所有 check 全过且无 FAIL 时 exit 0，否则 exit 1。WARN 不影响退出码。
@@ -145,7 +145,7 @@ ssh 不通（exit 255 / 连接超时）说明链路或 BatchMode 密钥有问题
 | --- | --- | --- | --- |
 | 步骤数 | 15 | 17（顺序取 project.js:246-252） | 两条线的 LINE_STEPS 不同 |
 | ssh 传参 | 命令字符串直接进 argv（:29-32） | 命令整体 base64 后传（:72-79） | 本脚本命令是多行（预检/核对循环），且路径可能含中文名（如 分组情况.txt），经 Windows argv 有编码与引号风险 |
-| 台账定位 | latestLedger 取 ls -t 第一条 + start_time >= submittedAt（:34-53） | 提交前快照 + 只认新增文件（:135 起） | 规避 PC 与 K40 时钟漂移、同日多次跑累积台账 |
+| 台账定位 | latestLedger 取 ls -t 第一条 + start_time >= submittedAt（:34-53） | 提交前快照 + 只认新增文件（:135 起） | 规避 PC 与 算力节点 时钟漂移、同日多次跑累积台账 |
 | 台账文件名 | glob *_<step>_*.json，无正则 | 加 ledgerPattern 严格正则二次过滤（:102-104） | enrichment 是 enrichment_figures 的前缀，会误命中 |
 | ssh 失败 | try/catch 吞掉返回 null（:40-42） | sshTry 保留 exit code 与 stderr 片段（:82-93） | 链路失败与台账缺失要分开排查 |
 | 台账读取 | 直接 cat 再 parse，失败一律 null | 先 test -f，再 cat，再 parse，kind 分 ssh/missing/parse | 同上 |
@@ -163,7 +163,7 @@ ssh 不通（exit 255 / 连接超时）说明链路或 BatchMode 密钥有问题
 
 按风险从高到低：
 
-1. enrichment（第 15 步）与 dr_post_analysis（第 14 步）：最可能 exit 1。两处都在拿不到基因集时 fail：enrichment:159-160 与 dr_post_analysis:295 都是 fail("%s 无可用基因集" % species)。基因集来自 gseapy.get_library（Enrichr 联网下载），缓存目录是相对 processed 的 ../references/gmt_cache。K40 外网不稳且缓存未预热，这一步大概率空手。
+1. enrichment（第 15 步）与 dr_post_analysis（第 14 步）：最可能 exit 1。两处都在拿不到基因集时 fail：enrichment:159-160 与 dr_post_analysis:295 都是 fail("%s 无可用基因集" % species)。基因集来自 gseapy.get_library（Enrichr 联网下载），缓存目录是相对 processed 的 ../references/gmt_cache。算力节点 外网不稳且缓存未预热，这一步大概率空手。
 2. spatial_knockout（第 13 步）：spatial_knockout:265 from scTenifold import scTenifoldKnk，包不在环境里就直接崩（ImportError）。另外它逐样本（15 个）建网，7.5GB 内存下是最重的一步，有 OOM 风险，脚本已给 90 分钟。
 3. spatial_communication（第 10 步）：依赖 liana（PIPELINE_STEP_META 标注），但 grep 未命中 import liana，实际依赖可能是延迟导入或换名，需运行时确认。若 liana 缺失或版本不兼容（cellphoneDB 资源下载同样要联网）会失败。
 4. spatial_autocorr（第 7 步）：PIPELINE_STEP_META 标注 Squidpy，grep 未命中 import squidpy，同样待运行时确认。
@@ -194,7 +194,7 @@ em dash 扫描：对脚本文件 grep U+2014（unicode 破折号），结果 0 �
 
 ## 8. 已知边界
 
-1. 脚本零真机验证。17 步耗时、内存峰值、squidpy / liana / scTenifold / gseapy 是否可用、gmt 缓存是否命中，全部是代码阅读推断。超时值 90 / 60 / 45 分钟是按母版工作量与 K40 7.5GB 内存拍的，不是实测值。
+1. 脚本零真机验证。17 步耗时、内存峰值、squidpy / liana / scTenifold / gseapy 是否可用、gmt 缓存是否命中，全部是代码阅读推断。超时值 90 / 60 / 45 分钟是按母版工作量与 算力节点 7.5GB 内存拍的，不是实测值。
 2. 台账只读服务端那套（server/run.js:151-161）。若服务端进程崩溃、或没走到落盘，waitNewLedger 会在 120s 后报"超时未见新增台账"，此时任务已从 /api/tasks 消失但无结论，需要人工上机看日志。脚本没有对这条路径做兜底（读包装器账或扫日志文件）。
 3. 快照差集的前提是"同一步在同一时间窗内只有一次提交"。脚本靠两点保证：失败重试前等 20s；服务端对同项目同线同步骤并发第二次直接 409（server/index.js:1550-1555）。
 4. spatial_knockout 提交层的 targetKoGene=Spp1 只是满足 400 校验。母版 src/line3_spatial/scripts/spatial_knockout:113 仍写死 KO_GENE = "Spp1" 且全文不读 BIO_KO_GENE，所以改 KO_GENE 环境变量**不会**改变母版行为，只改变提交字段与台账记录。
@@ -209,15 +209,15 @@ em dash 扫描：对脚本文件 grep U+2014（unicode 破折号），结果 0 �
 
 1. BioanalysDesktop/server/project.js:298：PIPELINE_STEP_META.ingest_spatial 的 io 写的是 spatial_raw.h5ad，母版真实产物是 spatial_counts_mouse.h5ad / spatial_counts_human.h5ad。前端展示会指错文件，建议按母版改名。
 2. src/line3_spatial/scripts/spatial_knockout:113：改成读 BIO_KO_GENE（缺省回落 "Spp1"），否则 P14 加的 targetKoGene 必填契约在 line3 只校验不生效。属后续修复切片，本切片不动母版。
-3. enrichment / dr_post_analysis 的 gmt 缓存：建议把缓存目录做成环境变量（如 BIO_GMT_CACHE）并支持预下载/预置，否则 K40 断网时这两步必挂。当前硬编码相对 processed 的 ../references/gmt_cache。
+3. enrichment / dr_post_analysis 的 gmt 缓存：建议把缓存目录做成环境变量（如 BIO_GMT_CACHE）并支持预下载/预置，否则 算力节点 断网时这两步必挂。当前硬编码相对 processed 的 ../references/gmt_cache。
 4. ops/05_push_testdata.ps1:58,64-66：中文名到 grouping.txt 的改名映射要写进部署手册（否则 ingest 预检必失败，且传中文名会让母版 exit 2）。
 5. 抽取公共 runner：line1 与 line3 两份脚本已有重复（sshTry、台账、preflight、verify、轮询），建议后续抽 cn_debug/lib/chain_runner.mjs，两条线只留步骤表。本切片按写域只交 line3 一份，未动 line1。
 
 ## 10. 等 Lead 通知后再跑
 
-按派发单要求，本切片**未执行**脚本：没有 ssh、没有提交任何任务、没有跑 npm。原因：K40 只有 7.5GB 内存，line2 重链正由 upload-session 跑，两条重链不能并发。
+按派发单要求，本切片**未执行**脚本：没有 ssh、没有提交任何任务、没有跑 npm。原因：算力节点 只有 7.5GB 内存，line2 重链正由 upload-session 跑，两条重链不能并发。
 
-Lead 通知可以跑之后，按下面步骤（需先确认 line2 已收尾、K40 内存空闲）：
+Lead 通知可以跑之后，按下面步骤（需先确认 line2 已收尾、算力节点 内存空闲）：
 
     # 1) 起一个独立工作台进程，别占用 8787（可能正被别的实例用）
     cd BioanalysDesktop
@@ -241,6 +241,6 @@ Lead 通知可以跑之后，按下面步骤（需先确认 line2 已收尾、K4
     $env:SKIP_PREFLIGHT='1'
     node cn_debug/2026-10-21_m1_line3_chain.mjs
 
-跑之前建议先手动确认三件事：远端 /mnt/ssd/bio_data/projects/PRJ_E2E_SPATIAL/line3_spatial/raw_data/ 里的文件名（尤其 grouping.txt 是否已改名）、K40 上 scTenifold / liana / squidpy 是否已装（python3 -c "import scTenifold, liana, squidpy"）、以及 processed 是否确实为空（有残留旧产物会让母版读到过期输入）。
+跑之前建议先手动确认三件事：远端 /mnt/ssd/bio_data/projects/PRJ_E2E_SPATIAL/line3_spatial/raw_data/ 里的文件名（尤其 grouping.txt 是否已改名）、算力节点 上 scTenifold / liana / squidpy 是否已装（python3 -c "import scTenifold, liana, squidpy"）、以及 processed 是否确实为空（有残留旧产物会让母版读到过期输入）。
 
 跑完后需要回填的内容：每步 status 与 exit_code、真实耗时、失败步的 error_log 原文、figures 实际出图清单，用于更新本报告第 6 节的预判（哪些猜中了、哪些没中）。

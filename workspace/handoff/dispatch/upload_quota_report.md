@@ -195,5 +195,5 @@ tests/upload_quota.test.js CRLF=0 EMDASH=0
 - **启动时的一次全量 GC**（server/index.js:1645-1657）未显式传 quotaBytes，走 `gcStaleUploads` 的默认参数 `uploadQuotaBytes()`，即同样读环境变量。行为一致，无需改动。
 - **配额是「软闸门」**：只在 init 入口检查，不限制单个 chunk 的大小（chunk 上限仍是 `CHUNK_SIZE * 2`）。也就是说已经通过 init 的会话可以把磁盘写到超过配额，第二阶段 GC 要等到该会话的 mtime 老过 `GC_MIN_INTERVAL_MS`（10 分钟）才会淘汰它。这是为了不删正在写入的数据而有意接受的设计边界，不是缺陷。
 - **配额淘汰不看项目/归属线**：.uploads 是三条分析线（line1_bulk / line2_scrna / line3_spatial）共用的暂存区，淘汰按 mtime 全局最旧优先，不保证某个项目的会话一定活着。若后续需要「每项目保底配额」，要在报告里再加维度，属新任务。
-- **未验证项**：K40 远端链路（scp 实际落盘）未在本任务中跑，测试全程垫片；配额数字只在小配额（32/60/80 字节）下验证，20GiB 默认值只验证了常量与取整，没有真写 20GiB 数据。
+- **未验证项**：算力节点 远端链路（scp 实际落盘）未在本任务中跑，测试全程垫片；配额数字只在小配额（32/60/80 字节）下验证，20GiB 默认值只验证了常量与取整，没有真写 20GiB 数据。
 - **环境清理**：调试用的探针临时文件（BioanalysDesktop/err.txt、out.txt）已删除，`git status` 干净，只剩上述 4 个预期改动。

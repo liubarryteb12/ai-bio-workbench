@@ -7,7 +7,7 @@ ops/06_deploy_scripts.ps1 部署到 /mnt/ssd/bio_data/envs/line2_scrna/（全局
 language=Python
 version=3.12.3
 env_name=line2_scrna_env
-container_image=proot-ubuntu24.04-aarch64
+container_image=容器-ubuntu24.04-aarch64
 
 # 关键分析依赖（2026-10-13 步骤 8 起生效；liana 安装连带 pandas 3.0.6 -> 2.3.3，
 # 7 个写 h5ad 脚本已显式关闭 anndata nullable strings 开关保持行为一致，坑 #107；

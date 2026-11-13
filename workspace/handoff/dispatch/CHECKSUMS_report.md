@@ -105,14 +105,14 @@ def write_checksums(delivery_dir, skip=()):
 
 ---
 
-## 四、远端真机验证（K40，全部实测非推断）
+## 四、远端真机验证（算力节点，全部实测非推断）
 
 ### 4.1 部署
 - 备份：`/mnt/ssd/bio_data/ops/_bak_20261021/build_client_report.py.bak`
   （114289 字节，与原文件同尺寸，md5 = c6e8d4b1405d487865f358058cfec185）
 - 踩坑：**scp 直写 `/mnt/ssd/bio_data/ops/` 失败**（`Connection closed by 127.0.0.1 port 10022`，
   exit 255）。改走 `scp → /tmp/` 成功（exit 0），再 `mv` 进 ops 目录。
-  推测是 proot 容器对目标目录的写入有额外限制，/tmp 不受影响。
+  推测是 容器 容器对目标目录的写入有额外限制，/tmp 不受影响。
   已验证两侧 md5 一致：`316c811c348cc600ace8ea2569f5e5f7`。
 - 远端 AST 检查通过。
 

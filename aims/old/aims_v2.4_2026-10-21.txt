@@ -7,10 +7,10 @@
 ### 1. “云-端”解耦架构拓扑
 
 * **本地交互层（零算力消耗）**：本地终端仅运行 Web 浏览器（访问工作台四大界面）或轻量级 IDE（VS Code Remote-SSH 直连服务器）。本地不保留代码副本、不参与任何计算。
-* **网络传输与自愈层**：SSH 隧道加密传输控制流与代码流；HTTP/S（配合外网穿透与 Token 鉴权）支持远程建项、大文件分片上传与结果预览；本地通过 `00_link_check.ps1` 实现断链自动重连（`adb forward` 重建 + `monkey` 自动拉起 Termux 服务）。
+* **网络传输与自愈层**：SSH 隧道加密传输控制流与代码流；HTTP/S（配合外网穿透与 Token 鉴权）支持远程建项、大文件分片上传与结果预览；本地通过 `00_link_check.ps1` 实现断链自动重连（`adb forward` 重建 + `monkey` 自动拉起 基础用户空间 服务）。
 * **远程计算与存储层（自备算力节点 核心底座）**：
 * **物理硬件**：自备算力节点（通用 ARM64 处理器 八核处理器 + **12GB 内存 运存** + **原生 本地存储 高速闪存**，配合外置风冷与充电限流/旁路供电）。
-* **系统与容器层**：Android (Termux 底座，**无 Root 约束**) + Ubuntu (ARM64) 容器环境，通过 Conda/R 独立环境实现三条分析线的依赖隔离。
+* **系统与容器层**：Android (基础用户空间 底座，**无 Root 约束**) + Ubuntu (ARM64) 容器环境，通过 Conda/R 独立环境实现三条分析线的依赖隔离。
 * **长任务守护层**：所有计算任务强制通过 `nohup` / `tmux` 后台守护运行，基于每步退出码（`exit 0`）与产物校验实现断点续跑。
 
 
@@ -31,10 +31,10 @@
 
 ## 二、 服务器端物理隔离目录结构规范
 
-统一锚定手机原生 Linux 分区路径 `/mnt/ssd/bio_data/`（经 `df -T` 只读校验为原生 `ext4`/`f2fs`，严禁写入 `/sdcard` 或任何 `fuse` 模拟层）：
+统一锚定算力节点原生 Linux 分区路径 `/mnt/ssd/bio_data/`（经 `df -T` 只读校验为原生 `ext4`/`f2fs`，严禁写入 `/sdcard` 或任何 `fuse` 模拟层）：
 
 ```text
-/mnt/ssd/bio_data/                  # 手机原生 本地存储 高速分区根目录 (ext4/f2fs)
+/mnt/ssd/bio_data/                  # 算力节点原生 本地存储 高速分区根目录 (ext4/f2fs)
 ├── ops/                            # 平台级算力削峰、存储门禁、桥接校验与守护脚本
 │   ├── check_storage_and_isolation.sh
 │   ├── run_throttled_task.sh
@@ -92,7 +92,7 @@
 * **模块 C（级联流水线编排与全节点功能说明展示）**：
 * **第一级（单选物理锁）**：必选归属分析线（`line1_bulk` / `line2_scrna` / `line3_spatial`），选定后锁定对应物理目录并屏蔽其余两条线的所有功能。
 * **第二级（带功能详解的模块勾选与排序）**：前置 QC/标准化模块固定锁死在前序位置；下游模块支持勾选与排序。每个分析节点卡片在界面上直观展示 **4 项标准化说明**：① 功能简介（该步骤解决的生物学问题）、② 核心工具/算法（R/Python 实际工具栈）、③ 输入/输出产物（图表与 .tsv 名称）、④ 条件必填项与算力提示。若勾选“虚拟敲除”，强制弹出 `target_ko_gene` 必填框。
-* **第三级（算法与参数设置）**：支持展开配置关键阈值，留空则采用 K40 12G 运存安全默认值。
+* **第三级（算法与参数设置）**：支持展开配置关键阈值，留空则采用 算力节点 12G 运存安全默认值。
 
 
 * **模块 D（项目权限、算力保护策略确认与预期交付物说明）**：
@@ -153,7 +153,7 @@
 
 供已建项目在日常运行中快速核对 GSE/GPL 分组信息、微调单步参数、触发断点续跑及查看当前流水线实时进度。
 
-* **任务提交三道闸**：① 路径归属预校验——输入/输出必须落在 §二 的合法根内且归属当前项目，越界直接 `400`；② 命令审计——脚本中出现其他分析线字符串一律拒绝（`server/audit.js`）；③ 桥接四项断言——脚本涉及 R/Python 切换时，提交层调用 `ops/verify_bridge_checkpoint.py`，断言不过即 `400` 并回传断言明细。母版内部另有第二道守卫：`src/bridge_guard.sh` 由 bilingual 母版在首次 `Rscript` 前自调（输入非 `.h5ad`/`.rds`、K40 离线或引擎不可达时打印 `[BRIDGE SKIP]` 放行；断言失败透传非 0 退出码），提交层与母版内双保险，「bilingual 母版必须调守卫且早于第一次 `Rscript`」由 `tests/bridge_guard_invariant.test.js` 钉为不变量。
+* **任务提交三道闸**：① 路径归属预校验——输入/输出必须落在 §二 的合法根内且归属当前项目，越界直接 `400`；② 命令审计——脚本中出现其他分析线字符串一律拒绝（`server/audit.js`）；③ 桥接四项断言——脚本涉及 R/Python 切换时，提交层调用 `ops/verify_bridge_checkpoint.py`，断言不过即 `400` 并回传断言明细。母版内部另有第二道守卫：`src/bridge_guard.sh` 由 bilingual 母版在首次 `Rscript` 前自调（输入非 `.h5ad`/`.rds`、算力节点 离线或引擎不可达时打印 `[BRIDGE SKIP]` 放行；断言失败透传非 0 退出码），提交层与母版内双保险，「bilingual 母版必须调守卫且早于第一次 `Rscript`」由 `tests/bridge_guard_invariant.test.js` 钉为不变量。
 * **断点续跑契约**：以 `exit 0` + 产物存在性为检查点；台账 JSON 落 `system_logs/`，`status` 取 `running` / `completed` / `failed`。
 
 ### 3. 服务端运维与审计控制台（Server Admin & Self-Check Console）
@@ -189,7 +189,7 @@
 ### 【线 1：GEO Bulk 线 v2.4】—— 9 步进阶标准流（R 步骤 1-4 + Python 步骤 5-8，1 次单向切换）
 
 * **独占目录**：`/mnt/ssd/bio_data/projects/<项目>/line1_bulk/`
-* **语言分工理由**：Bulk 矩阵体积小（内存占用 < 500MB），步骤 1-4 全程在 R 内串联 Bioconductor 统计生态（GEOquery/limma/WGCNA/clusterProfiler/STRING）；步骤 5-8 切换到 Python（`glmnet` R 侧 LASSO → Python `sklearn`/`shap`/`networkx`/`scipy` 做 ML/SHAP/共表达/聚类），因 ARM64 proot 容器装 `kernelshap`/`shapviz`/`ConsensusClusterPlus` 编译困难，实战验证 Python 方案内存更省且已产出 10 张合规图。图件命名 `l1_XX_<语义>.png`，seed=20261013。
+* **语言分工理由**：Bulk 矩阵体积小（内存占用 < 500MB），步骤 1-4 全程在 R 内串联 Bioconductor 统计生态（GEOquery/limma/WGCNA/clusterProfiler/STRING）；步骤 5-8 切换到 Python（`glmnet` R 侧 LASSO → Python `sklearn`/`shap`/`networkx`/`scipy` 做 ML/SHAP/共表达/聚类），因 ARM64 容器 容器装 `kernelshap`/`shapviz`/`ConsensusClusterPlus` 编译困难，实战验证 Python 方案内存更省且已产出 10 张合规图。图件命名 `l1_XX_<语义>.png`，seed=20261013。
 
 | 步骤 | 步骤名称 | 语言 | 输入 (Input) | 输出 (Output) | 核心工具包 | 关键执行与防踩坑纪律 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -233,7 +233,7 @@
 ### 【线 3：单细胞空间转录组 + 虚拟敲除线】—— 前置 + 9 步下游（Python 空间图统计 + Python 空间域/反卷积/虚拟敲除，0 次跨语言切换）
 
 * **独占目录**：`/mnt/ssd/bio_data/projects/<项目>/line3_spatial/`
-* **语言分工理由**：全程 Python（`Scanpy` + `Squidpy` + `liana` + `scTenifoldKnk` + `scipy.optimize.nnls`），因 ARM64 proot 容器装 `BayesSpace`/`NICHES`/`Seurat`/`CARD`/`RCTD` 编译困难，实战验证 Python 方案已稳定产出 69 张合规图。图件命名 `l3_<species>_XX_<语义>.png`，seed=20261013。
+* **语言分工理由**：全程 Python（`Scanpy` + `Squidpy` + `liana` + `scTenifoldKnk` + `scipy.optimize.nnls`），因 ARM64 容器 容器装 `BayesSpace`/`NICHES`/`Seurat`/`CARD`/`RCTD` 编译困难，实战验证 Python 方案已稳定产出 69 张合规图。图件命名 `l3_<species>_XX_<语义>.png`，seed=20261013。
 
 | 阶段 / 步骤 | 步骤名称 | 语言 | 输入 (Input) | 输出 (Output) | 核心工具包 | 关键执行与防踩坑纪律 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -449,7 +449,7 @@ set.seed(2026)
 | §一.2 铁律 1 黑名单拦截 | `BioanalysDesktop/server/tumor_blacklist.js`（8 条正本）+ `portal/index.html` 副本 | 已对齐（2026-10-21 由 27 条收敛，parity 测试把守） |
 | §一.2 铁律 2 三线硬隔离 | `ops/check_storage_and_isolation.sh` + `server/selfcheck.js` 第 4 维 | 已实现 |
 | §一.2 铁律 3 桥接四项断言 | `ops/verify_bridge_checkpoint.py` + `server/task.js` 提交层接线 + `src/bridge_guard.sh` 母版内部守卫 | 已接线（S28 提交层 + task-10 母版） |
-| §一.2 铁律 3 母版内守卫 | `src/bridge_guard.sh` + 三个 bilingual 母版首个 Rscript 前调用 + `tests/bridge_guard_invariant.test.js` | 已实现（task-10，K40 真机首次抓到 FAIL） |
+| §一.2 铁律 3 母版内守卫 | `src/bridge_guard.sh` + 三个 bilingual 母版首个 Rscript 前调用 + `tests/bridge_guard_invariant.test.js` | 已实现（task-10，算力节点 真机首次抓到 FAIL） |
 | §二 目录结构 | 远端 `projects/<项目>/<线>/{raw_data,processed,results,figures}` | 已按实测校准 |
 | §二 合法根与归属口径 | `server/ledger.js` 的 `analyzePath` / `inspectTaskPath` | 单一事实源（提交层 / 台账 / 文件守卫共用） |
 | §三.1 模块 A 黑名单 | 同 §一.2 铁律 1 | 8 条正本 + 出处沿革 + 已知边界 |

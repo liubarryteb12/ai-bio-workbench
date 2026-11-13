@@ -1,4 +1,4 @@
-# K40 Rscript shim 与 Rprofile 修复台账
+# 算力节点 Rscript shim 与 Rprofile 修复台账
 
 日期：2026-10-25
 
@@ -27,7 +27,7 @@ if (length(labels) > LAYOUT_MANY_LABELS &&
     max(nchar(labels), 0) > LAYOUT_LONG_LABEL_CHARS)
 ```
 
-当 x 轴标签含 `NA` 时，`max(nchar(labels), 0)` 返回 `NA`，触发 `missing value where TRUE/FALSE needed`。接手时工作区与 K40 已有未提交的 `apply_layout_safely()` 补丁，本次保留该补丁并用最小用例复验。
+当 x 轴标签含 `NA` 时，`max(nchar(labels), 0)` 返回 `NA`，触发 `missing value where TRUE/FALSE needed`。接手时工作区与 算力节点 已有未提交的 `apply_layout_safely()` 补丁，本次保留该补丁并用最小用例复验。
 
 第二个失败点是 `ggsave` 未传 `width/height` 时的零长度参数：
 
@@ -62,7 +62,7 @@ cur_h <- as_optional_number(override$height)
 - `D:\00.AIagent\codespace\AI辅助生信分析流程工作台\BioanalysDesktop\server\link.js`
 - `D:\00.AIagent\codespace\AI辅助生信分析流程工作台\BioanalysDesktop\tests\r_runtime_entry.test.js`
 
-K40：
+算力节点：
 
 - `/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript`
 - `/mnt/ssd/bio_data/ops/layout_autoload/Rprofile`
@@ -107,7 +107,7 @@ K40：
 | `/mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript` | `576803aede2569c5efe4e7bff0887cafb3608864f17a944c0a6e994ac6d3568b` |
 | `/mnt/ssd/bio_data/ops/layout_autoload/Rprofile` | `a87edfa8b519c2e8e83fd8e7e7371e4a21e9267733fd3342f93fea0383c61d80` |
 
-本地与 K40 两份修复文件哈希一致。shim 权限为 `755`。
+本地与 算力节点 两份修复文件哈希一致。shim 权限为 `755`。
 
 ## 验收证据
 
@@ -262,8 +262,8 @@ grep -rn "4\.3\.3" /mnt/ssd/bio_data/ 2>/dev/null
 |---|---|---|
 | 直接非交互 SSH 的 PATH | `/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin` | 生产任务继续由 `task.js` 注入 shim PATH |
 | 直接非交互 SSH 的裸 `Rscript` | `NOT_FOUND` | 由任务引擎注入，或主代理决定全局 PATH 方案 |
-| 登录 shell 的裸 `Rscript` | `/data/data/com.termux/files/usr/bin/Rscript`，R 4.6.1 | 禁止命中 Termux R，建议在 profile 中把 shim 目录前置 |
-| `/etc/profile.d/termux-profile.sh` | 第 3 行把 Termux `bin` 追加到 PATH | 建议新增 `/etc/profile.d/10-rscript-shim.sh`，执行 `export PATH="/mnt/ssd/bio_data/ops/layout_autoload/bin:${PATH}"` |
+| 登录 shell 的裸 `Rscript` | `/data/data/com.termux/files/usr/bin/Rscript`，R 4.6.1 | 禁止命中 基础用户空间 R，建议在 profile 中把 shim 目录前置 |
+| `/etc/profile.d/termux-profile.sh` | 第 3 行把 基础用户空间 `bin` 追加到 PATH | 建议新增 `/etc/profile.d/10-rscript-shim.sh`，执行 `export PATH="/mnt/ssd/bio_data/ops/layout_autoload/bin:${PATH}"` |
 | `/root/.bashrc`、`/root/.profile`、`/etc/profile` | 无 shim PATH 注入 | 如决定修登录态，统一放一个新的 profile 文件 |
 | `/usr/bin/R` | 物理缺失 | 无需清理 |
 | `/usr/bin/Rscript` | 物理缺失 | 无需清理 |

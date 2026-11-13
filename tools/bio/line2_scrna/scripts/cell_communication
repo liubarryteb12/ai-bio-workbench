@@ -15,7 +15,7 @@
 #   expr_prop=0.1 / min_cells=5 / de_method=t-test / aggregate=rra（liana 默认），
 #   n_perms=1000 + seed=BIOANALYS_SEED（原型实测 top20 在 100 与 1000 perms
 #   下完全一致，取默认 1000）。内存受限设备可用 BIO_LIANA_NPERMS 等环境变量
-#   覆盖（见下方参数读取），避免 11GB 手机上 1000 perms 必 OOM。
+#   覆盖（见下方参数读取），避免 11GB 算力节点上 1000 perms 必 OOM。
 #   两个 rank 分工：specificity_rank 衡量"这对 LR 相对其他组是否特异"，
 #   magnitude_rank 衡量表达强度；B2M-CD1A/VIM-CD44 这类管家 pair 会霸占
 #   magnitude 榜但 specificity 低，报告按 specificity 排序并注明该现象。
@@ -74,7 +74,7 @@ echo "bioanalys_seed=${seed}"
 echo "input_annotated=${annotated_file}"
 echo "input_norm=${norm_file}"
 
-# 解释器 PATH 前置（生信代码专项审核）：K40 系统解释器缺科学计算包，真依赖在 bio-py venv。
+# 解释器 PATH 前置（生信代码专项审核）：算力节点 系统解释器缺科学计算包，真依赖在 bio-py venv。
 # 用 PATH 注入而非改写调用行，是为了让桥接调用的行级计数保持原样（bilingual 判定不变）。
 BIO_PY_BIN="${BIO_PY_BIN:-/root/venvs/bio-py/bin}"
 if [ -x "$BIO_PY_BIN/python3" ]; then

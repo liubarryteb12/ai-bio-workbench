@@ -32,11 +32,11 @@
 │       ├── handoff.md               # 项目级交接：项目是什么、跑到哪一步、哪些步骤有坑、下一步
 │       ├── README.md                # 人读索引：台账入口、产物入口、交付入口
 │       ├── INDEX.json               # 机读索引：路径映射与产物计数，脚手架生成，禁止手改
-│       ├── data/                    # 从 K40 回搬的结构化产物
+│       ├── data/                    # 从 算力节点 回搬的结构化产物
 │       │   └── <line>/{processed,results}
 │       ├── deliverables/            # 客户交付包
 │       ├── debug/                   # 本项目调试脚本与日志
-│       ├── figures/                 # 本项目产出的图件，K40 回搬的真实结果（原 outputs/figures/ 迁入）
+│       ├── figures/                 # 本项目产出的图件，算力节点 回搬的真实结果（原 outputs/figures/ 迁入）
 │       └── ledger/                  # 项目级五种台账，JSONL 追加式
 │           ├── actions.jsonl        # kind: run | edit | init，做了就是做了，不设 status
 │           ├── changes.jsonl        # 修改记录
@@ -76,7 +76,7 @@
 | 记录 | 归属 |
 |---|---|
 | line2 步骤 7 两次 exit 1，根因 seed 未注入 | 项目 A `errors.jsonl` + `fixes.jsonl` |
-| runner 高频 ssh 轮询触发 proot abort，轮询改 60 秒 | 全局 `pitfalls.jsonl` |
+| runner 高频 ssh 轮询触发 容器 abort，轮询改 60 秒 | 全局 `pitfalls.jsonl` |
 | GEO FTP 返回 990 字节 XML，NCBI 侧行为未定位 | 全局 `pitfalls.jsonl` |
 | 客户 X 的 GSE252465 少一组样本 | 项目 A `errors.jsonl` |
 | 把 outputs/ 迁到 local_projects/ | 全局 `changes.jsonl` |
@@ -134,8 +134,8 @@
 |---|---|---|
 | 客户端 | 往门户发文件与表单，发起结果同步请求，查看编排面推来的预览图与结果 | 拉取服务端任何内部状态 |
 | 门户 | 收客户输入，落盘标记状态，展示编排面推来的结果 | 主动连接 workbench，读其内部 |
-| 编排面（8787） | 出站拉门户 inbox，经 SSH 派 K40，拉回产物，推结果回门户 | 开公网入站，自己跑计算 |
-| 算力面（K40） | 执行计算 | 对外 |
+| 编排面（8787） | 出站拉门户 inbox，经 SSH 派 算力节点，拉回产物，推结果回门户 | 开公网入站，自己跑计算 |
+| 算力面（算力节点） | 执行计算 | 对外 |
 
 三条流向，方向单一：客户到门户（唯一入口）、编排面到门户 inbox（拉待办，出站）、
 编排面到门户（推结果，出站）。门户从不主动连 workbench。
@@ -172,7 +172,7 @@ token 两套：`SYNC_TOKEN` 给编排面，客户登录 token 另一套，均环
 `ops/sync_daemon.ps1`，薄编排器：窄接口只做拉待办与推结果，深处全部复用第四节现成件，
 不重写任何一段传输或打包。`SYNC_BATCH=1` 默认串行，队列结构支持后续扩展并行度。
 
-单票流程：claim → 下载到 spool 并验 sha256 → 防 slip 解包 → 导入建项 → 派发 K40 →
+单票流程：claim → 下载到 spool 并验 sha256 → 防 slip 解包 → 导入建项 → 派发 算力节点 →
 拉回产物 → 打交付包 → 推结果。任一步失败重试三次退避，仍失败推 `failed` 并附错误详情。
 
 **闸不过的出口**：交付四道闸拦下时推 `blocked`，客户侧文案"待人工确认，详见对接人"，
@@ -200,7 +200,7 @@ token 两套：`SYNC_TOKEN` 给编排面，客户登录 token 另一套，均环
 
 | | 预览图（内置示例） | 产出图（真实结果） |
 |---|---|---|
-| 来源 | 预先准备好的示例代码跑出，不依赖任何项目数据 | K40 按本项目真实数据跑出 |
+| 来源 | 预先准备好的示例代码跑出，不依赖任何项目数据 | 算力节点 按本项目真实数据跑出 |
 | 位置 | `reference/05.可参考出图代码/**/_verified.png` | `local_projects/<项目>/figures/<line>/` |
 | 谁生成 | 采集时一次性生成，版本化随模板走 | 每次跑分析生成，跟着项目走 |
 | 客户何时见 | 选图型时，勾选之前 | 分析跑完，sync 推送之后 |
@@ -219,14 +219,14 @@ token 两套：`SYNC_TOKEN` 给编排面，客户登录 token 另一套，均环
 
 - **82 个图型**有机读索引 `_meta/bizard_index.csv`，字段含级别、图型标题、分类、
   英文名、语言、R/Python 代码块数、依赖包、本库状态、本库位置。
-- **17 个图型已在 K40 验证**，有 `_verified.png` 与 `_verified.pdf` 双产物，
+- **17 个图型已在 算力节点 验证**，有 `_verified.png` 与 `_verified.pdf` 双产物，
   覆盖 L1 到 L3 三层：箱线、密度、直方、小提琴、散点、分组柱状、热图、PCA、UMAP、
   火山图、KEGG 通路图、桑基图、多面板组合图、单细胞点图、单细胞 UMAP。
 - **65 个图型待采集**，索引里标 `待采集`，依赖包清单已列明。
 - 文件角色照 FigureYa 六件套组织：代码、README、`input_data.csv`、
   `install_dependencies.txt`、verified PNG、verified PDF。
 - 采集路线记在 `_meta/采集路线.md`：Plottie 定视觉目标、Bizard 拿代码、
-  FigureYa 定目录契约、K40 真跑留证据、交付前对 Nature Figure Guide。
+  FigureYa 定目录契约、算力节点 真跑留证据、交付前对 Nature Figure Guide。
 
 ### 3.2 关键断层：代码池与生产链路是两张皮
 
@@ -305,7 +305,7 @@ token 两套：`SYNC_TOKEN` 给编排面，客户登录 token 另一套，均环
 reference/05.可参考出图代码/L2_组学常用图/L2_volcano_code.R      # 母版，只读
       ↓ 按 adapt_vars 改写
 local_projects/<项目>/figures/adapt/l2_volcano.R                 # 派生副本
-      ↓ 在 K40 跑
+      ↓ 在 算力节点 跑
 local_projects/<项目>/figures/<line>/l2_volcano.png              # 真实结果
 ```
 
@@ -364,7 +364,7 @@ portal 出图选择器（客户勾选，preview 用 verified PNG）
       ↓ 提交
 8787 resolve（按 linked_mods 与 adapt_vars 生成执行计划）
       ↓ 派发
-K40 跑适配后的副本，产物落 local_projects/<项目>/figures/
+算力节点 跑适配后的副本，产物落 local_projects/<项目>/figures/
       ↓ 推结果
 sync 把图与报告推回门户，客户刷新可见
 ```
@@ -455,7 +455,7 @@ sync 把图与报告推回门户，客户刷新可见
 | 3 | 迁 `PRJ_20261019_IS_lactylation` 与 `default`，前后比对文件数与字节；`con_hf/pitfalls_ledger.md` 转 JSONL 保留 P-XX 编号 | 不跑 |
 | 4 | 门户 sync 六接口加 `sync_status` 加减流，产出 `BioanalysDesktop/tests/portal_sync.test.js` | 不跑真活 |
 | 5 | 守护进程骨架，拉待办、claim、下载、验签、防 slip 解包、推结果全通，导入派发留 seam 桩 | 不跑真活 |
-| 6 | **R 4.5.3 图型验证**：17 个已验证图型逐图复跑，按三层框架出结论，失败的标 `blocked_r453` | 跑（K40） |
+| 6 | **R 4.5.3 图型验证**：17 个已验证图型逐图复跑，按三层框架出结论，失败的标 `blocked_r453` | 跑（算力节点） |
 | 7 | 建 `src/figure_templates.json`，先入册验证通过的图型，同步加防漂移断言 | 不跑 |
 | 8 | `server/figure_graph.js` 图级校验，双端同语义 + parity 对账测试 | 不跑 |
 | 9 | 门户出图选择器，preview 用 verified PNG，依赖未装置灰 | 不跑 |
@@ -481,7 +481,7 @@ sync 把图与报告推回门户，客户刷新可见
 6. `netstat` 证实 8787 只监听 `127.0.0.1`。
 7. 两个方向 checksum 校验通过。
 8. A 项目客户读不到 B 项目或别的线的任何数据。
-9. PC 上无任何计算进程，计算全部落在 K40。
+9. PC 上无任何计算进程，计算全部落在 算力节点。
 10. 同一任务 60 秒内二次点同步返回"稍后重试"。
 11. 四道闸拦下时客户看到 `blocked` 而非假 `running`。
 

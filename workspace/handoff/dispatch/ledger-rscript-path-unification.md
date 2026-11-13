@@ -2,7 +2,7 @@
 
 日期：2026-10-25
 
-范围：K40 Ubuntu 容器的 Rscript 入口、工作台跨语言检测、版本清单。
+范围：算力节点 Ubuntu 容器的 Rscript 入口、工作台跨语言检测、版本清单。
 
 结论：生产可执行文件已不再依赖 PATH 解析裸 `Rscript`。登录 shell 的裸 `Rscript` 也稳定命中 shim 并返回 R 4.5.3。非交互 SSH 的裸 `Rscript` 仍为 `NOT_FOUND`，生产脚本已不依赖该路径。
 
@@ -25,8 +25,8 @@ RED_LOOP_EXIT=1
 
 根因确认：
 
-1. `/etc/profile.d/termux-profile.sh` 把 Termux bin 追加到 PATH 末尾。
-2. 系统 R 4.3.3 已物理删除，裸 `Rscript` 因 Termux 路径回落到 R 4.6.1。
+1. `/etc/profile.d/termux-profile.sh` 把 基础用户空间 bin 追加到 PATH 末尾。
+2. 系统 R 4.3.3 已物理删除，裸 `Rscript` 因 基础用户空间 路径回落到 R 4.6.1。
 3. 非交互 SSH 不加载 `profile.d`，裸 `Rscript` 为 `NOT_FOUND`。
 4. 母版脚本内存在裸 `Rscript` 与 `#!/usr/bin/env Rscript`，会继承上述不稳定解析。
 
@@ -135,7 +135,7 @@ task_comment_strip.test.js.bak_20261025_bridge_detection
 内容：
 
 ```bash
-# Keep the verified R 4.5.3 shim ahead of the Termux R 4.6.1 fallback.
+# Keep the verified R 4.5.3 shim ahead of the 基础用户空间 R 4.6.1 fallback.
 BIOANALYS_R_SHIM_DIR=/mnt/ssd/bio_data/ops/layout_autoload/bin
 PATH="${BIOANALYS_R_SHIM_DIR}:${PATH}"
 export PATH

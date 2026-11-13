@@ -65,7 +65,7 @@ echo "bioanalys_seed=${seed}"
 echo "input_modules=${mod_file}"
 echo "input_trait=${trait_file}"
 
-# 解释器 PATH 前置（生信代码专项审核）：K40 系统解释器缺科学计算包，真依赖在 bio-py venv。
+# 解释器 PATH 前置（生信代码专项审核）：算力节点 系统解释器缺科学计算包，真依赖在 bio-py venv。
 # 用 PATH 注入而非改写调用行，是为了让桥接调用的行级计数保持原样（bilingual 判定不变）。
 BIO_PY_BIN="${BIO_PY_BIN:-/root/venvs/bio-py/bin}"
 if [ -x "$BIO_PY_BIN/python3" ]; then
@@ -231,7 +231,7 @@ MAX_HUB = 30
 MAX_EDGES = 100          # 网络图边数上限（规范：大网络只画 top N，默认 100 边）
 MAX_UNMAPPED_WARN = 20   # 缺基因符号的 ENSP 最多逐条提醒几个，防止大查询集刷屏
 
-# STRING v12.0 离线数据（K40 外网不稳，跑步骤时不再依赖联网）
+# STRING v12.0 离线数据（算力节点 外网不稳，跑步骤时不再依赖联网）
 STRING_DIR = "/mnt/ssd/bio_data/public_references/stringdb"
 DEFAULT_LINKS = STRING_DIR + "/9606.protein.links.v12.0.txt.gz"
 DEFAULT_INFO = STRING_DIR + "/9606.protein.info.v12.0.txt.gz"
@@ -312,7 +312,7 @@ def print_download_guidance(reason, links_target, info_target):
 
 
 # 离线文件读到一半出错，九成是下载中断（.gz 缺结束标记）。这类异常必须折成可执行的
-# 修复指引，而不是丢一个 traceback 让人猜（P-19：K40 上 curl 被中断留下 2.4MB 残片）。
+# 修复指引，而不是丢一个 traceback 让人猜（P-19：算力节点 上 curl 被中断留下 2.4MB 残片）。
 READ_ERRORS = (OSError, EOFError, zlib.error, UnicodeDecodeError)
 
 
@@ -533,7 +533,7 @@ if links_file and info_file:
     source = "offline"
     source_label = "offline:%s" % os.path.basename(links_file)
 elif links_file or info_file:
-    # 半套离线数据不回落网络：K40 外网不稳，且缺 info 表只能输出 ENSP，下游会误读
+    # 半套离线数据不回落网络：算力节点 外网不稳，且缺 info 表只能输出 ENSP，下游会误读
     print_download_guidance(
         "离线数据不完整（缺 %s）" % ("protein.info" if links_file else "protein.links"),
         links_target, info_target)

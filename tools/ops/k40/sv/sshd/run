@@ -15,7 +15,7 @@ exec 2>&1
 #
 # 段3 守卫：host key 缺失时先补生成。缺 key 时 sshd 立即退出（no hostkeys available），
 # runit 反复重启、8022 永不监听，表现为「服务显示 run 但连不上」。
-# 生成即轮换指纹，客户端 known_hosts 需同步更新（诊断码见 docs/k40_hostkey_guard.md）。
+# 生成即轮换指纹，客户端 known_hosts 需同步更新。
 PREFIX=/data/data/com.termux/files/usr
 HOST_KEY="$PREFIX/etc/ssh/ssh_host_ed25519_key"
 if [ ! -f "$HOST_KEY" ]; then

@@ -23,7 +23,7 @@ e1071 未装，本次从阿里云 CRAN 镜像安装，版本 1.7-17，连带装�
 - 置换检验估计 p 值，--perm 控制次数，--qvalue 控制显著性阈值
 - 原子写、读回自校验、PNG 魔数检查、产物 sha256 台账
 
-## K40 实测验收
+## 算力节点 实测验收
 
 部署位置 /mnt/ssd/bio_data/bin/line1_bulk/cibersort_reference，mode 755，22489 字节，sha256 4bf0632f2c8ae7b8a2adf025c09d79cd9f595d96f7fd1aa9fa1db15521b3510a。
 

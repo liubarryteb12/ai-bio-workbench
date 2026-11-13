@@ -38,7 +38,7 @@ geo_tcga_common_deg 未纳入本轮，它已有按扩展名分支的 read.csv �
 
 ## 实测证据
 
-以下均为 K40 实跑，Rscript 一律用显式路径 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript。
+以下均为 算力节点 实跑，Rscript 一律用显式路径 /mnt/ssd/bio_data/ops/layout_autoload/bin/Rscript。
 
 limma_deg_analysis 逗号 CSV：exit 0，sep_detected=comma 出现两次（表达式表与分组表各自探测），input_dimensions=8x8，产物 out_deg.tsv、out_significant_deg.tsv、out_volcano.png、out_report.txt 齐全。
 

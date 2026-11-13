@@ -33,8 +33,8 @@
 | 90b2460 | 结构化产物校验器 | skip | 属 A2A 产物协议，P3 三批不含此能力 |
 | 8589b05 | 任务轮询与 pi 引导助手 | skip | 同上，随 A2A 运行时整体决策 |
 | 0465169 | core 编译支持 Node 18 与 ESM 加载 | 第二批 | 编译门禁，与引擎层同进同退 |
-| 6728d59 | 探测手机端 pi 守护安全闸 | skip | 需真机，且属 A2A 运行时 |
-| 105128f | 校验 codex serve 并桥接代理到手机 | skip | 网络拓扑属 A2A 运行时 |
+| 6728d59 | 探测算力节点 pi 守护安全闸 | skip | 需真机，且属 A2A 运行时 |
+| 105128f | 校验 codex serve 并桥接代理到算力节点 | skip | 网络拓扑属 A2A 运行时 |
 | 3ecb8d3 | 记录 k40 门禁结果 | skip | 台账记录，非能力 |
 | 6c9fb56 | k40 adb forward 可复现 | 候选小件 | 与 master 现有 adb forward 脚本对表后择一 |
 | e8bb236 | 自启 pi server 与安全探针 | skip | A2A 运行时 |
@@ -59,9 +59,9 @@
 | d555e73 | start bat 自重启陈旧实例 | 候选小件 | 运维小修，独立可验 |
 | 8e862ae | 观测面板近实时化 | 第三批 | 性能优化随主体 |
 | 72a8394 | 按 aims html 规格做结构化任务时间线 | 第三批 | 同上 |
-| e3551d2 | 03 出图规范应用到 K40 母版 | skip | 出图线，已由 aims-v3.2-figures 合并覆盖，需逐文件复核 |
+| e3551d2 | 03 出图规范应用到 算力节点 母版 | skip | 出图线，已由 aims-v3.2-figures 合并覆盖，需逐文件复核 |
 | 0e3e161 | 微内核 7 件套与 8 共享引擎 | 第二批准入 | 架构准入裁定项 |
-| 3439950 | 10 个可插拔 mod、K40 图源 v1.0、A2A 运行时路由 | 拆分处理 | 三件事混一提交，必须按文件切 |
+| 3439950 | 10 个可插拔 mod、算力节点 图源 v1.0、A2A 运行时路由 | 拆分处理 | 三件事混一提交，必须按文件切 |
 | 42c429e | 100 个工作台测试文件与 A2A 契约测试 | 拆分处理 | 同上，只取与 picked 子集对应的测试 |
 | 568de8d | 统一 aims SSOT 导航与 v3.2 发布计划 | skip | 文档，master 有更新版本 |
 | 530ae32 | SCI 单图风格配置 | skip | 出图线，非 P3 |
@@ -106,11 +106,11 @@ runner 侧靠 `wrapperId()` 随机后缀保证目录不撞，于是重复提交�
 4. 无设备可验：锁的互斥、重复下发拒绝、过期锁回收（Git Bash 上可用假文件系统目录跑）。
    必须等真机：断链重连后的锁恢复与远端真实并发行为。
 
-### 第二批：本地容器容灾适配器（价值最高，K40 正离线）
+### 第二批：本地容器容灾适配器（价值最高，算力节点 正离线）
 
 - 前置 `0e3e161`（引擎层）、`c5a80a8`、`0465169`、`3782bb3`，参考 `f0b63b4`。
 - 能力落点：`ComputeAdapter` 是现成接缝，`MockComputeAdapter` 提供无设备跑通，
-  `BridgeComputeAdapter` 走 K40。master 侧对应接缝是 `server/proc.js`（`runSshRaw`、
+  `BridgeComputeAdapter` 走 算力节点。master 侧对应接缝是 `server/proc.js`（`runSshRaw`、
   `runSshStrict`、`findAdb`）与 `server/link.js`（`checkLink`）。
 - 接法建议：不引入 TS 引擎层，改为在 `server/proc.js` 这一个既有 seam 上加
   `BIO_COMPUTE_ADAPTER=mock|ssh` 开关并提供 mock adapter。这样拿到容灾能力，
@@ -157,7 +157,7 @@ runner 侧靠 `wrapperId()` 随机后缀保证目录不撞，于是重复提交�
   - `src/app.css`：分支 :1281 至文件尾的 Pi 监控与对话样式整段追加（含 @media 收尾，
     一次截段曾切掉 @media 闭括号导致 build 警告，重建后大括号 251/251 配对）
   - `server/index.js`：`handlePiAgentRoutes` 挂诊断路由之后，注入 `{ json, runSshRaw }`；
-    pi 的 ssh 走 `k40` 别名（Termux 宿主面），与 `k40-ubuntu` 容器执行面分离，
+    pi 的 ssh 走 `k40` 别名（基础用户空间 宿主面），与 `k40-ubuntu` 容器执行面分离，
     直引 proc.js 的 `runSshRaw` 而非 remote_exec（注释写明）
   - `tests/pi_agent.test.js`、`tests/pi_agent_routes.test.js`、`tests/pi_chat_state.test.js`
     （`42c429e`/`b5b46f9` 的目标测试文件，逐文件抽取）
@@ -172,7 +172,7 @@ runner 侧靠 `wrapperId()` 随机后缀保证目录不撞，于是重复提交�
     `src/core/types` 体系（分支上该文件仅 1 行占位，注册制整体未准入），合入即孤儿。
     A2A 运行时与 mod 体系整体准入是另行议题（本文第四节 6）。
   - `tests/e2e/pi_chat.spec.ts`（`3439950`）：与 portal.spec.ts 已追加的两个 pi case 同源重复。
-  - `3439950` 其余 83 文件（mods 全集、K40 图源、A2A runtime routes）：非第三批范围。
+  - `3439950` 其余 83 文件（mods 全集、算力节点 图源、A2A runtime routes）：非第三批范围。
   - `f07f2d9` 的 `con_hf/ledger/actions.jsonl` 增量：分支测试污染产物，非交付内容。
   - `ops/pi_a2a_daemon.sh`、`pi_a2a_launch.sh`、`pi_idempotent_runner.sh` 等 A2A 运行时脚本：
     census 已按"三批外 rejected"登记（#4、#13、#16、#17、#19），本轮不变。

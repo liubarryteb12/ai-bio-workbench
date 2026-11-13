@@ -48,7 +48,7 @@ echo "workdir=${workdir}"
 FIG_DIR="$workdir"
 export FIG_DIR
 
-# 解释器 PATH 前置（生信代码专项审核）：K40 系统解释器缺科学计算包，真依赖在 bio-py venv。
+# 解释器 PATH 前置（生信代码专项审核）：算力节点 系统解释器缺科学计算包，真依赖在 bio-py venv。
 # 用 PATH 注入而非改写调用行，是为了让桥接调用的行级计数保持原样（bilingual 判定不变）。
 BIO_PY_BIN="${BIO_PY_BIN:-/root/venvs/bio-py/bin}"
 if [ -x "$BIO_PY_BIN/python3" ]; then
@@ -131,7 +131,7 @@ def log(m):
 
 def save(fig, name):
     # 逐图计时（Argon 第 65 轮 Q3/Q4）：单图 30s 设计目标 / 60s 硬上限。
-    # 计时进 manifest，超时从「不可见」变成「回执可查」，不必为查超时连 K40 真跑。
+    # 计时进 manifest，超时从「不可见」变成「回执可查」，不必为查超时连 算力节点 真跑。
     _t0 = time.perf_counter()
     fig.savefig(os.path.join(OUT, name))
     plt.close(fig)
@@ -637,7 +637,7 @@ log("figures_done count=%d out=%s elapsed=%.1fs"
 
 # 输入数据溯源（Argon 第 65 轮 B4）：manifest 只记产物清单时，「这张图由哪份数据渲染」不可证，
 # 换了数据复用旧图也查不出来。这里给每个输入文件记哈希。
-# 大文件分级：超 500MB 全量读哈希会把 K40 的 I/O 拖死（手机存储 ~200MB/s，1GB 就是数秒到数十秒），
+# 大文件分级：超 500MB 全量读哈希会把 算力节点 的 I/O 拖死（算力节点存储 ~200MB/s，1GB 就是数秒到数十秒），
 # 改为 size + 首尾各 1MB 采样的 sha256，既能识别「换了一份数据」又不会阻塞产线。
 LARGE_FILE_BYTES = 500 * 1024 * 1024
 SAMPLE_WINDOW = 1024 * 1024

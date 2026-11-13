@@ -1,7 +1,7 @@
 # AI 辅助生信分析工作台（BioanalysDesktop）工程评估与后续执行规划报告
 
 > **基线版本**：git HEAD `2fcc513`（2026-10-21 17:30 实测）
-> **评审视角**：全栈架构（Node.js / TypeScript / ESM）+ 移动端容器系统工程（ARM64 proot / 本地存储）+ 计算生物学（Bulk / scRNA / Spatial + 虚拟敲除）
+> **评审视角**：全栈架构（Node.js / TypeScript / ESM）+ 移动端容器系统工程（ARM64 容器 / 本地存储）+ 计算生物学（Bulk / scRNA / Spatial + 虚拟敲除）
 > 
 > 
 
@@ -23,12 +23,12 @@
 | **本地服务端与契约层** | **Node.js (ESM)**：18 个服务端模块 (`server/*.js`) + 跨端共享契约 (`shared/*.mjs`) + 25 个 `ops/` 运维脚本 | 任务提交三道闸、五维环境自检、24h TTL + 20GiB 配额 GC、台账审计、交付四道闸与 SHA256 双凭证。
 
  |
-| **传输与守护链路** | PowerShell (`00_link_check.ps1`) + `adb forward` + SSH (8022/10022) + `nohup`/`tmux` | 断链自动重连、`monkey` 拉起 Termux、基于 `exit 0` 与产物校验的断点续跑。
+| **传输与守护链路** | PowerShell (`00_link_check.ps1`) + `adb forward` + SSH (8022/10022) + `nohup`/`tmux` | 断链自动重连、`monkey` 拉起 基础用户空间、基于 `exit 0` 与产物校验的断点续跑。
 
  |
 | **远端计算与存储层** | **硬件**：自备算力节点 (通用 ARM64 处理器 / 12G 内存 / 原生 本地存储 `ext4`/`f2fs`)<br>
 
-<br>**环境**：Termux 无 Root 底座 + Ubuntu 24.04 ARM64 proot 容器 | 锚定 `/mnt/ssd/bio_data/`（严禁 FUSE 层）；EAS 动态调度 + `nice/ionice` 降权；锁死 3 线程与 `7.5GB` 内存软熔断。
+<br>**环境**：基础用户空间 无 Root 底座 + Ubuntu 24.04 ARM64 容器 容器 | 锚定 `/mnt/ssd/bio_data/`（严禁 FUSE 层）；EAS 动态调度 + `nice/ionice` 降权；锁死 3 线程与 `7.5GB` 内存软熔断。
 
  |
 | **生信算法工具链** | **R 生态**：`GEOquery`, `limma`, `WGCNA`, `clusterProfiler`, `Seurat`, `GSVA`, `Monocle3`, `CellChat`, `scTenifoldKnk`<br>
@@ -157,7 +157,7 @@ if (session.receivedBytes + chunkBuffer.length > session.reservedBytes) {
 
 ### 2.4 【中优】生信流水线：Line 2 虚拟敲除与 GSVA 的内存峰值削峰
 
-* **现存问题**：K40 容器限制 `7.5GB` 内存，`line2_scrna` 下游第 6 步（`GSVA`）与第 10 步（`scTenifoldKnk` 连续 3 次独立随机种子运行）在细胞数 > 2,000 时极易触发 R 内存复制峰值导致 OOM。
+* **现存问题**：算力节点 容器限制 `7.5GB` 内存，`line2_scrna` 下游第 6 步（`GSVA`）与第 10 步（`scTenifoldKnk` 连续 3 次独立随机种子运行）在细胞数 > 2,000 时极易触发 R 内存复制峰值导致 OOM。
 
 
 * **修改位置**：`src/line2_scrna/scripts/06_gsva_pathways.R` 与 `10_virtual_ko.R`。
@@ -284,7 +284,7 @@ foreach ($item in $FilesToSync) {
 
 ### 第一阶段：2 周内（Day 1 ~ Day 14）—— 阻塞清零与远端一致性收口 (M1)
 
-* **核心交付目标**：消除全部高/中危工程漂移，实现三线 55 个脚本在 K40 真机 100% 闭环跑通。
+* **核心交付目标**：消除全部高/中危工程漂移，实现三线 55 个脚本在 算力节点 真机 100% 闭环跑通。
 
 
 * **关键里程碑**：
@@ -326,17 +326,17 @@ foreach ($item in $FilesToSync) {
 
 ### 第三阶段：3 个月内（Month 2 ~ Month 3）—— 真实客户交付演练与算力底座高可用 (M4)
 
-* **核心交付目标**：通过真实客户数据集端到端商业交付验收，消除 K40 单点硬件故障风险。
+* **核心交付目标**：通过真实客户数据集端到端商业交付验收，消除 算力节点 单点硬件故障风险。
 
 
 * **关键里程碑**：
-* **M2 上半月（真实数据端到端演练）**：引入 1 套完整客户真实非肿瘤数据（Bulk + scRNA + Spatial），走通“8080 门户建项与分片上传 $\rightarrow$ 8787 编排与 K40 计算 $\rightarrow$ 四道闸预检 $\rightarrow$ `.tar.gz` 打包与 `CHECKSUMS.sha256` 复核 $\rightarrow$ AI 三段式解读报告签收”全链路。
+* **M2 上半月（真实数据端到端演练）**：引入 1 套完整客户真实非肿瘤数据（Bulk + scRNA + Spatial），走通“8080 门户建项与分片上传 $\rightarrow$ 8787 编排与 算力节点 计算 $\rightarrow$ 四道闸预检 $\rightarrow$ `.tar.gz` 打包与 `CHECKSUMS.sha256` 复核 $\rightarrow$ AI 三段式解读报告签收”全链路。
 
 
 * **M2 下半月（交付防伪升级）**：将包内明文 `CHECKSUMS.sha256` 升级为服务端私钥 HMAC/Ed25519 签名清单（`CHECKSUMS.sig`），解决“连包一起替换”的防伪边界问题。
 
 
-* **M3（多节点热备与算力弹性路由）**：在 `server/task.js` 抽象 SSH 计算节点池（支持主节点 K40 + 备用通用 ARM64 处理器/8+ 手机容器或轻量云主机），当五维自检检测到主节点温度 $\ge 95^\circ\text{C}$ 或离线时，自动将新任务路由至备用节点，彻底解除单机硬件故障风险。
+* **M3（多节点热备与算力弹性路由）**：在 `server/task.js` 抽象 SSH 计算节点池（支持主节点 算力节点 + 备用通用 ARM64 处理器/8+ 算力节点容器或轻量云主机），当五维自检检测到主节点温度 $\ge 95^\circ\text{C}$ 或离线时，自动将新任务路由至备用节点，彻底解除单机硬件故障风险。
 
 
 
@@ -348,13 +348,13 @@ foreach ($item in $FilesToSync) {
 
 | 风险项 | 触发条件 | 自动化降级与应对预案 |
 | --- | --- | --- |
-| **K40 热节流 / 高温熔断** | `/sys/class/thermal` 温度 $\ge 85^\circ\text{C}$ (warn) / $\ge 95^\circ\text{C}$ (fail) | 五维自检自动阻断新任务提交；`run_throttled_task.sh` 触发休眠冷却循环，待温度回落至 $75^\circ\text{C}$ 以下自动续跑检查点。
+| **算力节点 热节流 / 高温熔断** | `/sys/class/thermal` 温度 $\ge 85^\circ\text{C}$ (warn) / $\ge 95^\circ\text{C}$ (fail) | 五维自检自动阻断新任务提交；`run_throttled_task.sh` 触发休眠冷却循环，待温度回落至 $75^\circ\text{C}$ 以下自动续跑检查点。
 
  |
 | **F2FS 存储水位告急** | `/mnt/ssd/bio_data` 剩余空间 $< 20\%$ | 立即阻断新任务与新上传；自动触发 `gcStaleUploads` 强制清理非活跃分片，并将已交付项目的中间 `.h5ad`/`.rds` 归档压缩。
 
  |
-| **ADB / SSH 链路闪断** | 本地 `00_link_check.ps1` 心跳超时 | 自动执行 `adb forward` 重建与 `monkey` 唤醒 Termux；远端计算因运行在 `nohup`/`tmux` 守护层不受断链影响，重连后由 `ledger.js` 自动同步状态。
+| **ADB / SSH 链路闪断** | 本地 `00_link_check.ps1` 心跳超时 | 自动执行 `adb forward` 重建与 `monkey` 唤醒 基础用户空间；远端计算因运行在 `nohup`/`tmux` 守护层不受断链影响，重连后由 `ledger.js` 自动同步状态。
 
  |
 

@@ -368,7 +368,7 @@ writeLines(sprintf("sample=%s Z.k=%.3f%s", names(Z.k), as.numeric(Z.k),
 
 - 16 样本处于 WGCNA 可靠区间下沿：所有结论保持"探索性"表述，不得写成"可靠共表达网络"。
 - R² 最高 0.75，未达 0.8：power=26 是数据驱动结果，报告必须保留 `scale_free_R2_ok=FALSE`。
-- 手机端内存有限：top-5000 过滤是必须项，不建议用 `maxBlockSize=20000` 硬扛。
+- 算力节点内存有限：top-5000 过滤是必须项，不建议用 `maxBlockSize=20000` 硬扛。
 
 ---
 

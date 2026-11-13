@@ -60,7 +60,7 @@ FIG_MOUSE="$mouse_h5ad"
 FIG_HUMAN="$human_h5ad"
 export FIG_MOUSE FIG_HUMAN
 
-# 解释器 PATH 前置（生信代码专项审核）：K40 系统解释器缺科学计算包，真依赖在 bio-py venv。
+# 解释器 PATH 前置（生信代码专项审核）：算力节点 系统解释器缺科学计算包，真依赖在 bio-py venv。
 # 用 PATH 注入而非改写调用行，是为了让桥接调用的行级计数保持原样（bilingual 判定不变）。
 BIO_PY_BIN="${BIO_PY_BIN:-/root/venvs/bio-py/bin}"
 if [ -x "$BIO_PY_BIN/python3" ]; then
@@ -110,7 +110,7 @@ def log(m):
 
 def save(fig, name):
     # 逐图计时（Argon 第 65 轮 Q3/Q4）：单图 30s 设计目标 / 60s 硬上限。
-    # 计时进 manifest，超时从「不可见」变成「回执可查」，不必为查超时连 K40 真跑。
+    # 计时进 manifest，超时从「不可见」变成「回执可查」，不必为查超时连 算力节点 真跑。
     # _SAVE_NAME 让比例尺自检能把结果挂到具体图名上：否则 manifest 里一串
     # scalebar_check 无法与任何一张 PNG 对应，外部量测也就无从比对。
     global _SAVE_NAME
@@ -958,7 +958,7 @@ for species, env_key in [("mouse", "FIG_MOUSE"), ("human", "FIG_HUMAN")]:
         log("skip 20_localization: 缺 %s" % _lc_path)
 
 # 输入数据溯源（Argon 第 65 轮 B4）：只记产物清单时，「这张图由哪份数据渲染」不可证。
-# 大文件分级：超 500MB 全量读哈希会把 K40 的 I/O 拖死，改为 size + 首尾各 1MB 采样。
+# 大文件分级：超 500MB 全量读哈希会把 算力节点 的 I/O 拖死，改为 size + 首尾各 1MB 采样。
 LARGE_FILE_BYTES = 500 * 1024 * 1024
 SAMPLE_WINDOW = 1024 * 1024
 

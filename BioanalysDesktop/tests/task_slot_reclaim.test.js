@@ -5,7 +5,7 @@
  *   server/routes/tasks.routes.js 先 `runningTasks.set(taskId, ...)` 再等 onExit 删除；
  *   而 server/run.js 的审计拒绝路径是**同步**回调 onExit 的，删除发生在登记之前，
  *   那条永远不会退出的人物就留在表里。提交层用 `runningTasks.size > 0` 做 P-29
- *   全局串行闸门（docs/termux_keepalive.md:125 禁止并发 ssh），于是一次失败
+ *   全局串行闸门（docs/remote_channel_policy.md 禁止并发连接），于是一次失败
  *   就把后面所有项目的提交永久锁成 409，只能重启进程恢复。
  *
  * 本用例钉两条可观测契约：

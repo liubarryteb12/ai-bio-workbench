@@ -26,7 +26,7 @@ for p in $(pgrep -x runsv 2>/dev/null); do
 done
 sleep 2
 
-# 3. 补杀：proot 已知忽略 SIGTERM（termux_keepalive §六.2）；sshd/crond 防 TERM 未死
+# 3. 补杀：容器已知忽略 SIGTERM（现场保活手册 §六.2）；sshd/crond 防 TERM 未死
 for p in $(pgrep -f "proot/loader" 2>/dev/null); do
     kill -9 "$p" 2>/dev/null && say "kill -9 proot $p"
 done

@@ -2,7 +2,7 @@
 
 执行人：lead（亲自执行，因 teammate 名额已满）
 完成时间：2026-10-21
-状态：已完成。462/462 测试通过 + K40 真机首次抓到真实断言失败。
+状态：已完成。462/462 测试通过 + 算力节点 真机首次抓到真实断言失败。
 
 ---
 
@@ -10,7 +10,7 @@
 
 架构评审 D1：桥接四项断言（ops/verify_bridge_checkpoint.py）此前**只有提交层**
 （BioanalysDesktop/server/index.js 的 /api/tasks/submit）会调用，
-58 个分析母版内部 0 调用。后果是：只要用户绕过工作台、直连 K40 跑母版，
+58 个分析母版内部 0 调用。后果是：只要用户绕过工作台、直连 算力节点 跑母版，
 铁律（aims §一.3「每次跨语言转换必须过断言」）立刻空转。
 
 派发单假设「58 个母版里只有 1 个 bilingual」是错的，实测见下。
@@ -56,7 +56,7 @@ gsva_pathways 的 python3 :162 与 Rscript :113 说明它是「先 Python 后 R�
 2. 输入非 .h5ad/.rds → 打印 [BRIDGE SKIP]，exit 0（引擎只认这两种）；
 3. 本机无 ssh 客户端 → [BRIDGE SKIP]，exit 0；
 4. ssh 连接失败/超时（退出码非 0 且输出不含 BRIDGE FAIL）→ [BRIDGE SKIP]，exit 0
-   —— K40 离线时母版仍可跑，这是可维护性红线；
+   —— 算力节点 离线时母版仍可跑，这是可维护性红线；
 5. 输出含 BRIDGE FAIL → 透传引擎退出码（至少 1），打印 [BRIDGE FAIL]；
 6. 否则 [BRIDGE OK]，exit 0。
 
@@ -115,7 +115,7 @@ base 对象与成功返回都加该字段；masterExists=false 时 guardWired=fa
 
     if (bridgeNeed.bilingual && !bridgeNeed.guardWired) {
       console.warn(`[bridge] ${lineId}/${requested.step} 是跨语言母版但未调用 src/bridge_guard.sh，`
-        + `提交层仍会执行断言，直连 K40 跑母版则不会；请按 task-10 接线`);
+        + `提交层仍会执行断言，直连 算力节点 跑母版则不会；请按 task-10 接线`);
     }
 
 **只 warn 不阻断**：老母版不该因为新规突然提交失败。不变量由测试钉住。

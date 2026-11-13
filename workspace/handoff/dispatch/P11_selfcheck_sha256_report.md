@@ -50,7 +50,7 @@ git diff --stat 实测：BioanalysDesktop/server/selfcheck.js 为 192 行新增�
 
 - 对外新增导出（均为命名导出，不删任何既有导出名）：REPO_ROOT、SHA256_SSH_TARGET、SHA256_REMOTE_ROOT、SHA256_SENTINEL、CORE_SYNC_FILES、SELFCHECK_STATUSES、buildSha256Command、parseSha256Output、collectLocalSha256、evaluateSha256Parity、runSha256ParityCheck。
 - 为什么不用 index.js 的 runRemote：runRemote 返回的是 stdout + stderr 拼接后的文本，丢弃了 ssh 退出码（server/index.js:168-178 调 runSync 后只取输出）。D-07 要求「不可达判 unknown」，必须看退出码，所以本检查自己调 childProcess.spawnSync 并读 result.status。
-- 为什么 spawnSync 写在 selfcheck.js：接缝必须可被测试替换。按 D-08，用默认导入 childProcess 后调用 childProcess.spawnSync(...)，测试用 mock.method(childProcess, 'spawnSync', ...) 就能拦住，不会真连 K40。这条同时满足 tests/sync_script_guard.test.js:104-114 的静态断言（server 下任何模块不许具名导入 child_process）。
+- 为什么 spawnSync 写在 selfcheck.js：接缝必须可被测试替换。按 D-08，用默认导入 childProcess 后调用 childProcess.spawnSync(...)，测试用 mock.method(childProcess, 'spawnSync', ...) 就能拦住，不会真连 算力节点。这条同时满足 tests/sync_script_guard.test.js:104-114 的静态断言（server 下任何模块不许具名导入 child_process）。
 - 状态并入既有四档：只返回 pass / warn / fail / unknown，不新造状态名；返回对象字段与 index.js 里其它 checks 元素同构，前端 src/App.tsx:2187-2193 按 checks 数组渲染，无需前端改动。
 - 与既有第 4 维的关系：第 4 维原本一次 ssh 取隔离门禁与桥接在位结果（buildIsolationCommand）。SHA256 比对是第 4 维内的另一项检查，作为独立 checks 元素返回，id 为 isolation_sha256，不改变 evaluateIsolation 的既有判定。
 
@@ -125,7 +125,7 @@ git diff --stat 实测：BioanalysDesktop/server/selfcheck.js 为 192 行新增�
     }
     EXIT=0
 
-只做了远端 sha256sum 读操作，未改远端任何文件或环境。当前 K40 上 4 个核心文件与仓库一致。
+只做了远端 sha256sum 读操作，未改远端任何文件或环境。当前 算力节点 上 4 个核心文件与仓库一致。
 
 ### 5.4 语法检查
 

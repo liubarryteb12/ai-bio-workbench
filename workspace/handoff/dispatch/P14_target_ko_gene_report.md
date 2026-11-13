@@ -74,7 +74,7 @@ aims/aims.txt:185 要求「勾选虚拟敲除强制弹出 target_ko_gene 必填�
 - 可达性：ops/run_throttled_task.sh 只是 bash 子进程（内部再 nice/ionice 起解释器），export 出来的变量被子进程继承，不需要改包装器。
 - 母版读取建议：KO_GENE = os.environ.get('BIO_KO_GENE', '').strip() or '<兜底>'；缺失时保留 TNF（line2 virtual_knockout 现状，src/line2_scrna/scripts/virtual_knockout:102）与 Spp1（line3 spatial_knockout 现状，src/line3_spatial/scripts/spatial_knockout:113）兜底，并向 stderr 打一行留痕（例如 [warn] BIO_KO_GENE 未设置，回退到 TNF）。
 - 澄清一处事实偏差：派发单说两条母版「同理」都写死 TNF，实测 line3 的 spatial_knockout 默认是 Spp1（小鼠基因符号），不是 TNF。报告按实测写，母版改动请以各自文件为准。
-- 契约边界：提交层保证「走界面的请求一定带合法基因」，兜底只服务于直连 K40 手工跑与历史脚本；兜底必须留痕，否则又回到「静默敲错基因」。
+- 契约边界：提交层保证「走界面的请求一定带合法基因」，兜底只服务于直连 算力节点 手工跑与历史脚本；兜底必须留痕，否则又回到「静默敲错基因」。
 
 ## 5. 测试与验证记录
 
@@ -119,7 +119,7 @@ aims/aims.txt:185 要求「勾选虚拟敲除强制弹出 target_ko_gene 必填�
 2. 前端 KO_GENE_RE 与服务端 KO_GENE_PATTERN 是两份字面量（前后端不能共享模块），本次靠测试 D 组锁住形态；若只改一侧会漏，风险由测试部分兜住，仍属已知重复。
 3. 非敲除步骤传了 targetKoGene 被忽略且不回显，调用方无法从响应看出被忽略。选这个语义是因为回显会诱导调用方以为参数生效。
 4. 未做项目级预填：server/index.js:828 已把 projectMeta.targetKoGene（来自 project.js biological_priors.target_ko_gene）暴露给项目详情接口，TaskPanel 可据此预填输入框，本次未做（超出派发范围），属可选后续。
-5. 未跑端到端真实敲除：母版尚未改成读 BIO_KO_GENE，现在跑真实任务只会走母版兜底，故本切片只验证到「ssh 下发命令里带 export BIO_KO_GENE」为止，母版侧生效需等另两个 teammate 改完再联调。标注：真实 K40 端到端「未运行」。
+5. 未跑端到端真实敲除：母版尚未改成读 BIO_KO_GENE，现在跑真实任务只会走母版兜底，故本切片只验证到「ssh 下发命令里带 export BIO_KO_GENE」为止，母版侧生效需等另两个 teammate 改完再联调。标注：真实 算力节点 端到端「未运行」。
 6. 大小写与物种：TNF 是 human 符号、Spp1 是 mouse 符号，本切片不校验基因与物种是否匹配（无权威离线基因库，且派发未要求），只在 placeholder 里提示 line2 默认 TNF、line3 mouse 默认 Spp1。
 
 ## 7. 架构/接口变更建议
@@ -140,5 +140,5 @@ aims/aims.txt:185 要求「勾选虚拟敲除强制弹出 target_ko_gene 必填�
 ## 9. 建议下一步
 
 1. 裁决第 8 节的漂移：由黑名单切片同步更新 aims_drift_guard.test.js:113 的断言（8 条 → 20 条，并补 tumour/PD-L1/PD-1/CTLA-4 等新词的正则边界校验），让全量回到全绿。
-2. 另两个 teammate 改完母版后，做一次真实联调：提交 virtual_knockout 带 targetKoGene=TNF，在 K40 上确认母版读到 BIO_KO_GENE 且 stderr 无兜底留痕；再提交一次不带（手工直连）确认兜底留痕存在。
+2. 另两个 teammate 改完母版后，做一次真实联调：提交 virtual_knockout 带 targetKoGene=TNF，在 算力节点 上确认母版读到 BIO_KO_GENE 且 stderr 无兜底留痕；再提交一次不带（手工直连）确认兜底留痕存在。
 3. Lead 统一跑 npm run build 与一次 E2E 回归（cn_debug/2026-10-19_e2e_run_pipeline.mjs 只走 line1_bulk 11 步，不涉及敲除，预期不受影响，但本切片未运行，标注「未运行」）。

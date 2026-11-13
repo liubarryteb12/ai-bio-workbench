@@ -85,7 +85,7 @@
 11. `buildReportCommand`：正常项目 id → 命令含 `--project` 与正确目录；
     **路径穿越 id（`../../etc`、含空格、含引号）必须被消毒或拒绝**（至少 3 条负路径）。
 12. 退出码非 0 → reject 且 error 含 stderr 原文（用假 ssh 垫片，照既有测试的
-    spawn 拦截手法；**不许真连 K40**）。
+    spawn 拦截手法；**不许真连 算力节点**）。
 13. 三端点契约（起真服务打真 HTTP，照 auth.test.js 手法，**build 端点用假 ssh 垫片**：
     成功垫片回 0 + 预置本地交付文件；失败垫片回 1）：
     - build 成功 → 200 且 files 形状对；
@@ -104,7 +104,7 @@
 2. 实现 report.js + 三个路由 + 客户端 UI。
 3. 写 report.test.js（≥8 条）。
 4. `npm test` 全绿（贴尾行）；`npm run build` 成功（贴尾行）。
-5. **E2E 真链（真 K40）**：对既有项目 `PRJ_E2E_GSE277173` 跑一次完整 build：
+5. **E2E 真链（真 算力节点）**：对既有项目 `PRJ_E2E_GSE277173` 跑一次完整 build：
    - `POST /api/report/build` → 200 + 三件齐全且 bytes>0；
    - 远端 `deliverables/` 与本地 `localDeliverDir` md5 一致（逐件）；
    - `GET /api/report/download?file=Analysis_Report.html` → 200 且能打开
@@ -112,7 +112,7 @@
    - 报告内容抽查：`Analysis_Report.md` 里**不许出现服务器真实路径**
      （引擎脱敏红线，grep `/mnt/ssd` 应为 0 命中，或只有 `{{DATA_ROOT}}` 占位）；
    - 脚本落 `cn_debug/2026-10-20_verification_s27_report_e2e.mjs`（幂等）。
-   - 若 K40 不可达：写「未运行：K40 ssh 不可达」+ 已完成替代验证，**不许伪造**。
+   - 若 算力节点 不可达：写「未运行：算力节点 ssh 不可达」+ 已完成替代验证，**不许伪造**。
 6. **每完成一步更新一次 `con_hf/dispatch/S27_report.md`**（硬要求）。
 
 【硬性禁止】
@@ -121,13 +121,13 @@
 - 禁止碰 `server/run.js`、`tests/index.test.js`、`tests/run.test.js`（S26 域）。
 - 禁止让 download 能下到 `localDeliverDir` 之外的文件（路径穿越）。
 - 禁止把绝对路径回给前端。
-- 禁止把"应该能生成"写成已验证；E2E 必须真打 K40 或明确写未运行。
+- 禁止把"应该能生成"写成已验证；E2E 必须真打 算力节点 或明确写未运行。
 
 【验收标准】
 A1 report.js 五导出全部实现且 buildReportCommand 纯函数可单测。
 A2 三端点契约测试全过（含 3 条穿越/非法负路径）。
 A3 `npm test` 全绿 + `npm run build` 成功。
-A4 K40 E2E：三件生成 + 本地远端 md5 一致 + 报告无真实路径泄漏
+A4 算力节点 E2E：三件生成 + 本地远端 md5 一致 + 报告无真实路径泄漏
    （或明确未运行 + 原因）。
 A5 客户端 UI 可用（按钮/状态/清单/下载/error 透传），构建产物由 build 产出。
 A6 失败路径不假成功（退出码非 0 → 500 且 error 含原文）。

@@ -2,7 +2,7 @@
 
 ## 本轮完成状态
 
-交接时剩余 6 个改造任务（B 类 3 个加 C 类 3 个），本轮全部完成并验收。加上此前已完成的 15 个，K40 上线改造资产共 17 个，全部 mode 755，母版 10 个脚本完好未被触碰。
+交接时剩余 6 个改造任务（B 类 3 个加 C 类 3 个），本轮全部完成并验收。加上此前已完成的 15 个，算力节点 上线改造资产共 17 个，全部 mode 755，母版 10 个脚本完好未被触碰。
 
 ### 本轮新增 4 个
 
@@ -56,7 +56,7 @@ sva 3.58.0（Bioconductor）
 
 ## 两个重要的方法学结论
 
-1. oncoPredict 官方包无法安装。它不在 Bioconductor 官方仓库，GitHub 上多个候选仓库地址全部 404，GitHub 搜索页与 API 均无结果。GDSC2_Expr.rds 训练矩阵也不在 K40。因此按已发表方法学自行实现 ridge 回归版本，脚本头部写明定位，报告固定 external_validation=not_performed。
+1. oncoPredict 官方包无法安装。它不在 Bioconductor 官方仓库，GitHub 上多个候选仓库地址全部 404，GitHub 搜索页与 API 均无结果。GDSC2_Expr.rds 训练矩阵也不在 算力节点。因此按已发表方法学自行实现 ridge 回归版本，脚本头部写明定位，报告固定 external_validation=not_performed。
 
 2. 73 号目录定性修正。名义是 WGCNA，实际主代码是 CIBERSORT v1.03 免疫浸润评估。生产 WGCNA 已有 wgcna_module_trait，故将该脚本定位为离线算法参考并明确声明不上生产主线，未重复造 WGCNA。
 
@@ -80,14 +80,14 @@ CIBERSORT 最初测试得 SEED_MATTERS=NO，一度怀疑种子契约失效。排
 
 ## 本地一致性缺口（未闭合）
 
-本轮所有脚本只落在 K40 的 /mnt/ssd/bio_data/bin/line1_bulk/。本地工作区 src/line1_bulk/scripts/ 的副本未能同步，本地 exec 通道整轮不可用（helper_unknown_error，exec 与 node_repl 均故障，属系统级进程创建问题）。
+本轮所有脚本只落在 算力节点 的 /mnt/ssd/bio_data/bin/line1_bulk/。本地工作区 src/line1_bulk/scripts/ 的副本未能同步，本地 exec 通道整轮不可用（helper_unknown_error，exec 与 node_repl 均故障，属系统级进程创建问题）。
 
 已准备好 ops/sync_line1_assets.ps1，含 17 个资产的哈希比对与拉取逻辑，支持 -CheckOnly 模式。本地通道恢复后执行即可闭合缺口：
 
 pwsh -File ops/sync_line1_assets.ps1 -CheckOnly
 pwsh -File ops/sync_line1_assets.ps1
 
-K40 无回连 Windows 的路径（无 adb、/mnt 下仅 ssd、容器内代理端口不可达），无法由远端反向推送。
+算力节点 无回连 Windows 的路径（无 adb、/mnt 下仅 ssd、容器内代理端口不可达），无法由远端反向推送。
 
 ## 编码整顿（未开始）
 

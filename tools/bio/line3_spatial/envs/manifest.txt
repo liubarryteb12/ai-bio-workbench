@@ -7,7 +7,7 @@ tools/ops/06_deploy_scripts.ps1 部署到 /mnt/ssd/bio_data/envs/line3_spatial/�
 language=Python
 version=3.12.3
 env_name=line3_spatial_env
-container_image=proot-ubuntu24.04-aarch64
+container_image=容器-ubuntu24.04-aarch64
 
 # 关键分析依赖（2026-10-13 步骤 1 起生效；空间分析栈后续步骤按需新增，
 # 安装前先 dry-run 证实不动核心栈，参考线2 scTenifoldpy/liana 的安装纪律）

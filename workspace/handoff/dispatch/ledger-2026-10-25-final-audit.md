@@ -2,7 +2,7 @@
 
 ## 本轮发现并修复的关键缺口
 
-完成度审计时逐项对比本地与 K40 的 17 个改造资产哈希，发现双端严重不同步：
+完成度审计时逐项对比本地与 算力节点 的 17 个改造资产哈希，发现双端严重不同步：
 
 in_sync 仅 1 个（survival_analysis）
 differ 8 个（本地版本落后，仍是台账补齐与列名兼容之前的旧版）
@@ -19,7 +19,7 @@ oncopredict_ridge、drug_sensitivity_correlation 等本轮新增资产）
 2. 先 -CheckOnly 预演，确认 16 个待同步、0 个远端缺失。
 3. 执行同步，16 个全部拉取成功。
 4. 复跑 -CheckOnly，17/17 全部 IN_SYNC。
-5. 抽查 3 个同步后脚本在 K40 实跑，确认功能未被破坏。
+5. 抽查 3 个同步后脚本在 算力节点 实跑，确认功能未被破坏。
 
 ### 同步后功能回归
 
@@ -30,8 +30,8 @@ rf_gene_select exit 0，4 条 sha256 台账，top_gene=G1 正确识别注入信�
 
 ## 最终状态核验
 
-K40 侧 17 个改造资产全部在位，CR 与 BOM 均为 0
-本地侧 17 个脚本与 K40 哈希逐项一致
+算力节点 侧 17 个改造资产全部在位，CR 与 BOM 均为 0
+本地侧 17 个脚本与 算力节点 哈希逐项一致
 本地 5 个工具（build_grouping_master.py、grouping_master.py、scan_encoding.ps1、
 fix_encoding.ps1、sync_line1_assets.ps1）均无 BOM、纯 LF
 全库编码扫描 needing_action=0，1372 个文件全部合规
@@ -74,7 +74,7 @@ ops/encoding_backup/。工具 ops/scan_encoding.ps1 与 ops/fix_encoding.ps1。
 ### 环境修复
 
 R 4.3.3 已彻底删除，全线迁移到 R 4.5.3。shim 注入 R_PROFILE_USER 使出图模板
-挂载生效。裸 Rscript 统一到 shim，消除登录 shell 命中 Termux R 4.6.1 的隐患。
+挂载生效。裸 Rscript 统一到 shim，消除登录 shell 命中 基础用户空间 R 4.6.1 的隐患。
 
 ## 经验记录
 

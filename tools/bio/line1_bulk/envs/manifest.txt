@@ -7,4 +7,4 @@ ops/06_deploy_scripts.ps1 部署到 /mnt/ssd/bio_data/envs/line1_bulk/（全局�
 language=R
 version=4.5.3
 env_name=line1_bulk_env
-container_image=proot-ubuntu24.04-aarch64
+container_image=容器-ubuntu24.04-aarch64

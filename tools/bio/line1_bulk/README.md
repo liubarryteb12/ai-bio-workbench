@@ -62,7 +62,7 @@ src/line1_bulk/
 
 ## 状态
 
-进行中。数据面已就绪（2026-10-13：手机自带存储，`/mnt/ssd/bio_data/projects/default/line1_bulk/raw_data/` 已有测试数据），
+进行中。数据面已就绪（2026-10-13：算力节点自带存储，`/mnt/ssd/bio_data/projects/default/line1_bulk/raw_data/` 已有测试数据），
 步骤清单按本文件独立设计（2026-10-13 拍板另起炉灶，不沿用底座旧脚本编号）。
 
 已落地（全部真实数据面 + 界面验收 exit 0，台账 completed/passed）：

@@ -46,7 +46,7 @@
 - A 段 6 个：`sha256Hex` 与 `node:crypto` 逐条对拍（空串/中文/emoji/55/56/64/1000 字符）；指纹格式与数字取整；`%`/`|` 转义不撞指纹；id 确定性/前缀/长度/空串；`isSafeUploadId` 白名单边界。
 - B 段 8 个：直接 `import '../src/lib/uploadSession.ts'`（Node 24 类型擦除），覆盖与 shared 指纹一致、随 size/lastModified/name/project/line 变化、`resumeStartIndex` 12 个边界、Map 假 storage 读写、缓存损坏 4 种退化、storage 抛异常退化、`storeUploadId` 拒绝非法值、node 下 `browserStorage() === null`。
 - C 段 12 个：GC 全部注入临时 root 或假 fs（TTL 边界 `age===ttl` 保留、`ttl+1ms` 删；真文件系统 `mkdtemp` + `utimesSync` 造 mtime；ENOENT 不记错；stat/rm 失败只记 errors；节流 1/1/2 次 readdir；logger 抛异常被吞；`resolveUploadId` 三分支 + 非法指纹；`uploadTtlMs` 6 组；`uploadDir` 严格版）。
-- D 段 6 个：in-process 真服务（`freePort` + `childProcess.spawn/spawnSync` 垫片 + `/api/health` 轮询），验证带同一 fingerprint 两次 init 得同一 id 且 `deterministic=true`、status `nextIndex=0`；size 或 lastModified 变化得到不同 id；只给 size+lastModified 与带指纹派生同一 id；都不给回落 UUID 且 `deterministic=false`；非法 fingerprint（数字 / `null` / 含 NUL / 1025 字符）400 且不返回 uploadId；`mock.method(fs,'readdirSync')` 抛 EACCES 时 init 仍 200 且确认 GC 被触发。全程 `childCalls.length === 0` 断言，不真连 K40。
+- D 段 6 个：in-process 真服务（`freePort` + `childProcess.spawn/spawnSync` 垫片 + `/api/health` 轮询），验证带同一 fingerprint 两次 init 得同一 id 且 `deterministic=true`、status `nextIndex=0`；size 或 lastModified 变化得到不同 id；只给 size+lastModified 与带指纹派生同一 id；都不给回落 UUID 且 `deterministic=false`；非法 fingerprint（数字 / `null` / 含 NUL / 1025 字符）400 且不返回 uploadId；`mock.method(fs,'readdirSync')` 抛 EACCES 时 init 仍 200 且确认 GC 被触发。全程 `childCalls.length === 0` 断言，不真连 算力节点。
 
 ## 为什么
 

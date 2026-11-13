@@ -24,7 +24,7 @@
 | F1 | 四大前端视图导航（aims §三，aims.txt:65-159） | 已实现 | `BioanalysDesktop/src/App.tsx:284-289`（VIEWS 四键），`:418-421` 挂载 OnboardingPortal / CustomerInputConsole / PreFlightDashboard / ResultPreviewStudio |
 | F2 | 本地零算力红线（aims.txt:9） | 已实现 | `server/proc.js:12`（白名单 ssh/scp/adb）、`:50-57`（assertAllowedProgram）；proc.test.js 6 例 |
 | F3 | HTTP/S + Token 鉴权支持外网建项/上传/预览（aims.txt:10） | 部分实现 | 8787 有 Basic auth：`server/index.js:51-79`，auth.test.js 7 例；**portal（8080）无任何鉴权**——`portal/serve.mjs` 全文（536 行）无 auth 代码，且文件头注释自述"可单独内网穿透给客户"（:5-8）。aims 要求的 Token 鉴权在 portal 侧缺失 |
-| F4 | 断链自动重连（00_link_check.ps1 心跳 + monkey 拉起 Termux）（aims.txt:10） | 部分实现 | `server/link.js:161-190` 四段探测（设备/forward/Termux/容器）+ runit 服务状态，link.test.js 4 例；但 **ps1 心跳状态与 tmux 守护会话 PID 无任何实现**（link.js 只探 runit `sv status`，不探 tmux） |
+| F4 | 断链自动重连（00_link_check.ps1 心跳 + monkey 拉起 基础用户空间）（aims.txt:10） | 部分实现 | `server/link.js:161-190` 四段探测（设备/forward/基础用户空间/容器）+ runit 服务状态，link.test.js 4 例；但 **ps1 心跳状态与 tmux 守护会话 PID 无任何实现**（link.js 只探 runit `sv status`，不探 tmux） |
 | F5 | 长任务 nohup/tmux 守护 + exit 0 检查点断点续跑（aims.txt:14） | 部分实现 | 任务执行 `server/run.js:30-107`（spawn ssh 流式 + 退出码台账）；**无 tmux/nohup 包装**（`ops/bio_watchdog.sh`、`ops/run_throttled_task.sh` 存在但服务端不调用，task.js:89-97 的 throttled 分支无调用方传 `throttled=true`）；任务级 resume 无 API/UI |
 
 ### 2. 视图 1 · 新建项目向导（aims §三.1，aims.txt:67-136）

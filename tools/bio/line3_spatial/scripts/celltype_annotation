@@ -4,7 +4,7 @@
 # 【架构师警告 / AI Agent 铁律】：
 #   本运行环境为 12GB 物理内存（容器默认上限 7.5GB，单任务最高 8.0GB）的 ARM 真机容器。
 #   严禁将本脚本重构为 cell2location、Stereoscope、DestVI 或原生 RCTD！
-#   重型深度学习/贝叶斯迭代模型在手机 ARM CPU 上会导致算力暴增（3~8小时）并 100% 触发 OOM 强杀（Exit 137）。
+#   重型深度学习/贝叶斯迭代模型在算力节点 ARM CPU 上会导致算力暴增（3~8小时）并 100% 触发 OOM 强杀（Exit 137）。
 #   必须死守 scipy.optimize.nnls（内存锁定 <= 2.2 GB，耗时 <= 6 分钟）。
 #   若需提升解卷积质量，只能走零算力路线：提纯输入 Marker 与输出端低于 0.05 丰度归零截断。
 #
@@ -54,7 +54,7 @@ done
 echo "step_executed=celltype_annotation"
 echo "bioanalys_seed=${seed}"
 
-# 解释器 PATH 前置（生信代码专项审核）：K40 系统解释器缺科学计算包，真依赖在 bio-py venv。
+# 解释器 PATH 前置（生信代码专项审核）：算力节点 系统解释器缺科学计算包，真依赖在 bio-py venv。
 # 用 PATH 注入而非改写调用行，是为了让桥接调用的行级计数保持原样（bilingual 判定不变）。
 BIO_PY_BIN="${BIO_PY_BIN:-/root/venvs/bio-py/bin}"
 if [ -x "$BIO_PY_BIN/python3" ]; then

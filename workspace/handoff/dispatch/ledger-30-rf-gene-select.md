@@ -10,7 +10,7 @@ randomForest 未装，本次从阿里云 CRAN 镜像安装到 R 4.5.3 站点库�
 
 安装过程注意：R 的 available.packages 与 install.packages 能正常访问 https://mirrors.aliyun.com/CRAN，但 curl 抓取该镜像的目录列表返回空，因此版本号通过 R 的 available.packages 查询得到，最终安装 4.7-1.2。
 
-容器网络状况：proot 容器内 127.0.0.1:7890 无监听，adb reverse 映射的代理端口在容器内不可达，代理方案本次未使用；R 自身可直连 CRAN 镜像，故走 R 原生下载通道。
+容器网络状况：容器 容器内 127.0.0.1:7890 无监听，adb reverse 映射的代理端口在容器内不可达，代理方案本次未使用；R 自身可直连 CRAN 镜像，故走 R 原生下载通道。
 
 ## 契约实现
 
@@ -23,7 +23,7 @@ randomForest 未装，本次从阿里云 CRAN 镜像安装到 R 4.5.3 站点库�
 - 原子写、读回自校验、PNG 魔数检查、产物 sha256 台账
 - 每类至少 3 个样本，结局至少 2 类，特征列去重
 
-## K40 实测验收
+## 算力节点 实测验收
 
 部署位置 /mnt/ssd/bio_data/bin/line1_bulk/rf_gene_select，mode 755，18223 字节，sha256 03a3ceeae08a06b90af8d320c8a01d2bff5efc8274a18cc47becd6e1b677a71b。
 

@@ -4,7 +4,7 @@
 - 派发单：`con_hf/dispatch/S32_upload_resume.md`
 - 项目根：`D:\00.AIagent\codespace\AI辅助生信分析流程工作台`
 - 完成时间：2026-10-21
-- 结论：四件事全部落地——服务端导出 `uploadStatus`、`GET /api/upload/status` 返回断点、前端从 `nextIndex` 真正续传、D5 文档漂移收敛；新增 19 条测试全绿；`npm test` 381/381 全绿（本切片开工前实测基线 346/346，本切片 +19，其余 +16 来自并行切片在窗口内合入）；`npm run build` 成功；`npx tsc --noEmit` 零错误。未连 K40、未做任何 git 写操作。
+- 结论：四件事全部落地——服务端导出 `uploadStatus`、`GET /api/upload/status` 返回断点、前端从 `nextIndex` 真正续传、D5 文档漂移收敛；新增 19 条测试全绿；`npm test` 381/381 全绿（本切片开工前实测基线 346/346，本切片 +19，其余 +16 来自并行切片在窗口内合入）；`npm run build` 成功；`npx tsc --noEmit` 零错误。未连 算力节点、未做任何 git 写操作。
 
 ## 1. 任务理解
 
@@ -27,7 +27,7 @@
 - 只写 `server/upload.js`、`server/index.js`（仅新增/替换 upload status handler 一段）、`src/App.tsx`（仅 UploadPanel 与上传相关类型/工具函数）、`tests/upload_resume.test.js`、本报告、以及 D5 点名的那 1 行文档。
 - **未改 `CHUNK_SIZE` 语义**（仍是 4MB；前端从 `init`/`status` 返回的 `chunkSize` 读，不硬编码），D5 改的是文档而不是常量。
 - 未动 S28/S29 已接线代码：`server/index.js` 的 `/api/tasks/submit` 路径预校验块与 S28 桥接检查点块原样保留；`App.tsx` 的 TaskPanel 改动原样保留。
-- 未连 K40、未下发任何远端命令（测试用 ssh 垫片，且有一条用例断言 status 端点 ssh 调用计数为 0）；未 git 提交/删除文件/装包；未引入前端依赖。
+- 未连 算力节点、未下发任何远端命令（测试用 ssh 垫片，且有一条用例断言 status 端点 ssh 调用计数为 0）；未 git 提交/删除文件/装包；未引入前端依赖。
 
 ## 2. 实现摘要
 
@@ -71,7 +71,7 @@
 
 ### 2.5 测试 `tests/upload_resume.test.js`（新建，348 行，19 条）
 
-沿用 `tests/task_submit_validation.test.js` 的 in-process 起真服务范式：`freePort()` → `process.env.BAD_PORT` → `mock.method(childProcess, 'spawnSync'/'spawn')` 垫片（记录调用、永不真连 K40）→ `await import('../server/index.js')` → 轮询 `/api/health` 10s；`after()` 关连接 + 清理本文件创建的会话目录。
+沿用 `tests/task_submit_validation.test.js` 的 in-process 起真服务范式：`freePort()` → `process.env.BAD_PORT` → `mock.method(childProcess, 'spawnSync'/'spawn')` 垫片（记录调用、永不真连 算力节点）→ `await import('../server/index.js')` → 轮询 `/api/health` 10s；`after()` 关连接 + 清理本文件创建的会话目录。
 
 ## 3. 文件变更清单
 

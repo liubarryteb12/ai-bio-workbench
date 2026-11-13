@@ -52,10 +52,10 @@ git show --numstat --format='' <hash>
 | 6 | `90b2460` | feat(a2a): add structured artifact validator | 2 / +253 / -0 | 三批外 | rejected | A2A 结构化产物校验不属于 runner、本地容灾或 PiAgentChat 观测。 | `src/engines/artifact-sync-engine/artifact_validator.py`, `tests/test_a2a_artifact.py` |
 | 7 | `8589b05` | feat(a2a): add task poller and pi bootstrap helpers | 3 / +489 / -0 | 第一批 | 需人工裁定 | 任务轮询是断链恢复前置，但 master 没有 A2A poller 调用面，直接移植会成为孤儿模块。 | `src/engines/a2a-rpc-engine/a2a_client_poller.py`, `ops/pi_seed_settings.sh`, `ops/pi_provider_env.sh` |
 | 8 | `0465169` | fix(a2a): make core compile run on Node 18 and load modules as esm | 2 / +26 / -12 | 第二批 | 需人工裁定 | 只是引擎层 Node 18/ESM 编译门，必须随 `b42aae4` 与 `0e3e161` 一起裁定。 | `tests/a2a_core_compile.cjs`, `tests/test_a2a_core.py` |
-| 9 | `6728d59` | test(a2a): probe the pi daemon security guards on the phone | 1 / +57 / -0 | 三批外 | rejected | 真机安全探针依赖 A2A 运行时和手机，不属于三批能力。 | `tests/a2a_guard_probe.sh` |
+| 9 | `6728d59` | test(a2a): probe the pi daemon security guards on the phone | 1 / +57 / -0 | 三批外 | rejected | 真机安全探针依赖 A2A 运行时和算力节点，不属于三批能力。 | `tests/a2a_guard_probe.sh` |
 | 10 | `3ecb8d3` | chore(a2a): record the k40 gate results in the action ledger | 2 / +82 / -0 | 三批外 | rejected | 门禁记录和台账写入器不提供可合入能力。 | `ops/append_a2a_ledger.py`, `con_hf/ledger/actions.jsonl` |
 | 11 | `105128f` | feat(a2a): verify codex serve and bridge the proxy to the phone | 4 / +157 / -0 | 三批外 | rejected | Codex 代理桥接属于 A2A 网络拓扑，不是通用容灾适配器。 | `ops/codex_a2a_probe.sh`, `ops/k40_proxy_bridge.ps1`, `ops/append_a2a_ledger.py`, `con_hf/ledger/actions.jsonl` |
-| 12 | `6c9fb56` | feat(a2a): make the k40 adb forwards reproducible | 1 / +31 / -0 | 三批外 | rejected | adb 端口映射只是真机连接便利，仍依赖物理手机，不能解决缺陷 #8 的单点依赖。 | `ops/k40_adb_forward.ps1` |
+| 12 | `6c9fb56` | feat(a2a): make the k40 adb forwards reproducible | 1 / +31 / -0 | 三批外 | rejected | adb 端口映射只是真机连接便利，仍依赖算力节点，不能解决缺陷 #8 的单点依赖。 | `ops/k40_adb_forward.ps1` |
 | 13 | `e8bb236` | feat(a2a): auto-start pi server and add secure probe | 3 / +229 / -34 | 三批外 | rejected | 自启 Pi server 和安全探针属于 A2A 运行时，不属于指定三批。 | `ops/pi_a2a_daemon.sh`, `ops/pi_seed_settings.sh`, `tests/a2a_pi_server_probe.sh` |
 | 14 | `3782bb3` | feat(a2a): put each adapter on its correct plane | 2 / +86 / -0 | 三批外 | rejected | 标题虽含 adapter，但落盘是 Codex 与 Pi 的操作脚本，不是计算执行接缝的本地容器 adapter。 | `ops/start_pc_codex_a2a.ps1`, `ops/pi_set_provider_key.ps1` |
 | 15 | `d638721` | chore(a2a): ignore the local codex-a2a runtime database | 1 / +1 / -0 | 三批外 | rejected | 仅忽略本地运行时数据库，无功能价值。 | `.gitignore` |
@@ -64,7 +64,7 @@ git show --numstat --format='' <hash>
 | 18 | `0c35b08` | docs(a2a): record the stage 1 gate report | 1 / +79 / -0 | 三批外 | rejected | 静态门禁报告，不是能力提交。 | `docs/a2a_stage1_gate_report.md` |
 | 19 | `cdf695e` | fix(a2a): close the p0 and p1 gaps from the review | 3 / +60 / -14 | 三批外 | rejected | 修的是 A2A daemon、种子设置与产物校验器，未进入三批目标面。 | `ops/pi_a2a_daemon.sh`, `ops/pi_seed_settings.sh`, `src/engines/artifact-sync-engine/artifact_validator.py` |
 | 20 | `d94457b` | fix(a2a): close remaining review findings | 4 / +18 / -4 | 三批外 | rejected | 维护 A2A 台账、启动器、PathGuard 与安全审计，均依附未准入运行时。 | `ops/append_a2a_ledger.py`, `ops/pi_termux_bootstrap.sh`, `src/core/PathGuard.ts`, `src/engines/security-audit-engine/security_audit.py` |
-| 21 | `2b69e70` | feat(a2a): run the first real cross-plane task end to end | 3 / +126 / -8 | 三批外 | rejected | 首个真实跨平面任务依赖完整 A2A 运行时与手机链路，不是可独立挑拣的能力包。 | `ops/pi_seed_models.sh`, `ops/pi_inject_provider.ps1`, `ops/pi_a2a_daemon.sh` |
+| 21 | `2b69e70` | feat(a2a): run the first real cross-plane task end to end | 3 / +126 / -8 | 三批外 | rejected | 首个真实跨平面任务依赖完整 A2A 运行时与算力节点链路，不是可独立挑拣的能力包。 | `ops/pi_seed_models.sh`, `ops/pi_inject_provider.ps1`, `ops/pi_a2a_daemon.sh` |
 | 22 | `128ff14` | chore(a2a): record the first end to end task in the ledger | 2 / +20 / -2 | 三批外 | rejected | 仅是端到端任务台账与写入器调整。 | `ops/append_a2a_ledger.py`, `con_hf/ledger/actions.jsonl` |
 | 23 | `9d58e82` | test(a2a): extract and validate structured artifacts from pi replies | 1 / +294 / -0 | 三批外 | rejected | Pi 回复产物协议与三批无关。 | `tests/test_a2a_e2e_artifact.py` |
 | 24 | `bc5499a` | chore(a2a): record async and live artifact gate results | 2 / +31 / -1 | 三批外 | rejected | 仅记录异步与实时产物门禁结果。 | `ops/append_a2a_ledger.py`, `con_hf/ledger/actions.jsonl` |
@@ -78,9 +78,9 @@ git show --numstat --format='' <hash>
 | 32 | `d555e73` | fix(workbench): make start bats auto-restart own stale instance | 4 / +70 / -9 | 三批外 | rejected | 启动脚本清理陈旧实例属于本地运维修复，不在 P3-03 三批范围。 | `ops/restart_18787.ps1`, `ops/port_preflight.ps1`, `start_workbench.bat`, `start_portal.bat` |
 | 33 | `8e862ae` | perf(mod-pi-observability): make the panel near real-time | 3 / +67 / -18 | 第三批 | picked | 把观测读取优先切到 9911 sidecar，并保留 SSH 降级，是观测插槽的性能组成；触碰拆分面。等 P3-01/P3-02 合入后再评估。 | `BioanalysDesktop/server/index.js`, `BioanalysDesktop/server/pi_agent.js`, `BioanalysDesktop/src/App.tsx` |
 | 34 | `72a8394` | feat(mod-pi-observability): structured task timeline per the aims html spec | 4 / +96 / -3 | 第三批 | picked | 增加五级任务时间线与前端筛选，属于观测插槽核心行为；触碰拆分面。等 P3-01/P3-02 合入后再评估。 | `BioanalysDesktop/server/index.js`, `BioanalysDesktop/server/pi_agent.js`, `BioanalysDesktop/src/App.tsx`, `BioanalysDesktop/src/app.css` |
-| 35 | `e3551d2` | feat(figures): apply 03出图规范 v1.0 to all K40 figure masters | 5 / +340 / -0 | 三批外 | rejected | K40 出图母版批量修饰与 P3-03 三批无关。 | `ops/beautify_r_masters.py`, `ops/audit_figure_spec_v110.py`, `ops/fix_remaining_themes.py`, `ops/fix_de_palette.py` |
+| 35 | `e3551d2` | feat(figures): apply 03出图规范 v1.0 to all 算力节点 figure masters | 5 / +340 / -0 | 三批外 | rejected | 算力节点 出图母版批量修饰与 P3-03 三批无关。 | `ops/beautify_r_masters.py`, `ops/audit_figure_spec_v110.py`, `ops/fix_remaining_themes.py`, `ops/fix_de_palette.py` |
 | 36 | `0e3e161` | feat(core-engines): land microkernel 7-piece core and 8 shared engines with path/thread guards | 28 / +3714 / -63 | 第二批 | 需人工裁定 | 唯一包含 `MockComputeAdapter` 与计算接口的提交，但一次引入 28 文件微内核和 8 个引擎，是架构准入决策，不是小挑拣。 | `src/core/**`, `src/engines/compute-engine/**`, `src/engines/bridge-engine/**`, `tests/test_compute_engine.py`, `tests/compute_engine_compile.cjs` |
-| 37 | `3439950` | feat(mods): add 10 pluggable mods, K40 figure sources v1.0, and A2A runtime routes | 86 / +7945 / -1164 | 第二批（主），含第三批 | 需人工裁定 | 混合 10 个 mod、K40 图源、A2A runtime route 与 `PiAgentChat`；必须按文件拆，不能整提交挑拣。等 P3-01/P3-02 合入后再评估。 | `BioanalysDesktop/src/PiAgentChat.tsx`, `BioanalysDesktop/server/pi_agent_routes.js`, `BioanalysDesktop/src/pi_chat_state.js`, `src/mods/**`, `src/figure_sources/**` |
+| 37 | `3439950` | feat(mods): add 10 pluggable mods, 算力节点 figure sources v1.0, and A2A runtime routes | 86 / +7945 / -1164 | 第二批（主），含第三批 | 需人工裁定 | 混合 10 个 mod、算力节点 图源、A2A runtime route 与 `PiAgentChat`；必须按文件拆，不能整提交挑拣。等 P3-01/P3-02 合入后再评估。 | `BioanalysDesktop/src/PiAgentChat.tsx`, `BioanalysDesktop/server/pi_agent_routes.js`, `BioanalysDesktop/src/pi_chat_state.js`, `src/mods/**`, `src/figure_sources/**` |
 | 38 | `42c429e` | test(tests-ledger): add 100 workbench test files, A2A contract tests, and execution ledgers | 123 / +15713 / -875 | 第一批（主），含第三批 | 需人工裁定 | 同时含 runner 终版、telemetry 测试、PiAgent 测试与大量无关测试和台账，只能按目标测试文件抽取。等 P3-01/P3-02 合入后再评估。 | `ops/pi_idempotent_runner.sh`, `tests/test_pi_idempotent_runner.sh`, `tests/test_pi_telemetry_sidecar.py`, `BioanalysDesktop/tests/pi_agent*.test.js`, `BioanalysDesktop/tests/pi_chat_state.test.js` |
 | 39 | `568de8d` | docs(release): unify aims SSOT navigation, add root README, and finalize v3.2 release plan | 130 / +19819 / -34521 | 三批外 | rejected | 发布文档和参考资产大清理，包含 34,521 行删除，既非三批能力，也会覆盖 master 新文档真源。 | `aims/**`, `reference/**`, `README.md`, `con_hf/**`, `local_projects/**` |
 | 40 | `530ae32` | feat(mods): add SCI single-plot style config (paper_style.py, theme_paper.R) | 3 / +320 / -0 | 三批外 | rejected | 新出图风格配置不属于 P3-03。 | `src/config/paper_style.py`, `src/config/theme_paper.R`, `src/config/color_map.csv` |
@@ -90,7 +90,7 @@ git show --numstat --format='' <hash>
 | 44 | `c7dc8ea` | test(tests-ledger): add Line 2 and Line 3 figure standardizers and relaxed audit tolerances | 4 / +1076 / -1 | 三批外 | rejected | Line 2/3 图标准化与审计放宽属于出图线。 | `ops/standardize_line2_figures.py`, `ops/standardize_line3_figures.py`, `ops/audit_figure_spec_v110.py`, `ops/release-plan.mjs` |
 | 45 | `70d1fc0` | docs(release): standardize 43 Line 2 and 72 Line 3 pipeline figures to 100% SCI compliance | 238 / +920 / -0 | 三批外 | rejected | 238 个图资产文件，属于出图发布批次。 | `local_projects/**/figures/line2_scrna/**`, `local_projects/**/figures/line3_spatial/**` |
 | 46 | `f0b63b4` | test(tests-ledger): fix desktop mock resets and windows subprocess utf-8 decoding | 6 / +15 / -1 | 三批外 | rejected | 修的是 mock 复位、UTF-8 解码和发布计划归类，不提供本地计算 adapter。等 P3-01/P3-02 合入后再评估。 | `BioanalysDesktop/tests/figure_project_plan.test.js`, `BioanalysDesktop/tests/upload_quota.test.js`, `BioanalysDesktop/tests/upload_session.test.js`, `ops/tests/test_local_project_workspace.py` |
-| 47 | `98fa46f` | docs(release): add automated adb port forward preflight to start_workbench.bat | 1 / +9 / -0 | 三批外 | rejected | 自动 adb forward 仍是物理手机路径，不能提供无设备容灾，且只改启动 bat。 | `start_workbench.bat` |
+| 47 | `98fa46f` | docs(release): add automated adb port forward preflight to start_workbench.bat | 1 / +9 / -0 | 三批外 | rejected | 自动 adb forward 仍是算力节点路径，不能提供无设备容灾，且只改启动 bat。 | `start_workbench.bat` |
 | 48 | `f07f2d9` | test(tests-ledger): align portal e2e pi chat assertions with dedupe and polling timeouts | 2 / +10 / -2 | 第三批 | picked | 修正 Pi Chat 去重与轮询超时断言，属于第三批 e2e 验证的一部分。等 P3-01/P3-02 合入后再评估。 | `BioanalysDesktop/tests/e2e/portal.spec.ts`, `con_hf/ledger/actions.jsonl` |
 | 49 | `253c959` | docs(release): restore figure catalog index and manifest for single-figure browser | 4 / +29630 / -0 | 三批外 | rejected | 恢复图目录生成资产，单个 `catalog.json` 即 28,832 行，和 P3-03 无关。 | `reference/05.可参考出图代码/library/catalog.json`, `manifest.csv`, `README.md`, `licenses.json` |
 | 50 | `8991b51` | test(tests-ledger): support clean worktree in release plan assertions | 1 / +1 / -1 | 三批外 | rejected | 只改发布计划测试对干净工作树的判断，属于发布线。 | `tests/test_release_plan.py` |
@@ -147,7 +147,7 @@ git show --numstat --format='' <hash>
 
 ## 六、每批验证命令建议
 
-以下命令应在移动端 Linux 算力面执行。命令中的仓库路径用占位符 `<REPO>` 代替，实际执行时必须替换为算力面工作区绝对路径。当前 K40 离线，真机项只能标待设备恢复，不能把静态检查冒充真机绿灯。
+以下命令应在移动端 Linux 算力面执行。命令中的仓库路径用占位符 `<REPO>` 代替，实际执行时必须替换为算力面工作区绝对路径。当前 算力节点 离线，真机项只能标待设备恢复，不能把静态检查冒充真机绿灯。
 
 ### 第一批
 
@@ -170,7 +170,7 @@ bash -lc 'set -euo pipefail; cd <REPO>; node tests/compute_engine_compile.cjs; p
 文件名证据：
 
 - `tests/compute_engine_compile.cjs` 明确列出 `types.ts`、`PathGuard.ts`、compute interface、implementation、adapters，以及 bridge interface、implementation、adapters。
-- `tests/test_compute_engine.py` 直接覆盖 `MockComputeAdapter` 成功与失败归一化、超时、argv 错误、thread 上限、清理路径和真实 K40 adapter。命令排除 `real_k40_bridge`，用于 K40 离线时验证本地 mock 能力。
+- `tests/test_compute_engine.py` 直接覆盖 `MockComputeAdapter` 成功与失败归一化、超时、argv 错误、thread 上限、清理路径和真实 算力节点 adapter。命令排除 `real_k40_bridge`，用于 算力节点 离线时验证本地 mock 能力。
 - `BioanalysDesktop/tests/node_failover.test.js` 证明 master 现有接缝已经覆盖远端备用节点选择与动作台账。新本地 adapter 不能绕过该真源。
 - `BioanalysDesktop/tests/proc.test.js` 钉住本地子进程白名单与 ssh/scp/adb 边界，是接 mock adapter 前必须通过的隔离门。
 

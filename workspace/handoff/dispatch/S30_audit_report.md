@@ -52,7 +52,7 @@ ssh -o BatchMode=yes k40-ubuntu "ls -l --time-style=full-iso /mnt/ssd/bio_data/s
   "step_name": "gsva_pathways",
   "status": "failed",
   "environment": {"language": "Python", "version": "3.12.3", "env_name": "line2_scrna_env",
-                  "container_image": "proot-ubuntu24.04-aarch64", "random_seed": 20261013},
+                  "container_image": "容器-ubuntu24.04-aarch64", "random_seed": 20261013},
   "resource_usage": {"max_cpu_percent": null, "max_memory_gb": null, "disk_io_peak_mb_s": null},
   "io_files": {"input": ["/mnt/ssd/bio_data/projects/default/line2_scrna/processed/scrna_annotated.h5ad"], "output": []},
   "checkpoint_status": "failed",
@@ -114,14 +114,14 @@ Get-ScheduledTask | ? TaskName -match 'bio|k40|workbench|serve|portal|guard|watc
 ### A.5 远端自动续跑排查（全部排除）
 
 - k40-ubuntu：`crontab` 命令不存在（`bash: line 1: crontab: command not found`），`systemctl` 不存在，`/etc/cron.d` 只有系统默认 `e2scrub_all`。无 cron/systemd 定时器。
-- k40（Termux，经 adb forward 8022）：`crontab -l` 唯一一条 `*/5 * * * * /data/data/com.termux/files/home/p_actions/bin/tick.sh`。读该脚本（2439 字节）：只扫 `~/p_actions/inbox/*.json` 跑 geo_chip/spatial 取件流水线，不碰 8787；`p_actions/logs/tick.log` 最后一条是 2026-10-09T12:25:21Z，inbox 0 个文件。
-- runit 服务目录 `/data/data/com.termux/files/usr/var/service`：bio-watchdog、crond、ssh-agent、sshd、t5sp-run、ubuntu-sshd。其中 bio_watchdog.sh（Termux 版，2218 字节）只做 sv up 自愈；t5sp-run/run 是一次性 proot Rscript 06_spatial.R。**均无工作台任务续跑能力**。
+- k40（基础用户空间，经 adb forward 8022）：`crontab -l` 唯一一条 `*/5 * * * * /data/data/com.termux/files/home/p_actions/bin/tick.sh`。读该脚本（2439 字节）：只扫 `~/p_actions/inbox/*.json` 跑 geo_chip/spatial 取件流水线，不碰 8787；`p_actions/logs/tick.log` 最后一条是 2026-10-09T12:25:21Z，inbox 0 个文件。
+- runit 服务目录 `/data/data/com.termux/files/usr/var/service`：bio-watchdog、crond、ssh-agent、sshd、t5sp-run、ubuntu-sshd。其中 bio_watchdog.sh（基础用户空间 版，2218 字节）只做 sv up 自愈；t5sp-run/run 是一次性 容器 Rscript 06_spatial.R。**均无工作台任务续跑能力**。
 
 ### A.6 结论（三选一：明确归因）
 
 **明确归因**：3 条「时间点对不上」的台账不是第二个 8787 后端、也不是看门狗自动续跑，而是**同一台机器上另一个执行者（DSH 侧）并发跑同一个验证脚本**产生的。脚本每次自起 freePort 临时 server 实例，因此不需要常驻 8787，也不会端口冲突。加上 S28 主会话自己的 2 次，5 条台账全部解释得通。
 
-- 已排除：ops/run_throttled_task.sh 包装器；常驻第二 8787 实例；Windows 计划任务；ops/serve_guard.ps1 与 bio_watchdog.sh；远端 cron（Termux crond、Ubuntu 无 cron）；远端 runit 服务。
+- 已排除：ops/run_throttled_task.sh 包装器；常驻第二 8787 实例；Windows 计划任务；ops/serve_guard.ps1 与 bio_watchdog.sh；远端 cron（基础用户空间 crond、Ubuntu 无 cron）；远端 runit 服务。
 - 残留（不影响结论，只影响 1:1 追溯）：58546485、86b31149 两条缺第三方会话转录，无法指出具体是哪个会话的哪次调用。若要补齐，需要 DSH 侧会话存储（`.dsh/sessions` 无对应写入）或当时的终端记录。
 
 ---

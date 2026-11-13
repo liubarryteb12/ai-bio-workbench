@@ -83,7 +83,7 @@
 ## D-08 server/proc.js 必须用默认导入 child_process（测试垫片可拦截）
 
 - **日期**：2026-10-21
-- **问题背景与冲突点**：P4 切片写 HTTP 级 complete 用例时用 mock.method(childProcess, spawn|spawnSync) 想拦住 scp/ssh，实际拦不住：server/proc.js 用具名导入 import { spawn, spawnSync }，具名绑定在链接期固化，改 module.exports 属性无效。结果测试真连 K40，往 raw_data 写了两个探针文件。
+- **问题背景与冲突点**：P4 切片写 HTTP 级 complete 用例时用 mock.method(childProcess, spawn|spawnSync) 想拦住 scp/ssh，实际拦不住：server/proc.js 用具名导入 import { spawn, spawnSync }，具名绑定在链接期固化，改 module.exports 属性无效。结果测试真连 算力节点，往 raw_data 写了两个探针文件。
 - **备选方案对比**：① 测试改成不触网的目录级用例（回避）：留下同款隐患，另外 5 个测试文件用同一套失效垫片，只是恰好没走到 scp/ssh；② 接缝改默认导入 + 属性调用：一处改动让全部垫片真生效。
 - **最终拍板结论**：选 ②，并作为铁律写进本台账：凡是可被测试替换的接缝，一律默认导入 + 属性调用，禁止具名导入外部可变依赖。
 - **受影响条款**：§八.2 文件域写隔离与契约冲突升级（接缝属共享契约）。
@@ -168,7 +168,7 @@
 - **日期**：2026-10-21
 - **问题背景与冲突点**：真机探针 `printf notah5ad > /tmp/bad.h5ad` 交给守卫，引擎抛 `OSError: Unable to synchronously open file` 的裸 traceback，守卫只看到「非 0 退出码 + 无结论」，按契约 3 归到「不可达」→ SKIP → exit 0，坏输入被静默放行（比不校验更危险）。
 - **备选方案对比**：① 只改守卫（本机模式非 0 即 FAIL）：能挡住，但引擎仍吐 traceback，调用方看不到人话；② 只改引擎（把异常折成 [BRIDGE FAIL]）：守卫仍可能因为别的崩溃形态走 SKIP；③ 两边都改。
-- **最终拍板结论**：选 ③。引擎侧：main 里先判 `os.path.exists`，再 `try/except` 包住校验，任何异常都折成 `[BRIDGE FAIL] 引擎无法校验输入（类型: 消息）` 并 exit 1；同时把 stdout/stderr 强制 UTF-8（Windows 宿主默认 cp936 会把中文结论写成乱码，调用方 grep 不到）。守卫侧：新增契约 3c —— 本机模式非 0 退出即 `[BRIDGE FAIL]` 并透传退出码；ssh 分支的 255/超时仍降级 SKIP（K40 离线时母版必须还能跑）。
+- **最终拍板结论**：选 ③。引擎侧：main 里先判 `os.path.exists`，再 `try/except` 包住校验，任何异常都折成 `[BRIDGE FAIL] 引擎无法校验输入（类型: 消息）` 并 exit 1；同时把 stdout/stderr 强制 UTF-8（Windows 宿主默认 cp936 会把中文结论写成乱码，调用方 grep 不到）。守卫侧：新增契约 3c —— 本机模式非 0 退出即 `[BRIDGE FAIL]` 并透传退出码；ssh 分支的 255/超时仍降级 SKIP（算力节点 离线时母版必须还能跑）。
 - **受影响条款**：§一.2 铁律 2、§三.3 第 4 维。
 - **同步修改文件清单**：ops/verify_bridge_checkpoint.py（存在性检查 + 异常折行 + UTF-8 输出）、src/bridge_guard.sh（契约 3c 分支）、tests/bridge_stage.test.js（+2 条真跑引擎）、tests/bridge_guard_local.test.js（崩溃改判 FAIL，另加 ssh 255 仍 SKIP）。
 - **验证测试名**：tests/bridge_stage.test.js（13 条）、tests/bridge_guard_local.test.js（7 条）；真机验证：`bash /mnt/ssd/bio_data/ops/bridge_guard.sh --input /tmp/bad.h5ad ...` → `[BRIDGE FAIL] 引擎无法校验输入（OSError: ...）` + `GUARD_EXIT=1`。
@@ -255,7 +255,7 @@
 - **日期**：2026-10-21
 - **问题背景与冲突点**：`ops/run_throttled_task.sh` 只在任务结束时写台账。任务被容器 abort（P-23）、被 kill、
   或被 OOM 时，`system_logs/` 里**什么都不留** —— 事后无法区分「根本没跑」「跑了被打断」「跑了但脚本崩了」，
-  2026-10-21 的 SCENIC 就是这样：跑了 31 分钟被 proot abort，没有台账也没有日志，只能靠外部日志反推。
+  2026-10-21 的 SCENIC 就是这样：跑了 31 分钟被 容器 abort，没有台账也没有日志，只能靠外部日志反推。
 - **备选方案对比**：① 不处理（现状）：台账语义干净，但中断无痕；② 任务开始就写一条 `status=running` 的正规台账、
   结束时覆盖成 completed/failed：可取证，但 `ops/03_check_logs_remote.sh` 会把 running 条目判成 VIOLATION
   （它按 `system_logs/*.json` 通配逐个校验），且「一条台账被改写两次」破坏审计可追溯性；
@@ -264,7 +264,7 @@
   「标记残留」本身就是中断取证，不需要改台账语义；正常路径删除，零额外审计负担。
   配套纪律：① 删除必须排在写完台账之后，且**不许用 `trap`**（SIGTERM 也会带走证据）；
   ② 过期标记（>7 天）在脚本启动时用 `find ... -mtime +7 -delete` 清理，避免永久堆积；
-  ③ 标记里记 `wrapper_pid`，便于和 Termux 侧 proot 崩溃时间点对齐。
+  ③ 标记里记 `wrapper_pid`，便于和 基础用户空间 侧 容器 崩溃时间点对齐。
 - **受影响条款**：§三.2 任务下发与台账通道（台账通道新增「运行中标记」档，不改台账字段与校验口径）、
   §一.2 铁律 3 双保险（中断可取证）。
 - **同步修改文件清单**：`ops/run_throttled_task.sh`（RUNNING_DIR / RUNNING_JSON / 过期清理 / 结束时 rm）、
@@ -285,7 +285,7 @@
   与此同时「走包装器拿线程封顶 / 门禁 / 削峰」又必须保留（`/etc/profile.d/bio_limits.sh` 只在登录 shell 生效，
   而引擎直跑母版不经过登录 shell，OMP 会裸奔到 8 核触发降频）。
 - **备选方案对比**：
-  ① 保持直跑（不套包装器）：最简单，但丢线程封顶 + 门禁 + 削峰，K40 上实测会掉速 30%；
+  ① 保持直跑（不套包装器）：最简单，但丢线程封顶 + 门禁 + 削峰，算力节点 上实测会掉速 30%；
   ② 修包装器的脚本路径分支，让它对 `$5` 做二次解析（eval / 按空格切）：能跑，但**任何含空格路径、含引号参数、
     含管道的命令都会以难以预料的方式失败**，等于把 shell 词法重新实现一遍，且门禁拿到的 `$5` 仍是拼接串、无法 stat 到真实文件；
   ③ **新增命令串模式**：`buildTaskScript` 只 export `BIO_EXEC_CMD=<shellQuote(rawCmd)>`（原样一条字符串，shellQuote 保证引号安全），
@@ -328,16 +328,16 @@
 - **编号冲突说明**：最新 aims v3.1 将四项新裁定名义编号为 D-18 至 D-21，但本台账已永久占用 D-18 至 D-22。按编号不回收规则，四项裁定正式落号为 D-23 至 D-26，并在条目中保留 aims 名义编号映射。
 - **问题背景与冲突点**：`reference/05.可参考出图代码/L1_基础统计图/L1_boxplot_code.R` 与 `_meta/R453_compat/L1_boxplot_code.R` 仍含 `tip.length = 0.01`，会生成端点下折竖线。D-12 已冻结出图判据，本次用户审图反馈构成例外立项条件。
 - **备选方案对比**：① 保留 `stat_pvalue_manual()` 与端点，违反用户要求；② 改为自定义 `geom_segment()`，控制力最强但与现有脚本结构差异较大；③ 保留 `stat_pvalue_manual()`，把所有比较统一锁死 `tip.length = 0`，改动最小且直接表达纯水平横线。
-- **最终拍板结论**：采用 ③。正式版与 R4.5.3 兼容版必须同批修改，所有显著性标注 `tip.length` 只能为 `0`。母版变化后必须同批重跑 K40 生成新 PNG/PDF，并更新 `source_sha256`、`preview_sha256`、验证报告与预览文件。
+- **最终拍板结论**：采用 ③。正式版与 R4.5.3 兼容版必须同批修改，所有显著性标注 `tip.length` 只能为 `0`。母版变化后必须同批重跑 算力节点 生成新 PNG/PDF，并更新 `source_sha256`、`preview_sha256`、验证报告与预览文件。
 - **受影响条款**：D-12 出图判据例外、v3.1 D-18 名义裁定、图模板 G4、图模板注册表防漂移条款。
 - **同步修改文件清单**：`reference/05.可参考出图代码/L1_基础统计图/L1_boxplot_code.R`、`reference/05.可参考出图代码/_meta/R453_compat/L1_boxplot_code.R`、`L1_boxplot_README.md`、`L1_boxplot_verified.png`、`L1_boxplot_verified.pdf`、相关验证报告、`BioanalysDesktop/tests/figure_templates_parity.test.js`。
-- **验证测试名**：箱线图双源 `tip.length = 0` 静态断言；K40 R4.5.3 实跑 exit 0；PNG 魔数、尺寸、非空白像素与 SHA256 校验；注册表 source/preview 双哈希一致性测试。
+- **验证测试名**：箱线图双源 `tip.length = 0` 静态断言；算力节点 R4.5.3 实跑 exit 0；PNG 魔数、尺寸、非空白像素与 SHA256 校验；注册表 source/preview 双哈希一致性测试。
 
 ### D-24 图模板 ready 必须有真实分析产物映射与双轨预览（v3.1 对 aims 名义 D-19 的正式落号）
 
 - **日期**：2026-10-28
 - **问题背景与冲突点**：当前 82 个模板中 `lines`、`produces`、`analysis_output` 字段均为 0，16 个 ready 只有参考示例预览，无法证明其对应真实分析步骤和项目产物。用户要求预览与实际分析出图对应。
-- **备选方案对比**：① 继续只展示 `_verified.png` 示例图；② 直接用历史项目图替换所有预览；③ 建立强映射与双轨预览：Canonical 预览由固定 fixture 在 K40 渲染，`sample_project_output` 指向真实项目产物，无映射模板降级。
+- **备选方案对比**：① 继续只展示 `_verified.png` 示例图；② 直接用历史项目图替换所有预览；③ 建立强映射与双轨预览：Canonical 预览由固定 fixture 在 算力节点 渲染，`sample_project_output` 指向真实项目产物，无映射模板降级。
 - **最终拍板结论**：采用 ③。ready 模板必须具备非空 `lines`、`analysis_step`、`produces`、`output_glob` 与 `sample_project_output`。Canonical 预览和真实项目示例都必须可机器校验。无真实映射模板不得进入门户默认可用预览，只能保留在候选图库或标为 `pending_mapping`。
 - **受影响条款**：v3.1 D-19 名义裁定、图模板 G1、候选图库与生产模板分离、预览 SHA256 防漂移。
 - **同步修改文件清单**：`ops/build_figure_templates.cjs`、`src/figure_templates.json`、`BioanalysDesktop/server/figure_graph.js`、`portal/serve.mjs`、`portal/index.html`、`BioanalysDesktop/tests/figure_templates_parity.test.js`。
@@ -351,7 +351,7 @@
 - **最终拍板结论**：采用 ③。`resolvePlan` 必须生成 `depends_on_step = analysis_step` 的派生任务，把 `figures/adapt/<fig_id>.R/.py` 上传并真实执行，输出 `custom_<fig_id>.png` 到项目对应线图件目录。任务未执行、输出缺失或哈希不符时不得标记完成。
 - **受影响条款**：v3.1 D-20 名义裁定、图模板 G2、任务编排、四道闸与交付清单。
 - **同步修改文件清单**：`BioanalysDesktop/server/figure_graph.js`、`BioanalysDesktop/server/task.js`、`BioanalysDesktop/server/run.js`、`ops/run_adapted_figure.sh`、图模板执行测试、Playwright 映射标签测试。
-- **验证测试名**：派生任务依赖顺序测试；跨项目与跨线 adapt_vars 拒绝；K40 实跑自定义箱线图与火山图；`custom_<fig_id>.png` 回搬存在；任务失败时不产生成功台账。
+- **验证测试名**：派生任务依赖顺序测试；跨项目与跨线 adapt_vars 拒绝；算力节点 实跑自定义箱线图与火山图；`custom_<fig_id>.png` 回搬存在；任务失败时不产生成功台账。
 
 ### D-26 v3.1 工作树收口、项目交接、双端运行与 Final Gate 重验（v3.1 对 aims 名义 D-21 的正式落号）
 
@@ -361,12 +361,12 @@
 - **最终拍板结论**：采用 ③。四批提交边界为：图库扩展与 `/figure-catalog`；模板过滤与门户 E2E；G1 至 G6 缺口修补；Final Gate v3.1 证据。提交前必须补齐 `local_projects/PRJ_AIMS_V3_20261027/handoff.md`，启动 8080 与 8787 双端，完成同步、签名、Sync 和 24 条终验。收口后创建 `release/v3.1` 与标签 `v3.1.0-final-gate`。
 - **受影响条款**：v3.1 D-21 名义裁定、G5/G6/G7、发布冻结、双层台账与最终门禁。
 - **同步修改文件清单**：项目 `handoff.md`、`ledger/actions.jsonl`、`con_hf/ledger/*.jsonl`、`ops/serve_guard.ps1`、`con_hf/runs/2026-10-28_final_gate_v31/REPORT.md`、Git 提交与标签。
-- **验证测试名**：`git status --porcelain` 为空；8080/8787 健康；K40 链路 PASS；`npm test`、tsc、build、Playwright 全绿；`sync_and_verify_remote.ps1 -FailOnDrift` 零漂移；交付验签通过；24/24 Final Gate v3.1 判据通过。
+- **验证测试名**：`git status --porcelain` 为空；8080/8787 健康；算力节点 链路 PASS；`npm test`、tsc、build、Playwright 全绿；`sync_and_verify_remote.ps1 -FailOnDrift` 零漂移；交付验签通过；24/24 Final Gate v3.1 判据通过。
 
 ### D-27 当前 module manifest 以 workflows.json 为权威载体
 
 - **日期**：2026-10-28
-- **问题背景与冲突点**：aims 00 与 03 用 `src/mods/*/manifest.ts`、`src/core/`、`src/engines/` 描述目标微内核形态，但当前仓库运行时真源是 `src/workflows.json` 加 `server/workflow_graph.js`、`server/figure_graph.js`。仅生成空 `manifest.ts` 让 `tsc` 通过会制造假完成，且与已经通过 K40 和 964 条测试的 JSON 注册表架构重复。
+- **问题背景与冲突点**：aims 00 与 03 用 `src/mods/*/manifest.ts`、`src/core/`、`src/engines/` 描述目标微内核形态，但当前仓库运行时真源是 `src/workflows.json` 加 `server/workflow_graph.js`、`server/figure_graph.js`。仅生成空 `manifest.ts` 让 `tsc` 通过会制造假完成，且与已经通过 算力节点 和 964 条测试的 JSON 注册表架构重复。
 - **备选方案对比**：① 立即迁移完整 TypeScript 微内核，影响 portal、桌面端、ops 与部署链，风险过高；② 新建空 manifest 包装层，违反如实报告与 seam 纪律；③ 在当前 SSOT 上显式声明 JSON module manifest，并补齐跨注册表一致性校验，保留未来迁移空间。
 - **最终拍板结论**：采用 ③。`src/workflows.json` 顶层增加 `manifest_version=2` 与 `manifest_kind=workspace_module_registry`，`server/workflow_graph.js` 校验这两个字段。当前 module manifest 的 `pipelineSteps` 语义由三线 `series/stages/mods` 承载，标准输出由每个 mod 的非空 `produces` 声明。ready 图模板的 `input_tables` 必须是绑定 `analysis_step` 对应 mod 的 `produces` 子集。
 - **受影响条款**：T-LINES-01 的验收口径、G1 跨注册表一致性、微内核目标形态与当前 JSON 架构的映射说明。

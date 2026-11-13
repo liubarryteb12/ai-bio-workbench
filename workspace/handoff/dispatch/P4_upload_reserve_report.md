@@ -101,12 +101,12 @@ node --check server\index.js    -> check_index=0
 
 ## 5. 遗留风险与边界（含一次必须上报的事故）
 
-### 5.1 事故：本切片的验证过程真的连了一次 K40，并在远端写了 2 个 5 字节文件
+### 5.1 事故：本切片的验证过程真的连了一次 算力节点，并在远端写了 2 个 5 字节文件
 
 `tests/upload_reserve.test.js` 最初版本有一条 HTTP 级 `POST /api/upload/complete` 用例，靠 `mock.method(childProcess, 'spawnSync'/'spawn')` 想拦住 scp/ssh。实测这个垫片**拦不住**：`server/proc.js:8` 用的是具名导入 `import { spawn, spawnSync } from 'node:child_process'`，具名绑定在导入时固化，替换 module.exports 上的属性对它无效。结果那次用例（以及我为定位它写的一次性探针 `cn_debug/p4_probe_complete.mjs`）真跑了 scp + ssh stat，往
 `/mnt/ssd/bio_data/projects/default/line1_bulk/raw_data/reserve_complete.txt` 与
 `/mnt/ssd/bio_data/projects/default/line1_bulk/raw_data/probe_complete.txt`
-各写了一个 5 字节文本文件（内容分别是 hello）。这违反了「不连 K40」的约束，我如实上报。
+各写了一个 5 字节文本文件（内容分别是 hello）。这违反了「不连 算力节点」的约束，我如实上报。
 
 - 我没有再去远端删它们（删也是远端操作，同样越界），请 Lead 决定是否清掉。
 - 探针文件 `cn_debug/p4_probe_complete.mjs` 已删除，没有留在工作树里。
@@ -127,8 +127,8 @@ checkChunkAdmission 与 writeChunk 之间不是原子的（Node 单线程 + 同�
 
 ## 6. 待主 Agent 决策事项
 
-1. **proc.js 的测试接缝要不要修**（高价值）：把 `server/proc.js:8` 的具名导入改成 `import childProcess from 'node:child_process'` 后按属性调用（`childProcess.spawnSync(...)`），现有 5 个文件的 `mock.method` 垫片立刻真正生效，整个仓库的测试才真的「不会意外连 K40」。改动面小但属于共享接缝，本切片按写范围没动它，请裁决。
-2. **K40 上那两个 5 字节残留文件**是否清掉、由谁清。
+1. **proc.js 的测试接缝要不要修**（高价值）：把 `server/proc.js:8` 的具名导入改成 `import childProcess from 'node:child_process'` 后按属性调用（`childProcess.spawnSync(...)`），现有 5 个文件的 `mock.method` 垫片立刻真正生效，整个仓库的测试才真的「不会意外连 算力节点」。改动面小但属于共享接缝，本切片按写范围没动它，请裁决。
+2. **算力节点 上那两个 5 字节残留文件**是否清掉、由谁清。
 3. chunk 端新增的 507 是否要保留：它使「全局配额满」从 init 阶段提前暴露变成 chunk 阶段也能暴露，属于行为增强，也可以选择只在 init 报 507。
 
 ## 7. 建议下一步
