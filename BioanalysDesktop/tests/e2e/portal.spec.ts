@@ -377,7 +377,8 @@ test('candidate catalog link opens a working single-figure catalog', async ({ pa
   await page.getByRole('link', { name: '浏览候选图库' }).click();
   const catalog = await popupPromise;
 
-  await expect(catalog).toHaveURL(/\/figure-catalog$/);
+  // 门户支持 ?id= 深链，路径相同即可；查询串属于产品行为，不该被 URL 断言误杀。
+  await expect(catalog).toHaveURL(/\/figure-catalog(?:\?.*)?$/);
   await expect(catalog).toHaveTitle('候选图库');
   await expect(catalog.locator('#error-state')).toBeHidden();
   await expect(catalog.locator('.figure-card').first()).toBeVisible({ timeout: 10_000 });

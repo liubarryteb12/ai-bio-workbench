@@ -32,8 +32,13 @@ test('adb_exec.ps1 必须显式强制 UTF-8 输出编码', () => {
 
 const ps51 = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
 
-if (process.platform === 'win32' && fs.existsSync(ps51)) {
-  test('Windows PowerShell 5.1 能解析 adb_exec.ps1 且中文输出为 UTF-8', () => {
+test('Windows PowerShell 5.1 能解析 adb_exec.ps1 且中文输出为 UTF-8', (t) => {
+  // 非 Windows 宿主没有 PowerShell 5.1。用例仍须声明：用例总数属于跨宿主基线，
+  // 平台判断放在运行时跳过，原因走 skip_reason_gate 白名单。
+  if (process.platform !== 'win32' || !fs.existsSync(ps51)) {
+    t.skip('HOST_MISSING_SHELL: 当前宿主没有 Windows PowerShell 5.1，无法验证 5.1 解析兼容');
+    return;
+  }
   const result = spawnSync(ps51, [
     '-NoProfile', '-File', SCRIPT,
     '-Level', 'container', '-Transport', 'adb', '-RequireAdb',
@@ -42,5 +47,4 @@ if (process.platform === 'win32' && fs.existsSync(ps51)) {
   const output = `${result.stdout || ''}${result.stderr || ''}`;
   assert.equal(result.status, 0, `powershell 5.1 parse/run failed: ${output.slice(0, 400)}`);
   assert.ok(!/[�]/.test(output), `output contains replacement chars: ${JSON.stringify(output.slice(0, 200))}`);
-  });
-}
+});
