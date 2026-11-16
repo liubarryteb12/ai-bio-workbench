@@ -19,6 +19,8 @@ _reference/
 *.h5ad
 *.rds
 !docs/assets/*.jpg
+!desktop/assets/icon.png
+!desktop/build/icon.png
 
 # ===== 运行时产物 =====
 tools/ops/secrets/*
@@ -38,6 +40,12 @@ workspace/projects/*/data/
 workspace/projects/*/figures/
 workspace/projects/*/debug/
 workspace/projects/*/deliverables/
+# 四层收敛数据区（data/workspace 下的 runs/inbox/deliverables/references_db）
+# 与运行态状态库都是本机产物：布局由 tools/ops/init_workspace_hierarchy.ps1
+# 幂等重建，内容不进版本库。
+data/workspace/
+data/portal/
+data/.tmp/
 # 工单运行的落地位置是 workspace/projects/<id>/work_orders/；
 # 仓库根下的 workspace/work_orders/ 是 2026-11-09 手工串联 DCM 链时的临时工作区
 # （46 个调试脚本、日志与回执，0.96 MB）。它不进版本库，避免把一次性取证混进真源。
@@ -309,3 +317,6 @@ deliverables/**/*.zip
 .env.local
 .env.*.local
 _private/
+
+# ===== 本地冒烟运行数据（可随时重建，不入库）=====
+.smoke/
