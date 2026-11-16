@@ -90,7 +90,7 @@ npm run dev        # 后端 18787 + 前端 5173 同时起
 npm test
 ```
 
-当前基线 **2240 tests / 2228 pass / 6 fail / 6 skipped**（275 个测试文件；口径由 tools/dev/metrics_sync.mjs 实测 node --test 汇总行）｜代码规模 33822 SLOC（非空行，125 个文件）
+当前基线 **2240 tests / 2233 pass / 1 fail / 6 skipped**（275 个测试文件；口径由 tools/dev/metrics_sync.mjs 实测 node --test 汇总行）｜代码规模 33822 SLOC（非空行，125 个文件）
 5 条 skip 全是条件跳过，原因由 `tools/dev/skip_reason_gate.mjs` 白名单把关：2 条宿主不可达
 （SSH 封存后的一致性校验、真机链路探活），3 条 `HOST_MISSING_LOCAL_DATA`（本机项目数据已清理、
 GSE233814 原始 tar 不在位、标定切片按 2026-11-12 裁定归档）。数据或设备回位后自动真跑。
