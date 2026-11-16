@@ -41,6 +41,7 @@ import { loadTemplateCatalog, loadTemplateCatalogById, validateTemplateCatalog }
 // 第二十九轮 ⑥：需求单结构的唯一真源。门户与服务端建项共用同一份规则，
 // 这样客户在这里提交通过的东西，工作台那边一定认；反过来这边拦下的，工作台也不会收到半成品。
 import { validateRequirement } from '../shared/requirement_schema.mjs';
+import { validateIntakeSubmission, validateMatrixHeaderSnippet } from '../shared/intake_validator.mjs';
 
 const PORT = Number(process.env.PORTAL_PORT || 8080);
 const HOST = process.env.PORTAL_HOST || '127.0.0.1';
@@ -72,9 +73,12 @@ const AUTH_ERROR = '未授权：缺少或错误的 access token（设置 PORTAL_
 const SYNC_AUTH_ERROR = '未授权：缺少或错误的 SYNC_TOKEN';
 const CLIENT_AUTH_ERROR = '未授权：缺少或错误的客户访问 token（设置 PORTAL_CLIENT_TOKEN 的服务需要令牌）';
 const INDEX = fileURLToPath(new URL('./index.html', import.meta.url));
+const DEFAULT_CONVERGED_INBOX = path.resolve(REPO_ROOT, 'data', 'workspace', 'inbox');
 const INBOX = process.env.PORTAL_INBOX
   ? path.resolve(process.env.PORTAL_INBOX)
-  : fileURLToPath(new URL('./inbox/', import.meta.url));
+  : (fs.existsSync(DEFAULT_CONVERGED_INBOX)
+     ? DEFAULT_CONVERGED_INBOX
+     : fileURLToPath(new URL('./inbox/', import.meta.url)));
 // 用户需求专栏单独落一个子目录，和正式分析需求单分开，避免工作台收件箱把想法当成可执行需求。
 const FEATURE_DIR = path.join(INBOX, 'feature_requests');
 const SID_RE = /^[A-Za-z0-9_-]{6,64}$/;
@@ -278,6 +282,25 @@ const FEATURE_MAX_DETAIL = 2000;
 const FEATURE_MAX_EMAIL = 200;
 const FEATURE_LIMITS = new Map();
 
+// D5.4：提交滑窗限流（Token 级，10 次 / 10 分钟）。
+const SUBMIT_LIMITS = new Map();
+const SUBMIT_WINDOW_MS = 10 * 60 * 1000;
+const SUBMIT_MAX_PER_WINDOW = 10;
+function checkSubmitRate(req) {
+  const key = String(req.headers.authorization || req.socket?.remoteAddress || 'unknown');
+  const now = Date.now();
+  const hits = (SUBMIT_LIMITS.get(key) || []).filter((time) => now - time < SUBMIT_WINDOW_MS);
+  if (hits.length >= SUBMIT_MAX_PER_WINDOW) {
+    return {
+      ok: false,
+      retryAfter: Math.max(1, Math.ceil((SUBMIT_WINDOW_MS - (now - hits[0])) / 1000)),
+    };
+  }
+  hits.push(now);
+  SUBMIT_LIMITS.set(key, hits);
+  return { ok: true };
+}
+
 function saveFeatureRequest(payload) {
   const category = FEATURE_CATEGORIES.includes(payload.category) ? payload.category : 'other';
   const title = String(payload.title || '').trim().slice(0, FEATURE_MAX_TITLE);
@@ -373,6 +396,14 @@ function handleFeatureRequest(req, res) {
       payload = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
     } catch (cause) {
       return sendJson(res, 400, { ok: false, error: `请求体不是合法 JSON: ${cause.message}` });
+    }
+    const rate = checkSubmitRate(req);
+    if (!rate.ok) {
+      return sendJson(res, 429, {
+        ok: false,
+        retry_after: rate.retryAfter,
+        error: `提交过于频繁，请 ${rate.retryAfter} 秒后重试`,
+      });
     }
     const result = saveFeatureRequest(payload);
     if (!result.ok) return sendJson(res, 422, result);
@@ -1535,6 +1566,156 @@ function hashFileSync(filePath, chunkSize = 1024 * 1024) {
   return hash.digest('hex');
 }
 
+function readMatrixHeaderSnippetFromFile(filePath, maxBytes = 2 * 1024 * 1024) {
+  const fd = fs.openSync(filePath, 'r');
+  try {
+    const buf = Buffer.alloc(maxBytes);
+    const bytesRead = fs.readSync(fd, buf, 0, maxBytes, 0);
+    return buf.toString('utf8', 0, bytesRead);
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
+function isIntakePayload(payload) {
+  if (!payload || typeof payload !== 'object') return false;
+  if (payload.submission_mode === 'geo_accession' || payload.submission_mode === 'own_matrix') return true;
+  if ((payload.groups || payload.group_mapping) && !payload.dataSource) return true;
+  if (payload.gse && !payload.dataSource) return true;
+  if (typeof payload.matrix_snippet === 'string') return true;
+  return false;
+}
+
+function extractSnippetForIntake(payload) {
+  if (typeof payload.matrix_snippet === 'string') return payload.matrix_snippet;
+  const dataFiles = Array.isArray(payload.dataFiles) ? payload.dataFiles : [];
+  const sid = String(payload.uploadSid || '');
+  for (const f of dataFiles) {
+    const rel = f && (f.path || (sid && SID_RE.test(sid) && f.name ? `uploads/${sid}/${sanitizeFileName(f.name)}` : ''));
+    if (!rel) continue;
+    const full = resolveInInbox(rel);
+    if (!full || !fs.existsSync(full) || !fs.statSync(full).isFile()) continue;
+    const lower = full.toLowerCase();
+    if (lower.endsWith('.tsv') || lower.endsWith('.csv') || lower.endsWith('.txt') || lower.endsWith('.tab')) {
+      return readMatrixHeaderSnippetFromFile(full);
+    }
+  }
+  return null;
+}
+
+function handleIntakeValidate(req, res) {
+  const chunks = [];
+  let size = 0;
+  let tooLarge = false;
+  req.on('data', (chunk) => {
+    size += chunk.length;
+    if (size > 4 * 1024 * 1024) { tooLarge = true; req.destroy(); return; }
+    chunks.push(chunk);
+  });
+  req.on('end', () => {
+    let payload;
+    try {
+      payload = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
+    } catch (cause) {
+      return sendJson(res, 400, { ok: false, error: `请求体不是合法 JSON: ${cause.message}` });
+    }
+    const snippet = extractSnippetForIntake(payload);
+    const check = validateIntakeSubmission(payload, snippet);
+    if (!check.ok) {
+      return sendJson(res, 422, {
+        ok: false,
+        error: `前置强校验未通过: ${check.errors.join('；')}`,
+        errors: check.errors,
+      });
+    }
+    return sendJson(res, 200, { ok: true, facts: check.facts });
+  });
+  req.on('error', () => {
+    if (!res.headersSent) sendJson(res, 400, { ok: false, error: tooLarge ? '校验载荷过大' : '读取请求失败' });
+  });
+}
+
+function handleIntakeSubmitPayload(payload, res) {
+  const stagingId = '.staging_' + crypto.randomBytes(6).toString('hex');
+  const stagingDir = path.join(INBOX, stagingId);
+  try {
+    fs.mkdirSync(stagingDir, { recursive: true });
+    const snippet = extractSnippetForIntake(payload);
+    const check = validateIntakeSubmission(payload, snippet);
+    if (!check.ok) {
+      fs.rmSync(stagingDir, { recursive: true, force: true });
+      return sendJson(res, 422, {
+        ok: false,
+        error: `前置强校验未通过: ${check.errors.join('；')}`,
+        errors: check.errors,
+      });
+    }
+
+    const fileEntries = [];
+    const dataFiles = Array.isArray(payload.dataFiles) ? payload.dataFiles : [];
+    const sid = String(payload.uploadSid || '');
+    if (dataFiles.length > 0) {
+      const dataSubDir = path.join(stagingDir, 'data');
+      fs.mkdirSync(dataSubDir, { recursive: true });
+      for (const f of dataFiles) {
+        const rel = f && (f.from || f.path || (sid && SID_RE.test(sid) && f.name ? `uploads/${sid}/${sanitizeFileName(f.name)}` : ''));
+        if (!rel) continue;
+        const src = resolveInInbox(rel);
+        if (!src || !fs.existsSync(src) || !fs.statSync(src).isFile()) {
+          throw new Error(`数据文件缺失或越界: ${f.name || rel}`);
+        }
+        const destName = sanitizeFileName(f.name || path.basename(src));
+        const dest = path.join(dataSubDir, destName);
+        fs.copyFileSync(src, dest);
+        fileEntries.push({
+          name: f.name || destName,
+          role: f.role || 'matrix',
+          size: fs.statSync(dest).size,
+          sha256: hashFileSync(dest),
+          path: `data/${destName}`,
+        });
+      }
+    }
+
+    const intakeId = 'sub_' + stamp() + '_' + crypto.randomBytes(4).toString('hex');
+    const targetDir = path.join(INBOX, intakeId);
+    const intakeManifest = {
+      intake_id: intakeId,
+      created_at: new Date().toISOString(),
+      submission_mode: check.facts.submission_mode,
+      pipeline: check.facts.pipeline,
+      requires_external_download: Boolean(check.facts.requires_external_download),
+      facts: check.facts,
+      files: fileEntries,
+    };
+    const storedPayload = {
+      ...payload,
+      sync_status: 'pending',
+      sync_urgent: false,
+      sync_created_at: new Date().toISOString(),
+    };
+    fs.writeFileSync(path.join(stagingDir, 'intake_manifest.json'), JSON.stringify(intakeManifest, null, 2), 'utf8');
+    fs.writeFileSync(path.join(stagingDir, 'requirement.json'), JSON.stringify(storedPayload, null, 2), 'utf8');
+    fs.renameSync(stagingDir, targetDir);
+
+    console.log(`[user-portal] 收件成功 (${check.facts.submission_mode}): ${intakeId}`);
+    return sendJson(res, 200, {
+      ok: true,
+      intake_id: intakeId,
+      savedAs: intakeId,
+      requires_external_download: Boolean(check.facts.requires_external_download),
+      facts: check.facts,
+      manifest: `${intakeId}/intake_manifest.json`,
+    });
+  } catch (cause) {
+    try { fs.rmSync(stagingDir, { recursive: true, force: true }); } catch { /* ignore */ }
+    return sendJson(res, 500, {
+      ok: false,
+      error: `工单入库失败: ${cause instanceof Error ? cause.message : String(cause)}`,
+    });
+  }
+}
+
 /**
  * 收件：客户提交的需求落盘到 inbox/。
  * 带数据文件（uploadSid / dataFiles 非空）→ 归档成 PKG_ 包目录；
@@ -1555,6 +1736,9 @@ function handleSubmit(req, res) {
       payload = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
     } catch (cause) {
       return sendJson(res, 400, { ok: false, error: `请求体不是合法 JSON: ${cause.message}` });
+    }
+    if (isIntakePayload(payload)) {
+      return handleIntakeSubmitPayload(payload, res);
     }
     // 数据类型必填且必须在枚举内：它是选分析线的依据，缺了后面必错
     const dataType = payload && payload.dataSource && payload.dataSource.dataType;
@@ -1686,6 +1870,19 @@ function handleSubmit(req, res) {
           data_files: plan.dataFiles,
           references: plan.references,
         };
+        // D4.2 additive 增强：format_hint 透传（每文件可选），autonomy_grants 包级可选。
+        // 客户端未声明时不写字段，旧消费方零感知；声明了非法键会被 shared 校验在
+        // from-package 入口拒掉，这里只做合法值落盘。
+        if (Array.isArray(payload.dataFiles)) {
+          for (const [index, file] of payload.dataFiles.entries()) {
+            if (file && file.format_hint && typeof file.format_hint === 'object' && !Array.isArray(file.format_hint) && plan.dataFiles[index]) {
+              plan.dataFiles[index].format_hint = file.format_hint;
+            }
+          }
+        }
+        if (payload.autonomy_grants && typeof payload.autonomy_grants === 'object' && !Array.isArray(payload.autonomy_grants)) {
+          manifest.autonomy_grants = payload.autonomy_grants;
+        }
         fs.writeFileSync(path.join(INBOX, plan.manifestPath),
           JSON.stringify(manifest, null, 2), 'utf8');
         // 数据文件与参考文献归位（inbox 内移动，失败即整体失败，不留半包）。
@@ -1881,6 +2078,8 @@ const server = http.createServer((req, res) => {
   // 所有写端点在启用 PORTAL_TOKEN 时要求令牌；未启用时 checkToken 直接放行（历史行为）。
   // T0-2：/api/survey/* 原先漏在名单外，token 启用时也能被匿名覆盖调研单，现已纳入。
   const PROTECTED_API = url.pathname === '/api/submit'
+    || url.pathname === '/api/intake/validate'
+    || url.pathname === '/api/intake/submit'
     || url.pathname === '/api/datafiles'
     || url.pathname === '/api/references'
     || url.pathname === '/api/feature-request'
@@ -1905,6 +2104,14 @@ const server = http.createServer((req, res) => {
   }
 
   if (url.pathname === '/api/submit' && req.method === 'POST') {
+    return handleSubmit(req, res);
+  }
+
+  if (url.pathname === '/api/intake/validate' && req.method === 'POST') {
+    return handleIntakeValidate(req, res);
+  }
+
+  if (url.pathname === '/api/intake/submit' && req.method === 'POST') {
     return handleSubmit(req, res);
   }
 

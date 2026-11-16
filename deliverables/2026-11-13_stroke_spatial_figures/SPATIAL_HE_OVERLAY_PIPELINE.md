@@ -15,7 +15,7 @@
 
 ## 二、输入清单
 
-共享输入放在 `workspace/projects/_shared/<GSE>/`：
+共享输入放在 `<shared_dir>/`：
 
 | 文件 | 作用 |
 |---|---|
@@ -26,7 +26,7 @@
 
 每个项目的样本清单放在：
 
-`workspace/projects/<项目>/figures_config/visium_sections.json`
+`<project_dir>/figures_config/visium_sections.json`
 
 字段：
 
@@ -144,23 +144,23 @@ smoothed_spot_master.tsv
 
 ## 八、一条命令重跑
 
-P1（10 个 focus gene）：
+单个项目（10 个 focus gene）：
 
 ```powershell
-python tools/reporting/render_spatial_panel.py `
-  --project-dir workspace/projects/PRJ_STROKE_P1_SPATIAL_ABCA1 `
-  --shared-dir workspace/projects/_shared/GSE233814 `
+python render_spatial_panel.py `
+  --project-dir <project_dir> `
+  --shared-dir <shared_dir> `
   --genes Myh9,Egr1,Gstp1,Epha4,Tjp1,Abca1,Akt1,Sox9,Adipor2,Dpm1 `
   --cmap Spectral_r --alpha 0.75 --spot-size 8 `
   --zero-color "#D9D9D9" --zero-alpha 0.55 --self-weight 0.8
 ```
 
-P2（5 个 focus gene）：
+另一个项目（5 个 focus gene）：
 
 ```powershell
-python tools/reporting/render_spatial_panel.py `
-  --project-dir workspace/projects/PRJ_STROKE_P2_SPATIAL_LACTPYRO_5GENES `
-  --shared-dir workspace/projects/_shared/GSE233814 `
+python render_spatial_panel.py `
+  --project-dir <project_dir> `
+  --shared-dir <shared_dir> `
   --genes Myh9,Egr1,Gstp1,Epha4,Tjp1 `
   --cmap Spectral_r --alpha 0.75 --spot-size 8 `
   --zero-color "#D9D9D9" --zero-alpha 0.55 --self-weight 0.8
@@ -174,12 +174,12 @@ python tools/reporting/render_spatial_panel.py `
 
 | 脚本 | 职责 |
 |---|---|
-| `tools/reporting/render_spatial_panel.py` | 一条命令串起 raw、smoothed、panels、diagnostics |
-| `tools/reporting/render_visium_feature_plot_v2.py` | 单图与多联图渲染，读项目样本配置 |
-| `tools/reporting/smooth_spot_master.py` | 一阶六边形邻域平滑，仅展示 |
-| `tools/reporting/spatial_zero_diagnostics.py` | 零值率条形图与检测图 |
-| `tools/reporting/build_spatial_contact_sheet.py` | 基因 x 切片审阅总览 |
-| `tools/reporting/build_visium_positions.py` | 从 JSON 几何重建每样本位置表，供审计 |
+| `render_spatial_panel.py` | 一条命令串起 raw、smoothed、panels、diagnostics |
+| `render_visium_feature_plot_v2.py` | 单图与多联图渲染，读项目样本配置 |
+| `smooth_spot_master.py` | 一阶六边形邻域平滑，仅展示 |
+| `spatial_zero_diagnostics.py` | 零值率条形图与检测图 |
+| `build_spatial_contact_sheet.py` | 基因 x 切片审阅总览 |
+| `build_visium_positions.py` | 从 JSON 几何重建每样本位置表，供审计 |
 
 ## 十、踩坑清单
 

@@ -2355,12 +2355,79 @@ table.pr-kv td.pr-k { width: 20%; background: #f4f4f4; font-weight: 700; }
     return '';
   }
 
+  // 前端流式分块采样校验（仅切前 2MB / 前 200 行，避免大矩阵 OOM 卡死浏览器）
+  function clientChunkedMatrixCheck(role, file, cb) {
+    var lower = String(file && file.name || '').toLowerCase();
+    var isPlainMatrix = (role.indexOf('matrix') >= 0) && (lower.endsWith('.tsv') || lower.endsWith('.csv') || lower.endsWith('.txt') || lower.endsWith('.tab'));
+    if (!isPlainMatrix || typeof file.slice !== 'function' || typeof FileReader === 'undefined') {
+      cb('');
+      return;
+    }
+    var delimiter = lower.endsWith('.csv') ? ',' : '\t';
+    var chunk = file.slice(0, 2 * 1024 * 1024);
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      var text = String(ev && ev.target && ev.target.result || '');
+      if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+      var lines = text.split(/\r?\n/).map(function (l) { return l.replace(/\s+$/, ''); }).filter(Boolean);
+      if (lines.length < 2) {
+        cb('矩阵至少需要 1 行表头和至少 1 行数据');
+        return;
+      }
+      var headerCols = lines[0].split(delimiter).map(function (c) { return c.trim(); });
+      if (headerCols.length < 2) {
+        cb('矩阵首行解析列数不足，请检查是否为 ' + (delimiter === ',' ? 'CSV' : 'TSV') + ' 分隔');
+        return;
+      }
+      var sampleRe = /^[A-Za-z_][A-Za-z0-9_.-]*$/;
+      var seen = {};
+      for (var i = 1; i < headerCols.length; i += 1) {
+        var s = headerCols[i];
+        if (!s) { cb('第 ' + (i + 1) + ' 列表头样本名为空'); return; }
+        if (/^[0-9]/.test(s)) { cb('样本名 "' + s + '" 不能以数字开头（防 R make.names 自动加 X 偏移）'); return; }
+        if (!sampleRe.test(s)) { cb('样本名 "' + s + '" 含非法字符'); return; }
+        if (seen[s]) { cb('矩阵表头存在重复样本名: "' + s + '"'); return; }
+        seen[s] = true;
+      }
+      var excelDateRe = /^\d{1,2}-(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$/i;
+      var excelSerialRe = /^(3[0-9]{4}|4[0-9]{4}|5[0-9]{4})$/;
+      var geneRe = /^[A-Za-z0-9_.-]+$/;
+      var maxRows = Math.min(lines.length - 1, 200);
+      for (var r = 1; r <= maxRows; r += 1) {
+        var cols = lines[r].split(delimiter).map(function (c) { return c.trim(); });
+        if (cols.length !== headerCols.length) {
+          cb('第 ' + (r + 1) + ' 行列数 (' + cols.length + ') 与表头 (' + headerCols.length + ') 不一致');
+          return;
+        }
+        var gene = cols[0];
+        if (!gene || excelDateRe.test(gene) || excelSerialRe.test(gene)) {
+          cb('第 ' + (r + 1) + ' 行检测到疑似 Excel 日期污染基因名: "' + gene + '"，请设为纯文本导出');
+          return;
+        }
+        if (!geneRe.test(gene)) {
+          cb('第 ' + (r + 1) + ' 行基因名含非法字符: "' + gene + '"');
+          return;
+        }
+      }
+      cb('');
+    };
+    reader.onerror = function () { cb(''); };
+    reader.readAsText(chunk);
+  }
+
   function uploadDataFile() {
     var role = $('f-df-role').value;
     var bind = $('f-df-bind').value;
     var file = $('f-df-file').files && $('f-df-file').files[0];
     var problem = dfPrecheck(role, bind, file);
     if (problem) { showMsg('e-df', problem, 'err'); return; }
+    clientChunkedMatrixCheck(role, file, function (chunkErr) {
+      if (chunkErr) { showMsg('e-df', '前置分块采样拦截：' + chunkErr, 'err'); return; }
+      doUploadDataFile(role, bind, file);
+    });
+  }
+
+  function doUploadDataFile(role, bind, file) {
     var btn = $('btn-df-upload');
     var old = btn.textContent;
     btn.disabled = true;
