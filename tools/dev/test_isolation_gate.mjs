@@ -50,6 +50,55 @@ export const ISOLATION_TOKENS = Object.freeze([...STRONG_TOKENS, ...WEAK_TOKENS]
 /** R1 认的「仓库锚点」：拼出来的路径必然是仓库内共享位置。 */
 export const REPO_ANCHORS = Object.freeze(['REPO_ROOT', 'REPO', 'import.meta.dirname', 'path.resolve']);
 
+/** 候选清单的 git pathspec，与母版环境的 git ls-files 面完全一致。 */
+const CANDIDATE_PATHSPECS = Object.freeze([
+  'BioanalysDesktop/tests/*.test.js',
+  'tools/dev/*.mjs',
+  'tools/dev/lib/*.mjs',
+  'tools/reporting/*.mjs',
+]);
+
+/** 文件系统回退：便携包没有 git（或包目录只是母版仓库里的一个被忽略子目录）时，扫描同一批路径。 */
+export function fsCandidateFiles(repoRoot) {
+  const matches = new Set();
+  const collect = (root, filter, recursive) => {
+    if (!fs.existsSync(root)) return;
+    const walk = (dir) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (recursive) walk(full);
+          continue;
+        }
+        const rel = path.relative(repoRoot, full).split(path.sep).join('/');
+        if (filter(rel)) matches.add(rel);
+      }
+    };
+    walk(root);
+  };
+  collect(path.join(repoRoot, 'BioanalysDesktop', 'tests'), (rel) => rel.endsWith('.test.js'), true);
+  collect(path.join(repoRoot, 'tools', 'dev'), (rel) => rel.endsWith('.mjs'), false);
+  collect(path.join(repoRoot, 'tools', 'dev', 'lib'), (rel) => rel.endsWith('.mjs'), false);
+  collect(path.join(repoRoot, 'tools', 'reporting'), (rel) => rel.endsWith('.mjs'), true);
+  return [...matches].sort();
+}
+
+/** git 真源清单：仅当 repoRoot 本身就是工作树根（母版环境）时返回；便携上下文返回 null。 */
+function gitCandidateFiles(repoRoot) {
+  const git = (args) => cp.execFileSync('git', args, {
+    cwd: repoRoot, encoding: 'utf8', timeout: 15000, stdio: ['ignore', 'pipe', 'ignore'],
+  }).trim();
+  try {
+    const top = git(['rev-parse', '--show-toplevel']);
+    if (path.resolve(top) !== path.resolve(repoRoot)) return null;
+  } catch { return null; }
+  try {
+    const listed = git(['ls-files', ...CANDIDATE_PATHSPECS]);
+    const files = listed.split(/\r?\n/).filter(Boolean).sort();
+    return files.length > 0 ? files : null;
+  } catch { return null; }
+}
+
 /**
  * 门禁自身的夹具测试：里面的「违规源码」是字符串字面量，是被测输入而不是真代码。
  * 只放这一份，加别的文件名需人裁定。
@@ -156,9 +205,10 @@ export function judgeSource(text) {
   return { hasRecursiveRm: calls.length > 0, isolated: violations.length === 0, strongTokens: strongFound, weakTokens: weakFound, violations, calls };
 }
 
-export function checkTestIsolation() {
-  const listed = cp.execSync('git ls-files BioanalysDesktop/tests/*.test.js tools/dev/*.mjs tools/dev/lib/*.mjs tools/reporting/*.mjs', { cwd: REPO, encoding: 'utf8' });
-  const files = listed.split(/\r?\n/).filter(Boolean);
+export function checkTestIsolation({ repoRoot = REPO } = {}) {
+  const fromGit = gitCandidateFiles(repoRoot);
+  const source = fromGit ? 'git' : 'fs';
+  const files = fromGit || fsCandidateFiles(repoRoot);
   const violations = [];
   const staleExemptions = [];
   let scannedFiles = 0;
@@ -189,7 +239,7 @@ export function checkTestIsolation() {
     if (!stillHasRm.has(e.file)) staleExemptions.push(e.file);
   }
 
-  return { files: files.length, scannedFiles, scannedCalls, violations, staleExemptions };
+  return { files: files.length, source, scannedFiles, scannedCalls, violations, staleExemptions };
 }
 
 function main() {
@@ -200,7 +250,7 @@ function main() {
     console.log(JSON.stringify({ ok, ...r }, null, 2));
     return ok ? 0 : 1;
   }
-  console.log(`共享资源隔离：${r.files} 个候选 / ${r.scannedFiles} 个含递归删除 / ${r.scannedCalls} 处调用，违规 ${r.violations.length} 条，腐化豁免 ${r.staleExemptions.length} 条`);
+  console.log(`共享资源隔离（候选来源 ${r.source}）：${r.files} 个候选 / ${r.scannedFiles} 个含递归删除 / ${r.scannedCalls} 处调用，违规 ${r.violations.length} 条，腐化豁免 ${r.staleExemptions.length} 条`);
   for (const v of r.violations) console.log(`  [FAIL] ${v.file}:${v.line}  ${v.rule}  ${v.detail}`);
   for (const f of r.staleExemptions) console.log(`  [FAIL] 豁免清单腐化：${f} 已不再含递归删除，应撤掉该豁免`);
   console.log(ok ? '共享资源隔离通过' : '共享资源隔离失败');

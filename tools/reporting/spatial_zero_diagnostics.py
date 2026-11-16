@@ -32,6 +32,11 @@ def parse_args():
     parser.add_argument("--spatial-dir", required=True, type=Path)
     parser.add_argument("--samples", required=True, type=Path)
     parser.add_argument("--out-dir", required=True, type=Path)
+    parser.add_argument(
+        "--layout",
+        type=Path,
+        default=Path("references/07.Visium_v1_载玻片布局/visium_v1_tissue_positions.csv"),
+    )
     parser.add_argument("--section", default="", help="section label; empty picks D3 or the first section")
     parser.add_argument("--gene", default="", help="gene for the detection map; empty picks Egr1 or the first gene")
     return parser.parse_args()
@@ -86,7 +91,7 @@ def main():
     if "barcode" not in master.columns:
         master["barcode"] = master["spot"].str.split("_", n=1).str[1]
     layout = pd.read_csv(
-        Path("references/07.Visium_v1_载玻片布局/visium_v1_tissue_positions.csv"),
+        args.layout,
         comment="#",
         header=None,
         names=["barcode", "in_tissue", "array_row", "array_col", "pxl_row", "pxl_col"],

@@ -16,6 +16,7 @@ import {
   validateFigureStepInputs,
 } from '../server/figure_graph.js';
 import { indexMods } from '../server/workflow_graph.js';
+import { projectExamplesAvailable } from '../server/figure_examples.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
@@ -145,7 +146,11 @@ test('registry contains the exact 92 figure inventory and verification counts', 
   }
 });
 
-test('ready templates point to verified source and preview bytes', () => {
+test('ready templates point to verified source and preview bytes', (t) => {
+  if (!projectExamplesAvailable()) {
+    t.skip('HOST_MISSING_LOCAL_DATA: sample_project_output 运行期项目图不在版本库中');
+    return;
+  }
   const registry = reloadFigureTemplates();
   const ready = registry.templates.filter((item) => item.deps_status === 'ready');
   for (const item of ready) {
@@ -480,7 +485,11 @@ test('r453 report runner hashes match the masters on disk', () => {
 // 两者输入数据完全不同，SHA256 物理上不可能相等。若相等，只有一种可能：
 // 没有真跑适配器，而是把 *_verified.png 改名复制成了 custom_fig_*.png。
 // 重跑覆盖不会误伤：适配器无论重跑多少次，消费的始终是项目表，哈希撞不上合成图。
-test('sample_project_output never equals the verified preview hash', () => {
+test('sample_project_output never equals the verified preview hash', (t) => {
+  if (!projectExamplesAvailable()) {
+    t.skip('HOST_MISSING_LOCAL_DATA: sample_project_output 运行期项目图不在版本库中');
+    return;
+  }
   const registry = reloadFigureTemplates();
   let checked = 0;
   for (const item of registry.templates.filter((row) => row.deps_status === 'ready')) {

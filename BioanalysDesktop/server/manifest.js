@@ -7,7 +7,7 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { assetPath } from './paths.js';
 
 /** 台账 environment 需要的四个字段，缺任何一个都视为 manifest 不可用 */
 const REQUIRED_FIELDS = ['language', 'version', 'env_name', 'container_image'];
@@ -45,7 +45,7 @@ export function parseEnvironmentManifest(text) {
  *   不抛异常：调用点在 runTask 的 exit handler 里，抛错会杀进程。
  */
 export function readEnvironmentManifest(lineId) {
-  const manifestPath = fileURLToPath(new URL(`../../tools/bio/${lineId}/envs/manifest.txt`, import.meta.url));
+  const manifestPath = assetPath('tools', 'bio', lineId, 'envs', 'manifest.txt');
   let text;
   try {
     text = readFileSync(manifestPath, 'utf8');

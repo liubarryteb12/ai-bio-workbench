@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkFigureCode, BLOCKING_KINDS } from '../../tools/dev/figure_code_gate.mjs';
+import { checkFigureCode, resolvePythonInterpreter, BLOCKING_KINDS } from '../../tools/dev/figure_code_gate.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const AUDIT = path.join(REPO, 'cn_debug', 'figure_code_audit.py');
@@ -54,6 +54,32 @@ test('Fail-Closed：审计器缺失判失败而非静默放行', (t) => {
   const res = checkFigureCode(root);
   assert.equal(res.ok, false);
   assert.ok(res.errors.length > 0);
+});
+
+test('解释器解析：就近原则，vendor 优先于便携 runtime', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), `figcode-py-${process.pid}-`));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(root, 'runtime', 'python'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'runtime', 'python', 'python.exe'), '');
+  assert.equal(resolvePythonInterpreter(root), path.join(root, 'runtime', 'python', 'python.exe'));
+  fs.mkdirSync(path.join(root, 'vendor', 'python-win32', 'pythoncore-3.12-64'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'vendor', 'python-win32', 'pythoncore-3.12-64', 'python.exe'), '');
+  assert.equal(resolvePythonInterpreter(root), path.join(root, 'vendor', 'python-win32', 'pythoncore-3.12-64', 'python.exe'));
+});
+
+test('checkFigureCode 从门禁自身根解析解释器（探针仓没有运行时也能跑）', () => {
+  const src = fs.readFileSync(path.join(REPO, 'tools', 'dev', 'figure_code_gate.mjs'), 'utf8');
+  assert.match(src, /resolvePythonInterpreter\(REPO\)/, '解释器必须取自门禁所在仓库根，探针根没有 runtime');
+});
+
+test('克隆场景：解析根向上逐级找最近的运行时（变异门禁的临时克隆可复用）', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), `figcode-clone-${process.pid}-`));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const scope = path.join(root, '.tmp', 'mutation_gate', 'probe');
+  fs.mkdirSync(path.join(scope, 'tools', 'dev'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'runtime', 'python'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'runtime', 'python', 'python.exe'), '');
+  assert.equal(resolvePythonInterpreter(scope), path.join(root, 'runtime', 'python', 'python.exe'));
 });
 
 test('C13 探针：缺 plt.close 必须被硬阻断', (t) => {

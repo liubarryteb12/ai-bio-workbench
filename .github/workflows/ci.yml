@@ -23,6 +23,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 安装 Schema 网关依赖
+        # schema_gateway.py 与 requirement 三源对齐用例都依赖 pydantic。
+        # 锁到项目既有 env_lock 版本，避免 Runner 上的版本漂移改变校验行为。
+        # PyYAML 供 router_gate 类型感知交叉校验，缺它时 YAML 标量陷阱用例会静默降级。
+        run: python -m pip install pydantic==2.14.1 pydantic-settings==2.16.1 PyYAML
       - name: 安装前端依赖
         working-directory: BioanalysDesktop
         run: npm ci || npm install
@@ -31,11 +39,25 @@ jobs:
         # 类型回归只能靠人记得在本地跑，等于没有门禁。
         working-directory: BioanalysDesktop
         run: node node_modules/typescript/bin/tsc --noEmit
+      - name: 构建前端（dist/）
+        # 本地开发者先 build 过，static_assets_contract 的合法与 404 用例依赖 dist/index.html，
+        # 干净 Runner 缺 dist 时会误红。e2e job 已构建，这道门禁同样需要。
+        working-directory: BioanalysDesktop
+        run: npm run build
       - name: 单命令总门禁（与本地同构）
         # gate:all 内含 preflight/static/skip_static/ledger/figure_registry/audit_summary/
         # mutation_gate/metrics 八道；任一道红即整体红，exit 非 0 会直接让 job 失败。
         # mutation_gate 在 CI 上同样只在临时副本上变异，不写工作树。
+        env:
+          BIO_METRICS_TAP_DUMP: .tmp/ci_metrics.tap
         run: node tools/dev/run_all_gates.mjs --json
+      - name: 打印失败用例诊断
+        if: failure()
+        # 门禁 JSON 只留 80 行 tail，TAP 里的 error 栈才是根因。
+        run: |
+          grep -A 18 '^not ok' .tmp/ci_metrics.tap || true
+          grep -n -B 4 -A 4 '^# SKIP$' .tmp/ci_metrics.tap || true
+          sed -n '5928,5948p' .tmp/ci_metrics.tap || true
       - name: 门禁结果留档
         if: always()
         # 留档步骤与门禁步骤跑同一套判据，失败时它也必须红。此前这里用「或裸 true」的
@@ -56,6 +78,12 @@ jobs:
       - name: 安装前端依赖
         working-directory: BioanalysDesktop
         run: npm ci || npm install
+      - name: 构建前端（dist/）
+        # admin 面 e2e 由 server/index.js 托管 dist/，dist 是构建产物不进 git。
+        # 本地开发者跑 e2e 前已 build 过所以从没暴露；CI 缺这步，静态托管拿
+        # 到的是 404 页，27 个 spec 全部 tab-nav-item 找不到（20 失败 6 通过）。
+        working-directory: BioanalysDesktop
+        run: npm run build
       - name: 缓存 Playwright 浏览器
         uses: actions/cache@v4
         with:
@@ -63,7 +91,11 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('BioanalysDesktop/package-lock.json') }}
       - name: 安装 Playwright 浏览器
         # 缺 --with-deps 会缺系统库，27 个 spec 全部 browser not found。
-        run: npx playwright install --with-deps chromium
+        # 必须用项目自带的 playwright（devDependencies），不能裸 npx：裸 npx
+        # 在 PATH 上找不到 playwright 时会临时装最新版，浏览器 build 号与
+        # 锁定的 @playwright/test 对不上，27 个 spec 全部 Executable doesn't exist。
+        working-directory: BioanalysDesktop
+        run: npx --no-install playwright install --with-deps chromium
       - name: 端到端（playwright 27 个 test）
         # playwright.config.ts 自带两个 webServer（portal 9321 / admin 9322），
         # admin 面在 D-29 Fail-Closed 后强制 Basic 鉴权，凭据写在 config 的 env 里，

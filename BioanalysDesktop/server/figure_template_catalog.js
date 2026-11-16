@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { ASSET_ROOT } from './paths.js';
 
-const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const REPO = ASSET_ROOT;
 const PROFILES = path.join(REPO, 'tools', 'bio', 'figure_template_profiles.json');
 const EXAMPLES = path.join(REPO, 'tools', 'bio', 'figure_project_examples.json');
 

@@ -76,8 +76,17 @@ function deepDiff(a, b, at, out) {
   return out;
 }
 
-/** enforced_by 的路径加固：仓库内 + 是文件 + 落在受控目录 + 已被 git 跟踪。 */
-function checkEnforcedPath(repoRoot, rel) {
+/** REPO 本身是工作树根时返回根路径；便携包或临时目录返回 null。 */
+function gitWorkTreeRoot(repoRoot) {
+  try {
+    return execFileSync("git", ["-C", repoRoot, "rev-parse", "--show-toplevel"], {
+      encoding: "utf8", timeout: 15000, stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch { return null; }
+}
+
+/** enforced_by 的路径加固：仓库内 + 是文件 + 落在受控目录 + git 环境下已被跟踪。 */
+export function checkEnforcedPath(repoRoot, rel) {
   const norm = rel.includes("/") ? rel : "tools/dev/" + rel;
   const resolved = path.resolve(repoRoot, norm);
   const relative = path.relative(repoRoot, resolved);
@@ -94,17 +103,18 @@ function checkEnforcedPath(repoRoot, rel) {
     errs.push("SCOPE.md enforced_by 不是真实文件: " + rel);
     return errs;
   }
-  try {
-    execFileSync("git", ["-C", repoRoot, "ls-files", "--error-unmatch", posix], {
-      stdio: "ignore", timeout: 15000,
-    });
-  } catch (e) {
-    // git 不可用或文件未被跟踪：只在 git 可用时报红，避免在临时目录契约测里误红
+  const top = gitWorkTreeRoot(repoRoot);
+  if (top && path.resolve(top) === path.resolve(repoRoot)) {
     try {
-      execFileSync("git", ["-C", repoRoot, "rev-parse", "--is-inside-work-tree"], { stdio: "ignore", timeout: 15000 });
+      execFileSync("git", ["-C", repoRoot, "ls-files", "--error-unmatch", posix], {
+        stdio: "ignore", timeout: 15000,
+      });
+    } catch (e) {
       errs.push("SCOPE.md enforced_by 指向未被 git 跟踪的文件: " + rel);
-    } catch (e2) { /* 非 git 环境，跳过 */ }
+    }
   }
+  // REPO 不是工作树根（便携包或临时目录）：文件存在性与受控目录已校验，
+  // 跟踪状态只在母版 git 环境下才有意义，这里跳过避免把包内副本误判成未跟踪。
   return errs;
 }
 

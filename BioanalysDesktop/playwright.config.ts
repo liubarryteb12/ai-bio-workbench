@@ -48,6 +48,11 @@ export default defineConfig({
         BAD_AUTH_USER: 'e2e-admin',
         BAD_AUTH_PASS: 'e2e-admin-pass',
         BIO_UPLOAD_QUOTA_BYTES: String(64 * 1024 * 1024),
+        // T2.4 续传用例：/api/upload/complete 的 mkdir / scp / stat 走 mock 算力面，
+        // 不依赖真机。stat 回填 10485760 与用例文件字节数一致，sizeMatch 才为 true。
+        BIO_COMPUTE_ADAPTER: 'mock',
+        BIO_ALLOW_MOCK_COMPUTE: '1',
+        BIO_COMPUTE_MOCK_STDOUT: '10485760',
         NO_PROXY: '127.0.0.1,localhost',
       },
     },

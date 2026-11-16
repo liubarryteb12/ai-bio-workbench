@@ -13,17 +13,46 @@
 import childProcess from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { COMPUTE_SCP_TARGET, COMPUTE_SSH_PORT } from './domain.js';
+import { ASSET_ROOT, dataPath } from './paths.js';
 
 /**
  * 仓库根：adbRaw 的辅助脚本与 CWD 都以它为锚，避免依赖进程启动目录。
  * BioanalysDesktop/server/proc.js 上两级即仓库根。
  */
-export const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
+export const REPO_ROOT = ASSET_ROOT;
 
 /** ADB 通道辅助脚本（相对仓库根固定），pwsh 只作为该通道的执行器出现 */
 export const ADB_EXEC_SCRIPT = path.join(REPO_ROOT, 'tools', 'ops', 'adb_exec.ps1');
+
+/**
+ * PowerShell 执行器解析：优先 pwsh 7，缺失时回落 Windows 自带的 powershell.exe。
+ *
+ * 为什么需要回落：干净 Windows 10/11 只保证有 Windows PowerShell 5.1。
+ * adb_exec.ps1 只用 5.1 兼容语法，桌面版不需要用户另装 PowerShell 7。
+ * BIO_PWSH_PATH 显式指定时优先级最高，供高级用户与测试注入。
+ */
+export function resolvePwshExec() {
+  const explicit = process.env.BIO_PWSH_PATH;
+  if (explicit && existsSync(explicit)) return explicit;
+  const pathEntries = String(process.env.PATH || '').split(path.delimiter).filter(Boolean);
+  for (const dir of pathEntries) {
+    const candidate = path.join(dir, 'pwsh.exe');
+    // 命中 PATH 时返回裸名，保持既有 argv 契约与测试口径。
+    if (existsSync(candidate)) return 'pwsh';
+  }
+  const programFiles = process.env.ProgramFiles || 'C:\\Program Files';
+  for (const dir of ['PowerShell\\7', 'PowerShell\\7-preview']) {
+    const candidate = path.join(programFiles, dir, 'pwsh.exe');
+    if (existsSync(candidate)) return candidate;
+  }
+  const systemRoot = process.env.SystemRoot || 'C:\\Windows';
+  const windowsPowerShell = path.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+  if (existsSync(windowsPowerShell)) return windowsPowerShell;
+  return 'pwsh';
+}
+
+export const PWSH_EXEC = resolvePwshExec();
 
 /** 过长命令改走临时 .sh，绝不把多行内容塞进 Windows 命令行参数 */
 const ADB_INLINE_COMMAND_LIMIT = 8000;
@@ -226,7 +255,7 @@ function scpDirection(argv) {
 }
 
 function adbRunner(args, options = {}) {
-  const result = childProcess.spawnSync('pwsh', [
+  const result = childProcess.spawnSync(PWSH_EXEC, [
     '-NoProfile', '-File', ADB_EXEC_SCRIPT,
     '-Level', 'ubuntu', '-Transport', 'adb', '-RequireAdb',
     '-RemoteScriptPath', uniqueRemoteScript('dsh_adb_bridge'),
@@ -295,7 +324,7 @@ function rewriteRemoteArgv(argv, options = {}) {
  */
 function adbRunnerAsync(args, options = {}) {
   const argv = [
-    'pwsh', '-NoProfile', '-File', ADB_EXEC_SCRIPT,
+    PWSH_EXEC, '-NoProfile', '-File', ADB_EXEC_SCRIPT,
     '-Level', 'ubuntu', '-Transport', 'adb', '-RequireAdb',
     '-RemoteScriptPath', uniqueRemoteScript('dsh_adb_bridge'),
     ...args,
@@ -392,7 +421,7 @@ function rewriteRemoteArgvForStream(argv) {
   const command = commandFromSshArgv(argv);
   if (!command) throw new Error('adb 主通道下 ssh argv 缺少远端命令，拒绝直连 ssh');
   return [
-    'pwsh', '-NoProfile', '-File', ADB_EXEC_SCRIPT,
+    PWSH_EXEC, '-NoProfile', '-File', ADB_EXEC_SCRIPT,
     '-Level', 'ubuntu', '-Transport', 'adb', '-RequireAdb',
     '-RemoteScriptPath', uniqueRemoteScript('dsh_adb_stream'),
     '-Command', command,
@@ -669,15 +698,15 @@ export function adbRaw(command, options = {}) {
   let tempDir = null;
   try {
     if (text.includes('\n') || text.includes('\r') || text.length > ADB_INLINE_COMMAND_LIMIT) {
-      mkdirSync(path.join(REPO_ROOT, '.tmp'), { recursive: true });
-      tempDir = mkdtempSync(path.join(REPO_ROOT, '.tmp', 'adb-'));
+      mkdirSync(dataPath('.tmp'), { recursive: true });
+      tempDir = mkdtempSync(path.join(dataPath('.tmp'), 'adb-'));
       const scriptPath = path.join(tempDir, 'command.sh');
       writeFileSync(scriptPath, text, 'utf8');
       args.push('-ScriptPath', scriptPath);
     } else {
       args.push('-Command', text);
     }
-    const result = childProcess.spawnSync('pwsh', args, {
+    const result = childProcess.spawnSync(PWSH_EXEC, args, {
       cwd: REPO_ROOT,
       encoding: 'utf8',
       timeout: options.timeoutMs ?? 40000,

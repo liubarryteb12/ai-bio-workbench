@@ -15,11 +15,11 @@ import { dispatchRoutes } from '../route_dispatcher.js';
 import * as projectService from '../services/project.service.js';
 import { listLocalProjectsWithMeta } from '../query_views.js';
 import { validateWithSchemaGateway } from '../schema_gateway_client.js';
+import { ASSET_ROOT, DATA_ROOT as DEFAULT_DATA_ROOT } from '../paths.js';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-const DEFAULT_REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+const DEFAULT_REPO_ROOT = ASSET_ROOT;
 
 /**
  * 读本地项目元数据（workspace/projects/<id>/project.json）。
@@ -45,7 +45,7 @@ export async function handleProjectRoutes(req, res, url, deps) {
     PORTAL_INBOX, deployDataFiles, isSafeManifestName, json,
     lineFromPipeline, listInboxManifests, listProjectsWithMeta, readPackageManifest,
     runRemote, runRemoteRaw, uploadPreparedFigureScripts,
-    REPO_ROOT = DEFAULT_REPO_ROOT,
+    REPO_ROOT = DEFAULT_REPO_ROOT, DATA_ROOT = deps.DATA_ROOT || REPO_ROOT || DEFAULT_DATA_ROOT,
   } = deps;
 
   // Q2：声明式路由表。每个描述符自带 method/path/querySchema/handler，
@@ -58,7 +58,7 @@ export async function handleProjectRoutes(req, res, url, deps) {
       handler: async ({ json: reply }) => {
         const r = projectService.listProjects({
           listProjectsWithMeta,
-          listLocalProjectsWithMeta: () => listLocalProjectsWithMeta({ repoRoot: REPO_ROOT }),
+          listLocalProjectsWithMeta: () => listLocalProjectsWithMeta({ repoRoot: DATA_ROOT }),
         });
         reply(res, r.status, r.payload);
       },
@@ -85,7 +85,7 @@ export async function handleProjectRoutes(req, res, url, deps) {
       // projectId 的 sanitize 由分发器按 querySchema 执行；非法值 400 且不进 service
       querySchema: { project: 'projectId' },
       handler: async ({ query, json: reply }) => {
-        const r = projectService.getProjectMeta(query.project, { runRemote, repoRoot: REPO_ROOT });
+        const r = projectService.getProjectMeta(query.project, { runRemote, repoRoot: DATA_ROOT });
         reply(res, r.status, r.payload);
       },
     },
@@ -94,6 +94,7 @@ export async function handleProjectRoutes(req, res, url, deps) {
   if (await dispatchRoutes({ req, res, url, json, runJsonRoute }, ROUTES)) return true;
 
   if (url.pathname === '/api/projects/create' && req.method === 'POST') {
+    console.error('[route-debug] create block entered');
     // 建项目：建三线数据子目录 + 写 project.json，已存在则拒绝（不覆盖）
     // v2 支持四段式 manifest：basicInfo / dataSource / pipelineDag / aclAndOutput
     // 处理体已抽到 services/create.service.js（Q2 收口），这里只做请求体采集与响应写出。
@@ -103,20 +104,25 @@ export async function handleProjectRoutes(req, res, url, deps) {
       const body = await collectJsonBody(req, res, json, { maxBytes: JSON_BODY_LIMIT });
       if (body === null) return;
       try {
-        const projectId = body.projectId || body.project_id;
-        const pipeline = body.pipeline || (lineFromPipeline ? lineFromPipeline(body.dataType) : undefined);
-        if (projectId) {
-          const gw = validateWithSchemaGateway('project', {
-            project_id: projectId,
-            project_name: body.projectName || body.project_name || projectId,
-            pipeline: pipeline || undefined,
-          }, { repoRoot: REPO_ROOT });
-          if (!gw.allowed) {
-            return json(res, 400, {
-              error: `Schema 校验拒绝: ${gw.errors.map((e) => `${e.path}: ${e.message}`).join('; ')}`,
-              gateway_errors: gw.errors,
-            });
-          }
+        let parsedCreateBody;
+        try {
+          parsedCreateBody = JSON.parse(body || '{}');
+        } catch (parseCause) {
+          return json(res, 400, { error: `请求体不是合法 JSON: ${parseCause.message}` });
+        }
+        const projectId = parsedCreateBody.projectId || parsedCreateBody.project_id;
+        const pipeline = parsedCreateBody.pipeline
+          || (lineFromPipeline ? lineFromPipeline(parsedCreateBody.dataSource?.dataType) : undefined);
+        const gw = validateWithSchemaGateway('project', {
+          project_id: projectId,
+          project_name: parsedCreateBody.projectName || parsedCreateBody.project_name || projectId,
+          pipeline: pipeline || undefined,
+        }, { repoRoot: REPO_ROOT });
+        if (!gw.allowed) {
+          return json(res, 400, {
+            error: `Schema 校验拒绝: ${gw.errors.map((e) => `${e.path}: ${e.message}`).join('; ')}`,
+            gateway_errors: gw.errors,
+          });
         }
         const result = await projectService.createProject({ body }, {
           deployDataFiles, lineFromPipeline, runRemote, uploadPreparedFigureScripts,

@@ -48,6 +48,35 @@ test('真实工作树扫描：违规与腐化豁免都必须为 0', () => {
   assert.ok(r.scannedFiles > 0 && r.scannedCalls > 0, '扫描面不能是空的');
 });
 
+test('便携上下文：候选清单为空时回退文件系统扫描（豁免不再误判腐化）', () => {
+  const base = fs.mkdtempSync(path.join(REPO, '.tmp', 'isolation-portable-'));
+  try {
+    for (const dir of ['tools/dev', 'tools/dev/lib', 'tools/reporting', 'BioanalysDesktop/tests']) {
+      fs.mkdirSync(path.join(base, dir), { recursive: true });
+    }
+    for (const name of ['build_portable_package.mjs', 'clean_workspace.mjs', 'clean_tmp_cache.mjs']) {
+      fs.writeFileSync(
+        path.join(base, 'tools/dev', name),
+        "import fs from 'node:fs';\nfs.rmSync(outDir, { recursive: true, force: true });\n",
+      );
+    }
+    fs.writeFileSync(
+      path.join(base, 'tools/reporting/delivery_acceptance_core.mjs'),
+      "import fs from 'node:fs';\nfs.rmSync(destDir, { recursive: true, force: true });\n",
+    );
+    fs.writeFileSync(path.join(base, 'tools/reporting/no_rm.mjs'), "console.log('clean');\n");
+    fs.writeFileSync(path.join(base, 'tools/dev/lib/no_rm.mjs'), "console.log('clean');\n");
+    fs.writeFileSync(path.join(base, 'BioanalysDesktop/tests/x.test.js'), "import test from 'node:test';\ntest('t', () => {});\n");
+    const r = checkTestIsolation({ repoRoot: base });
+    assert.equal(r.source, 'fs', '非 git 根目录必须走文件系统回退');
+    assert.ok(r.files >= 4, '文件系统回退必须扫到候选: ' + r.files);
+    assert.deepEqual(r.violations, []);
+    assert.deepEqual(r.staleExemptions, [], '豁免文件含递归删除，回退扫描下不得判腐化');
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true });
+  }
+});
+
 test('豁免清单冻结且每条带理由，不许顺手扩', () => {
   assert.equal(Object.isFrozen(OWNED_OUTPUT_EXEMPTIONS), true);
   assert.equal(Object.isFrozen(ISOLATION_TOKENS), true);

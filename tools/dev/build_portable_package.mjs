@@ -6,11 +6,14 @@
  * 换一台干净机器就散架。这里把四层内容打成一个自足目录：
  *
  *   L1 软件核心    BioanalysDesktop/ core/ schemas/ skills/ tools/ portal/ shared/ bin/ configs/ tests/ aims/ docs/
- *   L2 真源与台账  references/ ledger/ workspace/handoff/ cn_debug/ workspace/projects/ deliverables/
- *   L3 便携运行时  vendor/tools/ -> runtime/（node + MSYS ssh/scp/tar/sha256sum/openssl/bash）
+ *   L2 真源与台账  references/ ledger/ workspace/handoff/ cn_debug/ deliverables/
+ *                  + 基准项目夹具 workspace/projects/PRJ_DCM_BENCH_20261105（显式复制，
+ *                    projects/ 被 gitignore，但第 7 道消融门禁与工作台样例需要它）
+ *   L3 便携运行时  vendor/tools/ -> runtime/（node + MSYS 工具链）
+ *                  + vendor/python-win32/pythoncore -> runtime/python/（出图审计与变异门禁用）
  *   L4 运行时产物  .tmp/ outputs/ project_data/ node_modules/ .npmcache/ 一律不进包
  *
- * 判据不是「复制成功」，而是「净化 PATH 下 gate:all 27 道全绿」：
+ * 判据不是「复制成功」，而是「净化 PATH 下 gate:all 28 道全绿」：
  * --verify 会把 PATH 缩到只有 runtime/ 与系统目录再跑一遍门禁。
  *
  * 纯 node:fs + 一次 git ls-files（打包机有 git，目标机不需要）。
@@ -52,6 +55,27 @@ export const TEST_DEPENDENCY_PACKAGES = Object.freeze([
   'react', 'react-dom', 'scheduler', 'loose-envify', 'js-tokens', 'esbuild', '@esbuild',
   'better-sqlite3', 'node-addon-api',
 ]);
+
+/** 渲染冒烟（ui_render_smoke）需要的上传组件：按 package.json 依赖闭包整组进包。 */
+export const UI_TEST_ROOT_PACKAGES = Object.freeze(['@uppy/core', '@uppy/dashboard']);
+
+/** 从 node_modules 解析根包的传递依赖闭包（只收真实存在的目录）。 */
+export function nodeModuleClosure({ repoRoot = REPO_ROOT, roots = [] }) {
+  const nm = path.join(repoRoot, 'BioanalysDesktop', 'node_modules');
+  const seen = new Set(roots);
+  const queue = [...roots];
+  while (queue.length > 0) {
+    const name = queue.shift();
+    try {
+      const manifest = JSON.parse(fs.readFileSync(path.join(nm, name, 'package.json'), 'utf8'));
+      for (const dep of Object.keys(manifest.dependencies || {})) {
+        if (seen.has(dep)) continue;
+        if (fs.existsSync(path.join(nm, dep))) { seen.add(dep); queue.push(dep); }
+      }
+    } catch { /* 裸目录或缺 package.json：跳过 */ }
+  }
+  return [...seen].sort();
+}
 
 export const EXCLUDED_PREFIXES = Object.freeze([
   '.tmp/', 'outputs/', 'projects/', 'artifacts/', 'project_data/', 'node_modules/',
@@ -112,6 +136,128 @@ export function runtimeFiles({ repoRoot = REPO_ROOT } = {}) {
   return files;
 }
 
+/** python 审计运行时：来自 vendor/python-win32 的 pythoncore（Q4 第 41 轮预留的打包总闸）。 */
+export function pythonRuntimeFiles({ repoRoot = REPO_ROOT } = {}) {
+  const core = path.join(repoRoot, 'vendor', 'python-win32', 'pythoncore-3.12-64');
+  if (!fs.existsSync(path.join(core, 'python.exe'))) {
+    throw new Error('缺少 vendor/python-win32/pythoncore-3.12-64/python.exe（便携包的出图审计门禁与变异门禁需要它）');
+  }
+  const out = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) { walk(full); continue; }
+      out.push(path.relative(core, full).split(path.sep).join('/'));
+    }
+  };
+  walk(core);
+  return out;
+}
+
+/**
+ * Pi CLI 运行时：把 desktop/runtime/picli 整目录带进便携包。
+ * 该目录在 gitignore 内，构建机必须先 npm install 一次；缺失时返回空数组，
+ * 不阻断其他产物的构建。
+ */
+export function picliRuntimeFiles({ repoRoot = REPO_ROOT } = {}) {
+  const root = path.join(repoRoot, 'desktop', 'runtime', 'picli');
+  if (!fs.existsSync(root)) return [];
+  const out = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) { walk(full); continue; }
+      const rel = path.relative(root, full).split(path.sep).join('/');
+      // auth.json 可能承载 OAuth 令牌，随包分发等于泄露凭证；运行时由环境变量注入。
+      if (rel === 'agent/auth.json') continue;
+      out.push(rel);
+    }
+  };
+  walk(root);
+  return out;
+}
+
+/**
+ * 基准项目夹具：workspace/projects 被 .gitignore 策略性忽略（大型数据资产本地留档），
+ * 但第 7 道消融门禁的夹具与工作台样例项目都要用它的骨架。这里显式复制最小集合。
+ */
+export const BENCH_PROJECT_ID = 'PRJ_DCM_BENCH_20261105';
+/** 第二个项目夹具：门户图实例对齐测试的 DCM_CHAIN 最新数据面（2026-11-14 实测 12.5MB）。 */
+export const PORTAL_ALIGNMENT_PROJECT_ID = 'DCM_CHAIN_20261109';
+export const BENCH_PROJECT_TOP_FILES = Object.freeze([
+  'project.json',
+  'BENCHMARK_REPORT.md',
+  'INTEGRATED_REPORT.md',
+  'FINAL_SEAL_REPORT.md',
+  'scripts/resume_benchmark.sh',
+]);
+
+export function benchProjectFiles({ repoRoot = REPO_ROOT } = {}) {
+  const projectRoot = path.join(repoRoot, 'workspace', 'projects', BENCH_PROJECT_ID);
+  if (!fs.existsSync(path.join(projectRoot, 'project.json'))) {
+    throw new Error('缺少基准项目 workspace/projects/' + BENCH_PROJECT_ID + '/project.json（第 7 道消融门禁需要它）');
+  }
+  const out = [...BENCH_PROJECT_TOP_FILES].filter((rel) => fs.existsSync(path.join(projectRoot, rel)));
+  const figures = path.join(projectRoot, 'figures');
+  if (fs.existsSync(figures)) {
+    const walk = (dir) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) { walk(full); continue; }
+        out.push('figures/' + path.relative(figures, full).split(path.sep).join('/'));
+      }
+    };
+    walk(figures);
+  }
+  return out;
+}
+
+/** 整项目夹具：按目录全量复制（用于 DCM_CHAIN 这类「整个项目就是数据面」的样例）。 */
+export function wholeProjectFixtureFiles({ repoRoot = REPO_ROOT, projectId = PORTAL_ALIGNMENT_PROJECT_ID } = {}) {
+  const projectRoot = path.join(repoRoot, 'workspace', 'projects', projectId);
+  if (!fs.existsSync(projectRoot)) return [];
+  const out = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) { walk(full); continue; }
+      out.push(path.relative(projectRoot, full).split(path.sep).join('/'));
+    }
+  };
+  walk(projectRoot);
+  return out;
+}
+
+/**
+ * 出图模板真源字节：注册表（figure_templates.json）引用的母版、预览与
+ * sample_project_output 必须随包，图件真源一致性测试在包内才能真实跑。
+ * 2026-11-14 实测全集约 9.4MB，无需整项目复制。
+ */
+export function registryFixtureFiles({ repoRoot = REPO_ROOT } = {}) {
+  const registryPath = path.join(repoRoot, 'tools', 'bio', 'figure_templates.json');
+  if (!fs.existsSync(registryPath)) return [];
+  const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+  const templates = Array.isArray(registry) ? registry : (registry.templates || []);
+  const files = new Set();
+  for (const template of templates) {
+    for (const key of ['source', 'preview', 'sample_project_output']) {
+      if (typeof template[key] === 'string' && template[key]) files.add(template[key]);
+    }
+  }
+  return [...files].filter((rel) => fs.existsSync(path.join(repoRoot, rel))).sort();
+}
+
+/** 门户图实例样例：figure_project_examples.json 引用的项目字节随包（2026-11-14 实测约 11.1MB）。 */
+export function examplesFixtureFiles({ repoRoot = REPO_ROOT } = {}) {
+  const examplesPath = path.join(repoRoot, 'tools', 'bio', 'figure_project_examples.json');
+  if (!fs.existsSync(examplesPath)) return [];
+  const text = fs.readFileSync(examplesPath, 'utf8');
+  // JSON 里路径可能写成 \\ 转义，两种分隔符都要收，统一归一成 / 再比对
+  const raw = [...new Set(text.match(/workspace[\/\\]+projects[\/\\]+[^"']+/g) || [])];
+  const refs = raw.map((rel) => rel.split('\\').join('/'));
+  return refs.filter((rel) => fs.existsSync(path.join(repoRoot, rel))).sort();
+}
+
 function copyFile(from, to) {
   fs.mkdirSync(path.dirname(to), { recursive: true });
   fs.copyFileSync(from, to);
@@ -124,7 +270,7 @@ function launcherBody(lines) {
     'chcp 65001 >nul',
     'setlocal',
     'cd /d "%~dp0"',
-    'set "PATH=%~dp0runtime;%PATH%"',
+    'set "PATH=%~dp0runtime;%~dp0runtime\\python;%PATH%"',
     'if not exist "%~dp0.tmp" mkdir "%~dp0.tmp"',
     'set "TEMP=%~dp0.tmp"',
     'set "TMP=%~dp0.tmp"',
@@ -145,7 +291,13 @@ function writeLaunchers(outDir) {
       'start "" "http://127.0.0.1:18787/"',
       '"%~dp0runtime/node.exe" "%~dp0BioanalysDesktop/server/index.js" %*',
     ]),
-    'test.cmd': launcherBody(['"%~dp0runtime/node.exe" --test --test-concurrency=1 "%~dp0BioanalysDesktop/tests/*.test.js" %*']),
+    // cwd 必须是 BioanalysDesktop：auth 等用例按相对路径拉起 server/index.js，
+    // 在包根跑会 MODULE_NOT_FOUND（2026-11-14 便携自测实测）。
+    'test.cmd': launcherBody([
+      'pushd "%~dp0BioanalysDesktop"',
+      '"%~dp0runtime/node.exe" --test --test-concurrency=1 tests/*.test.js %*',
+      'popd',
+    ]),
   };
   for (const [name, text] of Object.entries(files)) {
     fs.writeFileSync(path.join(outDir, name), text, 'utf8');
@@ -157,11 +309,11 @@ function writeReadme(outDir, stats) {
   const lines = [
     '# Bioanalys 工作台 · 绿色便携包',
     '',
-    '解压即用：不需要安装 Node.js、git、ssh 或任何运行时。运行时在 runtime/ 里。',
+    '解压即用：不需要安装 Node.js、git、ssh、python 或任何运行时。运行时在 runtime/ 里。',
     '',
     '## 先做这一步',
     '',
-    '运行 gate.cmd（加 --skip-tests 可快检）。看到 GATE_ALL_OK 27 道全绿即表示这台机器上一切就绪。',
+    '运行 gate.cmd（加 --skip-tests 可快检）。看到 GATE_ALL_OK 28 道全绿即表示这台机器上一切就绪。',
     '',
     '## 点三点开始分析',
     '',
@@ -173,7 +325,7 @@ function writeReadme(outDir, stats) {
     '',
     '| 命令 | 作用 |',
     '| --- | --- |',
-    '| gate.cmd | 27 道总门禁（按 GATES 清单顺序执行） |',
+    '| gate.cmd | 28 道总门禁（按 GATES 清单顺序执行） |',
     '| delivery.cmd <tar.gz> | 交付包四关验收（侧车哈希、解包结构、签名、清单闭合），全绿才写回执 |',
     '| toolchain.cmd | 打印每个工具解析到了哪个路径 |',
     '| test.cmd | 只跑全量测试（约 140 秒，排查用） |',
@@ -188,7 +340,7 @@ function writeReadme(outDir, stats) {
     '## 内容清单',
     '',
     '- 入库文件：' + stats.tracked + ' 个（软件核心 / 真源与台账 / 便携运行时 / 运行时产物四层）',
-    '- 运行时文件：' + stats.runtime + ' 个（Node.js ' + stats.nodeVersion + ' + MSYS 工具链）',
+    '- 运行时文件：' + stats.runtime + ' 个（Node.js ' + stats.nodeVersion + ' + MSYS 工具链）+ python 审计运行时 ' + stats.pythonFiles + ' 个',
     '- 包体积：约 ' + stats.totalMb + ' MB',
     '- MANIFEST.sha256 覆盖包内每一个文件，可用 sha256sum -c 或 certutil 校验完整性',
     '- 公开验签公钥：tools/ops/secrets/ed25519_public.pem（' + stats.publicKeyFiles + ' 个）。公钥不是机密，随包带走；私钥与访问 token 永不进包',
@@ -207,8 +359,17 @@ export function buildPackage({ repoRoot = REPO_ROOT, outDir = DEFAULT_OUT, env =
   const tracked = trackedFiles({ repoRoot, env });
   const sources = tracked;
   const runtime = runtimeFiles({ repoRoot });
+  const pythonRuntime = pythonRuntimeFiles({ repoRoot });
+  const picliRuntime = picliRuntimeFiles({ repoRoot });
+  const benchProject = benchProjectFiles({ repoRoot });
+  const registryFixture = registryFixtureFiles({ repoRoot });
+  const examplesFixture = examplesFixtureFiles({ repoRoot });
+  const alignmentProject = wholeProjectFixtureFiles({ repoRoot });
   if (clean && fs.existsSync(outDir)) fs.rmSync(outDir, { recursive: true, force: true });
   fs.mkdirSync(outDir, { recursive: true });
+  // 清理器契约（clean_tmp_cache 的作用域根是 tools/.tmp）与测试都假定目录存在
+  fs.mkdirSync(path.join(outDir, '.tmp'), { recursive: true });
+  fs.mkdirSync(path.join(outDir, 'tools', '.tmp'), { recursive: true });
 
   const counts = { 'L1-core': 0, 'L2-truth': 0, 'L4-runtime-artifact': 0 };
   const manifest = [];
@@ -242,7 +403,8 @@ export function buildPackage({ repoRoot = REPO_ROOT, outDir = DEFAULT_OUT, env =
 
   // L1 附加：测试运行依赖闭包（node_modules 整目录被排除，这里白名单复制）
   let depFiles = 0;
-  for (const pkgName of TEST_DEPENDENCY_PACKAGES) {
+  const testPkgRoots = [...new Set([...TEST_DEPENDENCY_PACKAGES, ...nodeModuleClosure({ repoRoot, roots: UI_TEST_ROOT_PACKAGES })])];
+  for (const pkgName of testPkgRoots) {
     const src = path.join(repoRoot, 'BioanalysDesktop', 'node_modules', pkgName);
     if (!fs.existsSync(src)) continue;
     const walk = (dir) => {
@@ -263,6 +425,45 @@ export function buildPackage({ repoRoot = REPO_ROOT, outDir = DEFAULT_OUT, env =
     const rel = 'runtime/' + name;
     copyFile(path.join(repoRoot, 'vendor', 'tools', name), path.join(outDir, rel));
     manifest.push([rel, sha256File(path.join(outDir, rel))]);
+  }
+
+  for (const rel of picliRuntime) {
+    const from = path.join(repoRoot, 'desktop', 'runtime', 'picli', rel);
+    const to = path.join(outDir, 'runtime', 'picli', rel);
+    copyFile(from, to);
+    manifest.push([`runtime/picli/${rel}`, sha256File(to)]);
+    counts['L1-core'] += 1;
+  }
+  // python 审计运行时：出图源码门禁（第 20 道）与变异门禁在净化 PATH 下都要跑 python。
+  for (const name of pythonRuntime) {
+    const rel = 'runtime/python/' + name;
+    copyFile(path.join(repoRoot, 'vendor', 'python-win32', 'pythoncore-3.12-64', name), path.join(outDir, rel));
+    manifest.push([rel, sha256File(path.join(outDir, rel))]);
+  }
+  // bash 侧母版按 POSIX 惯例调 python3；runtime/python 里补一个同名别名
+  copyFile(path.join(repoRoot, 'vendor', 'python-win32', 'pythoncore-3.12-64', 'python.exe'), path.join(outDir, 'runtime', 'python', 'python3.exe'));
+  manifest.push(['runtime/python/python3.exe', sha256File(path.join(outDir, 'runtime', 'python', 'python3.exe'))]);
+  for (const name of examplesFixture) {
+    copyFile(path.join(repoRoot, name), path.join(outDir, name));
+    manifest.push([name.split(path.sep).join('/'), sha256File(path.join(outDir, name))]);
+    counts['L2-truth'] += 1;
+  }
+  for (const name of alignmentProject) {
+    const rel = 'workspace/projects/' + PORTAL_ALIGNMENT_PROJECT_ID + '/' + name;
+    copyFile(path.join(repoRoot, 'workspace', 'projects', PORTAL_ALIGNMENT_PROJECT_ID, name), path.join(outDir, rel));
+    manifest.push([rel.split(path.sep).join('/'), sha256File(path.join(outDir, rel))]);
+    counts['L2-truth'] += 1;
+  }
+  for (const name of benchProject) {
+    const rel = 'workspace/projects/' + BENCH_PROJECT_ID + '/' + name;
+    copyFile(path.join(repoRoot, 'workspace', 'projects', BENCH_PROJECT_ID, name), path.join(outDir, rel));
+    manifest.push([rel, sha256File(path.join(outDir, rel))]);
+    counts['L2-truth'] += 1;
+  }
+  for (const name of registryFixture) {
+    copyFile(path.join(repoRoot, name), path.join(outDir, name));
+    manifest.push([name.split(path.sep).join('/'), sha256File(path.join(outDir, name))]);
+    counts['L2-truth'] += 1;
   }
   // 公开验签公钥：公钥不是机密，随包带走，让干净机器上 delivery.cmd 开箱即可验签。
   // 私钥永不进包（tools/ops/secrets/ 整目录被 .gitignore 忽略，这里只挑出 *_public.pem）。
@@ -287,7 +488,7 @@ export function buildPackage({ repoRoot = REPO_ROOT, outDir = DEFAULT_OUT, env =
   })();
   let totalBytes = 0;
   for (const [rel] of manifest) { try { totalBytes += fs.statSync(path.join(outDir, rel)).size; } catch { /* 跳过 */ } }
-  const stats = { tracked: tracked.length, runtime: runtime.length, nodeVersion, totalMb: (totalBytes / 1048576).toFixed(0), distFiles, publicKeyFiles };
+  const stats = { tracked: tracked.length, runtime: runtime.length, pythonFiles: pythonRuntime.length, nodeVersion, totalMb: (totalBytes / 1048576).toFixed(0), distFiles, publicKeyFiles };
   writeReadme(outDir, stats);
   manifest.push(['使用说明.md', sha256File(path.join(outDir, '使用说明.md'))]);
 
@@ -297,9 +498,9 @@ export function buildPackage({ repoRoot = REPO_ROOT, outDir = DEFAULT_OUT, env =
   const result = { outDir, counts, stats, manifestCount: manifest.length, totalMb: stats.totalMb };
   io.log('便携包已生成：' + outDir);
   io.log('  L1 软件核心 ' + counts['L1-core'] + ' 个（含前端产物 ' + distFiles + ' 个）');
-  io.log('  L2 真源与台账 ' + counts['L2-truth'] + ' 个');
-  io.log('  L3 便携运行时 ' + runtime.length + ' 个（' + nodeVersion + '）');
-  io.log('  L1 附加：测试依赖闭包 ' + depFiles + ' 个文件');
+  io.log('  L2 真源与台账 ' + counts['L2-truth'] + ' 个（含基准项目夹具 ' + benchProject.length + ' 个、注册表真源字节 ' + registryFixture.length + ' 个）');
+  io.log('  L3 便携运行时 ' + runtime.length + ' 个（' + nodeVersion + '）+ python 审计运行时 ' + pythonRuntime.length + ' 个');
+  io.log('  L1 附加：测试依赖闭包 ' + depFiles + ' 个文件（含 UI 测试闭包 ' + testPkgRoots.length + ' 个包）');
   io.log('  公开验签公钥 ' + publicKeyFiles + ' 个（仅 tools/ops/secrets/ed25519_public.pem，私钥不进包）');
   io.log('  L4 已排除 ' + counts['L4-runtime-artifact'] + ' 个');
   io.log('  清单 MANIFEST.sha256 覆盖 ' + manifest.length + ' 个文件，合计约 ' + stats.totalMb + ' MB');
@@ -312,6 +513,7 @@ export function sanitizedEnv({ outDir, base = process.env } = {}) {
   const systemRoot = base.SystemRoot || base.windir || 'C:\\Windows';
   const pathEntries = [
     path.join(outDir, 'runtime'),
+    path.join(outDir, 'runtime', 'python'),
     path.join(systemRoot, 'System32'),
     systemRoot,
     path.join(systemRoot, 'System32', 'Wbem'),

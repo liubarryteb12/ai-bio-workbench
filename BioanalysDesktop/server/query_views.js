@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { dataPath } from './paths.js';
 
 import { DEFAULT_PROJECT, sanitizeProjectId } from './domain.js';
 import { assertFiguresPath, parseFigureList, decorateFigures } from './figures.js';
@@ -57,8 +58,9 @@ function readProjectMetaFile(file) {
  * project.json 缺失或损坏时 meta=null，不把一个真实存在的目录藏掉。
  */
 export function listLocalProjectsWithMeta({ repoRoot } = {}) {
-  if (!repoRoot) return [];
-  const projectsRoot = path.resolve(String(repoRoot), 'workspace/projects');
+  const projectsRoot = repoRoot
+    ? path.resolve(String(repoRoot), 'workspace/projects')
+    : dataPath('workspace', 'projects');
   let entries;
   try {
     entries = fs.readdirSync(projectsRoot, { withFileTypes: true });

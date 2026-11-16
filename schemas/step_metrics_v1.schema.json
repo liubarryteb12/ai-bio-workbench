@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "step_metrics_v1.schema.json",
+  "title": "step_metrics/v1 —— 千字节级步骤指标卡",
+  "description": "Pi CLI 在不读取原始表达矩阵的前提下完成生信质控与推进所需的唯一结构化输入契约。约束：单文件严格小于 32768 字节；只含计算完成的确定性统计量，不含路径与自由文本长段。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "mod_id",
+    "line_id",
+    "project_id",
+    "status",
+    "generated_at",
+    "input_fingerprint",
+    "metrics"
+  ],
+  "properties": {
+    "schema_version": { "const": "step_metrics/v1" },
+    "mod_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$",
+      "description": "workflows.json 登记的分析 Mod ID，不接受自由命名"
+    },
+    "line_id": {
+      "enum": ["line1_bulk", "line2_scrna", "line3_spatial"]
+    },
+    "project_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,64}$"
+    },
+    "status": {
+      "enum": ["ok", "warn", "blocked", "failed"]
+    },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "seed": { "type": ["integer", "null"] },
+    "input_fingerprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inputs_digest"],
+      "properties": {
+        "inputs_digest": { "type": "string", "minLength": 8 },
+        "file_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "description": "按 Mod 类型分组的统计量。所有数值必须由确定性代码算出，禁止模型填值。",
+      "additionalProperties": true
+    },
+    "qc_flags": {
+      "type": "array",
+      "description": "确定性代码给出的质控告警，供 Pi 读取后决定调参或挂起",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "severity", "message"],
+        "properties": {
+          "code": {
+            "enum": [
+              "DEG_COUNT_LOW",
+              "DEG_COUNT_HIGH",
+              "WGCNA_SCALE_FREE_LOW",
+              "VALIDATION_OVERFIT_SUSPECT",
+              "SPOT_COUNT_LOW",
+              "CELL_COUNT_LOW",
+              "DECONV_RESIDUAL_HIGH",
+              "SCALEBAR_UNVERIFIED"
+            ]
+          },
+          "severity": { "enum": ["info", "warn", "block"] },
+          "message": { "type": "string", "maxLength": 400 },
+          "metric_key": { "type": "string", "maxLength": 120 }
+        }
+      }
+    },
+    "figures": {
+      "type": "array",
+      "description": "本步骤产出的图件，template_id 必须在 Ready 白名单内",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["template_id", "producing_mod_id"],
+        "properties": {
+          "template_id": { "type": "string" },
+          "producing_mod_id": { "type": "string" },
+          "panel_count": { "type": "integer", "minimum": 1, "maximum": 1 },
+          "relative_path": { "type": "string", "maxLength": 300 }
+        }
+      }
+    }
+  }
+}

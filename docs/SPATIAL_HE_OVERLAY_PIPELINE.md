@@ -142,6 +142,38 @@ diagnostics/
 smoothed_spot_master.tsv
 ```
 
+## 七之二、敲除 DR 基因空间图
+
+敲除后受影响基因的空间图由 `tools/reporting/render_ko_dr_spatial.py` 生成。
+口径必须与 `spatial_knockout` 步骤一致：
+
+1. 取 `ko_dr_genes_mouse.tsv` 中 `significant=True` 且
+   `is_knockout_gene=False` 的行。
+2. 取这些基因在全部样本上的并集，作为物种级显著 DR 基因集。
+3. 对每个 spot，计算该基因集在原始 `counts` 层的平均计数。
+4. 把该均值叠到样本自己的 H&E 上，色阶用 `magma`，标注 `KO DR expr`。
+
+注意：并集口径不是逐样本显著基因。逐样本取基因会让均值偏高，GSE233814
+Abca1 实测会把 q99 从 27 推到 91，颜色和原图不一致。
+
+命令示例：
+
+```powershell
+python tools/reporting/render_ko_dr_spatial.py `
+  --ko-table "<ko_dr_genes_mouse.tsv>" `
+  --ko-gene Abca1 `
+  --raw-dir "<spatial_inputs/raw>" `
+  --spatial-dir "workspace/projects/_shared/GSE233814/spatial_inputs" `
+  --samples "workspace/projects/PRJ_STROKE_P1_SPATIAL_ABCA1/figures_config/visium_sections.json" `
+  --out-dir "workspace/projects/PRJ_STROKE_P1_SPATIAL_ABCA1/report/ko_dr_panels/Abca1" `
+  --cmap magma --spot-size 8 --alpha 0.75
+```
+
+输出：每个样本一张 `slice_<section>_<gene>KO_styleD.png`、一张总览、
+`ko_dr_<gene>_summary.tsv` 与 `ko_dr_<gene>_genes.tsv`。
+
+虚拟敲除是计算模拟，DR 不等于 DEG，跨样本并集只表示“至少一个样本显著”。
+
 ## 八、一条命令重跑
 
 P1（10 个 focus gene）：
@@ -180,6 +212,7 @@ python tools/reporting/render_spatial_panel.py `
 | `tools/reporting/spatial_zero_diagnostics.py` | 零值率条形图与检测图 |
 | `tools/reporting/build_spatial_contact_sheet.py` | 基因 x 切片审阅总览 |
 | `tools/reporting/build_visium_positions.py` | 从 JSON 几何重建每样本位置表，供审计 |
+| `tools/reporting/render_ko_dr_spatial.py` | 敲除显著 DR 基因的 spot 均值空间图 |
 
 ## 十、踩坑清单
 

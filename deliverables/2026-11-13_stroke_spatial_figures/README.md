@@ -14,6 +14,8 @@
 | `P2_LACTPYRO/new_raw/` | 新风格单切片 25 张、五联图 5 张、总览 1 张、manifest |
 | `P2_LACTPYRO/new_smoothed/` | 新风格平滑单切片 25 张、总览 1 张、manifest |
 | `P2_LACTPYRO/diagnostics/` | D3 零值率条形图与 Egr1 检测图 |
+| `he_code_bundle/` | H&E 叠加出图代码、测试、依赖、示例配置与一键运行脚本 |
+| `he_spatial_code_bundle_20261113_v3.zip` | 上述代码包的分发压缩包，含 SHA256 清单 |
 
 ## 新风格口径
 

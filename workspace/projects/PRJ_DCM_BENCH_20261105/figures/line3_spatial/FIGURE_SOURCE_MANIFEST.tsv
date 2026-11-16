@@ -1,0 +1,14 @@
+figure	source	status
+l3_mouse_01_domains_*	processed/deconv_mouse.h5ad	project adapter, 47 domains
+l3_mouse_02_target_gene_*	processed/localization_mouse.h5ad	project adapter
+l3_mouse_04_morans_top	results/morans_i_top_genes.tsv	project adapter
+l3_mouse_06_umap_sample	processed/deconv_mouse.h5ad	recomputed UMAP
+l3_mouse_07_domain_composition	processed/deconv_mouse.h5ad	project adapter
+l3_mouse_08_target_gene_by_domain	processed/localization_mouse.h5ad	project adapter
+l3_mouse_14_deconv_umap	processed/deconv_mouse.h5ad	project Line 2 signatures
+l3_mouse_15_deconv_composition	processed/deconv_mouse.h5ad	project Line 2 signatures
+l3_mouse_17_celltype_composition	processed/deconv_mouse.h5ad	project Line 2 signatures
+l3_mouse_03_ko_dr_*	spatial_knockout_mouse.h5ad + deconv_mouse.h5ad	spot-level KO values; project spatial labels
+l3_mouse_05_knockout_dr	legacy spatial_knockout_mouse.h5ad	master branch, 13 domains; not project-aligned
+l3_mouse_09_ko_dr_by_domain	spatial_knockout_mouse.h5ad + deconv_mouse.h5ad	spot-level KO values; project 47 domains
+l3_mouse_10..13	legacy knockout outputs	master branch; not project-aligned

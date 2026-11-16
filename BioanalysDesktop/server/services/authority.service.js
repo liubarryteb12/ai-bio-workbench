@@ -9,6 +9,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { DATA_ROOT } from '../paths.js';
 import Database from 'better-sqlite3';
 
 import { normalizeActor } from '../auth_principal.js';
@@ -18,7 +19,7 @@ const REPO_ROOT = path.resolve(HERE, '..', '..', '..');
 const DEFAULT_TTL_SECONDS = 120;
 const DB_CACHE = new Map();
 
-export function defaultAuthorityFile(repoRoot = REPO_ROOT) {
+export function defaultAuthorityFile(repoRoot = DATA_ROOT) {
   return path.join(path.resolve(repoRoot), '.ops_state', 'orchestration_authority.sqlite');
 }
 

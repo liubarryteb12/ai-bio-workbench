@@ -1,13 +1,13 @@
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { ASSET_ROOT, resolveDataOrAsset } from './paths.js';
 
 import { LINES } from './domain.js';
 import { indexMods } from './workflow_graph.js';
+import { projectExamplesAvailable } from './figure_examples.js';
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-const REPO = path.resolve(HERE, '..', '..');
+const REPO = ASSET_ROOT;
 const REGISTRY = path.join(REPO, 'tools', 'bio', 'figure_templates.json');
 const FIGURE_ROOT = 'references/05.可参考生信代码/可用代码预筛选/源码';
 const PROJECTS_ROOT = '/mnt/ssd/bio_data/projects';
@@ -142,7 +142,9 @@ function validateReadyMapping(item, mods, modsAll, errors) {
   }
   if (typeof item.sample_project_output !== 'string' || !item.sample_project_output.startsWith('workspace/projects/')) {
     errors.push(`${item.id}: ready 模板 sample_project_output 必须指向 workspace/projects`);
-  } else if (!fs.existsSync(path.join(REPO, item.sample_project_output))) {
+  } else if (projectExamplesAvailable()
+    && !fs.existsSync(resolveDataOrAsset(item.sample_project_output) || path.join(REPO, item.sample_project_output))) {
+    // 干净 checkout 没有运行期项目图：整批缺失是环境形态，逐文件存在性只在有图时谈。
     errors.push(`${item.id}: sample_project_output 磁盘缺失`);
   }
 }

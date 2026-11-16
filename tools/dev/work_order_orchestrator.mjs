@@ -143,6 +143,22 @@ async function prepareInputFiles(inputs, inputsRoot) {
       fail('ERR_INPUT_FILE', `${at}.path 不存在: ${input.path}`, { stage: 'uploads' });
     }
     if (!stat.isFile()) fail('ERR_INPUT_FILE', `${at}.path 不是文件: ${input.path}`, { stage: 'uploads' });
+    // realpath 在部分卷（实测 Dev Drive / 特定数据卷）上不解析 junction，
+    // 单靠 realpath 对比会放过链接逃逸。逐段 lstat 查符号链接补上这道闸。
+    const segments = path.relative(root, absolutePath).split(path.sep).filter(Boolean);
+    let walked = root;
+    for (const segment of segments) {
+      walked = path.join(walked, segment);
+      let linkStat;
+      try {
+        linkStat = fs.lstatSync(walked);
+      } catch {
+        fail('ERR_INPUT_FILE', `${at}.path 不可读: ${input.path}`, { stage: 'uploads' });
+      }
+      if (linkStat.isSymbolicLink()) {
+        fail('ERR_INPUT_FILE', `${at}.path 通过链接逃出 inputsRoot: ${input.path}`, { stage: 'uploads' });
+      }
+    }
     let realFile;
     try {
       realFile = fs.realpathSync(absolutePath);
@@ -779,6 +795,9 @@ export async function runWorkOrder(order, options = {}) {
   const initialWorkOrderId = String(
     order?.workOrderId || order?.work_order_id || (initialProjectId ? `WO-${initialProjectId}` : 'WO-UNKNOWN'),
   );
+  // T1.7：执行体转发来的主体留痕（created_by / approved_by / actor_trace）。
+  // 只有调用方给出主体时才写入，旧回执与新回执共用同一份形态校验。
+  const receiptActors = options.actors && typeof options.actors === 'object' ? options.actors : null;
   let receiptV1 = createReceiptV1({
     workOrderDigest,
     workOrderId: initialWorkOrderId,
@@ -790,6 +809,8 @@ export async function runWorkOrder(order, options = {}) {
       ? Number(order?.seed ?? order?.execution?.seed)
       : null,
     computeAdapter: String(order?.computeAdapter || order?.execution?.compute_adapter || 'adb'),
+    actors: receiptActors?.actors ?? null,
+    actorTrace: receiptActors?.actor_trace ?? null,
   });
   let compiled;
   try {
@@ -1113,7 +1134,35 @@ export async function runWorkOrder(order, options = {}) {
         if (!running && candidate && !receipt) break;
         if (poll.intervalMs > 0) await poll.sleep(poll.intervalMs);
       }
-      const passed = Boolean(receipt) && receiptProblems.length === 0;
+      let passed = Boolean(receipt) && receiptProblems.length === 0;
+      let remediation = null;
+      if (!passed && typeof options.remediateTask === 'function') {
+        try {
+          remediation = await options.remediateTask({
+            workOrderId: initialWorkOrderId,
+            projectId,
+            lineId,
+            task,
+            expected,
+            receipt,
+            receiptProblems,
+          });
+          if (remediation?.resolved === true) {
+            passed = true;
+            stages.push(baseStageResult('remediation', 'passed', {
+              step: task.step,
+              mod_id: expected.modId,
+              ...remediation,
+            }));
+          }
+        } catch (cause) {
+          stages.push(baseStageResult('remediation', 'failed', {
+            step: task.step,
+            mod_id: expected.modId,
+            error: cause instanceof Error ? cause.message : String(cause),
+          }));
+        }
+      }
       tasks.push({
         order: expected.order,
         modId: expected.modId,
@@ -1121,7 +1170,8 @@ export async function runWorkOrder(order, options = {}) {
         taskId,
         status: passed ? 'passed' : 'failed',
         receipt,
-        receipt_problems: receiptProblems,
+        receipt_problems: passed ? [] : receiptProblems,
+        ...(remediation?.resolved === true ? { remediation: { resolved: true } } : {}),
       });
       if (!passed) {
         fail('ERR_TASK_RECEIPT', `${task.step} 未完成回执校验: ${receiptProblems.join('; ')}`, { task: task.step });
@@ -1190,6 +1240,16 @@ export async function runWorkOrder(order, options = {}) {
       delivery,
       summary,
     });
+    const remediationStages = stages.filter(
+      (stage) => stage.name === 'remediation' && stage.status === 'passed',
+    );
+    if (remediationStages.length > 0) {
+      // 自动适配一旦发生，交付等级不可逆降为探索版，并把溯源写进回执。
+      completed.delivery_grade = 'EXPLORATORY_DEGRADED';
+      completed.adaptation_trace = remediationStages.flatMap(
+        (stage) => (Array.isArray(stage.adaptation_trace) ? stage.adaptation_trace : []),
+      );
+    }
 
     const summaryFile = writeProjectSummary(repoRoot, projectId, summary);
     const reportDir = receiptReportDir(repoRoot, projectId);

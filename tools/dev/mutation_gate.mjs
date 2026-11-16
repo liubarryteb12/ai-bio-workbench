@@ -20,6 +20,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -76,6 +77,15 @@ function cloneInto(scope, relPath, asName) {
   const to = path.join(scope, asName || relPath);
   fs.mkdirSync(path.dirname(to), { recursive: true });
   fs.copyFileSync(path.join(REPO, relPath), to);
+  // 2026-11-15：pi_tools_bridge 新增阶段提示词依赖。副本搬到 .tmp 后
+  // 相对路径会断，统一钉回真仓库绝对路径，避免变异退化成「文件找不到」。
+  if (relPath.endsWith('pi_tools_bridge.js')) {
+    const text = fs.readFileSync(to, 'utf8').replace(
+      "from './pi_stage_prompts.js'",
+      "from '" + pathToFileURL(path.join(REPO, 'BioanalysDesktop', 'server', 'services', 'pi_stage_prompts.js')).href + "'",
+    );
+    fs.writeFileSync(to, text, 'utf8');
+  }
   return to;
 }
 
@@ -233,6 +243,12 @@ export const MUTATIONS = Object.freeze([
       replace: 'if (tracked.size > 0 && tracked.has(toRepoRelative(root, full))) return;',
     }],
     async guard(file, scope) {
+      // 守护判据依赖「已跟踪则跳过」，跟踪状态由 git 给出。便携包按设计不带 git，
+      // 这条防线在本机形态无法成立时显式 SKIP，不许退化成假红或假绿。
+      const probeGit = spawnSync('git', ['--version'], { encoding: 'utf8', timeout: 15000, windowsHide: true });
+      if (probeGit.error || probeGit.status !== 0) {
+        return { skip: true, reason: '守护判据需要 git 判定跟踪状态，本机没有可用的 git（便携包按设计不带 git）' };
+      }
       // 探针仓必须建在本次临时作用域（.tmp/mutation_gate/<id>）里。
       // 首版误用 path.dirname(file)（也就是 ops/）当作用域根，结果在 ops/ 下造出
       // ops/static/、ops/probe_repo/ 两棵含 spawnSync 的副本树，把 proc_seam_guard 打红。
@@ -536,15 +552,353 @@ export const MUTATIONS = Object.freeze([
       return { green: res.ok === false && res.dropped_steps.includes('b'), detail: 'ok=' + res.ok + ' dropped=' + JSON.stringify(res.dropped_steps) };
     },
   },
+  // ---- Pi 护栏三条（2026-11-15）：改坏必须变红，否则六工具白名单与防幻觉只是文字 ----
+  {
+    id: 'm20_pi_bare_metric',
+    layer: 'behavior',
+    label: 'MUT-PI-A 裸写数值判据失效（模型可直接写 p 值）',
+    target: 'tools/reporting/fact_check_narrative.mjs',
+    guardLabel: 'verifyNarrative：正文裸写 "n = 70 / AUC = 0.98" 必须判不通过',
+    repin: [{
+      find: "from '../../shared/step_metrics_v1.mjs'",
+      replace: "from '" + pathToFileURL(path.join(REPO, 'shared', 'step_metrics_v1.mjs')).href + "'",
+    }],
+    edits: [{
+      find: 'export function findUnboundMetrics(narrative) {',
+      replace: 'export function findUnboundMetrics(narrative) {\n  return [];',
+    }],
+    async guard(file) {
+      const mod = await loadModule(file);
+      const verdict = mod.verifyNarrative({
+        narrative: '本队列共 n = 70 例，AUC = 0.98，p = 0.003。',
+        metricsCards: [],
+      });
+      return { green: verdict.ok === false, detail: 'ok=' + verdict.ok + ' unbounded=' + verdict.unboundedMetrics.length };
+    },
+  },
+  {
+    id: 'm21_pi_param_bounds',
+    layer: 'behavior',
+    label: 'MUT-PI-B 可调参数边界失效（模型可把 log2FC 调到 99）',
+    target: 'BioanalysDesktop/server/services/pi_tools_bridge.js',
+    guardLabel: 'remediate_step_param：越界取值必须抛 PI_PARAM_OUT_OF_BOUNDS',
+    repin: [{
+      find: "from '../../../shared/step_metrics_v1.mjs'",
+      replace: "from '" + pathToFileURL(path.join(REPO, 'shared', 'step_metrics_v1.mjs')).href + "'",
+    }, {
+      find: "from '../../../shared/autonomy_policy_v1.mjs'",
+      replace: "from '" + pathToFileURL(path.join(REPO, 'shared', 'autonomy_policy_v1.mjs')).href + "'",
+    }],
+    edits: [{
+      find: 'if (newValue < spec.min || newValue > spec.max) {',
+      replace: 'if (false) {',
+    }],
+    async guard(file) {
+      const mod = await loadModule(file);
+      const bridge = mod.createPiToolsBridge({ inboxRoot: REPO, workspaceRoot: REPO, workflowsPath: path.join(REPO, 'tools', 'bio', 'workflows.json') });
+      let code = null;
+      try {
+        bridge.invoke('remediate_step_param', {
+          work_order_id: 'WO-X', mod_id: 'l1_de_limma', param_key: 'log2fc_cutoff',
+          new_value: 99, reason: 'mutation probe',
+        });
+      } catch (error) {
+        code = error.code;
+      }
+      return { green: code === 'PI_PARAM_OUT_OF_BOUNDS', detail: 'code=' + code };
+    },
+  },
+  {
+    id: 'm22_pi_ghost_mod',
+    layer: 'infra',
+    label: 'MUT-PI-C 幽灵 Mod 判据失效（未登记 mod_id 的指标卡被放行）',
+    target: 'shared/step_metrics_v1.mjs',
+    guardLabel: 'validateStepMetrics：mod_id 不在 workflows.json 必须判不合格',
+    edits: [{
+      find: '} else if (registeredModIds && !registeredModIds.has(raw.mod_id)) {',
+      replace: '} else if (false) {',
+    }],
+    async guard(file) {
+      const mod = await loadModule(file);
+      const card = {
+        schema_version: 'step_metrics/v1', mod_id: 'mod_ghost_999', line_id: 'line1_bulk',
+        project_id: 'PRJ_X', status: 'ok', generated_at: new Date().toISOString(),
+        input_fingerprint: { inputs_digest: 'abcdefgh' }, metrics: { deg_total: 1 },
+      };
+      const verdict = mod.validateStepMetrics(card, {
+        registeredModIds: mod.collectRegisteredModIds(path.join(REPO, 'tools', 'bio', 'workflows.json')),
+      });
+      return { green: verdict.ok === false, detail: 'ok=' + verdict.ok + ' errors=' + verdict.errors.length };
+    },
+  },
+  // ---- D4 三条新变异（专家裁定 M-Pi-07/08/09）：改坏必须变红 ----
+  {
+    id: 'm23_pi_master_clone',
+    layer: 'behavior',
+    label: 'MUT-PI-D 母版克隆拦截失效（AI 可把整份母版改个名塞进项目层）',
+    target: 'BioanalysDesktop/server/services/pi_tools_bridge.js',
+    guardLabel: 'propose_adaptation：与母版高相似的内容必须抛 PI_REJ002_MASTER_CLONE',
+    repin: [{
+      find: "from '../../../shared/step_metrics_v1.mjs'",
+      replace: "from '" + pathToFileURL(path.join(REPO, 'shared', 'step_metrics_v1.mjs')).href + "'",
+    }, {
+      find: "from '../../../shared/autonomy_policy_v1.mjs'",
+      replace: "from '" + pathToFileURL(path.join(REPO, 'shared', 'autonomy_policy_v1.mjs')).href + "'",
+    }, {
+      find: "const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');",
+      replace: 'const REPO_ROOT = ' + JSON.stringify(REPO) + ';',
+    }],
+    edits: [{ find: 'if (clone.cloned) {', replace: 'if (false) {' }],
+    async guard(file, scope) {
+      const mod = await loadModule(file);
+      const root = path.join(scope, 'ws-clone');
+      fs.mkdirSync(path.join(root, 'PRJ_M'), { recursive: true });
+      const bridge = mod.createPiToolsBridge({
+        inboxRoot: root,
+        workspaceRoot: root,
+        workflowsPath: path.join(REPO, 'tools', 'bio', 'workflows.json'),
+        autonomyGrantsProvider: () => ({ allow_l3_data_adaptation: true }),
+      });
+      const registry = JSON.parse(fs.readFileSync(path.join(REPO, 'tools', 'bio', 'workflows.json'), 'utf8'));
+      const masterName = registry.series
+        .flatMap((s) => (s.stages || []).flatMap((st) => st.mods || []))
+        .map((m) => m.script).filter(Boolean)[0];
+      const masterRel = fs.readdirSync(path.join(REPO, 'tools', 'bio'), { recursive: true })
+        .map(String)
+        .find((entry) => path.basename(entry) === masterName);
+      const masterContent = fs.readFileSync(path.join(REPO, 'tools', 'bio', masterRel), 'utf8');
+      let code = null;
+      try {
+        bridge.invoke('propose_adaptation', {
+          project_id: 'PRJ_M', mod_id: 'l1_ingest_prep', filename: 'adapt_99_clone.R',
+          content: masterContent, purpose: 'probe', reason: 'probe',
+        });
+      } catch (error) {
+        code = error.code;
+      }
+      return { green: code === 'PI_REJ002_MASTER_CLONE', detail: 'code=' + code };
+    },
+  },
+  {
+    id: 'm24_pi_dispatch_unverified',
+    layer: 'behavior',
+    label: 'MUT-PI-E 未验证直发拦截失效（跳过 run_validation 也能下发）',
+    target: 'BioanalysDesktop/server/services/pi_tools_bridge.js',
+    guardLabel: 'dispatch_step：验证记录缺失必须抛 ERR_ADAPTATION_UNVERIFIED',
+    repin: [{
+      find: "from '../../../shared/step_metrics_v1.mjs'",
+      replace: "from '" + pathToFileURL(path.join(REPO, 'shared', 'step_metrics_v1.mjs')).href + "'",
+    }, {
+      find: "from '../../../shared/autonomy_policy_v1.mjs'",
+      replace: "from '" + pathToFileURL(path.join(REPO, 'shared', 'autonomy_policy_v1.mjs')).href + "'",
+    }],
+    edits: [{
+      find: "const record = assertAdaptationVerified({ recordFile, entryPoint, scriptPath });",
+      replace: "const record = { verdict: 'VERIFIED_OK', sha256: sha256File(scriptPath) };",
+    }],
+    async guard(file, scope) {
+      const mod = await loadModule(file);
+      const root = path.join(scope, 'ws-dispatch');
+      fs.mkdirSync(path.join(root, 'PRJ_M', 'scripts'), { recursive: true });
+      fs.writeFileSync(path.join(root, 'PRJ_M', 'scripts', 'adapt_99.R'), 'x <- 1\n', 'utf8');
+      const bridge = mod.createPiToolsBridge({
+        inboxRoot: root,
+        workspaceRoot: root,
+        workflowsPath: path.join(REPO, 'tools', 'bio', 'workflows.json'),
+        assertLease: () => ({ ok: true }),
+        dispatchStepFn: () => ({ ok: true, status: 'dispatched' }),
+      });
+      let code = null;
+      try {
+        await bridge.invoke('dispatch_step', {
+          work_order_id: 'WO_M', project_id: 'PRJ_M', mod_id: 'l1_ingest_prep',
+          entry_point: 'adapt_99.R', lease_id: 'AUTH-M',
+        });
+      } catch (error) {
+        code = error.code || null;
+      }
+      return { green: code === 'ERR_ADAPTATION_UNVERIFIED', detail: 'code=' + code };
+    },
+  },
+  {
+    id: 'm25_pi_grace_forgery',
+    layer: 'behavior',
+    label: 'MUT-PI-F 吊销自动放行失效（N=2 或剔除 30% 仍走宽限自动过）',
+    target: 'shared/autonomy_policy_v1.mjs',
+    guardLabel: 'evaluateCheckpoint：N=2 必须转人工，不许自动放行',
+    edits: [{ find: 'if (revocations.length > 0) {', replace: 'if (false) {' }],
+    async guard(file) {
+      const mod = await loadModule(file);
+      const policy = mod.defaultAutonomyPolicy();
+      const verdict = mod.evaluateCheckpoint(policy, {
+        checkpoint: 1,
+        facts: { minValidReplicates: 2 },
+      });
+      return { green: verdict.mode === 'manual_hard_gate', detail: 'mode=' + verdict.mode };
+    },
+  },
+  {
+    id: 'm26_pi_lease_preemption',
+    layer: 'behavior',
+    label: 'MUT-PI-G 租约抢占逃逸（人工接管后 AI 仍能下发单步）',
+    target: 'BioanalysDesktop/server/services/pi_step_dispatcher.js',
+    guardLabel: 'dispatchStep：assertLease 失败必须 ERR_AUTHORITY_REQUIRED 且 runTask 调用 0 次',
+    repin: [{
+      find: "import { atomicWriteFileSync } from '../atomic_write.js';",
+      replace: "import { atomicWriteFileSync } from '" + pathToFileURL(path.join(REPO, 'BioanalysDesktop', 'server', 'atomic_write.js')).href + "';",
+    }],
+    edits: [{
+      find: "  async function dispatchStep({ workOrderId = null, projectId, modId, entryPoint, leaseId, scriptSha256, validationRunId = null }) {\n    assertLeaseOrThrow(leaseId);",
+      replace: "  async function dispatchStep({ workOrderId = null, projectId, modId, entryPoint, leaseId, scriptSha256, validationRunId = null }) {\n    // MUTATION",
+    }],
+    async guard(file, scope) {
+      const mod = await loadModule(file);
+      const root = path.join(scope, 'lease-probe');
+      const dir = path.join(root, 'workspace', 'projects', 'PRJ_M', 'work_orders');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'WO_M.meta.json'), JSON.stringify({
+        status: 'running', work_order_id: 'WO_M', project_id: 'PRJ_M', line_id: 'line1_bulk',
+        adaptation_epoch: 0, step_attempts: {}, env_throttle_retries: 0, step_lock: { locked: false },
+      }), 'utf8');
+      let runs = 0;
+      const dispatcher = mod.createPiStepDispatcher({
+        baseDir: root,
+        assertLease: () => ({ ok: false, code: 'ERR_AUTHORITY_EXPIRED' }),
+        runTaskFn: async () => { runs += 1; return { exitCode: 0, wroteCount: 1, wroteBytes: 1 }; },
+      });
+      let code = null;
+      try {
+        await dispatcher.dispatchStep({
+          workOrderId: 'WO_M', projectId: 'PRJ_M', modId: 'l1_qc_matrix',
+          entryPoint: 'adapt_1.R', leaseId: 'L-STALE',
+        });
+      } catch (error) {
+        code = error.code;
+      }
+      return { green: code === 'ERR_AUTHORITY_REQUIRED' && runs === 0, detail: 'code=' + code + ' runs=' + runs };
+    },
+  },
+  {
+    id: 'm27_pi_stale_validation',
+    layer: 'behavior',
+    label: 'MUT-PI-H 跨代验证重放（验证 A 后下发 B 脚本）',
+    target: 'BioanalysDesktop/server/services/pi_tools_bridge.js',
+    guardLabel: 'dispatch_step：验证后脚本哈希漂移必须 ERR_ADAPTATION_UNVERIFIED',
+    repin: [{
+      find: "from '../../../shared/step_metrics_v1.mjs'",
+      replace: "from '" + pathToFileURL(path.join(REPO, 'shared', 'step_metrics_v1.mjs')).href + "'",
+    }, {
+      find: "from '../../../shared/autonomy_policy_v1.mjs'",
+      replace: "from '" + pathToFileURL(path.join(REPO, 'shared', 'autonomy_policy_v1.mjs')).href + "'",
+    }],
+    edits: [{ find: 'if (record.sha256 !== actualSha) {', replace: 'if (false) {' }],
+    async guard(file, scope) {
+      const mod = await loadModule(file);
+      const root = path.join(scope, 'stale-probe');
+      const scripts = path.join(root, 'PRJ_M', 'scripts');
+      fs.mkdirSync(path.join(scripts, '.val_tmp'), { recursive: true });
+      const original = 'x <- 1\n';
+      fs.writeFileSync(path.join(scripts, 'adapt_9.R'), original, 'utf8');
+      fs.writeFileSync(path.join(scripts, 'scripts_manifest.json'), JSON.stringify({
+        scripts: [{ entry_point: 'adapt_9.R', upstream_mod: 'l1_qc_matrix', sha256: crypto.createHash('sha256').update(original).digest('hex') }],
+      }), 'utf8');
+      fs.writeFileSync(path.join(scripts, '.val_tmp', 'adapt_9.R.verified.json'), JSON.stringify({
+        verdict: 'VERIFIED_OK', sha256: crypto.createHash('sha256').update(original).digest('hex'),
+      }), 'utf8');
+      // 覆盖为未验证的 B 脚本
+      fs.writeFileSync(path.join(scripts, 'adapt_9.R'), 'x <- 2\n', 'utf8');
+      let runs = 0;
+      const bridge = mod.createPiToolsBridge({
+        inboxRoot: root, workspaceRoot: root,
+        workflowsPath: path.join(REPO, 'tools', 'bio', 'workflows.json'),
+        assertLease: () => ({ ok: true }),
+        dispatchStepFn: () => { runs += 1; return { ok: true }; },
+      });
+      let code = null;
+      try {
+        await bridge.invoke('dispatch_step', {
+          work_order_id: 'WO_M', project_id: 'PRJ_M', mod_id: 'l1_qc_matrix',
+          entry_point: 'adapt_9.R', lease_id: 'L1',
+        });
+      } catch (error) {
+        code = error.code;
+      }
+      return { green: code === 'ERR_ADAPTATION_UNVERIFIED' && runs === 0, detail: 'code=' + code + ' runs=' + runs };
+    },
+  },
+  {
+    id: 'm28_pi_silent_wrote',
+    layer: 'behavior',
+    label: 'MUT-PI-I 伪造 Exit 0 绕过 WROTE（空文件被当成功）',
+    target: 'BioanalysDesktop/server/services/pi_step_dispatcher.js',
+    guardLabel: 'classifyStepOutcome：Exit 0 且无 WROTE 必须 SILENT_EMPTY_OUTPUT',
+    repin: [{
+      find: "import { atomicWriteFileSync } from '../atomic_write.js';",
+      replace: "import { atomicWriteFileSync } from '" + pathToFileURL(path.join(REPO, 'BioanalysDesktop', 'server', 'atomic_write.js')).href + "';",
+    }],
+    edits: [{ find: 'if (!wroteCount || wroteBytes <= 0) {', replace: 'if (false) {' }],
+    async guard(file) {
+      const mod = await loadModule(file);
+      const verdict = mod.classifyStepOutcome({ exitCode: 0, wroteCount: 0, wroteBytes: 0 });
+      return { green: verdict.kind === 'SILENT_EMPTY_OUTPUT', detail: 'kind=' + verdict.kind };
+    },
+  },
+  {
+    id: 'm29_pi_stage_tool_denied',
+    layer: 'behavior',
+    label: 'MUT-PI-J Stage 1 越权工具调用拦截失效',
+    target: 'BioanalysDesktop/server/services/pi_stage_prompts.js',
+    guardLabel: 'validateStageResponse：Stage 1 调 dispatch_step 必须 PI_STAGE_TOOL_DENIED',
+    edits: [{
+      find: "STAGE_1_INTAKE: Object.freeze(['inspect_requirement', 'compile_work_order']),",
+      replace: "STAGE_1_INTAKE: Object.freeze(['inspect_requirement', 'compile_work_order', 'dispatch_step']),",
+    }],
+    async guard(file) {
+      const mod = await loadModule(file);
+      let message = '';
+      try {
+        mod.validateStageResponse('STAGE_1_INTAKE', {
+          action: 'tool_call', tool: 'dispatch_step', args: {},
+        });
+      } catch (error) {
+        message = String(error.message || error);
+      }
+      return {
+        green: /PI_STAGE_TOOL_DENIED/.test(message),
+        detail: 'message=' + (message || '<no throw>'),
+      };
+    },
+  },
+  {
+    id: 'm30_pi_wipe_path_guard',
+    layer: 'behavior',
+    label: 'MUT-PI-K 擦除路径守卫失效',
+    target: 'BioanalysDesktop/server/services/pi_wipe.js',
+    guardLabel: 'wipeProjectSandbox：非法 project_id 必须拒绝且不调 runRemote',
+    edits: [{ find: 'if (!SAFE_PROJECT_ID.test(id)) {', replace: 'if (false) {' }],
+    async guard(file, scope) {
+      const mod = await loadModule(file);
+      let called = false;
+      const result = mod.wipeProjectSandbox('../etc', {
+        dataRoot: scope,
+        runRemote: () => { called = true; return "WIPE_VERIFIED '/x' 1"; },
+      });
+      return {
+        green: result.ok === false && called === false && /WIPE_PROJECT_ID_INVALID/.test(String(result.error || '')),
+        detail: 'ok=' + result.ok + ' called=' + called + ' error=' + (result.error || ''),
+      };
+    },
+  },
 ]);
 
-async function runOne(mutation) {
+export async function runOne(mutation) {
   const scope = freshScope(mutation.id);
   try {
     let greenRun;
     let redRun;
     if (mutation.shaEdit) {
       greenRun = await mutation.guard(path.join(REPO, 'tools', 'dev', 'build_figure_templates.cjs'), scope);
+      if (greenRun.skip) return { skip: true, detail: greenRun.reason };
       if (greenRun.green !== true) {
         return { greenBaseline: false, redAfterMutation: false, detail: '基线不绿，无法反证：' + greenRun.detail };
       }
@@ -552,6 +906,7 @@ async function runOne(mutation) {
       redRun = await mutation.guard(patched, scope);
     } else {
       greenRun = await mutation.guard(path.join(REPO, mutation.target), scope);
+      if (greenRun.skip) return { skip: true, detail: greenRun.reason };
       if (greenRun.green !== true) {
         return { greenBaseline: false, redAfterMutation: false, detail: '基线不绿，无法反证：' + greenRun.detail };
       }
@@ -578,10 +933,30 @@ async function runOne(mutation) {
   }
 }
 
+/**
+ * 汇总协议：SKIP（本机形态缺依赖，如便携环境无 git）与「存活」分开统计。
+ * 跳过不算防线失守，但必须如实上报，不许混进绿灯。
+ */
+export function aggregateOutcomes(results) {
+  const skipped = results.filter((r) => r.skip);
+  const survived = results.filter((r) => !r.skip && r.caught === false);
+  return { ok: survived.length === 0, results, survived, skipped };
+}
+
 export async function runAllMutations() {
   const results = [];
   for (const mutation of MUTATIONS) {
     const outcome = await runOne(mutation);
+    if (outcome.skip) {
+      results.push({
+        id: mutation.id, label: mutation.label, guardLabel: mutation.guardLabel,
+        layer: mutation.layer,
+        skip: true, skipReason: outcome.detail,
+        greenBaseline: false, redAfterMutation: false, caught: false,
+        detail: 'SKIP（' + outcome.detail + '）',
+      });
+      continue;
+    }
     const caught = outcome.greenBaseline === true && outcome.redAfterMutation === true;
     results.push({
       id: mutation.id, label: mutation.label, guardLabel: mutation.guardLabel,
@@ -591,8 +966,7 @@ export async function runAllMutations() {
       caught, detail: outcome.detail,
     });
   }
-  const survived = results.filter((r) => r.caught === false);
-  return { ok: survived.length === 0, results, survived };
+  return aggregateOutcomes(results);
 }
 
 export async function main(argv = process.argv.slice(2), io = { log: console.log, error: console.error }) {
@@ -604,15 +978,17 @@ export async function main(argv = process.argv.slice(2), io = { log: console.log
       total: outcome.results.length,
       caught: outcome.results.filter((r) => r.caught).length,
       survived: outcome.survived.map((r) => r.id),
+      skipped: outcome.skipped.map((r) => ({ id: r.id, reason: r.skipReason })),
       mutations: outcome.results,
       layers: layerStats,
     }, null, 2));
     return outcome.ok ? 0 : 1;
   }
   io.log('变异门禁（' + outcome.results.length + ' 条防线，'
-    + (outcome.survived.length === 0 ? '全部抓住' : outcome.survived.length + ' 条存活') + '）');
+    + (outcome.survived.length === 0 ? '全部抓住' : outcome.survived.length + ' 条存活')
+    + (outcome.skipped.length > 0 ? '，' + outcome.skipped.length + ' 条因环境跳过' : '') + '）');
   for (const r of outcome.results) {
-    io.log((r.caught ? '[ OK ] ' : '[ RED] ') + r.label);
+    io.log((r.skip ? '[SKIP] ' : r.caught ? '[ OK ] ' : '[ RED] ') + r.label);
     io.log('       守护判据: ' + r.guardLabel);
     io.log('       结果: ' + r.detail);
   }
@@ -623,14 +999,17 @@ export async function main(argv = process.argv.slice(2), io = { log: console.log
     const L = r.layer || 'unknown';
     layerStats[L] = layerStats[L] || { total: 0, escaped: 0 };
     layerStats[L].total += 1;
-    if (!r.caught) layerStats[L].escaped += 1;
+    if (!r.caught && !r.skip) layerStats[L].escaped += 1;
   }
   const layerText = Object.entries(layerStats)
     .map(([k, v]) => k + '=' + (v.total - v.escaped) + '/' + v.total)
     .join(' ');
   const layerOk = Object.values(layerStats).every((v) => v.escaped === 0);
   if (outcome.ok && layerOk) {
-    io.log('MUTATION_GATE_OK ' + outcome.results.length + ' 条变异全部被对应判据抓住（每条都先验基线绿、再验变异红）｜分层 ' + layerText + '｜escaped 两层均为 0');
+    io.log('MUTATION_GATE_OK 校验 ' + (outcome.results.length - outcome.skipped.length)
+      + ' 条全部被对应判据抓住（每条都先验基线绿、再验变异红）'
+      + (outcome.skipped.length > 0 ? '，跳过 ' + outcome.skipped.length + ' 条（环境缺依赖，已如实上报）' : '')
+      + '｜分层 ' + layerText + '｜escaped 两层均为 0');
     return 0;
   }
   io.error('');

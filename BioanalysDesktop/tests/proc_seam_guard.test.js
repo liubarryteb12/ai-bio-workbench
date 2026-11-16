@@ -98,6 +98,14 @@ const EXEMPT_RELPATHS = new Set([
   // Schema 网关客户端：起短命 python 子进程跑 schemas/schema_gateway.py 的文件 IPC 协议
   //（0=ALLOW、2=DENY、1=ERROR），是三明治架构的正式防线，不是绕过接缝的旁路。
   'BioanalysDesktop/server/schema_gateway_client.js',
+  // Pi Agent 双轨运行面（2026-11-16 入库暴露）：与 proc.js 同款的「默认导入 + 属性调用」
+  // 写法（可 mock 性契约见 pi_runner.js:16-18 注释）。pi_runner 是 Pi RPC 无状态调度器
+  //（唯一工作就是拉起 pi --mode rpc），pi-wrapper 是便携包 Pi CLI 启动器，
+  // pi_sign_wipe_drill 是真机签发擦除演练驱动（手工跑，经 adb 下发）。
+  // 三者都属离线编排/演练工具，不进服务分析运行时，与 k40_script_parity / smoke_golden 同类。
+  'BioanalysDesktop/server/pi_runner.js',
+  'tools/bin/pi-wrapper.js',
+  'tools/dev/pi_sign_wipe_drill.mjs',
 ]);
 
 // 豁免清单：接缝本体。加名字进这份清单需要人裁定，不许顺手扩。

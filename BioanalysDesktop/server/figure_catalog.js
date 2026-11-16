@@ -1,10 +1,9 @@
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { ASSET_ROOT } from './paths.js';
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-const REPO = path.resolve(HERE, '..', '..');
+const REPO = ASSET_ROOT;
 const FIGURE_ROOT = 'references/05.可参考生信代码';
 const LIBRARY_ROOT = path.join(REPO, FIGURE_ROOT, 'library');
 const CATALOG_PATH = path.join(LIBRARY_ROOT, 'catalog.json');

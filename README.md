@@ -11,6 +11,7 @@
 - [赞助支持](#赞助支持)
 - [系统架构](#系统架构)
 - [目录结构](#目录结构)
+- [Windows 桌面版](#windows-桌面版)
 - [快速开始](#快速开始)
 - [算力接口](#算力接口)
 - [三条分析线](#三条分析线)
@@ -39,8 +40,9 @@
 | 分析模块 | `tools/bio/workflows.json` 登记 54 个 Mod，母版脚本按目录即契约组织 |
 | 图件体系 | 92 个图件模板，27 个 Ready 单图，300 DPI，版式可机器校验 |
 | 作业编排 | `work_order/v2` 作为正式输入，`receipt/v1` 作为唯一权威回执 |
+| Pi 监督 | 六大受控工具白名单、双人工检查点、32KB 指标卡与 `{{metric:...}}` 槽位防幻觉 |
 | 状态管理 | 五态状态机，单消费者队列，终态重跑拒绝，回执不重复 |
-| 质量体系 | 27 道串联门禁，全量契约测试，19 条基础设施变异反证与 6 条行为变异反证 |
+| 质量体系 | 28 道串联门禁，全量契约测试，22 条防线变异反证（infra 8 / behavior 14） |
 | 交付链 | 报告构建、四关验收、Ed25519 验签、客户交付包 |
 | 算力适配 | 本地零算力，计算命令通过可配置适配器下发到用户自备节点 |
 
@@ -115,6 +117,10 @@
 ```
 
 `docs/directories.md` 规定“文件放哪”。`docs/ARCHITECTURE_OVERVIEW.md` 给出更细的信息流与判定顺序。
+
+## Windows 桌面版
+
+桌面版把现有 React 界面装进 Electron 原生窗口，内置 Node 后端，双击即用，不需要命令行或手动启动服务。构建、打包与验收见 [docs/DESKTOP_APP.md](docs/DESKTOP_APP.md)。
 
 ## 快速开始
 
@@ -284,6 +290,7 @@ node tools/dev/run_all_gates.mjs --skip-tests
 | 当前改造目标与里程碑 | `docs/GOAL_2026-11-11.md` |
 | 工单编排与回执 | `docs/WORK_ORDER_ORCHESTRATOR.md` |
 | AI 管理员编排规格 | `docs/AI_ORCHESTRATION_SPEC.md` |
+| Pi CLI 受控工具与报告防幻觉 | `docs/PI_CLI_INTEGRATION.md` |
 | 出图规范 | `docs/figure_spec.md` |
 | 空间 H&E 叠加流程 | `docs/SPATIAL_HE_OVERLAY_PIPELINE.md` |
 | 算力接口配置 | `docs/COMPUTE_INTERFACE.md` |

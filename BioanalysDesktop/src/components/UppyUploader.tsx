@@ -3,7 +3,6 @@
  * 传输仍走现有 /api/upload/init|status|chunk|complete 四个端点，
  * 不引入 tus，也不改服务端契约。
  */
-// @ts-expect-error 共享传输层是纯 ESM，无类型声明
 import { uploadInChunks } from '../lib/chunkUpload.mjs';
 import { useEffect, useRef } from 'react';
 import Uppy from '@uppy/core';
@@ -30,14 +29,15 @@ export function UppyUploader({ project, lineId, onDone, onError, onProgress, dis
     if (!hostRef.current) return undefined;
     const uppy = new Uppy({
       autoProceed: false,
-      restrictions: { maxNumberOfFiles: 1, allowMultipleUploadBatches: true },
+      allowMultipleUploadBatches: true,
+      restrictions: { maxNumberOfFiles: 1 },
     });
     uppy.use(Dashboard, {
       inline: true,
       target: hostRef.current,
       height: 260,
       hideUploadButton: false,
-      showProgressDetails: true,
+      hideProgressDetails: false,
       proudlyDisplayPoweredByUppy: false,
       note: '4MB 分片，刷新或换设备后自动从断点续传',
     });
@@ -55,6 +55,7 @@ export function UppyUploader({ project, lineId, onDone, onError, onProgress, dis
             onProgress: (percent: number) => {
               callbacks.current.onProgress?.(percent);
               uppy.emit('upload-progress', file, {
+                uploadStarted: file.progress?.uploadStarted ?? Date.now(),
                 bytesUploaded: Math.round((percent / 100) * (file.size ?? 0)),
                 bytesTotal: file.size ?? 0,
               });

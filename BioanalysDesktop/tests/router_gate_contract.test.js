@@ -10,7 +10,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { checkRouterAndScope } from "../../tools/dev/router_gate.mjs";
+import { checkRouterAndScope, checkEnforcedPath } from "../../tools/dev/router_gate.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "../..");
@@ -45,6 +45,15 @@ function makeTree() {
 test("真实仓库必须通过", () => {
   const { errs } = checkRouterAndScope(REPO);
   assert.deepEqual(errs, [], "真实仓库不该有错：" + errs.join("; "));
+});
+
+test("便携上下文：REPO 不是工作树根时跳过 git 跟踪校验", (t) => {
+  const root = fs.mkdtempSync(path.join(REPO, ".tmp", "router-portable-" + process.pid + "-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(root, "tools", "dev"), { recursive: true });
+  fs.writeFileSync(path.join(root, "tools", "dev", "figure_spec_gate.mjs"), "// portable copy\n", "utf8");
+  const errs = checkEnforcedPath(root, "tools/dev/figure_spec_gate.mjs");
+  assert.deepEqual(errs, [], "包目录不是 git 工作树根时不得报未跟踪：" + errs.join("; "));
 });
 
 test("负向：enforced_by 指向不存在的门禁必须报红", (t) => {

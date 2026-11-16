@@ -47,6 +47,9 @@ export const ALLOWED_SKIP_REASONS = Object.freeze([
   // 这两项在开发机永远存在，在纯目标机可能整体不存在，属环境形态而非偷懒跳过。
   'HOST_MISSING_SHELL',
   'HOST_MISSING_GIT',
+  // Dev Drive / 特定数据卷不解析目录联接（realpath 与 lstat 都认不出 junction），
+  // 链接逃逸场景无法构造，对应用例只能跳过。2026-11-14 便携包实测发现，待用户裁定转正。
+  'HOST_NO_SYMLINK_RESOLUTION',
 ]);
 
 /** 跳过原因必须长这样：<TAG>: <非空说明>。冒号后空字符串不算理由。 */
@@ -86,6 +89,13 @@ export function checkTapSkips(tapText) {
     }));
   const failures = text.split(/\r?\n/).filter((line) => /^not ok\b/.test(line)).length;
   return { ok: violations.length === 0 && failures === 0, total: entries.length, failures, violations };
+}
+
+/** 逐条点名 TAP 里的 not ok（含测试名），metrics 红时不再只给计数。 */
+export function listTapFailures(tapText) {
+  return String(tapText ?? '').split(/\r?\n/)
+    .filter((line) => /^not ok\b/.test(line))
+    .map((line) => line.trim());
 }
 
 /**

@@ -10,10 +10,62 @@ import childProcess from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { fileURLToPath } from 'node:url';
+import { ASSET_ROOT } from './paths.js';
+import { validateWithFallback } from './schema_gateway_fallback.mjs';
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-const DEFAULT_REPO_ROOT = path.resolve(HERE, '..', '..');
+const DEFAULT_REPO_ROOT = ASSET_ROOT;
+
+let fallbackWarned = false;
+let pythonProbe = null;
+
+/**
+ * 解析 Python 解释器。
+ *
+ * BIO_PYTHON_PATH 显式指定优先；其次在 PATH 里找 python.exe / python3.exe。
+ * 找不到时返回空串，由调用方决定 Fail-Closed 或走 JS 回退。
+ */
+export function resolvePythonExec() {
+  const explicit = process.env.BIO_PYTHON_PATH;
+  if (explicit && fs.existsSync(explicit)) return explicit;
+  const names = process.platform === 'win32' ? ['python.exe', 'python3.exe'] : ['python3', 'python'];
+  for (const dir of String(process.env.PATH || '').split(path.delimiter).filter(Boolean)) {
+    for (const name of names) {
+      const candidate = path.join(dir, name);
+      if (fs.existsSync(candidate)) return candidate;
+    }
+  }
+  return '';
+}
+
+/**
+ * 探测解释器能否真正 import pydantic。
+ *
+ * 干净 Windows 上可能存在 Microsoft Store 的 python 别名或没有装 pydantic 的
+ * Python。此时直接调用网关只会 Fail-Closed，桌面运行面应改用同口径 JS 回退。
+ */
+function pythonCanRunGateway(pythonExec) {
+  if (pythonProbe !== null) return pythonProbe;
+  try {
+    childProcess.execFileSync(pythonExec, ['-c', 'import pydantic'], {
+      timeout: 8000,
+      stdio: 'ignore',
+      windowsHide: true,
+    });
+    pythonProbe = true;
+  } catch {
+    pythonProbe = false;
+  }
+  return pythonProbe;
+}
+
+function gatewayMissing(repoRoot) {
+  return {
+    allowed: false,
+    status: 'ERROR',
+    errors: [{ path: '', message: `未找到校验网关: ${path.join(repoRoot, 'schemas', 'schema_gateway.py')}`, type: 'gateway_missing' }],
+    exitCode: 1,
+  };
+}
 
 /**
  * 调用 schemas/schema_gateway.py 进行 Schema 强校验。
@@ -28,10 +80,25 @@ export function validateWithSchemaGateway(schemaName, payload, options = {}) {
   const gatewayPy = path.join(repoRoot, 'schemas', 'schema_gateway.py');
 
   if (!fs.existsSync(gatewayPy)) {
+    return gatewayMissing(repoRoot);
+  }
+
+  // 干净 Windows 默认没有 Python。桌面运行面显式开启回退时，用同口径 JS 实现
+  // 保持核心流程可用；未开启时维持 Fail-Closed，不允许静默绕过。
+  const pythonExec = resolvePythonExec();
+  const pythonReady = Boolean(pythonExec) && pythonCanRunGateway(pythonExec);
+  if (!pythonReady) {
+    if (process.env.BIO_ALLOW_SCHEMA_GATEWAY_FALLBACK === '1') {
+      if (!fallbackWarned) {
+        fallbackWarned = true;
+        console.warn('[schema_gateway] 未找到可用 Python/pydantic，使用内置 JS 回退校验（BIO_ALLOW_SCHEMA_GATEWAY_FALLBACK=1）。');
+      }
+      return { ...validateWithFallback(schemaName, payload), fallback: true };
+    }
     return {
       allowed: false,
       status: 'ERROR',
-      errors: [{ path: '', message: `未找到校验网关: ${gatewayPy}`, type: 'gateway_missing' }],
+      errors: [{ path: '', message: '未找到可用 Python 解释器或缺少 pydantic，Schema 网关无法执行（设置 BIO_PYTHON_PATH 或安装 Python + pydantic）', type: 'python_missing' }],
       exitCode: 1,
     };
   }
@@ -50,7 +117,7 @@ export function validateWithSchemaGateway(schemaName, payload, options = {}) {
     let exitCode = 0;
     let stderr = '';
     try {
-      childProcess.execFileSync('python', args, {
+      childProcess.execFileSync(pythonExec, args, {
         cwd: repoRoot,
         encoding: 'utf8',
         timeout: 15000,

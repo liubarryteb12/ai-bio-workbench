@@ -10,15 +10,15 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import { LINES, projectLineDir, sanitizeProjectId } from './domain.js';
 import { runSync } from './proc.js';
+import { dataPath } from './paths.js';
 
 /** 本地项目根：仓库根 workspace/projects/，与 tools/ops/07_pull_outputs.ps1 同一位置 */
 export const LOCAL_OUTPUTS_ROOT = process.env.BIO_LOCAL_OUTPUTS
   ? path.resolve(process.env.BIO_LOCAL_OUTPUTS)
-  : fileURLToPath(new URL('../../workspace/projects/', import.meta.url));
+  : dataPath('workspace', 'projects');
 
 /** 默认回搬的产物子目录。processed/ 可能有 h5ad/rds 大检查点，不默认回搬 */
 export const PULL_SUBDIRS = ['figures', 'results'];

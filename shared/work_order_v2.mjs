@@ -10,6 +10,7 @@
  * 每条形如 "ERR_CODE: 说明"，codes 供程序按错误码分流。
  */
 import { validateRequirement } from './requirement_schema.mjs';
+import { normalizeAutonomyGrants } from './package_manifest_v1.mjs';
 
 export const WORK_ORDER_V2_SCHEMA_VERSION = 'work_order/v2';
 export const INTERNAL_WORK_ORDER_SCHEMA_VERSION = 'work_order/v1';
@@ -167,6 +168,12 @@ function normalizeSourcePackage(raw, push) {
       const value = normalizeSha256(raw[key], `source_package.${key}`, push, false);
       if (value) sourcePackage[key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())] = value;
     }
+  }
+  if (raw.autonomy_grants !== undefined) {
+    const grantsErrors = [];
+    const grants = normalizeAutonomyGrants(raw.autonomy_grants, grantsErrors);
+    for (const message of grantsErrors) push('ERR_SOURCE_PACKAGE', message);
+    if (grants) sourcePackage.autonomyGrants = grants;
   }
   return sourcePackage;
 }

@@ -46,6 +46,11 @@ def parse_args():
     parser.add_argument("--self-weight", type=float, default=0.8)
     parser.add_argument("--no-smooth", action="store_true")
     parser.add_argument("--no-diagnostics", action="store_true")
+    parser.add_argument(
+        "--layout",
+        type=Path,
+        default=Path("references/07.Visium_v1_载玻片布局/visium_v1_tissue_positions.csv"),
+    )
     return parser.parse_args()
 
 
@@ -62,7 +67,7 @@ def main():
     config = root / "figures_config" / "visium_sections.json"
     master = shared / "01_spot_master.tsv"
     spatial = shared / "spatial_inputs"
-    layout = Path("references/07.Visium_v1_载玻片布局/visium_v1_tissue_positions.csv")
+    layout = args.layout
     out = root / "report" / "spatial_panels"
     out.mkdir(parents=True, exist_ok=True)
     sections = json.loads(config.read_text(encoding="utf-8"))
@@ -128,6 +133,7 @@ def main():
             "--master", master,
             "--spatial-dir", spatial,
             "--samples", config,
+            "--layout", layout,
             "--out-dir", out / "diagnostics",
             "--section", "D3",
             "--gene", "Egr1",

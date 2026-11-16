@@ -1,0 +1,123 @@
+{
+  "schema_version": "pi_tools_manifest/v1",
+  "description": "Pi CLI 可见的受控工具白名单。本文件是声明面；运行时真源为 BioanalysDesktop/server/services/pi_tools_bridge.js 的 TOOL_DEFINITIONS。两处必须逐字段一致，由 tools/dev/pi_guardrail_gate.mjs 强制比对。",
+  "tool_count": 9,
+  "tools": [
+    {
+      "tool_name": "inspect_requirement",
+      "tier": "tier1",
+      "description": "读取客户提交包的 requirement.json 摘要（疾病背景、物种、分组、诉求）",
+      "read_only": true,
+      "params": {
+        "package_id": { "type": "string", "required": true }
+      }
+    },
+    {
+      "tool_name": "compile_work_order",
+      "tier": "tier1",
+      "description": "按 work_order/v2 契约校验并生成 DAG 拓扑摘要",
+      "read_only": true,
+      "params": {
+        "project_id": { "type": "string", "required": true },
+        "line_id": { "type": "string", "required": true },
+        "selected_mods": { "type": "array", "required": true },
+        "params_override": { "type": "object", "required": false }
+      }
+    },
+    {
+      "tool_name": "dispatch_and_poll_dag",
+      "tier": "tier1",
+      "description": "查询工单执行进度、11 层防线状态与内存水位（只读轮询）",
+      "read_only": true,
+      "params": {
+        "work_order_id": { "type": "string", "required": true },
+        "lease_id": { "type": "string", "required": false }
+      }
+    },
+    {
+      "tool_name": "read_step_metrics",
+      "tier": "tier1",
+      "description": "读取单步千字节级指标卡（严格 < 32KB）",
+      "read_only": true,
+      "params": {
+        "project_id": { "type": "string", "required": true },
+        "mod_id": { "type": "string", "required": true }
+      }
+    },
+    {
+      "tool_name": "remediate_step_param",
+      "tier": "tier1",
+      "description": "在注册表允许的阈值范围内微调参数，并写追加式台账",
+      "read_only": false,
+      "params": {
+        "work_order_id": { "type": "string", "required": true },
+        "mod_id": { "type": "string", "required": true },
+        "param_key": { "type": "string", "required": true },
+        "new_value": { "type": "number", "required": true },
+        "reason": { "type": "string", "required": true }
+      }
+    },
+    {
+      "tool_name": "build_and_verify_report",
+      "tier": "tier1",
+      "description": "事实核查正文槽位并给出可否签发的判定",
+      "read_only": false,
+      "params": {
+        "project_id": { "type": "string", "required": true },
+        "narrative_payload_json": { "type": "object", "required": true }
+      }
+    },
+    {
+      "tool_name": "propose_adaptation",
+      "tier": "tier2",
+      "description": "产出项目适配脚本（仅 workspace/projects/<id>/scripts/），写盘即登记 scripts_manifest.json",
+      "read_only": false,
+      "params": {
+        "project_id": { "type": "string", "required": true },
+        "mod_id": { "type": "string", "required": true },
+        "filename": { "type": "string", "required": true },
+        "content": { "type": "string", "required": true },
+        "purpose": { "type": "string", "required": true },
+        "reason": { "type": "string", "required": true }
+      }
+    },
+    {
+      "tool_name": "run_validation",
+      "tier": "tier2",
+      "description": "验证态跑一步适配（内存与超时受策略收紧），通过后写 VERIFIED_OK 记录",
+      "read_only": false,
+      "params": {
+        "project_id": { "type": "string", "required": true },
+        "mod_id": { "type": "string", "required": true },
+        "entry_point": { "type": "string", "required": true }
+      }
+    },
+    {
+      "tool_name": "dispatch_step",
+      "tier": "tier2",
+      "description": "经任务 FSM 下发单步执行（必须持租约；适配脚本须 VERIFIED_OK 且哈希未变）",
+      "read_only": false,
+      "params": {
+        "work_order_id": { "type": "string", "required": true },
+        "project_id": { "type": "string", "required": true },
+        "mod_id": { "type": "string", "required": true },
+        "entry_point": { "type": "string", "required": true },
+        "lease_id": { "type": "string", "required": true }
+      }
+    }
+  ],
+  "denied_capabilities": [
+    "shell",
+    "powershell",
+    "fs.read",
+    "fs.write",
+    "network",
+    "process.spawn"
+  ],
+  "notes": [
+    "白名单之外的任何工具名在 pi_tools_bridge.js 与 pi_supervisor.js 两处都会被拒绝。",
+    "remediate_step_param 只记录待重跑的参数调整，不改母版源码；实际生效需重新排队该步骤。",
+    "build_and_verify_report 的正文中所有统计数值必须写成 {{metric:...}} 槽位。",
+    "propose_adaptation 是 tier2 沙盒工具：只写项目适配层、写盘即登记 scripts_manifest，生效前必须 run_validation 得到 VERIFIED_OK。"
+  ]
+}

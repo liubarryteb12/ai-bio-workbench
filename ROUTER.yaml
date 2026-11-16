@@ -202,6 +202,28 @@ routes:
     negative_constraints:
       - "突破 30 条 Ready 白名单"
 
+  - id: "route-pi-supervise"
+    name: "Pi CLI 监督会话与双检查点审批"
+    trigger_intent:
+      - "Pi"
+      - "picli"
+      - "监督"
+      - "检查点"
+      - "靶点锁定"
+    target_line_or_gate: "tools/dev/pi_guardrail_gate.mjs"
+    allowed_scripts:
+      - "pi_guardrail_gate.mjs"
+      - "pi_golden_case.mjs"
+      - "extract_step_metrics.mjs"
+      - "fact_check_narrative.mjs"
+      - "pi_clinical_report_builder.mjs"
+    exit_criteria:
+      - "检查点一批准后才下发 DAG"
+      - "检查点二批准后才签发报告"
+    negative_constraints:
+      - "给 Pi 开放通用 shell 或自由文件写"
+      - "正文里裸写未经槽位绑定的统计数值"
+
   - id: "route-delivery-report"
     name: "交付与报告渲染"
     trigger_intent:

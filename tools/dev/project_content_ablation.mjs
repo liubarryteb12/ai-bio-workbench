@@ -345,7 +345,28 @@ export function buildSkeleton(projectDir, options = {}) {
     path.join(REAL_PROJECT_DIR, 'figures', 'line3_spatial', 'FIGURE_SOURCE_MANIFEST.tsv')
   ) || '';
   const line3Names = listPngNames(path.join(REAL_PROJECT_DIR, 'figures', 'line3_spatial'));
-  const line3Required = new Set(legacyFigureNames(line3Names, manifestText));
+  // 干净 checkout 没有真实图件 PNG：按来源清单的模式造最小占位，
+  // 否则 legacy_figures 场景无物可删、composite_figures 删完零图，门禁假红。
+  // 占位只用于消融实验的删除/清单判据，不进真实项目目录。
+  const syntheticLine3Names = line3Names.length === 0
+    ? parseManifestRows(manifestText)
+      .flatMap((row) => {
+        const token = String(row.figure || '').trim();
+        if (!token) return [];
+        const range = token.match(/^(.*?)(\d+)\.\.(\d+)$/);
+        if (range) {
+          const start = Number(range[2]); const end = Number(range[3]);
+          const out = [];
+          for (let n = start; n <= end; n += 1) out.push(`${range[1]}${n}.png`);
+          return out;
+        }
+        if (token.endsWith('*')) return [`${token.slice(0, -1)}placeholder.png`];
+        return [`${token}.png`];
+      })
+      .filter((name) => name.endsWith('.png'))
+    : [];
+  const effectiveLine3Names = [...new Set([...line3Names, ...syntheticLine3Names])];
+  const line3Required = new Set(legacyFigureNames(effectiveLine3Names, manifestText));
 
   fs.mkdirSync(projectDir, { recursive: true });
   copyBinaryIfExists(path.join(REAL_PROJECT_DIR, 'project.json'), path.join(projectDir, 'project.json'));
@@ -355,13 +376,14 @@ export function buildSkeleton(projectDir, options = {}) {
     const srcDir = path.join(REAL_PROJECT_DIR, 'figures', line);
     const dstDir = path.join(projectDir, 'figures', line);
     fs.mkdirSync(dstDir, { recursive: true });
-    const names = listPngNames(srcDir);
+    const names = line === 'line3_spatial' ? effectiveLine3Names : listPngNames(srcDir);
     let realCount = 0;
     for (const name of names) {
       const rel = line + '/' + name;
       const requiredHere = COMPOSITE_FIGURES.includes(rel)
         || (line === 'line3_spatial' && line3Required.has(name));
-      const copyReal = copyRealPngs && (requiredHere || realCount < maxRealPngs);
+      const copyReal = copyRealPngs && fs.existsSync(path.join(srcDir, name))
+        && (requiredHere || realCount < maxRealPngs);
       const dst = path.join(dstDir, name);
       if (copyReal) {
         realCount += 1;

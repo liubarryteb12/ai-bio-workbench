@@ -1,0 +1,31 @@
+appId: local.bioanalys.workbench
+productName: BioanalysWorkbench
+copyright: Bioanalys Workbench
+asar: false
+# 直接复用 npm ci 落地的完整 Electron 发行目录。
+# 默认行为会在 appOutDir 里解压 Electron 包，本机实测该步会死等
+# （13 线程全部 Wait、CPU 零增长、无子进程），显式指定可绕过。
+electronDist: node_modules/electron/dist
+directories:
+  output: release
+  buildResources: build
+files:
+  - src/**/*
+  - assets/**/*
+  - package.json
+extraResources:
+  - from: release/runtime
+    to: runtime
+extraFiles:
+  - from: release/venv
+    to: venv
+win:
+  # 只出目录：zip 由 scripts/zip-portable.mjs 用系统压缩实现完成。
+  # 原因：electron-builder 的 zip 目标在本机压缩阶段同样会死等，
+  # 而 win-unpacked 本身产出正确，压缩换实现即可，产物等价。
+  target:
+    - target: dir
+      arch:
+        - x64
+  icon: build/icon.png
+  requestedExecutionLevel: asInvoker

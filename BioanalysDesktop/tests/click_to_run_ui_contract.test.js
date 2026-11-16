@@ -33,6 +33,11 @@ test('便携包启动器自动打开页面并沿用本地免鉴权口径', () =>
   assert.match(builder, /start-workbench\.cmd/);
 });
 
+test('便携包 test.cmd 必须在 BioanalysDesktop 目录里跑全量测试', () => {
+  const builder = read('tools/dev/build_portable_package.mjs');
+  assert.match(builder, /pushd "%~dp0BioanalysDesktop"/, 'auth 等用例按相对路径拉起 server/index.js，cwd 错了会全片假红');
+});
+
 test('收件箱列表透出客户已选的 Mod ID', () => {
   assert.match(read('BioanalysDesktop/server/portal_inbox.js'), /modIds:/);
   const view = read('BioanalysDesktop/src/views/WorkOrderCenterView.tsx');

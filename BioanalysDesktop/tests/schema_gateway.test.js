@@ -15,7 +15,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
-import { validateWithSchemaGateway } from '../server/schema_gateway_client.js';
+import { resolvePythonExec, validateWithSchemaGateway } from '../server/schema_gateway_client.js';
 import { killProcessTree } from '../server/proc.js';
 import { atomicWriteFileSync } from '../server/atomic_write.js';
 
@@ -78,7 +78,7 @@ test('MUT-P2-A 旁路防线：CI 环境下传入 --allow-bypass-on-error 必须�
   fs.writeFileSync(reqFile, '{"bad": 1}', 'utf8');
 
   try {
-    const proc = spawnSync('python', [
+    const proc = spawnSync(resolvePythonExec() || 'python3', [
       'schemas/schema_gateway.py',
       '--schema', 'project',
       '--in', reqFile,
@@ -106,8 +106,10 @@ test('MUT-P1-B：连根强杀 (killProcessTree) 必须彻底消亡父进程与�
     'time.sleep(60)',
   ].join('\n');
 
-  const child = spawn('python', ['-c', code], {
+  const child = spawn(resolvePythonExec() || 'python3', ['-c', code], {
     windowsHide: true,
+    // POSIX 上 killProcessTree 用负 PGID 杀整组，子进程必须自带进程组。
+    detached: process.platform !== 'win32',
   });
 
   let grandchildPid = null;
@@ -184,7 +186,7 @@ test('MUT-P2-B：中途 SIGKILL 强杀时旧版产物完好无损且无残缺目
     '    time.sleep(10)',
   ].join('\n');
 
-  const child = spawn('python', ['-c', script]);
+  const child = spawn(resolvePythonExec() || 'python3', ['-c', script]);
   let ready = false;
   child.stdout.on('data', (d) => {
     if (d.toString().includes('READY_TO_KILL')) ready = true;
@@ -193,7 +195,7 @@ test('MUT-P2-B：中途 SIGKILL 强杀时旧版产物完好无损且无残缺目
   // 等待进程写入临时文件后强杀
   const start = Date.now();
   while (!ready && Date.now() - start < 3000) {
-    spawnSync('python', ['-c', 'import time; time.sleep(0.05)']);
+    spawnSync(resolvePythonExec() || 'python3', ['-c', 'import time; time.sleep(0.05)']);
   }
 
   killProcessTree(child);

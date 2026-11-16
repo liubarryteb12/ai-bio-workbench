@@ -295,7 +295,22 @@ test('figure selector groups cards by figure tiers with language and preview lab
     .toBeGreaterThan(0);
 });
 
+// 真实项目实例 PNG 属于运行载荷（workspace/projects/ 不入库），干净 CI checkout
+// 拿不到 27 张实例；fixture 预览与卡片渲染仍由其他用例覆盖。本地有数据时照常全量验证。
+const PROJECT_EXAMPLES_PRESENT = (() => {
+  try {
+    const doc = JSON.parse(fs.readFileSync(path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..',
+      'tools', 'bio', 'figure_project_examples.json',
+    ), 'utf8'));
+    return doc.examples.every((row: { path: string }) => fs.existsSync(path.resolve(
+      path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', row.path,
+    )));
+  } catch { return false; }
+})();
+
 test('every ready figure card switches between fixture and real project previews', async ({ page }) => {
+  test.skip(!PROJECT_EXAMPLES_PRESENT, 'HOST_MISSING_LOCAL_DATA: 真实项目预览 PNG 不在干净 checkout 中');
   // Ready 基线 27 条（tools/dev/figure_ready_allowlist.json 封板）。分布：
   // line1 = L1x2 + L2x3（没有 L3），line2 = L2x15 + L3x1，line3 = L2x1 + L3x6。
   const readyByLine = [
@@ -362,7 +377,8 @@ test('candidate catalog link opens a working single-figure catalog', async ({ pa
   await page.getByRole('link', { name: '浏览候选图库' }).click();
   const catalog = await popupPromise;
 
-  await expect(catalog).toHaveURL(/\/figure-catalog$/);
+  // 门户支持 ?id= 深链，路径相同即可；查询串属于产品行为，不该被 URL 断言误杀。
+  await expect(catalog).toHaveURL(/\/figure-catalog(?:\?.*)?$/);
   await expect(catalog).toHaveTitle('候选图库');
   await expect(catalog.locator('#error-state')).toBeHidden();
   await expect(catalog.locator('.figure-card').first()).toBeVisible({ timeout: 10_000 });

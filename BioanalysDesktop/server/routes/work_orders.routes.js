@@ -5,7 +5,7 @@
  * 分发器只做精确路径匹配，这一点与 figures.routes.js 的前缀分支同构。
  */
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { ASSET_ROOT, DATA_ROOT as DEFAULT_DATA_ROOT } from '../paths.js';
 
 import { dispatchRoutes } from '../route_dispatcher.js';
 import { collectJsonBody, JSON_BODY_LIMIT } from '../http_body.js';
@@ -15,7 +15,7 @@ import * as workOrderService from '../services/work_order.service.js';
 import { assertAuthority } from '../services/authority.service.js';
 
 const PREFIX = '/api/work-orders/';
-const DEFAULT_REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+const DEFAULT_REPO_ROOT = ASSET_ROOT;
 
 function redact(value, baseDir) {
   let text = String(value ?? '');
@@ -211,7 +211,7 @@ function buildRoutes(baseDir, inboxRoot, leaseCtx = {}) {
   ];
 }
 
-export const WORK_ORDER_ROUTES = buildRoutes(DEFAULT_REPO_ROOT);
+export const WORK_ORDER_ROUTES = buildRoutes(DEFAULT_DATA_ROOT);
 
 async function handleDynamic(req, res, url, json, baseDir, deps) {
   if (!url.pathname.startsWith(PREFIX)) return false;
@@ -288,7 +288,7 @@ async function readBody(req, res, json) {
 
 export async function handleWorkOrdersRoutes(req, res, url, deps) {
   const { json } = deps;
-  const baseDir = deps.REPO_ROOT || DEFAULT_REPO_ROOT;
+  const baseDir = deps.DATA_ROOT || deps.REPO_ROOT || DEFAULT_DATA_ROOT;
   const leaseCtx = await requireLeaseIfNeeded(req, res, url, deps, json, baseDir);
   if (leaseCtx === false) return true;
   if (await dispatchRoutes(

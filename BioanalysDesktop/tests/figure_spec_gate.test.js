@@ -21,21 +21,41 @@ test("门禁可通过：全部产线图件 300 DPI", () => {
   assert.match(out, /FIGURE_SPEC_OK/);
 });
 
+/**
+ * 解析器单测只喂最小 PNG 字节夹具，不依赖运行期项目图（干净 checkout 没有）。
+ * 这里不验 CRC：解析器也只读 pHYs / IHDR 的固定偏移，职责是解析口径而非图像解码。
+ */
+function parserFixturePng(width = 1000, height = 900) {
+  const chunk = (type, data) => {
+    const head = Buffer.alloc(8);
+    head.writeUInt32BE(data.length, 0);
+    head.write(type, 4, 4, "ascii");
+    return Buffer.concat([head, data, Buffer.alloc(4)]);
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  const phys = Buffer.alloc(9);
+  const ppu = Math.round(REQUIRED_DPI / 0.0254);
+  phys.writeUInt32BE(ppu, 0);
+  phys.writeUInt32BE(ppu, 4);
+  phys.writeUInt8(1, 8);
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk("IHDR", ihdr), chunk("pHYs", phys), chunk("IEND", Buffer.alloc(0)),
+  ]);
+}
+
 test("pHYs 解析正确：已知 300dpi PNG 读出的 DPI 是 300", () => {
-  const png = path.join(REPO, "workspace/projects", "PRJ_DCM_BENCH_20261105", "figures", "line1_bulk", "l1_01_correlation.png");
-  assert.ok(fs.existsSync(png), "测试夹具缺失");
-  const buf = fs.readFileSync(png);
-  const dpi = readPngDpi(buf);
+  const dpi = readPngDpi(parserFixturePng());
   assert.ok(dpi, "pHYs 块解析失败");
   assert.equal(dpi.dpiX, REQUIRED_DPI);
   assert.equal(dpi.dpiY, REQUIRED_DPI);
 });
 
 test("IHDR 解析正确：尺寸与实际像素一致", () => {
-  const png = path.join(REPO, "workspace/projects", "PRJ_DCM_BENCH_20261105", "figures", "line1_bulk", "l1_01_correlation.png");
-  const size = readPngSize(fs.readFileSync(png));
-  assert.ok(size);
-  assert.ok(size.width > 0 && size.height > 0);
+  const size = readPngSize(parserFixturePng(1234, 987));
+  assert.deepEqual(size, { width: 1234, height: 987 });
 });
 
 test("非 PNG 字节返回 null，不假装能解析", () => {

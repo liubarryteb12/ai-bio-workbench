@@ -43,3 +43,10 @@ export function loadLocalEnv(root = REPO_ROOT, env = process.env) {
 }
 
 loadLocalEnv();
+
+// 桌面打包运行时：用户可写数据根下的 .env.local 作为本机覆盖项。
+// loadEnvFile 只补缺不覆盖，所以显式注入的进程环境变量优先级最高。
+const dataHome = process.env.BIO_DATA_HOME ? path.resolve(process.env.BIO_DATA_HOME) : '';
+if (dataHome && dataHome !== REPO_ROOT) {
+  loadLocalEnv(dataHome);
+}

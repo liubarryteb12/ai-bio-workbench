@@ -13,14 +13,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { randomBytes } from 'node:crypto';
-import { fileURLToPath } from 'node:url';
-
+import { ASSET_ROOT, DATA_ROOT } from './paths.js';
 import { cleanupAuthRuntimeFile } from './auth_runtime.js';
 import {
   DEFAULT_SERIAL, SYSTEM_LOGS, LINES, DEFAULT_PROJECT, sanitizeProjectId, projectLineDir,
   PROJECTS_ROOT, resolveLineFromDataType, normalizeDatasets, normalizeDataSource,
 } from './domain.js';
-import { findAdb, runSync, runSshAsync, runSshRaw, runSshStrict } from './proc.js';
+import {
+  findAdb, runSync, runAsync, runSshAsync, runSshRaw, runSshStrict, scpArgv, shellQuote,
+} from './proc.js';
+import { prepareAndAuditTask, runTask } from './run.js';
 import { checkLink } from './link.js';
 import {
   buildHardwareCommand, parseHardwareOutput, evaluateHardware,
@@ -61,8 +63,17 @@ import { handleTasksRoutes } from './routes/tasks.routes.js';
 import { handleProjectRoutes } from './routes/projects.routes.js';
 import { handleWorkOrdersRoutes } from './routes/work_orders.routes.js';
 import { handleAuthorityRoutes } from './routes/authority.routes.js';
-import { startQueue } from './services/work_order.service.js';
-import { defaultAuthorityFile } from './services/authority.service.js';
+import { handlePiOrchestratorRoutes } from './routes/pi_orchestrator.routes.js';
+import { startQueue, enqueueWorkOrder } from './services/work_order.service.js';
+import { createPiToolsBridge } from './services/pi_tools_bridge.js';
+import { PiSupervisor } from './services/pi_supervisor.js';
+import { PiJobOrchestrator } from './pi_runner.js';
+import { checkK40Preflight } from './services/pi_preflight.js';
+import { createPortalSyncReceiver } from './services/portal_sync_receiver.js';
+import { createPiStepDispatcher } from './services/pi_step_dispatcher.js';
+import { createPiTaskRunner } from './services/pi_task_runner.js';
+import { verifyNarrative } from '../../tools/reporting/fact_check_narrative.mjs';
+import { assertAuthority, readAuthority, defaultAuthorityFile, acquireAuthority } from './services/authority.service.js';
 import { resolvePrincipal } from './auth_principal.js';
 import { createSink, dropSink, sendEvent, closeSink } from './sinks.js';
 import { fetchLedgerFromServer } from './ledger_fetch.js';
@@ -71,15 +82,19 @@ import { serveStatic } from './static_assets.js';
 import { PORTAL_INBOX, isSafeManifestName, readPackageManifest, listInboxManifests } from './portal_inbox.js';
 import { resolveProjectParam, listProjectsWithMeta, listFiguresForLine } from './query_views.js';
 import { remoteTaskInput, uploadPreparedFigureScripts, deployDataFiles } from './task_input.js';
+
+// D2 轻量接收器实例：由 BIO_PORTAL_SYNC_ENABLED=1 显式开启，默认不联网。
+let portalSyncReceiver = null;
 import {
   runRemoteRaw, listRemoteProcessed, runRemote, runRemoteStrict, sanitizeBridgeOutput,
 } from './remote_exec.js';
 import { json, uploadError } from './http_response.js';
+import { isLoopbackOriginAllowed } from './origin_guard.js';
 
 
 
 const PORT = Number(process.env.BAD_PORT || 18787);
-const REPO_ROOT = path.resolve(fileURLToPath(new URL('../../', import.meta.url)));
+const REPO_ROOT = ASSET_ROOT;
 
 /**
  * 工作台口令（HTTP Basic）。
@@ -145,8 +160,20 @@ if (!AUTH_ENABLED && !IS_TEST_RUNTIME && !DEV_NOAUTH) {
     user: AUTH_USER, pass: AUTH_PASS, enabled: true, pid: process.pid, generatedAt: new Date().toISOString(),
   }), 'utf8');
   process.once('exit', () => cleanupAuthRuntimeFile());
-  process.once('SIGINT', () => { cleanupAuthRuntimeFile(); process.exit(130); });
-  process.once('SIGTERM', () => { cleanupAuthRuntimeFile(); process.exit(143); });
+  process.once('SIGINT', () => { portalSyncReceiver?.stop(); cleanupAuthRuntimeFile(); process.exit(130); });
+  process.once('SIGTERM', () => { portalSyncReceiver?.stop(); cleanupAuthRuntimeFile(); process.exit(143); });
+}
+
+// TICKET-D0-01：Electron 主进程强杀时 stdin 会先断开，后端据此自杀，
+// 避免 Node 子进程变成孤儿并继续占 SQLite 写锁与 ADB 轮询通道。
+if (process.env.BIO_DEATH_PIPE === '1') {
+  process.stdin.resume();
+  process.stdin.on('end', () => {
+    portalSyncReceiver?.stop();
+    cleanupAuthRuntimeFile();
+    process.exit(0);
+  });
+  process.stdin.on('error', () => process.exit(1));
 }
 
 /**
@@ -238,11 +265,188 @@ export function lineFromPipeline(dag) {
 // 路由模块共用的响应辅助、远端执行器与前置层辅助，全部从各自模块 import 进来，
 // 再以对象注入交给路由模块。远端执行器定义在 remote_exec.js，响应辅助在 http_response.js；
 // 相关静态守卫按并集计数，见 tests/selfcheck_isolation_merge.test.js 的 STRICT_GUARD_SRC。
-const AUTHORITY_FILE = process.env.BIO_AUTHORITY_FILE || defaultAuthorityFile(REPO_ROOT);
+const AUTHORITY_FILE = process.env.BIO_AUTHORITY_FILE || defaultAuthorityFile();
+
+/**
+ * Pi 受控工具桥：只读摘要 + 指标卡 + 报告核验，不具任何通用执行能力。
+ *
+ * 注入给路由层而不是让路由自己造：同一个后端进程里只应有一份桥，
+ * 否则台账写入与白名单校验会出现两份口径。收件箱与项目根走路径真源，
+ * 桌面打包后自动跟随 data/ 而不是 assets/。
+ */
+/** D4.9 接线第 1 步：单权威租约校验（三个工单写端点共用）。 */
+function assertLeaseFn(leaseId) {
+  try {
+    assertAuthority(String(leaseId || ''), { file: AUTHORITY_FILE });
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, code: error?.code || 'ERR_AUTHORITY_REQUIRED' };
+  }
+}
+
+function currentLeaseId() {
+  try {
+    return String(readAuthority({ file: AUTHORITY_FILE })?.lease_id || '');
+  } catch {
+    return '';
+  }
+}
+
+/** 适配脚本 Overlay：本地 scripts/adapt_* 推到算力面项目线 scripts/。 */
+async function pushAdaptationScript({ projectId, lineId, entryPoint, localScriptPath }) {
+  const remoteDir = `${projectLineDir(projectId, lineId)}/scripts`;
+  const remotePath = `${remoteDir}/${entryPoint}`;
+  const mkdir = await runSshAsync('k40-ubuntu', `mkdir -p ${shellQuote(remoteDir)}`, { timeoutMs: 40000 });
+  if (mkdir.code !== 0) throw new Error(`远端 scripts 目录创建失败: ${mkdir.text || mkdir.stderr || mkdir.code}`);
+  const scp = await runAsync(scpArgv(localScriptPath, remotePath), { timeoutMs: 300000 });
+  if (scp.code !== 0) throw new Error(`适配脚本上传失败: ${scp.stderr || scp.stdout || scp.code}`);
+  return { remotePath };
+}
+
+const piTaskRunner = createPiTaskRunner({
+  prepareTaskFn: prepareAndAuditTask,
+  runTaskFn: runTask,
+  pushScriptFn: pushAdaptationScript,
+});
+
+const piStepDispatcher = createPiStepDispatcher({
+  baseDir: DATA_ROOT,
+  assertLease: assertLeaseFn,
+  runTaskFn: async (request) => {
+    if (request.mode === 'validation') {
+      return piTaskRunner.runValidationTask({
+        ...request,
+        localScriptPath: request.scriptPath,
+      });
+    }
+    return piTaskRunner.runDispatchTask({
+      ...request,
+      localScriptPath: path.join(DATA_ROOT, 'workspace', 'projects', request.projectId, 'scripts', request.entryPoint),
+    });
+  },
+});
+
+function appendActionLedger(entry) {
+  // 追加式写入：失败只记一行警告，不让审计写盘故障阻断业务（台账不是业务闸门）。
+  try {
+    const ledgerDir = path.join(DATA_ROOT, 'ledger');
+    fs.mkdirSync(ledgerDir, { recursive: true });
+    fs.appendFileSync(
+      path.join(ledgerDir, 'actions.jsonl'),
+      JSON.stringify({
+        id: `ACT-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        ts: new Date().toISOString(),
+        type: 'action',
+        ...entry,
+      }) + '\n',
+      'utf8',
+    );
+  } catch (error) {
+    console.warn('[pi] 台账写入失败：' + error.message);
+  }
+}
+
+const piToolsBridge = createPiToolsBridge({
+  inboxRoot: PORTAL_INBOX,
+  workspaceRoot: path.join(DATA_ROOT, 'workspace', 'projects'),
+  workflowsPath: path.join(ASSET_ROOT, 'tools', 'bio', 'workflows.json'),
+  figureAllowlistPath: path.join(ASSET_ROOT, 'tools', 'dev', 'figure_ready_allowlist.json'),
+  assertLease: assertLeaseFn,
+  // D4.9 接线第 3、4 步：验证与生产单步执行器（租约取自当前活跃租约）。
+  runValidationFn: (args) => piStepDispatcher.runValidation({ ...args, leaseId: args.leaseId || currentLeaseId() }),
+  dispatchStepFn: (args) => piStepDispatcher.dispatchStep(args),
+  // D4.9 接线第 2 步：项目授权读取器（from-package 时落盘到项目根）。
+  autonomyGrantsProvider: (projectId) => {
+    const file = path.join(DATA_ROOT, 'workspace', 'projects', String(projectId), '.autonomy_grants.json');
+    try {
+      const grants = JSON.parse(fs.readFileSync(file, 'utf8'));
+      return grants && typeof grants === 'object' ? grants : { allow_l3_data_adaptation: false };
+    } catch {
+      return { allow_l3_data_adaptation: false };
+    }
+  },
+  ledgerAppend: appendActionLedger,
+  narrativeVerifier: ({ narrative, metricsCards, figureAllowlistPath }) => {
+    const verdict = verifyNarrative({ narrative, metricsCards, allowlistPath: figureAllowlistPath });
+    return {
+      ok: verdict.ok,
+      reason: verdict.reason,
+      unboundedMetrics: verdict.unboundedMetrics,
+      unresolvedSlots: verdict.unresolvedSlots,
+      unreadyFigures: verdict.unreadyFigures,
+      slotCount: verdict.slotCount,
+      figureCount: verdict.figureCount,
+      audit: verdict.audit,
+    };
+  },
+});
+
+// 检查点一 180 秒宽限的驱动源：面板只展示与拦截，自动放行由服务端按单一真源扫描。
+const piSupervisor = new PiSupervisor({
+  toolsBridge: piToolsBridge,
+  ledgerAppend: appendActionLedger,
+  onPlanApproved: (session) => {
+    const workOrderId = session?.work_order_id;
+    if (!workOrderId) return;
+    try {
+      const lease = acquireAuthority(
+        { kind: 'ai_assist', id: 'pi_cli', role: 'agent' },
+        { file: AUTHORITY_FILE },
+      );
+      enqueueWorkOrder(workOrderId, DATA_ROOT, {
+        approved: true,
+        actor: { kind: 'ai_assist', id: 'pi_cli', role: 'agent' },
+        leaseId: lease.lease_id,
+      });
+      console.log(`[pi] 检查点一放行自动入队: ${workOrderId}`);
+    } catch (error) {
+      console.warn(`[pi] 检查点一自动入队失败 ${workOrderId}: ${error.message}`);
+      throw error;
+    }
+  },
+});
+const piAutonomyTimer = setInterval(() => {
+  try {
+    const approved = piSupervisor.autoPassDuePlans({
+      // 外部工单与本地会话都不许通过 context 注入 golden_regression；
+      // 黄金回归豁免只在测试构造的会话里置位。
+      factsProvider: (session) => (session?.context?.plan_facts && typeof session.context.plan_facts === 'object'
+        ? { ...session.context.plan_facts, goldenRegression: false }
+        : {}),
+    });
+    if (approved.length > 0) {
+      console.log(`[pi] 检查点一宽限到期自动放行: ${approved.join(', ')}`);
+    }
+  } catch (error) {
+    console.warn('[pi] 宽限扫描失败：' + error.message);
+  }
+}, 15_000);
+piAutonomyTimer.unref?.();
+
+// Stage 2 自愈用独立 Pi 作业编排器：与路由层的 Pi 会话共享同一份工具桥。
+const piOrchestrator = new PiJobOrchestrator({
+  toolExecutor: async ({ stage, toolName, args }) => piToolsBridge.executeToolCall(stage, toolName, args),
+});
+
+// D2 轻量接收器：显式开关 + 门户地址 + SYNC_TOKEN 三件齐备才启动。
+if (process.env.BIO_PORTAL_SYNC_ENABLED === '1') {
+  const portalBaseUrl = String(process.env.BIO_PORTAL_SYNC_URL || '').trim();
+  const syncToken = String(process.env.SYNC_TOKEN || '').trim();
+  if (!portalBaseUrl || !syncToken) {
+    console.warn('[portal-sync] BIO_PORTAL_SYNC_ENABLED=1 但缺少 BIO_PORTAL_SYNC_URL 或 SYNC_TOKEN，接收器未启动');
+  } else {
+    portalSyncReceiver = createPortalSyncReceiver({
+      portalBaseUrl,
+      syncToken,
+      inboxRoot: PORTAL_INBOX,
+      cacheDir: path.join(DATA_ROOT, 'portal', 'sync_cache'),
+    });
+  }
+}
 
 const routeCtx = {
   json, uploadError, runRemote, runRemoteRaw, runRemoteStrict, fetchLedgerFromServer, resolveProjectParam,
-  REPO_ROOT, listFiguresForLine, listRemoteProcessed, remoteTaskInput,
+  REPO_ROOT, DATA_ROOT, listFiguresForLine, listRemoteProcessed, remoteTaskInput,
   // 任务路由需要的进程内状态与 SSE sink：runningTasks 是可变 Map，注入引用而不是复制；
   // validateTaskPaths 的定义必须留在本文件（tests/task_submit_validation.test.js 按 index.js
   // 取它，搬走会拿到 undefined）；sanitizeBridgeOutput 已搬进 remote_exec.js。
@@ -250,9 +454,14 @@ const routeCtx = {
   // 项目路由需要的本地读盘与收件箱辅助：从前置层模块引入，注入而不复制第二份。
   listProjectsWithMeta, deployDataFiles, uploadPreparedFigureScripts, lineFromPipeline,
   PORTAL_INBOX, isSafeManifestName, readPackageManifest, listInboxManifests,
+  // Pi 监督器共享同一份工具桥与台账写入：路由与监督器不得各造一份。
+  piToolsBridge, piSupervisor,
 };
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://127.0.0.1:${PORT}`);
+  if (!isLoopbackOriginAllowed(req.headers)) {
+    return json(res, 403, { error: '跨源请求被拒绝' });
+  }
 
   // 顶层异常兜底（2026-11-11 P1）：路由层任何未捕获异常（含 decodeURIComponent
   // 的 URIError、statSync 的 ENOENT）都收敛成 500，不让单个请求把后端带崩、
@@ -290,6 +499,11 @@ async function handleRequest(req, res, url) {
 
   // 租约路由（读取 / 获取 / 续租 / 释放 / 人工接管）
   if (await handleAuthorityRoutes(req, res, url, requestCtx)) {
+    return;
+  }
+
+  // Pi Agent RPC 调度、双人工刹车片审批与监督会话路由
+  if (await handlePiOrchestratorRoutes(req, res, url, requestCtx)) {
     return;
   }
 
@@ -378,20 +592,87 @@ if (process.env.LINE_INFER_PROBE) {
   const dag = JSON.parse(process.env.LINE_INFER_PROBE);
   process.stdout.write(lineFromPipeline(dag));
 } else {
+  // 桌面壳的优雅停机通道：父进程经 IPC 发 shutdown，先关监听再退出。
+  // 父进程死掉（disconnect）时也退出，避免留下看不见的后台服务。
+  if (typeof process.send === 'function') {
+    process.on('message', (message) => {
+      if (message && message.type === 'shutdown') {
+        try {
+          server.close(() => process.exit(0));
+          setTimeout(() => process.exit(0), 3000).unref();
+        } catch {
+          process.exit(0);
+        }
+      }
+    });
+    process.on('disconnect', () => process.exit(0));
+  }
   server.listen(PORT, '127.0.0.1', () => {
     console.log(`[bioanalys-desktop] backend listening on http://127.0.0.1:${PORT}`);
     console.log(`[bioanalys-desktop] adb = ${adb}`);
     setImmediate(() => {
       runStartupUploadGc();
+      if (portalSyncReceiver) {
+        const started = portalSyncReceiver.start();
+        console.log(`[portal-sync] 接收器已启动（${started.started ? 'first_start' : 'already_running'}）`);
+      }
       if (!IS_TEST_RUNTIME) {
         const headers = AUTH_ENABLED
           ? { Authorization: `Basic ${Buffer.from(`${AUTH_USER}:${AUTH_PASS}`).toString('base64')}` }
           : {};
-        startQueue(REPO_ROOT, {
+        startQueue(DATA_ROOT, {
           baseUrl: `http://127.0.0.1:${PORT}`,
           headers,
           idlePollMs: 1000,
+          remediateTask: async ({ workOrderId, projectId, lineId, task, expected, receipt, receiptProblems }) => {
+            const exitCode = Number(receipt?.exit_code);
+            if (exitCode === 5) {
+              // Exit 5 是环境限流，不是算法失败；不消耗适配预算，交给外层退避。
+              return { resolved: false, resolution: 'ENV_THROTTLED', reason: 'exit 5' };
+            }
+            const metaPath = path.join(
+              DATA_ROOT, 'workspace', 'projects', String(projectId), 'work_orders', `${workOrderId}.meta.json`,
+            );
+            let leaseId = '';
+            try {
+              leaseId = String(JSON.parse(fs.readFileSync(metaPath, 'utf8')).lease_id || '');
+            } catch {
+              leaseId = '';
+            }
+            const job = await piOrchestrator.runStage2Remediation({
+              workOrderId,
+              projectId,
+              lineId,
+              failedStep: task.step,
+              modId: expected.modId,
+              leaseId,
+              context: {
+                entry_point: task.step,
+                failure_reason: Array.isArray(receiptProblems) ? receiptProblems.join('; ') : '',
+              },
+            }, {
+              timeoutMs: 600_000,
+            });
+            const output = job.context?.STAGE_3_COMPUTE_PULL_output || {};
+            return {
+              resolved: output.resolution === 'RECOVERED',
+              resolution: output.resolution || 'UNKNOWN',
+              reason: output.reason || job.last_error || null,
+              adaptation_trace: output.adaptation_trace || [],
+            };
+          },
         });
+        // TICKET-OPS-01：开机自检脚本哈希与 limma 探活；失败只告警，不阻断控制台启动。
+        try {
+          const preflight = checkK40Preflight({ runRemote });
+          if (preflight.ok) {
+            console.log('[pi] K40 preflight OK：脚本哈希同源，limma 可加载');
+          } else {
+            console.warn(`[pi] K40 preflight 失败：${preflight.error || preflight.mismatches.join(', ') || 'limma unavailable'}`);
+          }
+        } catch (error) {
+          console.warn(`[pi] K40 preflight 异常：${error.message}`);
+        }
       }
     });
   });

@@ -12,6 +12,7 @@ goals:
 governance:
   constitution: SPEC.md
   scope_and_rejections: SCOPE.md
+  todo: TODO.md
   glossary: GLOSSARY.md
   agent_entry: AGENT.md
   agent_truth: AGENTS.md
@@ -51,9 +52,19 @@ tools:
   dev:
     status: "W5a 已迁入（门禁与库 + work_order）"
   reporting:
-    status: "W5a 已迁入（交付链四件）"
+    status: "W5a 已迁入（交付链四件 + Pi 报告构建与防幻觉验真）"
   ops:
     status: "W5b 已迁入（运维入口与算力面脚本）"
+
+pi_cli:
+  status: "2026-11-15 接入：六大受控工具 + 双人工检查点 + 指标卡契约 + 槽位防幻觉"
+  contract: docs/PI_CLI_INTEGRATION.md
+  tools_bridge: BioanalysDesktop/server/services/pi_tools_bridge.js
+  supervisor: BioanalysDesktop/server/services/pi_supervisor.js
+  declaration: desktop/runtime/picli/tools_manifest.json
+  config: desktop/runtime/picli/pi_config.json
+  gate: tools/dev/pi_guardrail_gate.mjs
+  metrics_schema: schemas/step_metrics_v1.schema.json
 
 workbench:
   status: "W6 已裁定原地保留（BioanalysDesktop/）"

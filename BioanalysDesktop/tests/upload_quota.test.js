@@ -436,6 +436,10 @@ function plantSession(bytes) {
 }
 
 before(async () => {
+  // 本文件独占共享 .uploads 根：先清空，避免前序测试残留会话把配额判据带偏。
+  // 全量串行跑时文件之间不共享状态，这里清空不会影响其它用例。
+  fs.rmSync(UPLOAD_ROOT, { recursive: true, force: true });
+  fs.mkdirSync(UPLOAD_ROOT, { recursive: true });
   process.env.BAD_PORT = String(PORT);
   mock.method(childProcess, 'spawnSync', (cmd, args) => {
     childCalls.push({ kind: 'spawnSync', cmd, joined: (args || []).join(' ') });

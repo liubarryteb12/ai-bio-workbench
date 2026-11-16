@@ -1,0 +1,222 @@
+# 算力端 Python 环境快照（2026-11-16）
+# 采集方式：ADB 单通道，容器内 /root/venvs/bio-py/bin/pip freeze
+# 用途：环境漂移排障基线。包版本变化前先对照本文件，变更后重跑采集。
+# 三线环境声明正本：/mnt/ssd/bio_data/envs/<line>/manifest.txt
+
+## 三线声明摘要
+
+line1_bulk: language=R; version=4.5.3; env_name=line1_bulk_env; container_image=proot-ubuntu24.04-aarch64
+
+line2_scrna 关键依赖:
+  language=Python
+  version=3.12.3
+  env_name=line2_scrna_env
+  container_image=proot-ubuntu24.04-aarch64
+  scanpy=1.12.4
+  anndata=0.13.4
+  liana=1.10.0
+  sctenifoldpy=0.5.1
+  pandas=2.3.3
+  numpy=2.5.4
+  scipy=1.18.1
+  scikit-learn=1.9.1
+  matplotlib=3.11.2
+  h5py=3.16.0
+  pillow=13.0.0
+  harmonypy=2.1.0
+  gseapy=1.3.1
+  pyscenic=0.12.1
+  dask=2024.8.0
+  distributed=2024.8.0
+  adjustText=1.4.0
+  setuptools=80.9.0
+
+line3_spatial 关键依赖:
+  language=Python
+  version=3.12.3
+  env_name=line3_spatial_env
+  container_image=proot-ubuntu24.04-aarch64
+  scanpy=1.12.4
+  anndata=0.13.4
+  pandas=2.3.3
+  numpy=2.5.4
+  scipy=1.18.1
+  scikit-learn=1.9.1
+  matplotlib=3.11.2
+  h5py=3.16.0
+  pillow=13.0.0
+  liana=1.10.0
+  sctenifoldpy=0.5.1
+  gseapy=1.3.1
+
+## 全量已装包（169 个，pip freeze 原样）
+
+adjustText==1.4.0
+aiobotocore==3.10.0
+aiohappyeyeballs==2.7.1
+aiohttp==3.14.5
+aioitertools==0.13.0
+aiosignal==1.4.0
+anndata==0.13.4
+annotated-doc==0.0.5
+annotated-types==0.8.0
+annsel==0.1.3
+arboreto==0.1.6
+array-api-compat==1.16.0
+attrs==26.1.0
+bokeh==3.10.1
+boltons==26.2.0
+botocore==1.43.117
+certifi==2026.10.23
+charset-normalizer==3.5.2
+click==8.5.0
+cloudpickle==3.1.2
+colorcet==3.2.1
+contourpy==1.4.0
+ctxcore==0.2.0
+cycler==0.12.1
+Cython==3.3.1
+cytoolz==1.2.0
+dask==2026.8.0
+dask-image==2026.5.0
+datashader==0.19.1
+Deprecated==3.0.1
+dill==0.4.1
+distributed==2026.8.0
+docrep==0.3.2
+donfig==0.8.1.post1
+fast-array-utils==1.5.1
+fonttools==4.67.0
+formulaic==1.2.2
+frozendict==2.4.7
+frozenlist==1.8.0
+fsspec==2026.9.0
+geopandas==1.2.0
+google-crc32c==1.9.0
+gseapy==1.3.1
+h5py==3.16.0
+harmonypy==2.1.0
+idna==3.20
+igraph==0.11.9
+imagecodecs==2025.11.11
+ImageIO==2.38.1
+inflect==7.6.0
+interface_meta==2.0.1
+interlap==0.2.7
+jaraco.functools==4.6.0
+Jinja2==3.1.6
+jmespath==1.1.0
+joblib==1.6.0
+kiwisolver==1.5.1
+lazy-loader==0.6
+legacy-api-wrap==1.5
+liana==1.10.0
+llvmlite==0.50.0
+locket==1.0.0
+loompy==3.0.8
+lz4==4.4.5
+markdown-it-py==4.2.0
+MarkupSafe==3.0.4
+matplotlib==3.11.2
+matplotlib-scalebar==0.9.0
+mdurl==0.1.2
+mizani==0.14.6
+more-itertools==11.2.1
+msgpack==1.2.4
+msgspec==0.22.0
+mudata==0.4.1
+multidict==7.2.1
+multipledispatch==1.0.0
+multiprocessing_on_dill==3.5.0a4
+multiscale_spatial_image==2.0.3
+narwhals==2.27.1
+natsort==8.4.0
+networkx==3.7
+numba==0.68.0
+numcodecs==0.17.1
+numexpr==2.14.2
+numpy==2.5.4
+numpy-groupies==0.16.0
+ome-zarr==0.21.0
+ome-zarr-models==1.8.1
+omnipath==1.0.12
+packaging==26.3
+pandas==2.3.3
+param==2.4.2
+partd==1.4.2
+pathlib_abc==0.5.2
+patsy==1.0.3
+pillow==13.0.0
+PIMS==0.6.0
+platformdirs==4.14.5
+plotnine==0.15.8
+pooch==1.9.0
+propcache==0.5.4
+psutil==7.2.2
+pyarrow==26.0.0
+pyarrow-hotfix==0.7
+pyct==0.6.0
+pydantic==2.12.5
+pydantic-settings==2.16.1
+pydantic-zarr==0.10.0
+pydantic_core==2.41.5
+Pygments==2.21.0
+pynndescent==0.6.0
+pyogrio==0.13.0
+pyparsing==3.3.3
+pyproj==3.8.0
+pyscenic==0.12.1
+python-dateutil==2.9.0.post0
+python-dotenv==1.2.4
+pytz==2026.5
+PyYAML==6.0.3
+rangehttpserver==1.4.0
+requests==2.34.2
+rich==15.0.0
+s3fs==2026.9.0
+scanpy==1.12.4
+scikit-image==0.26.0
+scikit-learn==1.9.1
+scipy==1.18.1
+scTenifoldpy==0.5.1
+scverse-misc==0.1.7
+seaborn==0.13.2
+session-info2==0.4.2
+setuptools==80.9.0
+shap==0.54.1
+shapely==2.2.0
+shellingham==1.5.4
+six==1.17.0
+slicer==0.0.8
+slicerator==1.1.0
+sortedcontainers==2.4.0
+spatial_image==1.2.3
+spatialdata==0.8.0
+spatialdata-plot==0.4.3
+squidpy==1.8.3
+statsmodels==0.15.0
+tblib==3.2.2
+texttable==1.7.2
+threadpoolctl==3.7.0
+tifffile==2026.10.15
+toolz==1.2.0
+tornado==6.6
+tqdm==4.70.1
+transformnd==0.9.2
+typeguard==4.6.0
+typer==0.27.3
+typing-inspection==0.4.4
+typing_extensions==4.16.0
+tzdata==2026.5
+umap-learn==0.5.12
+universal_pathlib==0.3.10
+urllib3==2.8.0
+validators==0.36.0
+wrapt==2.5.1
+xarray==2026.9.0
+xarray-dataclass==3.0.0
+xarray-spatial==0.10.20
+xyzservices==2026.9.1
+yarl==1.25.1
+zarr==3.4.1
+zict==3.0.0

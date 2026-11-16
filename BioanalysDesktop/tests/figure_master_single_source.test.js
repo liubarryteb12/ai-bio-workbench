@@ -25,10 +25,13 @@ const REF_ROOT = path.join(REPO_ROOT, 'references', '05.可参考生信代码', 
 const COMPAT = path.join(REF_ROOT, '_meta', 'R453_compat');
 const MATRIX = path.join(REF_ROOT, '_meta', 'script_plot_matrix.json');
 
-/** git 可用且有仓库根时才算能查跟踪状态。 */
+/** git 可用且 REPO_ROOT 本身就是工作树根时才算能查跟踪状态。 */
 function gitUsable() {
-  const r = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: REPO_ROOT, encoding: 'utf8' });
-  return r.status === 0 && String(r.stdout || '').trim() === 'true';
+  // 便携包落在开发仓的被忽略子目录里时，git 会解析到外层仓库，
+  // 相对 pathspec 查到的是「包内副本未跟踪」的假象，必须按根归属判定。
+  const r = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: REPO_ROOT, encoding: 'utf8' });
+  if (r.status !== 0) return false;
+  return path.resolve(String(r.stdout || '').trim()) === path.resolve(REPO_ROOT);
 }
 
 function sha8(file) {
@@ -111,7 +114,9 @@ test('_legacy 目录必须真的被 git 跟踪（.gitignore 是白名单模式�
   assert.deepEqual(legacyFiles.missing, [],
     '_legacy 下必须有这三份母版: ' + JSON.stringify(legacyFiles.missing));
   if (!gitUsable()) return;
-  const listed = spawnSync('git', ['ls-files', '--', path.join('references', '05.可参考生信代码', '可用代码预筛选', '源码', '_legacy')],
+  // core.quotePath=false：Linux 默认会把非 ASCII 路径转成八进制转义，
+  // 直接比字符串会把已跟踪文件误判成未跟踪。
+  const listed = spawnSync('git', ['-c', 'core.quotePath=false', 'ls-files', '--', path.join('references', '05.可参考生信代码', '可用代码预筛选', '源码', '_legacy')],
     { cwd: REPO_ROOT, encoding: 'utf8' });
   const trackedSet = new Set((listed.stdout || '').split('\n').filter(Boolean).map((p) => p.split('/').join('/')));
   const untracked = legacyFiles.present.filter((rel) => !trackedSet.has(rel));

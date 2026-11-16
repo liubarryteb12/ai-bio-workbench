@@ -1,0 +1,26 @@
+{
+  "name": "bioanalys-workbench-desktop",
+  "productName": "BioanalysWorkbench",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Bioanalys 工作台 Windows 桌面壳",
+  "author": "Bioanalys Workbench",
+  "type": "module",
+  "main": "src/main/index.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "stage": "node scripts/stage-runtime.mjs",
+    "pack": "npm run stage && electron-builder --win --dir",
+    "dist": "npm run stage && electron-builder --win && node scripts/zip-portable.mjs",
+    "verify": "node scripts/verify-package.mjs",
+    "verify:functions": "node scripts/verify-functions.mjs",
+    "reindex": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/reindex_portable.ps1",
+    "smoke": "node scripts/verify-electron.mjs",
+    "gate": "node scripts/desktop_gate.mjs"
+  },
+  "devDependencies": {
+    "electron": "45.3.1",
+    "electron-builder": "26.18.0"
+  }
+}

@@ -19,6 +19,8 @@ _reference/
 *.h5ad
 *.rds
 !docs/assets/*.jpg
+!desktop/assets/icon.png
+!desktop/build/icon.png
 
 # ===== 运行时产物 =====
 tools/ops/secrets/*
@@ -38,6 +40,12 @@ workspace/projects/*/data/
 workspace/projects/*/figures/
 workspace/projects/*/debug/
 workspace/projects/*/deliverables/
+# 四层收敛数据区（data/workspace 下的 runs/inbox/deliverables/references_db）
+# 与运行态状态库都是本机产物：布局由 tools/ops/init_workspace_hierarchy.ps1
+# 幂等重建，内容不进版本库。
+data/workspace/
+data/portal/
+data/.tmp/
 # 工单运行的落地位置是 workspace/projects/<id>/work_orders/；
 # 仓库根下的 workspace/work_orders/ 是 2026-11-09 手工串联 DCM 链时的临时工作区
 # （46 个调试脚本、日志与回执，0.96 MB）。它不进版本库，避免把一次性取证混进真源。
@@ -309,3 +317,24 @@ deliverables/**/*.zip
 .env.local
 .env.*.local
 _private/
+
+# ===== 本地冒烟运行数据（可随时重建，不入库）=====
+.smoke/
+
+# DCM_BENCH 基准项目的图件来源清单：项目内容消融门禁的骨架输入，
+# CI 上没有这两份文件 c 判据直接红（本地图件来源清单不存在）。
+# 只有这两份小文本进 git，PNG 与 h5ad 数据仍被 projects/ 规则挡住。
+# 必须排在上面 projects/ 规则之后（gitignore 取最后一个匹配规则生效）。
+# Git 规则：父目录被排除时其下文件级 ! 一律无效，所以逐层「反排除父目录 →
+# 排除全部子项 → 反排除目标项」收窄；末行不能用 projects/ 兜底（会把目标重新挡回去）。
+# 实测 !projects/ 或 !workspace/projects/ 单放会把 23 个本机项目目录全暴露。
+!workspace/projects/
+workspace/projects/*/
+!workspace/projects/PRJ_DCM_BENCH_20261105/
+workspace/projects/PRJ_DCM_BENCH_20261105/*/
+!workspace/projects/PRJ_DCM_BENCH_20261105/figures/
+workspace/projects/PRJ_DCM_BENCH_20261105/figures/*/
+!workspace/projects/PRJ_DCM_BENCH_20261105/figures/line3_spatial/
+workspace/projects/PRJ_DCM_BENCH_20261105/figures/line3_spatial/*/
+!workspace/projects/PRJ_DCM_BENCH_20261105/figures/line3_spatial/FIGURE_SOURCE_MANIFEST.tsv
+!workspace/projects/PRJ_DCM_BENCH_20261105/figures/line3_spatial/README_FIGURE_SOURCES.md

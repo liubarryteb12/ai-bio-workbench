@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { LINES, sanitizeProjectId, PROJECTS_ROOT } from '../domain.js';
+import { DATA_ROOT as DEFAULT_DATA_ROOT, isInsideRoot, resolveDataOrAsset } from '../paths.js';
 import { runSync, shellQuote } from '../proc.js';
 import { assertFiguresPath } from '../figures.js';
 import { pullLineOutputs, localFigurePath, LOCAL_OUTPUTS_ROOT } from '../pull.js';
@@ -26,8 +27,10 @@ import { collectJsonBody, runJsonRoute, JSON_BODY_LIMIT } from '../http_body.js'
 
 export async function handleFiguresRoutes(req, res, url, {
   json, runRemote, runRemoteRaw, resolveProjectParam, REPO_ROOT,
+  DATA_ROOT,
   listFiguresForLine, listRemoteProcessed, remoteTaskInput,
 }) {
+  const dataRoot = DATA_ROOT || REPO_ROOT || DEFAULT_DATA_ROOT;
   if (url.pathname === '/api/figures/templates') {
     const registry = loadFigureTemplates();
     const check = validateFigureRegistry();
@@ -89,13 +92,17 @@ export async function handleFiguresRoutes(req, res, url, {
     const templateId = url.searchParams.get('id') || '';
     const registry = loadFigureTemplates();
     const item = registry.templates.find((candidate) => candidate.id === templateId);
-    const example = resolveProjectExample(templateId, 'project') || resolveProjectExample(templateId, 'fixture');
-    if (!item || item.deps_status !== 'ready' || !example) {
+    // 仓库内 fixture PNG 是随代码入库的权威预览；项目实例 PNG 是运行载荷，
+    // 干净 checkout 里没有。以前先找实例再回退 fixture，CI 上返回 404。
+    const file = item?.preview
+      ? resolveDataOrAsset(item.preview)
+      : resolveDataOrAsset(resolveProjectExample(templateId, 'fixture')?.path || '')
+      || resolveDataOrAsset(resolveProjectExample(templateId, 'project')?.path || '');
+    if (!item || item.deps_status !== 'ready' || !file) {
       json(res, 404, { error: `模板预览不可用: ${templateId}` });
       return true;
     }
-    const file = path.resolve(REPO_ROOT, example.path);
-    if (!file.startsWith(REPO_ROOT + path.sep)) {
+    if (!file || (!isInsideRoot(file, dataRoot) && !isInsideRoot(file, REPO_ROOT))) {
       json(res, 400, { error: '模板预览路径越界' });
       return true;
     }
@@ -169,10 +176,12 @@ export async function handleFiguresRoutes(req, res, url, {
       json(res, 404, { error: `候选图预览不可用: ${catalogId}` });
       return true;
     }
-    const file = path.resolve(REPO_ROOT, entry.preview_source);
+    const file = resolveDataOrAsset(entry.preview_source);
     let isFile = false;
     try { isFile = fs.statSync(file).isFile(); } catch { isFile = false; }
-    if (!file.startsWith(REPO_ROOT + path.sep) || !isFile) {
+    if (!file
+      || (!isInsideRoot(file, dataRoot) && !isInsideRoot(file, REPO_ROOT))
+      || !isFile) {
       json(res, 404, { error: `候选图预览不可用: ${catalogId}` });
       return true;
     }
@@ -351,7 +360,7 @@ export async function handleFiguresRoutes(req, res, url, {
     }
 
     // 只读固定的本地项目图件目录，project 与 line 都已通过白名单校验。
-    const localRoot = path.resolve(REPO_ROOT, 'workspace/projects');
+    const localRoot = path.resolve(dataRoot, 'workspace/projects');
     const figureDir = path.resolve(localRoot, projectId, 'figures', lineId);
     if (!figureDir.startsWith(localRoot + path.sep)) {
       json(res, 400, { error: '图件来源路径越界' });

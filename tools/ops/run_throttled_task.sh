@@ -28,7 +28,8 @@
 #   保留开关：BIO_PIN_CPUS=4,5,6 可恢复静态绑核（特殊场景用）。
 # 绑核失败保护（坑 #200）：开关启用时若 taskset EINVAL（Android 动态核隔离实测可致），
 #   自动降级为不绑核，不让任务因绑核失败而夭折；降级事件打 stdout 供 SSE 日志流可见。
-# 内存门禁：BIO_MEM_LIMIT_GB 是唯一运行时真源，生产默认 7.5，单任务最高 8.0。
+# 内存门禁：BIO_TASK_MEM_LIMIT_GB 是单任务唯一真源，默认 6.5，硬上限 6.5；
+# 容器总上限 7.5 由 BIO_MEM_LIMIT_GB 管，两者严格递减（Gemini G1 判决）。
 #   启动前检查 MemAvailable + 有限交换额度是否够覆盖上限与安全余量，不足则 exit 5。
 set -e
 
@@ -39,11 +40,11 @@ THERMAL_COOL_C="${BIO_THERMAL_COOL_C:-78}"
 THERMAL_POLL_SECONDS="${BIO_THERMAL_POLL_SECONDS:-30}"
 
 # --- 内存策略（BIO_MEM_LIMIT_GB 单一真源，2026-11-13）---
-# 生产默认 7.5GB，单任务可覆盖到 8.0GB；超过上限按 8.0GB 执行并告警。
+# 单任务默认与硬上限都是 6.5GB；超过上限按 6.5GB 执行并告警。
 # 余量门禁用 MemAvailable 加最多 2GB 交换额度，扣掉 1GB headroom 后必须覆盖上限。
-MEM_LIMIT_DEFAULT_GB=7.5
-MEM_LIMIT_MAX_GB=8.0
-MEM_LIMIT_RAW="${BIO_MEM_LIMIT_GB:-}"
+MEM_LIMIT_DEFAULT_GB=6.5
+MEM_LIMIT_MAX_GB=6.5
+MEM_LIMIT_RAW="${BIO_TASK_MEM_LIMIT_GB:-${BIO_MEM_LIMIT_GB:-}}"
 MEM_HEADROOM_GB="${BIO_MEM_HEADROOM_GB:-1.0}"
 MEM_SWAP_CREDIT_GB="${BIO_MEM_SWAP_CREDIT_GB:-2.0}"
 MEM_LIMIT_GB=$(awk -v raw="$MEM_LIMIT_RAW" -v def="$MEM_LIMIT_DEFAULT_GB" -v max="$MEM_LIMIT_MAX_GB" 'BEGIN {
@@ -357,22 +358,22 @@ fi
 set +e
 if [ -n "${BIO_EXEC_CMD:-}" ]; then
     # 命令串模式：整串交给 bash -c，保证提交层写的引号、管道、&& 都按原意解析
-    $AFFINITY_PIN nice -n 10 ionice -c 2 -n 4 bash -c "$BIO_EXEC_CMD" > "$LOG_FILE" 2>&1
+    $AFFINITY_PIN nice -n 10 ionice -c 2 -n 4 bash -c "$BIO_EXEC_CMD" 2>&1 | tee -a "$LOG_FILE"
 elif [ -n "$EXEC_CMD" ]; then
     if [ -n "$SCRIPT_ARGS" ]; then
-        $AFFINITY_PIN nice -n 10 ionice -c 2 -n 4 $EXEC_CMD "$SCRIPT_PATH" $SCRIPT_ARGS > "$LOG_FILE" 2>&1
+        $AFFINITY_PIN nice -n 10 ionice -c 2 -n 4 $EXEC_CMD "$SCRIPT_PATH" $SCRIPT_ARGS 2>&1 | tee -a "$LOG_FILE"
     else
-        $AFFINITY_PIN nice -n 10 ionice -c 2 -n 4 $EXEC_CMD "$SCRIPT_PATH" > "$LOG_FILE" 2>&1
+        $AFFINITY_PIN nice -n 10 ionice -c 2 -n 4 $EXEC_CMD "$SCRIPT_PATH" 2>&1 | tee -a "$LOG_FILE"
     fi
 else
     # 靠脚本自身 shebang，只降权（默认不绑核）
     if [ -n "$SCRIPT_ARGS" ]; then
-        $AFFINITY_PIN nice -n 10 ionice -c 2 -n 4 "$SCRIPT_PATH" $SCRIPT_ARGS > "$LOG_FILE" 2>&1
+        $AFFINITY_PIN nice -n 10 ionice -c 2 -n 4 "$SCRIPT_PATH" $SCRIPT_ARGS 2>&1 | tee -a "$LOG_FILE"
     else
-        $AFFINITY_PIN nice -n 10 ionice -c 2 -n 4 "$SCRIPT_PATH" > "$LOG_FILE" 2>&1
+        $AFFINITY_PIN nice -n 10 ionice -c 2 -n 4 "$SCRIPT_PATH" 2>&1 | tee -a "$LOG_FILE"
     fi
 fi
-EXIT_CODE=$?
+EXIT_CODE=${PIPESTATUS[0]}
 set -e
 
 END_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")

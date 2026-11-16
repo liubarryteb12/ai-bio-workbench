@@ -20,8 +20,15 @@ import { isSafeUploadId, uploadFingerprint, uploadIdFromFingerprint } from '../.
 /** uploadId 安全判定与前端本地缓存校验同源（shared/upload_session.mjs），此处转出便于单测与调用方复用 */
 export { isSafeUploadId };
 
-/** 上传暂存根（本软件工作目录内，不污染源码） */
-export const UPLOAD_ROOT = path.join(process.cwd(), '.uploads');
+/**
+ * 上传暂存根。
+ *
+ * 默认保持历史行为（进程工作目录下 .uploads）。桌面运行时显式注入
+ * BIO_UPLOAD_ROOT 到用户数据目录，避免写入安装目录。
+ */
+export const UPLOAD_ROOT = process.env.BIO_UPLOAD_ROOT
+  ? path.resolve(process.env.BIO_UPLOAD_ROOT)
+  : path.join(process.cwd(), '.uploads');
 
 /** 分片大小 4MB */
 export const CHUNK_SIZE = 4 * 1024 * 1024;

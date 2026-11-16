@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   在算力节点上执行命令：固定走 adb，adb 不可用即报错。
 
@@ -75,6 +75,11 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+try {
+  [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+} catch {}
+$OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $ADB = if ($AdbPath) { $AdbPath } elseif (Test-Path -LiteralPath 'C:\adb\platform-tools\adb.exe') { 'C:\adb\platform-tools\adb.exe' } else { 'adb' }
 $PREFIX = $RemoteHome
 $ROOTFS = $PREFIX + '/var/lib/proot-distro/containers/' + $ContainerName + '/rootfs'
