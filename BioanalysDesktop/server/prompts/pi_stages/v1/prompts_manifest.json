@@ -1,0 +1,18 @@
+{
+  "schema_version": "pi_prompts_manifest/v1",
+  "version": "v1",
+  "files": {
+    "stage1_intake_compile.prompt.md": {
+      "stage": "STAGE_1_INTAKE",
+      "sha256": "b5cf6d2753d7765214ac6e5104cf806921ebc2e851ed1382df315371957d6ac5"
+    },
+    "stage2_step_remediation.prompt.md": {
+      "stage": "STAGE_3_COMPUTE_PULL",
+      "sha256": "adf6ce39a89b3d5b244ce2eac591c14e2d51f9546d7b53b68120570e971f07a8"
+    },
+    "stage3_target_narrative.prompt.md": {
+      "stage": "STAGE_4_REPORT_DELIVERY",
+      "sha256": "d392911767cff4ac27ee996f730ce330a8774e6ad306b1f429dcd215154b72da"
+    }
+  }
+}
