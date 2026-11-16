@@ -13,12 +13,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import net from 'node:net';
+import { randomUUID } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, '..', '..');
-const SMOKE = path.join(REPO, '.smoke', 'pi-sign-wipe-drill');
+// 演练根带进程级唯一后缀：两台机器（或两个终端）同时跑演练不会互删对方的现场。
+// test_isolation_gate R1/R4 要求递归删除目标必须带强隔离标记。
+const SMOKE = path.join(REPO, '.smoke', `pi-sign-wipe-drill-${randomUUID()}`);
 const KEYS = path.join(SMOKE, 'keys');
 const DATA_HOME = path.join(SMOKE, 'data');
 const PROJECT_ID = 'PRJ_SIGNWIPE_DRILL_1';
