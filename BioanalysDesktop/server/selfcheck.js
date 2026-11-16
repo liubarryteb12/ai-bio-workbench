@@ -30,7 +30,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { fileURLToPath } from 'node:url';
+import { ASSET_ROOT } from './paths.js';
 
 import { LINES } from './domain.js';
 import { runSync } from './proc.js';
@@ -320,7 +320,7 @@ export function evaluateIsolation(parsed) {
  */
 
 /** 仓库根：BioanalysDesktop/server/ 上两级；用模块 URL 推导，与进程 cwd 无关 */
-export const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
+export const REPO_ROOT = ASSET_ROOT;
 
 /** 远端 ssh 目标与部署根（与 tools/ops/sync_and_verify_remote.ps1 的默认值一致） */
 export const SHA256_SSH_TARGET = 'k40-ubuntu';

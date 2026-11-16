@@ -22,6 +22,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash, verify as cryptoVerify } from 'node:crypto';
+import { ASSET_ROOT, DATA_ROOT, dataPath } from './paths.js';
 
 import { HOSTS, SSD_ROOT, PROJECTS_ROOT, SYSTEM_LOGS, LINES, sanitizeProjectId } from './domain.js';
 import { computeMode, runAsync, runStream, shellQuote } from './proc.js';
@@ -32,7 +33,7 @@ import {
   auditPathFor, readAuditLedger,
 } from '../../tools/reporting/delivery_acceptance_core.mjs';
 
-const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
+const REPO_ROOT = ASSET_ROOT;
 
 /**
  * 本地交付缓存根：显式环境变量优先；默认收敛到本地项目根 workspace/projects/。
@@ -42,7 +43,7 @@ export const LOCAL_DELIVER_ROOT = process.env.BIO_LOCAL_DELIVERABLES
   ? path.resolve(process.env.BIO_LOCAL_DELIVERABLES)
   : process.env.BIO_LOCAL_PROJECTS
     ? path.resolve(process.env.BIO_LOCAL_PROJECTS)
-    : path.join(REPO_ROOT, 'workspace/projects');
+    : dataPath('workspace', 'projects');
 
 /**
  * 本项目在本地交付缓存里的目录。
@@ -176,7 +177,7 @@ function verifyPulledSubset(dir, names) {
 export function readAdaptManifest(root, projectId) {
   const safe = sanitizeProjectId(projectId);
   if (!safe) throw new Error(`projectId 非法: ${projectId}`);
-  const base = path.resolve(String(root ?? REPO_ROOT), 'workspace/projects', safe);
+  const base = path.resolve(String(root ?? DATA_ROOT), 'workspace/projects', safe);
   const file = path.join(base, 'figures', 'adapt', 'manifest.json');
   try {
     const parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -195,7 +196,7 @@ export function readAdaptManifest(root, projectId) {
 export function buildAdaptUploadPairs(root, projectId) {
   const safe = sanitizeProjectId(projectId);
   if (!safe) throw new Error(`projectId 非法: ${projectId}`);
-  const adaptDir = path.resolve(String(root ?? REPO_ROOT), 'workspace/projects', safe, 'figures', 'adapt');
+  const adaptDir = path.resolve(String(root ?? DATA_ROOT), 'workspace/projects', safe, 'figures', 'adapt');
   const manifest = readAdaptManifest(root, safe);
   const errors = [];
   const pairs = [];
@@ -722,7 +723,7 @@ function serverAuditPath(safe) {
 /** 读回执的候选目录：服务端落点优先，仓库受控区兜底（演练包/CLI 手写回执走这条） */
 function receiptCandidateDirs(safe) {
   const dirs = [serverRecordsDir(safe)];
-  const repoRecords = path.join(REPO_ROOT, RECEIPT_SUBDIR);
+  const repoRecords = dataPath(RECEIPT_SUBDIR);
   if (!dirs.includes(repoRecords)) dirs.push(repoRecords);
   return dirs;
 }

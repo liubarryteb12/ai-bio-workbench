@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 
 import { validateRequirement } from '../../../shared/requirement_schema.mjs';
 import { normalizeWorkOrderV2 } from '../../../shared/work_order_v2.mjs';
+import { validateManifestExtensions } from '../../../shared/package_manifest_v1.mjs';
 import { extOf } from '../../../shared/data_formats.mjs';
 import { DATA_ROLES } from '../../../portal/lib/archive.mjs';
 import { resolveLineFromDataType } from '../domain.js';
@@ -280,6 +281,13 @@ export function buildWorkOrderDraftFromPackage(packageDirAbsPath, options = {}) 
   const references = manifest.references === undefined ? [] : manifest.references;
   if (!Array.isArray(dataFiles)) push(errors, 'ERR_PACKAGE_SHAPE', 'manifest.data_files 必须是数组');
   if (!Array.isArray(references)) push(errors, 'ERR_PACKAGE_SHAPE', 'manifest.references 必须是数组');
+  // D4.2 additive 增强：format_hint / autonomy_grants 可选字段校验。
+  // 旧包无新字段时 extensions.normalized 全空，行为不变（legacy 放行）。
+  const manifestExtensions = validateManifestExtensions(manifest);
+  if (!manifestExtensions.ok) {
+    for (const message of manifestExtensions.errors) push(errors, 'ERR_PACKAGE_MANIFEST_EXTENSION', message);
+    return done();
+  }
   if (errors.length > 0) return done();
 
   const dataInputs = collectInputs({
@@ -407,6 +415,9 @@ export function buildWorkOrderDraftFromPackage(packageDirAbsPath, options = {}) 
       manifest_path: `${pkgName}/package_manifest.json`,
       requirement_sha256: hashFile(requirementFile),
       manifest_sha256: hashFile(manifestFile),
+      ...(manifestExtensions.normalized.autonomyGrants
+        ? { autonomy_grants: manifestExtensions.normalized.autonomyGrants }
+        : {}),
     },
     requirement: requirementBlock,
     inputs: [...dataInputs, ...referenceInputs],
@@ -445,5 +456,6 @@ export function buildWorkOrderDraftFromPackage(packageDirAbsPath, options = {}) 
     suggested_line: lineId,
     data_files: dataInputs.length,
     references: referenceInputs.length,
+    autonomy_grants: manifestExtensions.normalized.autonomyGrants ?? null,
   });
 }

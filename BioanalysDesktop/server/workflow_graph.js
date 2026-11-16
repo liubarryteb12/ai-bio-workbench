@@ -16,10 +16,9 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { ASSET_ROOT } from './paths.js';
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
-const REPO = path.resolve(HERE, '..', '..');
+const REPO = ASSET_ROOT;
 const REGISTRY = path.join(REPO, 'tools', 'bio', 'workflows.json');
 
 let cache = null;

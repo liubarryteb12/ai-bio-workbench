@@ -5,7 +5,11 @@ import { buildReadProjectMetaCommand, parseProjectMeta } from '../project.js';
 import { projectLineDir, sanitizeProjectId } from '../domain.js';
 
 const RAW_ROLE_PATTERNS = Object.freeze({
-  series_matrix: [/series_matrix.*\.txt\.gz$/i, /count.*\.(txt|tsv)(\.gz)?$/i, /matrix.*\.(txt|tsv)(\.gz)?$/i],
+  series_matrix: [
+    /series_matrix.*\.txt\.gz$/i,
+    /count.*\.(txt|tsv|csv)(\.gz)?$/i,
+    /matrix.*\.(txt|tsv|csv)(\.gz)?$/i,
+  ],
   gpl: [/gpl.*table.*\.(txt|tsv)(\.gz)?$/i, /gpl.*\.(txt|soft)(\.gz)?$/i, /gpl.*\.gz$/i],
   gpl_soft: [/gpl.*soft.*\.gz$/i, /gpl.*\.gz$/i],
   gpl_soft_mouse: [/gpl24247.*/i],

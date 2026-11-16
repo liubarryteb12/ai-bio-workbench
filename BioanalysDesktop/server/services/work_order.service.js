@@ -133,6 +133,7 @@ function metaFromOrder(baseDir, order, normalized, status = 'queued', actor = nu
     work_order_id: normalized.workOrderId,
     project_id: projectId,
     line_id: normalized.lineId,
+    seed: Number(order?.execution?.seed ?? order?.seed ?? normalized.seed ?? 0) || null,
     created_at: now,
     updated_at: now,
     approved: false,
@@ -263,6 +264,10 @@ export function createWorkOrder(draft, baseDir, options = {}) {
   fs.mkdirSync(dir, { recursive: true });
   writeJsonAtomic(orderFile, draft);
   writeJsonAtomic(metaFile, meta);
+  const grants = draft?.source_package?.autonomy_grants;
+  if (grants && typeof grants === 'object') {
+    writeJsonAtomic(path.join(workOrderDir(baseDir, normalized.projectId), '.autonomy_grants.json'), grants);
+  }
   return { meta, workOrder: draft };
 }
 
@@ -568,7 +573,40 @@ function finalStatus(result, receipt) {
   return 'failed';
 }
 
-function runnerOptions(baseDir, options) {
+function buildReceiptActors(meta, startedAt) {
+  const approved = meta.approved_by && meta.approved_by.kind ? meta.approved_by : null;
+  const created = meta.created_by && meta.created_by.kind ? meta.created_by : null;
+  if (!approved && !created) return null;
+  const actorTrace = [];
+  if (approved) {
+    actorTrace.push({
+      action: 'work_order.approved',
+      actor: approved,
+      at: meta.approved_at || meta.created_at || startedAt,
+      lease_id: meta.lease_id || null,
+      request_id: null,
+    });
+  }
+  const acting = approved || created;
+  if (acting) {
+    actorTrace.push({
+      action: 'work_order.run',
+      actor: acting,
+      at: startedAt,
+      lease_id: meta.lease_id || null,
+      request_id: null,
+    });
+  }
+  return {
+    actors: {
+      ...(created ? { created_by: created } : {}),
+      ...(approved ? { approved_by: approved } : {}),
+    },
+    actor_trace: actorTrace,
+  };
+}
+
+function runnerOptions(baseDir, options, receiptActors = null) {
   const forwarded = {
     repoRoot: baseDir,
     request: options.request,
@@ -579,6 +617,8 @@ function runnerOptions(baseDir, options) {
     sleep: options.sleep,
     facts: options.facts,
     inputsRoot: options.inputsRoot,
+    actors: receiptActors,
+    remediateTask: options.remediateTask,
   };
   for (const key of Object.keys(forwarded)) {
     if (forwarded[key] === undefined) delete forwarded[key];
@@ -629,6 +669,9 @@ export async function executeWorkOrderById(workOrderId, baseDir, options = {}) {
     updated_at: new Date().toISOString(),
   };
   writeMeta(baseDir, running);
+  // T1.7：回执主体留痕。created_by / approved_by / lease_id 在入队时已由服务端
+  // 写进 meta，执行体原样转发给编排器，权威回执因此能区分人类与 AI。
+  const receiptActors = buildReceiptActors(meta, running.started_at);
 
   let result = null;
   try {
@@ -640,7 +683,7 @@ export async function executeWorkOrderById(workOrderId, baseDir, options = {}) {
       input = raw;
     }
     const runner = options.runWorkOrderFn || defaultRunWorkOrder;
-    result = await runner(input, runnerOptions(baseDir, options));
+    result = await runner(input, runnerOptions(baseDir, options, receiptActors));
 
     let receipt = result?.receiptV1 || null;
     const receiptPath = receiptFile(baseDir, running.project_id);

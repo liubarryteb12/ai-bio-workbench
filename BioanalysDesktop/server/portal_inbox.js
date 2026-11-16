@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { normalizeDatasets, resolveLineFromDataType } from './domain.js';
-const PORTAL_INBOX = fileURLToPath(new URL('../../portal/inbox/', import.meta.url));
+import { dataPath } from './paths.js';
+const PORTAL_INBOX = dataPath('portal', 'inbox');
 
 // inbox/ 是 gitignore 的运行目录（.gitignore 的 inbox/ 规则），新克隆与便携包里
 // 都不存在。消费方（含 portal/serve.mjs 与各测试）默认它可写；在模块加载处
@@ -19,7 +19,10 @@ function isSafeManifestName(name) {
   if (typeof name !== 'string' || !name) return false;
   if (name.includes('..') || name.includes('\\')) return false;
   if (/^[\w\u4e00-\u9fa5.-]+\.json$/.test(name)) return true;
-  return /^PKG_[\w\u4e00-\u9fa5.-]+\/(requirement|package_manifest)\.json$/.test(name);
+  if (/^PKG_[\w\u4e00-\u9fa5.-]+\/(requirement|package_manifest)\.json$/.test(name)) return true;
+  // 阶段一收件目录（sub_<时间戳>_<id>）：同样只认两个固定文件名，
+  // 不接受目录内任意 .json，免得清单之外的半成品被当成需求读进来。
+  return /^sub_[\w\u4e00-\u9fa5.-]+\/(requirement|intake_manifest)\.json$/.test(name);
 }
 
 /** 读包清单（新格式才有）；解析失败返回 null，不让一个坏清单挡住整列表 */
@@ -28,7 +31,11 @@ function readPackageManifest(relFile) {
   if (slash < 0) return null;
   const dir = relFile.slice(0, slash);
   try {
-    return JSON.parse(fs.readFileSync(path.join(PORTAL_INBOX, dir, 'package_manifest.json'), 'utf8'));
+    const pkgPath = path.join(PORTAL_INBOX, dir, 'package_manifest.json');
+    if (fs.existsSync(pkgPath)) return JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+    const intakePath = path.join(PORTAL_INBOX, dir, 'intake_manifest.json');
+    if (fs.existsSync(intakePath)) return JSON.parse(fs.readFileSync(intakePath, 'utf8'));
+    return null;
   } catch {
     return null;
   }
@@ -57,7 +64,7 @@ function listInboxManifests() {
   for (const entry of entries) {
     if (entry.isFile() && entry.name.toLowerCase().endsWith('.json')) {
       names.push(entry.name);
-    } else if (entry.isDirectory() && entry.name.startsWith('PKG_')) {
+    } else if (entry.isDirectory() && (entry.name.startsWith('PKG_') || entry.name.startsWith('sub_'))) {
       const req = path.join(PORTAL_INBOX, entry.name, 'requirement.json');
       if (fs.existsSync(req)) names.push(`${entry.name}/requirement.json`);
     }

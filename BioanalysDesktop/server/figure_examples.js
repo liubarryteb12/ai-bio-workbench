@@ -1,10 +1,9 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { ASSET_ROOT, assetPath, resolveDataOrAsset } from './paths.js';
 
-const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const EXAMPLES = path.join(REPO, 'tools', 'bio', 'figure_project_examples.json');
+const EXAMPLES = assetPath('tools', 'bio', 'figure_project_examples.json');
 
 function sha256File(file) {
   return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
@@ -41,7 +40,7 @@ export function validateProjectExamples() {
   if (doc.source_chain !== 'DCM_CHAIN_20261109') errors.push('source_chain 不是 DCM_CHAIN_20261109');
   if (ids.size !== 27) errors.push(`实例模板数应为 27，实际 ${ids.size}`);
   for (const row of doc.examples) {
-    const absolute = path.join(REPO, row.path);
+    const absolute = resolveDataOrAsset(row.path) || path.join(ASSET_ROOT, row.path);
     if (!fs.existsSync(absolute)) {
       errors.push(`${row.id}: 文件缺失 ${row.path}`);
       continue;

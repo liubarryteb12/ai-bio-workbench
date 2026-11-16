@@ -9,20 +9,49 @@ import { ResultPreviewStudio } from './views/ResultStudioView';
 import { PreFlightDashboard } from './views/SelfCheckAdminView';
 import { OnboardingPortal, CustomerInputConsole } from './views/OnboardingView';
 import { WorkOrderCenterView } from './views/WorkOrderCenterView';
+import { DashboardView } from './views/DashboardView';
+import { LogsView } from './views/LogsView';
+import { SettingsView } from './views/SettingsView';
+import { DesktopShell } from './desktop/DesktopShell';
+import { getDesktop } from './desktop/desktop';
+import type { DesktopAppInfo, DesktopServiceStatus } from './desktop/desktop';
 
 // ============================================================
 // 视图枚举
 // ============================================================
 
-type ViewKey = 'onboarding' | 'console' | 'work-orders' | 'preflight' | 'studio';
+type ViewKey =
+  | 'dashboard'
+  | 'onboarding'
+  | 'console'
+  | 'work-orders'
+  | 'logs'
+  | 'studio'
+  | 'preflight'
+  | 'settings';
 
-const VIEWS: Array<{ key: ViewKey; label: string }> = [
+const WEB_VIEWS: Array<{ key: ViewKey; label: string }> = [
   { key: 'onboarding', label: '新建项目向导' },
   { key: 'console', label: '分析输入控制台' },
   { key: 'work-orders', label: '作业中心' },
   { key: 'preflight', label: '五维自检' },
   { key: 'studio', label: '结果预览 Studio' },
 ];
+
+const DESKTOP_VIEWS: Array<{ key: ViewKey; label: string }> = [
+  { key: 'dashboard', label: '首页' },
+  { key: 'onboarding', label: '新建项目' },
+  { key: 'console', label: '分析输入' },
+  { key: 'work-orders', label: '任务运行' },
+  { key: 'logs', label: '日志' },
+  { key: 'studio', label: '结果' },
+  { key: 'preflight', label: '诊断' },
+  { key: 'settings', label: '设置' },
+];
+
+const desktopApi = getDesktop();
+const IS_DESKTOP = Boolean(desktopApi);
+const VIEWS = IS_DESKTOP ? DESKTOP_VIEWS : WEB_VIEWS;
 
 const VIEW_LABELS: Record<ViewKey, string> = VIEWS.reduce(
   (acc, item) => ({ ...acc, [item.key]: item.label }),
@@ -34,7 +63,7 @@ const VIEW_LABELS: Record<ViewKey, string> = VIEWS.reduce(
 // ============================================================
 
 export function App() {
-  const [view, setView] = useState<ViewKey>('onboarding');
+  const [view, setView] = useState<ViewKey>(IS_DESKTOP ? 'dashboard' : 'onboarding');
   const [project, setProject] = useState<string>('default');
   const [projects, setProjects] = useState<ProjectEntry[]>([]);
   const [projectError, setProjectError] = useState<string | null>(null);
@@ -43,6 +72,8 @@ export function App() {
   const [computeMode, setComputeMode] = useState<'adb' | 'mock'>('adb');
   // ErrorBoundary 重试计数：递增即让失败视图换 key 重新挂载
   const [retryTick, setRetryTick] = useState(0);
+  const [desktopService, setDesktopService] = useState<DesktopServiceStatus | null>(null);
+  const [desktopInfo, setDesktopInfo] = useState<DesktopAppInfo | null>(null);
   const projectInit = useRef(false);
   const lastProjectsRefresh = useRef(0);
 
@@ -126,54 +157,53 @@ export function App() {
     // （tests/e2e/home_mount.spec.ts），而模式变化由 visibilitychange 兜住。
   }, []);
 
+  // 桌面服务状态：主进程推送与首次读取并行，页面不等待。
+  useEffect(() => {
+    if (!desktopApi) return undefined;
+    let alive = true;
+    void desktopApi.service.status().then((status) => { if (alive) setDesktopService(status); }).catch(() => {});
+    void desktopApi.app.getInfo().then((info) => { if (alive) setDesktopInfo(info); }).catch(() => {});
+    const unsubscribe = desktopApi.service.onStatus((status) => setDesktopService(status));
+    return () => {
+      alive = false;
+      unsubscribe();
+    };
+  }, []);
+
   const retryFailedView = useCallback(() => {
     setRetryTick((n) => n + 1);
   }, []);
 
-  return (
-    <div className="app-root">
-      <header className="app-header">
-        <h1 className="app-title">BioanalysDesktop</h1>
-        <div className="app-header-sep" />
-        <nav className="tab-nav">
-          {VIEWS.map((v) => (
-            <button
-              key={v.key}
-              type="button"
-              className={`tab-nav-item${view === v.key ? ' tab-nav-item-active' : ''}`}
-              onClick={() => setView(v.key)}
-            >
-              {v.label}
-            </button>
-          ))}
-        </nav>
-        <div className="project-selector-wrap">
-          <span className="project-selector-label">当前项目</span>
-          <select
-            className="project-selector"
-            value={project}
-            onChange={(e) => setProject(e.target.value)}
-          >
-            {projects.length === 0 ? (
-              <option value={project}>{project}</option>
-            ) : projects.map((item) => (
-              <option key={item.projectId} value={item.projectId}>
-                {projectDisplayName(item)}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="btn"
-            style={{ marginLeft: 8, padding: '4px 10px', fontSize: 12 }}
-            onClick={() => void refreshProjects()}
-            title="重新读取项目列表"
-          >
-            刷新
-          </button>
-        </div>
-      </header>
+  const projectSelector = (
+    <div className="project-selector-wrap">
+      <span className="project-selector-label">当前项目</span>
+      <select
+        className="project-selector"
+        value={project}
+        onChange={(e) => setProject(e.target.value)}
+      >
+        {projects.length === 0 ? (
+          <option value={project}>{project}</option>
+        ) : projects.map((item) => (
+          <option key={item.projectId} value={item.projectId}>
+            {projectDisplayName(item)}
+          </option>
+        ))}
+      </select>
+      <button
+        type="button"
+        className="btn"
+        style={{ marginLeft: 8, padding: '4px 10px', fontSize: 12 }}
+        onClick={() => void refreshProjects()}
+        title="重新读取项目列表"
+      >
+        刷新
+      </button>
+    </div>
+  );
 
+  const viewContent = (
+    <>
       {/* Ticket 1：离线演示横幅（compute_mode=mock 时显式提示） */}
       {computeMode === 'mock' && (
         <div className="mock-banner" role="status">
@@ -197,12 +227,61 @@ export function App() {
         viewName={VIEW_LABELS[view]}
         onRetry={retryFailedView}
       >
+        {view === 'dashboard' && (
+          <DashboardView
+            project={project}
+            onNavigate={(key) => setView(key as ViewKey)}
+            onRefreshProjects={() => void refreshProjects()}
+          />
+        )}
         {view === 'onboarding' && <OnboardingPortal onCreated={refreshProjects} onProjectSet={setProject} />}
         {view === 'console' && <CustomerInputConsole project={project} />}
         {view === 'work-orders' && <WorkOrderCenterView project={project} />}
+        {view === 'logs' && <LogsView project={project} />}
         {view === 'preflight' && <PreFlightDashboard />}
         {view === 'studio' && <ResultPreviewStudio project={project} />}
+        {view === 'settings' && <SettingsView />}
       </ViewErrorBoundary>
+    </>
+  );
+
+  if (IS_DESKTOP) {
+    return (
+      <DesktopShell
+        items={VIEWS}
+        active={view}
+        onSelect={(key) => setView(key as ViewKey)}
+        title={VIEW_LABELS[view]}
+        service={desktopService}
+        appInfo={desktopInfo}
+        projectSelector={projectSelector}
+      >
+        {viewContent}
+      </DesktopShell>
+    );
+  }
+
+  return (
+    <div className="app-root">
+      <header className="app-header">
+        <h1 className="app-title">BioanalysDesktop</h1>
+        <div className="app-header-sep" />
+        <nav className="tab-nav">
+          {VIEWS.map((v) => (
+            <button
+              key={v.key}
+              type="button"
+              className={`tab-nav-item${view === v.key ? ' tab-nav-item-active' : ''}`}
+              onClick={() => setView(v.key)}
+            >
+              {v.label}
+            </button>
+          ))}
+        </nav>
+        {projectSelector}
+      </header>
+
+      {viewContent}
     </div>
   );
 }

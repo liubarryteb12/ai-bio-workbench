@@ -11,6 +11,7 @@ import { atomicWriteFileSync } from './atomic_write.js';
 export const RECEIPT_V1_SCHEMA_VERSION = 'receipt/v1';
 export const RECEIPT_V1_SENTINEL = 'PRODUCTIZATION_RECEIPT_OK';
 export const RECEIPT_STATUSES = Object.freeze(['queued', 'running', 'completed', 'failed', 'blocked']);
+export const DELIVERY_GRADES = Object.freeze(['STANDARD_VERIFIED', 'EXPLORATORY_DEGRADED']);
 
 const TERMINAL_STATUSES = new Set(['completed', 'failed', 'blocked']);
 const TRANSITIONS = Object.freeze({
@@ -69,6 +70,8 @@ export function createReceiptV1({
   computeAdapter,
   actors = null,
   actorTrace = null,
+  deliveryGrade = null,
+  adaptationTrace = null,
 } = {}) {
   const digest = String(workOrderDigest || '');
   if (!SHA256_RE.test(digest)) {
@@ -104,6 +107,10 @@ export function createReceiptV1({
   // 可选字段：只有调用方给出主体时才写入，旧回执与新回执都能通过同一份 schema。
   if (actors && typeof actors === 'object') receipt.actors = { ...actors };
   if (Array.isArray(actorTrace) && actorTrace.length) receipt.actor_trace = actorTrace.map((row) => ({ ...row }));
+  if (DELIVERY_GRADES.includes(deliveryGrade)) receipt.delivery_grade = deliveryGrade;
+  if (Array.isArray(adaptationTrace) && adaptationTrace.length) {
+    receipt.adaptation_trace = adaptationTrace.map((row) => ({ ...row }));
+  }
   return receipt;
 }
 
@@ -135,6 +142,36 @@ export function appendActorTrace(receipt, entry = {}) {
   }[action];
   if (field) receipt.actors[field] = { ...receipt.actor_trace[receipt.actor_trace.length - 1].actor };
   receipt.actors.last_updated_by = { ...receipt.actor_trace[receipt.actor_trace.length - 1].actor };
+  return receipt;
+}
+
+/**
+ * 追加一条适配变更留痕（G3，Gemini 判决）。
+ * 该数组写入 receipt 顶层并纳入整单 Canonical JSON 签名范围。
+ */
+export function appendAdaptationTrace(receipt, entry = {}) {
+  if (!receipt || typeof receipt !== 'object') {
+    throw receiptError('ERR_RECEIPT_SHAPE', '回执必须是 JSON 对象');
+  }
+  const seq = Number.isInteger(entry.seq) ? entry.seq : (Array.isArray(receipt.adaptation_trace) ? receipt.adaptation_trace.length + 1 : 1);
+  const record = {
+    seq,
+    mod_id: String(entry.mod_id || ''),
+    action_type: String(entry.action_type || 'SANDBOX_ADAPTATION'),
+    target: String(entry.target || ''),
+    before_digest: entry.before_digest ? String(entry.before_digest) : null,
+    after_digest: entry.after_digest ? String(entry.after_digest) : null,
+    validation_run_id: entry.validation_run_id ? String(entry.validation_run_id) : null,
+    validation_passed: entry.validation_passed === true,
+    purpose: String(entry.purpose || '').slice(0, 400),
+    reason: String(entry.reason || '').slice(0, 400),
+    timestamp: String(entry.timestamp || new Date().toISOString()),
+  };
+  if (!record.mod_id || !record.target) {
+    throw receiptError('ERR_ADAPTATION_TRACE', 'adaptation_trace 记录需要 mod_id 与 target');
+  }
+  if (!Array.isArray(receipt.adaptation_trace)) receipt.adaptation_trace = [];
+  receipt.adaptation_trace.push(record);
   return receipt;
 }
 
@@ -219,6 +256,19 @@ function assertReceiptShape(receipt) {
   }
   if (!Array.isArray(receipt.artifacts)) {
     throw receiptError('ERR_RECEIPT_SHAPE', 'artifacts 必须是数组');
+  }
+  if (receipt.delivery_grade !== undefined && !DELIVERY_GRADES.includes(receipt.delivery_grade)) {
+    throw receiptError('ERR_RECEIPT_SHAPE', `delivery_grade 必须是 ${DELIVERY_GRADES.join(' / ')} 之一，当前 ${JSON.stringify(receipt.delivery_grade)}`);
+  }
+  if (receipt.adaptation_trace !== undefined) {
+    if (!Array.isArray(receipt.adaptation_trace)) {
+      throw receiptError('ERR_RECEIPT_SHAPE', 'adaptation_trace 必须是数组');
+    }
+    for (const [index, row] of receipt.adaptation_trace.entries()) {
+      if (!row || typeof row !== 'object' || !row.mod_id || !row.target) {
+        throw receiptError('ERR_ADAPTATION_TRACE', `adaptation_trace[${index}] 需要 mod_id 与 target`);
+      }
+    }
   }
   for (const [index, artifact] of receipt.artifacts.entries()) {
     assertRelativePath(artifact?.path, `artifacts[${index}].path`);

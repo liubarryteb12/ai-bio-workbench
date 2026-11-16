@@ -10,6 +10,7 @@ import { randomUUID, createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ASSET_ROOT, DATA_ROOT, dataPath } from './paths.js';
 
 import {
   LINES, DEFAULT_PROJECT, projectLineDir, binDir, sanitizeProjectId, SYSTEM_LOGS,
@@ -28,9 +29,7 @@ const DEFAULT_COMPUTE_NODES = Object.freeze([
   Object.freeze({ id: 'k40-ubuntu', host: 'k40-ubuntu', primary: true }),
 ]);
 
-const DEFAULT_ACTION_FILE = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'ledger', 'actions.jsonl',
-);
+const DEFAULT_ACTION_FILE = dataPath('ledger', 'actions.jsonl');
 
 const SSH_TARGET_RE = /^[A-Za-z0-9._@:-]+$/;
 const NODE_HEALTH_END = 'NODE_HEALTH_END';
@@ -308,9 +307,9 @@ export function resolveStepName(step) {
 
 /** 本地母版根：src/<line>/scripts/<step>（src 是母版，远端 bin 是部署产物） */
 const SRC_SCRIPTS_ROOT = process.env.BIOANALYS_SRC_ROOT
-  || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'tools', 'bio');
+  || path.resolve(ASSET_ROOT, 'tools', 'bio');
 /** 图模板派生副本读取母版时的仓库根，生产路径随安装位置解析 */
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const REPO_ROOT = ASSET_ROOT;
 const FIGURE_MASTER_ROOT = path.resolve(REPO_ROOT, 'references', '05.可参考生信代码', '可用代码预筛选', '源码');
 
 /** 桥接四项断言引擎（aims §一.3 钦定；ops/ 属另一会话域，只调用不修改） */
@@ -553,7 +552,7 @@ function adaptFileName(template) {
 }
 
 /** 本地项目根可由测试重定向；生产默认仍是仓库 workspace/projects/ */
-export function localAdaptPath(root = process.env.BIO_LOCAL_PROJECTS || REPO_ROOT, projectId, templateId, language = 'r') {
+export function localAdaptPath(root = process.env.BIO_LOCAL_PROJECTS || DATA_ROOT, projectId, templateId, language = 'r') {
   const safeProject = sanitizeProjectId(projectId);
   if (!safeProject) throw new Error(`project_id 非法: ${projectId}`);
   return path.resolve(
@@ -566,7 +565,7 @@ export function localAdaptPath(root = process.env.BIO_LOCAL_PROJECTS || REPO_ROO
   );
 }
 
-function adaptManifestPath(root = process.env.BIO_LOCAL_PROJECTS || REPO_ROOT, projectId) {
+function adaptManifestPath(root = process.env.BIO_LOCAL_PROJECTS || DATA_ROOT, projectId) {
   const safeProject = sanitizeProjectId(projectId);
   if (!safeProject) throw new Error(`project_id 非法: ${projectId}`);
   return path.resolve(String(root), 'workspace/projects', safeProject, 'figures', 'adapt', 'manifest.json');
@@ -588,7 +587,7 @@ function readManifest(manifestFile) {
  * ADAPT_VARS 声明，不修改 source 的可执行逻辑。manifest 是后续交付对账的窄接口。
  */
 export function deriveAdaptedFigure({
-  root = process.env.BIO_LOCAL_PROJECTS || REPO_ROOT,
+  root = process.env.BIO_LOCAL_PROJECTS || DATA_ROOT,
   projectId,
   lineId,
   templateId,
@@ -695,6 +694,7 @@ export function buildTaskScript(task) {
     projectId = DEFAULT_PROJECT, lineId, step, inputs = [], outputs = [], seed, throttled = false,
     targetKoGene, detached = false, wrapperTaskId = '', scriptPath = '', language = '',
     canonicalOutput = '', canonicalOutputs = [], adapted = false, directOutputs = false,
+    allowEmptyOutputs = false,
   } = task;
   if (!LINES.includes(lineId)) {
     throw new Error(`line_id 非法: ${lineId}`);
@@ -780,14 +780,18 @@ export function buildTaskScript(task) {
       // 项目适配脚本按线根或 processed/results 直接写目标路径。把「复制候选」
       // 拼进 ssh 命令会让多产物任务轻松超过 dropbear 的命令长度上限，连接在
       // 执行前就被对端关闭。这里只做存在性校验，命令长度与产物数线性相关。
-      if (!outputList.length) throw new Error('adapted directOutputs 任务至少需要一个 output');
-      rawCmd = [
-        `cd ${shellQuote(scriptDir)}`,
-        ...outputDirs.map((dir) => `mkdir -p ${shellQuote(dir)}`),
-        ...outputList.map((item) => `rm -f ${shellQuote(item)}`),
-        runner,
-        ...outputList.map((item) => `[ -f ${shellQuote(item)} ] || { echo ${shellQuote(`adapted output missing: ${item}`)} >&2; exit 1; }`),
-      ].join(' && ');
+      if (!outputList.length && !allowEmptyOutputs) {
+        throw new Error('adapted directOutputs 任务至少需要一个 output');
+      }
+      rawCmd = outputList.length
+        ? [
+          `cd ${shellQuote(scriptDir)}`,
+          ...outputDirs.map((dir) => `mkdir -p ${shellQuote(dir)}`),
+          ...outputList.map((item) => `rm -f ${shellQuote(item)}`),
+          runner,
+          ...outputList.map((item) => `[ -f ${shellQuote(item)} ] || { echo ${shellQuote(`adapted output missing: ${item}`)} >&2; exit 1; }`),
+        ].join(' && ')
+        : [`cd ${shellQuote(scriptDir)}`, runner].join(' && ');
     } else {
       // 旧形态：适配脚本把产物写在线根，由任务层复制到目标路径。
       const canonicalList = Array.isArray(canonicalOutputs) && canonicalOutputs.length

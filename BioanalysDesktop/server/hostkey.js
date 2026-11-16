@@ -18,13 +18,11 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+import { assetPath } from './paths.js';
 
 /** 指纹台账路径（仓库内，随代码一起版本化） */
-export const FINGERPRINT_LEDGER_PATH = path.resolve(
-  HERE, '..', '..', 'tools', 'ops', 'k40', 'env_lock', 'hostkey_fingerprints.json'
+export const FINGERPRINT_LEDGER_PATH = assetPath(
+  'tools', 'ops', 'k40', 'env_lock', 'hostkey_fingerprints.json'
 );
 
 export const FINGERPRINT_SCHEMA = 'k40_hostkey_fingerprints/v1';

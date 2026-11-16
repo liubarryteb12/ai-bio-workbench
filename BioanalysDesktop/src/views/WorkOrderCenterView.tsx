@@ -1,6 +1,33 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { ensureAuthorityLeaseId, invalidateAuthorityLeaseId } from '../lib/authorityLease';
 import { errorMessage, fetchJson } from '../lib/fetchJson';
+import { PiCheckpointsPanel } from '../components/PiCheckpointsPanel';
+import { PiProposalsModal } from '../components/PiProposalsModal';
+import { PiGraceCountdownPanel } from '../components/PiGraceCountdownPanel';
+import { PiReportSigningPanel } from '../components/PiReportSigningPanel';
+
+/**
+ * 状态变更 POST 必须带单权威租约头。409（租约换手/过期）时清缓存重试一次，
+ * 管理员在另一处接管后旧租约立刻失效，重试保证本端不静默卡死。
+ */
+async function postJsonWithLease<T>(url: string, body: unknown): Promise<T> {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const leaseId = await ensureAuthorityLeaseId();
+    try {
+      return await fetchJson<T>(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-BIO-LEASE-ID': leaseId },
+        body: JSON.stringify(body),
+      });
+    } catch (cause) {
+      const status = (cause as { status?: number })?.status;
+      if (status !== 409 || attempt === 1) throw cause;
+      invalidateAuthorityLeaseId();
+    }
+  }
+  throw new Error('postJsonWithLease: unreachable');
+}
 
 type WorkOrderStatus = 'queued' | 'running' | 'completed' | 'failed' | 'blocked';
 
@@ -114,6 +141,7 @@ export function WorkOrderCenterView({ project }: { project?: string }) {
     seed: '',
   });
   const [packageDraft, setPackageDraft] = useState('');
+  const [proposalsOpen, setProposalsOpen] = useState(false);
 
   const listUrl = useMemo(() => {
     const suffix = project ? `?project=${encodeURIComponent(project)}` : '';
@@ -212,11 +240,7 @@ export function WorkOrderCenterView({ project }: { project?: string }) {
     setBusy(true);
     setError(null);
     try {
-      const payload = await fetchJson<{ work_order?: WorkOrderRow }>('/api/work-orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(parsed),
-      });
+      const payload = await postJsonWithLease<{ work_order?: WorkOrderRow }>('/api/work-orders', parsed);
       setNotice(`作业已创建：${payload?.work_order?.work_order_id || ''}`);
       setDraftText('');
       setPreview('');
@@ -236,18 +260,11 @@ export function WorkOrderCenterView({ project }: { project?: string }) {
     setBusy(true);
     setError(null);
     try {
-      const payload = await fetchJson<{
+      const payload = await postJsonWithLease<{
         status?: 'queued' | 'running';
         position?: number;
         work_order?: WorkOrderRow;
-      }>(
-        `/api/work-orders/${encodeURIComponent(selectedId)}/run`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ confirm: true }),
-        },
-      );
+      }>(`/api/work-orders/${encodeURIComponent(selectedId)}/run`, { confirm: true });
       if (payload?.status === 'running') {
         setNotice('作业已在执行，队列位置 0');
       } else {
@@ -316,16 +333,12 @@ export function WorkOrderCenterView({ project }: { project?: string }) {
         }
         body.seed = seed;
       }
-      const payload = await fetchJson<{
+      const payload = await postJsonWithLease<{
         draft?: unknown;
         work_order?: WorkOrderRow;
         status?: 'queued' | 'running';
         position?: number;
-      }>('/api/work-orders/from-package', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
+      }>('/api/work-orders/from-package', body);
       setPackageDraft(JSON.stringify(payload?.draft || {}, null, 2));
       const workOrderId = payload?.work_order?.work_order_id || '';
       if (!workOrderId) {
@@ -333,14 +346,10 @@ export function WorkOrderCenterView({ project }: { project?: string }) {
         return;
       }
       if (autoQueue) {
-        const queued = await fetchJson<{
+        const queued = await postJsonWithLease<{
           status?: 'queued' | 'running';
           position?: number;
-        }>(`/api/work-orders/${encodeURIComponent(workOrderId)}/run`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ confirm: true }),
-        });
+        }>(`/api/work-orders/${encodeURIComponent(workOrderId)}/run`, { confirm: true });
         setNotice(queued?.status === 'running'
           ? `作业 ${workOrderId} 已在执行`
           : `作业 ${workOrderId} 已加入队列，当前第 ${queued?.position ?? 1} 位`);
@@ -694,6 +703,24 @@ export function WorkOrderCenterView({ project }: { project?: string }) {
           </p>
         )}
       </div>
+
+      <PiCheckpointsPanel />
+
+      <PiGraceCountdownPanel />
+
+      <PiReportSigningPanel />
+
+      <div className="card">
+        <div className="card-head">
+          <h3 className="card-title">适配提案</h3>
+          <button type="button" className="btn" onClick={() => setProposalsOpen(true)}>
+            审批适配脚本
+          </button>
+        </div>
+        <p className="hint">AI 产出的项目适配脚本在此审阅：验证状态、哈希一致性与批准/驳回。</p>
+      </div>
+
+      {proposalsOpen && <PiProposalsModal onClose={() => setProposalsOpen(false)} />}
 
       {notice && <p className="hint" role="status">{notice}</p>}
     </div>
