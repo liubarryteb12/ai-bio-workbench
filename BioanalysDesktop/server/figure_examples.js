@@ -33,12 +33,31 @@ export function resolveProjectExample(templateId, kind = 'project') {
   return doc.examples.find((item) => item.id === templateId && item.kind === wanted) || null;
 }
 
+/**
+ * 本地项目数据图件是否整体在位。
+ *
+ * 这些 PNG 属于运行载荷（workspace/projects/...，由 gitignore 挡在仓库外），
+ * 干净 checkout 上一张都没有；CI 的门户接口不该因此 500。
+ * 只有「全部缺失」才算环境形态；部分缺失是本地数据被误删，仍须报错。
+ */
+export function projectExamplesAvailable() {
+  const doc = figureProjectExamples();
+  if (doc.examples.length === 0) return false;
+  return doc.examples.every((row) => {
+    const absolute = resolveDataOrAsset(row.path) || path.join(ASSET_ROOT, row.path);
+    return fs.existsSync(absolute);
+  });
+}
+
 export function validateProjectExamples() {
   const doc = figureProjectExamples();
   const errors = [];
   const ids = new Set(doc.examples.map((row) => row.id));
   if (doc.source_chain !== 'DCM_CHAIN_20261109') errors.push('source_chain 不是 DCM_CHAIN_20261109');
   if (ids.size !== 27) errors.push(`实例模板数应为 27，实际 ${ids.size}`);
+  // 干净 checkout 缺整批运行载荷时按 HOST_MISSING_LOCAL_DATA 处理：
+  // 静态清单本身（chain / ids）照常校验，逐文件哈希只在文件在位时才谈。
+  if (!projectExamplesAvailable()) return errors;
   for (const row of doc.examples) {
     const absolute = resolveDataOrAsset(row.path) || path.join(ASSET_ROOT, row.path);
     if (!fs.existsSync(absolute)) {

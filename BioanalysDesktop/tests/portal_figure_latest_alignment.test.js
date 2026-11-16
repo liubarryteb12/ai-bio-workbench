@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { buildAdaptedFigureSource } from '../server/figure_adapters.js';
 import {
   figureProjectExamples,
+  projectExamplesAvailable,
   validateProjectExamples,
 } from '../server/figure_examples.js';
 
@@ -94,7 +95,12 @@ test('空间域图对高基数标签走连续色标，避免图例膨胀', () =>
   assert.match(source, /fig\.colorbar\(scatter, ax=ax/);
 });
 
-test('最新 DCM 图实例清单覆盖 27 条 Ready 模板且逐条达标', () => {
+test('最新 DCM 图实例清单覆盖 27 条 Ready 模板且逐条达标', (t) => {
+  // 干净 checkout 没有运行期项目 PNG（gitignore 挡着），本地有数据时全量校验。
+  if (!projectExamplesAvailable()) {
+    t.skip('HOST_MISSING_LOCAL_DATA: 最新 DCM 图实例 PNG 不在版本库中');
+    return;
+  }
   const doc = figureProjectExamples();
   assert.equal(doc.source_chain, 'DCM_CHAIN_20261109');
   assert.deepEqual(validateProjectExamples(), []);
