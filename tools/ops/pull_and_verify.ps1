@@ -75,8 +75,18 @@ $archiveBytes = (Get-Item $localArchive).Length
 Write-Output ("[EXTRACT] 成功拉取纯二进制归档包 ({0:N2} MB)，开始本地解包..." -f ($archiveBytes / 1MB))
 
 # 3. 本地解包（tar.exe 原生支持 zstd）
+# 显式用 System32\tar.exe：PATH 上 GNU tar（Git Bash 的 usr\bin\tar.exe）把
+# D:\ 路径当远程主机（"Cannot connect to D: resolve failed"），Windows 自带的
+# bsdtar 才认盘符。盘符根相对化后仍保序透传参数。
 try {
-  & tar -xf $localArchive -C $resolvedLocalJobDir
+  $winTar = Join-Path $env:SystemRoot 'System32\tar.exe'
+  if (-not (Test-Path -LiteralPath $winTar)) { $winTar = 'tar' }
+  Push-Location $resolvedLocalJobDir
+  try {
+    & $winTar -xf (Resolve-Path -LiteralPath $localArchive).Path
+  } finally {
+    Pop-Location
+  }
 } finally {
   if (Test-Path -LiteralPath $localArchive) {
     Remove-Item -LiteralPath $localArchive -Force

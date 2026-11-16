@@ -106,9 +106,13 @@ test('里程碑 1：pull_and_verify.ps1 本地提取与带空格路径的 sha256
   ].join('\n') + '\n';
   fs.writeFileSync(path.join(stagingDir, 'checksums.sha256'), checksumLines, 'utf8');
 
-  // 打包为 .tar.zst 模拟远端流式产物
+  // 打包为 .tar.zst 模拟远端流式产物。
+  // 显式用 System32\tar.exe：node 从桌面进程继承的 PATH 上 Git Bash 的 GNU tar
+  // 把 D:\ 路径当远程主机（"Cannot connect to D: resolve failed"），
+  // Windows 自带的 bsdtar 才认盘符。pull_and_verify.ps1 的解包侧同样已钉死。
+  const winTar = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
   const archivePath = path.join(testRoot, 'mock_run.tar.zst');
-  const tarRes = spawnSync('tar', ['-cf', archivePath, '-C', stagingDir, 'checksums.sha256', '01_work', '02_output'], {
+  const tarRes = spawnSync(winTar, ['-cf', archivePath, '-C', stagingDir, 'checksums.sha256', '01_work', '02_output'], {
     encoding: 'utf8',
   });
   assert.equal(tarRes.status, 0, tarRes.stderr || tarRes.stdout);
@@ -154,15 +158,17 @@ test('里程碑 1：pull_and_verify.ps1 在哈希不符时抛出 CHECKSUM_MISMAT
   ].join('\n') + '\n';
   fs.writeFileSync(path.join(stagingDir, 'checksums.sha256'), tamperedChecksums, 'utf8');
 
-  const archivePath = path.join(testRoot, 'tampered.tar.zst');
-  spawnSync('tar', ['-cf', archivePath, '-C', stagingDir, 'checksums.sha256', '01_work', '02_output']);
+  // 显式用 System32\tar.exe，理由同上一个测试：PATH 上的 GNU tar 不认盘符。
+  const winTar = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
+  const tamperedArchivePath = path.join(testRoot, 'tampered.tar.zst');
+  spawnSync(winTar, ['-cf', tamperedArchivePath, '-C', stagingDir, 'checksums.sha256', '01_work', '02_output']);
 
   const script = path.join(REPO_ROOT, 'tools', 'ops', 'pull_and_verify.ps1');
   const pullRes = spawnSync('powershell', [
     '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script,
     '-JobId', 'JOB_BAD_002',
     '-LocalRunsRoot', localRunsRoot,
-    '-MockArchiveSource', archivePath,
+    '-MockArchiveSource', tamperedArchivePath,
   ], { encoding: 'utf8' });
 
   assert.notEqual(pullRes.status, 0, '校验失败时脚本必须以非零状态码退出');
