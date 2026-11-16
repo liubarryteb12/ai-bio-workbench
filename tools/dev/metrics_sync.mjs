@@ -26,7 +26,7 @@ import { spawnSync } from 'node:child_process';
 
 // Argon 第二十二轮 Q2 裁定：运行时 TAP 面的 # SKIP 白名单校验**复用**本模块已有的
 // 那次全量 node --test 输出，不再单独跑第二遍（否则 1320 条测试要跑两遍、白白多 150 秒）。
-import { checkTapSkips } from './skip_reason_gate.mjs';
+import { checkTapSkips, listTapFailures } from './skip_reason_gate.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const README = path.join(REPO, 'BioanalysDesktop', 'README.md');
@@ -130,12 +130,14 @@ function measureTests() {
   const skipped = pick('skipped');
   // T2-3：实测到 0 个用例不等于「测过了」，它多半意味着 tests 目录被清空/glob 打空
   // （TAP 对空 glob 仍给 tests 0/pass 0）。把 0 与 null 一并判为未实测，门禁才不会因此放绿。
+  // tapText 随返回值一并交出：main() 在红时要逐条打印 not ok 用例名，
+  // 局部变量出了 measureTests() 就不可见（此前写成直接引用 text，check 模式必崩）。
   if (cases === null || pass === null || cases === 0) {
-    return { files: fileCount, cases: 0, pass: 0, fail: 0, skipped: 0, measured: false, skipGate: null };
+    return { files: fileCount, cases: 0, pass: 0, fail: 0, skipped: 0, measured: false, skipGate: null, tapText: text };
   }
   // 零额外耗时的运行时判据：同一份 TAP 文本顺手校验每条 # SKIP 是否命中白名单。
   const skipGate = checkTapSkips(text);
-  return { files: fileCount, cases, pass, fail, skipped, measured: true, skipGate };
+  return { files: fileCount, cases, pass, fail, skipped, measured: true, skipGate, tapText: text };
 }
 
 function currentBaselineLine() {
@@ -185,11 +187,21 @@ function main() {
     }
     if (!skipVerdict.ok) {
       for (const violation of skipVerdict.violations) console.error('[ RED ] ' + violation.message);
-      if (skipVerdict.failures > 0) console.error('[ RED ] TAP 里有 ' + skipVerdict.failures + ' 条 not ok');
+      if (skipVerdict.failures > 0) {
+        console.error('[ RED ] TAP 里有 ' + skipVerdict.failures + ' 条 not ok');
+        for (const name of listTapFailures(metrics.tests.tapText || '')) console.error('  [ FAIL ] ' + name);
+      }
       console.error('[ RED ] 运行时 # SKIP 白名单：' + (skipVerdict.violations.length + skipVerdict.failures) + ' 处违规');
       return 1;
     }
     console.log('[ OK ] 运行时 # SKIP 白名单：' + skipVerdict.total + ' 条跳过全部命中（复用本次 TAP，零额外耗时）');
+    // 便携包上下文：基线行写的是打包机的全量计数，包内测试文件数天生更少
+    //（未跟踪的开发期测试文件不进包）。包完整性由 MANIFEST.sha256 逐字节保证，
+    // 基线对账属于打包机职责，这里显式说明后跳过，不许拿母版基线误红包内门禁。
+    if (fs.existsSync(path.join(REPO, 'MANIFEST.sha256'))) {
+      console.log('[ OK ] 便携包上下文（MANIFEST.sha256 在位）：基线对账由打包机负责，本轮跳过');
+      return 0;
+    }
     if (!actual) {
       console.error('README 里找不到基线行（锚点: "当前基线 **...**"）');
       return 1;

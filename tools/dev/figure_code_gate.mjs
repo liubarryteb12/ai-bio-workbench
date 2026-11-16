@@ -33,6 +33,32 @@ export const REPORT_KINDS = Object.freeze(new Set([
 ]));
 
 /**
+ * 审计解释器解析：显式路径优先于 PATH。
+ * 母版环境用 vendor 缓存的 pythoncore；便携包里同一份运行时落在 runtime/python/。
+ * 都不在时回落 PATH python，启动失败仍走 Fail-Closed。
+ */
+export function resolvePythonInterpreter(repoRoot = REPO) {
+  // 向上逐级找最近的运行时：变异门禁会把本文件克隆进 .tmp 作用域再加载，
+  // 克隆件的解析根没有 runtime，但向上必达真仓库根或包根。
+  let root = path.resolve(repoRoot);
+  for (let depth = 0; depth < 8; depth += 1) {
+    for (const rel of [
+      path.join('vendor', 'python-win32', 'pythoncore-3.12-64', 'python.exe'),
+      path.join('runtime', 'python', 'python.exe'),
+    ]) {
+      const candidate = path.join(root, rel);
+      try {
+        if (fs.statSync(candidate).isFile()) return candidate;
+      } catch { /* 试下一个候选 */ }
+    }
+    const parent = path.dirname(root);
+    if (parent === root) break;
+    root = parent;
+  }
+  return 'python';
+}
+
+/**
  * 调用源码审计器并分类汇总。零仓库副作用（CSV 落进程隔离临时目录，REJ-010）。
  * @param {string} repoRoot
  * @returns {{ok:boolean, blocking:number, report:number, byKind:object, errors:string[]}}
@@ -47,7 +73,7 @@ export function checkFigureCode(repoRoot = REPO) {
   const csvPath = path.join(tmpDir, 'audit.csv');
   let proc;
   try {
-    proc = spawnSync('python', [auditScript, '--root', path.join(repoRoot, 'tools', 'bio'), '--csv', csvPath], {
+    proc = spawnSync(resolvePythonInterpreter(REPO), [auditScript, '--root', path.join(repoRoot, 'tools', 'bio'), '--csv', csvPath], {
       cwd: repoRoot, encoding: 'utf8', timeout: 60000,
     });
   } catch (cause) {
