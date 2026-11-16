@@ -1,0 +1,8 @@
+{
+  "name": "bioanalys-pi-runtime",
+  "private": true,
+  "description": "Pi CLI 运行时资产：版本在此锁定，随便携包分发，不参与 Electron 生产依赖收集",
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "1.5.2"
+  }
+}

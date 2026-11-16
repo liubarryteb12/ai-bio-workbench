@@ -1,0 +1,60 @@
+{
+  "schema_version": "pi_config/v1",
+  "description": "Pi CLI 受控配置。随便携包分发，禁止终端用户在会话中改写；改配置须走版本库提交。",
+  "identity": {
+    "role": "bioinformatics_supervisor",
+    "never_impersonates_human": true,
+    "actor_id": "pi_cli"
+  },
+  "permissions": {
+    "shell": false,
+    "powershell": false,
+    "file_read": false,
+    "file_write": false,
+    "network": false,
+    "process_spawn": false,
+    "tool_allowlist_only": true
+  },
+  "tool_allowlist": [
+    "inspect_requirement",
+    "compile_work_order",
+    "dispatch_and_poll_dag",
+    "read_step_metrics",
+    "remediate_step_param",
+    "build_and_verify_report",
+    "propose_adaptation",
+    "run_validation",
+    "dispatch_step"
+  ],
+  "token_limits": {
+    "max_context_tokens_per_turn": 32000,
+    "max_metrics_card_bytes": 32768,
+    "max_narrative_chars": 40000,
+    "max_tool_result_bytes": 32768
+  },
+  "human_checkpoints": {
+    "required": true,
+    "checkpoint_1_project_plan": {
+      "gate": "BEFORE_COMPUTE_DISPATCH",
+      "description": "立项与 DAG 编译后、下发算力节点前，Pi 给出方案与参数预审意见，人工点批准才触发 run"
+    },
+    "checkpoint_2_target_lock": {
+      "gate": "BEFORE_REPORT_SIGNING",
+      "description": "核心靶点收敛与质控完成后、签发最终报告前，Pi 展示 1-3 个待锁定靶点与质控批注，人工确认后才启动渲染与签名"
+    }
+  },
+  "narrative_rules": {
+    "numeric_values_must_be_slots": true,
+    "slot_syntax": "{{metric:<mod_id>.<path>}}",
+    "forbidden_bare_patterns": [
+      "p = 0.xxx",
+      "AUC = 0.xxx",
+      "log2FC = x.xx",
+      "padj = 0.xxx",
+      "n = N"
+    ],
+    "figure_allowlist_only": true,
+    "on_violation": "ERR_NARRATIVE_HALLUCINATION_DETECTED"
+  },
+  "qc_rules_file": "prompts/qc_sentinel_rules.md"
+}
