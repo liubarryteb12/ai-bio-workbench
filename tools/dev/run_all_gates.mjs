@@ -72,6 +72,10 @@ export const GATES = Object.freeze([
   // SCOPE.md 每条 REJ 的 enforced_by 指向真门禁。填一个不存在的路径必须红。
   { id: 'router', label: '路由与边界台账一致性', exec: 'node', args: ['tools/dev/router_gate.mjs'], cwd: '.', slow: false },
   { id: 'ledger', label: '台账与真源一致', exec: 'node', args: ['tools/dev/ledger_gen.mjs', '--check'], cwd: '.', slow: false },
+  // 第 19 道（2026-11-16）：台账新条目必须自带 acceptance 验收判据。
+  // ledger_gen 证的是「生成台账与真源一致」，这道证的是「人写的变更台账能回查验证方式」。
+  // 历史条目按写入时契约豁免，截止日在门禁内单一真源维护。
+  { id: 'ledger_acceptance', label: '台账新条目验收判据', exec: 'node', args: ['tools/dev/ledger_acceptance_gate.mjs'], cwd: '.', slow: false },
   { id: 'figure_registry', label: '图件注册表与证据同步', exec: 'node', args: ['tools/dev/build_figure_templates.cjs', '--check'], cwd: '.', slow: false },
   // T1-3 预览溯源（第三十四轮 4 Argon Q3）：T1-2 重渲染已完成，9 条分叉归零
   // （相等 12 / 分叉 0），按裁定同笔转硬阻断。任何 ready 的预览与矩阵产物 sha 再次分叉，
@@ -99,7 +103,7 @@ export const GATES = Object.freeze([
   // 第 8 道：变异门禁（T2-6）。它证明的不是「代码对不对」，而是「门禁会不会红」：
   // 对 7 条关键防线各注入一次真实破坏，任一条没让对应判据变红即整道失败。
   // 变异只在 .tmp/mutation_gate/ 的临时副本上做，不碰工作树（并发安全）。
-  { id: 'mutation_gate', label: '变异门禁（19 条防线反证）', exec: 'node', args: ['tools/dev/mutation_gate.mjs'], cwd: '.', slow: false },
+  { id: 'mutation_gate', label: '变异门禁（30 条防线反证）', exec: 'node', args: ['tools/dev/mutation_gate.mjs'], cwd: '.', slow: false },
   // Argon 第 42 轮锁定：Q3 状态机与 Q2 路由表各需 3 条 MUT 反证。
   // 既有 mutation_gate 的 7 条全在 Q4/T3 域，覆盖不到这两块，故单列。
   // K40 脚本同源（第 73 轮回归抓到的真实漂移：17 处不同源，而 18 道门禁全绿）。
@@ -111,7 +115,12 @@ export const GATES = Object.freeze([
   // 控制面门禁：租约与队列都是「能不能开写」的闸门，放在全量测试之前，
   // 让控制面回归在 20 秒内暴露，不必等三分钟的全量测试。
   { id: 'authority_lease', label: '单权威租约准入（含变异自证）', exec: 'node', args: ['tools/dev/authority_lease_gate.mjs'], cwd: '.', slow: false },
+  // Pi 护栏：六工具白名单声明面与运行时真源双向一致，且白名单模块内不得出现
+  // 任何通用执行能力（shell / spawn / eval）。同时跑越权调用、裸写数值、
+  // 幽灵 Mod、越界参数的行为判据。放在控制面门禁之后、全量测试之前。
+  { id: 'pi_guardrail', label: 'Pi 护栏（9 工具白名单 + 防幻觉判据）', exec: 'node', args: ['tools/dev/pi_guardrail_gate.mjs'], cwd: '.', slow: false },
   { id: 'work_order_queue', label: '队列单消费者（含变异自证）', exec: 'node', args: ['tools/dev/work_order_queue_gate.mjs'], cwd: '.', slow: false },
+  { id: 'production_wiring', label: '生产接线与适配封板（G28）', exec: 'node', args: ['tools/dev/production_wiring_gate.mjs'], cwd: '.', slow: false },
   // metrics 内部跑全量 node --test 的自限是 600 秒。外层必须比它更宽，
   // 否则慢机上外层先动手杀进程，TAP 被截断，出来的红是「假红」而不是用例真挂。
   { id: 'metrics', label: '全量测试 + 运行时 skip + 基线一致', exec: 'node', args: ['tools/dev/metrics_sync.mjs', '--check'], cwd: '.', slow: true, timeoutMs: 900000 },
