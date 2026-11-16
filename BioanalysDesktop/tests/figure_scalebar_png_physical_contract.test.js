@@ -17,8 +17,17 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { resolveTool } from "../../tools/dev/toolchain.mjs";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const GIT = resolveTool("git").path;
+const trackedFiles = new Set(
+  GIT
+    ? execFileSync(GIT, ["ls-files", "-z"], { cwd: REPO, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
+      .split("\0")
+      .filter(Boolean)
+    : [],
+);
 const PROBE = path.join(REPO, "tools", "reporting", "figure_scalebar_png_measure.py");
 const PNG = path.join(
   REPO,
@@ -64,8 +73,16 @@ const PROJECT_FIG_DIRS = [
 ];
 
 test("全部成品图：manifest bar_px 必须与 PNG 实测刻度间距逐张一致", (t) => {
+  // 干净 checkout 中 manifest 随代码入库，受检 PNG 是运行期数据。
+  // 全部缺失是环境形态；有图在位时逐张量测，未版本化的运行图缺失按环境形态处理。
   const dirs = PROJECT_FIG_DIRS.filter((d) => fs.existsSync(path.join(d, "figures_manifest.txt")));
-  if (dirs.length === 0) return t.skip("HOST_MISSING_LOCAL_DATA: 缺本地 manifest");
+  const requiredPngs = dirs.flatMap((d) => {
+    const manifest = fs.readFileSync(path.join(d, "figures_manifest.txt"), "utf8");
+    return [...manifest.matchAll(/^scalebar_check=figure=([^\s]+)/gm)].map((m) => path.join(d, m[1]));
+  });
+  if (dirs.length === 0 || requiredPngs.length === 0 || requiredPngs.every((p) => !fs.existsSync(p))) {
+    return t.skip("HOST_MISSING_LOCAL_DATA: manifest 登记的比例尺 PNG 整体不在版本库中");
+  }
   const script = [
     "import sys, json",
     "sys.path.insert(0, r'tools/reporting')",
@@ -86,11 +103,16 @@ test("全部成品图：manifest bar_px 必须与 PNG 实测刻度间距逐张�
   const res = JSON.parse(out.trim().split(/\r?\n/).pop());
   const problems = [];
   let totalOk = 0;
+  const runtimeMissing = (dir, name) => {
+    const relative = path.relative(REPO, path.join(dir, name)).replace(/\\/g, "/");
+    return !fs.existsSync(path.join(REPO, relative)) && !trackedFiles.has(relative);
+  };
   for (const [dir, r] of Object.entries(res)) {
     if (!r) { problems.push(dir + " 无 manifest"); continue; }
     totalOk += r.ok;
     for (const b of r.bad) problems.push(path.basename(dir) + "/" + b[0] + " manifest=" + b[1] + "px PNG=" + b[2] + "px");
-    if (r.missing.length) problems.push(path.basename(dir) + " 无法量测 " + r.missing.length + " 张");
+    const corrupt = r.missing.filter((name) => !runtimeMissing(dir, name));
+    if (corrupt.length) problems.push(path.basename(dir) + " 无法量测 " + corrupt.length + " 张");
   }
   assert.deepEqual(problems, [], "条长与 PNG 实测不一致：\n" + problems.join("\n"));
   assert.ok(totalOk >= 30, "可核验的图件太少：" + totalOk);

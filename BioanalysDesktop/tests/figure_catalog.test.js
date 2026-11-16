@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { loadTemplateCatalog, validateTemplateCatalog } from '../server/figure_template_catalog.js';
+import { projectExamplesAvailable } from '../server/figure_examples.js';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const READY_BASELINE = JSON.parse(
@@ -26,6 +27,10 @@ test('候选图库真源覆盖 92 个模板且每条都带介绍', () => {
 });
 
 test('候选图库接口返回全量 92 条，状态统计与真源一致', async (t) => {
+  if (!projectExamplesAvailable()) {
+    t.skip('HOST_MISSING_LOCAL_DATA: 候选图库预览依赖运行期项目图');
+    return;
+  }
   const port = await new Promise((resolve, reject) => {
     const probe = net.createServer();
     probe.on('error', reject);

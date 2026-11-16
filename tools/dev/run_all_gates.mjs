@@ -199,6 +199,9 @@ export function main(argv = process.argv.slice(2), io = { log: console.log, erro
         status: r.skipped ? 'skipped' : (r.ok ? 'pass' : 'fail'),
         seconds: r.skipped ? 0 : Number(r.seconds.toFixed(2)),
         exit_code: r.skipped ? null : r.exitCode,
+        // 失败原因必须进 JSON：CI 只存 --json 输出，没有 tail 就只能看到
+        // 「metrics fail」，分不清基线漂移、TAP not ok 还是 skip 白名单违规。
+        ...(!r.ok && !r.skipped ? { tail: r.tail } : {}),
       })),
       failed: outcome.failed.map((r) => r.id),
     }, null, 2));

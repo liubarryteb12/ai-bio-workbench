@@ -135,7 +135,12 @@ test('三条分析线都有独立的原生质检图分区', () => {
   assert.match(server, /line3_spatial:\s*new Set/);
 });
 
-test('L2 与 L3 质检图来自最新测试数据且为 300 DPI', () => {
+test('L2 与 L3 质检图来自最新测试数据且为 300 DPI', (t) => {
+  // 干净 checkout 不收运行期质检图，DPI 与来源断言只在数据在位时执行。
+  if (!projectExamplesAvailable()) {
+    t.skip('HOST_MISSING_LOCAL_DATA: 最新 L2/L3 质检 PNG 不在版本库中');
+    return;
+  }
   const figures = [
     'workspace/projects/DCM_CHAIN_20261109/report/figures/L2_qc_nfeature_by_sample.png',
     'workspace/projects/DCM_CHAIN_20261109/report/figures/L2_qc_mito_by_sample.png',
