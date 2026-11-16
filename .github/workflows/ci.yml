@@ -56,6 +56,12 @@ jobs:
       - name: 安装前端依赖
         working-directory: BioanalysDesktop
         run: npm ci || npm install
+      - name: 构建前端（dist/）
+        # admin 面 e2e 由 server/index.js 托管 dist/，dist 是构建产物不进 git。
+        # 本地开发者跑 e2e 前已 build 过所以从没暴露；CI 缺这步，静态托管拿
+        # 到的是 404 页，27 个 spec 全部 tab-nav-item 找不到（20 失败 6 通过）。
+        working-directory: BioanalysDesktop
+        run: npm run build
       - name: 缓存 Playwright 浏览器
         uses: actions/cache@v4
         with:
