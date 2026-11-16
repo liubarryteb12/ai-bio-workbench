@@ -1130,13 +1130,13 @@ test('黄金集复现脚本：指标卡、报告、审计与检查点判读全�
 });
 
 // ---------------- 5. 真实黄金集端到端 ----------------
-test('黄金集：从 DCM 真实产物提取指标卡并渲染报告，全程 0 裸写数值', async () => {
+test('黄金集：从 DCM 真实产物提取指标卡并渲染报告，全程 0 裸写数值', async (t) => {
   const { extractStepMetrics } = await load(EXTRACTOR);
   const { buildClinicalReport } = await load(BUILDER);
   const { validateStepMetrics, collectRegisteredModIds } = await load(METRICS);
   const processedDir = path.join(REPO, 'workspace', 'projects', 'PRJ_DCM_BENCH_20261105', 'data', 'line1_bulk', 'processed');
   if (!fs.existsSync(processedDir)) {
-    test.skip?.('PRJ_DCM_BENCH_20261105 产物不在本机');
+    t.skip('HOST_MISSING_LOCAL_DATA: PRJ_DCM_BENCH_20261105 产物不在版本库中，指标卡黄金集无法真跑');
     return;
   }
 
