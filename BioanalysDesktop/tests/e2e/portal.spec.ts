@@ -309,9 +309,8 @@ const PROJECT_EXAMPLES_PRESENT = (() => {
   } catch { return false; }
 })();
 
-test('every ready figure card switches between fixture and real project previews', {
-  skip: !PROJECT_EXAMPLES_PRESENT && 'HOST_MISSING_LOCAL_DATA: 真实项目预览 PNG 不在干净 checkout 中',
-}, async ({ page }) => {
+test('every ready figure card switches between fixture and real project previews', async ({ page }) => {
+  test.skip(!PROJECT_EXAMPLES_PRESENT, 'HOST_MISSING_LOCAL_DATA: 真实项目预览 PNG 不在干净 checkout 中');
   // Ready 基线 27 条（tools/dev/figure_ready_allowlist.json 封板）。分布：
   // line1 = L1x2 + L2x3（没有 L3），line2 = L2x15 + L3x1，line3 = L2x1 + L3x6。
   const readyByLine = [
