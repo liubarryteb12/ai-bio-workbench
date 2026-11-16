@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';" />
+    <title>Bioanalys 工作台</title>
+    <style>
+      :root { color-scheme: dark; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        display: grid; place-items: center; background: #0f172a; color: #e2e8f0;
+        font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+      }
+      .box { max-width: 620px; padding: 32px; }
+      .mark {
+        width: 48px; height: 48px; border-radius: 14px; margin-bottom: 18px;
+        background: #7f1d1d; display: grid; place-items: center; font-size: 24px; font-weight: 700; color: #fecaca;
+      }
+      h1 { font-size: 20px; margin: 0 0 10px; }
+      p { color: #94a3b8; font-size: 13px; line-height: 1.7; white-space: pre-wrap; word-break: break-all; }
+      .actions { display: flex; gap: 10px; margin-top: 22px; }
+      button {
+        border: 0; border-radius: 8px; padding: 9px 16px; font-size: 13px; cursor: pointer;
+        background: #1e293b; color: #e2e8f0;
+      }
+      button.primary { background: #0d9488; color: #fff; }
+      button:disabled { opacity: .5; cursor: default; }
+    </style>
+  </head>
+  <body>
+    <div class="box">
+      <div class="mark">!</div>
+      <h1>本地服务未就绪</h1>
+      <p id="message">正在读取错误信息...</p>
+      <div class="actions">
+        <button class="primary" id="retry">重试启动</button>
+        <button id="logs">打开日志目录</button>
+        <button id="quit">退出</button>
+      </div>
+    </div>
+    <script>
+      const params = new URLSearchParams(location.search);
+      document.getElementById('message').textContent = params.get('message') || '未知错误';
+      const retry = document.getElementById('retry');
+      retry.addEventListener('click', async () => {
+        retry.disabled = true;
+        retry.textContent = '正在重启...';
+        try {
+          const status = await window.bioanlysDesktop.service.restart();
+          if (status && status.state === 'ready') {
+            location.href = 'http://127.0.0.1:' + status.port + '/';
+            return;
+          }
+          document.getElementById('message').textContent = (status && status.lastError) || '重启失败';
+        } catch (error) {
+          document.getElementById('message').textContent = String(error);
+        }
+        retry.disabled = false;
+        retry.textContent = '重试启动';
+      });
+      document.getElementById('logs').addEventListener('click', () => {
+        window.bioanlysDesktop.logs.openFolder();
+      });
+      document.getElementById('quit').addEventListener('click', () => {
+        window.close();
+      });
+    </script>
+  </body>
+</html>
