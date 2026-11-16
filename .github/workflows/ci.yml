@@ -23,6 +23,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: 安装 Schema 网关依赖
+        # schema_gateway.py 与 requirement 三源对齐用例都依赖 pydantic。
+        # 锁到项目既有 env_lock 版本，避免 Runner 上的版本漂移改变校验行为。
+        run: python -m pip install pydantic==2.14.1 pydantic-settings==2.16.1
       - name: 安装前端依赖
         working-directory: BioanalysDesktop
         run: npm ci || npm install
@@ -40,7 +47,13 @@ jobs:
         # gate:all 内含 preflight/static/skip_static/ledger/figure_registry/audit_summary/
         # mutation_gate/metrics 八道；任一道红即整体红，exit 非 0 会直接让 job 失败。
         # mutation_gate 在 CI 上同样只在临时副本上变异，不写工作树。
+        env:
+          BIO_METRICS_TAP_DUMP: .tmp/ci_metrics.tap
         run: node tools/dev/run_all_gates.mjs --json
+      - name: 打印失败用例诊断
+        if: failure()
+        # 门禁 JSON 只留 80 行 tail，TAP 里的 error 栈才是根因。
+        run: grep -A 18 '^not ok' .tmp/ci_metrics.tap || true
       - name: 门禁结果留档
         if: always()
         # 留档步骤与门禁步骤跑同一套判据，失败时它也必须红。此前这里用「或裸 true」的

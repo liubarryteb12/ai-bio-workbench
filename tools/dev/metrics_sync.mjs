@@ -137,6 +137,10 @@ function measureTests() {
   }
   // 零额外耗时的运行时判据：同一份 TAP 文本顺手校验每条 # SKIP 是否命中白名单。
   const skipGate = checkTapSkips(text);
+  // CI 诊断：门禁 JSON 只留 tail，TAP 里的断言栈进不到日志。
+  // 显式给路径才落盘，默认不改文件；本地无人值守调试也能拿同一份原始 TAP。
+  const dump = process.env.BIO_METRICS_TAP_DUMP;
+  if (dump) fs.writeFileSync(dump, text, 'utf8');
   return { files: fileCount, cases, pass, fail, skipped, measured: true, skipGate, tapText: text };
 }
 
