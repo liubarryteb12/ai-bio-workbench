@@ -1071,9 +1071,10 @@ function handleFigureTemplatePreview(req, res, url) {
   if (state !== 'ok') {
     return sendJson(res, 404, { ok: false, error: '预览图缺失' });
   }
-  const example = resolveProjectExample(id, 'project') || resolveProjectExample(id, 'fixture');
-  if (!example) return sendJson(res, 404, { ok: false, error: '图实例清单缺最新测试数据图' });
-  const target = path.resolve(REPO_ROOT, example.path);
+  // fixture 预览必须只读模板自己声明的仓库内 PNG。
+  // 曾经先找项目实例图再回退 fixture：干净 checkout 没有运行期项目图，
+  // 即使 fixture PNG 在仓库里，接口也返回 404，卡片 image naturalWidth=0。
+  const target = path.resolve(REPO_ROOT, String(template.preview || ''));
   if (!target.startsWith(path.resolve(REPO_ROOT) + path.sep)) {
     return sendJson(res, 400, { ok: false, error: '预览图路径越界' });
   }
@@ -1087,7 +1088,7 @@ function handleFigureTemplatePreview(req, res, url) {
     'Content-Length': String(bytes.length),
     'Cache-Control': 'no-store',
     'X-Content-Type-Options': 'nosniff',
-    'X-Figure-Example-Source': 'latest-dcm-project',
+    'X-Figure-Example-Source': 'registry-fixture',
   });
   return res.end(bytes);
 }

@@ -92,12 +92,16 @@ export async function handleFiguresRoutes(req, res, url, {
     const templateId = url.searchParams.get('id') || '';
     const registry = loadFigureTemplates();
     const item = registry.templates.find((candidate) => candidate.id === templateId);
-    const example = resolveProjectExample(templateId, 'project') || resolveProjectExample(templateId, 'fixture');
-    if (!item || item.deps_status !== 'ready' || !example) {
+    // 仓库内 fixture PNG 是随代码入库的权威预览；项目实例 PNG 是运行载荷，
+    // 干净 checkout 里没有。以前先找实例再回退 fixture，CI 上返回 404。
+    const file = item?.preview
+      ? resolveDataOrAsset(item.preview)
+      : resolveDataOrAsset(resolveProjectExample(templateId, 'fixture')?.path || '')
+      || resolveDataOrAsset(resolveProjectExample(templateId, 'project')?.path || '');
+    if (!item || item.deps_status !== 'ready' || !file) {
       json(res, 404, { error: `模板预览不可用: ${templateId}` });
       return true;
     }
-    const file = resolveDataOrAsset(example.path);
     if (!file || (!isInsideRoot(file, dataRoot) && !isInsideRoot(file, REPO_ROOT))) {
       json(res, 400, { error: '模板预览路径越界' });
       return true;
