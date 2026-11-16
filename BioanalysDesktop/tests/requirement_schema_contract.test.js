@@ -198,6 +198,31 @@ test('负路径：对比对引用了不存在的组名，schema 层不拦但共�
   assert.ok(res.errors.some((e) => /不是已命名的组/.test(e)), res.errors.join('；'));
 });
 
+test('D5.4：GEO 公共库样本 ID 必须是 GSM，且不得跨组重复', () => {
+  const bad = goldenRequirement();
+  bad.groupingDesign.groups[0].sampleIds = ['Ctrl_1'];
+  const badRes = validateRequirement(bad);
+  assert.equal(badRes.ok, false);
+  assert.ok(badRes.errors.some((e) => /必须是 GSM 编号/.test(e)), badRes.errors.join('；'));
+
+  const duplicated = goldenRequirement();
+  duplicated.groupingDesign.groups[1].sampleIds = [duplicated.groupingDesign.groups[0].sampleIds[0]];
+  const dupRes = validateRequirement(duplicated);
+  assert.equal(dupRes.ok, false);
+  assert.ok(dupRes.errors.some((e) => /跨组重复/.test(e)), dupRes.errors.join('；'));
+});
+
+test('D5.4：自有上传样本 ID 不受 GSM 约束', () => {
+  const doc = goldenRequirement();
+  doc.dataSource.source = 'IN_HOUSE_UPLOAD';
+  doc.dataSource.datasets = [{ gse: 'LOCAL_1', role: 'train', sampleCount: 4, tissue: 'blood' }];
+  doc.dataSource.sampleCount = 4;
+  doc.groupingDesign.groups[0].sampleIds = ['Ctrl_1', 'Ctrl_2'];
+  doc.groupingDesign.groups[1].sampleIds = ['Treat_1', 'Treat_2'];
+  const res = validateRequirement(doc);
+  assert.equal(res.ok, true, res.errors.join('；'));
+});
+
 test('负路径：基准组 0 个或 2 个都被拒，且报错点名基准组', () => {
   for (const roles of [['disease_stage', 'disease_stage'], ['reference', 'reference']]) {
     const doc = goldenRequirement();

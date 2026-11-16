@@ -15,7 +15,7 @@ import {
   routeTask,
 } from '../server/task.js';
 import { runTask } from '../server/run.js';
-import { ADB_EXEC_SCRIPT } from '../server/proc.js';
+import { ADB_EXEC_SCRIPT, resolvePwshExec } from '../server/proc.js';
 
 const nodes = [
   { id: 'k40-ubuntu', host: 'k40-ubuntu', primary: true },
@@ -135,7 +135,7 @@ test('runTask 单通道下固定使用主节点，不再做多节点健康探活
 
   assert.ok(handle.id, '生产 runTask 应返回任务句柄');
   assert.equal(spawned.length, 1, '任务执行只有一次');
-  assert.equal(spawned[0].program, 'pwsh');
+  assert.equal(spawned[0].program, resolvePwshExec());
   assert.match(JSON.stringify(spawned), /adb_exec\.ps1/);
   assert.equal(fs.existsSync(actionFile), false, '单通道不应产生 failover 台账');
 });
@@ -183,7 +183,7 @@ test('runTask 单通道下温度健康探针已封存', async (t) => {
 
   await new Promise((resolve) => setTimeout(resolve, 20));
   assert.equal(spawned.length, 1);
-  assert.equal(spawned[0].program, 'pwsh');
+  assert.equal(spawned[0].program, resolvePwshExec());
   assert.equal(fs.existsSync(actionFile), false, '单通道不应产生 failover 台账');
 });
 
@@ -222,7 +222,7 @@ test('未配置备用节点时保持 K40 主路径且不产生额外健康探针
   await new Promise((resolve) => setTimeout(resolve, 20));
   assert.equal(healthProbes, 0);
   assert.equal(spawned.length, 1);
-  assert.equal(spawned[0].program, 'pwsh', '默认 ADB 主通道应经 adb_exec 包装');
+  assert.equal(spawned[0].program, resolvePwshExec(), '默认 ADB 主通道应经 adb_exec 包装');
   assert.ok(spawned[0].args.includes(ADB_EXEC_SCRIPT), '应使用 tools/ops/adb_exec.ps1');
   assert.equal(spawned[0].args.at(-2), '-Command');
 });

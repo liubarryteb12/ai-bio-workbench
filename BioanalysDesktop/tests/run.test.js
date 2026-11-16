@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { runTask, buildLedgerFileName, buildLedgerWriteCommand, stripSshNoise } from '../server/run.js';
+import { resolvePwshExec } from '../server/proc.js';
 import { auditCommand } from '../server/audit.js';
 import { auditLedgerEntry } from '../server/ledger.js';
 import { buildTaskScript, buildLedgerEntry } from '../server/task.js';
@@ -254,7 +255,7 @@ test('S26: 长台账（71 outputs）payload 走 ADB 命令内嵌，WROTE 回执�
   });
 
   const result = await persistEntry(entry, 'line3_spatial');
-  assert.equal(spawnArgs.cmd, 'pwsh');
+  assert.equal(spawnArgs.cmd, resolvePwshExec());
   assert.ok(spawnArgs.args.some((arg) => String(arg).includes('adb_exec.ps1')), '应走 ADB 主通道');
   assert.ok(spawnArgs.args.includes(command), '远端命令应作为 -Command 参数原样下发');
   assert.equal(result.path, remotePath);

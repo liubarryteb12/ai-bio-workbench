@@ -337,7 +337,7 @@ test('.. 段与越界路径在入口层拒收，不触达任何接口', async ()
   }
 });
 
-test('解析后逃出 inputsRoot 的路径按 ERR_INPUT_FILE 拒收', async () => {
+test('解析后逃出 inputsRoot 的路径按 ERR_INPUT_FILE 拒收', async (t) => {
   const fixture = makeInputsRoot();
   const outside = fs.mkdtempSync(path.join(os.tmpdir(), `wo-v2-outside-${process.pid}-`));
   try {
@@ -345,6 +345,12 @@ test('解析后逃出 inputsRoot 的路径按 ERR_INPUT_FILE 拒收', async () =
     fs.writeFileSync(outsideFile, fixture.bytes);
     const link = path.join(fixture.dataDir, 'link');
     fs.symlinkSync(outside, link, process.platform === 'win32' ? 'junction' : 'dir');
+    // Dev Drive / 特定数据卷上 junction 不被解析（lstat 不认、realpath 原样返回），
+    // 链接逃逸场景无法构造，此时跳过而不是放水：卷形态问题不属于本用例的业务断言。
+    if (!fs.lstatSync(link).isSymbolicLink()) {
+      t.skip('HOST_NO_SYMLINK_RESOLUTION: 本机卷不解析目录联接，链接逃逸场景无法构造');
+      return;
+    }
     const payload = v2Order(inputEntry(fixture, { path: 'raw_data/link/secret.tsv', filename: 'secret.tsv' }));
     const { result, state } = await runFixture(payload, fixture);
     assert.equal(result.ok, false);

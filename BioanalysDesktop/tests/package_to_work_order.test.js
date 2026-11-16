@@ -74,6 +74,7 @@ function makePackage(t, {
   requirement = null,
   files = null,
   refs = null,
+  manifestExtras = {},
 } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "pkg-to-wo-"));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -132,6 +133,7 @@ function makePackage(t, {
     counts: { data_files: dataFiles.length, references: references.length },
     data_files: dataFiles,
     references,
+    ...manifestExtras,
   };
   fs.writeFileSync(
     path.join(pkgDir, "package_manifest.json"),
@@ -195,6 +197,24 @@ test("合法提交包生成 v2 草稿，inputs 覆盖数据文件与参考文献
 
   const checked = normalizeWorkOrderV2(draft);
   assert.equal(checked.ok, true, checked.errors.join("；"));
+});
+
+test("manifest autonomy_grants 透传到草稿 source_package", (t) => {
+  const fixture = makePackage(t, {
+    manifestExtras: {
+      autonomy_grants: { allow_l3_data_adaptation: true, max_adaptation_retries: 2 },
+    },
+  });
+  const result = buildWorkOrderDraftFromPackage(fixture.pkgDir, buildOptions(fixture));
+  assert.equal(result.ok, true, (result.errors || []).join("；"));
+  assert.deepEqual(result.draft.source_package.autonomy_grants, {
+    allow_l3_data_adaptation: true,
+    max_adaptation_retries: 2,
+  });
+  assert.deepEqual(result.package.autonomy_grants, {
+    allow_l3_data_adaptation: true,
+    max_adaptation_retries: 2,
+  });
 });
 
 test("缺 requirement.json 或 package_manifest.json 都按 ERR_PACKAGE_SHAPE 拒", (t) => {

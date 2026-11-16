@@ -14,7 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import {
-  ADB_EXEC_SCRIPT, REPO_ROOT, adbRaw, computeMode, resolveComputeAdapter,
+  ADB_EXEC_SCRIPT, REPO_ROOT, adbRaw, computeMode, resolveComputeAdapter, resolvePwshExec,
   runExecStream, runStream, sshArgv,
 } from '../server/proc.js';
 import { runRemoteRaw } from '../server/remote_exec.js';
@@ -84,7 +84,7 @@ test('runRemoteRaw 默认调用 adbRaw：pwsh + tools/ops/adb_exec.ps1 + Transpo
   assert.deepEqual(result, { code: 0, text: 'DEFAULT_ADB_OK' });
   assert.equal(calls.length, 1);
   const [call] = calls;
-  assert.equal(call.program, 'pwsh');
+  assert.equal(call.program, resolvePwshExec());
   assert.ok(call.args.includes('-NoProfile'));
   assert.equal(call.args[call.args.indexOf('-File') + 1], ADB_EXEC_SCRIPT);
   assert.equal(call.args[call.args.indexOf('-Level') + 1], 'container');
@@ -140,7 +140,7 @@ test('adbRaw 多行命令改走 -ScriptPath，不把多行内容塞进 argv', (t
   const result = adbRaw('echo one\necho two');
 
   assert.deepEqual(result, { code: 0, text: 'SCRIPT_OK' });
-  assert.equal(seen.program, 'pwsh');
+  assert.equal(seen.program, resolvePwshExec());
   assert.ok(seen.scriptPath, '多行命令必须落临时 .sh');
   assert.equal(seen.args.includes('-Command'), false, '多行命令不得进 -Command');
   assert.equal(seen.scriptText, 'echo one\necho two');
@@ -188,7 +188,7 @@ test('runExecStream 在 adb 模式下把 ssh 重写为 adb_exec，不直连 ssh'
   runExecStream(sshArgv('k40-ubuntu', 'echo TASK_BODY'), {});
 
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].program, 'pwsh');
+  assert.equal(calls[0].program, resolvePwshExec());
   assert.equal(calls[0].args[calls[0].args.indexOf('-File') + 1], ADB_EXEC_SCRIPT);
   assert.equal(calls[0].args[calls[0].args.indexOf('-Transport') + 1], 'adb');
   assert.equal(calls[0].args[calls[0].args.indexOf('-Command') + 1], 'echo TASK_BODY');
@@ -205,7 +205,7 @@ test('runStream 在 adb 模式下同样走 adb_exec', (t) => {
   runStream(sshArgv('k40-ubuntu', 'echo REPORT_BODY'), {});
 
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].program, 'pwsh');
+  assert.equal(calls[0].program, resolvePwshExec());
   assert.equal(calls[0].args[calls[0].args.indexOf('-Transport') + 1], 'adb');
   assert.equal(calls[0].args[calls[0].args.indexOf('-Command') + 1], 'echo REPORT_BODY');
 });

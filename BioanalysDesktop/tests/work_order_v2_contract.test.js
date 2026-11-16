@@ -193,6 +193,26 @@ test('.. 段路径拒', () => {
   assert.equal(hasCode(result, 'ERR_UNSAFE_PATH'), true, result.errors.join('；'));
 });
 
+test('source_package.autonomy_grants 合法透传，未知授权键拒绝', () => {
+  const payload = clone(EXAMPLE);
+  payload.source_package.autonomy_grants = {
+    allow_l3_data_adaptation: true,
+    max_adaptation_retries: 2,
+  };
+  const result = normalizeWorkOrderV2(payload);
+  assert.equal(result.ok, true, result.errors.join('；'));
+  assert.deepEqual(result.workOrder.sourcePackage.autonomyGrants, {
+    allow_l3_data_adaptation: true,
+    max_adaptation_retries: 2,
+  });
+
+  const bad = clone(EXAMPLE);
+  bad.source_package.autonomy_grants = { allow_shell: true };
+  const badResult = normalizeWorkOrderV2(bad);
+  assert.equal(badResult.ok, false);
+  assert.ok(badResult.errors.some((line) => line.includes('autonomy_grants')));
+});
+
 test('source_package 绝对路径拒', () => {
   const payload = base();
   payload.source_package.package_dir = '/var/lib/packages/PKG_1';

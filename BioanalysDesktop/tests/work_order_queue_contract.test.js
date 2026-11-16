@@ -9,6 +9,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 import {
   createWorkOrder,
@@ -17,10 +19,13 @@ import {
   getReceipt,
   getWorkOrderMeta,
   recoverInterruptedRunning,
+  startQueue,
+  stopQueue,
 } from '../server/services/work_order.service.js';
 import {
   computeWorkOrderDigest, createReceiptV1, updateReceiptStatus, writeReceiptV1Atomic,
 } from '../server/receipt_v1.js';
+import { runWorkOrder } from '../../tools/dev/work_order_orchestrator.mjs';
 
 function tempRoot() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'work-order-queue-'));
@@ -244,4 +249,161 @@ test('同项目多工单：权威回执按工单号各存一份，不互相覆�
     assert.equal(receipt.work_order_id, id, `${id} 必须读回自己的回执`);
   }
   assert.equal(paths.size, 2, '两张工单的回执路径必须不同，不能共用项目级文件');
+});
+
+test('T1.7 接线：执行体把主体留痕转发给编排器，回执能区分人类与 AI', async () => {
+  const aiActor = { kind: 'ai_assist', id: 'ai-orchestrator', role: 'admin' };
+  const humanActor = { kind: 'human', id: 'operator-a', role: 'admin' };
+
+  const captureRunner = (captured) => async (_input, runnerOpts) => {
+    captured.value = runnerOpts.actors || null;
+    return { ok: true };
+  };
+
+  const aiRoot = tempRoot();
+  createWorkOrder(draft(), aiRoot);
+  enqueueWorkOrder('WO-Q-001', aiRoot, { approved: true, actor: aiActor, leaseId: 'AUTH-20261112-0003' });
+  const aiCaptured = { value: null };
+  await executeWorkOrderById('WO-Q-001', aiRoot, { runWorkOrderFn: captureRunner(aiCaptured) });
+  assert.ok(aiCaptured.value, 'runnerOptions 必须携带 actors 留痕');
+  assert.equal(aiCaptured.value.actors.approved_by.kind, 'ai_assist');
+  assert.equal(aiCaptured.value.actor_trace[0].action, 'work_order.approved');
+  assert.equal(aiCaptured.value.actor_trace[0].lease_id, 'AUTH-20261112-0003');
+  assert.equal(aiCaptured.value.actor_trace[1].action, 'work_order.run');
+
+  const humanRoot = tempRoot();
+  createWorkOrder(draft(), humanRoot);
+  enqueueWorkOrder('WO-Q-001', humanRoot, { approved: true, actor: humanActor, leaseId: 'AUTH-20261112-0004' });
+  const humanCaptured = { value: null };
+  await executeWorkOrderById('WO-Q-001', humanRoot, { runWorkOrderFn: captureRunner(humanCaptured) });
+  assert.equal(humanCaptured.value.actors.approved_by.kind, 'human');
+  assert.equal(humanCaptured.value.actor_trace[0].actor.kind, 'human');
+});
+
+test('T1.7 编排器：options.actors 进入权威回执，缺省回执不带 actors 字段', async () => {
+  const aiActor = { kind: 'ai_assist', id: 'ai-orchestrator', role: 'admin' };
+  const withActors = await runWorkOrder({ schema_version: 'bogus/v9' }, {
+    actors: {
+      actors: { approved_by: aiActor },
+      actor_trace: [{
+        action: 'work_order.approved',
+        actor: aiActor,
+        at: '2026-11-15T00:00:00.000Z',
+        lease_id: 'AUTH-20261112-0005',
+        request_id: null,
+      }],
+    },
+  });
+  assert.equal(withActors.receiptV1.actors.approved_by.kind, 'ai_assist');
+  assert.equal(withActors.receiptV1.actor_trace[0].lease_id, 'AUTH-20261112-0005');
+
+  const legacy = await runWorkOrder({ schema_version: 'bogus/v9' });
+  assert.equal(legacy.receiptV1.actors, undefined);
+  assert.equal(legacy.receiptV1.actor_trace, undefined);
+});
+
+async function waitForMetaStatus(root, workOrderId, predicate, timeoutMs = 20000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      const meta = readMeta(root, 'PRJ_Q_ALPHA', workOrderId);
+      if (predicate(meta)) return meta;
+    } catch {
+      // meta 尚未落盘或读取竞态，继续轮询。
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`等待工单 ${workOrderId} 状态超时（${timeoutMs}ms）`);
+}
+
+function exitOf(child) {
+  return new Promise((resolve) => {
+    child.once('exit', resolve);
+    child.once('error', resolve);
+  });
+}
+
+function completedReceiptRunner() {
+  return async (input) => {
+    let receipt = createReceiptV1({
+      workOrderDigest: computeWorkOrderDigest(input ?? {}),
+      workOrderId: String(input?.work_order_id || input?.workOrderId || 'WO-UNKNOWN'),
+      projectId: String(input?.project_id || input?.projectId || ''),
+      lineId: String(input?.execution?.line_id || input?.lineId || ''),
+      startedAt: new Date().toISOString(),
+      sourceSchemaVersion: 'work_order/v2',
+      seed: 20261112,
+      computeAdapter: 'adb',
+    });
+    receipt = updateReceiptStatus(receipt, 'running');
+    receipt = updateReceiptStatus(receipt, 'completed', {
+      delivery: {
+        tar_sha256: 'b'.repeat(64),
+        verified_count: 1,
+        coverage_ok: true,
+        verifier_version: 't3.6-contract',
+      },
+    });
+    return { ok: true, receiptV1: receipt };
+  };
+}
+
+test('T3.6 验收：kill 执行进程、重启恢复后队列与 receipt.v1 一致，无重复无丢失', async () => {
+  const root = tempRoot();
+  const ids = ['WO-Q-001', 'WO-Q-002', 'WO-Q-003'];
+  for (const id of ids) createWorkOrder(draft({ work_order_id: id }), root);
+  const actor = { kind: 'ai_assist', id: 'ai-orchestrator', role: 'admin' };
+  for (const id of ids) {
+    enqueueWorkOrder(id, root, { approved: true, actor, leaseId: 'AUTH-20261112-0006' });
+  }
+
+  // 阶段一：真实子进程执行 WO-Q-001，runner 挂起，确认 running 后 kill，模拟进程中途被杀。
+  const helperPath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'helpers', 'queue_kill_child.mjs');
+  const child = spawn(process.execPath, [helperPath, root, 'WO-Q-001'], { stdio: 'ignore' });
+  try {
+    await waitForMetaStatus(root, 'WO-Q-001', (meta) => meta.status === 'running');
+  } finally {
+    child.kill();
+    await exitOf(child);
+  }
+
+  // kill 后未恢复前：running 挂着，queued 两单必须原样保留（不丢）。
+  assert.equal(readMeta(root, 'PRJ_Q_ALPHA', 'WO-Q-002').status, 'queued');
+  assert.equal(readMeta(root, 'PRJ_Q_ALPHA', 'WO-Q-003').status, 'queued');
+
+  // 阶段二：重启恢复（running 标 failed）+ 单消费者泵排空剩余队列。
+  const recovered = recoverInterruptedRunning(root);
+  assert.deepEqual(recovered, ['WO-Q-001']);
+  startQueue(root, { runWorkOrderFn: completedReceiptRunner() });
+  try {
+    await waitForMetaStatus(root, 'WO-Q-002', (meta) => meta.status !== 'queued');
+    await waitForMetaStatus(root, 'WO-Q-003', (meta) => meta.status !== 'queued');
+  } finally {
+    await stopQueue();
+  }
+
+  // 恢复语义：被杀单收敛 failed 并写明原因。
+  const afterKill = readMeta(root, 'PRJ_Q_ALPHA', 'WO-Q-001');
+  assert.equal(afterKill.status, 'failed');
+  assert.equal(afterKill.recovery_reason, 'server_restart');
+
+  // 终态重跑被拒：失败单不允许产生第二份回执。
+  const rerun = await executeWorkOrderById('WO-Q-001', root, { runWorkOrderFn: completedReceiptRunner() }).catch((cause) => cause);
+  assert.equal(rerun.code, 'ERR_WORK_ORDER_STATE');
+  assert.equal(rerun.status, 409);
+
+  // 无丢失：三单都在且终态齐全。
+  assert.equal(readMeta(root, 'PRJ_Q_ALPHA', 'WO-Q-002').status, 'completed');
+  assert.equal(readMeta(root, 'PRJ_Q_ALPHA', 'WO-Q-003').status, 'completed');
+
+  // 回执一致：每张完成单恰好一份专属回执，回执 id 与 meta 记录吻合；失败单没有回执。
+  const workOrdersDir = path.join(root, 'workspace', 'projects', 'PRJ_Q_ALPHA', 'work_orders');
+  const receiptFiles = fs.readdirSync(workOrdersDir).filter((name) => name.endsWith('.receipt.v1.json')).sort();
+  assert.deepEqual(receiptFiles, ['WO-Q-002.receipt.v1.json', 'WO-Q-003.receipt.v1.json']);
+  for (const id of ['WO-Q-002', 'WO-Q-003']) {
+    const receipt = getReceipt(id, root);
+    assert.equal(receipt.status, 'completed');
+    assert.equal(receipt.work_order_id, id);
+    assert.equal(readMeta(root, 'PRJ_Q_ALPHA', id).receipt_id, receipt.receipt_id);
+  }
 });

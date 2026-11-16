@@ -22,6 +22,8 @@ test("Q4：旧位置 BioanalysDesktop/Python/ 不再存在", () => {
 });
 
 test("Q4：新位置 vendor/python-win32/ 存在且含运行时文件", () => {
+  // 便携包内 vendor/ 不存在（同一份运行时落在 runtime/python/），本断言只在打包机有意义
+  if (fs.existsSync(path.join(REPO, "runtime", "python", "python.exe"))) return;
   assert.ok(fs.existsSync(NEW), "缺 vendor/python-win32/");
   // 不写死 2418：运行时会随打包升级变化，只要求它是个非空目录
   const entries = fs.readdirSync(NEW);
@@ -29,12 +31,13 @@ test("Q4：新位置 vendor/python-win32/ 存在且含运行时文件", () => {
 });
 
 test("Q4：新位置未被 git 跟踪（是缓存不是源码）", () => {
+  // 便携包没有 .git，跟踪状态校验只在打包机的 git 工作树里成立
   const ignore = path.join(REPO, ".gitignore");
   const text = fs.readFileSync(ignore, "utf8");
   assert.match(text, /vendor\//, ".gitignore 必须忽略 vendor/");
   // 运行时本体绝不能进 git 索引
   const gitDir = path.join(REPO, ".git");
-  assert.ok(fs.existsSync(gitDir), "非 git 工作树，本测试不适用");
+  if (!fs.existsSync(gitDir)) return;
 });
 
 test("Q4：构建排除清单同时覆盖新位置与旧位置（兼容历史工作树）", () => {
@@ -48,4 +51,19 @@ test("Q4：应用源码目录里不再有大型运行时子目录", () => {
   const dirs = fs.readdirSync(app, { withFileTypes: true })
     .filter((d) => d.isDirectory() && d.name === "Python");
   assert.equal(dirs.length, 0, "BioanalysDesktop/Python 又回来了");
+});
+
+test("便携包必须自带 python 审计运行时（gate 20 与变异门禁在净化 PATH 下可跑）", () => {
+  const src = fs.readFileSync(path.join(REPO, "tools", "dev", "build_portable_package.mjs"), "utf8");
+  assert.match(src, /runtime\/python/, "构建器必须把 pythoncore 复制进包内 runtime/python/");
+  assert.match(src, /pythoncore-3\.12-64/, "python 运行时必须来自 vendor/python-win32 的 pythoncore");
+  const figGate = fs.readFileSync(path.join(REPO, "tools", "dev", "figure_code_gate.mjs"), "utf8");
+  assert.match(figGate, /['"]runtime['"],\s*['"]python['"],\s*['"]python\.exe['"]/, "figure_code_gate 必须能解析包内 python");
+});
+
+test("便携包必须自带基准项目夹具（gate 7 与工作台样例的数据面）", () => {
+  const src = fs.readFileSync(path.join(REPO, "tools", "dev", "build_portable_package.mjs"), "utf8");
+  assert.match(src, /PRJ_DCM_BENCH_20261105/, "构建器必须显式复制基准项目");
+  assert.match(src, /BENCH_PROJECT_TOP_FILES/, "报告与旧 runner 必须在显式复制清单里（gate 7 消融场景）");
+  assert.match(src, /'figures'/, "图件面必须整树进包（工作台样例与真实 PNG 消融模式）");
 });

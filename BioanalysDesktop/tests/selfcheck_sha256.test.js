@@ -15,6 +15,7 @@ import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
 
 import childProcess from 'node:child_process';
+import { resolvePwshExec } from '../server/proc.js';
 
 import {
   CORE_SYNC_FILES,
@@ -198,7 +199,7 @@ test('runSha256ParityCheck：mock spawnSync 后一致 → pass，命令走 ADB �
     assert.equal(light.value, CORE_SYNC_FILES.length + '/' + CORE_SYNC_FILES.length + ' 一致');
     assert.equal(spy.mock.calls.length, 1, '必须只调一次 spawnSync');
     const [command, args] = spy.mock.calls[0].arguments;
-    assert.equal(command, 'pwsh');
+    assert.equal(command, resolvePwshExec());
     assert.ok(args.some((item) => String(item).includes('adb_exec.ps1')), '必须走 ADB helper');
     assert.ok(args[args.length - 1].includes(SHA256_SENTINEL), '远端命令必须带哨兵');
     assert.ok(args[args.length - 1].includes('sha256sum'), '远端命令必须跑 sha256sum');

@@ -32,6 +32,9 @@ test('白名单枚举钉死：Argon 点名的四类 + 便携包/干净机器实�
     'HOST_MISSING_LOCAL_DATA',
     'HOST_MISSING_SHELL',
     'HOST_MISSING_GIT',
+    // 2026-11-14 便携包实测：Dev Drive / 特定数据卷不解析目录联接，链接逃逸场景
+    // 无法构造。新增标签待用户裁定转正（gate 文档同步见 tools/dev/skip_reason_gate.mjs）。
+    'HOST_NO_SYMLINK_RESOLUTION',
   ]);  assert.equal(Object.isFrozen(ALLOWED_SKIP_REASONS), true, '枚举必须冻结，运行期不得改写');
 });
 

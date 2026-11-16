@@ -20,6 +20,7 @@ import {
   RECEIPT_V1_SCHEMA_VERSION,
   RECEIPT_V1_SENTINEL,
   buildOldReceiptProjection,
+  appendAdaptationTrace,
   computeWorkOrderDigest,
   createReceiptV1,
   updateReceiptStatus,
@@ -157,6 +158,48 @@ test('computeWorkOrderDigest：键序无关，数组序有关，值变即变', (
   assert.notEqual(computeWorkOrderDigest(left), computeWorkOrderDigest(reorderedArray));
   assert.notEqual(computeWorkOrderDigest(left), computeWorkOrderDigest(changedValue));
   assert.match(computeWorkOrderDigest(left), /^[0-9a-f]{64}$/);
+});
+
+test('receipt/v1 扩展：delivery_grade 与 adaptation_trace 合法写入，非法值拒绝', () => {
+  const receipt = createReceiptV1({
+    workOrderDigest: 'a'.repeat(64),
+    workOrderId: 'WO-G3-001',
+    projectId: 'PRJ_G3',
+    lineId: 'line1_bulk',
+    startedAt: '2026-11-15T00:00:00.000Z',
+    deliveryGrade: 'EXPLORATORY_DEGRADED',
+    adaptationTrace: [{
+      mod_id: 'l1_qc_matrix',
+      action_type: 'PARAM_REMEDIATION',
+      target: 'min_genes',
+      before_digest: 'b'.repeat(64),
+      after_digest: 'c'.repeat(64),
+      validation_run_id: 'val-1',
+      validation_passed: true,
+      purpose: 'clean dirty data',
+      reason: 'median mt_pct high',
+    }],
+  });
+  assert.equal(receipt.delivery_grade, 'EXPLORATORY_DEGRADED');
+  assert.equal(receipt.adaptation_trace.length, 1);
+  assert.equal(receipt.adaptation_trace[0].validation_passed, true);
+
+  appendAdaptationTrace(receipt, {
+    mod_id: 'l1_de_limma',
+    target: 'log2fc_cutoff',
+    purpose: 'conservative tune',
+    reason: 'deg_total too low',
+  });
+  assert.equal(receipt.adaptation_trace.length, 2);
+  assert.equal(receipt.adaptation_trace[1].seq, 2);
+
+  const badGrade = completedReceipt();
+  badGrade.delivery_grade = 'NOT_A_GRADE';
+  assert.throws(() => writeReceiptV1Atomic(badGrade, path.join(os.tmpdir(), 'x.json')), /delivery_grade/);
+
+  const badTrace = completedReceipt();
+  badTrace.adaptation_trace = [{ target: 'x' }];
+  assert.throws(() => writeReceiptV1Atomic(badTrace, path.join(os.tmpdir(), 'y.json')), /adaptation_trace/);
 });
 
 test('writeReceiptV1Atomic：原子写后读回一致，拒绝绝对产物路径', () => {
