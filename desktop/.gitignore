@@ -1,0 +1,8 @@
+node_modules/
+release/
+.cache/
+# agent 目录里的登录态与模型配置带密钥，一律不进版本库（.env.local 同级红线）
+runtime/picli/agent/auth.json
+runtime/picli/agent/models-store.json
+runtime/picli/agent/models.json
+runtime/picli/agent/settings.json
