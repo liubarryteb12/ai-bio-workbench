@@ -166,7 +166,8 @@ export function runGate(gate, { repoRoot = REPO_ROOT, env = gateEnv(), timeoutMs
     skipReason: skipped ? (lines.filter((l) => l.trim()).slice(-1)[0] || '') : '',
     exitCode: result.status,
     seconds: (Date.now() - started) / 1000,
-    tail: lines.slice(-8),
+    // metrics 红时会在末尾逐条点名 not ok / SKIP 违规，8 行只够看计数，看不到原因。
+    tail: lines.slice(-80),
   };
 }
 

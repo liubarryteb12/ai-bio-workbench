@@ -31,6 +31,11 @@ jobs:
         # 类型回归只能靠人记得在本地跑，等于没有门禁。
         working-directory: BioanalysDesktop
         run: node node_modules/typescript/bin/tsc --noEmit
+      - name: 构建前端（dist/）
+        # 本地开发者先 build 过，static_assets_contract 的合法与 404 用例依赖 dist/index.html，
+        # 干净 Runner 缺 dist 时会误红。e2e job 已构建，这道门禁同样需要。
+        working-directory: BioanalysDesktop
+        run: npm run build
       - name: 单命令总门禁（与本地同构）
         # gate:all 内含 preflight/static/skip_static/ledger/figure_registry/audit_summary/
         # mutation_gate/metrics 八道；任一道红即整体红，exit 非 0 会直接让 job 失败。
