@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 
-import { GATES, runAllGates, main, REPO_ROOT } from '../../tools/dev/run_all_gates.mjs';
+import { GATES, runAllGates, runGate, main, REPO_ROOT } from '../../tools/dev/run_all_gates.mjs';
 
 test('门禁清单：齐全，顺序越便宜越靠前，只有最后一道是 slow', () => {
   // mutation_gate 是 T2-6 的变异门禁：它证明「改坏能让门禁红」，与红测证明的
@@ -153,9 +153,17 @@ test('环境保底：gateEnv 显式补 SystemRoot/windir（并记录为何无法
     args: ['-e', 'console.log(JSON.stringify({sr: process.env.SystemRoot || null, wd: process.env.windir || null}))'],
     cwd: '.', slow: false,
   };
-  const outcome = runAllGates({ skipSlow: true, gates: [probe], env: stripped });
-  assert.equal(outcome.ok, true, JSON.stringify(outcome.results[0].tail));
-  const payload = JSON.parse(outcome.results[0].tail.join(''));
+  // runAllGates 尊重调用方传入的 env；要验的是 runGate 默认 env 的 gateEnv 保底。
+  // 临时净化 process.env，让默认参数在缺 SystemRoot/windir 的路径上生效。
+  const saved = process.env;
+  try {
+    process.env = stripped;
+    const result = runGate(probe);
+    assert.equal(result.ok, true, JSON.stringify(result.tail));
+    var payload = JSON.parse(result.tail.join(''));
+  } finally {
+    process.env = saved;
+  }
   assert.equal(typeof payload.sr, 'string', '子进程必须拿到 SystemRoot');
   assert.equal(typeof payload.wd, 'string', '子进程必须拿到 windir');
   // 源码契约（不是行为断言）：gateEnv 必须真的做合并，而不是依赖 OS 注入

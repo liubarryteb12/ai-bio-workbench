@@ -57,6 +57,7 @@ jobs:
         run: |
           grep -A 18 '^not ok' .tmp/ci_metrics.tap || true
           grep -n -B 4 -A 4 '^# SKIP$' .tmp/ci_metrics.tap || true
+          sed -n '5928,5948p' .tmp/ci_metrics.tap || true
       - name: 门禁结果留档
         if: always()
         # 留档步骤与门禁步骤跑同一套判据，失败时它也必须红。此前这里用「或裸 true」的

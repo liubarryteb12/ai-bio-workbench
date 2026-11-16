@@ -23,6 +23,10 @@ test("Q4：旧位置 BioanalysDesktop/Python/ 不再存在", () => {
 
 test("Q4：新位置 vendor/python-win32/ 存在且含运行时文件", (t) => {
   // 便携包内 vendor/ 不存在（同一份运行时落在 runtime/python/），本断言只在打包机有意义
+  if (process.platform !== "win32") {
+    t.skip("HOST_MISSING_LOCAL_DATA: Windows 打包运行时不在非 Windows 宿主上校验");
+    return;
+  }
   if (fs.existsSync(path.join(REPO, "runtime", "python", "python.exe"))) {
     t.skip("HOST_MISSING_LOCAL_DATA: 便携包运行时落在 runtime/python，本项目目录无 vendor");
     return;

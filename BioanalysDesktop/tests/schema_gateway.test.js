@@ -108,6 +108,8 @@ test('MUT-P1-B：连根强杀 (killProcessTree) 必须彻底消亡父进程与�
 
   const child = spawn(resolvePythonExec() || 'python3', ['-c', code], {
     windowsHide: true,
+    // POSIX 上 killProcessTree 用负 PGID 杀整组，子进程必须自带进程组。
+    detached: process.platform !== 'win32',
   });
 
   let grandchildPid = null;
