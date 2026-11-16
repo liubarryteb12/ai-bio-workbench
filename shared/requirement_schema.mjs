@@ -145,6 +145,40 @@ export function validateRequirement(payload) {
         push(`${at}（${g.groupName ?? '未命名'}）的 sampleIds 必须是数组`);
       }
     });
+    // D5.4：GEO 公共库提交的样本 ID 必须是 GSM 编号，且不得跨组重复。
+    const dataSource = payload.dataSource && typeof payload.dataSource === 'object' ? payload.dataSource : {};
+    const geoDatasets = Array.isArray(dataSource.datasets) ? dataSource.datasets : [];
+    const isGeo = String(dataSource.source || '').toUpperCase().includes('GEO')
+      || geoDatasets.some((item) => /^GSE/i.test(String(item?.gse || '')));
+    if (isGeo) {
+      const seen = new Map();
+      groups.forEach((g, i) => {
+        if (!isPlainObject(g) || !Array.isArray(g.sampleIds)) return;
+        g.sampleIds.forEach((sampleId) => {
+          const text = String(sampleId ?? '').trim();
+          if (!/^GSM\d+$/.test(text)) {
+            push(`第 ${i + 1} 组（${g.groupName ?? '未命名'}）的样本 ID 必须是 GSM 编号: ${JSON.stringify(sampleId)}`);
+            return;
+          }
+          if (seen.has(text)) {
+            push(`样本 ${text} 同时出现在第 ${seen.get(text)} 组与第 ${i + 1} 组，禁止跨组重复`);
+          } else {
+            seen.set(text, i + 1);
+          }
+        });
+      });
+    } else {
+      // 自测/私有数据不强制 GSM，但仍需安全标识符：纯英文数字与 . _ -，2 到 64 字符。
+      groups.forEach((g, i) => {
+        if (!isPlainObject(g) || !Array.isArray(g.sampleIds)) return;
+        g.sampleIds.forEach((sampleId) => {
+          const text = String(sampleId ?? '').trim();
+          if (!/^[A-Za-z0-9_.-]{2,64}$/.test(text)) {
+            push(`第 ${i + 1} 组（${g.groupName ?? '未命名'}）的样本 ID 只能包含英文数字与 . _ -，长度 2 到 64: ${JSON.stringify(sampleId)}`);
+          }
+        });
+      });
+    }
     const refs = groups.filter((g) => isPlainObject(g) && g.role === 'reference');
     if (groups.length >= 2 && refs.length !== 1) {
       push(`基准组（role=reference）必须有且只有 1 个，当前 ${refs.length} 个`);
