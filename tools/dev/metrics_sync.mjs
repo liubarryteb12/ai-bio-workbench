@@ -140,7 +140,11 @@ function measureTests() {
   // CI 诊断：门禁 JSON 只留 tail，TAP 里的断言栈进不到日志。
   // 显式给路径才落盘，默认不改文件；本地无人值守调试也能拿同一份原始 TAP。
   const dump = process.env.BIO_METRICS_TAP_DUMP;
-  if (dump) fs.writeFileSync(dump, text, 'utf8');
+  if (dump) {
+    // 变异门禁会在 .tmp 探针仓里复用同一环境，目标目录可能还不存在。
+    fs.mkdirSync(path.dirname(path.resolve(dump)), { recursive: true });
+    fs.writeFileSync(dump, text, 'utf8');
+  }
   return { files: fileCount, cases, pass, fail, skipped, measured: true, skipGate, tapText: text };
 }
 

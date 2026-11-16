@@ -29,7 +29,7 @@ function sliceBetween(startText, endText) {
   return HTML.slice(start, end);
 }
 
-test('L1 分析线声明 QC 与 PCA 步骤，真实产出名与门户质检目录一致', () => {
+test('L1 分析线声明 QC 与 PCA 步骤，真实产出名与门户质检目录一致', (t) => {
   const workflows = JSON.parse(
     fs.readFileSync(path.join(ROOT, 'tools', 'bio', 'workflows.json'), 'utf8'),
   );
@@ -63,6 +63,15 @@ test('L1 分析线声明 QC 与 PCA 步骤，真实产出名与门户质检目�
         const dir = path.join(projectsRoot, project, 'figures', 'line1_bulk');
         return required.every((name) => fs.existsSync(path.join(dir, name)));
       });
+      // 干净 checkout 没有运行期项目图；整组缺失是环境形态，部分在位却不完整才判红。
+      const anyPresent = dcmProjects.some((project) => {
+        const dir = path.join(projectsRoot, project, 'figures', 'line1_bulk');
+        return required.some((name) => fs.existsSync(path.join(dir, name)));
+      });
+      if (!complete && !anyPresent) {
+        t.skip('HOST_MISSING_LOCAL_DATA: DCM L1 质检运行图不在版本库中');
+        return;
+      }
       assert.ok(complete, 'DCM 真实测试项目应产出完整 L1 质检图组');
     }
   }

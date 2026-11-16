@@ -114,7 +114,9 @@ test('_legacy 目录必须真的被 git 跟踪（.gitignore 是白名单模式�
   assert.deepEqual(legacyFiles.missing, [],
     '_legacy 下必须有这三份母版: ' + JSON.stringify(legacyFiles.missing));
   if (!gitUsable()) return;
-  const listed = spawnSync('git', ['ls-files', '--', path.join('references', '05.可参考生信代码', '可用代码预筛选', '源码', '_legacy')],
+  // core.quotePath=false：Linux 默认会把非 ASCII 路径转成八进制转义，
+  // 直接比字符串会把已跟踪文件误判成未跟踪。
+  const listed = spawnSync('git', ['-c', 'core.quotePath=false', 'ls-files', '--', path.join('references', '05.可参考生信代码', '可用代码预筛选', '源码', '_legacy')],
     { cwd: REPO_ROOT, encoding: 'utf8' });
   const trackedSet = new Set((listed.stdout || '').split('\n').filter(Boolean).map((p) => p.split('/').join('/')));
   const untracked = legacyFiles.present.filter((rel) => !trackedSet.has(rel));

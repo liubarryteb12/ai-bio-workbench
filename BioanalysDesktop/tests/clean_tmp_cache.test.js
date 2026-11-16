@@ -29,7 +29,8 @@ function run(args = []) {
 test("默认是 dry-run：不加 --apply 只报告不删除", () => {
   const r = run();
   assert.equal(r.code, 0);
-  assert.match(r.out, /CLEAN_TMP_(DRY_RUN|NOOP)/);
+  // 干净 checkout 可能还没有 .tmp/，清理器如实报告「无需清理」也是 dry-run 合法终态。
+  assert.match(r.out, /CLEAN_TMP_(DRY_RUN|NOOP)|不存在，无需清理/);
   assert.doesNotMatch(r.out, /CLEAN_TMP_OK/);
 });
 

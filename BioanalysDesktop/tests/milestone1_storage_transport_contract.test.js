@@ -17,6 +17,11 @@ import { TEST_TMP } from './support/test_tmp.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
+const HAS_POWERSHELL = (() => {
+  const probe = spawnSync('powershell', ['-NoProfile', '-Command', 'exit 0'], { encoding: 'utf8' });
+  return probe.status === 0;
+})();
+const NEED_POWERSHELL = HAS_POWERSHELL ? false : 'HOST_MISSING_SHELL: 无 PowerShell，运维脚本契约不可执行';
 
 test('里程碑 1：paths.js 与 portable-paths.js 正确导出四层收敛路径助手', async () => {
   const m = await import('../server/paths.js');
@@ -41,7 +46,7 @@ test('里程碑 1：paths.js 与 portable-paths.js 正确导出四层收敛路�
   assert.equal(pm.portableRunsRoot(dummyPortable), path.join(dummyPortable, 'data', 'workspace', 'runs'));
 });
 
-test('里程碑 1：init_workspace_hierarchy.ps1 幂等初始化全部必需子目录与元数据', () => {
+test('里程碑 1：init_workspace_hierarchy.ps1 幂等初始化全部必需子目录与元数据', { skip: NEED_POWERSHELL }, () => {
   const testDataHome = fs.mkdtempSync(path.join(TEST_TMP, 'm1-init-'));
   const script = path.join(REPO_ROOT, 'tools', 'ops', 'init_workspace_hierarchy.ps1');
 
@@ -79,7 +84,7 @@ test('里程碑 1：init_workspace_hierarchy.ps1 幂等初始化全部必需子�
   assert.ok(!run2.stdout.includes('[CREATED]'), '第二次运行不应有新建项');
 });
 
-test('里程碑 1：pull_and_verify.ps1 本地提取与带空格路径的 sha256 强校验通过并签发回执', () => {
+test('里程碑 1：pull_and_verify.ps1 本地提取与带空格路径的 sha256 强校验通过并签发回执', { skip: NEED_POWERSHELL }, () => {
   const testRoot = fs.mkdtempSync(path.join(TEST_TMP, 'm1-pull-'));
   const localRunsRoot = path.join(testRoot, 'local_runs');
   fs.mkdirSync(localRunsRoot, { recursive: true });
@@ -139,7 +144,7 @@ test('里程碑 1：pull_and_verify.ps1 本地提取与带空格路径的 sha256
   assert.match(token, /^VERIFIED_AT_\d{8}T\d{6}Z$/);
 });
 
-test('里程碑 1：pull_and_verify.ps1 在哈希不符时抛出 CHECKSUM_MISMATCH_ABORT 并拒绝签发回执', () => {
+test('里程碑 1：pull_and_verify.ps1 在哈希不符时抛出 CHECKSUM_MISMATCH_ABORT 并拒绝签发回执', { skip: NEED_POWERSHELL }, () => {
   const testRoot = fs.mkdtempSync(path.join(TEST_TMP, 'm1-tamper-'));
   const localRunsRoot = path.join(testRoot, 'local_runs');
   fs.mkdirSync(localRunsRoot, { recursive: true });

@@ -21,9 +21,12 @@ test("Q4：旧位置 BioanalysDesktop/Python/ 不再存在", () => {
   assert.equal(fs.existsSync(OLD), false, "打包运行时不应混在应用源码目录里");
 });
 
-test("Q4：新位置 vendor/python-win32/ 存在且含运行时文件", () => {
+test("Q4：新位置 vendor/python-win32/ 存在且含运行时文件", (t) => {
   // 便携包内 vendor/ 不存在（同一份运行时落在 runtime/python/），本断言只在打包机有意义
-  if (fs.existsSync(path.join(REPO, "runtime", "python", "python.exe"))) return;
+  if (fs.existsSync(path.join(REPO, "runtime", "python", "python.exe"))) {
+    t.skip("HOST_MISSING_LOCAL_DATA: 便携包运行时落在 runtime/python，本项目目录无 vendor");
+    return;
+  }
   assert.ok(fs.existsSync(NEW), "缺 vendor/python-win32/");
   // 不写死 2418：运行时会随打包升级变化，只要求它是个非空目录
   const entries = fs.readdirSync(NEW);

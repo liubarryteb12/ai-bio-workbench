@@ -30,10 +30,12 @@ function buildPackage(root) {
   fs.writeFileSync(path.join(srcDir, 'requirement.json'), JSON.stringify({ basicInfo: { name: 'sync' } }), 'utf8');
   fs.writeFileSync(path.join(srcDir, 'raw_data', 'matrix.tsv'), 'gene\ts1\nA\t1\n', 'utf8');
   const archive = path.join(root, `${TICKET}.tar.gz`);
-  // 显式用 System32\tar.exe：PATH 上的 GNU tar 把 C:\ 路径当远程主机（"Cannot
-  // connect to C: resolve failed"），Windows 自带的 bsdtar 才认盘符。
-  const winTar = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
-  const tar = spawnSync(winTar, ['-czf', archive, '-C', srcDir, '.'], { encoding: 'utf8' });
+  // Windows 上显式用 System32\tar.exe：PATH 上的 GNU tar 把 C:\ 路径当远程主机。
+  // POSIX 宿主直接用 PATH 上的 tar，避免把盘符路径硬编码成跨平台前提。
+  const tarBin = process.platform === 'win32'
+    ? path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe')
+    : 'tar';
+  const tar = spawnSync(tarBin, ['-czf', archive, '-C', srcDir, '.'], { encoding: 'utf8' });
   assert.equal(tar.status, 0, `tar 打包失败: ${tar.stderr || tar.stdout}`);
   return { archive, bytes: fs.readFileSync(archive) };
 }

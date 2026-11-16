@@ -64,7 +64,8 @@ export function deliverablesPath(...parts) {
  */
 export function resolveDataOrAsset(relativePath) {
   const rel = String(relativePath ?? '').replace(/\\/g, '/');
-  if (!rel || path.isAbsolute(rel) || rel.split('/').includes('..')) return null;
+  // Windows 盘符路径在 POSIX 宿主上 path.isAbsolute() 会判 false，必须按字面再拦一次。
+  if (!rel || path.isAbsolute(rel) || /^[a-z]:\//i.test(rel) || rel.split('/').includes('..')) return null;
   const dataCandidate = path.resolve(DATA_ROOT, rel);
   if (fs.existsSync(dataCandidate)) return dataCandidate;
   return path.resolve(ASSET_ROOT, rel);
