@@ -133,9 +133,80 @@ export function extractTarGz(tarPath, destDir) {
     const name = sanitizeEntryName(pending && pending.path ? pending.path : (prefix ? prefix + '/' + rawName : rawName));
     const effSize = pending && pending.size !== undefined ? Number(pending.size) : size;
     pending = null;
+    // GNU tar 以 `tar -C dir .` 打包时会带一个 `./` 根条目，解包时直接跳过。
+    if (!name || name === '.') continue;
     if (typeflag === '5' || typeflag === '7') { entries.push({ name, kind: 'dir' }); continue; }
     if (typeflag !== '0' && typeflag !== '\0') continue; // 硬链/软链/设备件：交付包不该有，跳过即如实不写
     entries.push({ name, kind: 'file', data: data.subarray(0, effSize) });
+  }
+  fs.rmSync(destDir, { recursive: true, force: true });
+  fs.mkdirSync(destDir, { recursive: true });
+  for (const e of entries) {
+    const target = path.join(destDir, ...e.name.split('/').filter(Boolean));
+    if (e.kind === 'dir') { fs.mkdirSync(target, { recursive: true }); continue; }
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, e.data);
+  }
+  return entries.filter((e) => e.kind === 'file').map((e) => e.name);
+}
+
+/**
+ * 带硬限额的解包（D2 接收器专用，Gemini 第三轮六项硬指标）。
+ * 只允许普通文件与目录；限制条目数、单文件、总字节、膨胀率、深度与字符集。
+ */
+export const TAR_GZ_LIMITS = Object.freeze({
+  maxEntries: 64,
+  maxFileBytes: 5 * 1024 * 1024 * 1024,
+  maxTotalBytes: 12 * 1024 * 1024 * 1024,
+  maxRatio: 25,
+  ratioExemptBytes: 10 * 1024 * 1024,
+  maxDepth: 4,
+});
+
+export function extractTarGzLimited(tarPath, destDir, limits = {}) {
+  const opts = { ...TAR_GZ_LIMITS, ...limits };
+  const compressedBytes = fs.statSync(tarPath).size || 1;
+  const tar = zlib.gunzipSync(fs.readFileSync(tarPath));
+  const entries = [];
+  let off = 0;
+  let pending = null;
+  let totalBytes = 0;
+  while (off + 512 <= tar.length) {
+    const header = tar.slice(off, off + 512);
+    if (header.every((b) => b === 0)) break;
+    const rawName = headerField(header, 0, 100);
+    const prefix = headerField(header, 345, 155);
+    const size = headerSize(header, 124, 12);
+    const typeflag = String.fromCharCode(header[156]);
+    off += 512;
+    const data = tar.slice(off, off + size);
+    off += Math.ceil(size / 512) * 512;
+    if (typeflag === 'x' || typeflag === 'g') {
+      pending = { ...(pending || {}), ...parsePaxRecords(data) };
+      continue;
+    }
+    if (typeflag === 'L') { pending = { ...(pending || {}), path: data.toString('utf8').replace(/\0.*$/s, '') }; continue; }
+    if (typeflag === 'K') { pending = { ...(pending || {}), linkpath: data.toString('utf8').replace(/\0.*$/s, '') }; continue; }
+    const name = sanitizeEntryName(pending && pending.path ? pending.path : (prefix ? prefix + '/' + rawName : rawName));
+    const effSize = pending && pending.size !== undefined ? Number(pending.size) : size;
+    pending = null;
+    if (!name || name === '.') continue;
+    if (typeflag === '1' || typeflag === '2' || typeflag === '3' || typeflag === '4' || typeflag === '6') {
+      throw new Error(`unsafe_tar_entry:${typeflag}:${name}`);
+    }
+    const depth = name.split('/').filter(Boolean).length;
+    if (depth > opts.maxDepth) throw new Error(`tar_depth_exceeded:${name}`);
+    if (!/^[A-Za-z0-9._/-]+$/.test(name)) throw new Error(`tar_non_ascii_name:${name}`);
+    entries.push({ name, kind: typeflag === '5' || typeflag === '7' ? 'dir' : 'file', data: data.subarray(0, effSize) });
+    if (entries.length > opts.maxEntries) throw new Error(`tar_entries_exceeded:${entries.length}`);
+    if (typeflag !== '5' && typeflag !== '7') {
+      if (effSize > opts.maxFileBytes) throw new Error(`tar_file_too_large:${name}:${effSize}`);
+      totalBytes += effSize;
+      if (totalBytes > opts.maxTotalBytes) throw new Error(`tar_total_too_large:${totalBytes}`);
+      if (totalBytes > opts.ratioExemptBytes && totalBytes / compressedBytes > opts.maxRatio) {
+        throw new Error(`tar_ratio_exceeded:${(totalBytes / compressedBytes).toFixed(1)}`);
+      }
+    }
   }
   fs.rmSync(destDir, { recursive: true, force: true });
   fs.mkdirSync(destDir, { recursive: true });

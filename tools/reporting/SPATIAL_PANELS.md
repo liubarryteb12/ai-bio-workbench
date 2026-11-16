@@ -24,3 +24,4 @@ python tools/reporting/render_spatial_panel.py `
 | `smooth_spot_master.py` | 一阶邻域平滑，仅展示 |
 | `spatial_zero_diagnostics.py` | 零值率与检测图 |
 | `build_visium_positions.py` | 从 JSON 重建每样本坐标，供审计 |
+| `render_ko_dr_spatial.py` | 敲除显著 DR 基因的 spot 均值空间图，按物种级并集口径 |
